@@ -436,9 +436,9 @@ DIAGNÓSTICO Y ACCIÓN:
 | Tarea | Horario | Ejecutor | Qué hace |
 |---|---|---|---|
 | Data retention cleanup | Domingos 04:00 ART | pg-boss cron | Purga datos según política de retención (Doc 18 §7.2) |
-| Generación de slots de abonados | Domingos 05:00 ART | pg-boss cron | Genera instancias de booking para la semana siguiente |
-| Trial expiration check | Diario 00:00 ART | pg-boss cron | Chequea trials vencidos → churn |
-| Dunning retry | Diario 09:00 ART | pg-boss cron | Reintenta cobros fallidos |
+| Generación de slots de abonados | Diario 03:00 ART | pg-boss cron | Genera instancias de booking para la semana siguiente |
+| Trial expiration check | Diario 08:00 ART | pg-boss cron | Chequea trials vencidos → churn |
+| Dunning retry | Diario 10:00 ART | pg-boss cron | Reintenta cobros fallidos |
 
 ### 4.3 Tareas mensuales (manuales)
 
@@ -686,7 +686,7 @@ INFRAESTRUCTURA:
 SEGURIDAD:
   □ Todas las env vars de producción son diferentes a las de desarrollo
   □ Supabase service role key NO está expuesta al frontend
-  □ RLS activado en las 11 tablas aisladas
+  □ RLS activado en las 12 tablas aisladas
   □ Tests de isolation corren y pasan en CI
   □ HTTPS activo en todo el sitio
   □ Rate limiting configurado

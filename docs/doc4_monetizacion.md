@@ -69,8 +69,8 @@
               ▼            ▼            │
        ┌──────────┐  ┌──────────┐      │
        │  ACTIVE  │  │ BLOCKED  │      │
-       └────┬─────┘  │(solo lect│      │
-            │        │ura 60d) │      │
+       └────┬─────┘  │(sin acc. │      │
+            │        │total 60d)│      │
      [Cobro falla]   └────┬─────┘      │
             │              │            │
             ▼         [Paga dentro     │
@@ -207,7 +207,7 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 | 7 | "Tu cuenta fue suspendida. Podés ver tus datos pero no operar." | Estado → SUSPENDED |
 | 14 | "Tu cuenta fue bloqueada por falta de pago. Regularizá para recuperar acceso." | Estado → BLOCKED |
 | 60 | "Tus datos se eliminan en 30 días. ¿Querés recuperar tu cuenta?" | Recordatorio de eliminación |
-| 90 | (no se envía — el tenant ya está en CHURNED) | Estado → CHURNED |
+| 90 | "Tus datos se borran en 7 días. Recuperá tu cuenta ahora →" | Estado → CHURNED |
 | 97 | (no se envía) | Estado → DELETED, datos eliminados |
 
 ---
@@ -384,7 +384,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 > [!IMPORTANT]
 > Los webhooks de MercadoPago pueden llegar **duplicados, fuera de orden, o con demora**.
 > El sistema tiene que ser **idempotente**: procesar el mismo webhook 2 veces no debe generar
-> 2 pagos registrados. Solución: tabla `processed_webhooks` con `mp_payment_id` como check.
+> 2 pagos registrados. Solución: tabla `processed_webhooks` con `mp_event_id` como check.
 
 ---
 
@@ -396,7 +396,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | Feature | Básico (1-3) | Estándar (4-6) | Full (7+) |
 |---|:---:|:---:|:---:|
 | Cantidad máxima de canchas | 3 | 6 | Ilimitado |
-| Usuarios del sistema (staff) | Ilimitado | Ilimitado | Ilimitado |
+| Usuarios del sistema (staff) | 2 | 5 | Ilimitado |
 | Historial de reservas | 6 meses | 12 meses | Ilimitado |
 | Reportes avanzados | ❌ | ✅ | ✅ |
 | Exportación de datos | CSV básico | CSV completo | CSV + Excel |
@@ -441,12 +441,12 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | 8 estados del tenant | ENUM `tenant_status` con 8 valores. Middleware en todos los endpoints que verifica estado. |
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
 | Dunning: 3 reintentos en 5 días | MP lo maneja los reintentos. Nosotros procesamos webhooks de `payment.rejected`. |
-| Datos conservados 60+7 días post-churn | Job programado de eliminación. Campo `scheduled_deletion_at` en `tenants`. |
-| Notificaciones de trial por email | Scheduled jobs en cola de mensajes. Tabla `scheduled_notifications`. |
+| Datos conservados post-churn | Cancelación voluntaria: 60d BLOCKED → CHURNED → 7d → DELETED (67d total). Dunning: 90d post-primer-fallo → CHURNED → 7d → DELETED (97d total). Campo `scheduled_deletion_at` en `tenants`. |
+| Notificaciones de trial por email | Scheduled jobs en pg-boss (tabla `pgboss.job`). Ver ADR-005. |
 | Upgrade con prorrateo | Cálculo al momento del upgrade. Cargo vía MP Checkout (no suscripción). |
 | Downgrade solo al inicio del próximo período | Campo `pending_plan_change` + cron job que lo aplica en la fecha de renovación. |
 | ARS volátil: precios históricos | Tabla `price_versions` con `valid_from`. |
-| Webhook idempotencia | Tabla `processed_webhooks` con `mp_payment_id`. Check antes de procesar. |
+| Webhook idempotencia | Tabla `processed_webhooks` con `mp_event_id`. Check antes de procesar. |
 | Señas van directo al complejo | OAuth del complejo durante onboarding. TurnoGol no intermedia fondos. |
 | Política de cancelación configurable | Campos `cancellation_policy_hours` y `deposit_percentage` en tenant settings. |
 | Seña en efectivo desde mostrador | `payment_method = 'cash'` en booking. Sin refund automático al cancelar. |

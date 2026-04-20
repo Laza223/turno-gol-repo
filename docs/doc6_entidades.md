@@ -64,16 +64,20 @@ updated_at        timestamp     UTC
   "deposit_percentage": 30,
   "cancellation_policy": {
     "hours_before": 12,
-    "refund_percentage": 100
+    "penalty_type": "deposit",
+    "penalty_amount": null
   },
-  "no_show_policy": {
-    "auto_complete_after_minutes": 30
+  "no_show_penalty": {
+    "type": "ban_days",
+    "days": 7
   },
   "accepts_cash": true,
   "accepts_transfer": true,
   "accepts_mercadopago": true,
   "allow_online_booking": true,
-  "booking_advance_days": 14
+  "booking_advance_days": 14,
+  "booking_duration_minutes": [60, 90, 120],
+  "auto_complete_minutes": 30
 }
 ```
 
@@ -203,6 +207,8 @@ payment_method    enum?         'mercadopago' | 'cash' | 'transfer'
 payment_id        UUID?         FK → payments (el cobro de la seña, si es MP)
 notes_internal    text?         Notas visibles solo para el staff
 notes_player      text?         Notas visibles para el jugador
+guest_name        text?         Nombre del jugador si player_id IS NULL (reserva manual sin registrar)
+guest_phone       text?         Teléfono del jugador si player_id IS NULL
 canceled_reason   text?         Motivo de cancelación (si aplica)
 canceled_by       enum?         'player' | 'admin' | 'system'
 canceled_at       timestamp?    Cuándo se canceló
@@ -257,6 +263,7 @@ updated_at        timestamp     UTC
 | `pending_payment` | `confirmed` | Pago de seña procesado por MP | Email confirmación al jugador |
 | `pending_payment` | `confirmed` | No requiere seña (depósito 0% o reserva manual sin seña) | Email confirmación |
 | `pending_payment` | `expired` | Timeout 15 min sin pago (o 48hs si MP in_process por CBU) | Slot liberado |
+| `pending_payment` | `expired` | Admin fuerza expiración manualmente | Slot liberado, email al jugador |
 | `confirmed` | `canceled_refunded` | Jugador cancela dentro del plazo de la política | Refund de seña vía MP, email confirmación. Si seña efectivo: "Contactá al complejo" |
 | `confirmed` | `canceled_no_refund` | Jugador cancela fuera del plazo | Sin reembolso, deposit_status → 'captured', email con info |
 | `confirmed` | `canceled_no_refund` | Admin cancela con cargo | Sin reembolso |
@@ -322,6 +329,8 @@ price_per_session integer       Precio por sesión en centavos (puede diferir de
 starts_on         date          Primera fecha del turno fijo
 ends_on           date?         Última fecha (null = indefinido)
 status            enum          'active' | 'paused' | 'canceled'
+monthly_price     integer       Precio mensual en centavos ARS. Pre-llenado como price_per_session × 4.33, pero editable por el admin (ej: redondeo, descuento por fidelidad)
+payment_method    enum          'cash' | 'transfer' (default: 'cash')
 notes             text?         Notas internas del staff
 created_at        timestamp     UTC
 updated_at        timestamp     UTC
@@ -386,10 +395,18 @@ first_name        string
 last_name         string
 avatar_url        string?
 preferred_area    string?       Ciudad/zona preferida
-status            enum          'active' | 'banned' | 'suspended' | 'anonymized'
+status            enum          'active' | 'banned' | 'anonymized'
+agreed_to_terms_at timestamp?   Timestamp de aceptación de TyC y declaración jurada +18 (ADR-012)
+terms_version     string?       Versión de TyC aceptada (ej: '2026-04')
 created_at        timestamp     UTC
 last_login_at     timestamp?    UTC
 ```
+
+> [!NOTE]
+> **`agreed_to_terms_at` y `terms_version`**: NO son NULL para Players que se registran solos
+> (aceptan TyC en el registro). Pueden ser NULL para Players creados por admin (reserva manual).
+> **`status`**: `banned` = ban global del sistema (solo el sistema lo setea, no un admin de complejo).
+> `anonymized` = eliminación ARCO Ley 25.326. Bans per-tenant usan `tenant_player_bans`.
 
 ### Atributos derivados
 - `full_name` = `first_name + ' ' + last_name`
@@ -415,13 +432,17 @@ player_id         UUID          FK → players
 tenant_id         UUID          FK → tenants
 status            enum          'active' | 'blocked'
 first_seen_at     timestamp     Primera reserva en este complejo
+bookings_count    integer       Total de reservas (actualizado por triggers)
+noshow_count      integer       Total de no-shows (actualizado por triggers)
+last_booking_at   timestamp?    Última reserva en este complejo
+data_consent_at   timestamp     Consent de datos Ley 25.326 (set en primera reserva)
 created_at        timestamp     UTC
 ```
 
 > [!NOTE]
-> Esta tabla es intencionalmente minimalista en v1. NO tiene contadores de no-shows ni bans
-> complejos. Si un complejo quiere bloquear a un jugador, cambia `status = 'blocked'`.
-> Se expande en v1.5 con `noshow_count`, `total_bookings`, y moderación avanzada.
+> Los contadores `bookings_count` y `noshow_count` se actualizan por triggers en INSERT/UPDATE
+> de bookings. La regla del 3-no-show (Flujo 4D) evalúa `noshow_count` en vez de hacer COUNT(*).
+> `data_consent_at` es evidencia de consent por-complejo para Ley 25.326.
 
 ---
 
@@ -573,7 +594,7 @@ id                UUID          PK
 tenant_id         UUID          FK → tenants (UNIQUE — un tenant tiene una sola suscripción activa)
 plan_id           UUID          FK → plans
 billing_cycle     enum          'monthly' | 'annual'
-status            enum          'trialing' | 'active' | 'past_due' | 'suspended' | 'canceled' | 'churned'
+status            enum          'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned'
 current_period_start  timestamp
 current_period_end    timestamp
 price_locked_until    timestamp? Para clientes anuales con precio bloqueado
@@ -586,6 +607,11 @@ scheduled_deletion_at timestamp? 60+7 días post-bloqueo
 created_at        timestamp
 updated_at        timestamp
 ```
+
+> [!NOTE]
+> `subscription_status` tiene 7 estados (sin `deleted`) porque la suscripción no sobrevive
+> a la eliminación del tenant. Cuando el tenant pasa a `deleted`, los datos (incluyendo la
+> suscripción) se eliminan. `tenant_status` sí tiene `deleted` como 8vo estado terminal.
 
 ---
 
@@ -677,7 +703,7 @@ Tabla de idempotencia para webhooks de MercadoPago. Evita procesar el mismo webh
 ### Atributos propios
 ```
 id                UUID          PK
-mp_payment_id     string        UNIQUE — el ID del pago/evento de MP
+mp_event_id       string        UNIQUE — el ID del evento de MercadoPago (no solo pagos, también suscripciones)
 event_type        string        'payment' | 'subscription' | 'refund'
 raw_payload       JSONB         Payload completo del webhook (para debugging)
 processed_at      timestamp     Cuándo se procesó
@@ -686,6 +712,53 @@ created_at        timestamp     UTC
 
 > [!NOTE]
 > **TTL**: se recomienda purgar webhooks procesados de más de 90 días (job de limpieza).
+
+---
+
+## ENTIDAD 17: TenantPlayerBan (Ban de Jugador por Complejo)
+
+### Definición
+Ban de un jugador en un complejo específico (no global). Los bans globales se manejan con `players.status = 'banned'`. Un jugador solo puede tener un ban activo por complejo.
+
+### Atributos propios
+```
+id                UUID          PK
+tenant_id         UUID          FK → tenants (RLS)
+player_id         UUID          FK → players
+reason            string        Motivo del ban
+banned_at         timestamp     Cuándo fue baneado
+banned_until      timestamp?    NULL = permanente
+banned_by         UUID?         FK → staff_users (quién lo baneó)
+```
+
+### Invariantes
+1. **UNIQUE (tenant_id, player_id)** — un solo ban activo por jugador por complejo.
+2. Si `banned_until` es NULL, el ban es permanente hasta que un admin lo levante.
+3. El Flujo 4D (3 no-shows en 30 días) crea automáticamente un ban temporal.
+
+---
+
+## ENTIDAD 18: PriceVersion (Versión de Precio de Plan)
+
+### Definición
+Historial de precios de los planes SaaS. Cada cambio de precio crea una nueva versión. No se editan las existentes. Soporta el problema del ARS volátil (Doc 4 §5).
+
+### Atributos propios
+```
+id                UUID          PK
+plan_id           UUID          FK → plans
+price_monthly     integer       Centavos ARS
+price_annual      integer       Centavos ARS (mensualizado)
+valid_from        date          Fecha desde la que aplica
+valid_until       date?         NULL = vigente
+reason            string?       "Ajuste por inflación Q2 2026"
+created_at        timestamp     UTC
+```
+
+### Invariantes
+1. **INSERT only**, nunca UPDATE. Los precios históricos son inmutables.
+2. Solo un registro por plan puede tener `valid_until = NULL` (el precio vigente).
+3. Los clientes anuales con `price_locked_until` usan el precio de la versión vigente al momento de su suscripción.
 
 ---
 
@@ -742,5 +815,7 @@ Este glosario se traduce directamente en las siguientes tablas:
 | Notification | `notifications` |
 | AuditLog | `audit_logs` |
 | ProcessedWebhook | `processed_webhooks` |
+| TenantPlayerBan | `tenant_player_bans` |
+| PriceVersion | `price_versions` |
 
-**Total: ~17 tablas para v1.0** (reducido desde 19 al eliminar open_matches y match_participants)
+**Total: 19 tablas para v1.0** (12 aisladas con RLS + 7 globales)

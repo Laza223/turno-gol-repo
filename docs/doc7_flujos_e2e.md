@@ -86,7 +86,7 @@ PASO 4 — Crear primera cancha (wizard paso 2 de 4)
   └── Output: avanzar al paso 3
 
 PASO 5 — Horarios de apertura (wizard paso 3 de 4)
-  ├── Valores pre-cargados: Lunes a Domingo 08:00 a 00:00
+  ├── Valores pre-cargados: Lun-Jue 08:00-00:00, Vie 08:00-01:00, Sáb 09:00-01:00, Dom 09:00-23:00
   ├── El usuario puede personalizar por día
   ├── Puede marcar días cerrados (ej: 25 de diciembre)
   ├── Acción: guardar opening_hours y closed_dates en Tenant.settings
@@ -135,7 +135,7 @@ PASO 7 — Dashboard con checklist
 
 ### Puntos de salida
 
-- **Éxito**: Tenant creado con status `trial`, al menos 1 cancha, horarios configurados. Link público activo.
+- **Éxito**: Tenant creado con status `trialing`, al menos 1 cancha, horarios configurados. Link público activo.
 - **Abandono en paso 1**: No se crea nada. Solo un email sin verificar.
 - **Abandono en paso 2** (verificó email, no completó wizard): StaffUser creado, Tenant NO creado. Al volver a loguearse → retomar wizard.
 - **Abandono en paso 3+** (empezó wizard, no terminó): Tenant creado con lo que haya puesto. Dashboard con checklist pendiente.
@@ -179,7 +179,7 @@ PASO 7 — Dashboard con checklist
 - **Origen probable**: Link compartido por el complejo en su Instagram/redes, búsqueda en el marketplace de TurnoGol, link directo de un amigo
 
 ### Precondiciones
-- El Tenant tiene status `trial` o `active` (no `suspended`, `past_due` con más de 7 días, ni `churned`)
+- El Tenant tiene status `trialing` o `active` (no `suspended`, `past_due` con más de 7 días, ni `churned`)
 - El Tenant tiene `settings.allow_online_booking = true`
 - La cancha tiene status `active`
 - El slot solicitado está libre (sin bookings en status `confirmed` o `pending_payment` con overlap)
@@ -226,7 +226,8 @@ PASO 4 — Pago de seña vía MercadoPago
   │     ├── amount = deposit_amount
   │     ├── external_reference = booking.id
   │     ├── notification_url = webhook de TurnoGol
-  │     └── auto_return = 'approved'
+  │     ├── back_urls = { success, failure, pending } (redirect post-pago)
+  │     └── auto_return = 'approved' (volver automáticamente a TurnoGol si el pago se aprueba)
   ├── Redirect al checkout de MercadoPago
   ├── El jugador paga con: tarjeta, dinero en cuenta, transferencia
   └── Output: MP procesa → redirect back a TurnoGol
@@ -234,7 +235,7 @@ PASO 4 — Pago de seña vía MercadoPago
 PASO 5 — Confirmación por webhook
   ├── MP envía webhook a notification_url
   ├── Verificar firma del webhook (autenticidad)
-  ├── Verificar que el mp_payment_id no fue ya procesado (idempotencia)
+  ├── Verificar que el mp_event_id no fue ya procesado (idempotencia)
   ├── Si payment.status = 'approved':
   │     ├── Crear Payment con status='approved', type='deposit'
   │     ├── Actualizar Booking: status → 'confirmed', deposit_status → 'paid'
@@ -316,6 +317,11 @@ Al crear un Booking con status='pending_payment':
 | Booking confirmado | 💰 CashFlow: income, category='booking', method='mercadopago', amount=deposit |
 | Booking confirmado | ⏰ Cron: programar recordatorio email 24hs antes del turno |
 | Booking confirmado | ⏰ Cron: programar recordatorio email 2hs antes del turno |
+
+> [!NOTE]
+> **Recordatorios cuando `player_id IS NULL`**: Si la reserva no tiene jugador registrado
+> (ej: reserva manual sin player), NO se programan recordatorios por email (no hay destinatario).
+> El admin es responsable de avisar al jugador por sus propios medios.
 | Booking expirado | 📩 Email al jugador: "Tu reserva para {cancha} el {fecha} expiró" |
 | Booking expirado | 📊 AuditLog: `booking.expired` con actor=system |
 | Payment recibido | 📊 AuditLog: `payment.approved` |
@@ -324,7 +330,7 @@ Al crear un Booking con status='pending_payment':
 
 1. **Dos jugadores intentan reservar el mismo slot al mismo tiempo**: El primero que llega al COMMIT gana. El segundo recibe error amigable. Garantizado por `SELECT FOR UPDATE` (Doc 5, sección 9).
 2. **El jugador paga pero el webhook de MP tarda**: El jugador ve "Confirmando..." con spinner. Si pasan 30 segundos, mostrar: "Estamos procesando tu pago. Te avisamos por email en cuanto se confirme." El booking se confirma cuando llega el webhook (puede ser minutos después).
-3. **Webhook de MP llega duplicado**: Chequear `mp_payment_id` en tabla `processed_webhooks`. Si ya existe, ignorar (idempotencia).
+3. **Webhook de MP llega duplicado**: Chequear `mp_event_id` en tabla `processed_webhooks`. Si ya existe, ignorar (idempotencia).
 4. **El jugador paga y luego cierra la ventana antes de ver la confirmación**: No importa. El webhook llega igual y el booking se confirma. El jugador recibe email de confirmación.
 5. **El precio de la cancha cambió entre que el jugador vio la grilla y pagó**: Se usa `price_snapshot` (el precio al momento del paso 3, no el actual). El cambio de precio no afecta reservas ya creadas.
 6. **El jugador quiere reservar 2 turnos seguidos en la misma cancha**: Tiene que hacer 2 reservas separadas. Cada una es independiente.
@@ -486,7 +492,7 @@ La reserva manual no tiene estados intermedios significativos. Se confirma en el
 - Booking en status `confirmed`
 - `NOW() < booking.date + booking.time_start - tenant.settings.cancellation_policy.hours_before`
   (Es decir: faltan más horas de las que exige la política de cancelación)
-- Ejemplo: política = 3hs antes. Turno a las 21:00. Si cancela antes de las 18:00 → reembolso.
+- Ejemplo: este complejo configuró política = 3hs antes (el default es 12hs). Turno a las 21:00. Si cancela antes de las 18:00 → reembolso.
 
 #### Happy Path
 
@@ -534,7 +540,7 @@ Igual que 4A, pero el jugador cancela cuando ya pasó el plazo.
 #### Precondición diferencial
 - `NOW() >= booking.date + booking.time_start - tenant.settings.cancellation_policy.hours_before`
   (Faltan menos horas de las que exige la política)
-- Ejemplo: política = 3hs antes. Turno a las 21:00. Son las 19:30 → fuera del plazo.
+- Ejemplo: este complejo configuró política = 3hs antes (el default es 12hs). Turno a las 21:00. Son las 19:30 → fuera del plazo.
 
 #### Happy Path
 
@@ -689,7 +695,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 
 ### Precondiciones
 - StaffUser tiene rol `admin` o `receptionist`
-- El Tenant tiene status `trial` o `active`
+- El Tenant tiene status `trialing` o `active`
 - La cancha tiene status `active`
 - El día + horario elegido está libre de forma recurrente (no hay otro abonado activo con overlap en esa cancha + día + hora)
 
@@ -715,9 +721,11 @@ PASO 2 — Definir precio del abonado
   │     ├── Pre-cargado: precio de hora de la cancha según court.pricing en ese horario
   │     ├── El admin puede editarlo (override): precio especial para abonados
   │     └── Ejemplo: cancha vale $12.000 de noche, pero al abonado se le cobra $10.000
-  ├── Precio mensual calculado (derivado, no editable):
-  │     └── = price_per_session × 4.33 (promedio de sesiones por mes)
-  │     └── Se muestra como referencia. NO se almacena como fuente de verdad.
+  ├── Precio mensual (editable por el admin):
+  │     ├── Pre-llenado: price_per_session × 4.33 (promedio de sesiones/mes)
+  │     ├── El admin puede editarlo: redondeo, descuento por fidelidad, etc.
+  │     ├── Ejemplo: calculado = $43.300, el admin pone $40.000 como precio pack
+  │     └── Se almacena como `monthly_price` en el Abonado (atributo propio, no derivado)
   └── Output: precio definido
 
 PASO 3 — Verificación de disponibilidad recurrente
@@ -964,7 +972,7 @@ PASO 4 — Generación del cierre
 - **URL**: Panel admin → Settings → Suscripción → "Elegir plan"
 
 ### Precondiciones
-- Tenant con status `trial` o `churned` (re-activación)
+- Tenant con status `trialing` o `churned` (re-activación)
 - TenantSubscription con status `trialing` o (para re-activación) `churned`
 - El dueño tiene rol `admin` en este Tenant
 
@@ -1241,7 +1249,7 @@ PAST_DUE ── retry 2 ──── retry 3 ──── SUSPENDED ────
 - **Contexto real**: Puede ser por: costo, migración a otro sistema, cierre del complejo, insatisfacción
 
 ### Precondiciones
-- Tenant con status `trial` o `active`
+- Tenant con status `trialing` o `active`
 - StaffUser con rol `admin` (solo el admin puede cancelar, no el recepcionista)
 - TenantSubscription con status `trialing` o `active`
 

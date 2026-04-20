@@ -22,7 +22,7 @@
 | ADR-003 | Stack de Comunicaciones: Email con Resend | ✅ Decidido | 2026-04-17 |
 | ADR-004 | Gateway de Pagos: MercadoPago Checkout Pro + Suscripciones | ✅ Decidido | 2026-04-17 |
 | ADR-005 | Background Jobs / Queues: pg-boss sobre PostgreSQL | ✅ Decidido | 2026-04-17 |
-| ADR-006 | Estrategia de Real-Time: SSE con fallback a polling | ✅ Decidido | 2026-04-17 |
+| ADR-006 | Estrategia de Real-Time: Supabase Realtime con fallback a polling | ✅ Decidido | 2026-04-17 |
 | ADR-007 | Arquitectura: Monolito Modular para v1 | ✅ Decidido | 2026-04-17 |
 | ADR-008 | Framework Front-End: Next.js (App Router) | ✅ Decidido | 2026-04-17 |
 | ADR-009 | Plataforma de Hosting: Vercel + Supabase | ✅ Decidido | 2026-04-17 |
@@ -119,8 +119,8 @@ CREATE POLICY tenant_insert ON bookings
 - `tenants` — la propia tabla
 - `price_versions` — precios globales por plan
 
-**Tablas con `tenant_id` (aisladas, 11 tablas):**
-- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `products`, `staff_users` (vía `tenant_staff_members`), `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`
+**Tablas con `tenant_id` (aisladas, 12 tablas):**
+- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `products`, `staff_users` (vía `tenant_staff_members`), `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`
 
 ### Consecuencias
 
@@ -634,7 +634,7 @@ Revisitar si:
 
 ---
 
-## ADR-006: Estrategia de Real-Time
+## ADR-006: Estrategia de Real-Time (Supabase Realtime + polling fallback)
 
 **Estado**: ✅ Decidido
 **Fecha**: 2026-04-17

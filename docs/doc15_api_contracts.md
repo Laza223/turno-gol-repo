@@ -332,10 +332,10 @@ Request:
   "time_start": "21:00",
   "time_end": "22:00",
   "player_id": "uuid",          // opcional
-  "player_name": "Juan Pérez",  // si no hay player_id
-  "player_phone": "+54...",     // si no hay player_id
+  "guest_name": "Juan Pérez",   // si no hay player_id (campo en bookings)
+  "guest_phone": "+54...",      // si no hay player_id (campo en bookings)
   "notes_internal": "...",      // opcional
-  "type": "spontaneous"         // spontaneous | block | event
+  "type": "spontaneous"         // spontaneous | fixed | block
 }
 
 Response 201:

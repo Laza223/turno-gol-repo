@@ -22,7 +22,7 @@
 | **UI Library** | React | 18.x / 19.x | ADR-008 |
 | **Component Library** | shadcn/ui + Radix UI | Latest | — |
 | **Estilos** | Tailwind CSS | 3.x | — |
-| **Design System** | UI/UX Pro Max (skill de Claude Code) | Latest | — |
+| **Design System** | Propio (design-system/MASTER.md) | — | — |
 | **Base de datos** | PostgreSQL | 15.x (vía Supabase) | ADR-001 |
 | **ORM / Query Builder** | Drizzle ORM | Latest | — |
 | **Autenticación** | Supabase Auth | Managed | ADR-002 |
@@ -100,7 +100,7 @@
                      │                       │                      │
               ┌──────▼──────┐        ┌───────▼──────┐      ┌───────▼──────┐
               │ Meta Cloud  │        │   Resend     │      │ MercadoPago  │
-              │ API (WA)    │        │   (Email)    │      │ (Pagos)      │
+              │ (REMOVIDO)  │        │   (Email)    │      │ (Pagos)      │
               └─────────────┘        └──────────────┘      └──────────────┘
 ```
 
@@ -113,13 +113,18 @@
 │  (public)/*         → SSR pages (SEO, complejos, booking flow)  │
 │  (admin)/*          → Client-side SPA (dashboard, grilla, caja) │
 │  (auth)/*           → Auth pages (login, register, magic link)  │
-│  components/ui/*    → shadcn/ui primitivos (diseño via UI/UX Pro Max) │
+│  components/ui/*    → shadcn/ui primitivos (diseño via design system propio) │
 └──────────────────────────────┬──────────────────────────────────┘
                                │ HTTP (fetch / server actions)
 ┌──────────────────────────────▼──────────────────────────────────┐
 │                         API LAYER                               │
 │                                                                 │
-│  app/api/*            → Next.js Route Handlers                  │
+│  Server Actions       → Mutaciones desde UI interna (forms      │
+│                         del admin, cancelación por jugador)      │
+│  app/api/*            → Route Handlers para:                    │
+│                         • Webhooks de MP                         │
+│                         • Endpoints públicos cross-origin        │
+│                         • Auth callbacks                         │
 │  middleware.ts        → Auth guard, tenant context, rate limit  │
 │                                                                 │
 │  Responsabilidades:                                             │
@@ -296,7 +301,7 @@ turnogol/
 │   │   ├── courts/
 │   │   │   ├── court.service.ts
 │   │   │   ├── court.schema.ts
-│   │   │   └── court.schema.ts
+│   │   │   └── court.types.ts
 │   │   │
 │   │   ├── bookings/
 │   │   │   ├── booking.service.ts
@@ -325,7 +330,7 @@ turnogol/
 │   │   ├── notifications/
 │   │   │   ├── notification.service.ts
 │   │   │   ├── email.provider.ts
-│   │   │   ├── email.provider.ts
+│   │   │   ├── email.templates.ts
 │   │   │   └── templates/
 │   │   │       ├── booking-confirmed.ts
 │   │   │       ├── booking-reminder.ts
@@ -521,7 +526,7 @@ FLUJO DE DEPENDENCIAS (unidireccional):
     // Validación
     "zod": "^3.23",
 
-    // UI (componentes primitivos — el design system visual lo define UI/UX Pro Max)
+    // UI (componentes primitivos — el design system visual se define en design-system/MASTER.md)
     "@radix-ui/react-dialog": "^1.0",
     "@radix-ui/react-dropdown-menu": "^2.0",
     "@radix-ui/react-select": "^2.0",
@@ -529,8 +534,8 @@ FLUJO DE DEPENDENCIAS (unidireccional):
     "class-variance-authority": "^0.7",
     "clsx": "^2.1",
     "tailwind-merge": "^2.3",
-    // Iconos: la librería la define el design system (UI/UX Pro Max)
-    // Default del skill: @phosphor-icons/react, fallback: @heroicons/react
+    // Iconos: la librería la define el design system (MASTER.md)
+    // Default recomendado: @phosphor-icons/react, fallback: @heroicons/react
 
     // Utilidades
     "date-fns": "^3.6",               // Manipulación de fechas
@@ -950,7 +955,7 @@ En producción, el worker se inicia junto con la app o como un proceso separado 
 | **Autenticación** | Sin passwords | Supabase Auth (magic link + OAuth) |
 | **JWT** | Access 1h, Refresh 30d rotativo | Supabase Auth config |
 | **HTTPS** | Obligatorio | Vercel SSL automático |
-| **Tenant Isolation** | RLS en 11 tablas | Doc 12 — 6 capas de protección |
+| **Tenant Isolation** | RLS en 12 tablas | Doc 12 — 6 capas de protección |
 | **Input Validation** | Todos los inputs | Zod schemas en cada endpoint |
 | **SQL Injection** | Queries parametrizadas | Drizzle ORM (nunca concatenar SQL) |
 | **XSS** | CSP headers | next.config.js headers |
@@ -1147,7 +1152,7 @@ MRR estimado = 500 × $55 = **$27.500 USD/mes**. Infra = 0.7-1.3% del MRR. **Mar
 
 | Tema | Opciones | Cuándo decidir |
 |---|---|---|
-| Form management | React Hook Form vs Conform vs server actions | Sprint 1 |
+| Form management | Server Actions para mutaciones UI, Route Handlers para webhooks/API pública (decidido — CLAUDE.md) | ✅ Decidido |
 | State management (admin) | Zustand vs Jotai vs React context | Sprint 1 |
 | Table component | TanStack Table vs custom | Sprint 2 |
 | Chart library (reportes) | Recharts vs Tremor | Sprint 4 |
@@ -1187,7 +1192,7 @@ MRR estimado = 500 × $55 = **$27.500 USD/mes**. Infra = 0.7-1.3% del MRR. **Mar
 │                  (Pagos)                 (Email)               │
 │                                                             │
 │  Lenguaje: TypeScript                                       │
-│  UI: React + shadcn/ui + Tailwind (design system: UI/UX Pro Max) │
+│  UI: React + shadcn/ui + Tailwind (design system: MASTER.md)  │
 │  Testing: Vitest + Playwright                               │
 │  Monitoring: Sentry + Vercel Analytics                      │
 │  CI/CD: GitHub Actions → Vercel                             │

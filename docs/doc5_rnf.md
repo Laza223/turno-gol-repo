@@ -175,22 +175,34 @@ CREATE POLICY tenant_isolation ON bookings
 SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 ```
 
-### Tablas que tienen `tenant_id` (datos aislados)
+### Tablas que tienen `tenant_id` (datos aislados — 12 tablas con RLS)
 
 - `courts` (canchas)
 - `bookings` (reservas)
-- `subscriptions` (abonados/turnos fijos)
+- `abonados` (turnos fijos)
+- `payments` (cobros)
 - `cash_flows` (movimientos de caja)
+- `daily_cash_closes` (cierres de caja diarios)
 - `products` (stock)
-- `staff_users` (empleados)
-- `audit_logs` (logs de auditoría)
+- `tenant_staff_members` (relación staff ↔ tenant)
+- `tenant_subscriptions` (suscripción SaaS del complejo)
 - `notifications` (notificaciones enviadas)
+- `audit_logs` (logs de auditoría)
+- `tenant_player_bans` (bans de jugadores por complejo)
 
-### Tablas que NO tienen `tenant_id` (datos globales, cross-tenant)
+### Tablas que NO tienen `tenant_id` (datos globales, cross-tenant — 7 tablas)
 
-- `players` — un jugador puede reservar en varios complejos
-- `plan_definitions` — los planes son globales
 - `tenants` — la propia tabla de complejos
+- `players` — un jugador puede reservar en varios complejos
+- `staff_users` — un staff puede ser admin de N complejos
+- `plans` — planes de suscripción SaaS (globales)
+- `price_versions` — historial de precios para inflación ARS
+- `processed_webhooks` — idempotencia de webhooks de MercadoPago
+- `player_tenant_relationships` — relación jugador ↔ complejo (RLS dual: staff + player)
+
+> [!NOTE]
+> **Las listas autoritativas de tablas viven en CLAUDE.md y doc12.**
+> Si hay discrepancia entre esta sección y esos documentos, CLAUDE.md/doc12 ganan.
 
 ### Test obligatorio de isolation
 

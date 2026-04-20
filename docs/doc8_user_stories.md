@@ -378,7 +378,7 @@ para asegurar mi turno sin tener que llamar al complejo.
 - [ ] Si el pago de MP es rechazado → el booking sigue en `pending_payment`. Mostrar: "El pago no se procesó. ¿Querés intentar con otro medio de pago?"
 - [ ] Si el pago de MP queda "in_process" (transferencia bancaria, CBU) → el booking sigue en `pending_payment`. Mostrar: "Tu pago está siendo procesado. Te avisamos por email cuando se confirme."
 - [ ] Si cierro la ventana de MP sin pagar y pasan 15 minutos → el booking pasa a `expired`. Recibo email: "Tu reserva expiró. ¿Querés reservar de nuevo?"
-- [ ] Si el webhook de MP llega duplicado → chequear `mp_payment_id` en `processed_webhooks`. Si ya existe → ignorar.
+- [ ] Si el webhook de MP llega duplicado → chequear `mp_event_id` en `processed_webhooks`. Si ya existe → ignorar.
 - [ ] Si pago pero cierro la ventana antes de ver la confirmación → el webhook llega igual → booking confirmado → email de confirmación enviado.
 - [ ] Si estoy baneado globalmente → error: "Tu cuenta está temporalmente suspendida."
 - [ ] Si estoy baneado en ESTE complejo → error: "No podés reservar en este complejo actualmente."

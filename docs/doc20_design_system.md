@@ -6,9 +6,9 @@
 > sepa de dónde viene cada decisión de color, tipografía, estilo y layout.
 
 > [!IMPORTANT]
-> TurnoGol NO diseña su UI manualmente. Utiliza **UI/UX Pro Max**, un skill de inteligencia
-> de diseño para AI coding assistants, como fuente de verdad para todas las decisiones
-> de estilo visual. Esto garantiza consistencia profesional sin necesidad de un diseñador UX dedicado.
+> TurnoGol NO diseña su UI manualmente. Utiliza un **design system propio** persistido en
+> `design-system/MASTER.md` como fuente de verdad para todas las decisiones de estilo visual.
+> Esto garantiza consistencia profesional sin necesidad de un diseñador UX dedicado.
 
 ---
 
@@ -19,7 +19,7 @@
 │                   JERARQUÍA DE DISEÑO                          │
 │                                                                │
 │   ┌──────────────────────────────────────────────────────┐     │
-│   │   CAPA 1: UI/UX Pro Max (Inteligencia de diseño)     │     │
+│   │   CAPA 1: Design System (Definición visual)          │     │
 │   │                                                      │     │
 │   │   Define:                                            │     │
 │   │   • Estilo visual (UI style)                         │     │
@@ -53,61 +53,47 @@
 │   │               Table, Input, Toast, etc.)              │     │
 │   │   Tailwind CSS → Utilidades de estilo                │     │
 │   │   Radix UI → Accesibilidad y comportamiento          │     │
-│   │   [Iconos] → Definidos por UI/UX Pro Max             │     │
+│   │   [Iconos] → Definidos en MASTER.md                  │     │
 │   └──────────────────────────────────────────────────────┘     │
 │                                                                │
 │   REGLA: Nunca elegir un color, tipografía o estilo "a dedo".  │
-│   Siempre consultar MASTER.md → si no existe, generarlo        │
-│   con UI/UX Pro Max primero.                                   │
+│   Siempre consultar MASTER.md → si no existe, crearlo          │
+│   antes de comenzar a codear.                                  │
 └────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. UI/UX Pro Max — Qué Es y Qué Hace
+## 2. Design System — Qué Contiene
 
 ### 2.1 Descripción
 
-UI/UX Pro Max es un toolkit de inteligencia de diseño que provee:
+El design system de TurnoGol se persiste en `design-system/MASTER.md` y define:
 
-| Recurso | Cantidad | Uso |
-|---|---|---|
-| **UI Styles** | 67 estilos | Glassmorphism, Minimalism, Soft UI, Dark Mode, etc. |
-| **Color Palettes** | 161 paletas | Alineadas por categoría de producto/industria |
-| **Font Pairings** | 57 combinaciones | Con imports de Google Fonts listos para usar |
-| **UX Guidelines** | 99 guías | Best practices, anti-patrones, accesibilidad |
-| **Chart Types** | 25 tipos | Para dashboards y reportes |
-| **Reasoning Rules** | 161 reglas | Recomendaciones por industria (SaaS, Booking, Sports, etc.) |
-| **Tech Stacks** | 15+ frameworks | Incluye Next.js, shadcn, React |
+| Recurso | Contenido |
+|---|---|
+| **UI Style** | Estilo visual del proyecto (ej: Minimalism, Dark Mode) |
+| **Color Palette** | Colores primarios, secundarios, CTA, fondos, texto |
+| **Font Pairing** | Tipografías con imports de Google Fonts |
+| **UX Guidelines** | Best practices, anti-patrones, accesibilidad |
+| **Chart Types** | Para dashboards y reportes |
+| **Iconos** | Librería de iconos seleccionada (Phosphor / Heroicons) |
 
-### 2.2 Cómo funciona
+### 2.2 Cómo se genera
 
-```
-1. Se le describe el producto: "SaaS booking sports management dashboard"
-2. El motor de razonamiento cruza 5 dominios en paralelo:
-   • Tipo de producto → identifica reglas de la industria
-   • Estilos → selecciona los mejores estilos para esa industria
-   • Colores → selecciona paleta alineada al producto
-   • Tipografía → selecciona pairing con el mood correcto
-   • Landing → recomienda estructura de página
-3. Genera un design system completo: patrón, estilo, colores, tipografía,
-   efectos, anti-patrones, y checklist pre-delivery
-```
+Al inicio del desarrollo, el desarrollador (o AI assistant) crea `MASTER.md` definiendo:
+- Estilo visual adecuado para SaaS de booking deportivo
+- Paleta de colores alineada a la industria
+- Pairing de tipografías con Google Fonts
+- Efectos, transiciones, micro-animaciones
+- Anti-patrones a evitar
+- Checklist pre-delivery
 
 ### 2.3 Ubicación en el proyecto
 
 ```
 TurnoGol/
-├── ui-ux-pro-max-skill/          # Skill clonado (repo externo)
-│   └── src/ui-ux-pro-max/
-│       ├── data/                  # CSV databases (styles, colors, fonts, etc.)
-│       ├── scripts/               # Motor de búsqueda y generación
-│       │   ├── search.py          # CLI: búsqueda por dominio
-│       │   ├── core.py            # Motor BM25 + regex
-│       │   └── design_system.py   # Generador de design system
-│       └── templates/             # Templates base
-│
-└── design-system/                 # GENERADO por el skill (persistido)
+└── design-system/                 # Persistido en el repo
     ├── MASTER.md                  # Fuente de verdad del diseño visual
     └── pages/                     # Overrides por página (opcional)
         ├── dashboard.md
@@ -119,21 +105,13 @@ TurnoGol/
 
 ## 3. Generación del Design System de TurnoGol
 
-### 3.1 Comando de generación
+### 3.1 Creación inicial
 
-Al iniciar el desarrollo, se genera el design system ejecutando:
+Al iniciar el desarrollo, se crea `design-system/MASTER.md` definiendo las decisiones visuales del proyecto.
 
-```bash
-python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
-  "SaaS booking sports management dashboard" \
-  --design-system \
-  --persist \
-  -p "TurnoGol"
-```
-
-Esto crea `design-system/MASTER.md` con:
+El `MASTER.md` debe contener:
 - **Patrón de landing** recomendado
-- **Estilo UI** seleccionado (con keywords de CSS y prompts de AI)
+- **Estilo UI** seleccionado
 - **Paleta de colores** completa (primary, secondary, CTA, background, text)
 - **Pairing de tipografías** con import de Google Fonts
 - **Efectos** (shadows, transitions, hover states)
@@ -142,44 +120,17 @@ Esto crea `design-system/MASTER.md` con:
 
 ### 3.2 Overrides por página
 
-Si una página tiene necesidades específicas (ej: el dashboard tiene una densidad de información diferente a la landing):
+Si una página tiene necesidades específicas (ej: el dashboard tiene una densidad de información diferente a la landing), se crea `design-system/pages/[nombre].md` con overrides que toman prioridad sobre MASTER.md para esa página.
 
-```bash
-python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
-  "SaaS dashboard" \
-  --design-system \
-  --persist \
-  -p "TurnoGol" \
-  --page "dashboard"
-```
+### 3.3 Aspectos a documentar en el design system
 
-Crea `design-system/pages/dashboard.md` con overrides que toman prioridad sobre MASTER.md para esa página.
+Cuando se necesita profundizar en un aspecto específico, agregar secciones al MASTER.md o crear overrides:
 
-### 3.3 Búsquedas complementarias
-
-Cuando se necesita profundizar en un aspecto específico:
-
-```bash
-# Estilo para el panel admin
-python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
-  "SaaS dashboard" --domain style
-
-# Colores para deportes
-python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
-  "sports booking" --domain color
-
-# UX para grillas de reservas
-python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
-  "booking calendar grid" --domain ux
-
-# Best practices de Next.js/shadcn
-python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
-  "dashboard components" --stack shadcn
-
-# Tipos de charts para reportes
-python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
-  "sports analytics" --domain chart
-```
+- **Estilo para el panel admin**: densidad de información, data tables, formularios
+- **Colores para deportes**: paleta que transmita energía y dinamismo
+- **UX para grillas de reservas**: scheduling UI, drag-and-drop, estados visuales de slots
+- **Best practices de shadcn/ui**: composición de componentes, temas, variantes
+- **Tipos de charts para reportes**: barras para revenue, líneas para trends, donas para distribución
 
 ---
 
@@ -233,7 +184,7 @@ python3 ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py \
 
 ### 5.1 Colores del design system (estéticos)
 
-Definidos por UI/UX Pro Max en MASTER.md. Ejemplo de estructura:
+Definidos en MASTER.md. Ejemplo de estructura:
 
 ```
 Primary:    #XXXXXX  → Botones principales, links, highlights
@@ -261,13 +212,13 @@ Definidos en la documentación funcional (docs 4, 7, 8) y mapeados a tokens:
 > Los **colores semánticos** (success, danger, warning, info) se definen dentro del
 > tailwind.config.ts con valores que armonicen con la paleta del design system.
 > No son colores "genéricos" — se seleccionan para que sean consistentes con la paleta
-> general definida por UI/UX Pro Max.
+> general definida en el design system.
 
 ---
 
 ## 6. Stacks de Implementación Soportados
 
-UI/UX Pro Max soporta búsqueda específica por stack. Para TurnoGol usamos:
+El design system soporta las siguientes herramientas de implementación. Para TurnoGol usamos:
 
 | Stack flag | Para qué |
 |---|---|
@@ -331,7 +282,7 @@ Antes de entregar cualquier pantalla, verificar:
 ┌────────────────────────────────────────────────────────────────┐
 │               DESIGN SYSTEM - TURNOGOL                         │
 │                                                                │
-│  HERRAMIENTA: UI/UX Pro Max (skill para AI coding assistants)  │
+│  FUENTE DE VERDAD: design-system/MASTER.md                     │
 │                                                                │
 │  GENERA:                                                       │
 │    • Estilo visual completo                                    │
@@ -355,11 +306,11 @@ Antes de entregar cualquier pantalla, verificar:
 │  REGLA CARDINAL:                                               │
 │    Nunca inventar colores, fuentes o estilos "a dedo".         │
 │    Siempre consultar MASTER.md.                               │
-│    Si no existe → generarlo con UI/UX Pro Max primero.         │
+│    Si no existe → crearlo antes de comenzar a codear.            │
 └────────────────────────────────────────────────────────────────┘
 ```
 
 > [!TIP]
 > **Para Claude Code**: Cuando el usuario pida construir una pantalla, primero verificar
 > si existe `design-system/MASTER.md`. Si existe, leerlo y aplicar las reglas. Si no existe,
-> generar el design system ejecutando el script del skill y persistirlo antes de codear.
+> crearlo definiendo estilo, colores, tipografía y efectos antes de codear.

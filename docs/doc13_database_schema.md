@@ -45,12 +45,15 @@ CREATE TYPE subscription_status AS ENUM (
   'canceled',
   'churned'
 );
+COMMENT ON TYPE subscription_status IS
+  'No incluye deleted porque al eliminarse el tenant, la fila de tenant_subscriptions se borra
+   en cascada. El estado final de una suscripción antes de su eliminación física es churned.';
 
 -- Ciclo de facturación
 CREATE TYPE billing_cycle AS ENUM ('monthly', 'annual');
 
 -- Estado de la cancha
-CREATE TYPE court_status AS ENUM ('active', 'inactive');
+CREATE TYPE court_status AS ENUM ('active', 'maintenance', 'inactive');
 
 -- Tipo de superficie
 CREATE TYPE surface_type AS ENUM (
@@ -64,8 +67,7 @@ CREATE TYPE surface_type AS ENUM (
 CREATE TYPE booking_type AS ENUM (
   'spontaneous',  -- Reserva normal (online o manual)
   'fixed',        -- Turno fijo de abonado
-  'block',        -- Bloqueo de cancha (mantenimiento, evento privado)
-  'event'         -- Evento especial
+  'block'         -- Bloqueo de cancha (mantenimiento, evento privado)
 );
 
 -- Estado de la reserva (state machine más crítica del sistema)
@@ -98,7 +100,7 @@ CREATE TYPE abonado_status AS ENUM ('active', 'paused', 'canceled'); -- 'cancele
 CREATE TYPE abonado_payment_method AS ENUM ('cash', 'transfer');
 
 -- Estado del jugador
-CREATE TYPE player_status AS ENUM ('active', 'banned', 'suspended', 'anonymized');
+CREATE TYPE player_status AS ENUM ('active', 'banned', 'anonymized');
 
 -- Estado del staff user
 CREATE TYPE staff_status AS ENUM ('active', 'inactive');
@@ -127,13 +129,13 @@ CREATE TYPE payment_status AS ENUM (
 );
 
 -- Tipo de movimiento de caja
-CREATE TYPE cashflow_type AS ENUM ('income', 'expense');
+CREATE TYPE cashflow_type AS ENUM ('income', 'expense', 'adjustment');
 
--- Categoría de movimiento de caja (simplificado — Doc 7 §6)
 CREATE TYPE cashflow_category AS ENUM (
   'booking',              -- Cobro de reserva
   'product_sale',         -- Venta de cantina
-  'other'                 -- Otros ingresos/egresos
+  'other',                -- Otros ingresos/egresos
+  'no_show_correction'    -- Corrección compensatoria por no-show (Doc 7 Flujo 4D)
 );
 
 
@@ -142,7 +144,7 @@ CREATE TYPE cashflow_category AS ENUM (
 CREATE TYPE recipient_type AS ENUM ('player', 'staff', 'tenant_owner');
 
 -- Canal de notificación
-CREATE TYPE notification_channel AS ENUM ('email', 'push');
+CREATE TYPE notification_channel AS ENUM ('email');  -- v1 email-only (ADR-003). Push se evalúa en v1.5.
 
 -- Estado de notificación
 CREATE TYPE notification_status AS ENUM ('queued', 'sent', 'delivered', 'failed');
@@ -177,6 +179,7 @@ CREATE TABLE tenants (
   latitude        NUMERIC(10, 7),                -- Precisión: ~1.1 cm
   longitude       NUMERIC(10, 7),
   phone           TEXT NOT NULL,
+  whatsapp        TEXT,                          -- WhatsApp del complejo (solo display en página pública, no canal del sistema)
   email           TEXT NOT NULL,
   timezone        TEXT NOT NULL DEFAULT 'America/Argentina/Buenos_Aires',
 
@@ -202,7 +205,7 @@ CREATE TABLE tenants (
     "requires_deposit": true,
     "deposit_percentage": 30,
     "cancellation_policy": {
-      "hours_before": 3,
+      "hours_before": 12,
       "penalty_type": "deposit",
       "penalty_amount": null
     },
@@ -487,6 +490,10 @@ CREATE TABLE bookings (
   -- Notas
   notes_internal  TEXT,                          -- Solo visible para staff
   notes_player    TEXT,                          -- Visible para el jugador
+
+  -- Datos del jugador no registrado (reserva manual sin player_id)
+  guest_name      TEXT,                          -- Nombre del jugador si player_id IS NULL
+  guest_phone     TEXT,                          -- Teléfono del jugador si player_id IS NULL
 
   -- Cancelación
   canceled_reason TEXT,

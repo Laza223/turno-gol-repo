@@ -1,4 +1,5 @@
 # DECISIONES DEL SISTEMA — TurnoGol
+
 ## Archivo maestro de decisiones de negocio y sistema
 
 > **Propósito**: Centralizar TODAS las decisiones de negocio y sistema del proyecto.
@@ -7,6 +8,7 @@
 
 > [!IMPORTANT]
 > **Cómo responder**:
+>
 > - ✅ = Confirmo, está bien así
 > - ❌ = No quiero eso, lo cambio (explicá cómo)
 > - 🔄 = Lo cambio por: [tu respuesta]
@@ -19,6 +21,7 @@
 ## 1. IDENTIDAD DEL PRODUCTO
 
 ### P1.1 — ¿TurnoGol es SOLO para fútbol?
+
 **Estado actual**: Sí, exclusivamente fútbol (5, 7, 11). Es el diferenciador vs ATC que es multi-deporte.
 **Contexto**: ATC cubre pádel, tenis, básquet, etc. Vos te posicionás como "el que entiende fútbol". Si en el futuro querés expandir a pádel, hay que pensarlo distinto desde ahora (ej: el campo `capacity` cambiaría).
 
@@ -27,6 +30,7 @@
 ---
 
 ### P1.2 — ¿Argentina solamente en v1?
+
 **Estado actual**: Sí. Moneda ARS, timezone ART, MercadoPago AR, Ley 25.326.
 **Contexto**: Si en el futuro querés expandir a Chile o Uruguay, necesitamos multi-moneda y multi-timezone desde el diseño. Ahora todo está hardcodeado para Argentina.
 
@@ -35,6 +39,7 @@
 ---
 
 ### P1.3 — ¿El nombre "TurnoGol" está definido o puede cambiar?
+
 **Contexto**: El slug del dominio (turnogol.com.ar), los emails transaccionales, el branding, todo depende de esto. Si puede cambiar, conviene parametrizarlo.
 
 **Tu respuesta**: Esta definido, es Turnogol (.com)
@@ -44,6 +49,7 @@
 ## 2. USUARIOS Y ROLES
 
 ### P2.1 — ¿Cuántos roles tiene el sistema?
+
 **Estado actual**: 3 roles de staff + 1 jugador:
 | Rol | Qué puede hacer |
 |---|---|
@@ -59,6 +65,7 @@
 ---
 
 ### P2.2 — ¿Existe un "Super Admin" de TurnoGol (vos/tu equipo)?
+
 **Estado actual**: NO existe. No hay panel interno para que vos como dueño de TurnoGol veas todos los complejos, métricas globales, o hagas soporte.
 **Contexto**: ATC tiene un backoffice interno donde ven todos sus clientes, métricas, etc. Sin esto, para hacer soporte tendrías que entrar directo a Supabase con SQL.
 **Ejemplo**: Imaginá que un cliente te escribe "no puedo entrar a mi cuenta". Sin un super admin, tenés que ir a la DB manualmente a ver qué pasa.
@@ -70,6 +77,7 @@
 ---
 
 ### P2.3 — ¿El jugador NECESITA registrarse para reservar online?
+
 **Estado actual**: Sí. El jugador se registra con magic link (email), acepta TyC, y recién ahí puede reservar.
 **Contexto en ATC**: ATC también requiere registro para reservar online. Pero hay complejos donde el admin simplemente carga la reserva manual y pone el nombre del jugador a mano (sin que el jugador tenga cuenta).
 **Pregunta**: ¿Un jugador SIN cuenta puede reservar online? ¿O solo el admin puede cargar reservas de gente sin cuenta?
@@ -79,6 +87,7 @@
 ---
 
 ### P2.4 — ¿Un staff puede pertenecer a múltiples complejos?
+
 **Estado actual**: Sí. Un mismo email puede ser `admin` en Complejo A y `receptionist` en Complejo B.
 **Contexto**: Esto pasa cuando un dueño tiene 2 complejos, o cuando un empleado trabaja en dos lugares.
 
@@ -87,233 +96,262 @@
 ---
 
 ### P2.5 — ¿El dueño del complejo y el admin son la misma persona?
+
 **Estado actual**: Sí. El que registra el complejo se convierte automáticamente en `admin`. No hay distinción "dueño" vs "admin".
 **Pregunta**: ¿Querés que el dueño tenga un rol especial que no se pueda quitar (tipo "owner"), o está bien que sea admin normal y otro admin podría sacarlo?
 
-**Tu respuesta**: 
+**Tu respuesta**: Si, el admin es lo mismo que el dueño del complejo, en sí el "admin" de por sí no debería llamarse "admin". Sería el dueño de la cuenta que maneja el complejo, el tema es que ya hay muchas tablas con "admin" en el nombre y sería mucho quilombo cambiarlo ahora. Pero si, es lo mismo y sería el dueño de la cuenta que maneja el complejo y la misma cuenta que debería estar en la computadora o celular del que esté trabajando en el complejo para gestionar todo.
 
 ---
 
 ## 3. RESERVAS (EL CORE)
 
 ### P3.1 — ¿Cuánto dura un turno?
+
 **Estado actual**: Configurable por complejo: 60, 90, o 120 minutos (campo `booking_duration_minutes` en settings).
 **Contexto en ATC**: ATC permite duraciones fijas de 60 o 90 minutos por cancha.
 **Pregunta**: ¿El admin puede poner cualquier duración custom (ej: 45 min, 75 min) o solo esas 3 opciones?
 
-**Tu respuesta**: 
+**Tu respuesta**: No, solo las mismas decisiones que ATC.
 
 ---
 
 ### P3.2 — ¿Cuántos días de anticipación puede reservar un jugador?
+
 **Estado actual**: Configurable, default 14 días. Si el complejo pone 7, el jugador solo puede reservar hasta 7 días adelante.
 **Pregunta**: ¿Está bien 14 como default? ¿Los abonados deberían poder ver sus turnos más allá de ese límite?
 
-**Tu respuesta**: 
+**Tu respuesta**: Hacer lo mismo que ATC. Anticipación: Las reservas se limitan a 6 días de antelación dice ATC.
 
 ---
 
 ### P3.3 — ¿El jugador puede elegir la cancha o solo el horario?
+
 **Contexto**: Hay dos modelos:
+
 - **Modelo A** (como ATC): El jugador elige cancha + horario. "Quiero la Cancha 3 a las 21hs".
 - **Modelo B**: El jugador elige horario y el sistema le asigna la cancha disponible. "Quiero jugar a las 21hs" → el sistema le da la primera libre.
 
 **Estado actual**: Modelo A (elige cancha + horario).
 
-**Tu respuesta**: 
+**Tu respuesta**: Claramente la A. El jugador elige la cancha y el horario.
 
 ---
 
 ### P3.4 — ¿Qué pasa si un jugador reserva y no paga la seña en 15 minutos?
+
 **Estado actual**: La reserva expira automáticamente y el slot se libera.
 **Pregunta**: ¿15 minutos está bien? ¿Querés que sea configurable por complejo?
 
-**Tu respuesta**: 
+**Tu respuesta**: 15 minutos está bien.
 
 ---
 
 ### P3.5 — ¿El admin puede crear reservas retroactivas (de días pasados)?
+
 **Estado actual**: No. Solo se puede crear reservas para hoy o futuro.
 **Contexto**: A veces el admin quiere "cargar" una reserva que ya pasó para que quede registrada en la caja.
 **Pregunta**: ¿Permitís cargar reservas de ayer, o solo hoy + futuro?
 
-**Tu respuesta**: 
+**Tu respuesta**: No. Solo hoy y futuro.
 
 ---
 
 ### P3.6 — ¿El jugador puede tener múltiples reservas activas al mismo tiempo?
+
 **Estado actual**: Sí, sin límite. Un jugador puede tener 5 reservas en la misma semana.
 **Pregunta**: ¿Querés limitar esto? ¿Máx 1 reserva activa por complejo, o sin límite?
 
-**Tu respuesta**: 
+**Tu respuesta**: No, sin límite. Puede tener todas las reservas que quiera. Mientras pague supongo que no hay mucho problema para el complejo...
 
 ---
 
 ### P3.7 — ¿Qué es un "bloqueo" de cancha?
+
 **Estado actual**: Un booking de tipo `block` que ocupa el horario sin jugador. Se usa para: feriados, eventos privados, mantenimiento.
 **Pregunta**: ¿El recepcionista puede crear bloqueos o solo el admin?
 
-**Tu respuesta**: 
+**Tu respuesta**: Voy a ignorar sobre lo de los roles que mencionaste. ATC dice esto: "Bloqueo administrativo (No. Dur): Cierre de franjas horarias sin asociar jugadores. Se usa para mantenimiento, feriados o clases fijas, eliminando la disponibilidad en la app." Y yo estoy de acuerdo, hagamos eso.
 
 ---
 
 ### P3.8 — Auto-complete: ¿Las reservas se marcan solas como "completadas"?
+
 **Estado actual**: Sí. 30 minutos después de que termina el horario del turno, si nadie la marcó, se marca automáticamente como `completed`.
 **Pregunta**: ¿Querés ese auto-complete o preferís que el admin tenga que marcarla manualmente?
 
-**Tu respuesta**: 
+**Tu respuesta**: Auto-complete (Finalización): Cambio de estado automático basado en el reloj. Al expirar el tiempo, el turno pasa a "jugado", pero la liquidación financiera requiere confirmación manual si existe un saldo pendiente de cobro en el complejo. También ATC maneja las deudas así: "Gestión de No-Show/Deuda: El administrador marca la inasistencia manualmente para generar un saldo deudor en el perfil del jugador, permitiendo el bloqueo automático de futuras reservas hasta que la deuda sea saldada en el complejo."
 
 ---
 
 ## 4. SEÑA Y PAGOS
 
 ### P4.1 — ¿La seña es obligatoria?
+
 **Estado actual**: Configurable por complejo. Puede ser 0% (sin seña) o cualquier porcentaje (default 30%).
 **Contexto en ATC**: ATC también lo hace configurable. Algunos complejos no cobran seña, otros sí.
 
-**Tu respuesta**: 
+**Tu respuesta**: Esto me gustaría manejarlo como en ATC: "Seña parametrizada: Es una regla opcional configurada por el complejo. Puede ser obligatoria (pago inmediato), garantía (cobro solo ante inasistencia) o inexistente, dependiendo de la política de cada club en el panel de administración."
 
 ---
 
 ### P4.2 — ¿El porcentaje de seña es igual para todos los horarios?
+
 **Estado actual**: Sí. Un solo `deposit_percentage` para todo el complejo.
 **Pregunta**: ¿Debería poder ser distinto por franja? Ej: 50% viernes noche, 20% martes mañana.
 
-**Tu respuesta**: 
+**Tu respuesta**: Seña por cancha: El porcentaje (o monto fijo) es único por cada cancha. Si se usa "Porcentaje", el valor de la seña variará según el precio del horario (Pico/Valle), pero la tasa aplicada es siempre la misma.
 
 ---
 
 ### P4.3 — ¿TurnoGol cobra comisión sobre las señas?
+
 **Estado actual**: NO. El dinero de las señas va 100% directo del jugador al complejo vía MercadoPago OAuth. TurnoGol no toca ese dinero.
 **Contexto**: Tu ingreso viene solo de la suscripción mensual, no de comisiones por transacción.
 
-**Tu respuesta**: 
+**Tu respuesta**: No, no se cobra comisión por las señas por ahora. El dinero va directo del jugador al complejo. Pero si en un futuro se quiere cobrar comisión, se puede hacer.
 
 ---
 
 ### P4.4 — ¿Qué métodos de pago acepta el sistema?
+
 **Estado actual**: Para señas online: MercadoPago. Para pagos manuales: efectivo, transferencia.
 **Pregunta**: ¿Necesitás algún otro método? ¿Débito directo? ¿Otro gateway?
 
-**Tu respuesta**: 
+**Tu respuesta**: Por ahora solo MercadoPago porque es lo más usado en Argentina. Pero si en un futuro se quiere agregar otro método de pago, se puede hacer.
 
 ---
 
 ### P4.5 — ¿Cómo funciona el reembolso de seña?
+
 **Estado actual**: Si el jugador cancela DENTRO del plazo (default 12hs antes), se hace refund automático por MP. Si cancela FUERA del plazo, pierde la seña.
 **Pregunta**: ¿12 horas de default está bien? ¿Querés que el admin pueda hacer refunds manuales en cualquier momento?
 
-**Tu respuesta**: 
+**Tu respuesta**: Reembolso de seña: Proceso condicionado a la "Ventana de Cancelación" del club. Se ejecuta automáticamente como saldo en la Billetera Virtual del usuario si se cancela a tiempo, o queda para el club si se excede el plazo configurado.
 
 ---
 
 ## 5. ABONADOS (TURNOS FIJOS)
 
 ### P5.1 — ¿Cómo se cobra al abonado?
+
 **Estado actual**: 100% manual. El admin registra en el sistema que le cobraron (efectivo o transferencia). TurnoGol NO cobra automáticamente al abonado.
 **Contexto en ATC**: ATC funciona exactamente igual — cobro manual con sistema de "saldo a favor". El admin pone el monto que le dieron.
 **Pregunta**: ¿Está bien manual para v1? ¿Querés cobro automático por MP para v1.5?
 
-**Tu respuesta**: 
+**Tu respuesta**: Esto es muy dificil de saber exactamente, hay que averiguar como lo maneja ATC al detalle para hacerlo igual, si su metodo no falla haremos lo mismo.
 
 ---
 
 ### P5.2 — ¿El abonado tiene precio fijo o puede variar?
+
 **Estado actual**: El campo `price_per_session` se define al crear el abono y puede ser diferente al precio de lista. El `monthly_price` se pre-llena como `price_per_session × 4.33` pero el admin puede editarlo (ej: redondeo, descuento).
 **Contexto en ATC**: ATC deja que el admin ponga el monto que quiera manualmente.
 **Pregunta**: ¿Así está bien?
 
-**Tu respuesta**: 
+**Tu respuesta**: En el sistema ATC, el precio del abonado (o la reserva de turnos) puede variar y no siempre es un valor fijo automático. La plataforma permite configurar tarifas, pero el precio final depende de la gestión del complejo deportivo.
 
 ---
 
 ### P5.3 — ¿El abonado tiene fecha de fin o es indefinido?
+
 **Estado actual**: Puede ser indefinido (`ends_on = null`) o tener fecha de fin.
 **Pregunta**: ¿Está bien así? ¿O siempre debería tener un vencimiento (ej: renovación mensual)?
 
-**Tu respuesta**: 
+**Tu respuesta**: Temporalidad del abonado: El cupo en la grilla (turno fijo) suele ser indefinido y recurrente, mientras que el pago (abono/créditos) generalmente posee una fecha de vencimiento configurada para obligar a la renovación mensual.
 
 ---
 
 ### P5.4 — ¿Qué pasa si el abonado no viene una semana?
+
 **Estado actual**: La instancia de booking queda como `no_show` si el admin la marca. No hay penalidad automática.
 **Pregunta**: ¿Querés penalidad por no-show en abonados? ¿O solo para reservas espontáneas?
 
-**Tu respuesta**: 
+**Tu respuesta**: Cancelación parcial de turno fijo: El administrador libera la fecha específica en la grilla sin eliminar la recurrencia; el sistema permite reasignar el crédito al jugador o darlo por perdido según la política de aviso previo del club.
 
 ---
 
 ### P5.5 — ¿El jugador (abonado) puede cancelar su propia instancia semanal?
+
 **Estado actual**: Sí, si tiene cuenta en TurnoGol y su `player_id` está en el abono. Aplica la política de cancelación del complejo.
 **Pregunta**: ¿O preferís que solo el admin pueda cancelar instancias de abonados?
 
-**Tu respuesta**: 
+**Tu respuesta**: La mejor configuración en ATC es la transferencia de crédito con vencimiento corto. Es decir: "No venís, te guardo el crédito, pero tenés que usarlo en los próximos 7 días". Así, el club no pierde el dinero y el jugador no siente que lo "estafaron".
+En conclusión: Política de Cancelación (Abonados): Decisión estratégica óptima para asegurar la rentabilidad. Combina la liberación automática de la cancha para re-venta con la gestión de créditos basada en el cumplimiento de plazos, automatizando la penalización por inasistencia.
 
 ---
 
 ### P5.6 — ¿Cuántas semanas adelante se generan los turnos fijos?
+
 **Estado actual**: 8 semanas al crear, y un job diario genera más cuando quedan menos de 4 semanas.
 **Pregunta**: ¿8 semanas está bien o querés más/menos?
 
-**Tu respuesta**: 
+**Tu respuesta**: Proyección de Turnos Fijos: Indefinida. El sistema bloquea el horario en la grilla del administrador de forma perpetua y automática, mientras que la visibilidad para el público general depende de los "Días de Anticipación" configurados por el complejo.
 
 ---
 
 ## 6. CANCHAS
 
 ### P6.1 — ¿Cuántos estados tiene una cancha?
+
 **Estado actual**: 3 estados: `active`, `maintenance`, `inactive`.
 **Pregunta**: ¿Necesitás `maintenance`? ¿O con `active` e `inactive` alcanza?
 
-**Tu respuesta**: 
+**Tu respuesta**: Sinceramente es complejo, me gustaría igualar al de ATC. Por lo que veo en ATC, tiene esto: estados de cancha/turno: La cancha puede estar Online u Offline; sus turnos varían entre Disponible, Pendiente (pago en proceso), Confirmada, Bloqueada (mantenimiento/clases) y Finalizada (tiempo cumplido).
 
 ---
 
 ### P6.2 — ¿Los precios son por cancha o por complejo?
+
 **Estado actual**: Por cancha. Cada cancha tiene su propio JSONB de pricing con franjas horarias.
 **Pregunta**: ¿Está bien? ¿O preferís un pricing global del complejo que aplique a todas las canchas?
 
-**Tu respuesta**: 
+**Tu respuesta**: Claramente por cancha, todas las canchas tienen distintos precios. O por lo menos la mayoria que yo fui.
 
 ---
 
 ### P6.3 — ¿Cuántas franjas de precios hay?
+
 **Estado actual**: 5 franjas fijas: weekday_morning, weekday_afternoon, weekday_night, weekend_morning, weekend_night.
 **Pregunta**: ¿Están bien esas 5? ¿Necesitás más flexibilidad (ej: un precio distinto por cada hora)?
 
-**Tu respuesta**: 
+**Tu respuesta**: En ATC lo manejan así: "Estructura de Tarifas: Las franjas son ilimitadas y se definen mediante "puntos de corte" horarios; el administrador configura manualmente el precio para cada combinación de franja y duración (60/90/120 min) de forma independiente.", sinceramente no sé bien que decidir acá.
 
 ---
 
 ### P6.4 — ¿Tipos de superficie?
+
 **Estado actual**: `synthetic_grass` | `natural_grass` | `cement` | `indoor`.
 **Pregunta**: ¿Estos 4 cubren todos los casos de canchas de fútbol que conocés?
 
-**Tu respuesta**: 
+**Tu respuesta**: Clavemos esa pero también podriamos hacer que sea un campo de texto libre para que el admin ponga lo que quiera.
 
 ---
 
 ## 7. POLÍTICA DE NO-SHOW
 
 ### P7.1 — ¿Qué pasa cuando un jugador no viene?
+
 **Estado actual**: El admin marca la reserva como `no_show`. Si hay seña pagada, se retiene. Si el jugador acumula 3 no-shows en 30 días en el mismo complejo, se le banea automáticamente por 7 días en ESE complejo.
 **Pregunta**: ¿El ban automático por 3 no-shows está bien? ¿Querés que sea configurable?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P7.2 — ¿El ban por no-show es por complejo o global?
+
 **Estado actual**: Por complejo. Si te banean en Complejo A, podés seguir reservando en Complejo B.
 **Pregunta**: ¿Así está bien o querés ban global?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ## 8. PLANES Y PRICING SaaS
 
 ### P8.1 — ¿Los 3 planes están bien?
+
 **Estado actual**:
 | Plan | Canchas | Precio mensual | Staff |
 |---|---|---|---|
@@ -323,45 +361,50 @@
 
 **Pregunta**: ¿Estos precios, límites de canchas y staff están bien? ¿Cambiarías algo?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P8.2 — ¿Trial de 30 días sin tarjeta?
+
 **Estado actual**: Sí. 30 días gratis con acceso completo (features del plan Full), sin pedir tarjeta.
 **Pregunta**: ¿Está bien 30 días? ¿Querés que pida tarjeta al registrarse (para mejorar conversión)?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P8.3 — ¿Descuento por pago anual?
+
 **Estado actual**: 33% de descuento en plan anual.
 **Pregunta**: ¿33% está bien? ¿O preferís 20% como ATC?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P8.4 — ¿IVA incluido o excluido en los precios?
+
 **Estado actual**: Excluido. Se suma 21% en el checkout.
 **Pregunta**: ¿Está bien así?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ## 9. NOTIFICACIONES
 
 ### P9.1 — ¿Qué canal de notificaciones usa TurnoGol?
+
 **Estado actual**: Solo email (Resend). WhatsApp descartado para v1 por costos.
 **Pregunta**: ¿Estás de acuerdo con solo email? ¿O querés push notifications en la PWA?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P9.2 — ¿Qué notificaciones se envían?
+
 **Estado actual**: Estas son las notificaciones automáticas definidas:
 | Evento | Destinatario | Canal |
 |---|---|---|
@@ -375,164 +418,182 @@
 
 **Pregunta**: ¿Falta alguna? ¿Sobrá alguna?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P9.3 — ¿El admin recibe notificación cuando alguien reserva online?
+
 **Estado actual**: No está explícitamente definido.
 **Contexto**: En ATC, el admin ve la reserva aparecer en la grilla en tiempo real. Pero no le llega un email.
 **Pregunta**: ¿Querés que le llegue un email al admin cada vez que un jugador reserva online? ¿O solo lo ve en la grilla?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ## 10. CAJA Y FINANZAS
 
 ### P10.1 — ¿El sistema maneja gastos (egresos)?
+
 **Estado actual**: Sí. El campo `type` de CashFlow tiene `income`, `expense` y `adjustment`.
 **Contexto en ATC**: ATC tiene caja (ingresos) y stock pero NO gestión de gastos.
 **Pregunta**: ¿Querés gestión de gastos (luz, agua, sueldos) o solo ingresos?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P10.2 — ¿Cierre de caja diario?
+
 **Estado actual**: Sí. El admin puede cerrar la caja del día, declarar cuánto efectivo tiene, y el sistema calcula la diferencia.
 **Pregunta**: ¿Esto te parece útil o es overkill para v1?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P10.3 — ¿Productos de cantina (stock)?
+
 **Estado actual**: Sí. Entidad `Product` con stock, categorías, alerta de stock bajo.
 **Pregunta**: ¿Querés gestión de stock en v1 o lo dejás para después?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ## 11. EXPERIENCIA DEL JUGADOR (B2C)
 
 ### P11.1 — ¿El jugador tiene una "app" o es web?
+
 **Estado actual**: Es una PWA (Progressive Web App). No hay app nativa en las stores.
 **Pregunta**: ¿Está bien PWA para v1? ¿O querés app nativa desde el inicio?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P11.2 — ¿El jugador puede ver canchas de varios complejos?
+
 **Estado actual**: Sí. La página pública de cada complejo (`turnogol.com.ar/complejo-san-martin`) muestra disponibilidad. El jugador puede buscar en varios complejos.
 **Pregunta**: ¿Querés un "buscador/marketplace" donde el jugador ponga su zona y vea todos los complejos cerca? ¿O cada complejo tiene su link independiente?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P11.3 — ¿El jugador ve los precios antes de reservar?
+
 **Estado actual**: Sí. En la página pública se muestra el precio del slot.
 **Pregunta**: ¿Está bien? ¿Algunos complejos prefieren ocultar precios?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P11.4 — ¿Login con Google/Apple además de magic link?
+
 **Estado actual**: Sí. Magic link + Google OAuth para jugadores. Solo magic link para staff.
 **Pregunta**: ¿Querés Apple login también? ¿O solo Google + magic link?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ## 12. ONBOARDING
 
 ### P12.1 — ¿4 pasos en el wizard está bien?
+
 **Estado actual**: Paso 1 (datos complejo) → Paso 2 (canchas) → Paso 3 (horarios) → Paso 4 (seña/MP).
 **Pregunta**: ¿Cambiarías algo de los pasos?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P12.2 — ¿Precios pre-cargados en el wizard?
+
 **Estado actual**: Sí. Se pre-cargan precios razonables ($8k-$15k ARS según franja) para que el admin solo edite lo que difiere.
 **Pregunta**: ¿Te parece bien? ¿Preferís que el admin tenga que poner sus precios a mano?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ## 13. REPORTES
 
 ### P13.1 — ¿Qué reportes necesita el admin?
+
 **Estado actual**: Ocupación por cancha, ingresos por período, top jugadores, tasa de no-show, exportación CSV/Excel.
 **Pregunta**: ¿Falta algún reporte que consideres importante?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P13.2 — ¿Reportes avanzados solo para plan Estándar y Full?
+
 **Estado actual**: Sí. El plan Básico tiene reportes limitados.
 **Pregunta**: ¿Qué reportes son "avanzados" vs "básicos" para vos?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ## 14. FUNCIONALIDADES DESCARTADAS (¿SEGURO?)
 
 ### P14.1 — Partidos abiertos (marketplace social)
+
 **Estado actual**: Fuera de scope v1. Deferido a v1.5.
 **Contexto**: Esto es tipo "necesito 2 más para completar el equipo" y que jugadores se sumen.
 **Pregunta**: ¿Confirmás que queda fuera de v1?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P14.2 — Canchas transformables
+
 **Estado actual**: Fuera de scope v1. Una cancha de fútbol 11 que se divide en 2 de fútbol 5.
 **Pregunta**: ¿Confirmás que queda fuera?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P14.3 — Torneos y ligas
+
 **Estado actual**: Fuera de scope (v2).
 **Pregunta**: ¿Confirmás?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P14.4 — Facturación AFIP
+
 **Estado actual**: Fuera de scope v1. El complejo maneja su facturación aparte.
 **Pregunta**: ¿Confirmás?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P14.5 — WhatsApp como canal de notificaciones
+
 **Estado actual**: Descartado para v1 por costos (~$0.05-0.09 USD por mensaje via BSP).
 **Pregunta**: ¿Confirmás que v1 es solo email?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P14.6 — App nativa (iOS/Android)
+
 **Estado actual**: PWA para v1. App nativa evaluada para v2.
 **Pregunta**: ¿Confirmás?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
@@ -540,88 +601,96 @@
 
 Marcá ✅ si confirmás, ❌ si querés cambiar:
 
-| # | Decisión | Estado | Tu ✅/❌ |
-|---|---|---|---|
-| D1 | Montos en centavos de ARS (nunca decimales) | Definido | |
-| D2 | Timestamps en UTC, conversión a ART en frontend | Definido | |
-| D3 | UUIDs como primary keys (nunca autoincremental) | Definido | |
-| D4 | Magic link para login (sin contraseñas) | Definido | |
-| D5 | Ortografía `canceled` (no `cancelled`) | Definido | |
-| D6 | RLS en PostgreSQL para aislamiento de datos | Definido | |
-| D7 | Un tenant = un complejo (no multi-sede) | Definido | |
-| D8 | Jugador es cross-tenant (reserva en N complejos) | Definido | |
-| D9 | Señas van directo al complejo (TurnoGol no intermedia) | Definido | |
-| D10 | El auto-complete de booking es 30 min post-horario | Definido | |
-| D11 | No-show inmutable (no se puede volver a completed) | Definido | |
-| D12 | Audit logs INSERT-only (nunca se borran ni editan) | Definido | |
-| D13 | Declaración jurada +18 obligatoria para jugadores | Definido | |
-| D14 | Server Actions para mutaciones UI, Route Handlers solo webhooks/API pública | Definido | |
-| D15 | Booking de tipo `event` eliminado (solo spontaneous/fixed/block) | Definido | |
-| D16 | `guest_name`/`guest_phone` en bookings para jugadores sin cuenta | Definido | |
+| #   | Decisión                                                                    | Estado   | Tu ✅/❌ |
+| --- | --------------------------------------------------------------------------- | -------- | -------- |
+| D1  | Montos en centavos de ARS (nunca decimales)                                 | Definido |          |
+| D2  | Timestamps en UTC, conversión a ART en frontend                             | Definido |          |
+| D3  | UUIDs como primary keys (nunca autoincremental)                             | Definido |          |
+| D4  | Magic link para login (sin contraseñas)                                     | Definido |          |
+| D5  | Ortografía `canceled` (no `cancelled`)                                      | Definido |          |
+| D6  | RLS en PostgreSQL para aislamiento de datos                                 | Definido |          |
+| D7  | Un tenant = un complejo (no multi-sede)                                     | Definido |          |
+| D8  | Jugador es cross-tenant (reserva en N complejos)                            | Definido |          |
+| D9  | Señas van directo al complejo (TurnoGol no intermedia)                      | Definido |          |
+| D10 | El auto-complete de booking es 30 min post-horario                          | Definido |          |
+| D11 | No-show inmutable (no se puede volver a completed)                          | Definido |          |
+| D12 | Audit logs INSERT-only (nunca se borran ni editan)                          | Definido |          |
+| D13 | Declaración jurada +18 obligatoria para jugadores                           | Definido |          |
+| D14 | Server Actions para mutaciones UI, Route Handlers solo webhooks/API pública | Definido |          |
+| D15 | Booking de tipo `event` eliminado (solo spontaneous/fixed/block)            | Definido |          |
+| D16 | `guest_name`/`guest_phone` en bookings para jugadores sin cuenta            | Definido |          |
 
 ---
 
 ## 16. PREGUNTAS ABIERTAS DE NEGOCIO
 
 ### P16.1 — ¿Cómo se manejan los feriados?
+
 **Estado actual**: El admin puede agregar `closed_dates` (fechas cerradas) y crear bloqueos de tipo `block`.
 **Pregunta**: ¿Los feriados nacionales se cargan automáticamente o el admin los pone a mano?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P16.2 — ¿Hay promociones o descuentos por horario?
+
 **Contexto**: Algunos complejos hacen "2x1 los martes de 10 a 14hs" para llenar horarios bajos.
 **Estado actual**: NO hay sistema de promociones. Solo precios fijos por franja.
 **Pregunta**: ¿Querés promociones en v1 o lo dejás para después?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P16.3 — ¿El complejo puede tener múltiples sedes?
+
 **Estado actual**: NO. Un tenant = una sede. Si el dueño tiene 2 complejos, crea 2 cuentas.
 **Pregunta**: ¿Está bien así?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P16.4 — ¿Hay importador de datos de ATC?
+
 **Estado actual**: Mencionado en doc2 como "switching cost solution" pero no hay nada diseñado.
 **Pregunta**: ¿Querés importador CSV en v1 para captar clientes de ATC?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P16.5 — ¿El complejo puede personalizar su página pública?
+
 **Estado actual**: Logo, cover photo, descripción, dirección. No hay personalización de colores o diseño.
 **Pregunta**: ¿Suficiente para v1?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P16.6 — ¿Soporte al cliente: cómo se maneja?
+
 **Estado actual**: Email (soporte@turnogol.com.ar). No hay chat, no hay ticket system.
 **Pregunta**: ¿Email alcanza para v1?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 ### P16.7 — ¿Cómo se actualiza el precio del plan con la inflación?
+
 **Estado actual**: Notificación 30 días antes al cliente mensual. Cliente anual mantiene precio hasta renovación. Tabla `price_versions` para historial.
 **Pregunta**: ¿Así está bien?
 
-**Tu respuesta**: 
+**Tu respuesta**:
 
 ---
 
 > [!TIP]
 > **Después de responder todo esto**, yo actualizo automáticamente:
+>
 > - CLAUDE.md (reglas del proyecto)
 > - doc6 (entidades y state machines)
 > - doc13 (schema SQL)

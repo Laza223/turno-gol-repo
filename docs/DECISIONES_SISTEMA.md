@@ -335,7 +335,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: El admin marca la reserva como `no_show`. Si hay seña pagada, se retiene. Si el jugador acumula 3 no-shows en 30 días en el mismo complejo, se le banea automáticamente por 7 días en ESE complejo.
 **Pregunta**: ¿El ban automático por 3 no-shows está bien? ¿Querés que sea configurable?
 
-**Tu respuesta**:
+**Tu respuesta**: El proceso en ATC es así: "Política de No-show: El administrador marca la falta manualmente para ejecutar la retención de la seña, generar una deuda en la ficha del jugador y activar bloqueos automáticos que impiden nuevas reservas online hasta que se regularice la situación.", haremos lo mismo.
 
 ---
 
@@ -344,7 +344,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Por complejo. Si te banean en Complejo A, podés seguir reservando en Complejo B.
 **Pregunta**: ¿Así está bien o querés ban global?
 
-**Tu respuesta**:
+**Tu respuesta**: Ban por No-show: Restricción por complejo. Cada club gestiona su propia "Lista Negra" y base de datos de deudores; un bloqueo en un predio no afecta la capacidad del jugador para reservar en otros complejos.
 
 ---
 
@@ -361,7 +361,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 
 **Pregunta**: ¿Estos precios, límites de canchas y staff están bien? ¿Cambiarías algo?
 
-**Tu respuesta**:
+**Tu respuesta**: S
 
 ---
 

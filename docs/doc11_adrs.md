@@ -120,7 +120,7 @@ CREATE POLICY tenant_insert ON bookings
 - `price_versions` — precios globales por plan
 
 **Tablas con `tenant_id` (aisladas, 12 tablas):**
-- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `products`, `staff_users` (vía `tenant_staff_members`), `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`
+- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `products`, `tenant_staff_members`, `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`
 
 ### Consecuencias
 
@@ -1146,20 +1146,19 @@ Revisitar si:
 
 ### Contexto
 
-TurnoGol tiene 3 planes (Básico, Estándar, Full) con diferentes límites y capacidades. El Doc 4 define la tabla de feature flags:
+TurnoGol tiene 3 planes (Predio, Complejo, Estadio) con diferentes límites y capacidades. El Doc 4 define la tabla de feature flags:
 
-| Feature | Básico | Estándar | Full |
+| Feature | Predio | Complejo | Estadio |
 |---|:---:|:---:|:---:|
 | Canchas máximas | 3 | 6 | Ilimitado |
-| Staff users | 2 | 5 | Ilimitado |
 | Historial de reservas | 6 meses | 12 meses | Ilimitado |
-| Reportes avanzados | ❌ | ✅ | ✅ |
-| Exportación de datos | CSV básico | CSV completo | CSV + Excel |
+| Reportes | ✅ Completos | ✅ Completos | ✅ Completos |
+| Exportación de datos | CSV | CSV + Excel | CSV + Excel |
 | API access (futuro) | ❌ | ❌ | ✅ |
 
 Estas restricciones deben ser:
-- **Chequeadas en tiempo real** (si un admin intenta crear la cancha #4 estando en plan Básico, el sistema lo bloquea inmediatamente).
-- **Actualizables sin deploy** (si decidimos agregar un feature al plan Básico, no queremos hacer un deploy para eso).
+- **Chequeadas en tiempo real** (si un admin intenta crear la cancha #4 estando en plan Predio, el sistema lo bloquea inmediatamente).
+- **Actualizables sin deploy** (si decidimos agregar un feature al plan Predio, no queremos hacer un deploy para eso).
 - **Con mensajes de upgrade claros** (nunca un error crudo; siempre "Tu plan permite X. Para más, actualizá a Y →").
 
 ### Opciones consideradas
@@ -1204,10 +1203,9 @@ Razones:
 ```sql
 CREATE TABLE plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,             -- 'Básico', 'Estándar', 'Full'
-  slug TEXT NOT NULL UNIQUE,      -- 'basico', 'estandar', 'full'
+  name TEXT NOT NULL,             -- 'Predio', 'Complejo', 'Estadio'
+  slug TEXT NOT NULL UNIQUE,      -- 'predio', 'complejo', 'estadio'
   max_courts INTEGER,             -- 3, 6, NULL (null = ilimitado)
-  max_staff INTEGER,              -- 2, 5, NULL
   features JSONB NOT NULL DEFAULT '{}',
   price_monthly INTEGER NOT NULL, -- en centavos ARS
   price_annual INTEGER NOT NULL,  -- en centavos ARS (mensualizado)
@@ -1233,7 +1231,7 @@ CREATE TABLE plans (
 -- En la tabla tenants
 ALTER TABLE tenants ADD COLUMN feature_overrides JSONB DEFAULT '{}';
 
--- Ejemplo: darle reportes avanzados a un tenant que está en Básico (beta tester)
+-- Ejemplo: darle reportes avanzados a un tenant que está en Predio (beta tester)
 UPDATE tenants 
 SET feature_overrides = '{"advanced_reports": true}'
 WHERE id = 'tenant-uuid';
@@ -1261,8 +1259,8 @@ function createCourt(courtData: CourtInput, ctx: TenantContext) {
       feature: 'max_courts',
       current: currentCount,
       limit: maxCourts,
-      upgrade_to: 'estandar',
-      message: `Tu plan ${ctx.plan.name} permite hasta ${maxCourts} canchas. Actualizá a Estándar para agregar más.`
+      upgrade_to: 'complejo',
+      message: `Tu plan ${ctx.plan.name} permite hasta ${maxCourts} canchas. Actualizá a Complejo para agregar más.`
     });
   }
 
@@ -1275,13 +1273,13 @@ function createCourt(courtData: CourtInput, ctx: TenantContext) {
 ┌──────────────────────────────────────────────┐
 │  ⬆ Necesitás más canchas                     │
 │                                              │
-│  Tu plan Básico permite hasta 3 canchas.     │
-│  Para agregar más canchas, actualizá a Estándar. │
+│  Tu plan Predio permite hasta 3 canchas.     │
+│  Para agregar más canchas, actualizá a Complejo. │
 │                                              │
-│  Plan Estándar: hasta 6 canchas              │
-│  $55.000/mes (ahorrá con plan anual)         │
+│  Plan Complejo: hasta 6 canchas              │
+│  $74.000/mes (ahorrá con plan anual)         │
 │                                              │
-│  [Actualizar a Estándar →]  [Ahora no]       │
+│  [Actualizar a Complejo →]  [Ahora no]       │
 └──────────────────────────────────────────────┘
 ```
 

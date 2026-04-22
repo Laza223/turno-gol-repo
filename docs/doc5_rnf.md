@@ -175,7 +175,10 @@ CREATE POLICY tenant_isolation ON bookings
 SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 ```
 
-### Tablas que tienen `tenant_id` (datos aislados — 12 tablas con RLS)
+### Tablas que tienen `tenant_id` (datos aislados — **12 tablas con RLS**)
+
+> [!IMPORTANT]
+> Lista canónica. En caso de discrepancia, **CLAUDE.md y doc12 ganan**.
 
 - `courts` (canchas)
 - `bookings` (reservas)
@@ -183,7 +186,7 @@ SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 - `payments` (cobros)
 - `cash_flows` (movimientos de caja)
 - `daily_cash_closes` (cierres de caja diarios)
-- `products` (stock)
+- `products` (stock de cantina)
 - `tenant_staff_members` (relación staff ↔ tenant)
 - `tenant_subscriptions` (suscripción SaaS del complejo)
 - `notifications` (notificaciones enviadas)
@@ -195,10 +198,18 @@ SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 - `tenants` — la propia tabla de complejos
 - `players` — un jugador puede reservar en varios complejos
 - `staff_users` — un staff puede ser admin de N complejos
+- `system_admins` — equipo interno de TurnoGol (panel `/internal`)
 - `plans` — planes de suscripción SaaS (globales)
 - `price_versions` — historial de precios para inflación ARS
 - `processed_webhooks` — idempotencia de webhooks de MercadoPago
 - `player_tenant_relationships` — relación jugador ↔ complejo (RLS dual: staff + player)
+
+> [!NOTE]
+> **`players` y `staff_users` son globales pero tienen RLS relacional (Fix #5 — Auditoría Opus 4.7).**
+> Aunque no tienen `tenant_id`, sí tienen `ENABLE ROW LEVEL SECURITY` activo.
+> Un admin del Tenant A solo puede ver jugadores que tienen PTR con su complejo,
+> y solo puede ver staff del mismo tenant. Esto protege la PII cross-tenant según Ley 25.326.
+> Ver implementación completa en doc12 §2 y doc13 §2.2–§2.3.
 
 > [!NOTE]
 > **Las listas autoritativas de tablas viven en CLAUDE.md y doc12.**
@@ -333,7 +344,7 @@ WHERE court_id = $court_id
   AND date = $date
   AND time_start < $time_end
   AND time_end > $time_start
-  AND status IN ('pending', 'confirmed');
+  AND status IN ('pending_payment', 'confirmed');
 
 -- 3. Si = 0: crear la reserva
 -- Si > 0: rollback y devolver error "Este turno acaba de ser tomado"

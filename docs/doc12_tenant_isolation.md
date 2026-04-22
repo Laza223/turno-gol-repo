@@ -56,13 +56,14 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 |---|---|---|---|
 | 1 | `tenants` | Tenant | La propia tabla de complejos. No pertenece a ningún tenant — ES el tenant. |
 | 2 | `players` | Player | Un jugador puede reservar en múltiples complejos. Su cuenta no pertenece a ninguno. |
-| 3 | `staff_users` | StaffUser | Un staff puede ser admin en un complejo y recepcionista en otro. Sus datos de usuario son globales. |
+| 3 | `staff_users` | StaffUser | Un staff puede administrar múltiples complejos. Sus datos de usuario son globales. |
 | 4 | `plans` | Plan | Los planes de suscripción son iguales para todos los complejos. |
 | 5 | `price_versions` | PriceVersion | Historial de precios de planes, datos del sistema. |
 | 6 | `processed_webhooks` | ProcessedWebhook | Idempotencia de webhooks de MP, datos del sistema. |
 | 7 | `player_tenant_relationships` | PlayerTenantRelationship | Relación jugador↔complejo. Global pero con RLS dual (staff ve por tenant, jugador ve los suyos). |
+| 8 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel `/internal` con MFA + IP whitelist. |
 
-**Total: 7 tablas globales (1 con RLS dual†).**
+**Total: 6 tablas globales + 1 con RLS dual (`player_tenant_relationships`) + 1 sistema (`system_admins`).**
 
 > [!NOTE]
 > † `player_tenant_relationships` tiene `tenant_id` y RLS dual: una policy para staff (por tenant) y otra para jugador (por player_id).
@@ -72,6 +73,14 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 > **Regla absoluta**: Si una tabla tiene datos que podrían exponer información de un complejo
 > a otro complejo, DEBE tener `tenant_id` y RLS. No hay excepciones.
 > Si hay duda sobre si una tabla necesita `tenant_id`, la respuesta es SÍ.
+
+> [!NOTE]
+> **RLS RELACIONAL en `players` y `staff_users` (Fix #5 — Auditoría Opus 4.7)**:
+> Aunque estas tablas no tienen `tenant_id`, sí tienen RLS activo (`ENABLE ROW LEVEL SECURITY`).
+> Las policies se basan en relaciones: un admin del Tenant A solo puede ver jugadores que
+> tienen al menos una PTR con su complejo, y solo puede ver staff que está en el mismo tenant.
+> Esto protege la PII cross-tenant en cumplimiento con la Ley 25.326.
+> Ver implementación completa en Doc 13 §2.2 (players) y §2.3 (staff_users).
 
 ---
 
@@ -310,7 +319,38 @@ Request HTTP entrante
 **Invariantes**:
 - Para requests de **staff**: `app.current_tenant_id` está seteado. Si el middleware 3 falla, el request se rechaza con 403.
 - Para requests de **jugador**: `app.current_player_id` está seteado. No se setea `app.current_tenant_id`. Steps 4 (Subscription Guard) y 5 (Feature Gate) se saltean.
-- **Nunca ambos**: un request es de staff O de jugador, nunca los dos.
+- Para requests de **system_admin** (panel `/internal`): `app.current_system_admin_id` está seteado. Ver §4.4 abajo.
+- **Nunca más de uno**: un request es de staff, jugador O system_admin. Nunca combinados.
+
+### 4.4 Middleware del panel interno (`/internal/*`)
+
+El panel interno es una ruta separada para el equipo de TurnoGol (no es accesible por staff ni jugadores).
+
+```
+Request HTTP a /internal/*
+      │
+      ▼
+  1. IP Whitelist          (solo IPs autorizadas del equipo TurnoGol)
+      │
+      ▼
+  2. Auth Middleware        (verifica JWT de tipo 'system_admin')
+      │
+      ▼
+  3. MFA Check             (verifica que el system_admin tiene MFA habilitado y activo)
+      │
+      ▼
+  4. System Admin Context  (setea app.current_system_admin_id con SET LOCAL)
+      │
+      ▼
+  5. Route Handler         (acceso cross-tenant via service role para dashboard interno)
+```
+
+**Diferencias clave vs staff y jugador:**
+- Step 4 setea `app.current_system_admin_id`, NO `app.current_tenant_id` ni `app.current_player_id`.
+- El service role se usa para acceder cross-tenant (ver métricas globales de la plataforma).
+- Los steps de Subscription Guard y Feature Gate no aplican (el sistema no tiene suscripción SaaS).
+- La variable `app.current_system_admin_id` protege la tabla `system_admins` (un admin solo lee su propio registro).
+- Las queries del panel interno que acceden a datos de tenants usan el service role de Supabase (bypasea RLS), NO `app.current_tenant_id`.
 
 ---
 
@@ -337,7 +377,7 @@ Request HTTP entrante
 
 **Campos clave:**
 - `tenant_id` en el payload raíz Y en `app_metadata` (Supabase usa `app_metadata` para sus policies).
-- `role`: `admin` | `receptionist` | `readonly` — determina permisos RBAC dentro del tenant.
+- `role`: `admin` — único rol en v1. Zonas sensibles protegidas por PIN del tenant.
 - El JWT se genera al autenticarse y tiene el tenant_id del complejo donde se autenticó.
 
 **¿Qué pasa si un staff es admin de 2 complejos?** Al loguearse, elige el complejo. El JWT se emite con el `tenant_id` del complejo elegido. Para cambiar de complejo, hace "switch" → se genera un nuevo JWT con el otro `tenant_id`. Nunca tiene un JWT con acceso a 2 tenants simultáneamente.
@@ -419,7 +459,7 @@ async function expireTrials() {
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Staff (admin/receptionist) del Tenant A                      │
+│ Staff (admin) del Tenant A                                   │
 │                                                              │
 │ PUEDE ver:                                                   │
 │   ✅ Canchas de Tenant A                                     │
@@ -580,11 +620,16 @@ CREATE TABLE tenant_player_bans (
   reason TEXT NOT NULL,
   banned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   banned_until TIMESTAMPTZ,  -- NULL = permanente
-  banned_by UUID REFERENCES staff_users(id),
-  UNIQUE(tenant_id, player_id)  -- un jugador solo puede tener un ban activo por complejo
+  banned_by UUID REFERENCES staff_users(id)
 );
+-- Constraint: índice único PARCIAL (no UNIQUE plano)
+-- Solo bloquea bans activos simultáneos. Permite historial de bans expirados.
+CREATE UNIQUE INDEX uq_tenant_player_active_ban
+  ON tenant_player_bans (tenant_id, player_id)
+  WHERE (banned_until IS NULL OR banned_until > NOW());
+
 ALTER TABLE tenant_player_bans ENABLE ROW LEVEL SECURITY;
--- Policies...
+-- Policies de staff (by tenant_id) + policy de jugador (lee sus propios bans)
 
 -- Ban global (el sistema banea a Agustín de TODA la plataforma)
 -- Se controla con el campo `status` de la tabla `players`
@@ -606,6 +651,19 @@ Agustín intenta reservar en Complejo A
       ▼
   3. Procesar la reserva normalmente
 ```
+
+> [!IMPORTANT]
+> **Mecanismo de verificación de ban en contexto de jugador (Fix #7 — Auditoría Opus 4.7)**:
+> El endpoint `POST /api/player/bookings` verifica el ban ANTES de crear la reserva.
+> Este endpoint corre con contexto de jugador (`app.current_player_id` seteado, sin `app.current_tenant_id`).
+> Las policies de tenant en `tenant_player_bans` devolverían 0 filas silenciosamente
+> → jugador baneado pasaría la verificación (fail-open).
+>
+> **Solución implementada**: se agrega la policy `player_own_bans_select` que permite
+> al jugador leer sus propios bans via `app.current_player_id`. El endpoint del jugador
+> usa esta policy para la verificación. Para la creación del booking, el endpoint
+> también setea temporalmente `app.current_tenant_id` (derivado del `tenant_slug` validado).
+> Ver implementación en Doc 13 §3.11.
 
 ---
 
@@ -791,7 +849,7 @@ async function getPublicComplexPage(slug: string) {
 
   const courts = await db.query(
     'SELECT id, name, surface_type, capacity FROM courts WHERE status = $1',
-    ['active']
+    ['online']
   );
   // RLS filtra: solo canchas de este tenant
 
@@ -812,7 +870,7 @@ staff_users                    tenant_staff_members
 └────────────────┘             ├──────────────────────────┤
                                │ staff_user_id: user-123  │
                                │ tenant_id: tenant-B      │
-                               │ role: receptionist       │
+                               │ role: admin              │
                                └──────────────────────────┘
 ```
 

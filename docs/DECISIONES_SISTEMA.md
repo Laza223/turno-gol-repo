@@ -543,7 +543,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. El plan Básico tiene reportes limitados.
 **Pregunta**: ¿Qué reportes son "avanzados" vs "básicos" para vos?
 
-**Tu respuesta**:
+**Tu respuesta**: Para todos los planes los reportes son los mismos.
 
 ---
 
@@ -555,7 +555,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Contexto**: Esto es tipo "necesito 2 más para completar el equipo" y que jugadores se sumen.
 **Pregunta**: ¿Confirmás que queda fuera de v1?
 
-**Tu respuesta**:
+**Tu respuesta**: Queda afuera para v1.
 
 ---
 
@@ -564,7 +564,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Fuera de scope v1. Una cancha de fútbol 11 que se divide en 2 de fútbol 5.
 **Pregunta**: ¿Confirmás que queda fuera?
 
-**Tu respuesta**:
+**Tu respuesta**: Queda afuera para v1.
 
 ---
 
@@ -573,7 +573,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Fuera de scope (v2).
 **Pregunta**: ¿Confirmás?
 
-**Tu respuesta**:
+**Tu respuesta**: Queda afuera para v1.
 
 ---
 
@@ -582,7 +582,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Fuera de scope v1. El complejo maneja su facturación aparte.
 **Pregunta**: ¿Confirmás?
 
-**Tu respuesta**:
+**Tu respuesta**: Queda afuera para v1.
 
 ---
 
@@ -591,7 +591,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Descartado para v1 por costos (~$0.05-0.09 USD por mensaje via BSP).
 **Pregunta**: ¿Confirmás que v1 es solo email?
 
-**Tu respuesta**:
+**Tu respuesta**: Queda afuera para v1.
 
 ---
 
@@ -600,7 +600,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: PWA para v1. App nativa evaluada para v2.
 **Pregunta**: ¿Confirmás?
 
-**Tu respuesta**:
+**Tu respuesta**: Si, PWA para v1. App nativa evaluada para v2.
 
 ---
 
@@ -610,22 +610,22 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 
 | #   | Decisión                                                                    | Estado   | Tu ✅/❌ |
 | --- | --------------------------------------------------------------------------- | -------- | -------- |
-| D1  | Montos en centavos de ARS (nunca decimales)                                 | Definido |          |
-| D2  | Timestamps en UTC, conversión a ART en frontend                             | Definido |          |
-| D3  | UUIDs como primary keys (nunca autoincremental)                             | Definido |          |
-| D4  | Magic link para login (sin contraseñas)                                     | Definido |          |
-| D5  | Ortografía `canceled` (no `cancelled`)                                      | Definido |          |
-| D6  | RLS en PostgreSQL para aislamiento de datos                                 | Definido |          |
-| D7  | Un tenant = un complejo (no multi-sede)                                     | Definido |          |
-| D8  | Jugador es cross-tenant (reserva en N complejos)                            | Definido |          |
-| D9  | Señas van directo al complejo (TurnoGol no intermedia)                      | Definido |          |
-| D10 | El auto-complete de booking es 30 min post-horario                          | Definido |          |
-| D11 | No-show inmutable (no se puede volver a completed)                          | Definido |          |
-| D12 | Audit logs INSERT-only (nunca se borran ni editan)                          | Definido |          |
-| D13 | Declaración jurada +18 obligatoria para jugadores                           | Definido |          |
-| D14 | Server Actions para mutaciones UI, Route Handlers solo webhooks/API pública | Definido |          |
-| D15 | Booking de tipo `event` eliminado (solo spontaneous/fixed/block)            | Definido |          |
-| D16 | `guest_name`/`guest_phone` en bookings para jugadores sin cuenta            | Definido |          |
+| D1  | Montos en centavos de ARS (nunca decimales)                                 | Definido |    ✅      |
+| D2  | Timestamps en UTC, conversión a ART en frontend                             | Definido |    ✅      |
+| D3  | UUIDs como primary keys (nunca autoincremental)                             | Definido |    ✅      |
+| D4  | Magic link para login (sin contraseñas)                                     | Definido |    ✅ . Si pero también es necesario que quede iniciada la sesión en su dispositivo, si tenemos que usar cookies o algo por el estilo, usamos.      |
+| D5  | Ortografía `canceled` (no `cancelled`)                                      | Definido |    ✅      |
+| D6  | RLS en PostgreSQL para aislamiento de datos                                 | Definido |    ✅      |
+| D7  | Un tenant = un complejo (no multi-sede)                                     | Definido |    ✅      |
+| D8  | Jugador es cross-tenant (reserva en N complejos)                            | Definido |    ✅      |
+| D9  | Señas van directo al complejo (TurnoGol no intermedia)                      | Definido |    ✅      |
+| D10 | El auto-complete de booking es 30 min post-horario                          | Definido |    ✅      |
+| D11 | No-show inmutable (no se puede volver a completed)                          | Definido |    ✅      |
+| D12 | Audit logs INSERT-only (nunca se borran ni editan)                          | Definido |    ✅      |
+| D13 | Declaración jurada +18 obligatoria para jugadores                           | Definido |    ✅      |
+| D14 | Server Actions para mutaciones UI, Route Handlers solo webhooks/API pública | Definido |    ✅      |
+| D15 | Booking de tipo `event` eliminado (solo spontaneous/fixed/block)            | Definido |    ✅      |
+| D16 | `guest_name`/`guest_phone` en bookings para jugadores sin cuenta            | Definido |    ✅      |
 
 ---
 
@@ -636,7 +636,7 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 **Estado actual**: El admin puede agregar `closed_dates` (fechas cerradas) y crear bloqueos de tipo `block`.
 **Pregunta**: ¿Los feriados nacionales se cargan automáticamente o el admin los pone a mano?
 
-**Tu respuesta**:
+**Tu respuesta**: Ni idea, hay que averiguar como lo maneja ATC. Creo que lo maneja así "Gestión de Feriados: Se maneja manualmente desde el calendario administrativo bajo dos estados: Feriado (aplica tarifas especiales pre-configuradas) o Cerrado (bloquea la reserva online y requiere la cancelación manual de los turnos fijos de ese día).", sino averigualo.
 
 ---
 
@@ -646,7 +646,7 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 **Estado actual**: NO hay sistema de promociones. Solo precios fijos por franja.
 **Pregunta**: ¿Querés promociones en v1 o lo dejás para después?
 
-**Tu respuesta**:
+**Tu respuesta**: Ni idea, hay que ver como lo maneja ATC y ver si se puede implementar. Encontré algo así en ATC: "Promociones en ATC: No utiliza cupones, sino que basa los descuentos en tarifas diferenciadas por franjas horarias y precios especiales para socios, permitiendo además ajustes manuales de último momento para llenar la grilla."
 
 ---
 
@@ -655,7 +655,7 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 **Estado actual**: NO. Un tenant = una sede. Si el dueño tiene 2 complejos, crea 2 cuentas.
 **Pregunta**: ¿Está bien así?
 
-**Tu respuesta**:
+**Tu respuesta**: No, los complejos si pueden tener múltiples complejos, pero que creen una cuenta por complejo.
 
 ---
 
@@ -664,7 +664,7 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 **Estado actual**: Mencionado en doc2 como "switching cost solution" pero no hay nada diseñado.
 **Pregunta**: ¿Querés importador CSV en v1 para captar clientes de ATC?
 
-**Tu respuesta**:
+**Tu respuesta**: Mmm no tengo la menor idea, pero parece una buena idea. Habría que ver como lo maneja ATC y ver si se puede implementar. No tengo idea de lo que hablas sinceramente.
 
 ---
 
@@ -673,7 +673,42 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 **Estado actual**: Logo, cover photo, descripción, dirección. No hay personalización de colores o diseño.
 **Pregunta**: ¿Suficiente para v1?
 
-**Tu respuesta**:
+**Tu respuesta**: La verdad que sí pero con matices. En ATC por lo que veo solamente es una sola foto que aparecería como una cancha de referencia o logos, después abajo te aparecen las canchas que tienen... No hay una foto por cancha, sino ordenadas tipo "Cancha 1 F5, Cancha 2 F5, Cancha 1 F8, etc" y abajo en chiquito las especificaciones de cada una, "Cesped sintetico, con iluminacion, etc".
+Después es una grilla bastante linda en donde se ve bastante interactiva para darte cuenta que horarios están disponible, apretas un horario que quieras disponible y te sale un mini modal con el precio que supongo que le asignan a esa cancha, pones continuar y te lleva al detalle. En el detalle se ve el Nombre, Numero de telefono y mail que se autocompleta con los datos que tenga en la cuenta de jugador, en este caso me logueé con google y quedó mi mail (No editable se ve) pero si el numero de telefono y nombre. A la izquierda se ve el detalle de la reserva con Fecha 21/11/2026, Turno 19:00 - 20:00, Descripción de la cancha "Cancha 3 F5 - Fútbol 5
+Césped sintético, Con iluminación, Descubierta" y el precio así: "Precio
+$ 60000
+Tasa de servicio
+$ 600
+$ 0
+Anticipo / Adelanto: *
+(50% del valor del turno)
+
+$ 30000", un cartel de advertencia que dice "Sobre el pago
+Sólo se debitará el importe del anticipo/adelanto
+Abonarás luego el saldo restante de la reserva (si lo hubiera). En caso de que canceles con 48 hs de anticipación, se te reintegrará el importe automáticamente.
+
+
+". Despues un boton que dicen "Continuar" y te manda a esto:
+
+"Icono de deporte Fútbol 5
+Fútbol 5
+Distrito Fútbol - Constitucion
+Salta 1727 , Capital Federal
+Fecha
+jue. 23/04/2026
+Turno
+19:00 - 20:00
+Cancha 3 F5 -
+Césped sintético, Con iluminación, Descubierta
+Precio
+$ 60000
+Anticipo / Adelanto: *
+$ 30000
+Tenes 05:24 segundos para pagar
+
+Ir a Pagar
+Cancelar", pongo "Ir a pagar" y me manda a un checkout de mercado pago. Asi que es sencillo como pensabamos. Para el flujo de reserva quiero que hagamos lo mismo. También tengo que aclarar que antes de presionar para reservar me apareció un modal que debo registrarme o logearme con google, claramente todos hacen con Google  asi que esa debe ser la funcionalidad main fija.
+También es importante aclarar que yo pensaba que yo dije que no se cargaban los logos pero cuando te muestra el resumen que te dice "Ir a pagar" o "Cancelar" te aparece el logo del lugar, asi que si tambien necesitamos poner que cargue su logo o si no tienen una foto por defecto linda y generica.
 
 ---
 
@@ -682,7 +717,7 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 **Estado actual**: Email (soporte@turnogol.com.ar). No hay chat, no hay ticket system.
 **Pregunta**: ¿Email alcanza para v1?
 
-**Tu respuesta**:
+**Tu respuesta**: El soporte voy a poner el mail por ahora, en la v1.5 voy a agregar un soporte mas complejo. Pero con el mail alcanza por ahora.
 
 ---
 
@@ -691,7 +726,7 @@ Marcá ✅ si confirmás, ❌ si querés cambiar:
 **Estado actual**: Notificación 30 días antes al cliente mensual. Cliente anual mantiene precio hasta renovación. Tabla `price_versions` para historial.
 **Pregunta**: ¿Así está bien?
 
-**Tu respuesta**:
+**Tu respuesta**: Mmmm vayamos viendolo, no queda muy profesional eso de avisar 30 días antes pero si no queda otra habrá que hacerlo asi.
 
 ---
 

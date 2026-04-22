@@ -559,7 +559,16 @@ CREATE TABLE bookings (
   -- Constraints
   CONSTRAINT chk_time_valid CHECK (time_end > time_start),
   CONSTRAINT chk_price_positive CHECK (price_snapshot >= 0),
-  CONSTRAINT chk_deposit_non_negative CHECK (deposit_amount >= 0)
+  CONSTRAINT chk_deposit_non_negative CHECK (deposit_amount >= 0),
+  -- Fix #13: Consistencia semántica entre payment_method y payment_id (Auditoría Opus 4.7 #2)
+  -- Si payment_method='mercadopago' debe existir payment_id (el cobro está en payments).
+  -- Para cash/transfer/other (cobro manual), payment_id IS NULL (el cobro está en cash_flows).
+  -- Si payment_method IS NULL, la seña no fue exigida (deposit_status='not_required').
+  CONSTRAINT chk_booking_payment_consistency CHECK (
+    (payment_method = 'mercadopago' AND payment_id IS NOT NULL) OR
+    (payment_method IN ('cash', 'transfer', 'other') AND payment_id IS NULL) OR
+    (payment_method IS NULL AND deposit_status = 'not_required')
+  )
 );
 
 -- ==============================================================
@@ -804,7 +813,12 @@ CREATE TABLE cash_flows (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   -- Constraints
-  CONSTRAINT chk_cashflow_amount_positive CHECK (amount > 0)
+  CONSTRAINT chk_cashflow_amount_positive CHECK (amount > 0),
+  -- Fix #3: Solo combinaciones válidas de type+category (sin gastos en el sistema)
+  CONSTRAINT chk_cashflow_type_category CHECK (
+    (type = 'income'     AND category IN ('booking', 'product_sale', 'other')) OR
+    (type = 'adjustment' AND category IN ('other', 'no_show_correction'))
+  )
 );
 
 -- Índices
@@ -826,7 +840,7 @@ CREATE POLICY tenant_isolation_update ON cash_flows FOR UPDATE
 CREATE POLICY tenant_isolation_delete ON cash_flows FOR DELETE
   USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 
-COMMENT ON TABLE cash_flows IS 'Movimientos de caja. income/expense por categoría.';
+COMMENT ON TABLE cash_flows IS 'Movimientos de caja. Solo ingresos y ajustes (sin gastos — ver DECISIONES_SISTEMA.md P10.1).';
 ```
 
 ### 3.6 `products` — Productos de cantina/stock
@@ -876,14 +890,15 @@ CREATE POLICY tenant_isolation_delete ON products FOR DELETE
 ```sql
 -- ============================================================
 -- TABLA: tenant_staff_members
--- Tabla de unión: un staff puede tener roles en N complejos.
--- "Marcelo es admin de Complejo A y recepcionista de Complejo B"
+-- Un staff user puede ser admin de múltiples complejos.
+-- Solo existe el rol 'admin' en v1. Las zonas sensibles del panel
+-- se protegen con tenant.settings.admin_pin (ver DECISIONES_SISTEMA.md P2.1).
 -- ============================================================
 CREATE TABLE tenant_staff_members (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id       UUID NOT NULL REFERENCES tenants(id),
   staff_user_id   UUID NOT NULL REFERENCES staff_users(id),
-  role            staff_role NOT NULL DEFAULT 'readonly',
+  role            staff_role NOT NULL DEFAULT 'admin',
   added_by        UUID REFERENCES staff_users(id),
   is_active       BOOLEAN NOT NULL DEFAULT true,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1112,6 +1127,38 @@ CREATE POLICY tenant_isolation_update ON tenant_player_bans FOR UPDATE
 CREATE POLICY tenant_isolation_delete ON tenant_player_bans FOR DELETE
   USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 
+-- Fix #10 CRÍTICO (Auditoría Opus 4.7): PostgreSQL rechaza NOW() en índices parciales
+-- porque NOW() no es IMMUTABLE. El índice uq_tenant_player_active_ban fue eliminado.
+--
+-- SOLUCIÓN: Trigger BEFORE INSERT que valida dinámicamente si ya existe un ban activo.
+-- El trigger puede usar NOW() sin restricciones (corre en runtime, no en DDL).
+CREATE OR REPLACE FUNCTION prevent_duplicate_active_ban()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Verificar si ya existe un ban activo para este (tenant_id, player_id)
+  IF EXISTS (
+    SELECT 1 FROM tenant_player_bans
+    WHERE tenant_id  = NEW.tenant_id
+      AND player_id  = NEW.player_id
+      AND (banned_until IS NULL OR banned_until > NOW())
+  ) THEN
+    RAISE EXCEPTION
+      'Ya existe un ban activo para player_id=% en tenant_id=%. '
+      'Espera a que expire o levántalo manualmente antes de re-banear.',
+      NEW.player_id, NEW.tenant_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER enforce_single_active_ban
+  BEFORE INSERT ON tenant_player_bans
+  FOR EACH ROW EXECUTE FUNCTION prevent_duplicate_active_ban();
+
+-- Índice de lookup rápido de bans (sin predicado NOW(), solo para performance)
+CREATE INDEX idx_tenant_player_bans_active
+  ON tenant_player_bans (tenant_id, player_id, banned_until);
+
 -- Fix #7 — Hallazgo Opus 4.7: el endpoint de jugador (POST /api/player/bookings)
 -- verifica si el jugador está baneado ANTES de crear la reserva. Cuando corre con
 -- contexto de jugador (solo app.current_player_id seteado), las policies de tenant
@@ -1195,6 +1242,62 @@ COMMENT ON TABLE player_tenant_relationships IS
   'Relación jugador ↔ complejo. Creada en primera reserva. Habilita historial, no-shows y lista negra por complejo.';
 ```
 
+### 3.14 `system_admins` — Administradores internos de TurnoGol
+
+```sql
+-- ============================================================
+-- TABLA: system_admins
+-- Usuarios internos del equipo TurnoGol (super-admin).
+-- NO son tenants ni staff de un complejo: son el equipo de la plataforma.
+-- Tienen acceso al panel interno en /internal/dashboard (doc12 §9.5).
+-- Acceso restringido: IP whitelist + MFA + rol separado de cualquier tenant.
+-- ============================================================
+CREATE TABLE system_admins (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email           TEXT NOT NULL UNIQUE,
+  first_name      TEXT NOT NULL,
+  last_name       TEXT NOT NULL,
+
+  status          staff_status NOT NULL DEFAULT 'active',
+
+  -- MFA obligatorio para acceder al panel interno
+  mfa_secret      TEXT,                            -- TOTP secret (almacenado encriptado)
+  mfa_verified_at TIMESTAMPTZ,                     -- Cuándo habilitó MFA
+
+  -- Auditoría de acceso
+  last_login_at   TIMESTAMPTZ,
+  last_login_ip   TEXT,
+
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Índice
+CREATE UNIQUE INDEX idx_system_admins_email ON system_admins(email);
+
+-- RLS
+ALTER TABLE system_admins ENABLE ROW LEVEL SECURITY;
+
+-- Un system_admin solo puede ver/editar su propio registro vía panel interno.
+-- El service role (usado por el backend del panel /internal) bypasea RLS.
+-- La variable de contexto app.current_system_admin_id se setea en el middleware
+-- del panel interno (ruta separada de los endpoints de staff y jugador).
+CREATE POLICY system_admin_self ON system_admins FOR SELECT
+  USING (id = current_setting('app.current_system_admin_id', true)::UUID);
+
+CREATE POLICY system_admin_self_update ON system_admins FOR UPDATE
+  USING (id = current_setting('app.current_system_admin_id', true)::UUID)
+  WITH CHECK (id = current_setting('app.current_system_admin_id', true)::UUID);
+
+-- INSERT: solo el service role puede crear system_admins (onboarding manual del equipo TurnoGol)
+
+COMMENT ON TABLE system_admins IS
+  'Equipo interno de TurnoGol. Acceso al panel /internal/dashboard. '
+  'Require MFA. 3ª variable de contexto: app.current_system_admin_id.';
+COMMENT ON COLUMN system_admins.mfa_secret IS
+  'TOTP secret encriptado en reposo (no en texto plano). Encriptar con pgsodium o a nivel de aplicación.';
+```
+
 ### 3.13 `daily_cash_closes` — Cierres de caja diarios
 
 ```sql
@@ -1211,9 +1314,9 @@ CREATE TABLE daily_cash_closes (
   date             DATE NOT NULL,                   -- El día que se está cerrando
 
   -- Totales calculados automáticamente de cash_flows del día
-  total_income     INTEGER NOT NULL DEFAULT 0,      -- Centavos ARS (suma de ingresos)
-  total_expense    INTEGER NOT NULL DEFAULT 0,      -- Centavos ARS (suma de egresos)
-  balance          INTEGER NOT NULL DEFAULT 0,      -- total_income - total_expense
+  total_income     INTEGER NOT NULL DEFAULT 0,      -- Centavos ARS (suma de ingresos del día)
+  total_adjustments INTEGER NOT NULL DEFAULT 0,     -- Centavos ARS (suma de ajustes compensatorios)
+  balance          INTEGER NOT NULL DEFAULT 0,      -- total_income + total_adjustments
 
   -- Efectivo del cajón (declarado manualmente por el admin)
   declared_cash    INTEGER NOT NULL DEFAULT 0,      -- Lo que hay físicamente en el cajón
@@ -1227,7 +1330,7 @@ CREATE TABLE daily_cash_closes (
   -- Constraints
   CONSTRAINT uq_daily_close_per_tenant UNIQUE (tenant_id, date),
   CONSTRAINT chk_income_non_negative CHECK (total_income >= 0),
-  CONSTRAINT chk_expense_non_negative CHECK (total_expense >= 0)
+  CONSTRAINT chk_adjustments_non_negative CHECK (total_adjustments >= 0)
 );
 
 -- Índices
@@ -1242,6 +1345,7 @@ CREATE POLICY tenant_isolation_select ON daily_cash_closes FOR SELECT
 CREATE POLICY tenant_isolation_insert ON daily_cash_closes FOR INSERT
   WITH CHECK (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 -- NO UPDATE ni DELETE: el cierre es inmutable. Correcciones = nuevos cash_flows compensatorios.
+-- El rol turnogol_app nunca puede UPDATE ni DELETE (igual que audit_logs).
 REVOKE UPDATE, DELETE ON daily_cash_closes FROM turnogol_app;
 
 COMMENT ON TABLE daily_cash_closes IS
@@ -1286,32 +1390,48 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON tenant_subscriptions
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 ```
 
-### 4.2 Inmutabilidad de reservas completadas
+### 4.2 Invariantes de reservas — Trigger unificado
 
 ```sql
 -- ============================================================
--- TRIGGER: Prevenir modificación de reservas en estado final
--- (completed, no_show, expired) — Doc 6 §3 Invariante 3.
--- Solo se permite agregar/editar notes_internal.
+-- TRIGGER: enforce_booking_invariants
+-- Consolida en UN solo trigger BEFORE UPDATE todas las validaciones
+-- de inmutabilidad de bookings (Fix #2 + #9 — Auditoría Opus 4.7).
+--
+-- Reemplaza los triggers previos:
+--   - enforce_booking_immutability (solo cubría 3 estados finales)
+--   - enforce_price_snapshot_immutability (superpuesto)
+--
+-- Valida:
+-- (1) Estados terminales: ninguno puede cambiar salvo notes_internal
+-- (2) Inmutabilidad de price_snapshot en CUALQUIER estado
 -- ============================================================
-CREATE OR REPLACE FUNCTION prevent_immutable_booking_changes()
+CREATE OR REPLACE FUNCTION enforce_booking_invariants_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF OLD.status IN ('completed', 'no_show', 'expired') THEN
-    -- Permitir SOLO cambio de notes_internal
+  -- (1) price_snapshot es siempre inm utable (cualquier estado)
+  IF OLD.price_snapshot != NEW.price_snapshot THEN
+    RAISE EXCEPTION 'price_snapshot es inmutable después de la creación de la reserva.';
+  END IF;
+
+  -- (2) Estados terminales: permiten SOLO cambio de notes_internal
+  IF OLD.status IN ('completed', 'no_show', 'expired', 'canceled_refunded', 'canceled_no_refund') THEN
     IF (
-      NEW.status = OLD.status AND
-      NEW.court_id = OLD.court_id AND
-      NEW.player_id IS NOT DISTINCT FROM OLD.player_id AND
-      NEW.date = OLD.date AND
-      NEW.time_start = OLD.time_start AND
-      NEW.time_end = OLD.time_end AND
+      NEW.status         = OLD.status AND
+      NEW.court_id       = OLD.court_id AND
+      NEW.player_id      IS NOT DISTINCT FROM OLD.player_id AND
+      NEW.date           = OLD.date AND
+      NEW.time_start     = OLD.time_start AND
+      NEW.time_end       = OLD.time_end AND
       NEW.price_snapshot = OLD.price_snapshot AND
       NEW.deposit_amount = OLD.deposit_amount
     ) THEN
-      RETURN NEW; -- Solo notas cambiaron, OK
+      RETURN NEW; -- Solo notas internas cambiaron, permitido
     ELSE
-      RAISE EXCEPTION 'No se puede modificar una reserva en estado %', OLD.status;
+      RAISE EXCEPTION
+        'No se puede modificar una reserva en estado terminal %. '
+        'Solo notes_internal puede editarse post-estado-final.',
+        OLD.status;
     END IF;
   END IF;
 
@@ -1319,31 +1439,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER enforce_booking_immutability
+CREATE TRIGGER enforce_booking_invariants
   BEFORE UPDATE ON bookings
-  FOR EACH ROW EXECUTE FUNCTION prevent_immutable_booking_changes();
-```
+  FOR EACH ROW EXECUTE FUNCTION enforce_booking_invariants_fn();
 
-### 4.3 Inmutabilidad de price_snapshot
-
-```sql
--- ============================================================
--- TRIGGER: El price_snapshot de una reserva NUNCA se modifica
--- después de la creación (Doc 6 §3 Invariante 2).
--- ============================================================
-CREATE OR REPLACE FUNCTION prevent_price_snapshot_change()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF OLD.price_snapshot != NEW.price_snapshot THEN
-    RAISE EXCEPTION 'price_snapshot es inmutable después de la creación de la reserva.';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER enforce_price_snapshot_immutability
-  BEFORE UPDATE ON bookings
-  FOR EACH ROW EXECUTE FUNCTION prevent_price_snapshot_change();
+-- Nota: los triggers antiguos enforce_booking_immutability y
+-- enforce_price_snapshot_immutability quedan DEPRECADOS.
+-- Si existían en versiones previas de la migration, ejecutar:
+-- DROP TRIGGER IF EXISTS enforce_booking_immutability ON bookings;
+-- DROP TRIGGER IF EXISTS enforce_price_snapshot_immutability ON bookings;
+-- DROP FUNCTION IF EXISTS prevent_immutable_booking_changes();
+-- DROP FUNCTION IF EXISTS prevent_price_snapshot_change();
 ```
 
 ---

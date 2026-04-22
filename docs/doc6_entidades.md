@@ -88,7 +88,7 @@ updated_at        timestamp     UTC
 
 ### Atributos derivados (NO guardar en DB, calcular)
 - `is_open_now` = evaluar `opening_hours` + `closed_dates` contra la hora actual
-- `active_courts_count` = COUNT de canchas con status='active'
+- `online_courts_count` = COUNT de canchas con status='online'
 - `this_month_revenue` = SUM de pagos del mes actual
 
 ### State Machine del Tenant
@@ -167,15 +167,9 @@ updated_at        timestamp     UTC
 ### State Machine de la Cancha
 
 ```
-ACTIVE ──── admin desactiva ──── INACTIVE
-  ▲              │                    │
-  │              │                    │
-  └──────────────┘                    │
-  ▲                                   │
-  │ admin pone en mantenimiento       │
-  │         ↓                         │
-  └──── MAINTENANCE ──────────────────┘
-              admin reactiva
+ONLINE ⇄ OFFLINE
+(El admin puede pasar una cancha a OFFLINE por mantenimiento,
+feriado o cierre permanente. OFFLINE no acepta reservas nuevas.)
 ```
 
 | Estado | Descripción | Puede recibir reservas |
@@ -537,7 +531,7 @@ tenant_id         UUID          FK → tenants
 type              enum          'income' | 'adjustment'
 category          enum          'booking' | 'product_sale' | 'other' | 'no_show_correction'
 amount            integer       En centavos de ARS
-method            enum          'cash' | 'transfer' | 'mercadopago'
+method            enum          'cash' | 'transfer' | 'mercadopago' | 'other'
 description       string        Descripción del movimiento
 booking_id        UUID?         FK → bookings (si está relacionado con una reserva)
 product_id        UUID?         FK → products (si es venta de producto)
@@ -567,8 +561,8 @@ id                UUID          PK
 tenant_id         UUID          FK → tenants
 date              date          Fecha del cierre (día operativo)
 total_income      integer       Suma de ingresos del día en centavos
-total_expense     integer       Suma de gastos del día en centavos
-balance           integer       total_income - total_expense
+total_adjustments integer       Suma de ajustes compensatorios del día en centavos
+balance           integer       total_income + total_adjustments
 declared_cash     integer?      Efectivo contado en mano (si el admin lo declara)
 diff_amount       integer?      Diferencia entre balance y declared_cash
 note              text?         Observaciones del cierre

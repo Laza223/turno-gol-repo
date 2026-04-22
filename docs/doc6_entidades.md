@@ -61,25 +61,30 @@ updated_at        timestamp     UTC
 ```json
 {
   "requires_deposit": true,
-  "deposit_percentage": 30,
+  "deposit_percentage": 50,
   "cancellation_policy": {
-    "hours_before": 12,
-    "penalty_type": "deposit",
-    "penalty_amount": null
+    "hours_before": 48,
+    "refund_on_cancel": true
   },
-  "no_show_penalty": {
-    "type": "ban_days",
-    "days": 7
+  "no_show_policy": {
+    "generates_debt": true,
+    "blocks_until_paid": true
   },
+  "admin_pin": "$2b$10$...",
   "accepts_cash": true,
   "accepts_transfer": true,
   "accepts_mercadopago": true,
   "allow_online_booking": true,
-  "booking_advance_days": 14,
-  "booking_duration_minutes": [60, 90, 120],
+  "booking_advance_days": 6,
+  "booking_duration_minutes": [60, 120],
   "auto_complete_minutes": 30
 }
 ```
+
+> [!NOTE]
+> **`admin_pin`**: PIN hasheado para proteger zonas sensibles del panel (precios, configuración,
+> suscripción, desactivar canchas, reportes financieros). Permite que el empleado use la misma
+> cuenta admin sin acceder a funciones críticas.
 
 ### Atributos derivados (NO guardar en DB, calcular)
 - `is_open_now` = evaluar `opening_hours` + `closed_dates` contra la hora actual
@@ -132,16 +137,22 @@ created_at        timestamp     UTC
 updated_at        timestamp     UTC
 ```
 
-**Desglose del campo `pricing` (JSONB):**
+**Desglose del campo `pricing` (JSONB) — Reglas de puntos de corte flexibles:**
 ```json
 {
-  "weekday_morning":  { "price": 8000, "hours": ["08:00-12:00"] },
-  "weekday_afternoon": { "price": 10000, "hours": ["12:00-18:00"] },
-  "weekday_night":    { "price": 12000, "hours": ["18:00-23:00"] },
-  "weekend_morning":  { "price": 10000, "hours": ["08:00-14:00"] },
-  "weekend_night":    { "price": 15000, "hours": ["14:00-23:00"] }
+  "rules": [
+    { "days": [1,2,3,4,5], "from": "08:00", "to": "14:00", "prices": { "60": 800000, "120": 1400000 } },
+    { "days": [1,2,3,4,5], "from": "14:00", "to": "18:00", "prices": { "60": 1000000, "120": 1800000 } },
+    { "days": [1,2,3,4,5], "from": "18:00", "to": "00:00", "prices": { "60": 1200000, "120": 2200000 } },
+    { "days": [0,6], "from": "08:00", "to": "00:00", "prices": { "60": 1500000, "120": 2800000 } }
+  ]
 }
 ```
+
+> [!NOTE]
+> **Reglas de precio**: El admin define franjas ilimitadas con puntos de corte horarios.
+> Cada regla especifica días de la semana (0=Dom, 6=Sáb), rango horario, y precio por duración (60/120 min).
+> Esto replica el modelo de ATC Sports donde el admin configura el precio por cada combinación de franja y duración.
 
 > [!NOTE]
 > **Horarios que cruzan medianoche**: si un complejo abre de 08:00 a 02:00 del día siguiente,
@@ -169,15 +180,14 @@ ACTIVE ──── admin desactiva ──── INACTIVE
 
 | Estado | Descripción | Puede recibir reservas |
 |---|---|---|
-| `active` | Funcionando normalmente | ✅ Sí |
-| `maintenance` | En reparación temporal | ❌ No (las existentes se mantienen) |
-| `inactive` | Desactivada permanentemente | ❌ No |
+| `online` | Funcionando normalmente, visible en app | ✅ Sí |
+| `offline` | Desactivada (mantenimiento, cierre temporal o permanente) | ❌ No (las existentes se mantienen) |
 
 ### Invariantes de la Cancha
 
-1. **Una cancha `INACTIVE` o `MAINTENANCE` no puede recibir reservas nuevas** (pero las reservas existentes se mantienen hasta que el admin las gestione).
-2. **Al desactivar una cancha con reservas futuras**: Warning al admin: "Hay {N} reservas futuras que se cancelarán."
-3. **El `pricing` siempre debe cubrir todos los horarios del complejo** (validación al guardar).
+1. **Una cancha `OFFLINE` no puede recibir reservas nuevas** (pero las reservas existentes se mantienen hasta que el admin las gestione).
+2. **Al poner offline una cancha con reservas futuras**: Warning al admin: "Hay {N} reservas futuras que se cancelarán."
+3. **Las `pricing.rules` deben cubrir todos los horarios del complejo** (validación al guardar).
 
 ---
 
@@ -431,6 +441,7 @@ id                UUID          PK
 player_id         UUID          FK → players
 tenant_id         UUID          FK → tenants
 status            enum          'active' | 'blocked'
+balance           integer       DEFAULT 0. Saldo deudor en centavos ARS. Si > 0, jugador bloqueado para reservar online.
 first_seen_at     timestamp     Primera reserva en este complejo
 bookings_count    integer       Total de reservas (actualizado por triggers)
 noshow_count      integer       Total de no-shows (actualizado por triggers)
@@ -441,7 +452,9 @@ created_at        timestamp     UTC
 
 > [!NOTE]
 > Los contadores `bookings_count` y `noshow_count` se actualizan por triggers en INSERT/UPDATE
-> de bookings. La regla del 3-no-show (Flujo 4D) evalúa `noshow_count` en vez de hacer COUNT(*).
+> de bookings. **`balance`**: cuando el admin marca no-show, se suma el monto adeudado.
+> Si `balance > 0`, el jugador NO puede reservar online en ese complejo hasta que el admin
+> registre el pago y baje el saldo a 0.
 > `data_consent_at` es evidencia de consent por-complejo para Ley 25.326.
 
 ---
@@ -449,12 +462,12 @@ created_at        timestamp     UTC
 ## ENTIDAD 7: StaffUser (Usuario del Sistema)
 
 ### Definición
-Un StaffUser es una persona que tiene acceso al panel admin de un Tenant específico. Un usuario puede ser staff de múltiples complejos.
+Un StaffUser es la persona que administra un Tenant. En v1 solo existe el rol `admin`. El sistema usa un PIN para proteger zonas sensibles (precios, configuración, suscripción) permitiendo que empleados del complejo operen la cuenta sin acceso a funciones críticas.
 
 ### Atributos propios
 ```
 id                UUID          PK
-email             string        Único. Para autenticación (magic link)
+email             string        Único. Para autenticación (magic link o Google OAuth)
 first_name        string
 last_name         string
 phone             string?
@@ -470,13 +483,13 @@ tenant_staff_members
 ├── id            UUID
 ├── tenant_id     UUID      FK → tenants
 ├── staff_user_id UUID      FK → staff_users
-├── role          enum      'admin' | 'receptionist' | 'readonly'
+├── role          enum      'admin' (único rol en v1)
 ├── added_by      UUID      FK → staff_users (quién lo agregó)
 ├── created_at    timestamp
 └── is_active     boolean
 ```
 
-**Por qué tabla separada**: Un mismo email puede ser admin en un complejo y recepcionista en otro. Staff por plan: 2 (Básico), 5 (Estándar), ilimitado (Full).
+**Por qué mantener la tabla**: Aunque v1 tiene un solo rol, la tabla permite que un mismo email administre múltiples complejos y facilita la extensión futura.
 
 ---
 
@@ -515,13 +528,13 @@ created_at        timestamp     UTC
 ## ENTIDAD 9: CashFlow (Movimiento de Caja)
 
 ### Definición
-Representa cualquier movimiento de dinero en la caja del complejo. Incluye ventas de cantina y cobros de reservas.
+Representa un ingreso de dinero en la caja del complejo. Solo ingresos y ajustes (no gastos).
 
 ### Atributos propios
 ```
 id                UUID          PK
 tenant_id         UUID          FK → tenants
-type              enum          'income' | 'expense' | 'adjustment'
+type              enum          'income' | 'adjustment'
 category          enum          'booking' | 'product_sale' | 'other' | 'no_show_correction'
 amount            integer       En centavos de ARS
 method            enum          'cash' | 'transfer' | 'mercadopago'
@@ -533,8 +546,12 @@ occurred_at       timestamp     Cuándo ocurrió el movimiento
 created_at        timestamp     UTC
 ```
 
+> [!NOTE]
+> **Sin gastos**: TurnoGol no gestiona egresos (luz, agua, sueldos). Solo registra ingresos
+> de reservas y ajustes. El complejo maneja sus gastos con sus propios sistemas contables.
+
 ### Atributos derivados
-- `daily_balance(date)` = SUM(income) - SUM(expense) + SUM(adjustment) para ese día
+- `daily_balance(date)` = SUM(income) + SUM(adjustment) para ese día
 - `monthly_summary(month)` = agrupado por categoría
 
 ---
@@ -568,11 +585,14 @@ created_at        timestamp     UTC
 
 ## ENTIDAD 11: Product (Producto de Cantina/Stock)
 
+### Definición
+Producto vendido en la cantina del complejo (bebidas, comida, equipamiento). Registra stock y genera CashFlows de tipo `product_sale`.
+
 ### Atributos propios
 ```
 id                UUID          PK
 tenant_id         UUID          FK → tenants
-name              string        "Gaseosa", "Pelota", "Camiseta"
+name              string        "Gaseosa", "Pancho", "Pelota"
 category          string?       "bebida" | "comida" | "equipamiento"
 price             integer       En centavos de ARS
 stock             integer       Cantidad actual
@@ -623,8 +643,8 @@ Definición global de un plan de suscripción (no por tenant). Los precios y fea
 ### Atributos propios
 ```
 id                    UUID          PK
-name                  string        'basico' | 'estandar' | 'full'
-display_name          string        'Básico' | 'Estándar' | 'Full'
+name                  string        'predio' | 'complejo' | 'estadio'
+display_name          string        'Predio' | 'Complejo' | 'Estadio'
 max_courts            integer       3 | 6 | 999 (ilimitado)
 monthly_price         integer       Precio mensual en centavos (sin IVA)
 annual_monthly_price  integer       Precio mensual del plan anual en centavos (sin IVA)
@@ -817,5 +837,10 @@ Este glosario se traduce directamente en las siguientes tablas:
 | ProcessedWebhook | `processed_webhooks` |
 | TenantPlayerBan | `tenant_player_bans` |
 | PriceVersion | `price_versions` |
+| SystemAdmin | `system_admins` |
 
-**Total: 19 tablas para v1.0** (12 aisladas con RLS + 7 globales)
+**Total: 19 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
+(12 aisladas con RLS + 6 globales + 1 híbrida + 1 sistema)
+
+> [!NOTE]
+> **Tabla `system_admins` agregada** para el panel de super admin de TurnoGol.

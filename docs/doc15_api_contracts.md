@@ -248,11 +248,11 @@ Response 200 (staff):
       "name": "Complejo San Martín",
       "slug": "complejo-san-martin",
       "status": "active",
-      "plan": { "name": "Estándar", "slug": "estandar", "max_courts": 6 }
+      "plan": { "name": "Complejo", "slug": "complejo", "max_courts": 6 }
     },
     "role": "admin",
     "other_tenants": [
-      { "id": "tenant-2", "name": "Complejo Norte", "role": "receptionist" }
+      { "id": "tenant-2", "name": "Complejo Norte", "role": "admin" }
     ]
   }
 }
@@ -278,13 +278,13 @@ Response 200 (jugador):
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/bookings` | readonly | Listar reservas (filtros: date, court_id, status) |
-| `GET` | `/api/bookings/:id` | readonly | Detalle de una reserva |
-| `POST` | `/api/bookings` | receptionist | Crear reserva manual |
-| `PATCH` | `/api/bookings/:id` | receptionist | Actualizar reserva (estado, notas) |
-| `POST` | `/api/bookings/:id/cancel` | receptionist | Cancelar reserva |
-| `POST` | `/api/bookings/:id/complete` | receptionist | Marcar como completada |
-| `POST` | `/api/bookings/:id/no-show` | receptionist | Marcar como no-show |
+| `GET` | `/api/bookings` | admin | Listar reservas (filtros: date, court_id, status) |
+| `GET` | `/api/bookings/:id` | admin | Detalle de una reserva |
+| `POST` | `/api/bookings` | admin | Crear reserva manual |
+| `PATCH` | `/api/bookings/:id` | admin | Actualizar reserva (estado, notas) |
+| `POST` | `/api/bookings/:id/cancel` | admin | Cancelar reserva |
+| `POST` | `/api/bookings/:id/complete` | admin | Marcar como completada |
+| `POST` | `/api/bookings/:id/no-show` | admin | Marcar como no-show |
 
 #### `GET /api/bookings?date=2026-04-17&status=confirmed`
 
@@ -409,10 +409,10 @@ Errors:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/abonados` | readonly | Listar abonados |
-| `GET` | `/api/abonados/:id` | readonly | Detalle + próximas instancias |
-| `POST` | `/api/abonados` | receptionist | Crear abonado |
-| `PATCH` | `/api/abonados/:id` | receptionist | Editar datos |
+| `GET` | `/api/abonados` | admin | Listar abonados |
+| `GET` | `/api/abonados/:id` | admin | Detalle + próximas instancias |
+| `POST` | `/api/abonados` | admin | Crear abonado |
+| `PATCH` | `/api/abonados/:id` | admin | Editar datos |
 | `POST` | `/api/abonados/:id/pause` | admin | Pausar (elimina slots futuros) |
 | `POST` | `/api/abonados/:id/resume` | admin | Reanudar (regenera slots) |
 | `POST` | `/api/abonados/:id/cancel` | admin | Cancelar desde fecha |
@@ -457,9 +457,9 @@ Errors:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/cash-flows` | receptionist | Movimientos del día/período |
-| `GET` | `/api/cash-flows/summary` | receptionist | Resumen por categoría |
-| `POST` | `/api/cash-flows` | receptionist | Registrar movimiento |
+| `GET` | `/api/cash-flows` | admin | Movimientos del día/período |
+| `GET` | `/api/cash-flows/summary` | admin | Resumen por categoría |
+| `POST` | `/api/cash-flows` | admin | Registrar movimiento |
 
 #### `GET /api/cash-flows/summary?date=2026-04-17`
 
@@ -473,9 +473,9 @@ Response 200:
       "product_sale": { "cash": 450000 },
       "total": 15450000
     },
-    "expense": {
-      "other": { "cash": 200000 },
-      "total": 200000
+    "adjustments": {
+      "no_show_correction": { "cash": -200000 },
+      "total": -200000
     },
     "balance": 15250000
   }
@@ -486,16 +486,16 @@ Response 200:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/products` | readonly | Listar productos |
+| `GET` | `/api/products` | admin | Listar productos |
 | `POST` | `/api/products` | admin | Crear producto |
 | `PATCH` | `/api/products/:id` | admin | Editar producto |
-| `POST` | `/api/products/:id/sell` | receptionist | Registrar venta (→ cash_flow) |
+| `POST` | `/api/products/:id/sell` | admin | Registrar venta (→ cash_flow) |
 
 ### 5.6 Configuración del Complejo
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/tenant` | readonly | Datos del complejo |
+| `GET` | `/api/tenant` | admin | Datos del complejo |
 | `PATCH` | `/api/tenant` | admin | Editar datos del complejo |
 | `PATCH` | `/api/tenant/settings` | admin | Editar configuración (seña, cancelación, etc.) |
 | `PATCH` | `/api/tenant/opening-hours` | admin | Editar horarios |
@@ -513,14 +513,13 @@ Response 200:
 
 ```
 Request:
-{ "email": "rodrigo@email.com", "role": "receptionist", "name": "Rodrigo" }
+{ "email": "rodrigo@email.com", "role": "admin", "name": "Rodrigo" }
 
 Response 201:
-{ "data": { "id": "uuid", "email": "rodrigo@email.com", "role": "receptionist", "status": "pending" } }
+{ "data": { "id": "uuid", "email": "rodrigo@email.com", "role": "admin", "status": "pending" } }
 // Se envía magic link de invitación al email
 
 Errors:
-  403 PLAN_LIMIT_EXCEEDED → { "limit": 2, "current": 2, "upgrade_to": "estandar" }
   409 CONFLICT → email ya tiene acceso a este complejo
 ```
 

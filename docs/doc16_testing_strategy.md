@@ -702,16 +702,16 @@ describe('SaaS Billing Lifecycle', () => {
   });
 
   it('Upgrade de plan: prorrateo calculado correctamente', async () => {
-    const tenant = await createTestTenantWithPlan('basico', {
+    const tenant = await createTestTenantWithPlan('predio', {
       period_start: subDays(new Date(), 16),  // 16 días del ciclo consumidos
       period_end: addDays(new Date(), 14),     // 14 días restantes
     });
 
     const proration = await billingService.calculateProration(
-      tenant.id, 'estandar'
+      tenant.id, 'complejo'
     );
 
-    // 14 días × (precio_estandar_diario - precio_basico_diario)
+    // 14 días × (precio_complejo_diario - precio_predio_diario)
     expect(proration.days_remaining).toBe(14);
     expect(proration.charge_amount).toBeGreaterThan(0);
   });

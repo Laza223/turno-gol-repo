@@ -9,12 +9,12 @@ La carpeta `docs/` contiene 19 documentos vigentes (doc9 deprecado) que son la f
 ### Capa de Negocio
 - `doc1` — Problema y mercado objetivo (complejos de fútbol, Argentina)
 - `doc2` — Competitive teardown vs ATC Sports
-- `doc3` — 3 Personas: Marcelo (Owner), Rodrigo (Staff), Tomás (Jugador). Partidos abiertos deferidos a v1.5.
-- `doc4` — Monetización: suscripción mensual por canchas (Básico/Estándar/Full), MercadoPago
+- `doc3` — 3 Personas: Marcelo (Owner/Admin), Rodrigo (Empleado, usa misma cuenta admin con PIN), Tomás (Jugador). Partidos abiertos deferidos a v1.5.
+- `doc4` — Monetización: suscripción mensual por canchas (Predio/Complejo/Estadio), MercadoPago
 
 ### Capa Funcional
 - `doc5` — Requisitos no funcionales (monolito Y1, 99.5% SLA, p95 <500ms)
-- `doc6` — Entidades y state machines (19 tablas, Booking es la más crítica)
+- `doc6` — Entidades y state machines (19 tablas + system_admins, Booking es la más crítica)
 - `doc7` — 9 flujos end-to-end con efectos secundarios detallados
 - `doc8` — ~42 user stories con Given/When/Then, edge cases, out-of-scope
 - `doc9` — DEPRECADO. Lifecycle SaaS unificado en doc4 §2. No usar.
@@ -22,8 +22,8 @@ La carpeta `docs/` contiene 19 documentos vigentes (doc9 deprecado) que son la f
 
 ### Capa Técnica
 - `doc11` — 12 ADRs (RLS, Magic Link, Resend, MercadoPago, pg-boss, monolito, AFIP out-of-scope, +18 declaración jurada)
-- `doc12` — Tenant isolation: 12 tablas RLS, 7 globales, SET LOCAL, JWT, RLS dual para jugadores
-- `doc13` — SQL completo: 19 tablas, ENUMs, exclusion constraints, índices, RLS policies
+- `doc12` — Tenant isolation: 12 tablas RLS, 6 globales + 1 híbrida + system_admins, SET LOCAL, JWT, RLS dual para jugadores
+- `doc13` — SQL completo: 19 tablas + system_admins, ENUMs, exclusion constraints, índices, RLS policies
 - `doc14` — Tech stack: Next.js 14, TypeScript, Drizzle ORM, Supabase, pg-boss, shadcn/ui
 - `doc15` — API contracts: endpoints, payloads, auth, error codes
 
@@ -41,6 +41,7 @@ La carpeta `docs/` contiene 19 documentos vigentes (doc9 deprecado) que son la f
 - shadcn/ui + Tailwind CSS
 - MercadoPago (Checkout Pro + Suscripciones; OAuth por complejo para señas)
 - Resend (email transaccional — WhatsApp descartado para v1, ver ADR-003)
+- Web Push API (notificaciones push al admin cuando llega reserva online)
 - Vitest + Playwright
 
 ## Comandos (una vez iniciado el proyecto)
@@ -69,15 +70,17 @@ La carpeta `docs/` contiene 19 documentos vigentes (doc9 deprecado) que son la f
 - Si falta info, preguntar antes de inventar
 
 ## Multi-tenancy
-- **19 tablas totales**: 12 aisladas con RLS + 6 globales + 1 híbrida
-- Tablas aisladas: courts, bookings, abonados, payments, cash_flows, daily_cash_closes, products, tenant_staff_members, tenant_subscriptions, notifications, audit_logs, tenant_player_bans
+- **19 tablas de negocio** + `system_admins` (super admin): 12 aisladas con RLS + 6 globales + 1 híbrida
+- Tablas aisladas: courts, bookings, abonados, payments, cash_flows, daily_cash_closes, products, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members
 - Tablas globales (sin tenant_id): tenants, players, staff_users, plans, price_versions, processed_webhooks
 - Tabla híbrida (tiene tenant_id + RLS dual staff/player): player_tenant_relationships
+- Tabla del sistema (sin RLS, acceso super admin): system_admins
 - Players son cross-tenant: un jugador reserva en N complejos
-- El JWT del staff tiene tenant_id; el del jugador tiene player_id (sin tenant_id)
-- **RLS dual en `bookings` y `player_tenant_relationships`**: policy para staff (por `app.current_tenant_id`), policy para jugador (por `app.current_player_id`). Policy Realtime SOLO en `bookings` (grilla de staff). `player_tenant_relationships` no necesita Realtime en v1.
+- El JWT del admin tiene tenant_id; el del jugador tiene player_id (sin tenant_id)
+- **RLS dual en `bookings` y `player_tenant_relationships`**: policy para admin (por `app.current_tenant_id`), policy para jugador (por `app.current_player_id`). Policy Realtime SOLO en `bookings` (grilla admin). `player_tenant_relationships` no necesita Realtime en v1.
 - Background jobs usan rol de servicio separado
 - `tenants.mp_access_token` + `mp_refresh_token`: credenciales OAuth MP del complejo para cobrar señas (encriptadas at-rest)
+- **Super Admin**: tabla `system_admins`, panel en `/super-admin/*`, puede ver todos los tenants, impersonar, métricas globales
 
 ## Convenciones críticas de schema
 - ENUMs usan `canceled` (americano, una L). NUNCA `cancelled` (británico, doble L)
@@ -86,13 +89,22 @@ La carpeta `docs/` contiene 19 documentos vigentes (doc9 deprecado) que son la f
 - `payment_status`: `canceled` (no `cancelled`)
 - `tenant_status` tiene 8 estados: trialing, active, past_due, suspended, blocked, canceled, churned, deleted
 - `player_status`: active, banned, anonymized. `banned` = ban global del sistema (no de un complejo). `anonymized` = eliminación ARCO Ley 25.326. Bans per-tenant via `tenant_player_bans`.
+- `player_tenant_relationships.balance`: saldo deudor en centavos. Si > 0, jugador bloqueado para reservar online en ese complejo.
 - `players.agreed_to_terms_at` + `terms_version`: declaración jurada +18 (ADR-012)
 - Consentimiento v1: `players.agreed_to_terms_at` + `audit_logs`; NO existe tabla `consent_records` (se evalúa en v1.5)
 - Facturación AFIP: fuera de scope v1 (ADR-011), responsabilidad del complejo
-- Planes SaaS: Básico (1-3 canchas, 2 staff), Estándar (4-6, 5 staff), Full (7+, staff ilimitado)
-- Realtime Supabase: solo para staff (grilla). Jugador NO tiene Realtime en v1 (polling/refresh).
+- Planes SaaS: Predio (1-3 canchas), Complejo (4-6), Estadio (7+). Sin límite de staff (un solo rol admin con PIN para zonas sensibles).
+- `court_status`: `online` | `offline` (no active/maintenance/inactive)
+- `deposit_mode`: configurable por complejo (on/off + porcentaje global). Sin modo garantía.
+- Duraciones de turno: 60 o 120 minutos (no 90).
+- Anticipación de reserva: default 6 días (como ATC).
+- Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles + precio por duración.
+- NO hay billetera virtual del jugador. Reembolsos/no-shows se resuelven entre jugador y complejo.
+- Gestión básica de stock/cantina: productos con precio, stock y alertas. Ventas generan CashFlow tipo `product_sale`.
+- Realtime Supabase: solo para admin (grilla). Jugador NO tiene Realtime en v1 (polling/refresh).
+- Push notifications: Web Push API al admin cuando llega reserva online (sonido fijo, no configurable).
 - DB columns de cancelación: `canceled_reason`, `canceled_by`, `canceled_at` (sin doble L)
-- Middleware SET LOCAL: `app.current_tenant_id` para staff, `app.current_player_id` para jugador
+- Middleware SET LOCAL: `app.current_tenant_id` para admin, `app.current_player_id` para jugador
 
 ## Compact Instructions
 Al resumir la conversación, preservar:

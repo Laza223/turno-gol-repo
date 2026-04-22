@@ -346,7 +346,7 @@ Según la Disposición 11/2006 de la DNPDP, los datos se clasifican en niveles d
 
 | Requisito (Disp. 11/2006) | Implementación en TurnoGol | Referencia |
 |---|---|---|
-| **Control de acceso** | RLS con 6 capas de protección. RBAC por rol (admin/receptionist/readonly). | Doc 12 |
+| **Control de acceso** | RLS con 6 capas de protección. Un único rol `admin` por tenant; zonas sensibles protegidas por PIN. | Doc 12 |
 | **Identificación y autenticación** | JWT con refresh token rotativo. Magic link + OAuth. Sin passwords. | Doc 11, ADR-002 |
 | **Registro de accesos** | Tabla `audit_logs` INSERT-only con actor, acción, recurso, timestamp. Retención 12 meses. | Doc 5 §6, Doc 13 |
 | **Cifrado en tránsito** | HTTPS obligatorio en toda la aplicación (Vercel SSL automático). | Doc 14 §9 |

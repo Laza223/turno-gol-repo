@@ -357,8 +357,8 @@ Al crear un Booking con status='pending_payment':
 - **Variante**: También se puede crear desde el botón "+ Nueva Reserva" en el panel
 
 ### Precondiciones
-- El StaffUser tiene rol `admin` o `receptionist` en este Tenant
-- La cancha tiene status `active`
+- StaffUser tiene rol `admin` en este Tenant
+- La cancha tiene status `online`
 - El slot está libre (misma validación que en el flujo online)
 
 ### Happy Path
@@ -581,7 +581,7 @@ PASO 2 — Procesamiento
 - **Trigger**: Problema en la cancha (mantenimiento), error del admin, pedido del jugador
 
 #### Precondiciones
-- StaffUser tiene rol `admin` o `receptionist`
+- StaffUser tiene rol `admin`
 - Booking en status `confirmed`
 
 #### Happy Path
@@ -694,7 +694,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 - **Contexto real**: Esto se arregla por teléfono, mensaje o en persona. El admin lo carga en el sistema después.
 
 ### Precondiciones
-- StaffUser tiene rol `admin` o `receptionist`
+- StaffUser tiene rol `admin`
 - El Tenant tiene status `trialing` o `active`
 - La cancha tiene status `active`
 - El día + horario elegido está libre de forma recurrente (no hay otro abonado activo con overlap en esa cancha + día + hora)
@@ -850,7 +850,7 @@ Job diario (cron: 03:00 ART):
 - **Contexto real**: Generalmente se hace entre las 23:00 y 00:00, cuando el complejo cierra. Algunos complejos lo hacen al día siguiente por la mañana.
 
 ### Precondiciones
-- StaffUser tiene rol `admin` o `receptionist`
+- StaffUser tiene rol `admin`
 - El día seleccionado tiene al menos 1 movimiento de caja (CashFlow)
 - No existe ya un cierre de caja para ese día (evitar duplicados)
 
@@ -981,12 +981,12 @@ PASO 4 — Generación del cierre
 ```
 PASO 1 — Selección de plan
   ├── Vista: tabla comparativa de planes
-  │     ├── Plan Básico (1-3 canchas): $XX.XXX/mes | $XX.XXX/mes pago anual
-  │     ├── Plan Estándar (4-6 canchas): $XX.XXX/mes | $XX.XXX/mes pago anual
-  │     └── Plan Full (7+ canchas): $XX.XXX/mes | $XX.XXX/mes pago anual
+  │     ├── Plan Predio (1-3 canchas): $47.000/mes | $37.600/mes pago anual
+  │     ├── Plan Complejo (4-6 canchas): $74.000/mes | $59.200/mes pago anual
+  │     └── Plan Estadio (7+ canchas): $101.000/mes | $80.800/mes pago anual
   ├── Pre-seleccionado: el plan que corresponde según la cantidad de canchas activas del complejo
   ├── Selector: ciclo de facturación (mensual | anual)
-  │     └── Si anual: mostrar ahorro: "Ahorrás ${diferencia}/año (33% descuento)"
+  │     └── Si anual: mostrar ahorro: "Ahorrás ${diferencia}/año (20% descuento)"
   └── Botón: "Continuar al pago"
 
 PASO 2 — Pago inicial
@@ -1075,7 +1075,7 @@ Trial activo (30 días):
 
 1. **El dueño se suscribe el día 15 del trial**: OK. Los 15 días restantes del trial no se "pierden" — el primer período de suscripción empieza HOY (no al día 31).
 2. **El dueño tiene 2 complejos en la misma cuenta**: Cada complejo tiene su propia suscripción. Los planes son por complejo, no por cuenta.
-3. **El dueño elige plan Básico pero quiere agregar más canchas después**: Al agregar la 4ta cancha, el sistema sugiere upgrade. Si no upgradea, no puede crear la cancha.
+3. **El dueño elige plan Predio pero quiere agregar más canchas después**: Al agregar la 4ta cancha, el sistema sugiere upgrade. Si no upgradea, no puede crear la cancha.
 4. **El pago anual se procesa pero el webhook tarda**: El complejo puede quedar bloqueado unos minutos. Mostrar pantalla de "Estamos verificando tu pago" + check automático cada 10 segundos.
 5. **El dueño quiere pagar en cuotas en tarjeta**: Depende de lo que ofrezca MP. TurnoGol no controla las cuotas — MP lo hace en la pantalla de checkout.
 6. **Hay un aumento de precios durante un plan anual**: No afecta al suscriptor actual (`price_locked_until`). El nuevo precio aplica al renovar.

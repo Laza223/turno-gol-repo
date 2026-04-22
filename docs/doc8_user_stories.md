@@ -1044,7 +1044,7 @@ para mantener mi complejo actualizado sin llamar a soporte.
 - [ ] Dado que creo una cancha, cuando confirmo, entonces Court se crea con status=`active`, con pricing default (weekday/weekend × franja horaria) editable.
 - [ ] Dado que quiero editar una cancha existente, cuando hago click en ella, entonces puedo editar: nombre, superficie, precio por franja, estado (active/maintenance/inactive).
 - [ ] Dado que pongo una cancha en `maintenance`, entonces los slots futuros aparecen como bloqueados en la grilla y las reservas existentes se mantienen.
-- [ ] Dado que agrego una cancha y mi plan no la cubre (ej: plan Básico con 3 canchas y quiero la 4ta), entonces veo: "Tu plan soporta hasta {N} canchas. Upgrade para agregar más."
+- [ ] Dado que agrego una cancha y mi plan no la cubre (ej: plan Predio con 3 canchas y quiero la 4ta), entonces veo: "Tu plan soporta hasta {N} canchas. Upgrade para agregar más."
 
 ❌ Edge Cases
 - [ ] Si desactivo una cancha CON abonados activos → warning: "Esta cancha tiene {N} abonados activos. Cancelalos primero."
@@ -1118,10 +1118,8 @@ para que pueda gestionar reservas y caja sin acceder a la configuración ni los 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Staff → "+ Agregar", cuando ingreso email + nombre + rol (`admin` o `receptionist`), entonces se envía magic link al email del nuevo staff.
-- [ ] Dado que el staff activa su cuenta, cuando ingresa al panel, entonces solo ve las secciones permitidas para su rol:
-  - **Admin**: todo
-  - **Receptionist**: grilla, reservas, caja (registrar pagos, ver caja del día), abonados (ver). NO: settings, reportes, staff, billing.
+- [ ] Dado que estoy en Settings → Staff → "+ Agregar", cuando ingreso email + nombre, entonces se envía magic link al email del nuevo admin.
+- [ ] Dado que el staff activa su cuenta, cuando ingresa al panel, entonces accede a todo el sistema. Las zonas sensibles (precios, suscripción, configuración) requieren ingreso de PIN de administrador.
 - [ ] Dado que quiero desactivar un staff, cuando lo desactivo, entonces pierde acceso al panel inmediatamente y sus sesiones activas se invalidan.
 - [ ] Dado que quiero cambiar el rol de un staff, cuando lo edito, entonces los permisos se actualizan al próximo login.
 
@@ -1435,7 +1433,7 @@ para tomar la decisión de suscribirme antes de perder el acceso.
 
 ❌ Edge Cases
 - [ ] Si el trial venció y no me suscribí → acceso en solo lectura por 60 días (BLOCKED), luego CHURNED día 91, DELETED día 98.
-- [ ] Si soy recepcionista (no admin) → veo el banner pero el botón dice "Contactá al administrador" (no puede suscribirse).
+- [ ] Si el staff que ve el banner no tiene PIN de admin → el botón dice "Contactá al administrador" (no puede suscribirse sin PIN).
 
 🚫 Out of Scope
 - NO incluye countdown en tiempo real (se actualiza al cargar la página)
@@ -1505,9 +1503,9 @@ para tener acceso completo sin interrupciones después del trial.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Básico (1-3 canchas), Estándar (4-6 canchas), Full (7+ canchas), con el plan que corresponde pre-seleccionado.
+- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Predio (1-3 canchas), Complejo (4-6 canchas), Estadio (7+ canchas), con el plan que corresponde pre-seleccionado.
 - [ ] Dado que selecciono un plan y ciclo (mensual/anual), cuando hago click en "Continuar al pago", entonces soy redirigido al checkout de MercadoPago para registrar mi medio de pago.
-- [ ] Si selecciono anual → mostrar ahorro: "Ahorrás ${diferencia}/año (33% descuento)".
+- [ ] Si selecciono anual → mostrar ahorro: "Ahorrás ${diferencia}/año (20% descuento)".
 - [ ] Dado que el pago se aprobó via webhook, cuando se actualiza el sistema, entonces: TenantSubscription.status → `active`, Tenant.status → `active`.
 - [ ] Dado que elegí plan anual, cuando se procesa, entonces `price_locked_until` se configura para proteger contra aumentos durante el año.
 - [ ] Dado que la suscripción está activa, entonces el banner de trial desaparece y veo "Plan {nombre} ✅".
@@ -1621,7 +1619,7 @@ para seguir operando sin tener que cancelar y re-suscribirme.
 - [ ] Dado que quiero hacer downgrade, cuando selecciono un plan inferior, entonces: veo warning si tengo más canchas de las que el nuevo plan soporta. El cambio se aplica al PRÓXIMO período (no inmediato).
 
 ❌ Edge Cases
-- [ ] Si hago downgrade y tengo canchas extra → "Para cambiar al plan Básico, desactivá {N} canchas primero."
+- [ ] Si hago downgrade y tengo canchas extra → "Para cambiar al plan Predio, desactivá {N} canchas primero."
 - [ ] Si hago upgrade con plan anual → el prorrateo considera el precio locked.
 - [ ] Si el pago del prorrateo falla → el upgrade no se aplica. Mostrar error.
 

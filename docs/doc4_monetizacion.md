@@ -27,9 +27,9 @@
 
 | Plan | Canchas | Precio mensual | Precio anual (por mes) | Ahorro anual |
 |---|---|---|---|---|
-| **Básico** | 1 – 3 canchas | $55.000 ARS | $36.850 ARS (33% off) | $217.800 ARS |
-| **Estándar** | 4 – 6 canchas | $88.000 ARS | $58.960 ARS (33% off) | $348.480 ARS |
-| **Full** | 7+ canchas | $120.000 ARS | $80.400 ARS (33% off) | $475.200 ARS |
+| **Predio** | 1 – 3 canchas | $47.000 ARS | $37.600 ARS (20% off) | $112.800 ARS |
+| **Complejo** | 4 – 6 canchas | $74.000 ARS | $59.200 ARS (20% off) | $177.600 ARS |
+| **Estadio** | 7+ canchas | $101.000 ARS | $80.800 ARS (20% off) | $242.400 ARS |
 
 > [!NOTE]
 > Precios establecidos ligeramente por debajo de ATC Sports como estrategia de captación inicial.
@@ -47,7 +47,8 @@
 - Onboarding self-service con UX guiada paso a paso
 - Reservas online con pago de seña vía MercadoPago
 - Gestión de turnos fijos (abonados) desde la grilla del admin
-- Staff del sistema: 2 (Básico), 5 (Estándar), ilimitado (Full)
+- Reportes completos (mismo nivel para todos los planes)
+- Sin límite de staff (una sola cuenta admin por complejo con PIN para zonas sensibles)
 
 ---
 
@@ -250,22 +251,22 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 
 ## 6. Upgrades y Downgrades
 
-### Upgrade (de Básico a Estándar, etc.)
+### Upgrade (de Predio a Complejo, etc.)
 
 **Cuándo pasa**: El dueño agrega más canchas que su plan permite.
 
 ```
 Admin intenta crear la cancha N+1 (supera el límite del plan)
       ↓
-Sistema muestra modal: "Tu plan Básico permite hasta 3 canchas.
-Actualizá a Estándar para agregar más canchas."
-[CTA: Actualizar a Estándar - $88.000/mes + IVA]
+Sistema muestra modal: "Tu plan Predio permite hasta 3 canchas.
+Actualizá a Complejo para agregar más canchas."
+[CTA: Actualizar a Complejo - $74.000/mes + IVA]
       ↓
 Si confirma:
   - Calcula el prorrateo de días restantes del período actual
   - Cobra la diferencia en el momento (via MP Checkout, no suscripción)
   - Activa el nuevo plan inmediatamente
-  - Email: "🎉 Actualizado a plan Estándar. Ya podés agregar más canchas."
+  - Email: "🎉 Actualizado a plan Complejo. Ya podés agregar más canchas."
 ```
 
 **Fórmula de prorrateo:**
@@ -276,13 +277,13 @@ precio_día_viejo = precio_viejo / días_del_período
 cargo_extra = (precio_día_nuevo - precio_día_viejo) * días_restantes
 ```
 
-### Downgrade (de Estándar a Básico, etc.)
+### Downgrade (de Complejo a Predio, etc.)
 
 **Regla**: No se puede hacer downgrade si tenés más canchas activas de las que permite el plan inferior.
 ```
-Admin intenta bajar de Estándar (4-6 canchas) a Básico (1-3) pero tiene 4 canchas configuradas
+Admin intenta bajar de Complejo (4-6 canchas) a Predio (1-3) pero tiene 4 canchas configuradas
       ↓
-Sistema: "Para cambiar al plan Básico necesitás tener máximo 3 canchas activas.
+Sistema: "Para cambiar al plan Predio necesitás tener máximo 3 canchas activas.
 Desactivá 1 cancha primero."
       ↓
 Si el dueño desactiva la cancha → puede hacer downgrade
@@ -393,20 +394,19 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 > Los feature flags definen qué puede hacer cada plan.
 > Tienen que estar en la DB (no hardcodeados) para poder cambiarlos sin deployar.
 
-| Feature | Básico (1-3) | Estándar (4-6) | Full (7+) |
+| Feature | Predio (1-3) | Complejo (4-6) | Estadio (7+) |
 |---|:---:|:---:|:---:|
 | Cantidad máxima de canchas | 3 | 6 | Ilimitado |
-| Usuarios del sistema (staff) | 2 | 5 | Ilimitado |
 | Historial de reservas | 6 meses | 12 meses | Ilimitado |
-| Reportes avanzados | ❌ | ✅ | ✅ |
-| Exportación de datos | CSV básico | CSV completo | CSV + Excel |
+| Reportes | ✅ Completos | ✅ Completos | ✅ Completos |
+| Exportación de datos | CSV | CSV + Excel | CSV + Excel |
 | API access (futuro) | ❌ | ❌ | ✅ |
 | Soporte | Email | Email | Email prioritario |
 
 > [!NOTE]
 > **Regla de diseño de feature flags**: El sistema NUNCA muestra un error crudo cuando se supera un límite.
 > Siempre muestra un mensaje que explica el límite, la solución, y un CTA de upgrade claro.
-> Ejemplo: "Tu plan permite 3 canchas. Para agregar más, actualizá a Estándar →"
+> Ejemplo: "Tu plan permite 3 canchas. Para agregar más, actualizá a Complejo →"
 
 ---
 
@@ -436,7 +436,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | Trial de 30 días sin tarjeta | Campo `trial_ends_at` en `tenants`. Cron job diario que evalúa expiración. |
 | 3 planes por cantidad de canchas | Tabla `plans` con `max_courts`. Middleware que valida al crear cancha. |
 | Pago mensual y anual | Campo `billing_cycle` (monthly/annual) en suscripción. |
-| Descuento 33% anual | Calculado en el momento del checkout, no como cupón. Precio base almacenado. |
+| Descuento 20% anual | Calculado en el momento del checkout, no como cupón. Precio base almacenado. |
 | IVA excluido (se suma en checkout) | Campo `price_without_tax` en la tabla plans; cálculo de IVA 21% en checkout. |
 | 8 estados del tenant | ENUM `tenant_status` con 8 valores. Middleware en todos los endpoints que verifica estado. |
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
@@ -461,10 +461,10 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 | Plan | Clientes | Precio/mes (sin IVA) | MRR |
 |---|---|---|---|
-| Básico (mensual) | 50 | $55.000 | $2.750.000 |
-| Estándar (mensual) | 35 | $88.000 | $3.080.000 |
-| Full (mensual) | 15 | $120.000 | $1.800.000 |
-| **Total MRR** | **100** | | **$7.630.000 ARS** |
+| Predio (mensual) | 50 | $47.000 | $2.350.000 |
+| Complejo (mensual) | 35 | $74.000 | $2.590.000 |
+| Estadio (mensual) | 15 | $101.000 | $1.515.000 |
+| **Total MRR** | **100** | | **$6.455.000 ARS** |
 
 ### Costos fijos estimados (infraestructura, sin equipo)
 - Hosting/infra (Vercel + Supabase Pro): ~$150.000-300.000 ARS/mes

@@ -53,7 +53,7 @@ COMMENT ON TYPE subscription_status IS
 CREATE TYPE billing_cycle AS ENUM ('monthly', 'annual');
 
 -- Estado de la cancha
-CREATE TYPE court_status AS ENUM ('active', 'maintenance', 'inactive');
+CREATE TYPE court_status AS ENUM ('online', 'offline');
 
 -- Tipo de superficie
 CREATE TYPE surface_type AS ENUM (
@@ -105,8 +105,8 @@ CREATE TYPE player_status AS ENUM ('active', 'banned', 'anonymized');
 -- Estado del staff user
 CREATE TYPE staff_status AS ENUM ('active', 'inactive');
 
--- Rol del staff en un tenant
-CREATE TYPE staff_role AS ENUM ('admin', 'receptionist', 'readonly');
+-- Rol del staff en un tenant (v1: solo admin, extensible a futuro)
+CREATE TYPE staff_role AS ENUM ('admin');
 
 -- Tipo de pago
 CREATE TYPE payment_type AS ENUM (
@@ -128,8 +128,8 @@ CREATE TYPE payment_status AS ENUM (
   'canceled'    -- Cancelado (americano, una L)
 );
 
--- Tipo de movimiento de caja
-CREATE TYPE cashflow_type AS ENUM ('income', 'expense', 'adjustment');
+-- Tipo de movimiento de caja (sin gastos — TurnoGol solo registra ingresos)
+CREATE TYPE cashflow_type AS ENUM ('income', 'adjustment');
 
 CREATE TYPE cashflow_category AS ENUM (
   'booking',              -- Cobro de reserva
@@ -325,18 +325,15 @@ COMMENT ON TABLE staff_users IS 'Usuarios de staff. La relación con tenants est
 -- ============================================================
 CREATE TABLE plans (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name            TEXT NOT NULL,                 -- 'Básico', 'Estándar', 'Full'
-  slug            TEXT NOT NULL UNIQUE,          -- 'basico', 'estandar', 'full'
+  name            TEXT NOT NULL,                 -- 'Predio', 'Complejo', 'Estadio'
+  slug            TEXT NOT NULL UNIQUE,          -- 'predio', 'complejo', 'estadio'
   max_courts      INTEGER,                       -- NULL = ilimitado
-  max_staff       INTEGER,                       -- NULL = ilimitado
 
   features        JSONB NOT NULL DEFAULT '{
     "history_months": 6,
-    "advanced_reports": false,
-    "export_formats": ["csv_basic"],
+    "export_formats": ["csv"],
     "api_access": false,
-    "support_channels": ["email"],
-    "auto_collect_abonados": true
+    "support_channels": ["email"]
   }'::JSONB,
 
   price_monthly   INTEGER NOT NULL,              -- Centavos ARS
@@ -730,7 +727,7 @@ CREATE TABLE cash_flows (
 
   -- Relaciones opcionales
   booking_id      UUID REFERENCES bookings(id),
-  product_id      UUID REFERENCES products(id),
+  product_id      UUID REFERENCES products(id),  -- Venta de cantina
 
   registered_by   UUID NOT NULL REFERENCES staff_users(id),
   occurred_at     TIMESTAMPTZ NOT NULL,          -- Cuándo ocurrió (puede diferir de created_at)
@@ -1265,27 +1262,27 @@ CREATE TRIGGER enforce_price_snapshot_immutability
 -- SEED: Planes de suscripción (datos globales del sistema)
 -- Precios basados en Doc 4 — Monetización
 -- ============================================================
-INSERT INTO plans (name, slug, max_courts, max_staff, price_monthly, price_annual, sort_order, features) VALUES
+INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, sort_order, features) VALUES
 (
-  'Básico', 'basico', 3, 2,
-  5500000,   -- $55.000 ARS en centavos
-  3685000,   -- $36.850 ARS en centavos (mensualizado, 33% descuento anual)
+  'Predio', 'predio', 3,
+  4700000,   -- $47.000 ARS en centavos
+  3760000,   -- $37.600 ARS en centavos (mensualizado, 20% descuento anual)
   1,
-  '{"history_months": 6, "advanced_reports": false, "export_formats": ["csv_basic"], "api_access": false, "support_channels": ["email"]}'
+  '{"history_months": 6, "export_formats": ["csv"], "api_access": false, "support_channels": ["email"]}'
 ),
 (
-  'Estándar', 'estandar', 6, 5,
-  8800000,   -- $88.000 ARS
-  5896000,   -- $58.960 ARS (33% descuento anual)
+  'Complejo', 'complejo', 6,
+  7400000,   -- $74.000 ARS
+  5920000,   -- $59.200 ARS (20% descuento anual)
   2,
-  '{"history_months": 12, "advanced_reports": true, "export_formats": ["csv_basic", "csv_full"], "api_access": false, "support_channels": ["email"]}'
+  '{"history_months": 12, "export_formats": ["csv", "excel"], "api_access": false, "support_channels": ["email"]}'
 ),
 (
-  'Full', 'full', NULL, NULL,  -- NULL = ilimitado
-  12000000,  -- $120.000 ARS
-  8040000,   -- $80.400 ARS (33% descuento anual)
+  'Estadio', 'estadio', NULL,  -- NULL = ilimitado
+  10100000,  -- $101.000 ARS
+  8080000,   -- $80.800 ARS (20% descuento anual)
   3,
-  '{"history_months": null, "advanced_reports": true, "export_formats": ["csv_basic", "csv_full", "excel"], "api_access": true, "support_channels": ["email", "priority_email"]}'
+  '{"history_months": null, "export_formats": ["csv", "excel"], "api_access": true, "support_channels": ["email", "priority_email"]}'
 );
 
 -- Versión de precios inicial
@@ -1370,7 +1367,7 @@ FROM plans;
 | 18 | `audit_logs` | Aislada | Sí | ~3.000.000/año |
 | 19 | `tenant_player_bans` | Aislada | Sí | ~500 |
 
-**Total: 19 tablas** (7 globales + 12 aisladas con RLS).
+**Total: 19 tablas de negocio + 1 tabla de sistema (`system_admins`)** (6 globales + 12 aisladas con RLS + 1 híbrida + 1 sistema).
 
 > [!NOTE]
 > **† RLS Dual**: `bookings` y `player_tenant_relationships` tienen dos tipos de policies que se evalúan con OR:

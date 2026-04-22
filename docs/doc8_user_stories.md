@@ -1041,9 +1041,9 @@ para mantener mi complejo actualizado sin llamar a soporte.
 
 ✅ Happy Path
 - [ ] Dado que estoy en Settings → Canchas, cuando hago click en "+ Nueva cancha", entonces veo formulario con: nombre, tipo de superficie (césped sintético, cemento, etc.), capacidad (5, 7, 8, 9, 11), y si es cubierta o no.
-- [ ] Dado que creo una cancha, cuando confirmo, entonces Court se crea con status=`active`, con pricing default (weekday/weekend × franja horaria) editable.
-- [ ] Dado que quiero editar una cancha existente, cuando hago click en ella, entonces puedo editar: nombre, superficie, precio por franja, estado (active/maintenance/inactive).
-- [ ] Dado que pongo una cancha en `maintenance`, entonces los slots futuros aparecen como bloqueados en la grilla y las reservas existentes se mantienen.
+- [ ] Dado que creo una cancha, cuando confirmo, entonces Court se crea con status=`online`, con pricing default (weekday/weekend × franja horaria) editable.
+- [ ] Dado que quiero editar una cancha existente, cuando hago click en ella, entonces puedo editar: nombre, superficie, precio por franja, estado (`online`/`offline`).
+- [ ] Dado que pongo una cancha en `offline`, entonces los slots futuros desaparecen de la grilla y las reservas existentes se mantienen hasta que el admin las gestione.
 - [ ] Dado que agrego una cancha y mi plan no la cubre (ej: plan Predio con 3 canchas y quiero la 4ta), entonces veo: "Tu plan soporta hasta {N} canchas. Upgrade para agregar más."
 
 ❌ Edge Cases
@@ -1111,9 +1111,9 @@ para que el sistema aplique mis reglas automáticamente sin intervención manual
 
 **Historia**:
 Como Marcelo,
-cuando contrato un nuevo recepcionista,
-quiero darle acceso al sistema con permisos limitados,
-para que pueda gestionar reservas y caja sin acceder a la configuración ni los reportes.
+cuando incorporo un nuevo empleado al complejo,
+quiero invitarlo como `admin` con su propio email,
+para que pueda operar el sistema completo. Las zonas sensibles (precios, suscripción, configuración) están protegidas con un PIN compartido que solo yo conozco.
 
 **Criterios de Aceptación**:
 
@@ -1121,7 +1121,7 @@ para que pueda gestionar reservas y caja sin acceder a la configuración ni los 
 - [ ] Dado que estoy en Settings → Staff → "+ Agregar", cuando ingreso email + nombre, entonces se envía magic link al email del nuevo admin.
 - [ ] Dado que el staff activa su cuenta, cuando ingresa al panel, entonces accede a todo el sistema. Las zonas sensibles (precios, suscripción, configuración) requieren ingreso de PIN de administrador.
 - [ ] Dado que quiero desactivar un staff, cuando lo desactivo, entonces pierde acceso al panel inmediatamente y sus sesiones activas se invalidan.
-- [ ] Dado que quiero cambiar el rol de un staff, cuando lo edito, entonces los permisos se actualizan al próximo login.
+- [ ] Dado que quiero revocar el PIN de zonas sensibles (ej: un empleado se fue), cuando lo cambio en Settings → Seguridad, entonces todos los empleados deben recibir el nuevo PIN del dueño por canal privado.
 
 ❌ Edge Cases
 - [ ] Si el único admin se desactiva → error: "El complejo debe tener al menos un admin."

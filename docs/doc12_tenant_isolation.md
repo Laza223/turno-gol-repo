@@ -61,8 +61,9 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 5 | `price_versions` | PriceVersion | Historial de precios de planes, datos del sistema. |
 | 6 | `processed_webhooks` | ProcessedWebhook | Idempotencia de webhooks de MP, datos del sistema. |
 | 7 | `player_tenant_relationships` | PlayerTenantRelationship | Relación jugador↔complejo. Global pero con RLS dual (staff ve por tenant, jugador ve los suyos). |
+| 8 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel `/internal` con MFA + IP whitelist. |
 
-**Total: 6 tablas globales + 1 con RLS dual (`player_tenant_relationships`).**
+**Total: 6 tablas globales + 1 con RLS dual (`player_tenant_relationships`) + 1 sistema (`system_admins`).**
 
 > [!NOTE]
 > † `player_tenant_relationships` tiene `tenant_id` y RLS dual: una policy para staff (por tenant) y otra para jugador (por player_id).
@@ -318,7 +319,38 @@ Request HTTP entrante
 **Invariantes**:
 - Para requests de **staff**: `app.current_tenant_id` está seteado. Si el middleware 3 falla, el request se rechaza con 403.
 - Para requests de **jugador**: `app.current_player_id` está seteado. No se setea `app.current_tenant_id`. Steps 4 (Subscription Guard) y 5 (Feature Gate) se saltean.
-- **Nunca ambos**: un request es de staff O de jugador, nunca los dos.
+- Para requests de **system_admin** (panel `/internal`): `app.current_system_admin_id` está seteado. Ver §4.4 abajo.
+- **Nunca más de uno**: un request es de staff, jugador O system_admin. Nunca combinados.
+
+### 4.4 Middleware del panel interno (`/internal/*`)
+
+El panel interno es una ruta separada para el equipo de TurnoGol (no es accesible por staff ni jugadores).
+
+```
+Request HTTP a /internal/*
+      │
+      ▼
+  1. IP Whitelist          (solo IPs autorizadas del equipo TurnoGol)
+      │
+      ▼
+  2. Auth Middleware        (verifica JWT de tipo 'system_admin')
+      │
+      ▼
+  3. MFA Check             (verifica que el system_admin tiene MFA habilitado y activo)
+      │
+      ▼
+  4. System Admin Context  (setea app.current_system_admin_id con SET LOCAL)
+      │
+      ▼
+  5. Route Handler         (acceso cross-tenant via service role para dashboard interno)
+```
+
+**Diferencias clave vs staff y jugador:**
+- Step 4 setea `app.current_system_admin_id`, NO `app.current_tenant_id` ni `app.current_player_id`.
+- El service role se usa para acceder cross-tenant (ver métricas globales de la plataforma).
+- Los steps de Subscription Guard y Feature Gate no aplican (el sistema no tiene suscripción SaaS).
+- La variable `app.current_system_admin_id` protege la tabla `system_admins` (un admin solo lee su propio registro).
+- Las queries del panel interno que acceden a datos de tenants usan el service role de Supabase (bypasea RLS), NO `app.current_tenant_id`.
 
 ---
 

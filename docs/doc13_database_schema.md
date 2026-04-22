@@ -1100,19 +1100,9 @@ CREATE TABLE tenant_player_bans (
   banned_by       UUID REFERENCES staff_users(id)
 );
 
--- Îndice único PARCIAL (Fix #6 — Hallazgo Opus 4.7):
--- Solo previene solapamiento de bans ACTIVOS. Un ban expirado (banned_until < NOW())
--- no bloquea un nuevo INSERT, preservando el historial de bans anteriores.
--- El Flujo 4D (3 no-shows) puede re-banear al mismo jugador sin violar la constraint.
-CREATE UNIQUE INDEX uq_tenant_player_active_ban
-  ON tenant_player_bans (tenant_id, player_id)
-  WHERE (banned_until IS NULL OR banned_until > NOW());
-
--- Îndices
+-- Îndices (sin predicado NOW() — solo para performance, no como constraint)
 CREATE INDEX idx_tenant_player_bans_tenant ON tenant_player_bans(tenant_id);
 CREATE INDEX idx_tenant_player_bans_player ON tenant_player_bans(player_id);
-CREATE INDEX idx_tenant_player_bans_active ON tenant_player_bans(tenant_id, player_id)
-  WHERE (banned_until IS NULL OR banned_until > NOW()); -- índice para lookup rápido de ban vigente
 
 -- RLS
 ALTER TABLE tenant_player_bans ENABLE ROW LEVEL SECURITY;
@@ -1168,7 +1158,13 @@ CREATE POLICY player_own_bans_select ON tenant_player_bans FOR SELECT
   USING (player_id = current_setting('app.current_player_id', true)::UUID);
 
 COMMENT ON TABLE tenant_player_bans IS 'Bans de jugadores por complejo. Ban global en players.status.';
-COMMENT ON INDEX uq_tenant_player_active_ban IS 'Previene solapamiento de bans ACTIVOS. Permite historial de bans expirados y re-baneos.';
+COMMENT ON TRIGGER enforce_single_active_ban ON tenant_player_bans IS
+  'Previene insertar un ban activo si ya hay otro vigente para el mismo (tenant_id, player_id). '
+  'Permite re-banear cuando el ban anterior expiró. '
+  'Reemplaza al índice parcial uq_tenant_player_active_ban (eliminado por incompatibilidad de '
+  'NOW() con índices parciales en PostgreSQL — Fix #10).';
+COMMENT ON INDEX idx_tenant_player_bans_active IS
+  'Lookup rápido de bans por (tenant_id, player_id, banned_until). Sin predicado NOW() para cumplir IMMUTABLE.';
 ```
 
 ### 3.12 `player_tenant_relationships` — Relación jugador ↔ complejo
@@ -1320,7 +1316,7 @@ CREATE TABLE daily_cash_closes (
 
   -- Efectivo del cajón (declarado manualmente por el admin)
   declared_cash    INTEGER NOT NULL DEFAULT 0,      -- Lo que hay físicamente en el cajón
-  diff_amount      INTEGER NOT NULL DEFAULT 0,      -- declared_cash - balance_esperado_efectivo
+  diff_amount      INTEGER NOT NULL DEFAULT 0,      -- Ver COMMENT abajo
 
   -- Metadata
   note             TEXT,                            -- Observaciones del cierre
@@ -1351,7 +1347,10 @@ REVOKE UPDATE, DELETE ON daily_cash_closes FROM turnogol_app;
 COMMENT ON TABLE daily_cash_closes IS
   'Cierre de caja diario. INMUTABLE post-cierre. Correcciones = cash_flows compensatorios.';
 COMMENT ON COLUMN daily_cash_closes.diff_amount IS
-  'Diferencia entre efectivo declarado y balance esperado. Positivo = sobrante, negativo = faltante.';
+  'Diferencia entre declared_cash y la suma de cash_flows del día filtrados '
+  'por method=''cash'' (NO incluye transfer ni mercadopago, que no están en el cajón físico). '
+  'Positivo = sobrante (más efectivo del esperado). Negativo = faltante. '
+  'Calculado en el momento del cierre, NUNCA recalculado después.';
 ```
 
 ---
@@ -1499,8 +1498,10 @@ CREATE TRIGGER enforce_booking_invariants
 -- }
 --
 -- REGLA INVIOLABLE: este patrón aplica para TODA transición desde pending_payment.
--- Los estados finales (expired, completed, no_show, canceled_*) están protegidos
--- adicionalmente por el trigger enforce_booking_immutability (§4.2).
+-- Los estados finales (expired, completed, no_show, canceled_refunded, canceled_no_refund)
+-- están protegidos adicionalmente por el trigger `enforce_booking_invariants` (§4.2),
+-- que rechaza cualquier UPDATE que modifique campos distintos de `notes_internal`
+-- cuando OLD.status es terminal.
 ```
 
 > [!IMPORTANT]
@@ -1760,8 +1761,9 @@ Las migrations deben ejecutarse en este orden por dependencias de foreign keys:
    3.2  tenants
    3.3  players
    3.4  staff_users
-   3.5  price_versions (FK → plans)
-   3.6  processed_webhooks
+   3.5  system_admins  (sin FK externas; es el equipo interno de TurnoGol)
+   3.6  price_versions (FK → plans)
+   3.7  processed_webhooks
 4. Tablas aisladas sin FK cruzadas
    4.1  courts (FK → tenants)
    4.2  tenant_staff_members (FK → tenants, staff_users)
@@ -1779,8 +1781,12 @@ Las migrations deben ejecutarse en este orden por dependencias de foreign keys:
    5.7  notifications (FK → tenants)
    5.8  audit_logs (FK → tenants)
 6. Triggers y funciones
-7. Seed data (plans, price_versions)
-8. RLS policies (todas las tablas aisladas)
+7. Seed data
+   7.1  plans (planes de suscripción SaaS)
+   7.2  price_versions (versión inicial de precios)
+   7.3  system_admins (bootstrap manual del primer super-admin — NUNCA via la app,
+        siempre via service role o seed.sql separado con credenciales seguras)
+8. RLS policies (todas las tablas aisladas + RLS relacional en players/staff_users/system_admins)
 ```
 
 > [!IMPORTANT]

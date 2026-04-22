@@ -378,8 +378,8 @@ Errors:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/courts` | readonly | Listar canchas del complejo |
-| `GET` | `/api/courts/:id` | readonly | Detalle de cancha |
+| `GET` | `/api/courts` | admin | Listar canchas del complejo |
+| `GET` | `/api/courts/:id` | admin | Detalle de cancha |
 | `POST` | `/api/courts` | admin | Crear cancha |
 | `PATCH` | `/api/courts/:id` | admin | Editar cancha |
 | `PATCH` | `/api/courts/:id/status` | admin | Activar/desactivar |

@@ -82,7 +82,7 @@ PASO 4 — Crear primera cancha (wizard paso 2 de 4)
   │      weekend_morning: 10000, weekend_night: 15000}
   ├── El usuario puede editar los precios o dejar los default
   ├── Botón "Agregar otra cancha" (puede agregar N canchas)
-  ├── Acción: crear Court con status='active' para cada cancha
+  ├── Acción: crear Court con status='online' para cada cancha
   └── Output: avanzar al paso 3
 
 PASO 5 — Horarios de apertura (wizard paso 3 de 4)
@@ -181,7 +181,7 @@ PASO 7 — Dashboard con checklist
 ### Precondiciones
 - El Tenant tiene status `trialing` o `active` (no `suspended`, `past_due` con más de 7 días, ni `churned`)
 - El Tenant tiene `settings.allow_online_booking = true`
-- La cancha tiene status `active`
+- La cancha tiene status `online`
 - El slot solicitado está libre (sin bookings en status `confirmed` o `pending_payment` con overlap)
 
 ### Happy Path — CON SEÑA (el complejo requiere depósito)
@@ -696,7 +696,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 ### Precondiciones
 - StaffUser tiene rol `admin`
 - El Tenant tiene status `trialing` o `active`
-- La cancha tiene status `active`
+- La cancha tiene status `online`
 - El día + horario elegido está libre de forma recurrente (no hay otro abonado activo con overlap en esa cancha + día + hora)
 
 ### Happy Path
@@ -1250,7 +1250,7 @@ PAST_DUE ── retry 2 ──── retry 3 ──── SUSPENDED ────
 
 ### Precondiciones
 - Tenant con status `trialing` o `active`
-- StaffUser con rol `admin` (solo el admin puede cancelar, no el recepcionista)
+- StaffUser con rol `admin` (solo el admin puede cancelar, no otro admin sin PIN)
 - TenantSubscription con status `trialing` o `active`
 
 ### Happy Path

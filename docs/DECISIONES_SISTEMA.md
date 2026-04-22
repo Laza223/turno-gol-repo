@@ -335,7 +335,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: El admin marca la reserva como `no_show`. Si hay seña pagada, se retiene. Si el jugador acumula 3 no-shows en 30 días en el mismo complejo, se le banea automáticamente por 7 días en ESE complejo.
 **Pregunta**: ¿El ban automático por 3 no-shows está bien? ¿Querés que sea configurable?
 
-**Tu respuesta**: En ATC lo manejan así: Política de No-show: El administrador marca la inasistencia manualmente, lo que permite al sistema retener la seña, generar una deuda en el perfil del jugador y aplicar bloqueos automáticos en la App para futuras reservas hasta que se regularice la situación. Lo manejamos igual y si queres investigamos un poco mas a fondo.
+**Tu respuesta**: El proceso en ATC es así: "Política de No-show: El administrador marca la falta manualmente para ejecutar la retención de la seña, generar una deuda en la ficha del jugador y activar bloqueos automáticos que impiden nuevas reservas online hasta que se regularice la situación.", haremos lo mismo.
 
 ---
 
@@ -344,7 +344,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Por complejo. Si te banean en Complejo A, podés seguir reservando en Complejo B.
 **Pregunta**: ¿Así está bien o querés ban global?
 
-**Tu respuesta**:
+**Tu respuesta**: Ban por No-show: Restricción por complejo. Cada club gestiona su propia "Lista Negra" y base de datos de deudores; un bloqueo en un predio no afecta la capacidad del jugador para reservar en otros complejos.
 
 ---
 
@@ -361,7 +361,11 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 
 **Pregunta**: ¿Estos precios, límites de canchas y staff están bien? ¿Cambiarías algo?
 
-**Tu respuesta**:
+**Tu respuesta**: Los nombres serian:
+
+- Plan Predio (1-3 canchas) $47.000
+- Plan Complejo (4-6 canchas) $74.000
+- Plan Estadio / Multi-Sede (7+ canchas) $101.000
 
 ---
 
@@ -370,7 +374,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. 30 días gratis con acceso completo (features del plan Full), sin pedir tarjeta.
 **Pregunta**: ¿Está bien 30 días? ¿Querés que pida tarjeta al registrarse (para mejorar conversión)?
 
-**Tu respuesta**:
+**Tu respuesta**: Está bien 30 días con acceso completo sin pedir tarjeta al inicio.
 
 ---
 
@@ -379,7 +383,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: 33% de descuento en plan anual.
 **Pregunta**: ¿33% está bien? ¿O preferís 20% como ATC?
 
-**Tu respuesta**:
+**Tu respuesta**: 20% de descuento en plan anual, prefiero que la gente pague mes a mes.
 
 ---
 
@@ -388,7 +392,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Excluido. Se suma 21% en el checkout.
 **Pregunta**: ¿Está bien así?
 
-**Tu respuesta**:
+**Tu respuesta**: Está bien así.
 
 ---
 
@@ -399,7 +403,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Solo email (Resend). WhatsApp descartado para v1 por costos.
 **Pregunta**: ¿Estás de acuerdo con solo email? ¿O querés push notifications en la PWA?
 
-**Tu respuesta**:
+**Tu respuesta**: Solo email. Es muy caro el tema del whatsapp. También me gustaría usar notificaciones push en la PWA.
 
 ---
 
@@ -412,13 +416,13 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 | Recordatorio 24hs antes | Jugador | Email |
 | Cancelación de reserva | Jugador | Email |
 | Nuevo registro (bienvenida) | Admin | Email |
-| Trial por vencer (día 21, 25, 28, 30) | Admin | Email |
+| Trial por vencer (día 21, 28, último día) | Admin | Email |
 | Cobro fallido (dunning) | Admin | Email |
 | Suspensión por falta de pago | Admin | Email |
 
 **Pregunta**: ¿Falta alguna? ¿Sobrá alguna?
 
-**Tu respuesta**:
+**Tu respuesta**: Recordatorio 24hs antes no, es mucho y por ahora no estoy para afrontar el gasto de notificaciones masivas. En el futuro si. Aparte el jugador puede entrar a la web para ver sus reservas.
 
 ---
 
@@ -428,7 +432,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Contexto**: En ATC, el admin ve la reserva aparecer en la grilla en tiempo real. Pero no le llega un email.
 **Pregunta**: ¿Querés que le llegue un email al admin cada vez que un jugador reserva online? ¿O solo lo ve en la grilla?
 
-**Tu respuesta**:
+**Tu respuesta**: Si bien está bueno que aparezca en tiempo real, también está bueno. También estaría bueno que le lleguen notificaciones push y un sonido de alerta para avisarle que hay una nueva reserva.
 
 ---
 
@@ -440,7 +444,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Contexto en ATC**: ATC tiene caja (ingresos) y stock pero NO gestión de gastos.
 **Pregunta**: ¿Querés gestión de gastos (luz, agua, sueldos) o solo ingresos?
 
-**Tu respuesta**:
+**Tu respuesta**: No, no quiero gestión de gastos. Solo ingresos y sin stock. No me gusta tocar lo que no sé. Para eso ya tengo otros sistemas. Este es solo para reservas.
 
 ---
 
@@ -449,7 +453,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. El admin puede cerrar la caja del día, declarar cuánto efectivo tiene, y el sistema calcula la diferencia.
 **Pregunta**: ¿Esto te parece útil o es overkill para v1?
 
-**Tu respuesta**:
+**Tu respuesta**: Si, tiene que tener cierre de caja diario. Es FUNDAMENTAL para llevar control del dinero.
 
 ---
 
@@ -458,7 +462,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. Entidad `Product` con stock, categorías, alerta de stock bajo.
 **Pregunta**: ¿Querés gestión de stock en v1 o lo dejás para después?
 
-**Tu respuesta**:
+**Tu respuesta**: No, no quiero gestión de stock. Solo ingresos y sin stock. No me gusta tocar lo que no sé. Para eso ya tengo otros sistemas. Este es solo para reservas.
 
 ---
 
@@ -469,7 +473,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Es una PWA (Progressive Web App). No hay app nativa en las stores.
 **Pregunta**: ¿Está bien PWA para v1? ¿O querés app nativa desde el inicio?
 
-**Tu respuesta**:
+**Tu respuesta**: Está bien PWA para v1. No quiero app nativa desde el inicio. En el futuro lo veremos.
 
 ---
 
@@ -478,7 +482,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. La página pública de cada complejo (`turnogol.com.ar/complejo-san-martin`) muestra disponibilidad. El jugador puede buscar en varios complejos.
 **Pregunta**: ¿Querés un "buscador/marketplace" donde el jugador ponga su zona y vea todos los complejos cerca? ¿O cada complejo tiene su link independiente?
 
-**Tu respuesta**:
+**Tu respuesta**: Si, también estaría bueno un buscador/marketplace donde el jugador ponga su zona y vea todos los complejos cerca. Pienso implementar el portal de ese estilo y todo eso ahora.
 
 ---
 
@@ -487,7 +491,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. En la página pública se muestra el precio del slot.
 **Pregunta**: ¿Está bien? ¿Algunos complejos prefieren ocultar precios?
 
-**Tu respuesta**:
+**Tu respuesta**: Si, ve los precios antes de reservar.
 
 ---
 
@@ -496,18 +500,14 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. Magic link + Google OAuth para jugadores. Solo magic link para staff.
 **Pregunta**: ¿Querés Apple login también? ¿O solo Google + magic link?
 
-**Tu respuesta**:
-
----
-
-## 12. ONBOARDING
+**Tu respuesta**: Magic Link y GOOGLE seria genial. No hace falta Apple. Staff no existe.
 
 ### P12.1 — ¿4 pasos en el wizard está bien?
 
 **Estado actual**: Paso 1 (datos complejo) → Paso 2 (canchas) → Paso 3 (horarios) → Paso 4 (seña/MP).
 **Pregunta**: ¿Cambiarías algo de los pasos?
 
-**Tu respuesta**:
+**Tu respuesta**: Excelente! Me gusta.
 
 ---
 
@@ -516,7 +516,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Sí. Se pre-cargan precios razonables ($8k-$15k ARS según franja) para que el admin solo edite lo que difiere.
 **Pregunta**: ¿Te parece bien? ¿Preferís que el admin tenga que poner sus precios a mano?
 
-**Tu respuesta**:
+**Tu respuesta**: Mmmm no, me parece raro que pongamos precios pre-cargados. Cada complejo maneja todos precios distintos. Lo mejor es que lo ponga a mano el admin de como ya cobra en su complejo.
 
 ---
 
@@ -527,7 +527,14 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: Ocupación por cancha, ingresos por período, top jugadores, tasa de no-show, exportación CSV/Excel.
 **Pregunta**: ¿Falta algún reporte que consideres importante?
 
-**Tu respuesta**:
+**Tu respuesta**: Para mí deberían tener:
+
+- Ingresos por cancha
+- Ingresos por día
+- Ingresos por mes
+- Total de reservas por cancha
+- Total de reservas por día
+- Total de reservas por mes
 
 ---
 

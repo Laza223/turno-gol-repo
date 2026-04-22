@@ -213,7 +213,7 @@ status            enum          ver state machine
 price_snapshot    integer       Precio en centavos ARS al momento de crear la reserva (inmutable)
 deposit_amount    integer       Monto de seña cobrada en centavos (0 si no se exigió seña)
 deposit_status    enum          'not_required' | 'pending' | 'paid' | 'refunded' | 'captured'
-payment_method    enum?         'mercadopago' | 'cash' | 'transfer'
+payment_method    enum?         'mercadopago' | 'cash' | 'transfer' | 'other'
 payment_id        UUID?         FK → payments (el cobro de la seña, si es MP)
 notes_internal    text?         Notas visibles solo para el staff
 notes_player      text?         Notas visibles para el jugador
@@ -752,7 +752,7 @@ banned_by         UUID?         FK → staff_users (quién lo baneó)
 ```
 
 ### Invariantes
-1. **UNIQUE (tenant_id, player_id)** — un solo ban activo por jugador por complejo.
+1. **Un solo ban _activo_ por jugador por complejo** — enforceado con un índice único parcial en DB (`WHERE banned_until IS NULL OR banned_until > NOW()`), NO con un UNIQUE plano. Esto preserva el historial de bans expirados y permite re-banear al mismo jugador sin borrar registros anteriores.
 2. Si `banned_until` es NULL, el ban es permanente hasta que un admin lo levante.
 3. El Flujo 4D (3 no-shows en 30 días) crea automáticamente un ban temporal.
 

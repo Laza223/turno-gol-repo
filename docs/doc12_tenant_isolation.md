@@ -73,6 +73,14 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 > a otro complejo, DEBE tener `tenant_id` y RLS. No hay excepciones.
 > Si hay duda sobre si una tabla necesita `tenant_id`, la respuesta es SÍ.
 
+> [!NOTE]
+> **RLS RELACIONAL en `players` y `staff_users` (Fix #5 — Auditoría Opus 4.7)**:
+> Aunque estas tablas no tienen `tenant_id`, sí tienen RLS activo (`ENABLE ROW LEVEL SECURITY`).
+> Las policies se basan en relaciones: un admin del Tenant A solo puede ver jugadores que
+> tienen al menos una PTR con su complejo, y solo puede ver staff que está en el mismo tenant.
+> Esto protege la PII cross-tenant en cumplimiento con la Ley 25.326.
+> Ver implementación completa en Doc 13 §2.2 (players) y §2.3 (staff_users).
+
 ---
 
 ## 3. Implementación RLS en PostgreSQL
@@ -580,11 +588,16 @@ CREATE TABLE tenant_player_bans (
   reason TEXT NOT NULL,
   banned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   banned_until TIMESTAMPTZ,  -- NULL = permanente
-  banned_by UUID REFERENCES staff_users(id),
-  UNIQUE(tenant_id, player_id)  -- un jugador solo puede tener un ban activo por complejo
+  banned_by UUID REFERENCES staff_users(id)
 );
+-- Constraint: índice único PARCIAL (no UNIQUE plano)
+-- Solo bloquea bans activos simultáneos. Permite historial de bans expirados.
+CREATE UNIQUE INDEX uq_tenant_player_active_ban
+  ON tenant_player_bans (tenant_id, player_id)
+  WHERE (banned_until IS NULL OR banned_until > NOW());
+
 ALTER TABLE tenant_player_bans ENABLE ROW LEVEL SECURITY;
--- Policies...
+-- Policies de staff (by tenant_id) + policy de jugador (lee sus propios bans)
 
 -- Ban global (el sistema banea a Agustín de TODA la plataforma)
 -- Se controla con el campo `status` de la tabla `players`
@@ -606,6 +619,19 @@ Agustín intenta reservar en Complejo A
       ▼
   3. Procesar la reserva normalmente
 ```
+
+> [!IMPORTANT]
+> **Mecanismo de verificación de ban en contexto de jugador (Fix #7 — Auditoría Opus 4.7)**:
+> El endpoint `POST /api/player/bookings` verifica el ban ANTES de crear la reserva.
+> Este endpoint corre con contexto de jugador (`app.current_player_id` seteado, sin `app.current_tenant_id`).
+> Las policies de tenant en `tenant_player_bans` devolverían 0 filas silenciosamente
+> → jugador baneado pasaría la verificación (fail-open).
+>
+> **Solución implementada**: se agrega la policy `player_own_bans_select` que permite
+> al jugador leer sus propios bans via `app.current_player_id`. El endpoint del jugador
+> usa esta policy para la verificación. Para la creación del booking, el endpoint
+> también setea temporalmente `app.current_tenant_id` (derivado del `tenant_slug` validado).
+> Ver implementación en Doc 13 §3.11.
 
 ---
 

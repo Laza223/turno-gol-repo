@@ -333,7 +333,7 @@ WHERE court_id = $court_id
   AND date = $date
   AND time_start < $time_end
   AND time_end > $time_start
-  AND status IN ('pending', 'confirmed');
+  AND status IN ('pending_payment', 'confirmed');
 
 -- 3. Si = 0: crear la reserva
 -- Si > 0: rollback y devolver error "Este turno acaba de ser tomado"

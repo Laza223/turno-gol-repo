@@ -121,12 +121,18 @@ CREATE TYPE payment_method AS ENUM ('cash', 'transfer', 'mercadopago', 'other');
 
 -- Estado del pago
 CREATE TYPE payment_status AS ENUM (
-  'pending',    -- Iniciado, esperando confirmación (incl. in_process CBU 24-48hs)
-  'approved',   -- Pago exitoso
-  'rejected',   -- Pago rechazado
-  'refunded',   -- Reembolsado (total o parcial)
-  'canceled'    -- Cancelado (americano, una L)
+  'pending',      -- Iniciado, esperando confirmación del webhook de MP
+  'in_process',   -- Pago CBU/transferencia bancaria en proceso (24-48hs). Extiende timer del booking a 48hs.
+  'approved',     -- Pago exitoso
+  'rejected',     -- Pago rechazado
+  'refunded',     -- Reembolsado (total o parcial)
+  'canceled'      -- Cancelado (americano, una L)
 );
+COMMENT ON TYPE payment_status IS
+  'in_process: exclusivo para pagos por transferencia bancaria/CBU que tardan 24-48hs. '
+  'Cuando un booking tiene un payment en in_process, el timer de expiración se extiende a 48hs '
+  '(vs. 15min para pending sin in_process). Nunca absorber in_process dentro de pending: '
+  'los reports financieros necesitan discriminar ambos estados.';
 
 -- Tipo de movimiento de caja (sin gastos — TurnoGol solo registra ingresos)
 CREATE TYPE cashflow_type AS ENUM ('income', 'adjustment');
@@ -286,7 +292,35 @@ CREATE UNIQUE INDEX idx_players_email ON players(email);
 CREATE INDEX idx_players_phone ON players(phone) WHERE phone IS NOT NULL;
 CREATE INDEX idx_players_status ON players(status);
 
+-- RLS RELACIONAL en players (Fix #5 — Hallazgo cross-layer Opus 4.7)
+-- players es tabla global (sin tenant_id), pero si no tiene RLS, un staff del Tenant A
+-- podría ejecutar SELECT * FROM players y obtener PII de jugadores de otros complejos.
+-- Solución: RLS basada en relación (player_tenant_relationships o bookings).
+ALTER TABLE players ENABLE ROW LEVEL SECURITY;
+
+-- Staff ve solo jugadores que tienen al menos una relación con su complejo
+CREATE POLICY staff_can_see_related_players ON players FOR SELECT
+  USING (
+    -- El jugador tiene una PTR (relación) con el complejo del staff
+    EXISTS (
+      SELECT 1 FROM player_tenant_relationships ptr
+      WHERE ptr.player_id = players.id
+        AND ptr.tenant_id = current_setting('app.current_tenant_id', true)::UUID
+    )
+    -- O el propio jugador autenticado accediendo a su perfil
+    OR id = current_setting('app.current_player_id', true)::UUID
+  );
+
+-- El jugador puede actualizar su propio perfil
+CREATE POLICY player_update_self ON players FOR UPDATE
+  USING (id = current_setting('app.current_player_id', true)::UUID)
+  WITH CHECK (id = current_setting('app.current_player_id', true)::UUID);
+
+-- INSERT: solo el sistema puede crear jugadores (registro, rol de servicio bypasea RLS)
+-- Los background jobs usan service role que bypasea RLS. No se necesita policy de INSERT aquí.
+
 COMMENT ON TABLE players IS 'Jugadores (B2C). Cross-tenant: reservan en múltiples complejos.';
+COMMENT ON COLUMN players.status IS 'banned = ban global del sistema. anonymized = ARCO Ley 25.326. Bans per-tenant en tenant_player_bans.';
 ```
 
 ### 2.3 `staff_users` — Usuarios del sistema (cross-tenant)
@@ -311,6 +345,25 @@ CREATE TABLE staff_users (
 );
 
 CREATE UNIQUE INDEX idx_staff_users_email ON staff_users(email);
+
+-- RLS RELACIONAL en staff_users (Fix #5 — Hallazgo cross-layer Opus 4.7)
+-- staff_users es global. Sin RLS, un admin del Tenant A podría ver emails y datos
+-- de todos los admins de TODOS los complejos de la plataforma.
+ALTER TABLE staff_users ENABLE ROW LEVEL SECURITY;
+
+-- Staff ve solo colegas que están en el mismo tenant
+CREATE POLICY staff_see_same_tenant_staff ON staff_users FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM tenant_staff_members tsm
+      WHERE tsm.staff_user_id = staff_users.id
+        AND tsm.tenant_id = current_setting('app.current_tenant_id', true)::UUID
+        AND tsm.is_active = true
+    )
+  );
+
+-- El sistema (service role) bypasea RLS para onboarding y login. No se agregan policies
+-- de INSERT/UPDATE aquí: esas operaciones se hacen siempre con el service role.
 
 COMMENT ON TABLE staff_users IS 'Usuarios de staff. La relación con tenants está en tenant_staff_members.';
 ```
@@ -482,7 +535,10 @@ CREATE TABLE bookings (
   price_snapshot  INTEGER NOT NULL,              -- Precio en centavos ARS al momento de crear (INMUTABLE)
   deposit_amount  INTEGER NOT NULL DEFAULT 0,    -- Monto de seña en centavos (0 si no se exigió)
   deposit_status  deposit_status NOT NULL DEFAULT 'not_required',
-  payment_id      UUID REFERENCES payments(id),  -- Cobro de la seña
+  payment_method  payment_method,                -- Medio de pago de la seña (nullable). Fuente de verdad
+                                                 -- para reservas manuales donde no hay fila en payments.
+                                                 -- Para pagos MP: derivar de payments.method vía FK payment_id.
+  payment_id      UUID REFERENCES payments(id),  -- Cobro de la seña (MP)
 
   -- Notas
   notes_internal  TEXT,                          -- Solo visible para staff
@@ -551,11 +607,24 @@ CREATE POLICY player_own_bookings_select ON bookings FOR SELECT
     player_id = current_setting('app.current_player_id', true)::UUID
   );
 
--- Policy Realtime (Supabase subscriptions usan JWT, no current_setting)
--- Permite que el cliente Supabase reciba eventos en tiempo real de su tenant
+-- Policy Realtime: SOLO para rol 'authenticated' (clientes Supabase JS).
+-- El rol turnogol_app (backend) queda sujeto ÚNICAMENTE a policies de current_setting.
+-- Esto preserva la garantía fail-safe: sin contexto seteado = 0 filas incluso con JWT válido.
 CREATE POLICY realtime_tenant_select ON bookings FOR SELECT
+  TO authenticated
   USING (
     tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id')::UUID
+  );
+
+-- Policy jugador INSERT: permite que el flujo B2C cree su propia reserva.
+-- El middleware del endpoint de jugador NO setea app.current_tenant_id (es cross-tenant),
+-- pero SÍ setea app.current_player_id. El tenant_id se deriva del tenant_slug validado
+-- y se pasa explícitamente en el INSERT (ver doc12 §8.5).
+CREATE POLICY player_self_insert ON bookings FOR INSERT
+  WITH CHECK (
+    player_id IS NOT NULL AND
+    player_id = current_setting('app.current_player_id', true)::UUID AND
+    tenant_id IS NOT NULL
   );
 
 CREATE POLICY tenant_isolation_insert ON bookings FOR INSERT
@@ -998,18 +1067,13 @@ CREATE POLICY tenant_isolation_insert ON audit_logs FOR INSERT
 -- Revocar UPDATE y DELETE para el rol de la app
 REVOKE UPDATE, DELETE ON audit_logs FROM turnogol_app;
 
-COMMENT ON TABLE audit_logs IS 'Registro de auditoría. INSERT ONLY. Retención 12 meses.';
+COMMENT ON TABLE audit_logs IS 'Registro de auditoría. INSERT ONLY. Reten ción 12 meses.';
 COMMENT ON COLUMN audit_logs.action IS 'Formato: resource_type.verb → booking.created, payment.refunded';
 ```
 
 ### 3.11 `tenant_player_bans` — Bans de jugadores por complejo
 
 ```sql
--- ============================================================
--- TABLA: tenant_player_bans
--- Ban de un jugador en un complejo específico (no global).
--- Los bans globales se manejan con players.status = 'banned'.
--- ============================================================
 CREATE TABLE tenant_player_bans (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id       UUID NOT NULL REFERENCES tenants(id),
@@ -1018,15 +1082,22 @@ CREATE TABLE tenant_player_bans (
   reason          TEXT NOT NULL,
   banned_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   banned_until    TIMESTAMPTZ,                   -- NULL = permanente
-  banned_by       UUID REFERENCES staff_users(id),
-
-  -- Un jugador solo puede tener un ban activo por complejo
-  CONSTRAINT uq_tenant_player_ban UNIQUE (tenant_id, player_id)
+  banned_by       UUID REFERENCES staff_users(id)
 );
 
--- Índices
+-- Îndice único PARCIAL (Fix #6 — Hallazgo Opus 4.7):
+-- Solo previene solapamiento de bans ACTIVOS. Un ban expirado (banned_until < NOW())
+-- no bloquea un nuevo INSERT, preservando el historial de bans anteriores.
+-- El Flujo 4D (3 no-shows) puede re-banear al mismo jugador sin violar la constraint.
+CREATE UNIQUE INDEX uq_tenant_player_active_ban
+  ON tenant_player_bans (tenant_id, player_id)
+  WHERE (banned_until IS NULL OR banned_until > NOW());
+
+-- Îndices
 CREATE INDEX idx_tenant_player_bans_tenant ON tenant_player_bans(tenant_id);
 CREATE INDEX idx_tenant_player_bans_player ON tenant_player_bans(player_id);
+CREATE INDEX idx_tenant_player_bans_active ON tenant_player_bans(tenant_id, player_id)
+  WHERE (banned_until IS NULL OR banned_until > NOW()); -- índice para lookup rápido de ban vigente
 
 -- RLS
 ALTER TABLE tenant_player_bans ENABLE ROW LEVEL SECURITY;
@@ -1040,6 +1111,17 @@ CREATE POLICY tenant_isolation_update ON tenant_player_bans FOR UPDATE
   WITH CHECK (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 CREATE POLICY tenant_isolation_delete ON tenant_player_bans FOR DELETE
   USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
+
+-- Fix #7 — Hallazgo Opus 4.7: el endpoint de jugador (POST /api/player/bookings)
+-- verifica si el jugador está baneado ANTES de crear la reserva. Cuando corre con
+-- contexto de jugador (solo app.current_player_id seteado), las policies de tenant
+-- devolverían 0 filas silenciosamente → jugador baneado pasa la verificación (fail-open).
+-- Esta policy permite que el jugador lea sus propios bans.
+CREATE POLICY player_own_bans_select ON tenant_player_bans FOR SELECT
+  USING (player_id = current_setting('app.current_player_id', true)::UUID);
+
+COMMENT ON TABLE tenant_player_bans IS 'Bans de jugadores por complejo. Ban global en players.status.';
+COMMENT ON INDEX uq_tenant_player_active_ban IS 'Previene solapamiento de bans ACTIVOS. Permite historial de bans expirados y re-baneos.';
 ```
 
 ### 3.12 `player_tenant_relationships` — Relación jugador ↔ complejo
@@ -1096,6 +1178,17 @@ CREATE POLICY tenant_isolation_update ON player_tenant_relationships FOR UPDATE
 CREATE POLICY player_own_relationships_select ON player_tenant_relationships FOR SELECT
   USING (
     player_id = current_setting('app.current_player_id', true)::UUID
+  );
+
+-- Fix #8 — Hallazgo Opus 4.7: la PTR se crea en la primera reserva del jugador.
+-- El flujo del jugador solo tiene app.current_player_id seteado (no tenant_id).
+-- La policy de INSERT del staff (tenant_isolation_insert) no aplica en ese contexto
+-- → el INSERT falla silenciosamente, rompiendo el consent de Ley 25.326.
+-- Esta policy permite al jugador crear su propia PTR (el tenant_id viene del INSERT explícito).
+CREATE POLICY player_self_ptr_insert ON player_tenant_relationships FOR INSERT
+  WITH CHECK (
+    player_id = current_setting('app.current_player_id', true)::UUID AND
+    tenant_id IS NOT NULL
   );
 
 COMMENT ON TABLE player_tenant_relationships IS
@@ -1252,6 +1345,62 @@ CREATE TRIGGER enforce_price_snapshot_immutability
   BEFORE UPDATE ON bookings
   FOR EACH ROW EXECUTE FUNCTION prevent_price_snapshot_change();
 ```
+
+---
+
+### 4.4 Guard de transición atómica — Anti-Race-Condition en bookings
+
+```sql
+-- ============================================================
+-- PATRÓN OBLIGATORIO: Transición atómica de pending_payment (Fix #9 — Opus 4.7)
+--
+-- PROBLEMA: dos workers concurrentes (job de expiración + webhook de MP)
+-- pueden intentar transicionar el mismo booking desde 'pending_payment'
+-- al mismo tiempo (ej: expira en el segundo 14:59, webhook llega en el 15:00).
+-- Sin control, ambos pueden tener éxito generando audit logs contradictorios:
+--   booking.expired + booking.confirmed sobre la misma reserva.
+--
+-- SOLUCIÓN: UPDATE CONDICIONAL con check de estado previo.
+-- Toda transición desde 'pending_payment' DEBE usar este patrón.
+-- Si rowCount = 0, otro worker ya ganó la carrera → no disparar efectos secundarios.
+-- ============================================================
+
+-- Patrón en TypeScript (service layer):
+--
+-- async function transitionFromPendingPayment(
+--   bookingId: string,
+--   newStatus: 'confirmed' | 'expired',
+--   db: PoolClient
+-- ): Promise<boolean> {
+--   const result = await db.query(`
+--     UPDATE bookings
+--     SET status = $1, updated_at = NOW()
+--     WHERE id = $2
+--       AND status = 'pending_payment'  -- GUARD: solo transicionar si sigue en pending_payment
+--     RETURNING id
+--   `, [newStatus, bookingId]);
+--
+--   if (result.rowCount === 0) {
+--     // Otro worker ya transicionó este booking (race condition ganada por el otro).
+--     // NO disparar efectos secundarios (emails, cash_flows, audit_logs de este intento).
+--     return false;
+--   }
+--
+--   // rowCount === 1: somos el ganador de la carrera. Disparar efectos secundarios.
+--   await sendConfirmationEmail(...);
+--   await createAuditLog(...);
+--   return true;
+-- }
+--
+-- REGLA INVIOLABLE: este patrón aplica para TODA transición desde pending_payment.
+-- Los estados finales (expired, completed, no_show, canceled_*) están protegidos
+-- adicionalmente por el trigger enforce_booking_immutability (§4.2).
+```
+
+> [!IMPORTANT]
+> **Este patrón no es opcional.** El webhook handler de MercadoPago y el job de expiración
+> DEBEN implementarlo. Si `rowCount = 0`, el proceso termina sin efectos secundarios.
+> Loguear el evento como `booking.transition_skipped` para auditabilidad.
 
 ---
 

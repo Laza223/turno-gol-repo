@@ -335,7 +335,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Estado actual**: El admin marca la reserva como `no_show`. Si hay seña pagada, se retiene. Si el jugador acumula 3 no-shows en 30 días en el mismo complejo, se le banea automáticamente por 7 días en ESE complejo.
 **Pregunta**: ¿El ban automático por 3 no-shows está bien? ¿Querés que sea configurable?
 
-**Tu respuesta**:
+**Tu respuesta**: En ATC lo manejan así: Política de No-show: El administrador marca la inasistencia manualmente, lo que permite al sistema retener la seña, generar una deuda en el perfil del jugador y aplicar bloqueos automáticos en la App para futuras reservas hasta que se regularice la situación. Lo manejamos igual y si queres investigamos un poco mas a fondo.
 
 ---
 

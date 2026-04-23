@@ -4,3 +4,5 @@ dist/
 .env
 .env.local
 *.log
+_archive/
+guia_inici

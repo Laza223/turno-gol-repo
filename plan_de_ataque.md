@@ -1,7 +1,7 @@
 # TurnoGol — Plan de Ataque (Claude Code)
 
 > **Propósito**: lista secuencial y quirúrgica de prompts para construir TurnoGol desde cero en Claude Code (VS Code).
-> **Fuente de verdad**: `docs/doc1` a `docs/doc20` + `CLAUDE.md` + `DECISIONES_SISTEMA.md` + `audit_opus4.7-1.md` (+ las dos auditorías posteriores, preservadas en memoria).
+> **Fuente de verdad**: `docs/doc1` a `docs/doc20` + `CLAUDE.md` + `DECISIONES_SISTEMA.md` + `_archive/audits/audit_opus4.7-1.md` (+ las dos auditorías posteriores, preservadas en memoria).
 > **No generar absolutamente nada que contradiga esos documentos.** Si hay ambigüedad, Claude Code debe señalarla antes de escribir código.
 > **Skills activas**: Superpowers (`obra/superpowers`) + UI UX Pro Max (`nextlevelbuilder/ui-ux-pro-max-skill`). Caveman se agrega después de P2.
 
@@ -15,7 +15,7 @@ Estas reglas se aplican **en cada prompt**. No se negocian.
 - Cargar docs con `@docs/docXX.md` **solo** cuando el prompt los necesita.
 - Nunca cargar el repo entero con `@/`. Nunca cargar los 20 docs de una.
 - Cuando un prompt requiere 3+ docs, cargarlos explícitamente con el comentario "por qué".
-- `CLAUDE.md` + `@audit_opus4.7-1.md` (y sus sucesoras) se cargan al inicio de cada sesión larga via `/memory`.
+- `CLAUDE.md` + `@_archive/audits/audit_opus4.7-1.md` (y sus sucesoras) se cargan al inicio de cada sesión larga via `/memory`.
 
 ### 2. Plan Mode Obligatorio (potenciado por Superpowers)
 - **Todos los prompts de implementación** empiezan con:  
@@ -29,7 +29,7 @@ Estas reglas se aplican **en cada prompt**. No se negocian.
 - **`/compact`** al cierre de cada fase (preserva decisiones, comprime contexto).
 - **`/clear`** al saltar entre módulos grandes (ej. de Bookings a Billing).
 - **`/memory`** recarga `CLAUDE.md` tras cada `/clear`.
-- Los archivos `audit_opus4.7-*.md` se mencionan explícitamente en el prompt cada vez que se toca un módulo afectado por esos hallazgos, porque `/compact` puede perder el detalle.
+- Los archivos `_archive/audits/audit_opus4.7-*.md` se mencionan explícitamente en el prompt cada vez que se toca un módulo afectado por esos hallazgos, porque `/compact` puede perder el detalle.
 
 ### 4. Foco en Hallazgos
 Los prompts que toquen código afectado por las 3 auditorías deben **citar textualmente** las correcciones. Los 4 pilares no negociables son:
@@ -145,7 +145,7 @@ Tu plan debe cubrir:
 7. Estructura de carpetas EXACTA según doc14 §3.1 (monolito modular). NO creemos aún los módulos; solo la estructura de directorios vacíos con `.gitkeep`.
 8. Scripts de `package.json`: `dev`, `build`, `typecheck`, `lint`, `test`, `test:integration`, `test:isolation`, `test:e2e`, `db:push`, `db:migrate`, `db:generate`.
 9. `.eslintrc.json`, `.prettierrc`, `.gitignore`.
-10. `CLAUDE.md` ya existe — no tocarlo. El archivo `audit_opus4.7-1.md` también existe, debe quedar en el repo.
+10. `CLAUDE.md` ya existe — no tocarlo. El archivo `_archive/audits/audit_opus4.7-1.md` también existe, debe quedar en el repo.
 
 NO instales nada aún. Presentá el plan con la lista de archivos y el contenido conceptual. Espero tu OK antes de escribir.
 
@@ -162,7 +162,7 @@ Criterio de aceptación: tras ejecutar, `pnpm install && pnpm typecheck` devuelv
 
 > 🧠 **Modelo**: **OPUS** — `/model opus` — el prompt más crítico del proyecto. 21 hallazgos, RLS dual, triggers interconectados, 8 archivos SQL. Errores aquí propagan a todo.
 > **Hito**: `/clear` previo para contexto limpio. `/memory` para recargar CLAUDE.md.
-> **Contexto**: `@CLAUDE.md` `@docs/doc13_database_schema.md` `@docs/doc12_tenant_isolation.md` `@audit_opus4.7-1.md`
+> **Contexto**: `@CLAUDE.md` `@docs/doc13_database_schema.md` `@docs/doc12_tenant_isolation.md` `@_archive/audits/audit_opus4.7-1.md`
 
 ```
 /clear
@@ -174,7 +174,7 @@ Contexto cargado:
 - @CLAUDE.md (reglas del proyecto)
 - @docs/doc13_database_schema.md (schema autoritativo)
 - @docs/doc12_tenant_isolation.md (modelo de aislamiento)
-- @audit_opus4.7-1.md (hallazgos de Fase 1)
+- @_archive/audits/audit_opus4.7-1.md (hallazgos de Fase 1)
 
 Objetivo: generar el SQL completo del schema siguiendo EXACTAMENTE doc13 + los 21 hallazgos de Fase 3 (resumidos al final de este prompt). CERO desviaciones.
 
@@ -482,7 +482,7 @@ Criterio de aceptación:
 
 > 🧠 **Modelo**: **OPUS** — `/model opus` — state machine + concurrencia + `transitionFromPendingPayment` + exclusion constraint. El corazón del sistema.
 > **Hito**: `/clear` obligatorio. Este es el corazón del sistema.
-> **Contexto**: `@CLAUDE.md` `@docs/doc6_entidades.md` (SOLO §ENTIDAD 3 Booking) `@docs/doc7_flujos_e2e.md` (SOLO Flujos 2, 3 y 4) `@audit_opus4.7-1.md`
+> **Contexto**: `@CLAUDE.md` `@docs/doc6_entidades.md` (SOLO §ENTIDAD 3 Booking) `@docs/doc7_flujos_e2e.md` (SOLO Flujos 2, 3 y 4) `@_archive/audits/audit_opus4.7-1.md`
 
 ```
 /clear
@@ -494,7 +494,7 @@ Contexto cargado QUIRÚRGICAMENTE:
 - @CLAUDE.md
 - @docs/doc6_entidades.md (SOLO Entidad 3: Booking — leer state machine, invariantes, transiciones)
 - @docs/doc7_flujos_e2e.md (SOLO Flujos 2, 3 y 4)
-- @audit_opus4.7-1.md
+- @_archive/audits/audit_opus4.7-1.md
 
 Objetivo: `src/modules/bookings/` sin cancelación aún (eso va en P12) y sin pagos integrados aún (P10-11).
 
@@ -633,7 +633,7 @@ Criterio de aceptación: abrir 2 browsers, crear reserva en uno, se ve en el otr
 
 > 🧠 **Modelo**: **OPUS** — `/model opus` — idempotencia, `in_process`, refunds, consistency checks. Pilar B completo.
 > **Hito**: `/clear`. Dinero real entra al sistema.
-> **Contexto**: `@CLAUDE.md` `@docs/doc11_adrs.md` (SOLO ADR-004) `@docs/doc6_entidades.md` (SOLO Entidad 8 Payment) `@audit_opus4.7-1.md`
+> **Contexto**: `@CLAUDE.md` `@docs/doc11_adrs.md` (SOLO ADR-004) `@docs/doc6_entidades.md` (SOLO Entidad 8 Payment) `@_archive/audits/audit_opus4.7-1.md`
 
 ```
 /clear
@@ -645,7 +645,7 @@ Contexto:
 - @CLAUDE.md
 - @docs/doc11_adrs.md (SOLO ADR-004 — MercadoPago)
 - @docs/doc6_entidades.md (SOLO Entidad 8: Payment)
-- @audit_opus4.7-1.md (hallazgos #1 `in_process` y #13 consistencia payment_method)
+- @_archive/audits/audit_opus4.7-1.md (hallazgos #1 `in_process` y #13 consistencia payment_method)
 
 Objetivo: `src/modules/payments/` + gateway abstracto.
 
@@ -683,14 +683,14 @@ Criterio de aceptación:
 ### P11 — Webhook handler de MercadoPago
 
 > 🧠 **Modelo**: **OPUS** — `/model opus` — webhooks fuera de orden, race conditions, audit de pagos tardíos.
-> **Contexto**: `@docs/doc15_api_contracts.md` (webhooks) `@docs/doc11_adrs.md` (SOLO ADR-004) `@audit_opus4.7-1.md`
+> **Contexto**: `@docs/doc15_api_contracts.md` (webhooks) `@docs/doc11_adrs.md` (SOLO ADR-004) `@_archive/audits/audit_opus4.7-1.md`
 
 ```
 Entrá en Plan Mode. NO escribas código hasta que valide tu plan.
 
 Contexto:
 - @docs/doc15_api_contracts.md (SOLO §ruta /api/webhooks/mercadopago)
-- @audit_opus4.7-1.md
+- @_archive/audits/audit_opus4.7-1.md
 
 Objetivo: endpoint de webhook que recibe notificaciones de MP.
 
@@ -895,14 +895,14 @@ Criterio de aceptación:
 ### P16 — Verificación de bans en flujo de reserva
 
 > **Modelo**: Sonnet — `/model sonnet` — verificación de bans, lógica directa.
-> **Contexto**: `@docs/doc13_database_schema.md` (SOLO §3.11 tenant_player_bans) `@audit_opus4.7-1.md` (Fix #7)
+> **Contexto**: `@docs/doc13_database_schema.md` (SOLO §3.11 tenant_player_bans) `@_archive/audits/audit_opus4.7-1.md` (Fix #7)
 
 ```
 Entrá en Plan Mode. NO escribas código hasta que valide tu plan.
 
 Contexto:
 - @docs/doc13_database_schema.md (SOLO §3.11)
-- @audit_opus4.7-1.md (Fix #7 — verificación de ban en contexto de jugador)
+- @_archive/audits/audit_opus4.7-1.md (Fix #7 — verificación de ban en contexto de jugador)
 
 Objetivo: que el endpoint POST /api/player/bookings rechace correctamente bans globales y per-tenant.
 

@@ -7,7 +7,8 @@
       "Bash(node /c/Users/Lazar/Documents/github/TurnoGol/node_modules/pnpm/dist/pnpm.cjs --version)",
       "Bash(node node_modules/pnpm/bin/pnpm.cjs install)",
       "Bash(node node_modules/pnpm/bin/pnpm.cjs typecheck)",
-      "Bash(echo \"Exit code: $?\")"
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(node *)"
     ]
   }
 }

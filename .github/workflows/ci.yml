@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main, claude-code]
+  pull_request:
+    branches: [main]
+
+jobs:
+  isolation-tests:
+    name: RLS isolation suite (BLOCKING)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 54322:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create roles required by 008_revokes.sql
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'turnogol_app') THEN
+              CREATE ROLE turnogol_app NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+              CREATE ROLE authenticated NOLOGIN;
+            END IF;
+          END $$;
+          SQL
+
+      - name: Apply migrations 001..008
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for f in src/shared/db/migrations/0*.sql; do
+            echo ">>> $f"
+            psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: Run isolation suite
+        run: pnpm test:isolation

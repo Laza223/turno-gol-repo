@@ -8,7 +8,12 @@
       "Bash(node node_modules/pnpm/bin/pnpm.cjs install)",
       "Bash(node node_modules/pnpm/bin/pnpm.cjs typecheck)",
       "Bash(echo \"Exit code: $?\")",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(xargs -r docker rm -f)",
+      "Bash(docker run *)",
+      "Bash(docker exec *)",
+      "Bash(DATABASE_URL=postgres://postgres:postgres@127.0.0.1:54322/postgres pnpm test:isolation)",
+      "Bash(docker rm *)"
     ]
   }
 }

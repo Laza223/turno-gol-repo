@@ -76,6 +76,9 @@ dependencies:
     version: 3.25.76
 
 devDependencies:
+  '@faker-js/faker':
+    specifier: ^8.4
+    version: 8.4.1
   '@playwright/test':
     specifier: ^1.43
     version: 1.59.1
@@ -97,6 +100,9 @@ devDependencies:
   autoprefixer:
     specifier: ^10
     version: 10.5.0(postcss@8.5.10)
+  dotenv:
+    specifier: ^16.4
+    version: 16.6.1
   drizzle-kit:
     specifier: ^0.20
     version: 0.20.18
@@ -823,6 +829,11 @@ packages:
   /@eslint/js@8.57.1:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    dev: true
+
+  /@faker-js/faker@8.4.1:
+    resolution: {integrity: sha512-XQ3cU+Q8Uqmrbf2e0cIC/QN43sTBSC8KF12u29Mb47tWrt2hAgBXSgpZMj4Ao8Uk0iJcU99QsOCaIL8934obCg==}
+    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0, npm: '>=6.14.13'}
     dev: true
 
   /@floating-ui/core@1.7.5:
@@ -3314,6 +3325,11 @@ packages:
       domelementtype: 2.3.0
       domhandler: 5.0.3
     dev: false
+
+  /dotenv@16.6.1:
+    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
+    engines: {node: '>=12'}
+    dev: true
 
   /dreamopt@0.8.0:
     resolution: {integrity: sha512-vyJTp8+mC+G+5dfgsY+r3ckxlz+QMX40VjPQsZc5gxVAxLmi64TBoVkP54A/pRAXMXsbu2GMMBrZPxNv23waMg==}

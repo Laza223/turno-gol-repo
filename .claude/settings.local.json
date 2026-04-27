@@ -13,7 +13,10 @@
       "Bash(docker run *)",
       "Bash(docker exec *)",
       "Bash(DATABASE_URL=postgres://postgres:postgres@127.0.0.1:54322/postgres pnpm test:isolation)",
-      "Bash(docker rm *)"
+      "Bash(docker rm *)",
+      "Bash(docker *)",
+      "Bash(DATABASE_URL=postgres://postgres:postgres@127.0.0.1:54322/postgres pnpm test:integration tests/integration/tenant-context.test.ts)",
+      "Bash(python3 *)"
     ]
   }
 }

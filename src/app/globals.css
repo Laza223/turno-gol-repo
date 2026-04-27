@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* TurnoGol Design System — Light Mode */
+    --background: 210 40% 98%;        /* slate-50  #F8FAFC */
+    --foreground: 224 71% 4%;         /* slate-950 #020617 */
+
+    --card: 0 0% 100%;                /* white */
+    --card-foreground: 224 71% 4%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+
+    --primary: 201 96% 32%;           /* sky-700 #0369A1  — CTA / action color */
+    --primary-foreground: 0 0% 100%;  /* white */
+
+    --secondary: 210 40% 96%;         /* slate-100 #F1F5F9 */
+    --secondary-foreground: 222 47% 11%; /* slate-900 */
+
+    --muted: 210 40% 96%;             /* slate-100 */
+    --muted-foreground: 215 16% 47%;  /* slate-500 #64748B */
+
+    --accent: 210 40% 96%;            /* slate-100 — hover bg */
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 51%;         /* red-600 #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;            /* slate-200 #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 201 96% 32%;              /* sky-700 — focus ring */
+
+    --radius: 0.5rem;
+
+    /* Extra semantic tokens */
+    --success: 142 72% 29%;           /* green-700 #15803D */
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;            /* amber-600 #D97706 */
+    --warning-foreground: 0 0% 100%;
+
+    /* Nav sidebar width */
+    --sidebar-width: 240px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  /* Tabular numbers for data */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--secondary)) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

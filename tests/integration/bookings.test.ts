@@ -16,7 +16,6 @@ import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurr
 import {
   BookingNotInConfirmedError,
   CourtOfflineError,
-  DepositFlowNotImplementedError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
 import {
@@ -250,30 +249,33 @@ describe('createOnlineBooking', () => {
     expect(booking.priceSnapshot).toBe(800000)
   })
 
-  it('requiresDeposit=true → DepositFlowNotImplementedError (P10)', async () => {
+  it('requiresDeposit=true → pending_payment with deposit_amount calculated', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(tenant.id)
 
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        createOnlineBooking(
-          tenant.id,
-          {
-            playerId: player.id,
-            courtId,
-            date: FUTURE_DATE,
-            timeStart: '18:00',
-            timeEnd: '19:00',
-            durationMins: 60,
-            requiresDeposit: true,
-            depositPercentage: 30,
-          },
-          tx,
-        ),
+    const booking = await withTenantContext(tenant.id, (tx) =>
+      createOnlineBooking(
+        tenant.id,
+        {
+          playerId: player.id,
+          courtId,
+          date: FUTURE_DATE,
+          timeStart: '18:00',
+          timeEnd: '19:00',
+          durationMins: 60,
+          requiresDeposit: true,
+          depositPercentage: 30,
+        },
+        tx,
       ),
-    ).rejects.toBeInstanceOf(DepositFlowNotImplementedError)
+    )
+
+    expect(booking.status).toBe('pending_payment')
+    expect(booking.depositStatus).toBe('pending')
+    expect(booking.depositAmount).toBe(240000) // 800000 * 30%
+    expect(booking.paymentMethod).toBeNull()
   })
 })
 

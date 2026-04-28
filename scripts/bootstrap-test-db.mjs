@@ -1,5 +1,5 @@
 // Bootstrap a local Postgres for integration tests.
-// Creates required roles, then runs migrations 001..008 from src/shared/db/migrations.
+// Creates required roles, then runs migrations 001..009 from src/shared/db/migrations.
 // Mirrors the CI workflow.
 import postgres from 'postgres'
 import { readdir, readFile } from 'node:fs/promises'

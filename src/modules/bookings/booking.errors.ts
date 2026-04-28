@@ -46,3 +46,10 @@ export class BookingValidationError extends Error {
     this.name = 'BookingValidationError'
   }
 }
+
+export class PlayerBannedError extends Error {
+  constructor(playerId: string, tenantId: string) {
+    super(`Player ${playerId} is banned in tenant ${tenantId}`)
+    this.name = 'PlayerBannedError'
+  }
+}

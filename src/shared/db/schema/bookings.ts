@@ -87,7 +87,7 @@ export const bookings = pgTable(
       'chk_booking_payment_consistency',
       sql`(${table.paymentMethod} = 'mercadopago' AND ${table.paymentId} IS NOT NULL) OR
           (${table.paymentMethod} IN ('cash', 'transfer', 'other') AND ${table.paymentId} IS NULL) OR
-          (${table.paymentMethod} IS NULL AND ${table.depositStatus} = 'not_required')`,
+          (${table.paymentMethod} IS NULL)`,
     ),
     tenantIdx: index('idx_bookings_tenant').on(table.tenantId),
     tenantDateIdx: index('idx_bookings_tenant_date').on(

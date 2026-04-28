@@ -1,5 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { bookings, courts, tenants } from '@/shared/db/schema'
+import {
+  bookings,
+  courts,
+  tenantPlayerBans,
+  tenants,
+} from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { calculatePrice } from '@/modules/courts/court.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
@@ -7,7 +12,7 @@ import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import {
   BookingNotInConfirmedError,
   CourtOfflineError,
-  DepositFlowNotImplementedError,
+  PlayerBannedError,
   PriceUnavailableError,
   SlotTakenError,
 } from './booking.errors'
@@ -179,15 +184,17 @@ export async function createManualBooking(
   }
 }
 
-// ─── createOnlineBooking (Flujo 2 — sin seña por ahora; con seña va en P10) ──
+// ─── createOnlineBooking (Flujo 2) ──────────────────────────────────
+// With deposit: status='pending_payment', deposit_status='pending', payment_method=null
+// (migration 009 allows this; P10 sets payment_method='mercadopago' + payment_id).
+// Without deposit: status='confirmed', deposit_status='not_required'.
+// Always upserts player_tenant_relationships and checks for active bans.
 export async function createOnlineBooking(
   tenantId: string,
   input: CreateOnlineBookingInput,
   tx: DbTx,
 ): Promise<BookingRow> {
-  if (input.requiresDeposit) {
-    throw new DepositFlowNotImplementedError()
-  }
+  await checkPlayerBanOrThrow(tenantId, input.playerId, tx)
 
   const court = await lockCourtOrThrow(input.courtId, tx)
   if (court.tenantId !== tenantId) {
@@ -210,6 +217,11 @@ export async function createOnlineBooking(
     tx,
   )
 
+  const withDeposit = input.requiresDeposit && input.depositPercentage > 0
+  const depositAmount = withDeposit
+    ? Math.round(priceSnapshot * input.depositPercentage / 100)
+    : 0
+
   try {
     const inserted = await tx
       .insert(bookings)
@@ -221,20 +233,56 @@ export async function createOnlineBooking(
         timeStart: input.timeStart,
         timeEnd: input.timeEnd,
         type: 'spontaneous',
-        status: 'confirmed', // sin seña -> confirmed directo
+        status: withDeposit ? 'pending_payment' : 'confirmed',
         priceSnapshot,
-        depositAmount: 0,
-        depositStatus: 'not_required',
+        depositAmount,
+        depositStatus: withDeposit ? 'pending' : 'not_required',
         paymentMethod: null,
         notesPlayer: input.notesPlayer ?? null,
       })
       .returning()
 
-    return rowToBookingRow(inserted[0]!)
+    const booking = rowToBookingRow(inserted[0]!)
+    await upsertPlayerTenantRelationship(tenantId, input.playerId, tx)
+    return booking
   } catch (err) {
     if (isExclusionViolation(err)) throw new SlotTakenError()
     throw err
   }
+}
+
+async function checkPlayerBanOrThrow(
+  tenantId: string,
+  playerId: string,
+  tx: DbTx,
+): Promise<void> {
+  const rows = await tx
+    .select({ id: tenantPlayerBans.id })
+    .from(tenantPlayerBans)
+    .where(
+      and(
+        eq(tenantPlayerBans.tenantId, tenantId),
+        eq(tenantPlayerBans.playerId, playerId),
+        sql`(${tenantPlayerBans.bannedUntil} IS NULL OR ${tenantPlayerBans.bannedUntil} > NOW())`,
+      ),
+    )
+    .limit(1)
+  if (rows.length > 0) throw new PlayerBannedError(playerId, tenantId)
+}
+
+async function upsertPlayerTenantRelationship(
+  tenantId: string,
+  playerId: string,
+  tx: DbTx,
+): Promise<void> {
+  await tx.execute(sql`
+    INSERT INTO player_tenant_relationships (tenant_id, player_id, bookings_count, last_booking_at)
+    VALUES (${tenantId}, ${playerId}, 1, NOW())
+    ON CONFLICT (player_id, tenant_id)
+    DO UPDATE SET
+      bookings_count = player_tenant_relationships.bookings_count + 1,
+      last_booking_at = NOW()
+  `)
 }
 
 // ─── completeBooking ────────────────────────────────────────────────

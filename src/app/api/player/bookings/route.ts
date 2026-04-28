@@ -1,0 +1,144 @@
+import { NextResponse } from 'next/server'
+import { eq, sql } from 'drizzle-orm'
+import { z } from 'zod'
+import { withPlayer } from '@/shared/middleware/with-player'
+import { tenants } from '@/shared/db/schema'
+import {
+  createOnlineBooking,
+  getAvailableSlots,
+} from '@/modules/bookings/booking.service'
+import {
+  CourtOfflineError,
+  PlayerBannedError,
+  PriceUnavailableError,
+  SlotTakenError,
+} from '@/modules/bookings/booking.errors'
+import type { TenantSettings } from '@/modules/tenants/tenant.types'
+
+export const dynamic = 'force-dynamic'
+
+const BLOCKED_STATUSES = ['deleted', 'blocked', 'canceled', 'churned'] as const
+
+const playerBookingSchema = z.object({
+  tenant_slug: z.string().min(1),
+  court_id: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time_start: z.string().regex(/^\d{2}:\d{2}$/),
+  time_end: z.string().regex(/^\d{2}:\d{2}$/),
+  duration_mins: z.union([z.literal(60), z.literal(120)]),
+  notes_player: z.string().max(1000).optional(),
+})
+
+export const POST = withPlayer(async (req, user, tx) => {
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const parsed = playerBookingSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.issues[0]?.message ?? 'Datos inválidos',
+        },
+      },
+      { status: 422 },
+    )
+  }
+
+  const tenantRows = await tx
+    .select({ id: tenants.id, settings: tenants.settings, status: tenants.status })
+    .from(tenants)
+    .where(eq(tenants.slug, parsed.data.tenant_slug))
+    .limit(1)
+
+  const tenant = tenantRows[0]
+  if (!tenant || BLOCKED_STATUSES.includes(tenant.status as typeof BLOCKED_STATUSES[number])) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  }
+
+  // Set tenant context in the same player tx so PTR ON CONFLICT DO UPDATE
+  // passes tenant_isolation_update RLS policy.
+  await tx.execute(
+    sql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
+  )
+
+  const settings = tenant.settings as TenantSettings
+
+  try {
+    const booking = await createOnlineBooking(
+      tenant.id,
+      {
+        playerId: user.playerId,
+        courtId: parsed.data.court_id,
+        date: parsed.data.date,
+        timeStart: parsed.data.time_start,
+        timeEnd: parsed.data.time_end,
+        durationMins: parsed.data.duration_mins,
+        requiresDeposit: settings.requires_deposit,
+        depositPercentage: settings.deposit_percentage,
+        notesPlayer: parsed.data.notes_player,
+      },
+      tx,
+    )
+
+    return NextResponse.json({ data: { booking } }, { status: 201 })
+  } catch (err) {
+    if (err instanceof PlayerBannedError) {
+      return NextResponse.json(
+        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'No podés reservar en este complejo actualmente.', details: { reason: 'PLAYER_BANNED' } } },
+        { status: 422 },
+      )
+    }
+    if (err instanceof SlotTakenError) {
+      const alternatives = await getAlternatives(
+        tenant.id,
+        parsed.data.court_id,
+        parsed.data.date,
+        parsed.data.duration_mins,
+        tx,
+      )
+      return NextResponse.json(
+        {
+          error: {
+            code: 'SLOT_UNAVAILABLE',
+            message: 'Este turno acaba de ser tomado por otro jugador.',
+            details: { suggested_alternatives: alternatives },
+          },
+        },
+        { status: 409 },
+      )
+    }
+    if (err instanceof CourtOfflineError) {
+      return NextResponse.json(
+        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'La cancha no está disponible.' } },
+        { status: 422 },
+      )
+    }
+    if (err instanceof PriceUnavailableError) {
+      return NextResponse.json(
+        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'No hay precio configurado para este horario.' } },
+        { status: 422 },
+      )
+    }
+    throw err
+  }
+})
+
+async function getAlternatives(
+  tenantId: string,
+  courtId: string,
+  date: string,
+  durationMins: 60 | 120,
+  tx: Parameters<typeof createOnlineBooking>[2],
+) {
+  const slots = await getAvailableSlots(tenantId, courtId, date, durationMins, tx)
+  return slots
+    .filter((s) => s.available)
+    .slice(0, 3)
+    .map((s) => ({ time_start: s.timeStart, time_end: s.timeEnd, price: s.price }))
+}

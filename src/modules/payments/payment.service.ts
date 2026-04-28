@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm'
 import { bookings, payments } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
+import { insertSystemAuditLog } from '@/shared/db/audit'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from './mp-gateway'
@@ -16,6 +17,14 @@ import {
   PaymentNotFoundError,
   RefundInvalidStateError,
 } from './payment.errors'
+
+const TERMINAL_BOOKING_STATUSES = [
+  'expired',
+  'canceled_refunded',
+  'canceled_no_refund',
+  'no_show',
+  'completed',
+] as const
 
 const DEPOSIT_TIMER_MINUTES = 15
 
@@ -179,6 +188,31 @@ async function handleApproved(
     tx,
   )
   if (result.won) return { won: true, row: result.row }
+
+  // Won=false: another worker (or expiry job) already moved the booking out of
+  // pending_payment. If the current state is terminal, record a late-payment
+  // attempt for operational follow-up (manual refund decision). The payment row
+  // is upserted regardless to preserve the audit trail.
+  const cur = await tx.execute(sql`
+    SELECT status FROM bookings WHERE id = ${info.externalReference}
+  `)
+  const row = (cur as unknown as Array<{ status: string }>)[0]
+  if (
+    row &&
+    (TERMINAL_BOOKING_STATUSES as ReadonlyArray<string>).includes(row.status)
+  ) {
+    await insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'booking.late_payment_attempt',
+      resourceType: 'booking',
+      resourceId: info.externalReference,
+      metadata: {
+        mpPaymentId: info.mpPaymentId,
+        amount: info.amount,
+        currentStatus: row.status,
+      },
+    })
+  }
   return { won: false }
 }
 

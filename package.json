@@ -24,7 +24,8 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
-    "db:sync-supabase": "node scripts/sync-supabase-migrations.mjs"
+    "db:sync-supabase": "node scripts/sync-supabase-migrations.mjs",
+    "jobs:start": "tsx src/shared/jobs/run-workers.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.0",
@@ -70,6 +71,7 @@
     "supabase": "^1.150",
     "tailwindcss": "^3.4",
     "tailwindcss-animate": "^1.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.4",
     "vitest": "^1.6"
   }

@@ -48,8 +48,21 @@ export class BookingValidationError extends Error {
 }
 
 export class PlayerBannedError extends Error {
-  constructor(playerId: string, tenantId: string) {
+  constructor(
+    public readonly playerId: string,
+    public readonly tenantId: string,
+    public readonly bannedGlobal: boolean = false,
+    public readonly reason?: string,
+    public readonly until?: Date | null,
+  ) {
     super(`Player ${playerId} is banned in tenant ${tenantId}`)
     this.name = 'PlayerBannedError'
+  }
+}
+
+export class BookingNotOwnedByPlayerError extends Error {
+  constructor(bookingId: string, playerId: string) {
+    super(`Booking ${bookingId} does not belong to player ${playerId}`)
+    this.name = 'BookingNotOwnedByPlayerError'
   }
 }

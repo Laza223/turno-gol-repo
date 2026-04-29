@@ -2,14 +2,20 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { eq } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { withTenantContext } from '@/shared/db/client'
+import { withTenantContext, getDb } from '@/shared/db/client'
+import { tenants } from '@/shared/db/schema'
 import {
   createManualBooking,
   completeBooking,
-  markNoShow,
 } from '@/modules/bookings/booking.service'
+import {
+  cancelByAdmin,
+  handleNoShow,
+} from '@/modules/bookings/booking.cancellation'
+import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
 import { createManualBookingSchema } from '@/modules/bookings/booking.schema'
 import {
   SlotTakenError,
@@ -18,6 +24,7 @@ import {
   BookingNotInConfirmedError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
+import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 export type BookingActionResult =
   | { success: true; booking: BookingRow }
@@ -101,7 +108,47 @@ export async function markNoShowAction(
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
-      const booking = await markNoShow(bookingId, staffUserId, tx)
+      const booking = await handleNoShow(bookingId, staffUserId, tx)
+      return { success: true as const, booking }
+    } catch (err) {
+      if (err instanceof BookingNotInConfirmedError) {
+        return { success: false as const, error: 'La reserva no está en estado confirmado.' }
+      }
+      throw err
+    }
+  })
+
+  if (result.success) revalidatePath('/reservas')
+  return result
+}
+
+export async function cancelBookingAction(
+  bookingId: string,
+  reason: string,
+  shouldRefund: boolean,
+): Promise<BookingActionResult> {
+  const { user, tenant } = await requireStaffTenant()
+  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const staffUserId = user.staffUserId ?? ''
+
+  let gateway: PaymentGateway | null = null
+  if (shouldRefund) {
+    const db = getDb()
+    const rows = await db
+      .select({ mpAccessToken: tenants.mpAccessToken })
+      .from(tenants)
+      .where(eq(tenants.id, tenant.id))
+      .limit(1)
+    const mpAccessToken = rows[0]?.mpAccessToken
+    if (mpAccessToken) {
+      gateway = new MercadoPagoGateway(mpAccessToken)
+    }
+  }
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    try {
+      const booking = await cancelByAdmin(bookingId, staffUserId, reason, shouldRefund, gateway, tx)
       return { success: true as const, booking }
     } catch (err) {
       if (err instanceof BookingNotInConfirmedError) {

@@ -1,0 +1,86 @@
+import type PgBoss from 'pg-boss'
+import { getSql, getDb } from '@/shared/db/client'
+import { notifications } from '@/shared/db/schema'
+import { eq, sql as drizzleSql } from 'drizzle-orm'
+import { QUEUE_SEND_EMAIL } from '../definitions'
+import {
+  getNotificationById,
+  markNotificationSent,
+  markNotificationFailed,
+  updateNotificationLastError,
+  resolveRecipientEmail,
+  type NotificationRow,
+} from '@/modules/notifications/notification.service'
+import { getEmailProvider } from '@/modules/notifications/email.provider'
+import { renderTemplate, isTemplateName } from '@/modules/notifications/templates'
+
+/**
+ * Process a single notification. Exported for direct use in tests and
+ * the booking-reminder worker (which enqueues from within the worker process).
+ */
+export async function processSingleNotification(notif: NotificationRow): Promise<void> {
+  if (notif.status === 'sent') return
+
+  const MAX_ATTEMPTS = 3
+  const isLastAttempt = notif.attemptCount >= MAX_ATTEMPTS
+
+  try {
+    if (!notif.templateName || !isTemplateName(notif.templateName)) {
+      throw new Error(`Unknown template: ${notif.templateName}`)
+    }
+    const email = await resolveRecipientEmail(
+      notif.recipientType as 'player' | 'staff' | 'tenant_owner',
+      notif.recipientId,
+      notif.tenantId,
+    )
+    const rendered = renderTemplate(notif.templateName, notif.content)
+    await getEmailProvider().send({ to: email, ...rendered })
+    await markNotificationSent(notif.id)
+    console.log(`[send-email] sent notification ${notif.id} to ${email}`)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[send-email] failed notification ${notif.id} (attempt ${notif.attemptCount}/${MAX_ATTEMPTS}): ${msg}`)
+    if (isLastAttempt) {
+      await markNotificationFailed(notif.id, msg)
+      return
+    }
+    await updateNotificationLastError(notif.id, msg, notif.attemptCount + 1)
+    throw err
+  }
+}
+
+/**
+ * Sweep all queued notifications and send them.
+ * Called by the cron worker. Also usable in integration tests.
+ */
+export async function processQueuedNotifications(): Promise<void> {
+  const sql = getSql()
+  // Fetch up to 50 queued notifications (attempt_count < 3 → still retryable)
+  const rows = await sql<{ id: string }[]>`
+    SELECT id FROM notifications
+    WHERE status = 'queued'
+      AND attempt_count < 3
+    ORDER BY queued_at
+    LIMIT 50
+  `
+  for (const { id } of rows) {
+    const notif = await getNotificationById(id)
+    if (!notif) continue
+    try {
+      await processSingleNotification(notif)
+    } catch {
+      // Error already logged + lastError updated in processSingleNotification.
+      // Continue with remaining notifications.
+    }
+  }
+}
+
+export async function registerSendEmailWorker(boss: PgBoss): Promise<void> {
+  // Cron: every minute — sweep queued notifications.
+  // Route handlers INSERT notifications (status='queued'); this worker dispatches them.
+  await boss.schedule(QUEUE_SEND_EMAIL, '* * * * *', {})
+  await boss.work(QUEUE_SEND_EMAIL, async () => {
+    await processQueuedNotifications()
+  })
+  console.log(`[workers] registered ${QUEUE_SEND_EMAIL} (cron sweep)`)
+}

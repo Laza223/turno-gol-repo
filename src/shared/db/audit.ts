@@ -1,34 +1,44 @@
 import { auditLogs } from '@/shared/db/schema'
 import type { DbTx } from './client'
 
-/**
- * Sentinel UUID for `actor_type='system'` rows in `audit_logs`. The schema
- * requires `actor_id NOT NULL`, but cron jobs / webhook handlers don't have a
- * real user. Using a fixed UUID keeps the column type consistent and makes
- * system-originated rows trivially queryable.
- */
+/** Sentinel UUID for system-originated audit rows (cron jobs, webhooks). */
 export const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
 
-export type SystemAuditEntry = {
+export type AuditEntry = {
   tenantId: string
-  /** Format: `<resource>.<verb>` — e.g. 'booking.late_payment_attempt'. */
+  actorId: string
+  actorType: 'player' | 'staff' | 'system'
+  /** Format: `<resource>.<verb>` — e.g. 'booking.canceled'. */
   action: string
   resourceType: string
   resourceId: string
   metadata?: Record<string, unknown>
 }
 
-export async function insertSystemAuditLog(
+export async function insertAuditLog(
   tx: DbTx,
-  entry: SystemAuditEntry,
+  entry: AuditEntry,
 ): Promise<void> {
   await tx.insert(auditLogs).values({
     tenantId: entry.tenantId,
-    actorId: SYSTEM_ACTOR_ID,
-    actorType: 'system',
+    actorId: entry.actorId,
+    actorType: entry.actorType,
     action: entry.action,
     resourceType: entry.resourceType,
     resourceId: entry.resourceId,
     metadata: entry.metadata ?? null,
+  })
+}
+
+export type SystemAuditEntry = Omit<AuditEntry, 'actorId' | 'actorType'>
+
+export async function insertSystemAuditLog(
+  tx: DbTx,
+  entry: SystemAuditEntry,
+): Promise<void> {
+  await insertAuditLog(tx, {
+    ...entry,
+    actorId: SYSTEM_ACTOR_ID,
+    actorType: 'system',
   })
 }

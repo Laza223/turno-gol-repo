@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
@@ -16,6 +17,29 @@ import {
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
 export const dynamic = 'force-dynamic'
+
+export const GET = withPlayer(async (req: NextRequest, _user, tx) => {
+  const tab = req.nextUrl.searchParams.get('tab') ?? 'upcoming'
+  const dateFilter =
+    tab === 'history'
+      ? sql`AND b.date < NOW()::date`
+      : sql`AND b.date >= NOW()::date`
+
+  const rows = await tx.execute(sql`
+    SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
+           b.type, b.status, b.price_snapshot, b.deposit_status,
+           c.name AS court_name,
+           t.name AS tenant_name, t.slug AS tenant_slug
+    FROM bookings b
+    JOIN courts c ON c.id = b.court_id
+    JOIN tenants t ON t.id = b.tenant_id
+    WHERE 1=1 ${dateFilter}
+    ORDER BY b.date DESC, b.time_start DESC
+    LIMIT 100
+  `)
+
+  return NextResponse.json({ data: { bookings: rows } })
+})
 
 const BLOCKED_STATUSES = ['deleted', 'blocked', 'canceled', 'churned'] as const
 
@@ -90,8 +114,14 @@ export const POST = withPlayer(async (req, user, tx) => {
   } catch (err) {
     if (err instanceof PlayerBannedError) {
       return NextResponse.json(
-        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'No podés reservar en este complejo actualmente.', details: { reason: 'PLAYER_BANNED' } } },
-        { status: 422 },
+        {
+          error: {
+            code: 'PLAYER_BANNED',
+            message: 'No podés reservar en este complejo actualmente.',
+            details: { reason: err.reason ?? 'PLAYER_BANNED', global: err.bannedGlobal },
+          },
+        },
+        { status: 403 },
       )
     }
     if (err instanceof SlotTakenError) {

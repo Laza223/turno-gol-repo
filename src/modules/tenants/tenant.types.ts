@@ -23,8 +23,9 @@ export type TenantSettings = {
     penalty_amount: number | null
   }
   no_show_penalty: {
-    type: 'ban_days'
+    type: 'ban_days' | 'none'
     days: number
+    threshold?: number
   }
   accepts_cash: boolean
   accepts_transfer: boolean

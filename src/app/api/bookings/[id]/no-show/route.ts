@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withTenant } from '@/shared/middleware/with-tenant'
-import { markNoShow } from '@/modules/bookings/booking.service'
+import { handleNoShow } from '@/modules/bookings/booking.cancellation'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
 
 export const dynamic = 'force-dynamic'
@@ -11,7 +11,7 @@ export const POST = withTenant(async (req, user, tx) => {
   const staffUserId = user.staffUserId ?? ''
 
   try {
-    const booking = await markNoShow(bookingId, staffUserId, tx)
+    const booking = await handleNoShow(bookingId, staffUserId, tx)
     return NextResponse.json({ data: booking })
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {

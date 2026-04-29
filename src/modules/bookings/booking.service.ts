@@ -2,10 +2,11 @@ import { and, eq, sql } from 'drizzle-orm'
 import {
   bookings,
   courts,
-  tenantPlayerBans,
   tenants,
 } from '@/shared/db/schema'
+import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import type { DbTx } from '@/shared/db/client'
+import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -194,7 +195,16 @@ export async function createOnlineBooking(
   input: CreateOnlineBookingInput,
   tx: DbTx,
 ): Promise<BookingRow> {
-  await checkPlayerBanOrThrow(tenantId, input.playerId, tx)
+  const banResult = await checkPlayerBanned(input.playerId, tenantId, tx)
+  if (banResult.banned) {
+    throw new PlayerBannedError(
+      input.playerId,
+      tenantId,
+      banResult.bannedGlobal,
+      banResult.reason,
+      banResult.until,
+    )
+  }
 
   const court = await lockCourtOrThrow(input.courtId, tx)
   if (court.tenantId !== tenantId) {
@@ -243,46 +253,12 @@ export async function createOnlineBooking(
       .returning()
 
     const booking = rowToBookingRow(inserted[0]!)
-    await upsertPlayerTenantRelationship(tenantId, input.playerId, tx)
+    await ensurePTR(input.playerId, tenantId, tx)
     return booking
   } catch (err) {
     if (isExclusionViolation(err)) throw new SlotTakenError()
     throw err
   }
-}
-
-async function checkPlayerBanOrThrow(
-  tenantId: string,
-  playerId: string,
-  tx: DbTx,
-): Promise<void> {
-  const rows = await tx
-    .select({ id: tenantPlayerBans.id })
-    .from(tenantPlayerBans)
-    .where(
-      and(
-        eq(tenantPlayerBans.tenantId, tenantId),
-        eq(tenantPlayerBans.playerId, playerId),
-        sql`(${tenantPlayerBans.bannedUntil} IS NULL OR ${tenantPlayerBans.bannedUntil} > NOW())`,
-      ),
-    )
-    .limit(1)
-  if (rows.length > 0) throw new PlayerBannedError(playerId, tenantId)
-}
-
-async function upsertPlayerTenantRelationship(
-  tenantId: string,
-  playerId: string,
-  tx: DbTx,
-): Promise<void> {
-  await tx.execute(sql`
-    INSERT INTO player_tenant_relationships (tenant_id, player_id, bookings_count, last_booking_at)
-    VALUES (${tenantId}, ${playerId}, 1, NOW())
-    ON CONFLICT (player_id, tenant_id)
-    DO UPDATE SET
-      bookings_count = player_tenant_relationships.bookings_count + 1,
-      last_booking_at = NOW()
-  `)
 }
 
 // ─── completeBooking ────────────────────────────────────────────────

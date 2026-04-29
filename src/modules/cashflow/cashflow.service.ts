@@ -1,0 +1,204 @@
+import { sql } from 'drizzle-orm'
+import { cashFlows } from '@/shared/db/schema'
+import type { DbTx } from '@/shared/db/client'
+import {
+  InvalidCashFlowTypeError,
+  InvalidCashFlowCategoryError,
+  DayAlreadyClosedError,
+} from './cashflow.errors'
+import type {
+  CashFlowType,
+  CashFlowCategory,
+  CashFlowRow,
+  DaySummary,
+  CreateCashFlowInput,
+} from './cashflow.types'
+
+const VALID_COMBOS: Record<CashFlowType, CashFlowCategory[]> = {
+  income: ['booking', 'product_sale', 'other'],
+  adjustment: ['other', 'no_show_correction'],
+}
+
+export function validateCashFlowCombo(type: string, category: string): void {
+  if (type !== 'income' && type !== 'adjustment') {
+    throw new InvalidCashFlowTypeError()
+  }
+  const allowed = VALID_COMBOS[type as CashFlowType]
+  if (!allowed.includes(category as CashFlowCategory)) {
+    throw new InvalidCashFlowCategoryError(type, category)
+  }
+}
+
+function artDateOf(ts: Date): string {
+  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
+}
+
+function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
+  return {
+    id: r.id,
+    tenantId: r.tenantId,
+    type: r.type,
+    category: r.category,
+    amount: r.amount,
+    method: r.method,
+    description: r.description,
+    bookingId: r.bookingId ?? null,
+    productId: r.productId ?? null,
+    registeredBy: r.registeredBy,
+    occurredAt: r.occurredAt,
+    createdAt: r.createdAt,
+  }
+}
+
+export async function createCashFlow(
+  tenantId: string,
+  staffUserId: string,
+  input: CreateCashFlowInput,
+  tx: DbTx,
+): Promise<CashFlowRow> {
+  validateCashFlowCombo(input.type, input.category)
+
+  const occurredAt = input.occurredAt ?? new Date()
+  const artDate = artDateOf(occurredAt)
+
+  const closeCheck = await tx.execute(
+    sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${artDate}::date LIMIT 1`,
+  )
+  if ((closeCheck as unknown[]).length > 0) {
+    throw new DayAlreadyClosedError(artDate)
+  }
+
+  const rows = await tx
+    .insert(cashFlows)
+    .values({
+      tenantId,
+      type: input.type,
+      category: input.category,
+      amount: input.amount,
+      method: input.method,
+      description: input.description,
+      bookingId: input.bookingId ?? null,
+      productId: input.productId ?? null,
+      registeredBy: staffUserId,
+      occurredAt,
+    })
+    .returning()
+
+  return rowToCashFlowRow(rows[0]!)
+}
+
+export async function getCashFlows(
+  tenantId: string,
+  date: string,
+  tx: DbTx,
+): Promise<CashFlowRow[]> {
+  const rows = await tx.execute(
+    sql`SELECT * FROM cash_flows
+        WHERE tenant_id = ${tenantId}
+          AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date
+        ORDER BY occurred_at DESC`,
+  )
+  return (rows as unknown as Array<{
+    id: string
+    tenant_id: string
+    type: CashFlowType
+    category: CashFlowCategory
+    amount: number
+    method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+    description: string
+    booking_id: string | null
+    product_id: string | null
+    registered_by: string
+    occurred_at: Date
+    created_at: Date
+  }>).map((r) => ({
+    id: r.id,
+    tenantId: r.tenant_id,
+    type: r.type,
+    category: r.category,
+    amount: r.amount,
+    method: r.method,
+    description: r.description,
+    bookingId: r.booking_id,
+    productId: r.product_id,
+    registeredBy: r.registered_by,
+    occurredAt: new Date(r.occurred_at),
+    createdAt: new Date(r.created_at),
+  }))
+}
+
+export async function getDaySummary(
+  tenantId: string,
+  date: string,
+  tx: DbTx,
+): Promise<DaySummary> {
+  const aggRows = await tx.execute(
+    sql`SELECT type, category, method, SUM(amount)::int AS total
+        FROM cash_flows
+        WHERE tenant_id = ${tenantId}
+          AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date
+        GROUP BY type, category, method`,
+  )
+
+  let totalIncome = 0
+  let totalAdjustments = 0
+  const byCategory: Partial<Record<CashFlowCategory, number>> = {}
+  const byMethod: Partial<Record<'cash' | 'transfer' | 'mercadopago' | 'other', number>> = {}
+
+  for (const row of (aggRows as unknown as Array<{ type: string; category: string; method: string; total: number }>)) {
+    const total = row.total ?? 0
+    if (row.type === 'income') totalIncome += total
+    else if (row.type === 'adjustment') totalAdjustments += total
+
+    const cat = row.category as CashFlowCategory
+    byCategory[cat] = (byCategory[cat] ?? 0) + total
+
+    const meth = row.method as 'cash' | 'transfer' | 'mercadopago' | 'other'
+    byMethod[meth] = (byMethod[meth] ?? 0) + total
+  }
+
+  const closeRows = await tx.execute(
+    sql`SELECT * FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
+  )
+
+  const closeRaw = (closeRows as unknown as Array<{
+    id: string
+    tenant_id: string
+    date: Date
+    total_income: number
+    total_adjustments: number
+    balance: number
+    declared_cash: number
+    diff_amount: number
+    note: string | null
+    closed_by: string
+    closed_at: Date
+  }>)[0] ?? null
+
+  const close = closeRaw
+    ? {
+        id: closeRaw.id,
+        tenantId: closeRaw.tenant_id,
+        date: new Date(closeRaw.date),
+        totalIncome: closeRaw.total_income,
+        totalAdjustments: closeRaw.total_adjustments,
+        balance: closeRaw.balance,
+        declaredCash: closeRaw.declared_cash,
+        diffAmount: closeRaw.diff_amount,
+        note: closeRaw.note,
+        closedBy: closeRaw.closed_by,
+        closedAt: new Date(closeRaw.closed_at),
+      }
+    : null
+
+  return {
+    date,
+    totalIncome,
+    totalAdjustments,
+    balance: totalIncome + totalAdjustments,
+    byCategory,
+    byMethod,
+    isClosed: close !== null,
+    close,
+  }
+}

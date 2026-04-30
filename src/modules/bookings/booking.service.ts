@@ -11,6 +11,10 @@ import { calculatePrice } from '@/modules/courts/court.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import {
+  enqueueNotification,
+  enqueueTenantOwnerNotification,
+} from '@/modules/notifications/notification.service'
+import {
   BookingNotInConfirmedError,
   CourtOfflineError,
   PlayerBannedError,
@@ -62,10 +66,10 @@ function isExclusionViolation(err: unknown): boolean {
 async function lockCourtOrThrow(
   courtId: string,
   tx: DbTx,
-): Promise<{ id: string; tenantId: string; pricing: CourtPricingData }> {
+): Promise<{ id: string; tenantId: string; pricing: CourtPricingData; name: string }> {
   // SELECT FOR UPDATE serializes concurrent INSERTs targeting this court.
   const result = await tx.execute(sql`
-    SELECT id, tenant_id AS "tenantId", pricing, status
+    SELECT id, tenant_id AS "tenantId", pricing, status, name
     FROM courts
     WHERE id = ${courtId}
     FOR UPDATE
@@ -75,11 +79,12 @@ async function lockCourtOrThrow(
     tenantId: string
     pricing: CourtPricingData
     status: string
+    name: string
   }>)[0]
   if (!row || row.status !== 'online') {
     throw new CourtOfflineError(courtId)
   }
-  return { id: row.id, tenantId: row.tenantId, pricing: row.pricing }
+  return { id: row.id, tenantId: row.tenantId, pricing: row.pricing, name: row.name }
 }
 
 async function checkOverlapOrThrow(
@@ -254,6 +259,62 @@ export async function createOnlineBooking(
 
     const booking = rowToBookingRow(inserted[0]!)
     await ensurePTR(input.playerId, tenantId, tx)
+
+    const playerRows = await tx.execute(sql`
+      SELECT first_name, phone FROM players WHERE id = ${input.playerId} LIMIT 1
+    `) as unknown as Array<{ first_name: string; phone: string | null }>
+    const playerFirstName = playerRows[0]?.first_name ?? ''
+    const playerPhone = playerRows[0]?.phone ?? undefined
+
+    const tenantRows = await tx.execute(sql`
+      SELECT name, address FROM tenants WHERE id = ${tenantId} LIMIT 1
+    `) as unknown as Array<{ name: string; address: string }>
+    const tenantName = tenantRows[0]?.name ?? ''
+    const tenantAddress = tenantRows[0]?.address ?? ''
+
+    const dateFormatted = input.date.split('-').reverse().join('/')
+    const timeStart = input.timeStart.slice(0, 5)
+    const timeEnd = input.timeEnd.slice(0, 5)
+
+    if (booking.status === 'confirmed') {
+      await enqueueNotification(
+        {
+          tenantId,
+          recipientType: 'player',
+          recipientId: input.playerId,
+          templateName: 'booking_confirmed',
+          content: {
+            playerFirstName,
+            courtName: court.name,
+            date: dateFormatted,
+            timeStart,
+            timeEnd,
+            tenantName,
+            tenantAddress,
+          },
+          triggerEvent: 'booking.confirmed',
+        },
+        tx,
+      )
+    }
+
+    await enqueueTenantOwnerNotification(
+      {
+        tenantId,
+        templateName: 'admin_new_booking',
+        content: {
+          courtName: court.name,
+          date: dateFormatted,
+          timeStart,
+          timeEnd,
+          playerName: playerFirstName,
+          ...(playerPhone ? { playerPhone } : {}),
+        },
+        triggerEvent: 'booking.admin_new_booking',
+      },
+      tx,
+    )
+
     return booking
   } catch (err) {
     if (isExclusionViolation(err)) throw new SlotTakenError()

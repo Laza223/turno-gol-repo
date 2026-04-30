@@ -1,7 +1,5 @@
 import type PgBoss from 'pg-boss'
-import { getSql, getDb } from '@/shared/db/client'
-import { notifications } from '@/shared/db/schema'
-import { eq, sql as drizzleSql } from 'drizzle-orm'
+import { getSql } from '@/shared/db/client'
 import { QUEUE_SEND_EMAIL } from '../definitions'
 import {
   getNotificationById,
@@ -55,11 +53,11 @@ export async function processSingleNotification(notif: NotificationRow): Promise
  */
 export async function processQueuedNotifications(): Promise<void> {
   const sql = getSql()
-  // Fetch up to 50 queued notifications (attempt_count < 3 → still retryable)
+  // Fetch up to 50 queued notifications (attempt_count ≤ 3 → includes final attempt)
   const rows = await sql<{ id: string }[]>`
     SELECT id FROM notifications
     WHERE status = 'queued'
-      AND attempt_count < 3
+      AND attempt_count <= 3
     ORDER BY queued_at
     LIMIT 50
   `

@@ -8,6 +8,12 @@ export type { TrialWelcomeData } from './trial-welcome'
 export type { TrialEndingData } from './trial-ending'
 export type { DunningPaymentFailedData } from './dunning-payment-failed'
 export type { DepositExpiredData } from './deposit-expired'
+export type { SubscriptionActivatedData } from './subscription-activated'
+export type { SubscriptionRenewedData } from './subscription-renewed'
+export type { SubscriptionCanceledData } from './subscription-canceled'
+export type { SubscriptionSuspendedData } from './subscription-suspended'
+export type { SubscriptionBlockedData } from './subscription-blocked'
+export type { TenantDeletionWarningData } from './tenant-deletion-warning'
 
 import { renderBookingConfirmed, type BookingConfirmedData } from './booking-confirmed'
 import { renderBookingCanceled, type BookingCanceledData } from './booking-canceled'
@@ -17,6 +23,12 @@ import { renderTrialWelcome, type TrialWelcomeData } from './trial-welcome'
 import { renderTrialEnding, type TrialEndingData } from './trial-ending'
 import { renderDunningPaymentFailed, type DunningPaymentFailedData } from './dunning-payment-failed'
 import { renderDepositExpired, type DepositExpiredData } from './deposit-expired'
+import { renderSubscriptionActivated, type SubscriptionActivatedData } from './subscription-activated'
+import { renderSubscriptionRenewed, type SubscriptionRenewedData } from './subscription-renewed'
+import { renderSubscriptionCanceled, type SubscriptionCanceledData } from './subscription-canceled'
+import { renderSubscriptionSuspended, type SubscriptionSuspendedData } from './subscription-suspended'
+import { renderSubscriptionBlocked, type SubscriptionBlockedData } from './subscription-blocked'
+import { renderTenantDeletionWarning, type TenantDeletionWarningData } from './tenant-deletion-warning'
 
 export {
   renderBookingConfirmed,
@@ -27,6 +39,12 @@ export {
   renderTrialEnding,
   renderDunningPaymentFailed,
   renderDepositExpired,
+  renderSubscriptionActivated,
+  renderSubscriptionRenewed,
+  renderSubscriptionCanceled,
+  renderSubscriptionSuspended,
+  renderSubscriptionBlocked,
+  renderTenantDeletionWarning,
 }
 
 type TemplateDataMap = {
@@ -38,6 +56,12 @@ type TemplateDataMap = {
   trial_ending: TrialEndingData
   dunning_payment_failed: DunningPaymentFailedData
   deposit_expired: DepositExpiredData
+  subscription_activated: SubscriptionActivatedData
+  subscription_renewed: SubscriptionRenewedData
+  subscription_canceled: SubscriptionCanceledData
+  subscription_suspended: SubscriptionSuspendedData
+  subscription_blocked: SubscriptionBlockedData
+  tenant_deletion_warning: TenantDeletionWarningData
 }
 
 export type TemplateName = keyof TemplateDataMap
@@ -51,6 +75,12 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   trial_ending: renderTrialEnding,
   dunning_payment_failed: renderDunningPaymentFailed,
   deposit_expired: renderDepositExpired,
+  subscription_activated: renderSubscriptionActivated,
+  subscription_renewed: renderSubscriptionRenewed,
+  subscription_canceled: renderSubscriptionCanceled,
+  subscription_suspended: renderSubscriptionSuspended,
+  subscription_blocked: renderSubscriptionBlocked,
+  tenant_deletion_warning: renderTenantDeletionWarning,
 }
 
 export function renderTemplate(name: TemplateName, data: unknown): EmailContent {

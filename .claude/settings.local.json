@@ -18,7 +18,12 @@
       "Bash(DATABASE_URL=postgres://postgres:postgres@127.0.0.1:54322/postgres pnpm test:integration tests/integration/tenant-context.test.ts)",
       "Bash(python3 *)",
       "Bash(supabase status *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/billing.test.ts)",
+      "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/mp-webhook.test.ts tests/integration/notifications.test.ts tests/integration/isolation.test.ts tests/integration/bookings.test.ts)",
+      "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/mp-webhook.test.ts)",
+      "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration)",
+      "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/courts.test.ts)"
     ]
   }
 }

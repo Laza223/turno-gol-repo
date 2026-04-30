@@ -36,8 +36,16 @@ export async function runRollingSlotGeneration(): Promise<void> {
     WHERE a.status = 'active'
   `
 
+  const SKIP_STATUSES = new Set([
+    'suspended',
+    'blocked',
+    'canceled',
+    'churned',
+    'deleted',
+  ])
+
   for (const abonado of abonadoRows) {
-    if (abonado.tenant_status === 'suspended') continue
+    if (SKIP_STATUSES.has(abonado.tenant_status)) continue
 
     const countRows = await sql<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM bookings

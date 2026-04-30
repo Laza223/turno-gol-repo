@@ -1,10 +1,14 @@
 import type { PaymentGateway } from './mp-gateway'
-import type {
-  CreatePreferenceInput,
-  GatewayPaymentInfo,
-  MpPaymentStatus,
-  PreferenceResult,
-  RefundResult,
+import {
+  buildSaasUpgradeRef,
+  type CreatePreapprovalInput,
+  type CreatePreferenceInput,
+  type CreateSaasUpgradePreferenceInput,
+  type GatewayPaymentInfo,
+  type MpPaymentStatus,
+  type PreapprovalResult,
+  type PreferenceResult,
+  type RefundResult,
 } from './payment.types'
 
 type StatusOverride = (mpPaymentId: string) => GatewayPaymentInfo | undefined
@@ -64,6 +68,51 @@ export class MockGateway implements PaymentGateway {
     return {
       mpRefundId: `mp-refund-${this.refundCounter}-${mpPaymentId}`,
       status: 'approved',
+    }
+  }
+
+  // ─── SaaS recurring billing (P18) ────────────────────────────────────────
+
+  preapprovalCalls: CreatePreapprovalInput[] = []
+  cancelPreapprovalCalls: string[] = []
+  updatePreapprovalCalls: Array<{ preapprovalId: string; amount: number }> = []
+  preapprovalCounter = 0
+
+  async createPreapproval(input: CreatePreapprovalInput): Promise<PreapprovalResult> {
+    this.preapprovalCalls.push(input)
+    this.preapprovalCounter += 1
+    const id = `mp-preapp-${this.preapprovalCounter}-${input.tenantId}`
+    return {
+      preapprovalId: id,
+      initPoint: `https://mp.test/preapproval/${id}`,
+    }
+  }
+
+  async cancelPreapproval(preapprovalId: string): Promise<void> {
+    this.cancelPreapprovalCalls.push(preapprovalId)
+  }
+
+  async updatePreapprovalAmount(
+    preapprovalId: string,
+    amount: number,
+  ): Promise<void> {
+    this.updatePreapprovalCalls.push({ preapprovalId, amount })
+  }
+
+  saasUpgradePreferenceCalls: CreateSaasUpgradePreferenceInput[] = []
+  saasUpgradeCounter = 0
+
+  async createSaasUpgradePreference(
+    input: CreateSaasUpgradePreferenceInput,
+  ): Promise<PreferenceResult> {
+    this.saasUpgradePreferenceCalls.push(input)
+    this.saasUpgradeCounter += 1
+    const externalRef = buildSaasUpgradeRef(input.tenantId, input.targetPlanId)
+    const id = `mp-upgrade-pref-${this.saasUpgradeCounter}-${input.tenantId}`
+    return {
+      preferenceId: id,
+      initPoint: `https://mp.test/checkout/upgrade/${id}?ref=${encodeURIComponent(externalRef)}`,
+      sandboxInitPoint: `https://mp.test/sandbox/upgrade/${id}`,
     }
   }
 }

@@ -52,6 +52,19 @@ export const tenantSubscriptions = pgTable(
       mode: 'date',
     }),
 
+    dunningStartedAt: timestamp('dunning_started_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    lastPaymentFailedAt: timestamp('last_payment_failed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    lastPaymentAt: timestamp('last_payment_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),
@@ -65,5 +78,6 @@ export const tenantSubscriptions = pgTable(
     periodEndIdx: index('idx_tenant_subs_period_end').on(
       table.currentPeriodEnd,
     ),
+    dunningIdx: index('idx_tenant_subs_dunning').on(table.dunningStartedAt),
   }),
 )

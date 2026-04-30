@@ -54,8 +54,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const payload = parsed.data
 
-  // Only `payment` events have actionable side effects in v1.
-  if (payload.type !== 'payment') {
+  // Handled types:
+  //   - `payment`                          → booking deposit OR SaaS upgrade proration
+  //   - `subscription_authorized_payment`  → SaaS recurring charge (preapproval child)
+  //   - `subscription_preapproval`         → preapproval lifecycle change (cancel / hold)
+  const HANDLED_TYPES = new Set([
+    'payment',
+    'subscription_authorized_payment',
+    'subscription_preapproval',
+  ])
+  if (!HANDLED_TYPES.has(payload.type)) {
     return NextResponse.json({ ok: true, ignored: payload.type })
   }
 

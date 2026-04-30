@@ -1,6 +1,6 @@
 import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
-import { bookings, courts, tenants } from '@/shared/db/schema'
+import { bookings, courts } from '@/shared/db/schema'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────

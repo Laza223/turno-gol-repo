@@ -128,40 +128,57 @@ export async function processWebhook(
   gateway: PaymentGateway,
   tx: DbTx,
 ): Promise<WebhookOutcome> {
+  const fresh = await lockMpEvent(event, tx)
+  if (!fresh) return { alreadyProcessed: true }
+  const info = await gateway.getPaymentStatus(event.mpPaymentId)
+  return dispatchPaymentInfo(info, tenantId, tx)
+}
+
+/**
+ * Idempotency lock — INSERT processed_webhooks ON CONFLICT DO NOTHING.
+ * Returns true if this event is fresh (insert succeeded), false if a row
+ * already exists.
+ */
+export async function lockMpEvent(
+  event: WebhookEvent,
+  tx: DbTx,
+): Promise<boolean> {
   const lock = await tx.execute(sql`
     INSERT INTO processed_webhooks (mp_event_id, event_type, payload)
     VALUES (${event.mpEventId}, ${event.eventType}, ${JSON.stringify(event.rawPayload)}::jsonb)
     ON CONFLICT (mp_event_id) DO NOTHING
     RETURNING id
   `)
-  const lockRows = lock as unknown as Array<{ id: string }>
-  if (lockRows.length === 0) {
-    return { alreadyProcessed: true }
-  }
+  return (lock as unknown as Array<{ id: string }>).length > 0
+}
 
-  const info = await gateway.getPaymentStatus(event.mpPaymentId)
-
+/**
+ * Post-lock dispatch: branch by MP payment status. Caller has already locked
+ * the event AND fetched the gateway info. Used by the webhook handler to
+ * route between booking-deposit and SaaS-upgrade flows without paying for
+ * duplicate `getPaymentStatus` calls.
+ */
+export async function dispatchPaymentInfo(
+  info: GatewayPaymentInfo,
+  tenantId: string,
+  tx: DbTx,
+): Promise<WebhookOutcome> {
   if (info.status === 'approved') {
     await handleApproved(info, tenantId, tx)
     return { alreadyProcessed: false, result: 'confirmed' }
   }
-
   if (info.status === 'in_process') {
     await handleInProcess(info, tenantId, tx)
     return { alreadyProcessed: false, result: 'in_process' }
   }
-
   if (info.status === 'rejected' || info.status === 'cancelled') {
     await upsertPaymentRow(info, tenantId, 'rejected', tx)
     return { alreadyProcessed: false, result: 'rejected' }
   }
-
   if (info.status === 'refunded') {
     await upsertPaymentRow(info, tenantId, 'refunded', tx)
     return { alreadyProcessed: false, result: 'refunded' }
   }
-
-  // 'pending' — record but do nothing more.
   await upsertPaymentRow(info, tenantId, 'pending', tx)
   return { alreadyProcessed: false, result: 'rejected' }
 }

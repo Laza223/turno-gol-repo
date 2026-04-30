@@ -7,3 +7,4 @@ dist/
 *.resolved
 .DS_Store
 Thumbs.db
+.worktrees/

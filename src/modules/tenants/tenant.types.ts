@@ -37,6 +37,7 @@ export type TenantSettings = {
   staff_pin_hash?: string
   onboarding_step?: number
   onboarding_completed?: boolean
+  public_link_shared?: boolean
 }
 
 export type CreateTenantInput = {

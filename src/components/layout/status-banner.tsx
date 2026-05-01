@@ -6,7 +6,6 @@ import { AlertTriangle, Clock, XCircle } from 'lucide-react'
 interface StatusBannerProps {
   tenantStatus: string
   trialEndsAt: string | null
-  subStatus: string | null
   periodEnd: string | null
 }
 
@@ -27,7 +26,7 @@ export function StatusBanner({
   if (process.env.NEXT_PUBLIC_SERVICE_DEGRADED === 'true') {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
         <span>
           Estamos experimentando problemas técnicos. Algunas funciones pueden no estar
           disponibles.
@@ -41,7 +40,7 @@ export function StatusBanner({
     const days = daysUntil(trialEndsAt)
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-sky-50 border-b border-sky-200 text-sm text-sky-800">
-        <Clock className="h-4 w-4 shrink-0 text-sky-600" />
+        <Clock className="h-4 w-4 shrink-0 text-sky-600" aria-hidden="true" />
         <span className="flex-1">
           Período de prueba: <strong>{days}</strong> {days === 1 ? 'día restante' : 'días restantes'}.
         </span>
@@ -59,7 +58,7 @@ export function StatusBanner({
   if (tenantStatus === 'past_due' && periodEnd) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800">
-        <XCircle className="h-4 w-4 shrink-0 text-red-600" />
+        <XCircle className="h-4 w-4 shrink-0 text-red-600" aria-hidden="true" />
         <span className="flex-1">
           Tu pago falló. Regularizá antes del{' '}
           <strong>{formatDate(periodEnd)}</strong>.
@@ -78,7 +77,7 @@ export function StatusBanner({
   if (tenantStatus === 'suspended') {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800">
-        <XCircle className="h-4 w-4 shrink-0 text-red-600" />
+        <XCircle className="h-4 w-4 shrink-0 text-red-600" aria-hidden="true" />
         <span>
           Tu cuenta está suspendida. Contactá a{' '}
           <a

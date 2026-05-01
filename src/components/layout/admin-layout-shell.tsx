@@ -11,7 +11,6 @@ interface AdminLayoutShellProps {
   tenantName: string
   tenantStatus: string
   trialEndsAt: string | null
-  subStatus: string | null
   periodEnd: string | null
   userEmail: string
   signOut: () => Promise<never>
@@ -22,7 +21,6 @@ export function AdminLayoutShell({
   tenantName,
   tenantStatus,
   trialEndsAt,
-  subStatus,
   periodEnd,
   userEmail,
   signOut,
@@ -41,7 +39,7 @@ export function AdminLayoutShell({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-[15] bg-black/50 lg:hidden"
+          className="fixed inset-0 z-[25] bg-black/50 lg:hidden cursor-pointer"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
@@ -57,7 +55,6 @@ export function AdminLayoutShell({
       {/* Header */}
       <AdminHeader
         userEmail={userEmail}
-        mobileMenuOpen={mobileOpen}
         onMobileMenuToggle={() => setMobileOpen((prev) => !prev)}
         onSignOut={handleSignOut}
       />
@@ -69,7 +66,6 @@ export function AdminLayoutShell({
           <StatusBanner
             tenantStatus={tenantStatus}
             trialEndsAt={trialEndsAt}
-            subStatus={subStatus}
             periodEnd={periodEnd}
           />
 

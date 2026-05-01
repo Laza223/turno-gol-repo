@@ -15,6 +15,8 @@ import {
   Lock,
   X,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface SidebarProps {
   tenantName: string
@@ -66,14 +68,15 @@ function SidebarContent({
           </div>
         </div>
         {isMobile && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="ml-2 p-1.5 rounded-md text-slate-500 hover:bg-slate-100 transition-colors duration-150"
+            className="ml-2"
             aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -89,21 +92,22 @@ function SidebarContent({
               key={href}
               href={href}
               onClick={isMobile ? onClose : undefined}
-              className={[
+              className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150',
                 isActive
                   ? 'bg-sky-50 text-sky-700'
                   : 'text-slate-600 hover:bg-slate-100',
-              ].join(' ')}
+              )}
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1 truncate">{label}</span>
               {pin && (
                 <Lock
                   className="h-3.5 w-3.5 shrink-0 text-slate-400"
-                  aria-label="Requiere PIN"
+                  aria-hidden="true"
                 />
               )}
+              {pin && <span className="sr-only">Requiere PIN</span>}
             </Link>
           )
         })}
@@ -124,11 +128,10 @@ export function AdminSidebar({ tenantName, mobileOpen, onClose }: SidebarProps) 
 
       {/* Mobile sidebar */}
       <div
-        className={[
-          'fixed inset-y-0 left-0 z-20 w-60 flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:hidden',
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 w-60 flex flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:hidden',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          'flex',
-        ].join(' ')}
+        )}
         aria-hidden={!mobileOpen}
       >
         <SidebarContent

@@ -23,7 +23,11 @@
       "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/mp-webhook.test.ts tests/integration/notifications.test.ts tests/integration/isolation.test.ts tests/integration/bookings.test.ts)",
       "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/mp-webhook.test.ts)",
       "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration)",
-      "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/courts.test.ts)"
+      "Bash(DATABASE_URL=\"postgres://postgres:postgres@127.0.0.1:54322/postgres\" pnpm test:integration tests/integration/courts.test.ts)",
+      "Bash(grep -E \"schema\\\\.\\(ts|js\\)$|schema/index\")",
+      "Bash(ls -d .worktrees)",
+      "Bash(ls -d worktrees)",
+      "Bash(git worktree *)"
     ]
   }
 }

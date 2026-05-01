@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  if (!tenant.settings.onboarding_completed) redirect('/onboarding')
+  if (tenant.settings.onboarding_completed !== true) redirect('/onboarding')
 
   const sub = await withTenantContext(tenant.id, async (tx) => {
     return tx

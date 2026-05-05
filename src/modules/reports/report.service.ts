@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt, gte, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, lt, gte, sql } from 'drizzle-orm'
 import { withTenantContext } from '@/shared/db/client'
 import { cashFlows, bookings, courts } from '@/shared/db/schema'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -10,6 +10,8 @@ import type {
   CashFlowExportRow,
 } from './report.types'
 import { calcAvailableMinutes, calcOccupancyPct } from './report.utils'
+
+const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as const
 
 type PeriodAgg = {
   income: number
@@ -27,62 +29,79 @@ type PeriodAgg = {
 }
 
 async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<PeriodAgg> {
-  const fromStr = from.toISOString().split('T')[0]  // 'YYYY-MM-DD'
-  const toStr = to.toISOString().split('T')[0]      // 'YYYY-MM-DD' (exclusive)
+  const fromStr = from.toISOString().split('T')[0]
+  const toStr = to.toISOString().split('T')[0]
 
   return withTenantContext(tenantId, async (tx) => {
-    const [typeRows, courtRows, bookingCountRows, courtCountRows] = await Promise.all([
-      // Q1: sum amounts grouped by cashflow type + payment method
-      tx
-        .select({
-          type: cashFlows.type,
-          method: cashFlows.method,
-          total: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS INTEGER)`,
-        })
-        .from(cashFlows)
-        .where(and(gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
-        .groupBy(cashFlows.type, cashFlows.method),
+    const [typeRows, courtIncomeRows, courtMinuteRows, bookingCountRows, courtCountRows] =
+      await Promise.all([
+        // Q1: sum amounts grouped by cashflow type + payment method
+        tx
+          .select({
+            type: cashFlows.type,
+            method: cashFlows.method,
+            total: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
+          })
+          .from(cashFlows)
+          .where(and(gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
+          .groupBy(cashFlows.type, cashFlows.method),
 
-      // Q2: income + booked minutes per court (only booking-linked cash flows)
-      tx
-        .select({
-          courtId: courts.id,
-          courtName: courts.name,
-          income: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS INTEGER)`,
-          bookingCount: sql<number>`CAST(COUNT(DISTINCT ${cashFlows.bookingId}) AS INTEGER)`,
-          bookedMinutes: sql<number>`CAST(COALESCE(
-            SUM(EXTRACT(EPOCH FROM (${bookings.timeEnd}::time - ${bookings.timeStart}::time)) / 60),
-            0
-          ) AS INTEGER)`,
-        })
-        .from(cashFlows)
-        .innerJoin(bookings, eq(cashFlows.bookingId, bookings.id))
-        .innerJoin(courts, eq(bookings.courtId, courts.id))
-        .where(
-          and(
-            gte(cashFlows.occurredAt, from),
-            lt(cashFlows.occurredAt, to),
-            isNotNull(cashFlows.bookingId),
+        // Q2a: income + booking count per court (from cash_flows linked to bookings)
+        tx
+          .select({
+            courtId: courts.id,
+            courtName: courts.name,
+            income: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
+            bookingCount: sql<number>`CAST(COUNT(DISTINCT ${cashFlows.bookingId}) AS BIGINT)`,
+          })
+          .from(cashFlows)
+          .innerJoin(bookings, eq(cashFlows.bookingId, bookings.id))
+          .innerJoin(courts, eq(bookings.courtId, courts.id))
+          .where(
+            and(
+              gte(cashFlows.occurredAt, from),
+              lt(cashFlows.occurredAt, to),
+              isNotNull(cashFlows.bookingId),
+            ),
+          )
+          .groupBy(courts.id, courts.name),
+
+        // Q2b: booked minutes per court — queried from bookings directly to avoid
+        // double-counting when a booking has multiple cash flows
+        tx
+          .select({
+            courtId: bookings.courtId,
+            bookedMinutes: sql<number>`CAST(COALESCE(
+              SUM(EXTRACT(EPOCH FROM (${bookings.timeEnd}::time - ${bookings.timeStart}::time)) / 60),
+              0
+            ) AS BIGINT)`,
+          })
+          .from(bookings)
+          .where(
+            and(
+              sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${toStr}::date`,
+              inArray(bookings.status, ACTIVE_STATUSES),
+            ),
+          )
+          .groupBy(bookings.courtId),
+
+        // Q3: total booking count (non-canceled statuses) in the period
+        tx
+          .select({ count: sql<number>`CAST(COUNT(*) AS BIGINT)` })
+          .from(bookings)
+          .where(
+            and(
+              sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${toStr}::date`,
+              inArray(bookings.status, ACTIVE_STATUSES),
+            ),
           ),
-        )
-        .groupBy(courts.id, courts.name),
 
-      // Q3: total booking count (all non-canceled statuses)
-      tx
-        .select({ count: sql<number>`CAST(COUNT(*) AS INTEGER)` })
-        .from(bookings)
-        .where(
-          sql`${bookings.date} >= ${fromStr}::date
-            AND ${bookings.date} < ${toStr}::date
-            AND ${bookings.status} IN ('confirmed', 'completed', 'no_show')`,
-        ),
-
-      // Q4: number of online courts (for occupancy denominator)
-      tx
-        .select({ count: sql<number>`CAST(COUNT(*) AS INTEGER)` })
-        .from(courts)
-        .where(eq(courts.status, 'online')),
-    ])
+        // Q4: number of online courts (occupancy denominator)
+        tx
+          .select({ count: sql<number>`CAST(COUNT(*) AS BIGINT)` })
+          .from(courts)
+          .where(eq(courts.status, 'online')),
+      ])
 
     const income = typeRows
       .filter((r) => r.type === 'income')
@@ -100,16 +119,20 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
       .filter(([, total]) => total > 0)
       .map(([method, total]) => ({ method: method as MethodReport['method'], total }))
 
+    const minutesByCourtId = new Map(
+      courtMinuteRows.map((r) => [r.courtId, Number(r.bookedMinutes)]),
+    )
+
     return {
       income,
       adjustment,
       byMethod,
-      byCourt: courtRows.map((r) => ({
+      byCourt: courtIncomeRows.map((r) => ({
         courtId: r.courtId,
         courtName: r.courtName,
         income: Number(r.income),
         bookingCount: Number(r.bookingCount),
-        bookedMinutes: Number(r.bookedMinutes),
+        bookedMinutes: minutesByCourtId.get(r.courtId) ?? 0,
       })),
       bookingCount: Number(bookingCountRows[0]?.count ?? 0),
       courtCount: Number(courtCountRows[0]?.count ?? 0),
@@ -119,7 +142,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
 
 /**
  * Returns a full revenue report for the period [from, to).
- * Runs current + previous period queries in parallel.
+ * Current + previous period run in parallel (two independent read transactions).
  * `prevPeriod` is null when the previous period has zero activity.
  */
 export async function getRevenueReport(

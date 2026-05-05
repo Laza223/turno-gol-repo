@@ -87,7 +87,7 @@ export async function addClosedDateAction(formData: FormData): Promise<HorariosA
       await tx
         .update(tenants)
         .set({
-          closedDates: [...existing, date] as unknown as Date[],
+          closedDates: [...existing, date],
           updatedAt: new Date(),
         })
         .where(eq(tenants.id, tenant.id))
@@ -114,7 +114,7 @@ export async function removeClosedDateAction(formData: FormData): Promise<Horari
   await withTenantContext(tenant.id, async (tx) => {
     await tx
       .update(tenants)
-      .set({ closedDates: filtered as unknown as Date[], updatedAt: new Date() })
+      .set({ closedDates: filtered, updatedAt: new Date() })
       .where(eq(tenants.id, tenant.id))
   })
 

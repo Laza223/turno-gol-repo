@@ -11,7 +11,9 @@ import type {
 } from './report.types'
 import { calcAvailableMinutes, calcOccupancyPct } from './report.utils'
 
-const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as const
+const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as Array<
+  'confirmed' | 'completed' | 'no_show'
+>
 
 type PeriodAgg = {
   income: number

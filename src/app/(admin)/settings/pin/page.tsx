@@ -35,11 +35,12 @@ export default async function PinSettingsPage() {
               <a
                 key={href}
                 href={href}
-                className="px-4 py-2 text-sm font-medium transition-colors duration-150"
-                style={{
-                  borderBottom: active ? '2px solid #0369A1' : '2px solid transparent',
-                  color: active ? '#0369A1' : '#64748b',
-                }}
+                className={
+                  'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
+                  (active
+                    ? 'border-sky-700 text-sky-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-900')
+                }
               >
                 {label}
               </a>

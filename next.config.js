@@ -1,4 +1,5 @@
-/** @type {import('next').NextConfig} */
+const { withSentryConfig } = require('@sentry/nextjs')
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
@@ -18,6 +19,7 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
 ]
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
     return [
@@ -29,4 +31,12 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  hideSourceMaps: true,
+  tunnelRoute: '/monitoring',
+  disableLogger: true,
+})

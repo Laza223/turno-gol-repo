@@ -37,6 +37,7 @@ export type TenantSettings = {
   staff_pin_hash?: string
   onboarding_step?: number
   onboarding_completed?: boolean
+  public_link_shared?: boolean
 }
 
 export type CreateTenantInput = {
@@ -88,7 +89,7 @@ export type TenantRow = {
   province: string
   phone: string
   email: string
-  status: string
+  status: 'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned' | 'deleted'
   trialEndsAt: Date | null
   settings: TenantSettings
   openingHours: OpeningHours

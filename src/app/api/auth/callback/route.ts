@@ -9,21 +9,19 @@ import {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
-  const url = new URL(req.url)
-  const code = url.searchParams.get('code')
-  const next = url.searchParams.get('next') ?? '/dashboard'
+function redirectVerifyError(req: NextRequest, code: string): NextResponse {
+  const url = new URL('/verify', req.url)
+  url.searchParams.set('error', code)
+  return NextResponse.redirect(url)
+}
 
-  if (!code) {
-    return NextResponse.redirect(new URL('/login?error=missing_code', req.url))
-  }
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const code = new URL(req.url).searchParams.get('code')
+  if (!code) return redirectVerifyError(req, 'invalid')
 
   const supabase = createClient()
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error || !data?.user) {
-    const msg = encodeURIComponent(error?.message ?? 'exchange_failed')
-    return NextResponse.redirect(new URL(`/login?error=${msg}`, req.url))
-  }
+  if (error || !data?.user) return redirectVerifyError(req, 'exchange_failed')
 
   const user = data.user
   const meta: Record<string, unknown> = user.app_metadata ?? {}
@@ -36,18 +34,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // Staff path
   const email = user.email
-  if (!email) {
-    return NextResponse.redirect(new URL('/login?error=no_email', req.url))
-  }
+  if (!email) return redirectVerifyError(req, 'invalid')
 
   const givenName = typeof userMeta.given_name === 'string' ? userMeta.given_name : null
   const familyName = typeof userMeta.family_name === 'string' ? userMeta.family_name : null
   const firstNameMeta = typeof userMeta.first_name === 'string' ? userMeta.first_name : null
   const lastNameMeta = typeof userMeta.last_name === 'string' ? userMeta.last_name : null
+  const phoneMeta = typeof userMeta.phone === 'string' ? userMeta.phone : null
   const firstName = firstNameMeta ?? givenName ?? email.split('@')[0]
   const lastName = lastNameMeta ?? familyName ?? ''
 
-  const ourStaff = await getOrCreateStaffUser(email, firstName, lastName)
+  const ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
   const tenants = await resolveStaffTenants(ourStaff.id)
 
   if (tenants.length === 0) {
@@ -58,10 +55,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     await setStaffTenantClaim(user.id, tenants[0].tenantId, ourStaff.id)
     // Force refresh so the new app_metadata.tenant_id appears in the next JWT.
     await supabase.auth.refreshSession()
-    return NextResponse.redirect(new URL(next, req.url))
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // N tenants → user picks. Pre-select happens in /select-tenant page (P4).
-  const target = `/select-tenant?next=${encodeURIComponent(next)}`
-  return NextResponse.redirect(new URL(target, req.url))
+  // N tenants → user picks at /select-tenant (out of scope here).
+  return NextResponse.redirect(new URL('/select-tenant', req.url))
 }

@@ -83,6 +83,7 @@ export async function getOrCreateStaffUser(
   email: string,
   firstName: string,
   lastName: string,
+  phone: string | null = null,
 ): Promise<{ id: string }> {
   const sql = getSql()
   const lower = email.toLowerCase()
@@ -91,8 +92,8 @@ export async function getOrCreateStaffUser(
   `
   if (existing.length > 0) return existing[0]
   const created = await sql<{ id: string }[]>`
-    INSERT INTO staff_users (email, first_name, last_name)
-    VALUES (${lower}, ${firstName}, ${lastName})
+    INSERT INTO staff_users (email, first_name, last_name, phone)
+    VALUES (${lower}, ${firstName}, ${lastName}, ${phone})
     RETURNING id
   `
   return created[0]

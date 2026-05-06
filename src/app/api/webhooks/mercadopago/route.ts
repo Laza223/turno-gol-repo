@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { timingSafeEqual } from 'node:crypto'
 import { getBoss } from '@/shared/jobs/boss'
 import {
   MP_WEBHOOK_SEND_OPTIONS,
@@ -7,28 +6,10 @@ import {
 } from '@/shared/jobs/queue-names'
 import { webhookPayloadSchema } from '@/modules/payments/payment.schema'
 import type { MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
+import { verifyWebhookSecret } from '@/modules/payments/webhook-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-/**
- * Validates the `X-Webhook-Secret` header against `MP_WEBHOOK_SECRET`.
- *
- * Behavior:
- *   - secret env unset + non-production → return true (dev/test).
- *   - secret env unset + production → return false (fail closed).
- *   - secret env set + header missing or mismatched → return false.
- *   - secret env set + header equal → return true (timing-safe compare).
- */
-export function verifyWebhookSecret(headerValue: string | null): boolean {
-  const secret = process.env.MP_WEBHOOK_SECRET
-  if (!secret) return process.env.NODE_ENV !== 'production'
-  if (!headerValue) return false
-  const a = Buffer.from(headerValue)
-  const b = Buffer.from(secret)
-  if (a.length !== b.length) return false
-  return timingSafeEqual(a, b)
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url)

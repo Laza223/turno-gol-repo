@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { verifyWebhookSecret } from '@/app/api/webhooks/mercadopago/route'
+import { verifyWebhookSecret } from '@/modules/payments/webhook-auth'
 
 describe('verifyWebhookSecret', () => {
   const env = process.env as Record<string, string | undefined>

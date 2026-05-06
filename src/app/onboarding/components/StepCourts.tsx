@@ -18,24 +18,24 @@ export function StepCourts() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Tus Canchas</h2>
-        <p className="text-sm text-gray-500 mt-1">Paso 2 de 4 — Configuración de canchas</p>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Tus Canchas</h2>
+        <p className="text-sm text-slate-600 mt-1">Configuración de canchas</p>
       </div>
 
-      <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 space-y-2">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 space-y-2">
         <p className="font-medium">Podés agregar tus canchas desde el panel de configuración.</p>
-        <p className="text-blue-700">
+        <p className="text-emerald-800">
           Necesitás al menos 1 cancha en estado <strong>online</strong> para aparecer en búsquedas
           públicas y recibir reservas.
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <button
         onClick={handleContinue}
         disabled={isPending}
-        className="w-full bg-blue-600 text-white py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full h-11 bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-600/20 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none transition-all duration-200"
       >
         {isPending ? 'Guardando...' : 'Continuar →'}
       </button>

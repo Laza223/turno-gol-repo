@@ -51,13 +51,13 @@ export function StepIdentity() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Tu Complejo</h2>
-        <p className="text-sm text-gray-500 mt-1">Paso 1 de 4 — Datos básicos del complejo</p>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Tu Complejo</h2>
+        <p className="text-sm text-slate-600 mt-1">Datos básicos del complejo</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-sm font-medium text-slate-900 mb-1.5">
             Nombre del complejo <span className="text-red-500">*</span>
           </label>
           <input
@@ -66,51 +66,51 @@ export function StepIdentity() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: Complejo San Martín"
             required
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
           />
           {name.length >= 2 && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1.5">
               URL:{' '}
-              <span className="font-mono">
-                turnogol.com.ar/<strong>{slugPreview}</strong>
+              <span className="font-mono text-slate-700">
+                turnogol.com.ar/<strong className="text-emerald-700">{slugPreview}</strong>
               </span>
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-sm font-medium text-slate-900 mb-1.5">
             Dirección <span className="text-red-500">*</span>
           </label>
           <input
             name="address"
             placeholder="Ej: Av. Corrientes 1234"
             required
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
               Ciudad <span className="text-red-500">*</span>
             </label>
             <input
               name="city"
               placeholder="Ej: Luján"
               required
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
               Provincia <span className="text-red-500">*</span>
             </label>
             <select
               name="province"
               required
               defaultValue=""
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
             >
               <option value="" disabled>
                 Seleccioná...
@@ -126,7 +126,7 @@ export function StepIdentity() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
               Teléfono <span className="text-red-500">*</span>
             </label>
             <input
@@ -134,11 +134,11 @@ export function StepIdentity() {
               type="tel"
               placeholder="+54 9 11 1234-5678"
               required
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium text-slate-900 mb-1.5">
               Email de contacto <span className="text-red-500">*</span>
             </label>
             <input
@@ -146,7 +146,7 @@ export function StepIdentity() {
               type="email"
               placeholder="admin@complejo.com"
               required
-              className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
             />
           </div>
         </div>
@@ -156,7 +156,7 @@ export function StepIdentity() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full bg-blue-600 text-white py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full h-11 bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-600/20 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none transition-all duration-200"
         >
           {isPending ? 'Creando...' : 'Continuar →'}
         </button>

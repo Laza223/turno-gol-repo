@@ -48,11 +48,11 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Horarios</h2>
-        <p className="text-sm text-gray-500 mt-1">Paso 3 de 4 — Horarios de apertura</p>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Horarios</h2>
+        <p className="text-sm text-slate-600 mt-1">Horarios de apertura</p>
       </div>
 
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-slate-600">
         Valores pre-cargados. Editá solo lo que sea diferente para tu complejo.
       </p>
 
@@ -60,7 +60,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b">
+              <tr className="text-left text-slate-500 border-b border-slate-200">
                 <th className="pb-2 pr-4 font-medium">Día</th>
                 <th className="pb-2 pr-4 font-medium">Apertura</th>
                 <th className="pb-2 pr-4 font-medium">Cierre</th>
@@ -80,7 +80,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
                         value={day.open}
                         onChange={(e) => updateDay(key, 'open', e.target.value)}
                         disabled={isClosed}
-                        className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                        className="border border-slate-200 rounded-md px-2.5 py-1.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
                       />
                     </td>
                     <td className="py-2 pr-4">
@@ -89,7 +89,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
                         value={day.close}
                         onChange={(e) => updateDay(key, 'close', e.target.value)}
                         disabled={isClosed}
-                        className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                        className="border border-slate-200 rounded-md px-2.5 py-1.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
                       />
                     </td>
                     <td className="py-2">
@@ -100,7 +100,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
                           onChange={(e) => updateDay(key, 'closed', !e.target.checked)}
                           className="rounded"
                         />
-                        <span className="text-xs text-gray-600">
+                        <span className="text-xs text-slate-600">
                           {isClosed ? 'Cerrado' : 'Abierto'}
                         </span>
                       </label>
@@ -112,12 +112,12 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
           </table>
         </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
           type="submit"
           disabled={isPending}
-          className="w-full bg-blue-600 text-white py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full h-11 bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-600/20 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none transition-all duration-200"
         >
           {isPending ? 'Guardando...' : 'Continuar →'}
         </button>

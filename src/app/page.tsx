@@ -173,7 +173,7 @@ function Hero() {
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl">
             Tu complejo de fútbol,{' '}
-            <span className="bg-gradient-to-r from-sky-300 via-sky-400 to-sky-200 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-200 bg-clip-text text-transparent">
               lleno todos los días
             </span>
             .
@@ -186,7 +186,7 @@ function Hero() {
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-sky-500 px-6 text-sm font-semibold text-white shadow-xl shadow-sky-500/30 hover:bg-sky-400 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-sky-500/40 transition-all duration-300"
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 text-sm font-semibold text-white shadow-xl shadow-emerald-500/30 hover:bg-emerald-400 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-emerald-500/40 transition-all duration-300"
             >
               Comenzá gratis 30 días
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
@@ -242,7 +242,7 @@ function Features() {
     <section id="features" className="bg-slate-950 py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-sky-400">
+          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
             Todo lo que necesitás
           </p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
@@ -257,9 +257,9 @@ function Features() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-sky-400/40 hover:shadow-2xl hover:shadow-sky-500/10"
+              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40 hover:shadow-2xl hover:shadow-emerald-500/10"
             >
-              <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-sky-400/30 group-hover:bg-sky-500/20 transition-colors">
+              <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-400/30 group-hover:bg-emerald-500/20 transition-colors">
                 <f.icon className="h-5 w-5" aria-hidden />
               </div>
               <h3 className="text-lg font-semibold text-white">{f.title}</h3>
@@ -288,7 +288,7 @@ function ShowcaseStrip() {
       />
       <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-32">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wider text-sky-400">
+          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
             Onboarding
           </p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
@@ -302,7 +302,7 @@ function ShowcaseStrip() {
               { n: '04', t: 'Conectá MercadoPago', d: 'OAuth en un click. Empezás a cobrar señas.' },
             ].map((step) => (
               <li key={step.n} className="flex gap-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sm font-bold text-sky-400 ring-1 ring-inset ring-sky-400/30">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-sm font-bold text-emerald-400 ring-1 ring-inset ring-emerald-400/30">
                   {step.n}
                 </span>
                 <div>
@@ -332,7 +332,7 @@ function ShowcaseStrip() {
                     className={[
                       'h-12 rounded-md flex items-center justify-center font-medium tabular-nums',
                       filled
-                        ? 'bg-sky-500/30 text-sky-200 ring-1 ring-inset ring-sky-400/40'
+                        ? 'bg-emerald-500/30 text-emerald-100 ring-1 ring-inset ring-emerald-400/40'
                         : next
                           ? 'bg-amber-400/15 text-amber-200 ring-1 ring-inset ring-amber-300/30'
                           : 'bg-white/[0.03] text-slate-500 ring-1 ring-inset ring-white/5',
@@ -363,7 +363,7 @@ function Testimonials() {
     <section id="testimonios" className="bg-slate-950 py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-sky-400">
+          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
             Historias reales
           </p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
@@ -375,9 +375,9 @@ function Testimonials() {
           {testimonials.map((t) => (
             <figure
               key={t.name}
-              className="group relative flex flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-sky-400/40"
+              className="group relative flex flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
             >
-              <Quote className="absolute right-6 top-6 h-8 w-8 text-sky-400/20" aria-hidden />
+              <Quote className="absolute right-6 top-6 h-8 w-8 text-emerald-400/20" aria-hidden />
               <div className="flex gap-0.5 text-amber-300">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="h-4 w-4 fill-current" aria-hidden />
@@ -404,10 +404,10 @@ function FinalCta() {
     <section className="relative isolate overflow-hidden bg-slate-950">
       <div
         aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(14,165,233,0.18),_transparent_60%)]"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.20),_transparent_60%)]"
       />
       <div className="relative mx-auto max-w-5xl px-4 py-24 text-center sm:px-6 sm:py-32 lg:px-8">
-        <Shield className="mx-auto mb-6 h-10 w-10 text-sky-400" aria-hidden />
+        <Shield className="mx-auto mb-6 h-10 w-10 text-emerald-400" aria-hidden />
         <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
           Tu próxima reserva online empieza hoy.
         </h2>
@@ -417,7 +417,7 @@ function FinalCta() {
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/register"
-            className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-sky-500 px-8 text-sm font-semibold text-white shadow-xl shadow-sky-500/30 hover:bg-sky-400 hover:-translate-y-0.5 transition-all duration-300"
+            className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-8 text-sm font-semibold text-white shadow-xl shadow-emerald-500/30 hover:bg-emerald-400 hover:-translate-y-0.5 transition-all duration-300"
           >
             Crear mi cuenta
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
@@ -439,7 +439,7 @@ function SiteFooter() {
     <footer className="border-t border-white/5 bg-slate-950 py-10">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-sky-500 text-xs font-bold text-slate-950">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500 text-xs font-bold text-slate-950">
             TG
           </span>
           <span className="text-sm font-semibold text-white">TurnoGol</span>

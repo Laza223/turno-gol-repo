@@ -39,14 +39,14 @@ export function StatusBanner({
   if (tenantStatus === 'trialing' && trialEndsAt) {
     const days = daysUntil(trialEndsAt)
     return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-sky-50 border-b border-sky-200 text-sm text-sky-800">
-        <Clock className="h-4 w-4 shrink-0 text-sky-600" aria-hidden="true" />
+      <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border-b border-emerald-200 text-sm text-emerald-900">
+        <Clock className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
         <span className="flex-1">
           Período de prueba: <strong>{days}</strong> {days === 1 ? 'día restante' : 'días restantes'}.
         </span>
         <Link
           href="/settings/facturacion"
-          className="font-medium underline underline-offset-2 hover:text-sky-900 transition-colors duration-150 shrink-0"
+          className="font-semibold underline underline-offset-2 hover:text-emerald-700 transition-colors duration-150 shrink-0"
         >
           Elegir plan
         </Link>

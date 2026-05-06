@@ -26,7 +26,7 @@ export function PinGate({ children }: PinGateProps) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div
-          className="h-6 w-6 animate-spin rounded-full border-2 border-sky-600 border-t-transparent"
+          className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent"
           aria-label="Verificando..."
           role="status"
         />
@@ -54,8 +54,8 @@ export function PinGate({ children }: PinGateProps) {
     <div className="flex min-h-[40vh] items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-50">
-            <Lock className="h-6 w-6 text-sky-600" aria-hidden="true" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+            <Lock className="h-6 w-6 text-slate-500" aria-hidden="true" />
           </div>
           <h2 className="text-base font-semibold text-slate-900">Zona protegida</h2>
           <p className="text-center text-sm text-slate-500">
@@ -86,7 +86,7 @@ export function PinGate({ children }: PinGateProps) {
           </div>
           <Button
             type="submit"
-            className="w-full bg-sky-700 hover:bg-sky-800"
+            className="w-full bg-emerald-600 hover:bg-emerald-500"
             disabled={pin.length < 4}
           >
             Confirmar

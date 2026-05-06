@@ -47,7 +47,7 @@ export default async function PerfilPage() {
             className="rounded-full object-cover"
           />
         ) : (
-          <div className="h-16 w-16 rounded-full bg-sky-700 flex items-center justify-center text-white text-xl font-semibold">
+          <div className="h-16 w-16 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xl font-semibold">
             {initials(player.firstName, player.lastName)}
           </div>
         )}
@@ -73,7 +73,7 @@ export default async function PerfilPage() {
               defaultValue={player.firstName}
               autoComplete="given-name"
               required
-              className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-700 focus:border-sky-700"
+              className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
           <div className="space-y-1">
@@ -87,7 +87,7 @@ export default async function PerfilPage() {
               defaultValue={player.lastName}
               autoComplete="family-name"
               required
-              className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-700 focus:border-sky-700"
+              className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
         </div>
@@ -102,7 +102,7 @@ export default async function PerfilPage() {
             type="tel"
             defaultValue={player.phone ?? ''}
             autoComplete="tel"
-            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-700 focus:border-sky-700"
+            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
 
@@ -116,7 +116,7 @@ export default async function PerfilPage() {
             type="text"
             defaultValue={player.preferredArea ?? ''}
             placeholder="Ej: Palermo, Villa Crespo..."
-            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-sky-700 focus:border-sky-700"
+            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
 
@@ -130,7 +130,7 @@ export default async function PerfilPage() {
 
         <button
           type="submit"
-          className="w-full h-11 bg-sky-700 hover:bg-sky-800 text-white rounded-md text-sm font-medium transition-colors duration-150 active:scale-[0.98]"
+          className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-600/20 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-200 active:scale-[0.98]"
         >
           Guardar cambios
         </button>

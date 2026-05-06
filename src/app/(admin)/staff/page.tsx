@@ -78,7 +78,7 @@ export default async function StaffPage() {
 
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-sky-700 hover:bg-sky-800">
+              <Button className="bg-emerald-600 hover:bg-emerald-500">
                 <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
                 Agregar admin
               </Button>
@@ -112,7 +112,7 @@ export default async function StaffPage() {
                     Recibirán un email para activar su cuenta.
                   </p>
                 </div>
-                <Button type="submit" className="w-full bg-sky-700 hover:bg-sky-800">
+                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500">
                   Enviar invitación
                 </Button>
               </form>

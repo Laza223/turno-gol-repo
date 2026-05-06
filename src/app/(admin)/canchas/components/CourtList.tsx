@@ -69,7 +69,7 @@ export function CourtList({ initialCourts, openingHours }: Props) {
         <button
           type="button"
           onClick={openCreate}
-          className="bg-sky-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-sky-800 transition-colors duration-150"
+          className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
         >
           + Nueva cancha
         </button>
@@ -134,7 +134,7 @@ function CourtCard({
         <button
           type="button"
           onClick={() => onEdit(court)}
-          className="text-xs text-sky-700 hover:text-sky-800 font-medium px-2 py-1 rounded hover:bg-slate-50 transition-colors duration-150"
+          className="text-xs text-emerald-700 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-slate-50 transition-colors duration-150"
         >
           Editar
         </button>

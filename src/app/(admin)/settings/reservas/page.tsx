@@ -37,7 +37,7 @@ export default async function ReservasPolicyPage() {
                 className={
                   'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
                   (active
-                    ? 'border-sky-700 text-sky-700'
+                    ? 'border-emerald-600 text-emerald-700'
                     : 'border-transparent text-slate-500 hover:text-slate-900')
                 }
               >
@@ -63,7 +63,7 @@ export default async function ReservasPolicyPage() {
                     name="requiresDeposit"
                     value="true"
                     defaultChecked={s.requires_deposit !== false}
-                    className="accent-sky-700"
+                    className="accent-emerald-600"
                   />
                   Requerir seña
                 </label>
@@ -73,7 +73,7 @@ export default async function ReservasPolicyPage() {
                     name="requiresDeposit"
                     value="false"
                     defaultChecked={s.requires_deposit === false}
-                    className="accent-sky-700"
+                    className="accent-emerald-600"
                   />
                   Sin seña
                 </label>
@@ -102,7 +102,7 @@ export default async function ReservasPolicyPage() {
                     name="allowOnlineBooking"
                     value="true"
                     defaultChecked={s.allow_online_booking !== false}
-                    className="accent-sky-700"
+                    className="accent-emerald-600"
                   />
                   Habilitadas
                 </label>
@@ -112,7 +112,7 @@ export default async function ReservasPolicyPage() {
                     name="allowOnlineBooking"
                     value="false"
                     defaultChecked={s.allow_online_booking === false}
-                    className="accent-sky-700"
+                    className="accent-emerald-600"
                   />
                   Deshabilitadas
                 </label>
@@ -142,7 +142,7 @@ export default async function ReservasPolicyPage() {
                     name="noShowPenaltyType"
                     value="ban_days"
                     defaultChecked={(s.no_show_penalty?.type ?? 'ban_days') === 'ban_days'}
-                    className="accent-sky-700"
+                    className="accent-emerald-600"
                   />
                   Ban temporal
                 </label>
@@ -152,7 +152,7 @@ export default async function ReservasPolicyPage() {
                     name="noShowPenaltyType"
                     value="none"
                     defaultChecked={s.no_show_penalty?.type === 'none'}
-                    className="accent-sky-700"
+                    className="accent-emerald-600"
                   />
                   Sin penalidad
                 </label>
@@ -185,7 +185,7 @@ export default async function ReservasPolicyPage() {
               </div>
             </fieldset>
 
-            <Button type="submit" className="bg-sky-700 hover:bg-sky-800">
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500">
               Guardar cambios
             </Button>
           </form>

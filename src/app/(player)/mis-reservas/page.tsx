@@ -98,7 +98,7 @@ export default async function MisReservasPage({
           href="/mis-reservas?tab=proximos"
           className={`flex-1 text-center py-2 text-sm font-medium transition-colors duration-150 ${
             tab === 'proximos'
-              ? 'border-b-2 border-sky-700 text-sky-700'
+              ? 'border-b-2 border-emerald-600 text-emerald-700'
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
@@ -108,7 +108,7 @@ export default async function MisReservasPage({
           href="/mis-reservas?tab=historial"
           className={`flex-1 text-center py-2 text-sm font-medium transition-colors duration-150 ${
             tab === 'historial'
-              ? 'border-b-2 border-sky-700 text-sky-700'
+              ? 'border-b-2 border-emerald-600 text-emerald-700'
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >

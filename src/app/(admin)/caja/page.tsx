@@ -50,7 +50,7 @@ export default async function CajaPage() {
         </div>
         <div className="rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Total ajustes</p>
-          <p className="text-2xl font-bold text-blue-700">{formatARS(summary.totalAdjustments)}</p>
+          <p className="text-2xl font-bold text-emerald-700">{formatARS(summary.totalAdjustments)}</p>
         </div>
         <div className="rounded-lg border p-4">
           <p className="text-sm text-muted-foreground">Balance del día</p>

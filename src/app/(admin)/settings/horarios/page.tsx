@@ -46,7 +46,7 @@ export default async function HorariosPage() {
                 className={
                   'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
                   (active
-                    ? 'border-sky-700 text-sky-700'
+                    ? 'border-emerald-600 text-emerald-700'
                     : 'border-transparent text-slate-500 hover:text-slate-900')
                 }
               >
@@ -85,7 +85,7 @@ export default async function HorariosPage() {
               ))}
             </div>
             <div className="pt-2">
-              <Button type="submit" className="bg-sky-700 hover:bg-sky-800">
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500">
                 Guardar horarios
               </Button>
             </div>

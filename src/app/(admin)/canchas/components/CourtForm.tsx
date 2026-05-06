@@ -169,7 +169,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: Cancha 1"
             required
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
@@ -181,7 +181,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
             name="surfaceType"
             value={surfaceType}
             onChange={(e) => setSurfaceType(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             {SURFACE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -199,7 +199,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
             name="capacity"
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             {CAPACITY_OPTIONS.map((c) => (
               <option key={c} value={c}>
@@ -217,7 +217,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
           <button
             type="button"
             onClick={addRule}
-            className="text-xs text-sky-700 hover:text-sky-800 font-medium"
+            className="text-xs text-emerald-700 hover:text-emerald-800 font-medium"
           >
             + Agregar franja
           </button>
@@ -234,7 +234,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   onClick={() => toggleRuleDay(idx, key)}
                   className={`w-8 h-8 rounded text-xs font-medium transition-colors duration-150 ${
                     rule.days.includes(key)
-                      ? 'bg-sky-700 text-white'
+                      ? 'bg-emerald-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -251,7 +251,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   type="time"
                   value={rule.from}
                   onChange={(e) => updateRuleField(idx, 'from', e.target.value)}
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -260,7 +260,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   type="time"
                   value={rule.to === '00:00' ? '00:00' : rule.to}
                   onChange={(e) => updateRuleField(idx, 'to', e.target.value || '00:00')}
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -271,7 +271,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   onChange={(e) => updateRulePrice(idx, '60', Number(e.target.value) * 100)}
                   min={0}
                   step={100}
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -282,7 +282,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   onChange={(e) => updateRulePrice(idx, '120', Number(e.target.value) * 100)}
                   min={0}
                   step={100}
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -309,7 +309,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
       <button
         type="submit"
         disabled={isPending}
-        className="w-full bg-sky-700 text-white py-2 rounded-md text-sm font-medium hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+        className="w-full h-11 bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-600/20 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none transition-all duration-200"
       >
         {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear cancha'}
       </button>

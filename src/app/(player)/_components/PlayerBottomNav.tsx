@@ -20,7 +20,7 @@ export function PlayerBottomNav() {
             key={href}
             href={href}
             className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors duration-150 ${
-              active ? 'text-sky-700' : 'text-slate-500 hover:text-slate-900'
+              active ? 'text-emerald-700' : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <Icon className="h-5 w-5" />

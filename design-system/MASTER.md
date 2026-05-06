@@ -16,10 +16,10 @@
 
 | Role | Hex | Tailwind token | CSS Variable |
 |------|-----|----------------|--------------|
-| Primary | `#0F172A` | `slate-900` | `--color-primary` |
+| Primary | `#059669` | `emerald-600` | `--color-primary` — Mint Field |
 | On Primary | `#FFFFFF` | `white` | `--color-on-primary` |
 | Secondary | `#334155` | `slate-700` | `--color-secondary` |
-| Accent / CTA | `#0369A1` | `sky-700` | `--color-accent` |
+| Accent | `#10B981` | `emerald-500` | `--color-accent` — for non-text accents only (icon glows, gradients) |
 | Background | `#F8FAFC` | `slate-50` | `--color-background` |
 | Foreground | `#020617` | `slate-950` | `--color-foreground` |
 | Muted bg | `#F1F5F9` | `slate-100` | `--color-muted` |
@@ -28,9 +28,9 @@
 | Success | `#16A34A` | `green-600` | `--color-success` |
 | Warning | `#D97706` | `amber-600` | `--color-warning` |
 | Destructive | `#DC2626` | `red-600` | `--color-destructive` |
-| Ring (focus) | `#0369A1` | `sky-700` | `--color-ring` |
+| Ring (focus) | `#10B981` | `emerald-500` | `--color-ring` |
 
-**Rationale:** Professional navy + sky-blue CTA. High contrast, neutral base fits operational dashboards. Familiar to Argentine SaaS users (Mercado Libre palette adjacency).
+**Rationale:** Mint Field — emerald primary evokes the football pitch while keeping AA contrast on white surfaces. Slate neutrals preserve professional, data-dense feel. Accent (emerald-500) is reserved for non-text decorative use (icon halos, subtle gradients) to avoid contrast failures.
 
 ---
 
@@ -108,7 +108,7 @@ font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
 ```tsx
 // Primary — one per view
-<Button className="bg-sky-700 hover:bg-sky-800 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors duration-150">
+<Button className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-4 rounded-md text-sm font-medium transition-colors duration-150">
 
 // Secondary / outline
 <Button variant="outline" className="h-10 px-4 rounded-md text-sm font-medium border-slate-200 hover:bg-slate-50">
@@ -128,7 +128,7 @@ font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 ### Inputs / Form Fields
 
 ```tsx
-<Input className="h-10 px-3 border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-sky-700 focus:border-sky-700">
+<Input className="h-10 px-3 border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-600">
 ```
 
 - Visible `<label>` for every input (never placeholder-only)
@@ -272,7 +272,7 @@ import { Calendar, Clock, Users, CreditCard } from 'lucide-react'
 
 - All text contrast: ≥ 4.5:1 (AA)
 - Large text / UI components: ≥ 3:1
-- Focus ring: `focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2`
+- Focus ring: `focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2`
 - Skip-to-content link at page top
 - Form errors: `role="alert"` or `aria-live="assertive"`
 - No info conveyed by color alone (add icon or text)
@@ -294,6 +294,10 @@ import { Calendar, Clock, Users, CreditCard } from 'lucide-react'
 | Fixed heights on text containers | Let text wrap; use min-h |
 | Dark mode default | Light mode only (v1) |
 | Glassmorphism / heavy blur effects | Clean flat + subtle shadows |
+
+- **PROHIBIDO** usar `bg-emerald-500` (#10B981) para texto sobre fondo blanco — falla WCAG AA (~2.97:1). Para texto/CTA en fondo claro usar siempre `emerald-600` (#059669) que cumple AA (4.5:1).
+- **PROHIBIDO** usar `bg-white` como fondo de página/body. `bg-white` se reserva para superficies elevadas (cards, modales, formularios). Body siempre `bg-slate-50`.
+- **PROHIBIDO** `text-black` o `bg-black`. Texto principal `text-slate-900`, fondos oscuros `bg-slate-950` o `bg-slate-900`.
 
 ---
 

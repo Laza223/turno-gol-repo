@@ -86,6 +86,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 .btn-primary:hover {
   background: #047857; /* emerald-700 */
+  transform: translateY(-1px);
 }
 
 /* Secondary Button */

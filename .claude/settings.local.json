@@ -27,7 +27,10 @@
       "Bash(grep -E \"schema\\\\.\\(ts|js\\)$|schema/index\")",
       "Bash(ls -d .worktrees)",
       "Bash(ls -d worktrees)",
-      "Bash(git worktree *)"
+      "Bash(git worktree *)",
+      "Bash(Get-Content \"C:/Users/Lazar/Documents/github/TurnoGol/.worktrees/admin-dashboard/package.json\")",
+      "Bash(Select-String '\"test')",
+      "Bash(npx supabase *)"
     ]
   }
 }

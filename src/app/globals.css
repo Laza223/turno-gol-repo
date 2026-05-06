@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
 
-    --primary: 160 84% 39%;           /* emerald-600 #059669 — CTA / action color */
+    --primary: 161 94% 30%;           /* emerald-600 #059669 — CTA / action color */
     --primary-foreground: 0 0% 100%;  /* white */
 
     --secondary: 210 40% 96%;         /* slate-100 #F1F5F9 */
@@ -31,7 +31,7 @@
 
     --border: 214 32% 91%;            /* slate-200 #E2E8F0 */
     --input: 214 32% 91%;
-    --ring: 160 84% 39%;              /* emerald-600 — focus ring */
+    --ring: 161 94% 30%;              /* emerald-600 — focus ring */
 
     --radius: 0.5rem;
 

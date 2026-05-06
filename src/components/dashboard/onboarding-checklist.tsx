@@ -51,16 +51,16 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
 
   if (minimized) {
     return (
-      <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4">
+      <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm shadow-emerald-100">
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-green-600" aria-hidden="true" />
-          <p className="text-sm font-medium text-green-800">¡Tu complejo está 100% listo!</p>
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+          <p className="text-sm font-medium text-emerald-900">¡Tu complejo está 100% listo!</p>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setMinimized(false)}
-          className="text-xs text-green-700 hover:text-green-900"
+          className="text-xs text-emerald-700 hover:text-emerald-900"
         >
           Ver checklist
         </Button>
@@ -69,7 +69,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-md shadow-slate-200/50">
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Progreso de configuración</h2>
@@ -79,7 +79,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
           <div className="flex items-center gap-2">
             <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-100">
               <div
-                className="h-full rounded-full bg-sky-600 transition-all duration-300"
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -104,7 +104,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
           return (
             <li key={key} className="flex items-center gap-3 py-3">
               {done ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" aria-hidden="true" />
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
               ) : (
                 <Circle className="h-5 w-5 shrink-0 text-slate-300" aria-hidden="true" />
               )}
@@ -132,7 +132,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
               {!done && href && (
                 <a
                   href={href}
-                  className="flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900"
+                  className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
                 >
                   Configurar
                   <ExternalLink className="h-3 w-3" aria-hidden="true" />

@@ -18,29 +18,31 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#0F172A` | `--color-primary` |
+| Primary | `#059669` | `--color-primary` (emerald-600 — Mint Field) |
 | On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#334155` | `--color-secondary` |
-| Accent/CTA | `#0369A1` | `--color-accent` |
+| Secondary | `#334155` | `--color-secondary` (slate-700) |
+| Accent | `#10B981` | `--color-accent` (emerald-500 — non-text accents only) |
 | Background | `#F8FAFC` | `--color-background` |
 | Foreground | `#020617` | `--color-foreground` |
 | Muted | `#E8ECF1` | `--color-muted` |
 | Border | `#E2E8F0` | `--color-border` |
 | Destructive | `#DC2626` | `--color-destructive` |
-| Ring | `#0F172A` | `--color-ring` |
+| Ring | `#10B981` | `--color-ring` (emerald-500) |
 
-**Color Notes:** Professional navy + blue CTA
+**Color Notes:** Mint Field — emerald primary evokes the football pitch while preserving WCAG AA contrast on white surfaces. Slate neutrals retain professional, data-dense feel.
 
 ### Typography
 
-- **Heading Font:** Fira Code
-- **Body Font:** Fira Sans
-- **Mood:** dashboard, data, analytics, code, technical, precise
-- **Google Fonts:** [Fira Code + Fira Sans](https://fonts.google.com/share?selection.family=Fira+Code:wght@400;500;600;700|Fira+Sans:wght@300;400;500;600;700)
+- **Heading Font:** Inter
+- **Body Font:** Inter
+- **Mood:** dashboard, data, analytics, technical, precise
+- **Google Fonts:** [Inter](https://fonts.google.com/specimen/Inter) — loaded via `next/font/google`
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+**Loading (Next.js):**
+```ts
+// app/layout.tsx
+import { Inter } from 'next/font/google'
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 ```
 
 ### Spacing Variables
@@ -73,7 +75,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #0369A1;
+  background: #059669; /* emerald-600 */
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -83,15 +85,14 @@
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  background: #047857; /* emerald-700 */
 }
 
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #0F172A;
-  border: 2px solid #0F172A;
+  color: #0F172A; /* slate-900 */
+  border: 2px solid #E2E8F0; /* slate-200 */
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -130,9 +131,9 @@
 }
 
 .input:focus {
-  border-color: #0F172A;
+  border-color: #059669; /* emerald-600 */
   outline: none;
-  box-shadow: 0 0 0 3px #0F172A20;
+  box-shadow: 0 0 0 3px #10B98133; /* emerald-500 @ ~20% */
 }
 ```
 

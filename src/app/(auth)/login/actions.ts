@@ -21,7 +21,7 @@ export async function loginAction(
   }
   const origin =
     headers().get('origin') ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
     ''
   const result = await signInWithMagicLink(
     parsed.data.email,

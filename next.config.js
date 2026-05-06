@@ -7,7 +7,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' *.supabase.co data: blob:",
+      "img-src 'self' *.supabase.co images.unsplash.com data: blob:",
       "font-src 'self'",
       "connect-src 'self' *.supabase.co *.mercadopago.com",
       "frame-src *.mercadopago.com",

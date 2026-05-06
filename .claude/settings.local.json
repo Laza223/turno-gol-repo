@@ -31,7 +31,9 @@
       "Bash(Get-Content \"C:/Users/Lazar/Documents/github/TurnoGol/.worktrees/admin-dashboard/package.json\")",
       "Bash(Select-String '\"test')",
       "Bash(npx supabase *)",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "Bash(git config *)",
+      "Bash(git *)"
     ]
   }
 }

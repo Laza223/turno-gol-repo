@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getOrCreateStaffUser,
   resolveStaffTenants,
@@ -21,7 +22,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const supabase = createClient()
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error || !data?.user) return redirectVerifyError(req, 'exchange_failed')
+  if (error || !data?.user) {
+    console.error('Supabase auth exchange error:', error)
+    return redirectVerifyError(req, 'exchange_failed')
+  }
 
   const user = data.user
   const meta: Record<string, unknown> = user.app_metadata ?? {}
@@ -48,6 +52,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const tenants = await resolveStaffTenants(ourStaff.id)
 
   if (tenants.length === 0) {
+    // Set staffUserId so they can pass the layout checks, even without a tenant
+    const adminClient = createAdminClient()
+    await adminClient.auth.admin.updateUserById(user.id, {
+      app_metadata: { ...meta, staff_user_id: ourStaff.id }
+    })
+    await supabase.auth.refreshSession()
     return NextResponse.redirect(new URL('/onboarding', req.url))
   }
 

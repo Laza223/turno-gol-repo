@@ -2,45 +2,109 @@
 
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
-import { Loader2, Mail } from 'lucide-react'
+import { ArrowLeft, Loader2, Mail, Sparkles } from 'lucide-react'
 import { loginAction, type LoginState } from './actions'
+
+const HERO_IMG =
+  'https://images.unsplash.com/photo-1551958219-acbc608c6377?q=80&w=2000&auto=format&fit=crop'
 
 const initial: LoginState = { status: 'idle' }
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(loginAction, initial)
 
-  if (state.status === 'sent') {
-    return (
-      <div className="space-y-4 text-center">
-        <Mail className="mx-auto h-10 w-10 text-sky-700" aria-hidden />
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Revisá tu email
-        </h1>
-        <p className="text-sm text-slate-600">
-          Te enviamos un enlace mágico a <strong>{state.email}</strong>. Hacé click para entrar.
-        </p>
-        <p className="text-xs text-slate-500">
-          ¿No llegó? Revisá spam o{' '}
-          <Link href="/login" className="font-medium text-sky-700 hover:underline">
-            probá de nuevo
-          </Link>
-          .
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+    <div className="grid min-h-dvh lg:grid-cols-2">
+      <ImagePane />
+      <FormPane state={state} formAction={formAction} />
+    </div>
+  )
+}
+
+function ImagePane() {
+  return (
+    <div className="relative hidden lg:block">
+      <img
+        src={HERO_IMG}
+        alt="Cancha de fútbol iluminada"
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="eager"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-br from-slate-950/85 via-slate-950/60 to-sky-900/40"
+      />
+      <div className="relative flex h-full flex-col justify-between p-12 text-white">
+        <Link href="/" className="flex items-center gap-2 text-white">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-sky-500 text-sm font-bold text-slate-950 shadow-lg shadow-sky-500/30">
+            TG
+          </span>
+          <span className="text-lg font-semibold tracking-tight">TurnoGol</span>
+        </Link>
+
+        <div className="max-w-md">
+          <Sparkles className="mb-4 h-6 w-6 text-sky-300" aria-hidden />
+          <p className="text-2xl font-semibold leading-snug text-white">
+            “En tres meses subimos la facturación 40% sin contratar a nadie.”
+          </p>
+          <p className="mt-4 text-sm text-slate-300">
+            Marcelo Pérez · Complejo San Martín, Mendoza
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FormPane({
+  state,
+  formAction,
+}: {
+  state: LoginState
+  formAction: (formData: FormData) => void
+}) {
+  return (
+    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-sky-50 px-4 py-12 sm:px-6 lg:px-8">
+      <Link
+        href="/"
+        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900 transition-colors lg:hidden"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+        Volver
+      </Link>
+
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex items-center gap-2 lg:hidden">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">
+            TG
+          </span>
+          <span className="text-base font-semibold text-slate-900">TurnoGol</span>
+        </div>
+
+        {state.status === 'sent' ? <SentState email={state.email} /> : <FormCard state={state} formAction={formAction} />}
+      </div>
+    </div>
+  )
+}
+
+function FormCard({
+  state,
+  formAction,
+}: {
+  state: LoginState
+  formAction: (formData: FormData) => void
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 shadow-xl shadow-slate-900/5 backdrop-blur-md">
+      <header className="mb-6 space-y-1">
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
           Iniciá sesión
         </h1>
         <p className="text-sm text-slate-600">
           Te enviamos un enlace mágico a tu email. Sin contraseñas.
         </p>
       </header>
+
       <form action={formAction} className="space-y-4" noValidate>
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm font-medium text-slate-900">
@@ -54,7 +118,7 @@ export default function LoginPage() {
             required
             placeholder="vos@complejo.com"
             aria-invalid={state.status === 'error' ? 'true' : undefined}
-            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:border-sky-700 aria-[invalid=true]:border-red-600"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:border-sky-500 aria-[invalid=true]:border-red-500"
           />
           {state.status === 'error' && (
             <p role="alert" className="text-xs text-red-600">
@@ -64,11 +128,36 @@ export default function LoginPage() {
         </div>
         <SubmitButton />
       </form>
-      <p className="text-center text-sm text-slate-600">
+
+      <p className="mt-6 text-center text-sm text-slate-600">
         ¿Sos nuevo?{' '}
-        <Link href="/register" className="font-medium text-sky-700 hover:underline">
+        <Link href="/register" className="font-semibold text-sky-700 hover:text-sky-800 hover:underline">
           Creá tu cuenta
         </Link>
+      </p>
+    </div>
+  )
+}
+
+function SentState({ email }: { email: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 ring-8 ring-sky-50">
+        <Mail className="h-6 w-6 text-sky-700" aria-hidden />
+      </div>
+      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+        Revisá tu email
+      </h1>
+      <p className="mt-3 text-sm text-slate-600">
+        Te enviamos un enlace mágico a <strong className="text-slate-900">{email}</strong>.
+        Hacé click para entrar.
+      </p>
+      <p className="mt-6 text-xs text-slate-500">
+        ¿No llegó? Revisá spam o{' '}
+        <Link href="/login" className="font-semibold text-sky-700 hover:underline">
+          probá de nuevo
+        </Link>
+        .
       </p>
     </div>
   )
@@ -80,7 +169,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-10 w-full items-center justify-center rounded-md bg-sky-700 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-sky-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2"
+      className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all duration-200 hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
     >
       {pending ? (
         <>

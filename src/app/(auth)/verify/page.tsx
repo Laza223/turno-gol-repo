@@ -14,33 +14,63 @@ export default function VerifyPage({
   searchParams: { error?: string }
 }) {
   const errCode = searchParams.error
-  if (errCode) {
-    const message = ERROR_COPY[errCode] ?? ERROR_COPY.invalid
-    return (
-      <div className="space-y-4 text-center">
-        <AlertCircle className="mx-auto h-10 w-10 text-red-600" aria-hidden />
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          No pudimos verificar tu enlace
-        </h1>
-        <p className="text-sm text-slate-600">{message}</p>
-        <Link
-          href="/login"
-          className="inline-flex h-10 items-center justify-center rounded-md bg-sky-700 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2"
-        >
-          Volver a intentar
-        </Link>
-      </div>
-    )
-  }
+  const isError = Boolean(errCode)
+
   return (
-    <div className="space-y-3 text-center">
-      <Loader2 className="mx-auto h-10 w-10 animate-spin text-sky-700" aria-hidden />
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+    <main className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-sky-50 px-4 py-12">
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(14,165,233,0.10),_transparent_60%)]"
+      />
+      <div className="relative w-full max-w-md">
+        <Link href="/" className="mb-8 flex items-center justify-center gap-2">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">
+            TG
+          </span>
+          <span className="text-base font-semibold text-slate-900">TurnoGol</span>
+        </Link>
+
+        <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
+          {isError ? <ErrorState code={errCode!} /> : <LoadingState />}
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function LoadingState() {
+  return (
+    <>
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 ring-8 ring-sky-50">
+        <Loader2 className="h-6 w-6 animate-spin text-sky-700" aria-hidden />
+      </div>
+      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
         Verificando tu enlace…
       </h1>
-      <p className="text-sm text-slate-600">
+      <p className="mt-3 text-sm text-slate-600">
         Esto tarda un instante. No cierres esta pestaña.
       </p>
-    </div>
+    </>
+  )
+}
+
+function ErrorState({ code }: { code: string }) {
+  const message = ERROR_COPY[code] ?? ERROR_COPY.invalid
+  return (
+    <>
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 ring-8 ring-red-50">
+        <AlertCircle className="h-6 w-6 text-red-600" aria-hidden />
+      </div>
+      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+        No pudimos verificar tu enlace
+      </h1>
+      <p className="mt-3 text-sm text-slate-600">{message}</p>
+      <Link
+        href="/login"
+        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-slate-900 px-6 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all duration-200 hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-xl"
+      >
+        Volver a intentar
+      </Link>
+    </>
   )
 }

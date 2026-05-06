@@ -17,10 +17,10 @@ export default function VerifyPage({
   const isError = Boolean(errCode)
 
   return (
-    <main className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-sky-50 px-4 py-12">
+    <main className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12">
       <div
         aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(14,165,233,0.10),_transparent_60%)]"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.12),_transparent_60%)]"
       />
       <div className="relative w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
@@ -41,8 +41,8 @@ export default function VerifyPage({
 function LoadingState() {
   return (
     <>
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 ring-8 ring-sky-50">
-        <Loader2 className="h-6 w-6 animate-spin text-sky-700" aria-hidden />
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
+        <Loader2 className="h-6 w-6 animate-spin text-emerald-700" aria-hidden />
       </div>
       <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
         Verificando tu enlace…
@@ -67,7 +67,7 @@ function ErrorState({ code }: { code: string }) {
       <p className="mt-3 text-sm text-slate-600">{message}</p>
       <Link
         href="/login"
-        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-slate-900 px-6 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all duration-200 hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-xl"
+        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30"
       >
         Volver a intentar
       </Link>

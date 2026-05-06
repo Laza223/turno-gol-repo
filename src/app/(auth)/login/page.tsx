@@ -32,18 +32,18 @@ function ImagePane() {
       />
       <div
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-br from-slate-950/85 via-slate-950/60 to-sky-900/40"
+        className="absolute inset-0 bg-gradient-to-br from-slate-950/85 via-slate-950/60 to-emerald-900/45"
       />
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
         <Link href="/" className="flex items-center gap-2 text-white">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-sky-500 text-sm font-bold text-slate-950 shadow-lg shadow-sky-500/30">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-emerald-500 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/30">
             TG
           </span>
           <span className="text-lg font-semibold tracking-tight">TurnoGol</span>
         </Link>
 
         <div className="max-w-md">
-          <Sparkles className="mb-4 h-6 w-6 text-sky-300" aria-hidden />
+          <Sparkles className="mb-4 h-6 w-6 text-emerald-300" aria-hidden />
           <p className="text-2xl font-semibold leading-snug text-white">
             “En tres meses subimos la facturación 40% sin contratar a nadie.”
           </p>
@@ -64,7 +64,7 @@ function FormPane({
   formAction: (formData: FormData) => void
 }) {
   return (
-    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-sky-50 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12 sm:px-6 lg:px-8">
       <Link
         href="/"
         className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900 transition-colors lg:hidden"
@@ -118,7 +118,7 @@ function FormCard({
             required
             placeholder="vos@complejo.com"
             aria-invalid={state.status === 'error' ? 'true' : undefined}
-            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:border-sky-500 aria-[invalid=true]:border-red-500"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
           />
           {state.status === 'error' && (
             <p role="alert" className="text-xs text-red-600">
@@ -131,7 +131,7 @@ function FormCard({
 
       <p className="mt-6 text-center text-sm text-slate-600">
         ¿Sos nuevo?{' '}
-        <Link href="/register" className="font-semibold text-sky-700 hover:text-sky-800 hover:underline">
+        <Link href="/register" className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
           Creá tu cuenta
         </Link>
       </p>
@@ -142,8 +142,8 @@ function FormCard({
 function SentState({ email }: { email: string }) {
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 ring-8 ring-sky-50">
-        <Mail className="h-6 w-6 text-sky-700" aria-hidden />
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
+        <Mail className="h-6 w-6 text-emerald-700" aria-hidden />
       </div>
       <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
         Revisá tu email
@@ -154,7 +154,7 @@ function SentState({ email }: { email: string }) {
       </p>
       <p className="mt-6 text-xs text-slate-500">
         ¿No llegó? Revisá spam o{' '}
-        <Link href="/login" className="font-semibold text-sky-700 hover:underline">
+        <Link href="/login" className="font-semibold text-emerald-700 hover:underline">
           probá de nuevo
         </Link>
         .
@@ -169,7 +169,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all duration-200 hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+      className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30 disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
     >
       {pending ? (
         <>

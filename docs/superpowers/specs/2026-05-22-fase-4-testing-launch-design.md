@@ -906,7 +906,7 @@ main()
 - `tests/unit/{breadcrumbs,api-status}.test.ts`
 - `scripts/{seed-e2e,stress-test,launch-check}.ts`
 - `playwright.config.ts` (modified)
-- `package.json` (3 scripts añadidos: `test:e2e:ci`, `e2e:seed`, `stress:bookings`, `launch:check`)
+- `package.json` (4 scripts añadidos: `test:e2e:ci`, `e2e:seed`, `stress:bookings`, `launch:check`)
 
 **Docs:**
 - `docs/superpowers/specs/2026-05-22-fase-4-testing-launch-design.md` (este spec)

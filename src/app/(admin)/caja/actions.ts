@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { z } from 'zod'
+import { uuid, dateStr, moneyCents, boundedText } from '@/shared/validation/primitives'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -14,6 +16,23 @@ import {
   InvalidCashFlowCategoryError,
 } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow, DailyCashCloseRow, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
+
+const createCashFlowSchema = z.object({
+  type: z.enum(['income', 'adjustment']),
+  category: z.enum(['booking', 'product_sale', 'other', 'no_show_correction']),
+  amount: moneyCents,
+  method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+  description: boundedText(500),
+  bookingId: uuid.optional(),
+  productId: uuid.optional(),
+  occurredAt: z.date().optional(),
+})
+
+const closeDaySchema = z.object({
+  date: dateStr,
+  declaredCash: moneyCents.optional(),
+  note: boundedText(500).optional(),
+})
 
 export type CashFlowActionResult =
   | { success: true; cashFlow: CashFlowRow }
@@ -33,12 +52,14 @@ async function requireStaffTenant() {
 export async function createCashFlowAction(
   input: CreateCashFlowInput,
 ): Promise<CashFlowActionResult> {
+  const parsed = createCashFlowSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
-      const cashFlow = await createCashFlow(tenant.id, user.staffUserId!, input, tx)
+      const cashFlow = await createCashFlow(tenant.id, user.staffUserId!, parsed.data, tx)
       return { success: true as const, cashFlow }
     } catch (err) {
       if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
@@ -60,16 +81,24 @@ export async function closeDayAction(
   declaredCash?: number,
   note?: string,
 ): Promise<CloseDayActionResult> {
+  const parsed = closeDaySchema.safeParse({ date, declaredCash, note })
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
-      const close = await closeDailyRegister(tenant.id, date, user.staffUserId!, { declaredCash, note }, tx)
+      const close = await closeDailyRegister(
+        tenant.id,
+        parsed.data.date,
+        user.staffUserId!,
+        { declaredCash: parsed.data.declaredCash, note: parsed.data.note },
+        tx,
+      )
       return { success: true as const, close }
     } catch (err) {
       if (err instanceof DayAlreadyCloseExistsError) {
-        return { success: false as const, error: `La caja del ${date} ya fue cerrada.` }
+        return { success: false as const, error: `La caja del ${parsed.data.date} ya fue cerrada.` }
       }
       throw err
     }

@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { handleNoShow } from '@/modules/bookings/booking.cancellation'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
+import { uuid } from '@/shared/validation/primitives'
 
 export const dynamic = 'force-dynamic'
 
 export const POST = withTenant(async (req, user, tx) => {
   const parts = req.nextUrl.pathname.split('/')
-  const bookingId = parts[parts.length - 2]!
+  const parsedId = uuid.safeParse(parts[parts.length - 2])
+  if (!parsedId.success) {
+    return NextResponse.json({ error: { code: 'BAD_REQUEST', message: 'invalid_id' } }, { status: 400 })
+  }
+  const bookingId = parsedId.data
   const staffUserId = user.staffUserId ?? ''
 
   try {

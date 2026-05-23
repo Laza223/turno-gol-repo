@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { encrypt } from '@/lib/crypto/encrypt'
 import { connectMercadoPago, completeOnboarding } from '@/modules/tenants/tenant.service'
@@ -13,16 +14,24 @@ type MpTokenResponse = {
   public_key: string
 }
 
+const querySchema = z.object({
+  code: z.string().min(1).max(512),
+  state: z.string().min(1).max(1024),
+})
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url)
-  const code = url.searchParams.get('code')
-  const state = url.searchParams.get('state')
+  const parsed = querySchema.safeParse({
+    code: url.searchParams.get('code'),
+    state: url.searchParams.get('state'),
+  })
 
-  if (!code || !state) {
+  if (!parsed.success) {
     return NextResponse.redirect(
       new URL('/onboarding?error=mp_missing_params', req.url),
     )
   }
+  const { code, state } = parsed.data
 
   // Verify CSRF state
   const secret = process.env.MP_CLIENT_SECRET ?? ''

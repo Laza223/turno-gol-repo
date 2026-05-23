@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
@@ -12,6 +13,8 @@ import { sanitizeNext } from '@/lib/safe-redirect'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+const codeSchema = z.string().min(1).max(512)
+
 function redirectVerifyError(req: NextRequest, code: string): NextResponse {
   const url = new URL('/verify', req.url)
   url.searchParams.set('error', code)
@@ -19,8 +22,9 @@ function redirectVerifyError(req: NextRequest, code: string): NextResponse {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const code = new URL(req.url).searchParams.get('code')
-  if (!code) return redirectVerifyError(req, 'invalid')
+  const parsedCode = codeSchema.safeParse(new URL(req.url).searchParams.get('code'))
+  if (!parsedCode.success) return redirectVerifyError(req, 'invalid')
+  const code = parsedCode.data
 
   const supabase = createClient()
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)

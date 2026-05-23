@@ -146,7 +146,7 @@ export async function insertSubscription(
     INSERT INTO tenant_subscriptions (
       tenant_id, plan_id, current_period_start, current_period_end
     )
-    VALUES (${opts.tenantId}, ${opts.planId}, ${start}, ${end})
+    VALUES (${opts.tenantId}, ${opts.planId}, ${start.toISOString()}, ${end.toISOString()})
     RETURNING id
   `
   return rows[0].id

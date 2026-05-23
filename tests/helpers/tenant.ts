@@ -16,6 +16,12 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
       END IF;
     END $$;
   `)
+  // Grant membership so the test superuser (postgres) can SET LOCAL ROLE turnogol_app
+  // inside tests that need to exercise RLS policies as the app role.
+  await s.unsafe(`
+    GRANT turnogol_app TO postgres;
+    GRANT authenticated TO postgres;
+  `)
   // Grant privileges so RLS (not GRANT) is what blocks.
   await s.unsafe(`
     GRANT USAGE ON SCHEMA public TO authenticated, turnogol_app;

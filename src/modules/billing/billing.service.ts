@@ -124,7 +124,7 @@ function formatDate(d: Date): string {
 }
 
 function computeReturnUrl(): string {
-  return `${process.env.APP_URL ?? 'http://localhost:3000'}/configuracion/facturacion`
+  return `${process.env.APP_URL ?? 'http://localhost:3000'}/settings/facturacion`
 }
 
 function computeNotificationUrl(tenantId: string): string {

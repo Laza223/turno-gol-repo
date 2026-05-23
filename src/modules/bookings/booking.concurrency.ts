@@ -4,6 +4,7 @@ import type { DbTx } from '@/shared/db/client'
 import { rowToBookingRow } from './booking.mappers'
 import { assertTransition } from './booking.state-machine'
 import type { TransitionResult } from './booking.types'
+import { track } from '@/shared/observability'
 
 /**
  * Conditional UPDATE primitive for race-safe transitions out of pending_payment.
@@ -32,5 +33,12 @@ export async function transitionFromPendingPayment(
     .returning()
 
   if (rows.length === 0) return { won: false }
+
+  if (newStatus === 'confirmed') {
+    track.booking('booking.transition.confirmed', { bookingId })
+  } else {
+    track.booking('booking.transition.expired', { bookingId })
+  }
+
   return { won: true, row: rowToBookingRow(rows[0]!) }
 }

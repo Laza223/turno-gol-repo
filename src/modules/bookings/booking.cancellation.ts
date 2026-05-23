@@ -12,6 +12,7 @@ import {
   BookingNotOwnedByPlayerError,
 } from './booking.errors'
 import type { BookingRow, DepositStatus } from './booking.types'
+import { track } from '@/shared/observability'
 
 const PG_UNIQUE_VIOLATION = '23505'
 
@@ -79,6 +80,8 @@ export async function cancelByPlayer(
   gateway: PaymentGateway | null,
   tx: DbTx,
 ): Promise<BookingRow> {
+  track.booking('booking.cancel.by_player', { bookingId, playerId })
+
   const b = await lockBooking(bookingId, tx)
   if (!b) throw new BookingNotInConfirmedError(bookingId)
   if (b.player_id !== playerId) throw new BookingNotOwnedByPlayerError(bookingId, playerId)
@@ -138,6 +141,8 @@ export async function cancelByAdmin(
   const b = await lockBooking(bookingId, tx)
   if (!b) throw new BookingNotInConfirmedError(bookingId)
   if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
+
+  track.booking('booking.cancel.by_admin', { bookingId, tenantId: b.tenant_id })
 
   const targetStatus = shouldRefund ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus

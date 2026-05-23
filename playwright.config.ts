@@ -33,6 +33,13 @@ export default defineConfig({
       NEXT_PUBLIC_E2E: '1',
       UPSTASH_REDIS_REST_URL: '',
       UPSTASH_REDIS_REST_TOKEN: '',
+      // /api/status is presence-only for externals (see launch-check REQUIRED_ENV).
+      // Provide placeholders so the health gate is 200 without real prod creds;
+      // DB + pg-boss checks stay real.
+      MP_CLIENT_ID: process.env.MP_CLIENT_ID ?? 'e2e-placeholder',
+      MP_CLIENT_SECRET: process.env.MP_CLIENT_SECRET ?? 'e2e-placeholder',
+      RESEND_API_KEY: process.env.RESEND_API_KEY ?? 'e2e-placeholder',
+      SENTRY_DSN: process.env.SENTRY_DSN ?? 'e2e-placeholder',
     },
   },
 })

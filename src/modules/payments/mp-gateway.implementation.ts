@@ -30,6 +30,8 @@ function mapStatus(raw: string | undefined): MpPaymentStatus {
   return 'pending'
 }
 
+const MP_ID_RE = /^\d{1,32}$/
+
 function pesosToCents(amount: number | undefined | null): number {
   if (typeof amount !== 'number' || !Number.isFinite(amount)) return 0
   return Math.round(amount * 100)
@@ -92,6 +94,9 @@ export class MercadoPagoGateway implements PaymentGateway {
   }
 
   async getPaymentStatus(mpPaymentId: string): Promise<GatewayPaymentInfo> {
+    if (!MP_ID_RE.test(mpPaymentId)) {
+      throw new MpGatewayError(`invalid mpPaymentId: ${mpPaymentId}`)
+    }
     const payment = new Payment(this.config)
     try {
       const res = await payment.get({ id: mpPaymentId })
@@ -111,6 +116,9 @@ export class MercadoPagoGateway implements PaymentGateway {
   }
 
   async createRefund(mpPaymentId: string, amount?: number): Promise<RefundResult> {
+    if (!MP_ID_RE.test(mpPaymentId)) {
+      throw new MpGatewayError(`invalid mpPaymentId: ${mpPaymentId}`)
+    }
     const refund = new PaymentRefund(this.config)
     try {
       const body = amount !== undefined ? { amount: centsToPesos(amount) } : undefined

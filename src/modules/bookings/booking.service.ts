@@ -31,6 +31,7 @@ import type {
   CreateOnlineBookingInput,
   TransitionResult,
 } from './booking.types'
+import { track } from '@/shared/observability'
 
 const PG_EXCLUSION_VIOLATION = '23P01'
 
@@ -183,7 +184,14 @@ export async function createManualBooking(
       })
       .returning()
 
-    return rowToBookingRow(inserted[0]!)
+    const created = rowToBookingRow(inserted[0]!)
+    track.booking('booking.manual.create.success', {
+      bookingId: created.id,
+      tenantId: created.tenantId,
+      courtId: created.courtId,
+      playerId: created.playerId ?? undefined,
+    })
+    return created
   } catch (err) {
     if (isExclusionViolation(err)) throw new SlotTakenError()
     throw err
@@ -200,6 +208,12 @@ export async function createOnlineBooking(
   input: CreateOnlineBookingInput,
   tx: DbTx,
 ): Promise<BookingRow> {
+  track.booking('booking.online.create.start', {
+    tenantId,
+    courtId: input.courtId,
+    playerId: input.playerId,
+  })
+
   const banResult = await checkPlayerBanned(input.playerId, tenantId, tx)
   if (banResult.banned) {
     throw new PlayerBannedError(
@@ -315,9 +329,23 @@ export async function createOnlineBooking(
       tx,
     )
 
+    track.booking('booking.online.create.success', {
+      bookingId: booking.id,
+      tenantId: booking.tenantId,
+      courtId: booking.courtId,
+      playerId: booking.playerId ?? undefined,
+    })
+
     return booking
   } catch (err) {
-    if (isExclusionViolation(err)) throw new SlotTakenError()
+    if (isExclusionViolation(err)) {
+      track.booking('booking.online.create.slot_taken', {
+        tenantId,
+        courtId: input.courtId,
+        playerId: input.playerId,
+      })
+      throw new SlotTakenError()
+    }
     throw err
   }
 }

@@ -24,6 +24,7 @@ import {
 import {
   cleanupAll,
   createTestPlayer,
+  createTestSystemAdmin,
   createTestTenant,
   ensureRoles,
   linkPlayerToTenant,
@@ -371,10 +372,175 @@ describe('I. casos especiales', () => {
   })
 })
 
-/**
- * TODO (gaps declarados — positivos, no de aislamiento):
- *  - player_update_self
- *  - player_self_insert (bookings)
- *  - player_self_ptr_insert
- *  - system_admin_self / system_admin_self_update
- */
+// ─── J. Positive policies (cierre de gaps) ─────────────────────
+// Mutation-checked 2026-05-23: commenting any of the 4 policies in
+// 006_rls_policies.sql produces at least 1 red in this block.
+describe('J. positive policies (cierre de gaps)', () => {
+  it('player_update_self: jugador A actualiza su propia fila en players', async () => {
+    const newFirstName = `n${Date.now()}`
+    const rows = await withContextRollback(
+      { role: 'authenticated', playerId: A.playerId },
+      (tx) =>
+        tx<{ id: string; first_name: string }[]>`
+          UPDATE players SET first_name = ${newFirstName}
+          WHERE id = ${A.playerId}
+          RETURNING id, first_name
+        `,
+    )
+    expect(rows.length).toBe(1)
+    expect(rows[0].first_name).toBe(newFirstName)
+  })
+
+  it('player_update_self: jugador A NO puede actualizar fila de B', async () => {
+    const rows = await withContextRollback(
+      { role: 'authenticated', playerId: A.playerId },
+      (tx) =>
+        tx<{ id: string }[]>`
+          UPDATE players SET first_name = 'hacked'
+          WHERE id = ${B.playerId}
+          RETURNING id
+        `,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('player_self_insert (bookings): jugador A inserta booking a su nombre', async () => {
+    const inserted = await withContextRollback(
+      { role: 'authenticated', playerId: A.playerId },
+      (tx) =>
+        tx<{ id: string }[]>`
+          INSERT INTO bookings (
+            tenant_id, court_id, player_id, date, time_start, time_end,
+            price_snapshot, deposit_amount, deposit_status, payment_method
+          )
+          VALUES (
+            ${tenantA.id}, ${A.courtId}, ${A.playerId},
+            ${faker.date.future().toISOString().slice(0, 10)},
+            '10:00', '11:00', 100000, 0, 'not_required', NULL
+          )
+          RETURNING id
+        `,
+    )
+    expect(inserted.length).toBe(1)
+  })
+
+  it('player_self_insert: jugador A NO puede insertar booking con player_id de B', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'authenticated', playerId: A.playerId },
+        (tx) =>
+          tx`
+            INSERT INTO bookings (
+              tenant_id, court_id, player_id, date, time_start, time_end,
+              price_snapshot, deposit_amount, deposit_status, payment_method
+            )
+            VALUES (
+              ${tenantA.id}, ${A.courtId}, ${B.playerId},
+              ${faker.date.future().toISOString().slice(0, 10)},
+              '12:00', '13:00', 100000, 0, 'not_required', NULL
+            )
+          `,
+      ),
+    ).rejects.toThrow()
+  })
+
+  it('player_self_ptr_insert: jugador fresco crea su propia relación con tenant B', async () => {
+    const sql = getSql()
+    const freshPlayer = await createTestPlayer(sql)
+    const rows = await withContextRollback(
+      { role: 'authenticated', playerId: freshPlayer.id },
+      (tx) =>
+        tx<{ id: string }[]>`
+          INSERT INTO player_tenant_relationships (tenant_id, player_id)
+          VALUES (${tenantB.id}, ${freshPlayer.id})
+          RETURNING id
+        `,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('player_self_ptr_insert: jugador A NO puede insertar PTR a nombre de B', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'authenticated', playerId: A.playerId },
+        (tx) =>
+          tx`
+            INSERT INTO player_tenant_relationships (tenant_id, player_id)
+            VALUES (${tenantB.id}, ${B.playerId})
+          `,
+      ),
+    ).rejects.toThrow()
+  })
+
+  it('system_admin_self: super admin ve SU PROPIA fila', async () => {
+    const sql = getSql()
+    const sa = await createTestSystemAdmin(sql)
+    const rows = await withContext(
+      { role: 'authenticated', systemAdminId: sa.id },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM system_admins WHERE id = ${sa.id}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('system_admin_self: super admin NO ve fila de otro super admin', async () => {
+    const sql = getSql()
+    const sa1 = await createTestSystemAdmin(sql)
+    const sa2 = await createTestSystemAdmin(sql)
+    const rows = await withContext(
+      { role: 'authenticated', systemAdminId: sa1.id },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM system_admins WHERE id = ${sa2.id}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('system_admin_self_update: super admin actualiza solo su fila', async () => {
+    const sql = getSql()
+    const sa1 = await createTestSystemAdmin(sql)
+    const sa2 = await createTestSystemAdmin(sql)
+    const ok = await withContextRollback(
+      { role: 'authenticated', systemAdminId: sa1.id },
+      (tx) =>
+        tx<{ id: string }[]>`UPDATE system_admins SET first_name='x' WHERE id=${sa1.id} RETURNING id`,
+    )
+    expect(ok.length).toBe(1)
+    const blocked = await withContextRollback(
+      { role: 'authenticated', systemAdminId: sa1.id },
+      (tx) =>
+        tx<{ id: string }[]>`UPDATE system_admins SET first_name='hijack' WHERE id=${sa2.id} RETURNING id`,
+    )
+    expect(blocked.length).toBe(0)
+  })
+
+  it('realtime: claim app_metadata.tenant_id ausente → 0 filas', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', jwtClaims: { app_metadata: {} } },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('realtime: claim app_metadata.tenant_id malformado → safe (0 filas o error de cast)', async () => {
+    try {
+      const rows = await withContext(
+        { role: 'authenticated', jwtClaims: { app_metadata: { tenant_id: 'not-a-uuid' } } },
+        (tx) =>
+          tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+      )
+      expect(rows.length).toBe(0)
+    } catch (e) {
+      expect(String(e)).toMatch(/invalid input syntax for type uuid/i)
+    }
+  })
+
+  it('realtime: claim sin app_metadata → 0 filas', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', jwtClaims: { sub: 'whoever' } },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+})

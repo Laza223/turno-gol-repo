@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { encrypt } from '@/lib/crypto/encrypt'
 import { connectMercadoPago, completeOnboarding } from '@/modules/tenants/tenant.service'
@@ -13,16 +14,24 @@ type MpTokenResponse = {
   public_key: string
 }
 
+const querySchema = z.object({
+  code: z.string().min(1).max(512),
+  state: z.string().min(1).max(1024),
+})
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url)
-  const code = url.searchParams.get('code')
-  const state = url.searchParams.get('state')
+  const parsed = querySchema.safeParse({
+    code: url.searchParams.get('code'),
+    state: url.searchParams.get('state'),
+  })
 
-  if (!code || !state) {
+  if (!parsed.success) {
     return NextResponse.redirect(
       new URL('/onboarding?error=mp_missing_params', req.url),
     )
   }
+  const { code, state } = parsed.data
 
   // Verify CSRF state
   const secret = process.env.MP_CLIENT_SECRET ?? ''
@@ -52,8 +61,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // Exchange code for token
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin
+  // Exchange code for token — require APP_URL (no req.url origin fallback to
+  // avoid host-header injection into the OAuth redirect_uri).
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    return NextResponse.redirect(
+      new URL('/onboarding?error=mp_config_missing', req.url),
+    )
+  }
   const redirectUri = `${appUrl}/api/mp/callback`
   const clientId = process.env.MP_CLIENT_ID ?? ''
 

@@ -36,6 +36,8 @@
     "@sentry/nextjs": "^7.110",
     "@supabase/ssr": "^0.3",
     "@supabase/supabase-js": "^2.43",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7",
     "clsx": "^2.1",
     "date-fns": "^3.6",

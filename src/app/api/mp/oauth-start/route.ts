@@ -29,7 +29,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const sig = createHmac('sha256', secret).update(payload).digest('base64url')
   const state = `${payload}.${sig}`
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    return NextResponse.json({ error: 'mp_config_missing' }, { status: 500 })
+  }
   const redirectUri = `${appUrl}/api/mp/callback`
 
   const mpAuthUrl = new URL('https://auth.mercadopago.com/authorization')

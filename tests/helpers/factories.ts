@@ -63,21 +63,29 @@ export async function insertBooking(
     date?: string
     timeStart?: string
     timeEnd?: string
+    status?: string
+    depositStatus?: string
+    depositAmount?: number
   },
 ): Promise<string> {
   const date = opts.date ?? new Date(Date.now() + 7 * dayMs).toISOString().slice(0, 10)
   const timeStart = opts.timeStart ?? '14:00'
   const timeEnd = opts.timeEnd ?? '15:00'
-  // chk_booking_payment_consistency: payment_method NULL + deposit_status='not_required' is valid.
+  const depositStatus = opts.depositStatus ?? 'not_required'
+  const depositAmount = opts.depositAmount ?? 0
+  // chk_booking_payment_consistency: payment_method NULL is valid for
+  //   deposit_status='not_required' OR (migration 009) 'pending'.
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
       price_snapshot, deposit_amount, deposit_status, payment_method
+      ${opts.status ? sql`, status` : sql``}
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId ?? null},
       ${date}, ${timeStart}, ${timeEnd},
-      ${800000}, ${0}, 'not_required', NULL
+      ${800000}, ${depositAmount}, ${depositStatus}, NULL
+      ${opts.status ? sql`, ${opts.status}::booking_status` : sql``}
     )
     RETURNING id
   `

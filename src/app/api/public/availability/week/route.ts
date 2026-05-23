@@ -1,30 +1,37 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { dateStr, slug } from '@/shared/validation/primitives'
 import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/public.service'
 
 export const dynamic = 'force-dynamic'
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const querySchema = z.object({
+  slug,
+  start: dateStr,
+})
 
-function addDays(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
+function addDays(dateStrIn: string, n: number): string {
+  const [y, m, d] = dateStrIn.split('-').map(Number)
   const dt = new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1))
   dt.setUTCDate(dt.getUTCDate() + n)
   return dt.toISOString().slice(0, 10)
 }
 
 export async function GET(req: NextRequest) {
-  const sp = req.nextUrl.searchParams
-  const slug = sp.get('slug')
-  const start = sp.get('start')
-  if (!slug || !start || !DATE_RE.test(start)) {
+  const parsed = querySchema.safeParse({
+    slug: req.nextUrl.searchParams.get('slug'),
+    start: req.nextUrl.searchParams.get('start'),
+  })
+  if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
   }
+  const { slug: tenantSlug, start } = parsed.data
 
   const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
   const todayStr = artNow.toISOString().slice(0, 10)
 
-  const tenant = await getPublicTenant(slug)
+  const tenant = await getPublicTenant(tenantSlug)
   if (!tenant) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const maxStart = addDays(todayStr, tenant.bookingAdvanceDays)

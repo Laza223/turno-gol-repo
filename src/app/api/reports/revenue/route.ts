@@ -1,9 +1,15 @@
+import { z } from 'zod'
+import { dateStr } from '@/shared/validation/primitives'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getCashFlowsForExport } from '@/modules/reports/report.service'
 import { toCsv } from '@/modules/reports/report.utils'
 
-const DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+const querySchema = z.object({
+  from: dateStr,
+  to: dateStr,
+  format: z.literal('csv'),
+})
 
 export async function GET(req: Request): Promise<Response> {
   const user = await extractAuthUser()
@@ -12,13 +18,15 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   const { searchParams } = new URL(req.url)
-  const from = searchParams.get('from') ?? ''
-  const to = searchParams.get('to') ?? ''
-  const format = searchParams.get('format')
-
-  if (format !== 'csv' || !DATE_RE.test(from) || !DATE_RE.test(to)) {
+  const parsed = querySchema.safeParse({
+    from: searchParams.get('from'),
+    to: searchParams.get('to'),
+    format: searchParams.get('format'),
+  })
+  if (!parsed.success) {
     return new Response('Bad Request', { status: 400 })
   }
+  const { from, to } = parsed.data
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return new Response(null, { status: 401 })

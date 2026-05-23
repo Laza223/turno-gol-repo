@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { MercadoPagoGateway } from './mp-gateway.implementation'
@@ -100,6 +100,14 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     const info = await gateway.getPaymentStatus(job.mpPaymentId)
     const upgrade = parseSaasUpgradeRef(info.externalReference)
     if (upgrade) {
+      // Cross-check: the webhook's claimed tenant (?tenant= query) MUST match the
+      // tenant embedded in the payment's external_reference. A holder of
+      // MP_WEBHOOK_SECRET could otherwise enqueue a job for an arbitrary tenant.
+      if (upgrade.tenantId !== job.tenantId) {
+        throw new Error(
+          `webhook tenant mismatch: claimed=${job.tenantId} actual=${upgrade.tenantId}`,
+        )
+      }
       if (info.status === 'approved') {
         await handleUpgradeApproved(
           upgrade.tenantId,
@@ -111,7 +119,19 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       return
     }
 
-    // Booking deposit — existing post-lock dispatch.
+    // Booking deposit — external_reference is the booking id. Confirm the
+    // booking belongs to the claimed tenant before any side effect.
+    const bookingRow = await tx.execute(sql`
+      SELECT tenant_id FROM bookings WHERE id = ${info.externalReference} LIMIT 1
+    `)
+    const claimed = (bookingRow as unknown as Array<{ tenant_id: string }>)[0]?.tenant_id
+    if (!claimed) return // not found / RLS-filtered: nothing to do for this tenant.
+    if (claimed !== job.tenantId) {
+      throw new Error(
+        `webhook tenant mismatch: claimed=${job.tenantId} actual=${claimed}`,
+      )
+    }
+
     await dispatchPaymentInfo(info, job.tenantId, tx)
   })
 }

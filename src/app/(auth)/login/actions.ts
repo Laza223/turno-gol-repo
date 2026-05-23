@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { headers } from 'next/headers'
 import { signInWithMagicLink } from '@/modules/auth/auth.service'
+import { enforce } from '@/shared/rate-limit/apply'
 
 const schema = z.object({ email: z.string().trim().toLowerCase().email() })
 
@@ -19,6 +20,15 @@ export async function loginAction(
   if (!parsed.success) {
     return { status: 'error', message: 'Email inválido.' }
   }
+
+  const rl = await enforce('authMagicLink', parsed.data.email)
+  if (!rl.ok) {
+    return {
+      status: 'error',
+      message: 'Demasiados intentos. Probá de nuevo en un minuto.',
+    }
+  }
+
   const origin =
     headers().get('origin') ??
     process.env.NEXT_PUBLIC_APP_URL ??

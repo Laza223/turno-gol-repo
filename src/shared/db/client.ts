@@ -7,6 +7,13 @@ const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
 export type AppRole = 'authenticated' | 'anon' | 'service_role' | 'turnogol_app'
 
+const ALLOWED_ROLES: ReadonlySet<AppRole> = new Set<AppRole>([
+  'authenticated',
+  'anon',
+  'service_role',
+  'turnogol_app',
+])
+
 export type ContextOpts = {
   tenantId?: string | null
   playerId?: string | null
@@ -103,6 +110,9 @@ export async function withSystemAdminContext<T>(
 
 async function applyContext(tx: TransactionSql, opts: ContextOpts): Promise<void> {
   if (opts.role) {
+    if (!ALLOWED_ROLES.has(opts.role)) {
+      throw new Error(`Invalid AppRole: ${opts.role}`)
+    }
     await tx.unsafe(`SET LOCAL ROLE ${opts.role}`)
   }
   if (opts.tenantId !== undefined && opts.tenantId !== null) {

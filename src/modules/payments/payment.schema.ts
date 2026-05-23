@@ -3,6 +3,8 @@ import { z } from 'zod'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const uuid = z.string().regex(UUID_RE, 'UUID inválido')
 
+const MP_ID_RE = /^\d{1,32}$/
+
 export const createDepositPaymentSchema = z.object({
   bookingId: uuid,
 })
@@ -21,7 +23,10 @@ export const webhookPayloadSchema = z.object({
   type: z.string(),
   action: z.string().optional(),
   data: z.object({
-    id: z.union([z.string(), z.number()]).transform((v) => String(v)),
+    id: z
+      .union([z.string(), z.number()])
+      .transform((v) => String(v))
+      .refine((v) => MP_ID_RE.test(v), 'invalid mpPaymentId'),
   }),
   date_created: z.string().optional(),
   user_id: z.union([z.string(), z.number()]).optional(),

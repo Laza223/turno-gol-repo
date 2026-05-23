@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { and, count, eq, lt, or, sql } from 'drizzle-orm'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
 import {
   createManualBooking,
@@ -33,6 +34,9 @@ function decodeCursor(cursor: string): { id: string; createdAt: Date } | null {
 }
 
 export const GET = withTenant(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const { searchParams } = new URL(req.url)
   const dateParam = searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
   const courtId = searchParams.get('court_id')
@@ -126,6 +130,9 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
 })
 
 export const POST = withTenant(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   let body: unknown
   try {
     body = await req.json()

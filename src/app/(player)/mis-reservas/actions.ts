@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { eq, sql } from 'drizzle-orm'
+import { z } from 'zod'
+import { uuid, boundedText } from '@/shared/validation/primitives'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
@@ -14,6 +16,11 @@ import {
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
+
+const cancelSchema = z.object({
+  bookingId: uuid,
+  reason: boundedText(500).optional(),
+})
 
 export type PlayerBookingActionResult =
   | { success: true; booking: BookingRow }
@@ -29,6 +36,8 @@ export async function cancelMyBookingAction(
   bookingId: string,
   reason?: string,
 ): Promise<PlayerBookingActionResult> {
+  const parsed = cancelSchema.safeParse({ bookingId, reason })
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const user = await requirePlayer()
   const db = getDb()
 
@@ -36,7 +45,7 @@ export async function cancelMyBookingAction(
   const preRows = await db.execute(sql`
     SELECT tenant_id, deposit_status
     FROM bookings
-    WHERE id = ${bookingId}
+    WHERE id = ${parsed.data.bookingId}
     LIMIT 1
   `)
   const pre = (preRows as unknown as Array<{ tenant_id: string; deposit_status: string }>)[0]
@@ -57,7 +66,7 @@ export async function cancelMyBookingAction(
 
   const result = await withTenantContext(pre.tenant_id, async (tx) => {
     try {
-      const booking = await cancelByPlayer(bookingId, user.playerId, reason, gateway, tx)
+      const booking = await cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx)
       return { success: true as const, booking }
     } catch (err) {
       if (err instanceof BookingNotOwnedByPlayerError) {

@@ -167,6 +167,7 @@ export async function cleanupAll(sql?: Sql): Promise<void> {
       player_tenant_relationships,
       tenant_staff_members,
       courts,
+      processed_webhooks,
       tenants,
       system_admins,
       staff_users,

@@ -102,6 +102,27 @@ export async function createTestStaffUser(
   return rows[0]
 }
 
+export type TestSystemAdmin = { id: string; email: string }
+
+export async function createTestSystemAdmin(
+  sql?: Sql,
+  overrides: Partial<{ email: string }> = {},
+): Promise<TestSystemAdmin> {
+  const s = sql ?? getSql()
+  const email = overrides.email
+    ?? `sa-${Date.now()}-${faker.string.alphanumeric(6).toLowerCase()}@test.local`
+  const rows = await s<{ id: string; email: string }[]>`
+    INSERT INTO system_admins (email, first_name, last_name)
+    VALUES (
+      ${email},
+      ${faker.person.firstName()},
+      ${faker.person.lastName()}
+    )
+    RETURNING id, email
+  `
+  return rows[0]
+}
+
 export async function linkStaffToTenant(
   sql: Sql,
   tenantId: string,

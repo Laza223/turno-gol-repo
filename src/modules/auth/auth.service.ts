@@ -19,6 +19,41 @@ export async function signInWithMagicLink(
   return { ok: true }
 }
 
+export type PlayerProfile = {
+  firstName: string
+  lastName: string
+  agreedTerms: boolean
+  termsVersion: string
+}
+
+/**
+ * Magic link for the player booking flow. `options.data` persists to
+ * `user_metadata`; the auth callback reads `is_player` + profile to provision
+ * the player and set durable `app_metadata`.
+ */
+export async function signInWithPlayerMagicLink(
+  email: string,
+  redirectTo: string,
+  profile: PlayerProfile,
+): Promise<SignInResult> {
+  const supabase = createClient()
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectTo,
+      data: {
+        is_player: true,
+        first_name: profile.firstName,
+        last_name: profile.lastName,
+        agreed_terms: profile.agreedTerms,
+        terms_version: profile.termsVersion,
+      },
+    },
+  })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
 export async function signInWithGoogle(
   redirectTo: string,
 ): Promise<{ url: string | null; error?: string }> {

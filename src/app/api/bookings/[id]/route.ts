@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
 
 export const dynamic = 'force-dynamic'
@@ -12,6 +13,9 @@ const updateNotesSchema = z.object({
 })
 
 export const GET = withTenant(async (req, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const bookingId = req.nextUrl.pathname.split('/').pop()!
 
   const rows = await tx
@@ -64,6 +68,9 @@ export const GET = withTenant(async (req, user, tx) => {
 })
 
 export const PATCH = withTenant(async (req, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const bookingId = req.nextUrl.pathname.split('/').pop()!
 
   let body: unknown

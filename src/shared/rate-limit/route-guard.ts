@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import type { NextResponse } from 'next/server'
 import { enforce, rateLimit429 } from './apply'
 import type { PolicyName } from './policies'
 

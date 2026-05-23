@@ -284,3 +284,95 @@ export async function getPublicAvailability(
 
   return { date: dateStr, courts: result }
 }
+
+// ─── Weekly availability ──────────────────────────────────────────────────────
+
+export type WeeklyDay = { date: string; courts: PublicCourt[] }
+export type WeeklyAvailabilityResponse = { startDate: string; days: WeeklyDay[] }
+
+function addDaysStr(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1))
+  dt.setUTCDate(dt.getUTCDate() + n)
+  return dt.toISOString().slice(0, 10)
+}
+
+export async function getPublicWeeklyAvailability(
+  tenant: PublicTenant,
+  startDateStr: string,
+): Promise<WeeklyAvailabilityResponse> {
+  const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  const nowDateStr = artNow.toISOString().slice(0, 10)
+  const nowMins = artNow.getUTCHours() * 60 + artNow.getUTCMinutes()
+
+  const dates = Array.from({ length: 7 }, (_, i) => addDaysStr(startDateStr, i))
+  const endDateStr = dates[dates.length - 1]!
+  const durationMins = tenant.bookingDurationMinutes[0] ?? 60
+  const closedDatesSet = new Set(tenant.closedDates)
+
+  const { courtsData, bookingsByDate } = await withTenantContext(tenant.id, async (tx) => {
+    const courtsData = await tx
+      .select({
+        id: courts.id,
+        name: courts.name,
+        surfaceType: courts.surfaceType,
+        pricing: courts.pricing,
+      })
+      .from(courts)
+      .where(eq(courts.status, 'online'))
+
+    const rows = (await tx.execute(sql`
+      SELECT court_id AS "courtId", date::text AS "date",
+             time_start::text AS "timeStart", time_end::text AS "timeEnd"
+      FROM bookings
+      WHERE date >= ${startDateStr}::date AND date <= ${endDateStr}::date
+        AND status NOT IN ('canceled_refunded', 'canceled_no_refund')
+    `)) as unknown as Array<{ courtId: string; date: string; timeStart: string; timeEnd: string }>
+
+    const bookingsByDate = new Map<string, BookingRange[]>()
+    for (const r of rows) {
+      const endMins = timeToMins(r.timeEnd.slice(0, 5))
+      const range: BookingRange = {
+        courtId: r.courtId,
+        timeStartMins: timeToMins(r.timeStart.slice(0, 5)),
+        timeEndMins: endMins === 0 ? 24 * 60 : endMins,
+      }
+      const key = r.date.slice(0, 10)
+      const list = bookingsByDate.get(key) ?? []
+      list.push(range)
+      bookingsByDate.set(key, list)
+    }
+    return { courtsData, bookingsByDate }
+  })
+
+  const days: WeeklyDay[] = dates.map((dateStr) => {
+    const [y, mo, d] = dateStr.split('-').map(Number)
+    const targetUtc = new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1))
+    const dayKey = DAY_KEYS[targetUtc.getUTCDay()]!
+    const dayHours = tenant.openingHours[dayKey as keyof OpeningHours]
+    const closedDay = dayHours?.closed === true || closedDatesSet.has(dateStr)
+    const courtBookings = bookingsByDate.get(dateStr) ?? []
+
+    const dayCourts: PublicCourt[] = courtsData.map((court) => ({
+      id: court.id,
+      name: court.name,
+      surfaceType: court.surfaceType,
+      slots: generateSlots({
+        courtId: court.id,
+        pricing: court.pricing as CourtPricingData,
+        dayKey,
+        openHhmm: dayHours?.open ?? '08:00',
+        closeHhmm: dayHours?.close ?? '23:00',
+        closedDay,
+        courtBookings,
+        durationMins,
+        date: dateStr,
+        nowDateStr,
+        nowMins,
+      }),
+    }))
+    return { date: dateStr, courts: dayCourts }
+  })
+
+  return { startDate: startDateStr, days }
+}

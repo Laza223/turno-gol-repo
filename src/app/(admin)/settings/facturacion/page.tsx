@@ -1,0 +1,122 @@
+import { redirect } from 'next/navigation'
+import { CreditCard, CheckCircle2, ExternalLink } from 'lucide-react'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { withTenantContext } from '@/shared/db/client'
+import { getSubscriptionState } from '@/modules/billing/billing.service'
+import { PinGate } from '@/components/pin-gate'
+
+const SETTINGS_TABS = [
+  { href: '/settings/reservas', label: 'Reservas' },
+  { href: '/settings/horarios', label: 'Horarios' },
+  { href: '/settings/facturacion', label: 'Facturación' },
+  { href: '/settings/pin', label: 'Seguridad' },
+]
+
+const STATUS_LABELS: Record<string, string> = {
+  trialing: 'Período de prueba',
+  active: 'Activa',
+  past_due: 'Pago pendiente',
+  suspended: 'Suspendida',
+  canceled: 'Cancelada',
+  churned: 'Baja',
+  blocked: 'Bloqueada',
+}
+
+function formatDate(d: string | Date | null): string {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+export default async function FacturacionPage() {
+  const user = await extractAuthUser()
+  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+  const tenant = await getStaffTenant(user.staffUserId)
+  if (!tenant) redirect('/login')
+
+  let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
+  try {
+    sub = await withTenantContext(tenant.id, (tx) => getSubscriptionState(tenant.id, tx))
+  } catch {
+    sub = null
+  }
+  const mpConnected = !!tenant.mpConnectedAt
+
+  return (
+    <PinGate>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
+
+        <nav className="flex gap-1 border-b border-slate-200">
+          {SETTINGS_TABS.map(({ href, label }) => {
+            const active = href === '/settings/facturacion'
+            return (
+              <a
+                key={href}
+                href={href}
+                className={
+                  'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
+                  (active
+                    ? 'border-emerald-600 text-emerald-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-900')
+                }
+              >
+                {label}
+              </a>
+            )
+          })}
+        </nav>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Suscripción</h2>
+          {sub ? (
+            <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-slate-500">Plan</dt>
+                <dd className="font-medium text-slate-900">{sub.planName}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Estado</dt>
+                <dd className="font-medium text-slate-900">{STATUS_LABELS[sub.status] ?? sub.status}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Próximo cobro</dt>
+                <dd className="font-medium text-slate-900 tabular-nums">{formatDate(sub.currentPeriodEnd)}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">
+              Todavía no tenés una suscripción activa. Conectá MercadoPago para empezar a cobrar señas y activar tu plan.
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                <CreditCard className="h-5 w-5 text-emerald-600" aria-hidden /> MercadoPago
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Conectá tu cuenta para cobrar las señas de las reservas online directamente.
+              </p>
+            </div>
+            {mpConnected && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Conectado
+              </span>
+            )}
+          </div>
+          {!mpConnected && (
+            <a
+              href="/api/mp/oauth-start"
+              className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+            >
+              Conectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
+            </a>
+          )}
+        </section>
+      </div>
+    </PinGate>
+  )
+}

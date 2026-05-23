@@ -10,6 +10,7 @@ import { updateReservasPolicyAction } from './actions'
 const SETTINGS_TABS = [
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
+  { href: '/settings/facturacion', label: 'Facturación' },
   { href: '/settings/pin', label: 'Seguridad' },
 ]
 

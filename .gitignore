@@ -8,3 +8,7 @@ dist/
 .DS_Store
 Thumbs.db
 .worktrees/
+
+# Playwright artifacts
+test-results/
+playwright-report/

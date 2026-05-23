@@ -105,12 +105,12 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
       ${E2E.tenantId}, ${E2E.tenantSlug}, ${E2E.tenantName},
       ${'Av. Siempreviva 742'}, ${E2E.city}, ${'Buenos Aires'},
       ${'+541100000000'}, ${'e2e-tenant@turnogol.test'}, 'active',
-      ${JSON.stringify(openingHours)}::jsonb, ${JSON.stringify(settings)}::jsonb
+      ${sql.json(openingHours)}, ${sql.json(settings)}
     )
   `
   await sql`
     INSERT INTO courts (id, tenant_id, name, capacity, status, pricing)
-    VALUES (${E2E.courtId}, ${E2E.tenantId}, ${'Cancha E2E 1'}, 10, 'online', ${JSON.stringify(pricing)}::jsonb)
+    VALUES (${E2E.courtId}, ${E2E.tenantId}, ${'Cancha E2E 1'}, 10, 'online', ${sql.json(pricing)})
   `
 }
 

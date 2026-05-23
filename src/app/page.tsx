@@ -13,9 +13,10 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react'
+import SiteNav from '@/components/site/SiteNav'
+import SiteFooter from '@/components/site/SiteFooter'
 
-const HERO_BG =
-  'https://images.unsplash.com/photo-1518605368461-1ee7c69ecbc2?q=80&w=2400&auto=format&fit=crop'
+const HERO_BG = '/hero-bg.png'
 const FEATURE_BG =
   'https://images.unsplash.com/photo-1486286701208-1d58e9338013?q=80&w=2000&auto=format&fit=crop'
 
@@ -92,7 +93,7 @@ const testimonials = [
 export default function HomePage() {
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
-      <SiteNav />
+      <SiteNav variant="overlay" />
       <Hero />
       <StatsBar />
       <Features />
@@ -101,46 +102,6 @@ export default function HomePage() {
       <FinalCta />
       <SiteFooter />
     </div>
-  )
-}
-
-function SiteNav() {
-  return (
-    <header className="absolute inset-x-0 top-0 z-30">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 text-white">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/90 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/30">
-            TG
-          </span>
-          <span className="text-lg font-semibold tracking-tight">TurnoGol</span>
-        </Link>
-        <nav className="hidden items-center gap-8 md:flex">
-          <a href="#features" className="text-sm text-slate-300 hover:text-white transition-colors">
-            Funcionalidades
-          </a>
-          <a href="#testimonios" className="text-sm text-slate-300 hover:text-white transition-colors">
-            Testimonios
-          </a>
-          <a href="#planes" className="text-sm text-slate-300 hover:text-white transition-colors">
-            Planes
-          </a>
-        </nav>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden text-sm font-medium text-slate-200 hover:text-white transition-colors sm:inline"
-          >
-            Iniciar sesión
-          </Link>
-          <Link
-            href="/register"
-            className="inline-flex h-9 items-center rounded-md bg-white px-4 text-sm font-semibold text-slate-900 shadow-lg shadow-slate-900/30 hover:bg-slate-100 transition-colors duration-150"
-          >
-            Comenzar
-          </Link>
-        </div>
-      </div>
-    </header>
   )
 }
 
@@ -434,25 +395,3 @@ function FinalCta() {
   )
 }
 
-function SiteFooter() {
-  return (
-    <footer className="border-t border-white/5 bg-slate-950 py-10">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500 text-xs font-bold text-slate-950">
-            TG
-          </span>
-          <span className="text-sm font-semibold text-white">TurnoGol</span>
-          <span className="text-xs text-slate-500">© {new Date().getFullYear()} · Argentina</span>
-        </div>
-        <div className="flex gap-6 text-xs text-slate-400">
-          <Link href="/login" className="hover:text-white transition-colors">Iniciar sesión</Link>
-          <Link href="/register" className="hover:text-white transition-colors">Crear cuenta</Link>
-          <a href="mailto:hola@turnogol.com.ar" className="hover:text-white transition-colors">
-            Contacto
-          </a>
-        </div>
-      </div>
-    </footer>
-  )
-}

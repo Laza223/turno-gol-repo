@@ -6,7 +6,7 @@ import type { PublicTenant } from '@/modules/tenants/public.service'
 import TenantHeader from './components/TenantHeader'
 import AvailabilityGrid from './components/AvailabilityGrid'
 
-type Props = { params: { slug: string } }
+type Props = { params: { slug: string }; searchParams: { date?: string } }
 
 const UNAVAILABLE_STATUSES = new Set([
   'suspended',
@@ -21,45 +21,56 @@ function getArtToday(): string {
   return artNow.toISOString().slice(0, 10)
 }
 
-async function GridSection({ tenant, todayStr }: { tenant: PublicTenant; todayStr: string }) {
-  const initialAvailability = await getPublicAvailability(tenant, todayStr)
+function addDaysStr(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1))
+  dt.setUTCDate(dt.getUTCDate() + n)
+  return dt.toISOString().slice(0, 10)
+}
+
+async function GridSection({ tenant, initialDate }: { tenant: PublicTenant; initialDate: string }) {
+  const initialAvailability = await getPublicAvailability(tenant, initialDate)
   return (
     <AvailabilityGrid
       tenant={tenant}
-      initialDate={todayStr}
+      initialDate={initialDate}
       initialAvailability={initialAvailability}
     />
   )
 }
 
-export default async function PublicComplexPage({ params }: Props) {
-  const tenant = await getPublicTenant(params.slug)
+export default async function PublicComplexPage(props: Props) {
+  const tenant = await getPublicTenant(props.params.slug)
   if (!tenant) notFound()
 
   if (UNAVAILABLE_STATUSES.has(tenant.status)) {
     return (
-      <main className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="max-w-md text-center space-y-3">
           <h1 className="text-xl font-semibold text-foreground">{tenant.name}</h1>
           <p className="text-sm text-muted-foreground">
             Este complejo no está disponible temporalmente.
           </p>
         </div>
-      </main>
+      </div>
     )
   }
 
   const todayStr = getArtToday()
+  const maxStr = addDaysStr(todayStr, tenant.bookingAdvanceDays)
+  const reqDate = props.searchParams.date
+  const initialDate =
+    reqDate && /^\d{4}-\d{2}-\d{2}$/.test(reqDate) && reqDate >= todayStr && reqDate <= maxStr
+      ? reqDate
+      : todayStr
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <TenantHeader tenant={tenant} />
-        <Suspense fallback={<div className="skeleton h-64 rounded-lg" />}>
-          <GridSection tenant={tenant} todayStr={todayStr} />
-        </Suspense>
-      </div>
-    </main>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <TenantHeader tenant={tenant} />
+      <Suspense fallback={<div className="skeleton h-64 rounded-lg" />}>
+        <GridSection tenant={tenant} initialDate={initialDate} />
+      </Suspense>
+    </div>
   )
 }
 

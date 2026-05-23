@@ -6,6 +6,8 @@ import {
   resolveStaffTenants,
   setStaffTenantClaim,
 } from '@/modules/auth/auth.service'
+import { getOrCreatePlayer } from '@/modules/players/player.service'
+import { sanitizeNext } from '@/lib/safe-redirect'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,7 +35,31 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const isPlayer = meta.is_player === true || userMeta.is_player === true
 
   if (isPlayer) {
-    return NextResponse.redirect(new URL('/mis-reservas', req.url))
+    const email = user.email
+    if (!email) return redirectVerifyError(req, 'invalid')
+
+    const firstNameMeta = typeof userMeta.first_name === 'string' ? userMeta.first_name : null
+    const lastNameMeta = typeof userMeta.last_name === 'string' ? userMeta.last_name : null
+    const firstName = firstNameMeta || email.split('@')[0] || 'Jugador'
+    const lastName = lastNameMeta ?? ''
+    const agreedTerms = userMeta.agreed_terms === true || meta.agreed_terms === true
+    const termsVersion = typeof userMeta.terms_version === 'string' ? userMeta.terms_version : 'v1'
+
+    const player = await getOrCreatePlayer(email, firstName, lastName, {
+      agreedToTerms: agreedTerms,
+      termsVersion,
+    })
+
+    if (meta.player_id !== player.id || meta.is_player !== true) {
+      const adminClient = createAdminClient()
+      await adminClient.auth.admin.updateUserById(user.id, {
+        app_metadata: { ...meta, is_player: true, player_id: player.id },
+      })
+      await supabase.auth.refreshSession()
+    }
+
+    const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
+    return NextResponse.redirect(new URL(next, req.url))
   }
 
   // Staff path

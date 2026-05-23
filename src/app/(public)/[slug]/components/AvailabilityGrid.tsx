@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Phone } from 'lucide-react'
 import type {
   AvailabilityResponse,
@@ -58,10 +59,16 @@ function buildTimeRows(courts: AvailabilityResponse['courts']): TimeRow[] {
 
 function SlotCell({
   slot,
+  slug,
+  courtId,
+  date,
   allowOnlineBooking,
   phone,
 }: {
   slot: Slot
+  slug: string
+  courtId: string
+  date: string
   allowOnlineBooking: boolean
   phone: string
 }) {
@@ -81,7 +88,6 @@ function SlotCell({
     )
   }
 
-  // free slot
   const priceFormatted = slot.price
     ? new Intl.NumberFormat('es-AR', {
         style: 'currency',
@@ -104,15 +110,15 @@ function SlotCell({
   }
 
   return (
-    <button
-      type="button"
-      className="inline-flex flex-col items-center w-full rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 hover:bg-green-100 active:scale-[0.98] transition-colors duration-150 cursor-pointer"
+    <Link
+      href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
+      className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 hover:bg-green-100 active:scale-[0.98] transition-colors duration-150"
     >
-      <span>Libre</span>
+      <span>Reservar</span>
       {priceFormatted && (
         <span className="tabular-nums text-[10px] text-green-600">{priceFormatted}</span>
       )}
-    </button>
+    </Link>
   )
 }
 
@@ -222,6 +228,9 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
                       {slot ? (
                         <SlotCell
                           slot={slot}
+                          slug={tenant.slug}
+                          courtId={courtId}
+                          date={date}
                           allowOnlineBooking={tenant.allowOnlineBooking}
                           phone={tenant.phone}
                         />

@@ -45,6 +45,10 @@ export async function getOrCreatePlayer(
       ${lower}, ${firstName}, ${lastName}, ${opts.phone ?? null},
       ${agreed ? sql`NOW()` : null}, ${agreed ? termsVersion : null}, NOW()
     )
+    ON CONFLICT (email) DO UPDATE
+    SET last_login_at = NOW(),
+        agreed_to_terms_at = COALESCE(players.agreed_to_terms_at, EXCLUDED.agreed_to_terms_at),
+        terms_version = COALESCE(players.terms_version, EXCLUDED.terms_version)
     RETURNING id
   `
   return { id: created[0]!.id }

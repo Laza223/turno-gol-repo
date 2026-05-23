@@ -1,0 +1,10 @@
+title = "TurnoGol gitleaks config"
+
+[allowlist]
+description = "Allowlist for placeholders and test fixtures"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.test\.example$''',
+  '''tests/.*''',
+  '''docs/.*''',
+]

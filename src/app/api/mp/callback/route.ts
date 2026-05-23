@@ -61,8 +61,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // Exchange code for token
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin
+  // Exchange code for token — require APP_URL (no req.url origin fallback to
+  // avoid host-header injection into the OAuth redirect_uri).
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    return NextResponse.redirect(
+      new URL('/onboarding?error=mp_config_missing', req.url),
+    )
+  }
   const redirectUri = `${appUrl}/api/mp/callback`
   const clientId = process.env.MP_CLIENT_ID ?? ''
 

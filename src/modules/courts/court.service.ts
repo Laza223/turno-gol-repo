@@ -97,6 +97,7 @@ export async function getCourtCountAndLimit(
   const [countRow] = await tx
     .select({ count: sql<number>`COUNT(*)::int` })
     .from(courts)
+    .where(eq(courts.tenantId, tenantId))
 
   const subRows = await tx
     .select({ maxCourts: plans.maxCourts, planSlug: plans.slug })

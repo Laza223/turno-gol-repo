@@ -31,7 +31,7 @@ export async function updateTenantAction(
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
   await updateTenant(tenant.id, parsed.data)
-  revalidatePath('/configuracion')
+  revalidatePath('/settings/facturacion')
   return { success: true }
 }
 
@@ -76,6 +76,6 @@ export async function updateTenantSettingsAction(
   }
 
   await updateTenantSettings(tenant.id, parsed.data)
-  revalidatePath('/configuracion')
+  revalidatePath('/settings/facturacion')
   return { success: true }
 }

@@ -7,6 +7,7 @@ import {
 import { webhookPayloadSchema } from '@/modules/payments/payment.schema'
 import type { MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { verifyWebhookSecret } from '@/modules/payments/webhook-auth'
+import { track } from '@/shared/observability'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,6 +35,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
   }
   const payload = parsed.data
+
+  track.webhook('mp.webhook.received', {
+    mpEventId: payload.id,
+    tenantId,
+    eventType: payload.type,
+    mpPaymentId: payload.data.id,
+  })
 
   // Handled types:
   //   - `payment`                          → booking deposit OR SaaS upgrade proration

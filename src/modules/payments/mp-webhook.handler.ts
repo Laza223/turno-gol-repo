@@ -10,6 +10,7 @@ import {
   onPaymentRejected,
 } from '@/modules/billing/dunning.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
+import { track } from '@/shared/observability'
 
 /**
  * Payload for the `process-mp-webhook` queue. The route enqueues this; the
@@ -133,5 +134,12 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     }
 
     await dispatchPaymentInfo(info, job.tenantId, tx)
+  })
+
+  track.webhook('mp.webhook.processed', {
+    mpEventId: job.mpEventId,
+    tenantId: job.tenantId,
+    eventType: job.eventType,
+    mpPaymentId: job.mpPaymentId,
   })
 }

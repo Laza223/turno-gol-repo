@@ -4,6 +4,7 @@ import {
   handleMpWebhookJob,
   type MpWebhookJob,
 } from '@/modules/payments/mp-webhook.handler'
+import { track } from '@/shared/observability'
 
 /**
  * Register the `process-mp-webhook` consumer on a running pg-boss instance.
@@ -13,7 +14,16 @@ import {
 export async function registerMpWebhookWorker(boss: PgBoss): Promise<void> {
   await boss.work<MpWebhookJob>(QUEUE_PROCESS_MP_WEBHOOK, async (job) => {
     const data = (Array.isArray(job) ? job[0]?.data : job.data) as MpWebhookJob
-    await handleMpWebhookJob(data)
+    try {
+      await handleMpWebhookJob(data)
+    } catch (err) {
+      track.webhook('mp.webhook.failed', {
+        mpEventId: data?.mpEventId,
+        tenantId: data?.tenantId,
+        eventType: data?.eventType,
+      })
+      throw err
+    }
   })
   console.log(`[workers] registered ${QUEUE_PROCESS_MP_WEBHOOK}`)
 }

@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { withPlayer } from '@/shared/middleware/with-player'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { uuid } from '@/shared/validation/primitives'
 
 export const dynamic = 'force-dynamic'
 
-export const GET = withPlayer(async (req, _user, tx) => {
+export const GET = withPlayer(async (req, user, tx) => {
+  const throttled = await guard('playerBooking', user.playerId)
+  if (throttled) return throttled
+
   const parsedId = uuid.safeParse(req.nextUrl.pathname.split('/').at(-1))
   if (!parsedId.success) {
     return NextResponse.json({ error: 'invalid_id' }, { status: 400 })

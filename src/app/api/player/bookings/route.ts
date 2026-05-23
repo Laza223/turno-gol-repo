@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { tenants } from '@/shared/db/schema'
 import {
   createOnlineBooking,
@@ -18,7 +19,10 @@ import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
 export const dynamic = 'force-dynamic'
 
-export const GET = withPlayer(async (req: NextRequest, _user, tx) => {
+export const GET = withPlayer(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('playerBooking', user.playerId)
+  if (throttled) return throttled
+
   const tab = req.nextUrl.searchParams.get('tab') ?? 'upcoming'
   const dateFilter =
     tab === 'history'
@@ -54,6 +58,9 @@ const playerBookingSchema = z.object({
 })
 
 export const POST = withPlayer(async (req, user, tx) => {
+  const throttled = await guard('playerBooking', user.playerId)
+  if (throttled) return throttled
+
   let body: unknown
   try {
     body = await req.json()

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { tenants } from '@/shared/db/schema'
 import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
@@ -18,6 +19,9 @@ const cancelBodySchema = z.object({
 })
 
 export const POST = withPlayer(async (req, user, tx) => {
+  const throttled = await guard('playerBooking', user.playerId)
+  if (throttled) return throttled
+
   const parts = req.nextUrl.pathname.split('/')
   const bookingId = parts[parts.length - 2]!
 

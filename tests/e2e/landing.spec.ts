@@ -23,11 +23,16 @@ test.describe('landing page', () => {
     })
     await page.goto('/')
     await page.waitForLoadState('networkidle')
-    // Allow Next.js dev warnings; only fail on real errors that are not from Next overlay
+    // Allow Next.js dev warnings; only fail on real errors that are not from Next overlay.
+    // 'unsafe-eval'/EvalError is dev-only noise: Next's webpack HMR uses eval(), which the
+    // app CSP (script-src 'self' 'unsafe-inline') blocks in dev; production builds don't eval.
     const filtered = errors.filter((e) =>
       !e.includes('Hydration') &&
       !e.includes('Download the React DevTools') &&
-      !e.includes('[next-auth]'),
+      !e.includes('[next-auth]') &&
+      !e.includes('unsafe-eval') &&
+      !e.includes('EvalError') &&
+      !e.includes('Content Security Policy'),
     )
     expect(filtered, `Console errors: ${JSON.stringify(filtered)}`).toEqual([])
   })

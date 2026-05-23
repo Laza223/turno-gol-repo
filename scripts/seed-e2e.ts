@@ -95,6 +95,7 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
     booking_advance_days: 6,
     booking_duration_minutes: [60, 120],
     auto_complete_minutes: 30,
+    onboarding_completed: true,
   }
   await sql`
     INSERT INTO tenants (
@@ -143,8 +144,12 @@ async function seedAuthUsers(): Promise<void> {
       id: E2E.adminAuthUserId,
       email: E2E.adminEmail,
       email_confirm: true,
-      user_metadata: { staff_user_id: E2E.staffUserId },
-      app_metadata: { tenant_id: E2E.tenantId, role: 'admin' },
+      // extractAuthUser reads staff_user_id + tenant_id from app_metadata.
+      app_metadata: {
+        tenant_id: E2E.tenantId,
+        role: 'admin',
+        staff_user_id: E2E.staffUserId,
+      },
     })
     if (error) throw error
   }
@@ -154,7 +159,8 @@ async function seedAuthUsers(): Promise<void> {
       id: E2E.playerAuthUserId,
       email: E2E.playerEmail,
       email_confirm: true,
-      app_metadata: { player_id: E2E.playerId },
+      // extractAuthUser classifies as player via is_player flag.
+      app_metadata: { is_player: true, player_id: E2E.playerId },
     })
     if (error) throw error
   }

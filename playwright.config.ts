@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
+import { config as loadEnv } from 'dotenv'
+
+// The Playwright runner (auth fixtures, seed) needs Supabase env vars that
+// Next.js would otherwise load from .env.local only for the app process.
+loadEnv({ path: '.env.local' })
 
 export default defineConfig({
   testDir: './tests/e2e',

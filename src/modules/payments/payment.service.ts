@@ -17,6 +17,7 @@ import {
   PaymentNotFoundError,
   RefundInvalidStateError,
 } from './payment.errors'
+import { track } from '@/shared/observability'
 
 const TERMINAL_BOOKING_STATUSES = [
   'expired',
@@ -46,6 +47,8 @@ export async function createDepositPayment(
   tx: DbTx,
   appUrl: string,
 ): Promise<PreferenceResult> {
+  track.payment('payment.deposit.create', { bookingId })
+
   const lockRows = await tx.execute(sql`
     SELECT id, tenant_id AS "tenantId", player_id AS "playerId",
            deposit_amount AS "depositAmount", status, created_at AS "createdAt"
@@ -149,7 +152,14 @@ export async function lockMpEvent(
     ON CONFLICT (mp_event_id) DO NOTHING
     RETURNING id
   `)
-  return (lock as unknown as Array<{ id: string }>).length > 0
+  const fresh = (lock as unknown as Array<{ id: string }>).length > 0
+  if (!fresh) {
+    track.webhook('mp.webhook.duplicate', {
+      mpEventId: event.mpEventId,
+      eventType: event.eventType,
+    })
+  }
+  return fresh
 }
 
 /**
@@ -164,6 +174,12 @@ export async function dispatchPaymentInfo(
   tx: DbTx,
 ): Promise<WebhookOutcome> {
   if (info.status === 'approved') {
+    track.payment('payment.deposit.approved', {
+      bookingId: info.externalReference,
+      tenantId,
+      mpPaymentId: info.mpPaymentId,
+      amountCents: info.amount,
+    })
     await handleApproved(info, tenantId, tx)
     return { alreadyProcessed: false, result: 'confirmed' }
   }
@@ -172,6 +188,11 @@ export async function dispatchPaymentInfo(
     return { alreadyProcessed: false, result: 'in_process' }
   }
   if (info.status === 'rejected' || info.status === 'cancelled') {
+    track.payment('payment.deposit.rejected', {
+      bookingId: info.externalReference,
+      tenantId,
+      mpPaymentId: info.mpPaymentId,
+    })
     await upsertPaymentRow(info, tenantId, 'rejected', tx)
     return { alreadyProcessed: false, result: 'rejected' }
   }

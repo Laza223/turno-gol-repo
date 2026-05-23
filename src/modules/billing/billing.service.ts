@@ -10,6 +10,7 @@ import {
   SubscriptionNotFoundError,
 } from './billing.errors'
 import { transitionToCanceled } from './lifecycle.service'
+import { track } from '@/shared/observability'
 import type {
   BillingCycle,
   CancelResult,
@@ -282,6 +283,8 @@ export async function handleUpgradeApproved(
   gateway: PaymentGateway,
   tx: DbTx,
 ): Promise<void> {
+  track.payment('payment.saas.upgrade.approved', { tenantId })
+
   const sub = await loadSub(tenantId, tx)
   if (!sub) return // tenant gone — nothing to do
   if (sub.status !== 'active') return

@@ -1,4 +1,5 @@
-import { MapPin, Phone } from 'lucide-react'
+import Link from 'next/link'
+import { CalendarDays, MapPin, Phone } from 'lucide-react'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 
 type Props = { tenant: PublicTenant }
@@ -59,6 +60,13 @@ export default function TenantHeader({ tenant }: Props) {
           <Phone className="h-4 w-4 flex-shrink-0" aria-hidden />
           {tenant.phone}
         </a>
+        <Link
+          href={`/${tenant.slug}/disponibilidad`}
+          className="flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 font-medium transition-colors"
+        >
+          <CalendarDays className="h-4 w-4 flex-shrink-0" aria-hidden />
+          Ver semana completa
+        </Link>
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4">

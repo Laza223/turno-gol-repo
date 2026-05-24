@@ -122,3 +122,15 @@ Motor structurally sound:
 - ✅ Todos los jobs scheduleados
 
 Gaps a auditar via tests: races cruzados (B1.2, B1.6, B1.7), time validation (B1.5), no-deposit + webhook (B1.8), libuv (B1.9), borde adyacente (B1.10).
+
+## B1.6 — Race cancel vs expire: NO APLICABLE
+
+Análisis de state machine:
+- `cancelByPlayer` requiere `status === 'confirmed'` (línea 89 de booking.cancellation.ts)
+- `transitionFromPendingPayment('expired')` opera solo en `status === 'pending_payment'`
+
+Los dos NO pueden correr concurrente sobre el mismo booking porque operan en estados DISJUNTOS. Una vez confirmed, no hay expire. En pending_payment, no hay cancel by player.
+
+La race real entre transitions concurrentes sobre `pending_payment` ya está cubierta por `tests/integration/race-expiry-vs-confirm.test.ts` (expire vs confirm via webhook MP).
+
+**Veredicto B1.6: ✅ Validated by design. No test needed.**

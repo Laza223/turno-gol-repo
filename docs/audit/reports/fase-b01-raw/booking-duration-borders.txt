@@ -1,0 +1,10 @@
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/Lazar/Documents/github/TurnoGol-audit-b01[39m
+
+ [32m✓[39m tests/integration/booking-duration-borders.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[33m 772[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 20:19:42
+[2m   Duration [22m 2.86s[2m (transform 289ms, setup 30ms, collect 1.21s, tests 772ms, environment 0ms, prepare 169ms)[22m
+

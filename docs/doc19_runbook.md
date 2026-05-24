@@ -721,7 +721,251 @@ MONITOREO:
 
 ---
 
-## 9. Actualización de Este Runbook
+## 9. Configuración de Email (SPF / DKIM / DMARC)
+
+> [!IMPORTANT]
+> Si estos registros DNS no están correctamente configurados antes del lanzamiento,
+> los emails de TurnoGol (magic links, confirmaciones de reserva, alertas) van a
+> terminar en spam o directamente no van a llegar.
+
+### 9.1 Resend: Verificación de Dominio
+
+Resend requiere verificar el dominio de envío antes de poder enviar emails.
+
+```
+PASOS:
+
+  1. Ir a resend.com → Domains → Add Domain
+  2. Ingresar el dominio: turnogol.com.ar
+  3. Resend genera 3 registros DNS que hay que agregar en el registrador del dominio.
+```
+
+### 9.2 Registros DNS Requeridos
+
+Agregar los siguientes registros en el panel DNS del registrador del dominio (ej: Cloudflare, Namecheap, NIC Argentina):
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SPF (Sender Policy Framework)                                                │
+│                                                                              │
+│ Tipo:  TXT                                                                   │
+│ Host:  @  (o vacío si el registrador lo requiere)                            │
+│ Valor: v=spf1 include:amazonses.com ~all                                     │
+│                                                                              │
+│ Propósito: Autoriza los servidores de Resend (AWS SES) a enviar              │
+│            emails en nombre de turnogol.com.ar.                              │
+│                                                                              │
+│ NOTA: Si ya hay un registro SPF existente, NO crear otro.                    │
+│       Agregar "include:amazonses.com" al registro existente.                 │
+│       Ej: v=spf1 include:_spf.google.com include:amazonses.com ~all         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ DKIM (DomainKeys Identified Mail)                                            │
+│                                                                              │
+│ Tipo:  CNAME                                                                 │
+│ Host:  resend._domainkey                                                     │
+│ Valor: (proporcionado por Resend al agregar el dominio)                      │
+│                                                                              │
+│ Propósito: Firma criptográfica que prueba que el email no fue alterado.      │
+│                                                                              │
+│ NOTA: Resend puede dar 2 o 3 registros CNAME para DKIM.                     │
+│       Agregar TODOS los que indique.                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ DMARC (Domain-based Message Authentication)                                  │
+│                                                                              │
+│ Tipo:  TXT                                                                   │
+│ Host:  _dmarc                                                                │
+│ Valor: v=DMARC1; p=none; rua=mailto:dmarc@turnogol.com.ar                   │
+│                                                                              │
+│ Propósito: Indica a los proveedores de email qué hacer con mensajes          │
+│            que no pasen SPF/DKIM. `p=none` es monitor-only al inicio.        │
+│                                                                              │
+│ EVOLUCIÓN:                                                                   │
+│   Semana 1-4 (lanzamiento):  p=none   (solo monitoreo, sin bloqueo)          │
+│   Semana 5+:                 p=quarantine  (mandar a spam los sospechosos)   │
+│   Mes 3+:                    p=reject  (rechazar directo si no pasa DKIM)    │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 9.3 Verificación Post-Configuración
+
+```
+CHECKLIST:
+
+  1. En Resend Dashboard → Domains → el dominio debe mostrar "Verified" ✓
+     (puede tomar hasta 72 horas, pero generalmente tarda minutos)
+
+  2. Enviar un email de prueba desde Resend Dashboard → Emails → Send Test
+
+  3. Verificar SPF/DKIM con herramientas online:
+     → https://mxtoolbox.com/spf.aspx  → buscar turnogol.com.ar
+     → https://mxtoolbox.com/dkim.aspx → buscar resend._domainkey.turnogol.com.ar
+     → https://mxtoolbox.com/dmarc.aspx → buscar turnogol.com.ar
+
+  4. Verificar que el email de prueba NO cayó en spam
+     → Si cae en spam y los registros DNS están bien:
+       → Esperar 24-48h (propagación DNS)
+       → Verificar que el "From" address sea noreply@turnogol.com.ar
+         (no un dominio genérico)
+```
+
+### 9.4 Troubleshooting de Email
+
+```
+PROBLEMA: "Domain not verified" en Resend
+
+  → Verificar que los registros DNS están exactamente como los dio Resend
+  → Verificar TTL: ¿hace cuánto se agregaron? Esperar 24-48h
+  → Verificar que no hay registros DNS conflictivos
+  → En caso de duda: borrar el dominio en Resend y re-agregarlo
+
+PROBLEMA: Emails llegan a spam
+
+  → Verificar SPF: dig TXT turnogol.com.ar (debe incluir amazonses.com)
+  → Verificar DKIM: dig CNAME resend._domainkey.turnogol.com.ar
+  → Verificar DMARC: dig TXT _dmarc.turnogol.com.ar
+  → Si todo está bien pero sigue cayendo en spam:
+    → El dominio es nuevo y no tiene reputación
+    → Enviar emails legítimos durante 2-4 semanas → la reputación sube sola
+    → NO comprar listas ni enviar masivos — destruyen la reputación
+```
+
+---
+
+## 10. Backup y Restauración de Base de Datos
+
+### 10.1 Política de Backups
+
+```
+BACKUPS AUTOMÁTICOS (Supabase):
+  → Plan Pro: Point-in-Time Recovery (PITR) con retención de 7 días
+  → Plan Free: Backup diario con retención de 7 días
+  → Los backups se ejecutan automáticamente — no requieren acción manual
+
+BACKUPS MANUALES (recomendado antes de cambios críticos):
+  → Antes de una migration destructiva (DROP, ALTER con pérdida de datos)
+  → Antes de un data wipe o cleanup manual
+  → Antes de actualizar el plan de Supabase
+  → Trimestralmente como verificación (checklist mensual §4.3)
+```
+
+### 10.2 Backup Manual con pg_dump
+
+```
+REQUISITOS:
+  → PostgreSQL client (pg_dump) instalado localmente
+  → Connection string de Supabase (Settings → Database → Connection string → URI)
+
+PASOS:
+
+  1. Obtener connection string:
+     → Supabase Dashboard → Settings → Database → Connection string
+     → Elegir "URI" format
+     → Reemplazar [YOUR-PASSWORD] con la contraseña de la DB
+
+  2. Ejecutar backup:
+     pg_dump "postgresql://postgres.[ref]:[password]@[host]:5432/postgres" \
+       --format=custom \
+       --no-owner \
+       --no-acl \
+       --exclude-schema=pgboss \
+       --file=backup_turnogol_$(date +%Y%m%d_%H%M%S).dump
+
+     NOTAS:
+       → --format=custom permite restore selectivo
+       → --exclude-schema=pgboss excluye jobs (se recrean automáticamente)
+       → --no-owner evita errores de roles al restaurar en otro proyecto
+
+  3. Verificar el backup:
+     pg_restore --list backup_turnogol_YYYYMMDD_HHMMSS.dump | head -20
+     → Debe mostrar la lista de tablas y datos
+
+  4. Guardar en lugar seguro:
+     → Subir a Google Drive / S3 / almacenamiento externo
+     → NO guardar en el mismo servidor que la DB
+     → Nombrar con fecha + motivo: backup_turnogol_20260524_pre_migration.dump
+```
+
+### 10.3 Restauración desde Backup (Supabase PITR)
+
+```
+CUÁNDO USAR: Corrupción de datos, eliminación accidental dentro de los últimos 7 días.
+
+PASOS (Plan Pro — PITR):
+
+  1. Ir a Supabase Dashboard → Settings → Backups → Point-in-Time Recovery
+  2. Seleccionar el timestamp deseado (hasta 7 días atrás, granularidad de segundos)
+  3. Supabase crea un nuevo proyecto temporal con la DB restaurada
+  4. Verificar los datos en el proyecto temporal
+  5. Si los datos son correctos:
+     → OPCIÓN A (restore selectivo — PREFERIDA):
+       pg_dump el proyecto temporal → pg_restore las tablas necesarias en producción
+     → OPCIÓN B (restore completo — SOLO EMERGENCIA):
+       Reemplazar el proyecto de producción con el temporal
+
+  REGLA: NUNCA restaurar directamente sobre producción sin verificar primero.
+```
+
+### 10.4 Restauración desde pg_dump Manual
+
+```
+CUÁNDO USAR: El PITR no cubre el período necesario, o queremos restaurar datos
+             específicos de un backup manual antiguo.
+
+PASOS:
+
+  1. Crear un proyecto de Supabase temporal (o usar una DB local):
+     → Dashboard → New Project (mismo region que producción)
+
+  2. Restaurar el backup:
+     pg_restore \
+       --dbname="postgresql://postgres.[ref]:[password]@[host]:5432/postgres" \
+       --no-owner \
+       --no-acl \
+       --clean \
+       --if-exists \
+       backup_turnogol_YYYYMMDD_HHMMSS.dump
+
+  3. Verificar:
+     → Conectarse al proyecto temporal
+     → Ejecutar queries de verificación (§5.2)
+     → Comparar counts con producción
+
+  4. Extraer los datos necesarios:
+     → COPY (SELECT * FROM bookings WHERE ...) TO STDOUT WITH CSV
+     → O usar pg_dump con --table para extraer tablas específicas
+
+  5. Importar en producción:
+     → Dentro de una transacción (BEGIN ... COMMIT)
+     → Con INSERT ... ON CONFLICT para no duplicar datos
+     → Registrar en audit_logs qué se restauró y por qué
+
+  6. Eliminar el proyecto temporal cuando ya no se necesite
+```
+
+### 10.5 Verificación Trimestral de Backups
+
+```
+CADA 3 MESES (checklist mensual §4.3):
+
+  1. Hacer un backup manual con pg_dump (§10.2)
+  2. Crear un proyecto de Supabase temporal
+  3. Restaurar el backup en el proyecto temporal
+  4. Ejecutar las queries de verificación (§5.2) en el proyecto temporal
+  5. Comparar: ¿los datos son consistentes?
+     → SELECT COUNT(*) FROM tenants (debe coincidir con producción)
+     → SELECT COUNT(*) FROM bookings (debe coincidir ± jobs en vuelo)
+  6. Eliminar el proyecto temporal
+  7. Registrar resultado en el log de mantenimiento:
+     "Backup verificado YYYY-MM-DD: OK / PROBLEMAS: [detalle]"
+```
+
+---
+
+## 11. Actualización de Este Runbook
 
 ```
 REGLA: El runbook se actualiza DESPUÉS de cada incidente.

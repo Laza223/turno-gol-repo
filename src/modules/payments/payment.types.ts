@@ -53,7 +53,15 @@ export type WebhookEvent = {
 
 export type WebhookOutcome =
   | { alreadyProcessed: true }
-  | { alreadyProcessed: false; result: 'confirmed' | 'in_process' | 'rejected' | 'refunded' }
+  | {
+      alreadyProcessed: false
+      result: 'confirmed' | 'in_process' | 'rejected' | 'refunded'
+      /**
+       * Notification IDs enqueued inside the webhook tx (e.g. late-payment admin
+       * alert, Hallazgo 3). The caller dispatches the emails AFTER commit.
+       */
+      notificationIds?: string[]
+    }
 
 // ─── SaaS recurring billing (P18) ──────────────────────────────
 

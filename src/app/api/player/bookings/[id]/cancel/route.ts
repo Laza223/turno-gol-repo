@@ -4,11 +4,12 @@ import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { tenants } from '@/shared/db/schema'
-import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
+import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
+  TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
@@ -61,7 +62,7 @@ export const POST = withPlayer(async (req, user, tx) => {
       .limit(1)
     const mpAccessToken = tenantRows[0]?.mpAccessToken
     if (mpAccessToken) {
-      gateway = new MercadoPagoGateway(mpAccessToken)
+      gateway = resolveTenantGateway(pre.tenant_id, mpAccessToken)
     }
   }
 
@@ -78,6 +79,17 @@ export const POST = withPlayer(async (req, user, tx) => {
     if (err instanceof BookingNotInConfirmedError) {
       return NextResponse.json(
         { error: { code: 'CONFLICT', message: 'La reserva no está en estado confirmado.' } },
+        { status: 409 },
+      )
+    }
+    if (err instanceof TenantInactiveError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'TENANT_INACTIVE',
+            message: 'Este complejo no está disponible. Contactá al complejo para gestionar la cancelación.',
+          },
+        },
         { status: 409 },
       )
     }

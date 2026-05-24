@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/lib/utils'
 import type { GridBooking } from './BookingGrid'
 
 type Props = {
@@ -12,42 +13,65 @@ type Props = {
 
 export function BookingCard({ booking, timeStart, isPast, rowSpan = 1, onClick }: Props) {
   if (!booking) {
-    if (isPast) {
-      return (
-        <td
-          className="border border-slate-100 bg-slate-50 p-1 align-top opacity-60"
-          style={{ height: `${rowSpan * 56}px` }}
-        >
-          <span className="text-xs text-slate-400">{timeStart}</span>
-        </td>
-      )
-    }
+    const interactive = !isPast && !!onClick
     return (
       <td
-        className="border border-slate-100 bg-green-50 p-1 align-top cursor-pointer hover:bg-green-100 transition-colors duration-100"
+        {...(interactive
+          ? {
+              role: 'button',
+              tabIndex: 0,
+              onClick,
+              onKeyDown: (e: React.KeyboardEvent<HTMLTableCellElement>) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onClick?.()
+                }
+              },
+              'aria-label': `Reservar turno ${timeStart}`,
+            }
+          : {})}
+        className={cn(
+          'border border-slate-100 p-1 align-top transition-colors duration-100',
+          isPast
+            ? 'bg-slate-50 opacity-60'
+            : interactive
+              ? 'cursor-pointer bg-white hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500'
+              : 'bg-slate-50',
+        )}
         style={{ height: `${rowSpan * 56}px` }}
-        onClick={onClick}
       >
-        <span className="text-xs text-green-700">{timeStart}</span>
+        <span className="text-xs text-slate-400">{timeStart}</span>
       </td>
     )
   }
 
   const isBlock = booking.type === 'block'
   const isPending = booking.status === 'pending_payment'
-  const isCompleted = booking.status === 'completed' || booking.status === 'no_show'
+  const isNoShow = booking.status === 'no_show'
+  const isCompleted = booking.status === 'completed'
 
+  // Semantic status colors (design-system §1): green = confirmed, amber = pending,
+  // red = no-show, slate = block/completed. A left border accent doubles the cue
+  // so status isn't conveyed by fill color alone (a11y: color-not-only).
   let cellClass =
-    'border border-slate-100 p-1 align-top cursor-default transition-colors duration-100 '
+    'border border-slate-100 border-l-2 p-1 align-top cursor-default transition-colors duration-100 '
+  let statusLabel: string | null = null
 
   if (isBlock) {
-    cellClass += 'bg-slate-100 text-slate-500'
+    cellClass += 'border-l-slate-400 bg-slate-100 text-slate-600'
+    statusLabel = 'Bloqueo'
   } else if (isPending) {
-    cellClass += 'bg-amber-50 text-amber-800'
+    cellClass += 'border-l-amber-500 bg-amber-50 text-amber-800'
+    statusLabel = 'Pendiente'
+  } else if (isNoShow) {
+    cellClass += 'border-l-red-500 bg-red-50 text-red-700 opacity-90'
+    statusLabel = 'No vino'
   } else if (isCompleted) {
-    cellClass += 'bg-slate-50 text-slate-500 opacity-70'
+    cellClass += 'border-l-slate-300 bg-slate-50 text-slate-500 opacity-80'
+    statusLabel = 'Completada'
   } else {
-    cellClass += 'bg-red-50 text-red-700'
+    // confirmed
+    cellClass += 'border-l-green-600 bg-green-50 text-green-800'
   }
 
   const displayName = booking.guestName
@@ -57,21 +81,16 @@ export function BookingCard({ booking, timeStart, isPast, rowSpan = 1, onClick }
       : null
 
   return (
-    <td
-      className={cellClass}
-      rowSpan={rowSpan}
-      style={{ height: `${rowSpan * 56}px` }}
-    >
+    <td className={cellClass} rowSpan={rowSpan} style={{ height: `${rowSpan * 56}px` }}>
       <div className="flex flex-col gap-0.5 overflow-hidden">
-        <span className="text-xs font-medium leading-tight">
+        <span className="text-xs font-medium leading-tight tabular-nums">
           {timeStart}–{booking.timeEnd}
         </span>
         {displayName && (
-          <span className="text-xs leading-tight truncate">{displayName}</span>
+          <span className="truncate text-xs leading-tight">{displayName}</span>
         )}
-        {isBlock && <span className="text-xs leading-tight text-slate-400">Bloqueo</span>}
-        {isPending && (
-          <span className="text-xs leading-tight text-amber-600 font-medium">Pendiente</span>
+        {statusLabel && (
+          <span className="text-xs font-medium leading-tight">{statusLabel}</span>
         )}
       </div>
     </td>

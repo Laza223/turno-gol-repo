@@ -11,7 +11,7 @@ import { tenants } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { createDepositPayment } from '@/modules/payments/payment.service'
-import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
+import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import {
   CourtOfflineError,
   PlayerBannedError,
@@ -119,7 +119,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
         redirectTo = `/reserva/${booking.id}/pendiente`
       } else {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-        const gateway = new MercadoPagoGateway(tenant!.mpAccessToken)
+        const gateway = resolveTenantGateway(tenant!.id, tenant!.mpAccessToken)
         const pref = await withTenantContext(tenant!.id, (tx) =>
           createDepositPayment(booking.id, gateway, tx, appUrl),
         )

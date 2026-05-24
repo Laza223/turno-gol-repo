@@ -15,7 +15,7 @@ import {
   cancelByAdmin,
   handleNoShow,
 } from '@/modules/bookings/booking.cancellation'
-import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
+import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { createManualBookingSchema } from '@/modules/bookings/booking.schema'
 import {
   SlotTakenError,
@@ -142,7 +142,7 @@ export async function cancelBookingAction(
       .limit(1)
     const mpAccessToken = rows[0]?.mpAccessToken
     if (mpAccessToken) {
-      gateway = new MercadoPagoGateway(mpAccessToken)
+      gateway = resolveTenantGateway(tenant.id, mpAccessToken)
     }
   }
 

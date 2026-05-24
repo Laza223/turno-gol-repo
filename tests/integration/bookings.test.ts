@@ -27,6 +27,7 @@ import {
   linkStaffToTenant,
 } from '../helpers/tenant'
 import { sql as drizzleSql } from 'drizzle-orm'
+import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 
 const PRICING = {
   rules: [
@@ -81,12 +82,14 @@ async function insertPendingBooking(opts: {
 const FUTURE_DATE = '2027-04-26' // Monday, far in the future
 
 beforeAll(async () => {
+  setExpiryScheduler(async () => {})
   const sql = getSql()
   await ensureRoles(sql)
   await cleanupAll(sql)
 }, 30_000)
 
 afterAll(async () => {
+  setExpiryScheduler(null)
   await closeSql()
 })
 

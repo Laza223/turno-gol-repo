@@ -8,6 +8,8 @@ export type { TrialWelcomeData } from './trial-welcome'
 export type { TrialEndingData } from './trial-ending'
 export type { DunningPaymentFailedData } from './dunning-payment-failed'
 export type { DepositExpiredData } from './deposit-expired'
+export type { AdminTransferExpiredData } from './admin-transfer-expired'
+export type { AdminLatePaymentData } from './admin-late-payment'
 export type { SubscriptionActivatedData } from './subscription-activated'
 export type { SubscriptionRenewedData } from './subscription-renewed'
 export type { SubscriptionCanceledData } from './subscription-canceled'
@@ -23,6 +25,8 @@ import { renderTrialWelcome, type TrialWelcomeData } from './trial-welcome'
 import { renderTrialEnding, type TrialEndingData } from './trial-ending'
 import { renderDunningPaymentFailed, type DunningPaymentFailedData } from './dunning-payment-failed'
 import { renderDepositExpired, type DepositExpiredData } from './deposit-expired'
+import { renderAdminTransferExpired, type AdminTransferExpiredData } from './admin-transfer-expired'
+import { renderAdminLatePayment, type AdminLatePaymentData } from './admin-late-payment'
 import { renderSubscriptionActivated, type SubscriptionActivatedData } from './subscription-activated'
 import { renderSubscriptionRenewed, type SubscriptionRenewedData } from './subscription-renewed'
 import { renderSubscriptionCanceled, type SubscriptionCanceledData } from './subscription-canceled'
@@ -39,6 +43,8 @@ export {
   renderTrialEnding,
   renderDunningPaymentFailed,
   renderDepositExpired,
+  renderAdminTransferExpired,
+  renderAdminLatePayment,
   renderSubscriptionActivated,
   renderSubscriptionRenewed,
   renderSubscriptionCanceled,
@@ -56,6 +62,8 @@ type TemplateDataMap = {
   trial_ending: TrialEndingData
   dunning_payment_failed: DunningPaymentFailedData
   deposit_expired: DepositExpiredData
+  admin_transfer_expired: AdminTransferExpiredData
+  admin_late_payment: AdminLatePaymentData
   subscription_activated: SubscriptionActivatedData
   subscription_renewed: SubscriptionRenewedData
   subscription_canceled: SubscriptionCanceledData
@@ -75,6 +83,8 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   trial_ending: renderTrialEnding,
   dunning_payment_failed: renderDunningPaymentFailed,
   deposit_expired: renderDepositExpired,
+  admin_transfer_expired: renderAdminTransferExpired,
+  admin_late_payment: renderAdminLatePayment,
   subscription_activated: renderSubscriptionActivated,
   subscription_renewed: renderSubscriptionRenewed,
   subscription_canceled: renderSubscriptionCanceled,

@@ -66,3 +66,13 @@ export class BookingNotOwnedByPlayerError extends Error {
     this.name = 'BookingNotOwnedByPlayerError'
   }
 }
+
+export class TenantInactiveError extends Error {
+  constructor(
+    public readonly tenantId: string,
+    public readonly status: string,
+  ) {
+    super(`Tenant ${tenantId} is '${status}'; cancellation not allowed`)
+    this.name = 'TenantInactiveError'
+  }
+}

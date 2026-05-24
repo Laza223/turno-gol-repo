@@ -67,13 +67,16 @@ export async function enqueueNotification(
  * Enqueue `admin_new_booking` (or similar) for all active staff in a tenant.
  * Queries tenant_staff_members inside the tx (tenant context already set by caller).
  * Silently skips if no active staff found.
+ *
+ * Returns the inserted notification IDs so the caller can `dispatchEmail` each
+ * one AFTER the tx commits.
  */
 export async function enqueueTenantOwnerNotification(
   params: Omit<EnqueueNotificationParams, 'recipientType' | 'recipientId'> & {
     tenantId: string
   },
   tx: DbTx,
-): Promise<void> {
+): Promise<string[]> {
   const rows = await tx.execute(
     drizzleSql`
       SELECT tsm.staff_user_id AS id
@@ -84,12 +87,15 @@ export async function enqueueTenantOwnerNotification(
     `,
   ) as unknown as Array<{ id: string }>
 
+  const ids: string[] = []
   for (const row of rows) {
-    await enqueueNotification(
+    const id = await enqueueNotification(
       { ...params, recipientType: 'tenant_owner', recipientId: row.id },
       tx,
     )
+    ids.push(id)
   }
+  return ids
 }
 
 /**

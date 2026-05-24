@@ -10,6 +10,7 @@ import { rowToBookingRow } from './booking.mappers'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
+  TenantInactiveError,
 } from './booking.errors'
 import type { BookingRow, DepositStatus } from './booking.types'
 import { track } from '@/shared/observability'
@@ -86,6 +87,19 @@ export async function cancelByPlayer(
   if (!b) throw new BookingNotInConfirmedError(bookingId)
   if (b.player_id !== playerId) throw new BookingNotOwnedByPlayerError(bookingId, playerId)
   if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
+
+  // Hallazgo 8: reject cancellation when the complejo is in a terminal/inactive
+  // state. Otherwise a player could trigger an automatic refund against an MP
+  // account that was deleted or delinked.
+  const tenantRows = await tx
+    .select({ status: tenants.status })
+    .from(tenants)
+    .where(eq(tenants.id, b.tenant_id))
+    .limit(1)
+  const tenantStatus = tenantRows[0]?.status
+  if (!tenantStatus || tenantStatus === 'deleted' || tenantStatus === 'blocked') {
+    throw new TenantInactiveError(b.tenant_id, tenantStatus ?? 'unknown')
+  }
 
   const settings = await loadSettings(b.tenant_id, tx)
   const bookingStartUtc = artDateAt(b.date, b.time_start.slice(0, 5))

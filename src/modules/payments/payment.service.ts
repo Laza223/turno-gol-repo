@@ -17,6 +17,7 @@ import {
   PaymentNotFoundError,
   RefundInvalidStateError,
 } from './payment.errors'
+import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { track } from '@/shared/observability'
 
 const TERMINAL_BOOKING_STATUSES = [
@@ -180,8 +181,12 @@ export async function dispatchPaymentInfo(
       mpPaymentId: info.mpPaymentId,
       amountCents: info.amount,
     })
-    await handleApproved(info, tenantId, tx)
-    return { alreadyProcessed: false, result: 'confirmed' }
+    const approved = await handleApproved(info, tenantId, tx)
+    return {
+      alreadyProcessed: false,
+      result: 'confirmed',
+      notificationIds: approved.notificationIds,
+    }
   }
   if (info.status === 'in_process') {
     await handleInProcess(info, tenantId, tx)
@@ -218,23 +223,31 @@ async function handleApproved(
   info: GatewayPaymentInfo,
   tenantId: string,
   tx: DbTx,
-): Promise<{ won: boolean; row?: BookingRow }> {
+): Promise<{ won: boolean; row?: BookingRow; notificationIds: string[] }> {
   await upsertPaymentRow(info, tenantId, 'approved', tx)
   const result = await transitionFromPendingPayment(
     info.externalReference,
     'confirmed',
     tx,
   )
-  if (result.won) return { won: true, row: result.row }
+  if (result.won) return { won: true, row: result.row, notificationIds: [] }
 
   // Won=false: another worker (or expiry job) already moved the booking out of
   // pending_payment. If the current state is terminal, record a late-payment
   // attempt for operational follow-up (manual refund decision). The payment row
   // is upserted regardless to preserve the audit trail.
   const cur = await tx.execute(sql`
-    SELECT status FROM bookings WHERE id = ${info.externalReference}
+    SELECT b.status, c.name AS court_name, b.date::text AS date
+    FROM bookings b
+    JOIN courts c ON c.id = b.court_id
+    WHERE b.id = ${info.externalReference}
   `)
-  const row = (cur as unknown as Array<{ status: string }>)[0]
+  const row = (cur as unknown as Array<{
+    status: string
+    court_name: string
+    date: string
+  }>)[0]
+  const notificationIds: string[] = []
   if (
     row &&
     (TERMINAL_BOOKING_STATUSES as ReadonlyArray<string>).includes(row.status)
@@ -250,8 +263,36 @@ async function handleApproved(
         currentStatus: row.status,
       },
     })
+
+    // Hallazgo 3: don't just bury it in audit_logs — alert the admin prominently
+    // so the late payment gets a manual refund/reassignment decision. The email
+    // is dispatched by the caller AFTER this tx commits (see WebhookOutcome).
+    const ids = await enqueueTenantOwnerNotification(
+      {
+        tenantId,
+        templateName: 'admin_late_payment',
+        content: {
+          bookingId: info.externalReference,
+          amountArs: formatArs(info.amount),
+          currentStatus: row.status,
+          courtName: row.court_name,
+          date: row.date.slice(0, 10).split('-').reverse().join('/'),
+        },
+        triggerEvent: 'booking.late_payment_attempt',
+      },
+      tx,
+    )
+    notificationIds.push(...ids)
   }
-  return { won: false }
+  return { won: false, notificationIds }
+}
+
+/** Centavos ARS → es-AR string, e.g. 300000 → "3.000,00". */
+function formatArs(cents: number): string {
+  return (Math.round(cents) / 100).toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
 /**

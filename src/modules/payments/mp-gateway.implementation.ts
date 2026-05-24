@@ -1,6 +1,7 @@
 import { Payment, PaymentRefund, PreApproval, Preference } from 'mercadopago'
 import { mpClient } from '@/lib/mercadopago'
 import { MpGatewayError } from './payment.errors'
+import { withTokenRefresh } from './mp-token-refresh'
 import type { PaymentGateway } from './mp-gateway'
 import {
   buildSaasUpgradeRef,
@@ -42,16 +43,41 @@ function centsToPesos(cents: number): number {
 }
 
 export class MercadoPagoGateway implements PaymentGateway {
-  private readonly config: ReturnType<typeof mpClient>
+  private config: ReturnType<typeof mpClient>
+  private readonly onUnauthorized?: () => Promise<string>
 
-  constructor(encryptedAccessToken: string) {
+  /**
+   * @param encryptedAccessToken tenant's encrypted MP access token.
+   * @param options.onUnauthorized optional refresh hook (Hallazgo 4). Returns a
+   *   fresh **encrypted** access token; invoked once on a 401, then the failing
+   *   request is retried. Omit it for callers without a refresh path (e.g. the
+   *   SaaS master account in `billing.gateway`).
+   */
+  constructor(
+    encryptedAccessToken: string,
+    options?: { onUnauthorized?: () => Promise<string> },
+  ) {
     this.config = mpClient(encryptedAccessToken)
+    this.onUnauthorized = options?.onUnauthorized
+  }
+
+  /**
+   * Run an SDK call; on a 401 refresh the access token, rebuild the client and
+   * retry once. The op re-reads `this.config` each invocation, so the retry
+   * uses the refreshed credentials. No hook → plain pass-through.
+   */
+  private async withRefresh<T>(op: () => Promise<T>): Promise<T> {
+    if (!this.onUnauthorized) return op()
+    const refresh = this.onUnauthorized
+    return withTokenRefresh(op, async () => {
+      this.config = mpClient(await refresh())
+    })
   }
 
   async createPreference(input: CreatePreferenceInput): Promise<PreferenceResult> {
-    const preference = new Preference(this.config)
     try {
-      const res = await preference.create({
+      const res = await this.withRefresh(() =>
+        new Preference(this.config).create({
         body: {
           items: [
             {
@@ -73,7 +99,8 @@ export class MercadoPagoGateway implements PaymentGateway {
           expires: true,
           expiration_date_to: input.expiresAt.toISOString(),
         },
-      })
+        }),
+      )
 
       if (!res.id || !res.init_point) {
         throw new MpGatewayError('MP returned an empty preference')
@@ -97,9 +124,10 @@ export class MercadoPagoGateway implements PaymentGateway {
     if (!MP_ID_RE.test(mpPaymentId)) {
       throw new MpGatewayError(`invalid mpPaymentId: ${mpPaymentId}`)
     }
-    const payment = new Payment(this.config)
     try {
-      const res = await payment.get({ id: mpPaymentId })
+      const res = await this.withRefresh(() =>
+        new Payment(this.config).get({ id: mpPaymentId }),
+      )
       return {
         mpPaymentId: String(res.id ?? mpPaymentId),
         status: mapStatus(res.status),
@@ -119,10 +147,11 @@ export class MercadoPagoGateway implements PaymentGateway {
     if (!MP_ID_RE.test(mpPaymentId)) {
       throw new MpGatewayError(`invalid mpPaymentId: ${mpPaymentId}`)
     }
-    const refund = new PaymentRefund(this.config)
     try {
       const body = amount !== undefined ? { amount: centsToPesos(amount) } : undefined
-      const res = await refund.create({ payment_id: mpPaymentId, body })
+      const res = await this.withRefresh(() =>
+        new PaymentRefund(this.config).create({ payment_id: mpPaymentId, body }),
+      )
       const status = (res.status ?? 'pending') as RefundResult['status']
       return {
         mpRefundId: String(res.id ?? ''),
@@ -131,6 +160,39 @@ export class MercadoPagoGateway implements PaymentGateway {
     } catch (err) {
       throw new MpGatewayError(
         `Failed to refund MP payment ${mpPaymentId}`,
+        err,
+      )
+    }
+  }
+
+  async searchPaymentsByReference(externalReference: string): Promise<GatewayPaymentInfo[]> {
+    try {
+      const res = await this.withRefresh(() =>
+        new Payment(this.config).search({
+          options: {
+            criteria: 'desc',
+            sort: 'date_created',
+            external_reference: externalReference,
+          },
+        }),
+      )
+      const results = (res.results ?? []) as Array<{
+        id?: number
+        status?: string
+        transaction_amount?: number
+        external_reference?: string
+        payment_method_id?: string
+      }>
+      return results.map((r) => ({
+        mpPaymentId: String(r.id ?? ''),
+        status: mapStatus(r.status),
+        amount: pesosToCents(r.transaction_amount),
+        externalReference: r.external_reference ?? externalReference,
+        paymentMethodId: r.payment_method_id ?? 'unknown',
+      }))
+    } catch (err) {
+      throw new MpGatewayError(
+        `Failed to search MP payments for ref ${externalReference}`,
         err,
       )
     }

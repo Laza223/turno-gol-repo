@@ -24,6 +24,7 @@ import {
 import { rowToBookingRow } from './booking.mappers'
 import { assertTransition } from './booking.state-machine'
 import { transitionFromPendingPayment } from './booking.concurrency'
+import { scheduleBookingExpiry } from '@/shared/jobs/schedule-expiry'
 import type {
   AvailableSlot,
   BookingRow,
@@ -335,6 +336,14 @@ export async function createOnlineBooking(
       courtId: booking.courtId,
       playerId: booking.playerId ?? undefined,
     })
+
+    if (booking.status === 'pending_payment') {
+      // Hallazgo 1: arm the 15-min expiry timer. Routed through an injectable
+      // seam so the test suite never starts a real pg-boss. This send happens
+      // inside the still-open tx; a rollback leaves an orphan job that no-ops
+      // (race-safe transition) and is also covered by the 5-min sweep.
+      await scheduleBookingExpiry(booking.id)
+    }
 
     return booking
   } catch (err) {

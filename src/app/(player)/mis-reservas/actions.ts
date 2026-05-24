@@ -8,7 +8,7 @@ import { uuid, boundedText } from '@/shared/validation/primitives'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
-import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
+import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotInConfirmedError,
@@ -60,7 +60,7 @@ export async function cancelMyBookingAction(
       .limit(1)
     const mpAccessToken = tenantRows[0]?.mpAccessToken
     if (mpAccessToken) {
-      gateway = new MercadoPagoGateway(mpAccessToken)
+      gateway = resolveTenantGateway(pre.tenant_id, mpAccessToken)
     }
   }
 

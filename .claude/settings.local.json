@@ -33,7 +33,27 @@
       "Bash(npx supabase *)",
       "Bash(Remove-Item *)",
       "Bash(git config *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|sql\\)$\")",
+      "Bash(grep -iE \"middleware\\\\.ts$|next\\\\.config|\\\\.env|csp|headers\")",
+      "Bash(powershell -NoProfile -Command '\\(Get-Content '\\\\''__TRACKED_VAR__'\\\\'' -Raw\\) -replace '\\\\''configuracion/facturacion'\\\\'','\\\\''settings/facturacion'\\\\'' | Set-Content '\\\\''__TRACKED_VAR__'\\\\'' -NoNewline')",
+      "Bash(PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c \"SELECT current_user, session_user; SELECT rolname FROM pg_auth_members ja JOIN pg_roles m ON m.oid=ja.member JOIN pg_roles r ON r.oid=ja.roleid WHERE r.rolname='turnogol_app';\")",
+      "Bash(findstr /R \"env\")",
+      "Bash(powershell *)",
+      "Bash(gitleaks version *)",
+      "Bash(grep *)",
+      "Bash(NEXT_PUBLIC_E2E=1 UPSTASH_REDIS_REST_URL='' UPSTASH_REDIS_REST_TOKEN='' pnpm dev)",
+      "Bash(echo \"dev started pid $!\")",
+      "Bash(export NEXT_PUBLIC_E2E=1 UPSTASH_REDIS_REST_URL='' UPSTASH_REDIS_REST_TOKEN='')",
+      "Bash(mkdir -p \"src/app/api/e2e/create-booking\")",
+      "Bash(rmdir \"src/app/api/__e2e__/create-booking\" \"src/app/api/__e2e__\")",
+      "Bash(curl -s -o /dev/null -w \"guard\\(no-env-in-server? expect 400 or 404\\): %{http_code}\\\\n\" -X POST http://localhost:3000/api/e2e/create-booking -H 'content-type: application/json' -d '{}')",
+      "Bash(MP_CLIENT_ID='' DOTENV_CONFIG_PATH=/nonexistent pnpm exec tsx -e \"process.env.MP_CLIENT_ID=''; import\\('./scripts/launch-check.ts'\\)\")",
+      "Bash(grep -q \"NEXT_PUBLIC_E2E\" .env.test.example)",
+      "Bash(printf '\\\\n# E2E\\\\nNEXT_PUBLIC_E2E=1\\\\nUPSTASH_REDIS_REST_URL=\\\\nUPSTASH_REDIS_REST_TOKEN=\\\\nE2E_BASE_URL=http://localhost:3000\\\\n')",
+      "Bash(ls src/components/ui/)",
+      "Bash(find src *)",
+      "Bash(find \"src/app/\\(admin\\)/grilla\" -type f)"
     ]
   }
 }

@@ -71,6 +71,14 @@ export class MockGateway implements PaymentGateway {
     }
   }
 
+  searchCalls: string[] = []
+  searchResults: Record<string, GatewayPaymentInfo[]> = {}
+
+  async searchPaymentsByReference(externalReference: string): Promise<GatewayPaymentInfo[]> {
+    this.searchCalls.push(externalReference)
+    return this.searchResults[externalReference] ?? []
+  }
+
   // ─── SaaS recurring billing (P18) ────────────────────────────────────────
 
   preapprovalCalls: CreatePreapprovalInput[] = []

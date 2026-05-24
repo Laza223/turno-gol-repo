@@ -36,32 +36,32 @@ export default async function CajaPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Caja — {today}</h1>
         {summary.isClosed && (
-          <span className="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-500/20">
             Cerrada por {summary.close?.closedBy}
           </span>
         )}
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Total ingresos</p>
-          <p className="text-2xl font-bold text-green-700">{formatARS(summary.totalIncome)}</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Total ingresos</p>
+          <p className="text-2xl font-bold tabular-nums text-green-700">{formatARS(summary.totalIncome)}</p>
         </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Total ajustes</p>
-          <p className="text-2xl font-bold text-emerald-700">{formatARS(summary.totalAdjustments)}</p>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Total ajustes</p>
+          <p className="text-2xl font-bold tabular-nums text-emerald-700">{formatARS(summary.totalAdjustments)}</p>
         </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Balance del día</p>
-          <p className="text-2xl font-bold">{formatARS(summary.balance)}</p>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">Balance del día</p>
+          <p className="text-2xl font-bold tabular-nums text-slate-900">{formatARS(summary.balance)}</p>
         </div>
       </div>
 
       {/* By method */}
       {Object.keys(summary.byMethod).length > 0 && (
-        <div className="rounded-lg border p-4">
-          <h2 className="text-sm font-medium mb-3">Desglose por método</h2>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-medium text-slate-900 mb-3">Desglose por método</h2>
           <div className="space-y-1">
             {Object.entries(summary.byMethod).map(([method, total]) => (
               <div key={method} className="flex justify-between text-sm">
@@ -74,35 +74,35 @@ export default async function CajaPage() {
       )}
 
       {/* Movements list */}
-      <div className="rounded-lg border">
-        <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="font-medium">Movimientos del día</h2>
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+          <h2 className="font-medium text-slate-900">Movimientos del día</h2>
         </div>
         {cashFlows.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">
+          <p className="p-4 text-sm text-slate-500">
             No hay movimientos registrados para este día.
           </p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="p-3">Tipo</th>
-                <th className="p-3">Categoría</th>
-                <th className="p-3">Método</th>
-                <th className="p-3">Descripción</th>
-                <th className="p-3 text-right">Monto</th>
-                <th className="p-3">Hora</th>
+              <tr className="border-b border-slate-100 text-left">
+                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Tipo</th>
+                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Categoría</th>
+                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Método</th>
+                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Descripción</th>
+                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide text-right">Monto</th>
+                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Hora</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {cashFlows.map((cf) => (
-                <tr key={cf.id} className="border-b last:border-0">
-                  <td className="p-3 capitalize">{cf.type}</td>
-                  <td className="p-3">{cf.category}</td>
-                  <td className="p-3 capitalize">{cf.method}</td>
-                  <td className="p-3 max-w-xs truncate">{cf.description}</td>
-                  <td className="p-3 text-right font-medium">{formatARS(cf.amount)}</td>
-                  <td className="p-3 text-muted-foreground">
+                <tr key={cf.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="p-3 capitalize text-slate-900">{cf.type}</td>
+                  <td className="p-3 text-slate-700">{cf.category}</td>
+                  <td className="p-3 capitalize text-slate-700">{cf.method}</td>
+                  <td className="p-3 max-w-xs truncate text-slate-700">{cf.description}</td>
+                  <td className="p-3 text-right font-medium tabular-nums text-slate-900">{formatARS(cf.amount)}</td>
+                  <td className="p-3 tabular-nums text-slate-500">
                     {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                   </td>
                 </tr>

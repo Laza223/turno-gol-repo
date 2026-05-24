@@ -18,6 +18,7 @@ export interface PaymentGateway {
   createPreference(input: CreatePreferenceInput): Promise<PreferenceResult>
   getPaymentStatus(mpPaymentId: string): Promise<GatewayPaymentInfo>
   createRefund(mpPaymentId: string, amount?: number): Promise<RefundResult>
+  searchPaymentsByReference(externalReference: string): Promise<GatewayPaymentInfo[]>
 
   // ─── SaaS recurring billing (P18) ──────────────────────────────
   createPreapproval(input: CreatePreapprovalInput): Promise<PreapprovalResult>

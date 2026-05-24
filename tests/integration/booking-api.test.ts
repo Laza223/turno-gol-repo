@@ -16,6 +16,7 @@ import {
   createTestTenant,
   ensureRoles,
 } from '../helpers/tenant'
+import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 
 const PRICING = {
   rules: [
@@ -56,10 +57,12 @@ async function getPTR(tenantId: string, playerId: string) {
 }
 
 beforeAll(async () => {
+  setExpiryScheduler(async () => {})
   await ensureRoles()
 })
 
 afterAll(async () => {
+  setExpiryScheduler(null)
   await cleanupAll()
   await closeSql()
 })

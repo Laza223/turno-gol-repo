@@ -31,6 +31,7 @@ import {
   cancelByPlayer,
   handleNoShow,
 } from '@/modules/bookings/booking.cancellation'
+import { TenantInactiveError } from '@/modules/bookings/booking.errors'
 
 const FUTURE_DATE = '2027-08-01'
 
@@ -190,6 +191,52 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await closeSql()
+})
+
+// ─── Hallazgo 8: inactive-tenant guard ──────────────────────────────
+describe('cancelByPlayer — Hallazgo 8: inactive tenant guard', () => {
+  for (const status of ['deleted', 'blocked'] as const) {
+    it(`rejects cancellation when tenant is ${status} and never refunds`, async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+      const player = await createTestPlayer(sql)
+      const courtId = await insertCourt(tenant.id)
+      await setTenantPolicy(tenant.id, 9999) // in-policy → would refund if allowed
+
+      const bookingId = await insertConfirmedBooking({
+        tenantId: tenant.id,
+        courtId,
+        playerId: player.id,
+        date: FUTURE_DATE,
+        timeStart: status === 'deleted' ? '12:00' : '13:00',
+        timeEnd: status === 'deleted' ? '13:00' : '14:00',
+        depositStatus: 'paid',
+        depositAmount: 240_000,
+      })
+      const mpPaymentId = `mp-pay-h8-${status}-${bookingId.slice(0, 8)}`
+      const paymentId = await insertApprovedPayment({
+        tenantId: tenant.id,
+        bookingId,
+        playerId: player.id,
+        amount: 240_000,
+        mpPaymentId,
+      })
+      await linkPaymentToBooking(bookingId, paymentId)
+
+      await sql`UPDATE tenants SET status = ${status} WHERE id = ${tenant.id}`
+
+      await expect(
+        withTenantContext(tenant.id, (tx) =>
+          cancelByPlayer(bookingId, player.id, 'no va más', mockGateway, tx),
+        ),
+      ).rejects.toBeInstanceOf(TenantInactiveError)
+
+      // Booking untouched; no refund attempted against the dead MP account.
+      expect(await getBookingStatus(bookingId)).toBe('confirmed')
+      expect(await getBookingDepositStatus(bookingId)).toBe('paid')
+      expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+    })
+  }
 })
 
 // ─── 4A: player cancel in-policy, deposit paid ──────────────────────

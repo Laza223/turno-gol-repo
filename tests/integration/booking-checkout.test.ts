@@ -5,12 +5,13 @@ import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
+import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 
 const PRICING = { rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', prices: { '60': 1000000, '120': 1800000 } }] }
 const FUTURE = '2099-07-20'
 
-beforeAll(async () => { await ensureRoles() })
-afterAll(async () => { await cleanupAll(); await closeSql() })
+beforeAll(async () => { setExpiryScheduler(async () => {}); await ensureRoles() })
+afterAll(async () => { setExpiryScheduler(null); await cleanupAll(); await closeSql() })
 
 describe('booking + deposit checkout', () => {
   it('creates pending_payment booking then a deposit preference + pending payment row', async () => {

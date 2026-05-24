@@ -4,9 +4,17 @@ import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   cleanupAll,
   createTestPlayer,
+  createTestStaffUser,
   createTestTenant,
   ensureRoles,
+  linkStaffToTenant,
 } from '../helpers/tenant'
+
+// Keep post-commit email dispatch off the real pg-boss.
+vi.mock('@/shared/jobs/boss', () => ({
+  getBoss: vi.fn(async () => ({ send: vi.fn(async () => {}) })),
+  stopBoss: vi.fn(async () => {}),
+}))
 
 // Shared mock gateway instance — replaces MercadoPagoGateway in handler.
 const mockGateway = new MockGateway()
@@ -253,5 +261,53 @@ describe('handleMpWebhookJob — late payment attempt', () => {
     `
     expect(paymentRows).toHaveLength(1)
     expect(paymentRows[0]!.status).toBe('approved')
+  })
+
+  it('booking already expired + approved webhook → enqueues a prominent admin notification', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '11:00',
+      timeEnd: '12:00',
+    })
+    await sql`UPDATE bookings SET status = 'expired' WHERE id = ${bookingId}`
+
+    const mpPaymentId = `mp-pay-notif-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-notif-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'visa',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    const notifs = await sql<
+      Array<{ template_name: string; recipient_type: string; recipient_id: string }>
+    >`
+      SELECT template_name, recipient_type, recipient_id
+      FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'admin_late_payment'
+    `
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_type).toBe('tenant_owner')
+    expect(notifs[0]!.recipient_id).toBe(staff.id)
   })
 })

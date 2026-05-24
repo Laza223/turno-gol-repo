@@ -8,6 +8,8 @@ import {
   renderTrialEnding,
   renderDunningPaymentFailed,
   renderDepositExpired,
+  renderAdminLatePayment,
+  renderAdminTransferExpired,
   renderTemplate,
   isTemplateName,
 } from '@/modules/notifications/templates'
@@ -192,6 +194,53 @@ describe('renderDepositExpired', () => {
   })
 })
 
+describe('renderAdminLatePayment', () => {
+  const DATA = {
+    bookingId: 'abcdef12-3456-7890-aaaa-bbbbbbbbbbbb',
+    amountArs: '3.000,00',
+    currentStatus: 'expired',
+    courtName: 'Cancha 5',
+    date: '02/06/2027',
+  }
+
+  it('subject flags required action and the booking ref', () => {
+    const { subject } = renderAdminLatePayment(DATA)
+    expect(subject.toLowerCase()).toContain('pago tardío')
+    expect(subject).toContain('abcdef12')
+  })
+
+  it('html shows the amount and demands manual action', () => {
+    const { html } = renderAdminLatePayment(DATA)
+    expect(html).toContain('3.000,00')
+    expect(html).toContain('acción manual')
+    expect(html).toContain('Cancha 5')
+  })
+
+  it('text omits optional detail rows when absent', () => {
+    const { text } = renderAdminLatePayment({
+      bookingId: 'abcdef12-3456-7890-aaaa-bbbbbbbbbbbb',
+      amountArs: '500,00',
+      currentStatus: 'canceled_no_refund',
+    })
+    expect(text).toContain('500,00')
+    expect(text).not.toContain('Cancha')
+  })
+})
+
+describe('renderAdminTransferExpired', () => {
+  it('subject signals a freed slot and the html explains 48h', () => {
+    const { subject, html } = renderAdminTransferExpired({
+      courtName: 'Cancha 5',
+      date: '02/06/2027',
+      timeStart: '10:00',
+      bookingId: 'abcdef12-3456-7890-aaaa-bbbbbbbbbbbb',
+    })
+    expect(subject).toContain('Cancha 5')
+    expect(html).toContain('48 horas')
+    expect(html).toContain('abcdef12')
+  })
+})
+
 describe('renderTemplate dispatcher', () => {
   it('routes booking_confirmed to correct renderer', () => {
     const result = renderTemplate('booking_confirmed', CONFIRMED_DATA)
@@ -211,6 +260,8 @@ describe('isTemplateName', () => {
       'trial_ending',
       'dunning_payment_failed',
       'deposit_expired',
+      'admin_late_payment',
+      'admin_transfer_expired',
     ]
     for (const name of valid) {
       expect(isTemplateName(name)).toBe(true)

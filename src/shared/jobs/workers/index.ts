@@ -7,6 +7,9 @@ import { registerAutoCompleteBookingsWorker } from './auto-complete-bookings.wor
 import { registerBookingReminderWorker } from './booking-reminder.worker'
 import { registerDunningRetryWorker } from './dunning-retry.worker'
 import { registerDataRetentionCleanupWorker } from './data-retention-cleanup.worker'
+import { registerExpirePendingBookingWorker } from './expire-pending-booking.worker'
+import { registerRefreshMpTokensWorker } from './refresh-mp-tokens.worker'
+import { registerReconcilePendingPaymentsWorker } from './reconcile-pending-payments.worker'
 
 export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerMpWebhookWorker(boss)
@@ -17,4 +20,7 @@ export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerBookingReminderWorker(boss)
   await registerDunningRetryWorker(boss)
   await registerDataRetentionCleanupWorker(boss)
+  await registerExpirePendingBookingWorker(boss)
+  await registerRefreshMpTokensWorker(boss)
+  await registerReconcilePendingPaymentsWorker(boss)
 }

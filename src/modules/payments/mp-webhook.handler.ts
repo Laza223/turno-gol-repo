@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
 import { getDb, withTenantContext } from '@/shared/db/client'
-import { MercadoPagoGateway } from './mp-gateway.implementation'
+import { resolveTenantGateway } from './mp-oauth'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
 import { parseSaasUpgradeRef } from './payment.types'
@@ -10,6 +10,7 @@ import {
   onPaymentRejected,
 } from '@/modules/billing/dunning.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
+import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { track } from '@/shared/observability'
 
 /**
@@ -52,9 +53,12 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     throw new TenantMpNotConnectedError(job.tenantId)
   }
 
-  const gateway = new MercadoPagoGateway(tenant.mpAccessToken)
+  // Wired with the 401 refresh-and-retry fail-safe (Hallazgo 4): if the
+  // per-tenant access token expired between cron refreshes, the gateway
+  // refreshes it on the fly and retries the failing call.
+  const gateway = resolveTenantGateway(job.tenantId, tenant.mpAccessToken)
 
-  await withTenantContext(job.tenantId, async (tx) => {
+  const outcome = await withTenantContext(job.tenantId, async (tx) => {
     if (job.eventType === 'subscription_authorized_payment') {
       const info = await gateway.getPaymentStatus(job.mpPaymentId)
       const at = new Date()
@@ -133,8 +137,17 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       )
     }
 
-    await dispatchPaymentInfo(info, job.tenantId, tx)
+    return dispatchPaymentInfo(info, job.tenantId, tx)
   })
+
+  // Dispatch any notifications enqueued inside the tx (e.g. late-payment admin
+  // alert, Hallazgo 3) only after it has committed — the rows must exist when
+  // the send-email worker reads them.
+  if (outcome && !outcome.alreadyProcessed) {
+    for (const id of outcome.notificationIds ?? []) {
+      await dispatchEmail(id)
+    }
+  }
 
   track.webhook('mp.webhook.processed', {
     mpEventId: job.mpEventId,

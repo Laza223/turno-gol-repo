@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { tenants } from '@/shared/db/schema'
-import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
+import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByAdmin } from '@/modules/bookings/booking.cancellation'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
@@ -49,7 +49,7 @@ export const POST = withTenant(async (req, user, tx) => {
       .limit(1)
     const mpAccessToken = tenantRows[0]?.mpAccessToken
     if (mpAccessToken) {
-      gateway = new MercadoPagoGateway(mpAccessToken)
+      gateway = resolveTenantGateway(user.tenantId!, mpAccessToken)
     }
   }
 

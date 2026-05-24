@@ -15,6 +15,7 @@ type PaymentEvent =
   | 'payment.deposit.approved'
   | 'payment.deposit.rejected'
   | 'payment.saas.upgrade.approved'
+  | 'payment.reconcile.confirmed'
 
 type WebhookEvent =
   | 'mp.webhook.received'
@@ -44,6 +45,13 @@ type WebhookCtx = {
   mpPaymentId?: string
 }
 
+type AuthEvent =
+  | 'player.anonymized'
+
+type AuthCtx = {
+  playerId?: string
+}
+
 function emit(category: string, message: string, data: Record<string, unknown>): void {
   Sentry.addBreadcrumb({ category, message, data, level: 'info' })
 }
@@ -52,4 +60,5 @@ export const track = {
   booking: (ev: BookingEvent, ctx: BookingCtx) => emit('booking', ev, ctx),
   payment: (ev: PaymentEvent, ctx: PaymentCtx) => emit('payment', ev, ctx),
   webhook: (ev: WebhookEvent, ctx: WebhookCtx) => emit('webhook', ev, ctx),
+  auth: (ev: AuthEvent, ctx: AuthCtx) => emit('auth', ev, ctx),
 }

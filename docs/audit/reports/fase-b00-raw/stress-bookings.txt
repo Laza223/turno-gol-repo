@@ -1,0 +1,12 @@
+
+> turnogol@0.1.0 stress:bookings C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
+> tsx scripts/stress-test.ts
+
+Creating 50 stress players...
+Firing 50 parallel bookings on 2026-05-25 10:00-11:00...
+Accepted: 1
+Rejected: 49
+  409:SLOT_TAKEN: 49
+OK: invariant held (exactly 1 accepted)
+Cleaning up stress data...
+EXIT_CODE=0

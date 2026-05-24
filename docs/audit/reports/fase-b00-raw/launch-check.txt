@@ -1,0 +1,11 @@
+
+> turnogol@0.1.0 launch:check C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
+> tsx scripts/launch-check.ts
+
+▶ env vars present... Missing env vars: MP_CLIENT_ID, MP_CLIENT_SECRET, MP_WEBHOOK_SECRET, ENCRYPTION_KEY, PIN_COOKIE_SECRET, RESEND_API_KEY, SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+FAIL
+  check returned false
+
+1 step(s) failed: env vars present
+ ELIFECYCLE  Command failed with exit code 1.
+EXIT_CODE=1

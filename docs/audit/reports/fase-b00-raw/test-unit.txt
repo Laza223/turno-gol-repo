@@ -1,0 +1,44 @@
+
+> turnogol@0.1.0 test C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
+> vitest run --dir tests/unit
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/Lazar/Documents/github/TurnoGol-audit-b00[39m
+
+ [32m✓[39m tests/unit/notification-templates.test.ts [2m ([22m[2m25 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/unit/reports.test.ts [2m ([22m[2m22 tests[22m[2m)[22m[90m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/booking-state-machine.test.ts [2m ([22m[2m62 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/unit/middleware.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/unit/court-service.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/api-status.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/public-service.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/unit/rate-limit-apply.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/unit/booking-service.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/slot-generator.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/unit/mp-token-refresh.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/tenant-service.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/mp-oauth.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/validation-primitives.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/zod-coverage.test.ts [2m ([22m[2m45 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m tests/unit/mp-webhook-route.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/payment-gateway.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/cashflow-service.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/unit/breadcrumbs.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/unit/env-validation.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/pin.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 35[2mms[22m[39m
+ [32m✓[39m tests/unit/e2e-endpoint-guard.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 67[2mms[22m[39m
+ [32m✓[39m tests/unit/rate-limit-key.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/context-source.test.ts [2m ([22m[2m34 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/unit/schedule-expiry.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/safe-redirect.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/db-client-role-guard.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 68[2mms[22m[39m
+ [32m✓[39m tests/unit/rate-limit-policies.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/mp-payment-id-validation.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m29 passed[39m[22m[90m (29)[39m
+[2m      Tests [22m [1m[32m318 passed[39m[22m[90m (318)[39m
+[2m   Start at [22m 18:50:55
+[2m   Duration [22m 3.35s[2m (transform 749ms, setup 97ms, collect 2.23s, tests 286ms, environment 0ms, prepare 455ms)[22m
+
+EXIT_CODE=0

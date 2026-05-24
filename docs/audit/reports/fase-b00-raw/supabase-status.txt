@@ -1,0 +1,2 @@
+DB schema verified: 20 tables in public schema (19 business + system_admins). Skipping db:push (DB already in sync).
+Supabase containers UP since 42h. DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres

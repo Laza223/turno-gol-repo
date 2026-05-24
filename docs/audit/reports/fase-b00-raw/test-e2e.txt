@@ -1,0 +1,52 @@
+
+> turnogol@0.1.0 test:e2e C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
+> playwright test
+
+[2m[WebServer] [22m
+[2m[WebServer] [22m[33mwarn[39m  - In order to be able to deminify errors, [1m[36m@sentry/nextjs[39m[22m creates sourcemaps and uploads them to the Sentry server. Depending on your deployment setup, this means your original code may be visible in browser devtools in production. To prevent this, set [1m[36mhideSourceMaps[39m[22m to [1m[36mtrue[39m[22m in the [1m[36msentry[39m[22m options in your [1m[36mnext.config.js[39m[22m. To disable this warning without changing sourcemap behavior, set [1m[36mhideSourceMaps[39m[22m to [1m[36mfalse[39m[22m. (In [1m[36m@sentry/nextjs[39m[22m version 8.0.0 and beyond, this option will default to [1m[36mtrue[39m[22m.) See https://webpack.js.org/configuration/devtool/ and https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/#use-hidden-source-map for more information.
+[2m[WebServer] [22m
+[2m[WebServer] [22mInvalid Sentry Dsn: e2e-placeholder
+[e2e] running seed-e2e...
+
+> turnogol@0.1.0 e2e:seed C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
+> tsx scripts/seed-e2e.ts
+
+E2E seed OK
+  tenant: 00000000-0000-4000-8000-000000000001 (e2e-complejo-demo)
+  admin:  e2e-admin@turnogol.test (auth 00000000-0000-4000-8000-000000000002)
+  player: e2e-player@turnogol.test (auth 00000000-0000-4000-8000-000000000021)
+[e2e] waiting for http://localhost:3000/api/status...
+[e2e] ready
+
+Running 22 tests using 8 workers
+
+  ok  4 [chromium] › tests\e2e\admin-login.spec.ts:21:7 › admin login flow › with admin storageState, /dashboard renders (19.5s)
+  ok  5 [chromium] › tests\e2e\onboarding.spec.ts:33:9 › onboarding › registration form › has link to login for existing users (22.2s)
+  ok  6 [chromium] › tests\e2e\onboarding.spec.ts:14:9 › onboarding › registration form › renders registration form with required fields (22.4s)
+  ok  3 [chromium] › tests\e2e\admin-login.spec.ts:9:7 › admin login flow › login page shows email input (22.4s)
+  ok  8 [chromium] › tests\e2e\onboarding.spec.ts:42:9 › onboarding › onboarding wizard › redirects unauthenticated user to /login (22.5s)
+  ok  1 [chromium] › tests\e2e\admin-login.spec.ts:14:7 › admin login flow › submitting email triggers "check your inbox" message (22.5s)
+  ok  2 [chromium] › tests\e2e\admin-login.spec.ts:4:7 › admin login flow › unauthenticated /dashboard redirects to /login (22.7s)
+  ok  7 [chromium] › tests\e2e\onboarding.spec.ts:25:9 › onboarding › registration form › shows validation errors on empty submit (22.9s)
+  ok  9 [chromium] › tests\e2e\onboarding.spec.ts:47:9 › onboarding › onboarding wizard › step 1 renders complex identity form (4.0s)
+  -  11 [chromium] › tests\e2e\onboarding.spec.ts:84:9 › onboarding › full wizard flow (step 1 - identity) › step 1 has all complex identity fields
+  -  10 [chromium] › tests\e2e\onboarding.spec.ts:66:9 › onboarding › onboarding wizard › wizard shows progress stepper
+[2m[WebServer] [22mInvalid Sentry Dsn: e2e-placeholder
+[2m[WebServer] [22mInvalid Sentry Dsn: e2e-placeholder
+  ok 18 [chromium] › tests\e2e\portal-search.spec.ts:4:7 › portal search (/explorar) › shows the E2E seeded tenant card (4.3s)
+  ok 15 [chromium] › tests\e2e\landing.spec.ts:4:7 › landing page › renders hero + primary CTA (6.0s)
+  ok 19 [chromium] › tests\e2e\landing.spec.ts:19:7 › landing page › no console errors on load (5.2s)
+  ok 17 [chromium] › tests\e2e\landing.spec.ts:13:7 › landing page › clicking primary CTA navigates to /register (5.3s)
+  ok 20 [chromium] › tests\e2e\portal-search.spec.ts:9:7 › portal search (/explorar) › filter by city "Buenos Aires" includes the demo tenant (2.3s)
+  ok 13 [chromium] › tests\e2e\availability.spec.ts:25:7 › public availability › free future slot links to /reservar (7.9s)
+  ok 14 [chromium] › tests\e2e\availability.spec.ts:18:7 › public availability › weekly view shows multiple days (7.9s)
+  ok 12 [chromium] › tests\e2e\availability.spec.ts:12:7 › public availability › navigates to weekly availability (8.1s)
+  ok 16 [chromium] › tests\e2e\availability.spec.ts:4:7 › public availability › tenant page shows name + city + daily grid (8.1s)
+  ok 21 [chromium] › tests\e2e\portal-search.spec.ts:14:7 › portal search (/explorar) › search input filters to the demo tenant (2.1s)
+  ok 22 [chromium] › tests\e2e\portal-search.spec.ts:23:7 › portal search (/explorar) › click on tenant card navigates to /<slug> (2.1s)
+[2m[WebServer] [22mInvalid Sentry Dsn: e2e-placeholder
+[2m[WebServer] [22mInvalid Sentry Dsn: e2e-placeholder
+
+  2 skipped
+  20 passed (49.1s)
+EXIT_CODE=0

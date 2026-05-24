@@ -1,0 +1,9 @@
+
+> turnogol@0.1.0 e2e:seed C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
+> tsx scripts/seed-e2e.ts
+
+E2E seed OK
+  tenant: 00000000-0000-4000-8000-000000000001 (e2e-complejo-demo)
+  admin:  e2e-admin@turnogol.test (auth 00000000-0000-4000-8000-000000000002)
+  player: e2e-player@turnogol.test (auth 00000000-0000-4000-8000-000000000021)
+EXIT_CODE=0

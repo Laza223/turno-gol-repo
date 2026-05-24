@@ -1,0 +1,94 @@
+
+> turnogol@0.1.0 test:integration C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
+> vitest run --dir tests/integration
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/Lazar/Documents/github/TurnoGol-audit-b00[39m
+
+ [32m✓[39m tests/integration/isolation.test.ts [2m ([22m[2m96 tests[22m[2m)[22m[33m 1865[2mms[22m[39m
+[90mstdout[2m | tests/integration/billing.test.ts[2m > [22m[2mlifecycle FSM[2m > [22m[2mcanceled → blocked sweep when period_end < NOW[22m[39m
+[dunning-retry] tenant 9ecf47d9-3805-430b-884a-70cb91287983: canceled → blocked (period ended)
+
+[90mstdout[2m | tests/integration/billing.test.ts[2m > [22m[2mTest A — dunning escalation drives blocked → churned[2m > [22m[2mrejected → past_due; sweep at d7 → suspended; d14 → blocked; d90 → churned[22m[39m
+[dunning-retry] tenant 045d6975-65ff-4e5d-b625-a0eb6727b7a0: past_due → suspended
+
+[90mstdout[2m | tests/integration/billing.test.ts[2m > [22m[2mTest A — dunning escalation drives blocked → churned[2m > [22m[2mrejected → past_due; sweep at d7 → suspended; d14 → blocked; d90 → churned[22m[39m
+[dunning-retry] tenant 045d6975-65ff-4e5d-b625-a0eb6727b7a0: suspended → blocked
+
+[90mstdout[2m | tests/integration/billing.test.ts[2m > [22m[2mTest A — dunning escalation drives blocked → churned[2m > [22m[2mrejected → past_due; sweep at d7 → suspended; d14 → blocked; d90 → churned[22m[39m
+[dunning-retry] tenant 045d6975-65ff-4e5d-b625-a0eb6727b7a0: blocked → churned
+
+[90mstdout[2m | tests/integration/billing.test.ts[2m > [22m[2mTest C — voluntary cancel[2m > [22m[2mcancel → preapproval canceled, period_end intact; sweep at end → blocked +67d[22m[39m
+[dunning-retry] tenant b6811df5-da4a-4745-b4c3-977b51ba52dd: canceled → blocked (period ended)
+
+[90mstdout[2m | tests/integration/billing.test.ts[2m > [22m[2mTest D — data retention cleanup[2m > [22m[2mchurned with deletion_at past → child rows deleted, tenant anonymized[22m[39m
+[data-retention] wiping 1 tenants
+
+[90mstdout[2m | tests/integration/billing.test.ts[2m > [22m[2mTest D — data retention cleanup[2m > [22m[2mchurned with deletion_at past → child rows deleted, tenant anonymized[22m[39m
+[data-retention] wiped tenant a89f382a-6b16-4ec8-a0bc-fa2d4aebd0b3
+
+ [32m✓[39m tests/integration/billing.test.ts [2m ([22m[2m14 tests[22m[2m)[22m[33m 7206[2mms[22m[39m
+ [32m✓[39m tests/integration/cancellations.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[33m 1122[2mms[22m[39m
+ [32m✓[39m tests/integration/bookings.test.ts [2m ([22m[2m15 tests[22m[2m)[22m[33m 1044[2mms[22m[39m
+ [32m✓[39m tests/integration/payments.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[33m 796[2mms[22m[39m
+ [32m✓[39m tests/integration/mp-webhook.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 681[2mms[22m[39m
+[90mstdout[2m | tests/integration/abonados.test.ts[2m > [22m[2mabonado service[2m > [22m[2mrolling job: abonado with 3 future weeks → generates 4 more[22m[39m
+[generate-abonado-slots] abonado e382e78b-f0ce-4fe5-b6f7-daf1ed1e331c: generated 4 slots
+
+ [32m✓[39m tests/integration/abonados.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[33m 938[2mms[22m[39m
+ [32m✓[39m tests/integration/cashflow.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[33m 662[2mms[22m[39m
+ [32m✓[39m tests/integration/booking-api.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[33m 668[2mms[22m[39m
+[90mstdout[2m | tests/integration/booking-expiry.test.ts[2m > [22m[2msweepExpiredPendingBookings[2m > [22m[2mexpires overdue pending_payment bookings and leaves fresh ones[22m[39m
+[expire-pending-booking-sweep] expired 1 booking(s)
+
+ [32m✓[39m tests/integration/booking-expiry.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[33m 680[2mms[22m[39m
+ [32m✓[39m tests/integration/reports.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[33m 601[2mms[22m[39m
+ [32m✓[39m tests/integration/player-app.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[33m 568[2mms[22m[39m
+[90mstdout[2m | tests/integration/notifications.test.ts[2m > [22m[2mnotification pipeline[2m > [22m[2menqueue → sweep → provider called → status=sent, sent_at populated[22m[39m
+[send-email] sent notification a3f040ee-f677-4b66-8ed8-0a4864bf4c49 to madie27@test.local
+
+[90mstderr[2m | tests/integration/notifications.test.ts[2m > [22m[2mnotification pipeline[2m > [22m[2mprovider fails 3× → status=failed, last_error set[22m[39m
+[send-email] failed notification a39e704b-870f-4630-882b-2a02bfb88274 (attempt 1/3): Resend down
+
+[90mstderr[2m | tests/integration/notifications.test.ts[2m > [22m[2mnotification pipeline[2m > [22m[2mprovider fails 3× → status=failed, last_error set[22m[39m
+[send-email] failed notification a39e704b-870f-4630-882b-2a02bfb88274 (attempt 2/3): Resend down
+
+[90mstderr[2m | tests/integration/notifications.test.ts[2m > [22m[2mnotification pipeline[2m > [22m[2mprovider fails 3× → status=failed, last_error set[22m[39m
+[send-email] failed notification a39e704b-870f-4630-882b-2a02bfb88274 (attempt 3/3): Resend down
+
+ [32m✓[39m tests/integration/notifications.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 684[2mms[22m[39m
+ [32m✓[39m tests/integration/bans.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 553[2mms[22m[39m
+ [32m✓[39m tests/integration/player-anonymization.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[33m 3879[2mms[22m[39m
+ [32m✓[39m tests/integration/staff-actions.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[33m 2553[2mms[22m[39m
+ [32m✓[39m tests/integration/idor-player-bookings.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 1098[2mms[22m[39m
+ [32m✓[39m tests/integration/idor-admin-cross-tenant.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 1366[2mms[22m[39m
+ [32m✓[39m tests/integration/tenant-context.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 1579[2mms[22m[39m
+ [32m✓[39m tests/integration/race-double-payment.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 928[2mms[22m[39m
+ [32m✓[39m tests/integration/courts.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 545[2mms[22m[39m
+ [32m✓[39m tests/integration/reservas-queries.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 1875[2mms[22m[39m
+ [32m✓[39m tests/integration/webhook-tenant-cross-check.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 678[2mms[22m[39m
+ [32m✓[39m tests/integration/login-rate-limit.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/integration/middleware-rate-limit.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32m✓[39m tests/integration/booking-checkout.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 709[2mms[22m[39m
+ [32m✓[39m tests/integration/mp-oauth.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 499[2mms[22m[39m
+ [32m✓[39m tests/integration/race-double-booking.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 721[2mms[22m[39m
+ [32m✓[39m tests/integration/race-expiry-vs-confirm.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 691[2mms[22m[39m
+ [32m✓[39m tests/integration/admin-rate-limit.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/integration/players.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 1177[2mms[22m[39m
+ [32m✓[39m tests/integration/public-search.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 514[2mms[22m[39m
+ [32m✓[39m tests/integration/rate-limit-fail-mode.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m tests/integration/player-rate-limit.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/integration/cookie-flags.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/integration/weekly-availability.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 570[2mms[22m[39m
+ [32m✓[39m tests/integration/public-availability-validation.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/integration/webhook-ssrf-guard.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/integration/mp-callback-app-url.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m tests/integration/security-headers.test.ts [2m ([22m[2m3 tests[22m[2m)[22m
+
+[2m Test Files [22m [1m[32m40 passed[39m[22m[90m (40)[39m
+[2m      Tests [22m [1m[32m253 passed[39m[22m[90m (253)[39m
+[2m   Start at [22m 19:05:29
+[2m   Duration [22m 42.63s[2m (transform 1.13s, setup 125ms, collect 4.36s, tests 37.48s, environment 0ms, prepare 416ms)[22m
+
+EXIT_CODE=0

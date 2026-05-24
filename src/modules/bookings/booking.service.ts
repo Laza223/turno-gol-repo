@@ -16,6 +16,8 @@ import {
 } from '@/modules/notifications/notification.service'
 import {
   BookingNotInConfirmedError,
+  BookingNotYetEndedError,
+  BookingNotYetStartedError,
   CourtOfflineError,
   PlayerBannedError,
   PriceUnavailableError,
@@ -366,6 +368,22 @@ export async function completeBooking(
   tx: DbTx,
 ): Promise<BookingRow> {
   assertTransition('confirmed', 'completed', { actor })
+
+  // B1 audit fix: for admin actor, require that time_end has passed in ART.
+  // System actor (autoCompleteOverdueBookings cron) has its own grace-window logic
+  // and may legitimately complete bookings without passing through here.
+  if (actor === 'admin') {
+    const check = await tx.execute(sql`
+      SELECT (date + time_end) > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_ended
+      FROM bookings
+      WHERE id = ${bookingId}
+    `)
+    const row = (check as unknown as Array<{ not_yet_ended: boolean }>)[0]
+    if (row?.not_yet_ended) {
+      throw new BookingNotYetEndedError(bookingId)
+    }
+  }
+
   const rows = await tx
     .update(bookings)
     .set({ status: 'completed', updatedAt: new Date() })
@@ -403,6 +421,20 @@ export async function markNoShow(
   tx: DbTx,
 ): Promise<BookingRow> {
   assertTransition('confirmed', 'no_show', { actor: 'admin' })
+
+  // B1 audit fix: require that time_start has passed in ART. Otherwise admin could
+  // pre-mark no-show on a future booking, triggering false auto-ban via no-show
+  // penalty + corrupting reports.
+  const check = await tx.execute(sql`
+    SELECT (date + time_start) > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_started
+    FROM bookings
+    WHERE id = ${bookingId}
+  `)
+  const row = (check as unknown as Array<{ not_yet_started: boolean }>)[0]
+  if (row?.not_yet_started) {
+    throw new BookingNotYetStartedError(bookingId)
+  }
+
   const rows = await tx
     .update(bookings)
     .set({ status: 'no_show', updatedAt: new Date() })

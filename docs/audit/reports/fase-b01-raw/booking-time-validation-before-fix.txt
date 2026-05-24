@@ -1,0 +1,30 @@
+[31m+   "id": "22272f81-bd33-4098-9ba0-c98f783c2996",[39m
+[31m+   "notesInternal": null,[39m
+[31m+   "notesPlayer": null,[39m
+[31m+   "paymentId": null,[39m
+[31m+   "paymentMethod": null,[39m
+[31m+   "playerId": "ba8bc55a-fc74-4505-bb0a-a6d7dcae5bb3",[39m
+[31m+   "priceSnapshot": 1500000,[39m
+[31m+   "status": "no_show",[39m
+[31m+   "tenantId": "9df173a6-839f-44d3-a4ed-3362ff590d70",[39m
+[31m+   "timeEnd": "21:00:00",[39m
+[31m+   "timeStart": "20:00:00",[39m
+[31m+   "type": "spontaneous",[39m
+[31m+   "updatedAt": 2026-05-24T23:13:05.394Z,[39m
+[31m+ }[39m
+
+[36m [2m❯[22m tests/integration/booking-time-validation.test.ts:[2m85:5[22m[39m
+    [90m 83| [39m    [35mawait[39m [34mexpect[39m(
+    [90m 84| [39m      [34mwithTenantContext[39m(tenant[33m.[39mid[33m,[39m (tx) [33m=>[39m [34mmarkNoShow[39m(booking[33m.[39mid[33m,[39m seed…
+    [90m 85| [39m    )[33m.[39mrejects[33m.[39m[34mtoThrow[39m([36m/before|future|not yet|ended|started|time/i[39m)
+    [90m   | [39m    [31m^[39m
+    [90m 86| [39m  }[33m,[39m [34m30_000[39m)
+    [90m 87| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 20:13:02
+[2m   Duration [22m 2.95s[2m (transform 308ms, setup 29ms, collect 1.26s, tests 808ms, environment 0ms, prepare 168ms)[22m
+

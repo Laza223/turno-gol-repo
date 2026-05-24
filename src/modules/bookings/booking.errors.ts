@@ -76,3 +76,17 @@ export class TenantInactiveError extends Error {
     this.name = 'TenantInactiveError'
   }
 }
+
+export class BookingNotYetEndedError extends Error {
+  constructor(bookingId: string) {
+    super(`Booking ${bookingId} cannot be completed: time_end has not yet passed`)
+    this.name = 'BookingNotYetEndedError'
+  }
+}
+
+export class BookingNotYetStartedError extends Error {
+  constructor(bookingId: string) {
+    super(`Booking ${bookingId} cannot be marked no-show: time_start has not yet passed`)
+    this.name = 'BookingNotYetStartedError'
+  }
+}

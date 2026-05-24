@@ -80,6 +80,7 @@ async function insertPendingBooking(opts: {
 }
 
 const FUTURE_DATE = '2027-04-26' // Monday, far in the future
+const PAST_DATE = '2020-04-27' // Monday, far in the past (used by completeBooking/markNoShow tests)
 
 beforeAll(async () => {
   setExpiryScheduler(async () => {})
@@ -373,12 +374,14 @@ describe('completeBooking', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
+    // B1 audit: completeBooking now requires time_end to have passed for admin actor.
+    // Using PAST_DATE so the booking can be legitimately completed.
     const created = await withTenantContext(tenant.id, (tx) =>
       createManualBooking(
         tenant.id,
         {
           courtId,
-          date: FUTURE_DATE,
+          date: PAST_DATE,
           timeStart: '08:00',
           timeEnd: '09:00',
           durationMins: 60,
@@ -424,12 +427,14 @@ describe('markNoShow', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
+    // B1 audit: markNoShow now requires time_start to have passed.
+    // Using PAST_DATE so the slot is legitimately past-due for no-show marking.
     const created = await withTenantContext(tenant.id, (tx) =>
       createManualBooking(
         tenant.id,
         {
           courtId,
-          date: FUTURE_DATE,
+          date: PAST_DATE,
           timeStart: '09:00',
           timeEnd: '10:00',
           durationMins: 60,

@@ -13,6 +13,11 @@ export const POLICIES = {
   publicAvailability: { limit: 30,  window: '60 s', keyBy: 'ip',     failMode: 'open'   },
   adminCrud:          { limit: 100, window: '60 s', keyBy: 'tenant', failMode: 'open'   },
   playerBooking:      { limit: 20,  window: '60 s', keyBy: 'player', failMode: 'open'   },
+  // PIN brute-force defense (B6): 4-digit PIN = 10k combinations. 5 attempts
+  // per 5 minutes per tenant — exhaustive search would need ~7 days. Fail
+  // closed: if Upstash is down, deny new attempts (prefer false locks over
+  // unmetered guessing).
+  pinAttempts:        { limit: 5,   window: '5 m',  keyBy: 'tenant', failMode: 'closed' },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

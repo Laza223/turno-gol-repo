@@ -11,6 +11,7 @@ import {
   COOKIE_NAME,
   COOKIE_TTL_MS,
 } from '@/modules/auth/pin'
+import { enforce } from '@/shared/rate-limit'
 
 export async function checkPinSessionAction(): Promise<boolean> {
   const jar = cookies()
@@ -26,6 +27,18 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { ok: false, error: 'Tenant no encontrado.' }
+
+  // Brute-force defense (B6 P1 fix): 5 attempts per 5 minutes per tenant.
+  // 4-digit PIN = 10k combinations; without this, exhaustive search trivial.
+  // Fail closed via policy: Upstash outage denies new attempts (safer).
+  const rl = await enforce('pinAttempts', tenant.id)
+  if (!rl.ok) {
+    const retryMin = Math.max(1, Math.ceil((rl.reset - Date.now()) / 60_000))
+    return {
+      ok: false,
+      error: `Demasiados intentos fallidos. Volvé a intentar en ${retryMin} min.`,
+    }
+  }
 
   const hash = tenant.settings.staff_pin_hash ?? null
   if (!hash) return { ok: false, error: 'PIN no configurado. Configuralo en Ajustes → Seguridad.' }

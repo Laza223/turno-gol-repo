@@ -30,7 +30,7 @@ function ImagePane() {
         alt="Cancha de fútbol iluminada"
         fill
         priority
-        sizes="50vw"
+        sizes="(min-width: 1024px) 50vw, 0vw"
         className="object-cover"
       />
       <div

@@ -6,7 +6,7 @@ import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, boundedText } from '@/shared/validation/primitives'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { withTenantContext, getDb } from '@/shared/db/client'
+import { withPlayerContext, withTenantContext, getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
@@ -39,20 +39,24 @@ export async function cancelMyBookingAction(
   const parsed = cancelSchema.safeParse({ bookingId, reason })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const user = await requirePlayer()
-  const db = getDb()
 
-  // Pre-read to get tenantId + depositStatus.
-  const preRows = await db.execute(sql`
-    SELECT tenant_id, deposit_status
-    FROM bookings
-    WHERE id = ${parsed.data.bookingId}
-    LIMIT 1
-  `)
-  const pre = (preRows as unknown as Array<{ tenant_id: string; deposit_status: string }>)[0]
+  // B2 audit fix: pre-read with withPlayerContext so RLS player_own_bookings_select
+  // filters to ONLY bookings owned by this player, even if the connection role bypasses RLS.
+  // Defense in depth: avoids leaking tenant_id/deposit_status of arbitrary bookings.
+  const pre = await withPlayerContext(user.playerId, async (tx) => {
+    const rows = await tx.execute(sql`
+      SELECT tenant_id, deposit_status
+      FROM bookings
+      WHERE id = ${parsed.data.bookingId}
+      LIMIT 1
+    `)
+    return (rows as unknown as Array<{ tenant_id: string; deposit_status: string }>)[0]
+  })
   if (!pre) return { success: false, error: 'Reserva no encontrada.' }
 
   let gateway: PaymentGateway | null = null
   if (pre.deposit_status === 'paid') {
+    const db = getDb()
     const tenantRows = await db
       .select({ mpAccessToken: tenants.mpAccessToken })
       .from(tenants)

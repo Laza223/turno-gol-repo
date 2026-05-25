@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { parseRouteUuid } from '@/shared/api/route-params'
 import { bookings, courts, players } from '@/shared/db/schema'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,9 @@ export const GET = withTenant(async (req, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
 
-  const bookingId = req.nextUrl.pathname.split('/').pop()!
+  const idResult = parseRouteUuid(req)
+  if ('response' in idResult) return idResult.response
+  const bookingId = idResult.uuid
 
   const rows = await tx
     .select({
@@ -71,7 +74,9 @@ export const PATCH = withTenant(async (req, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
 
-  const bookingId = req.nextUrl.pathname.split('/').pop()!
+  const idResult = parseRouteUuid(req)
+  if ('response' in idResult) return idResult.response
+  const bookingId = idResult.uuid
 
   let body: unknown
   try {

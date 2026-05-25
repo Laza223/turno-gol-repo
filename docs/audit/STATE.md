@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-25
 **Branch principal:** main
-**Worktrees activos:** `audit/backend-b06` (en `../TurnoGol-audit-b06`)
+**Worktrees activos:** `audit/backend-b07` (en `../TurnoGol-audit-b07`)
 
 ## Fase actual
 
-**B7 — API Contracts / Endpoints Públicos** (siguiente, no iniciada)
+**B8 — Money Handling / Cashflow / Reportes** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -19,6 +19,7 @@
 | B4 — Billing SaaS | 🟢 SOLID (0 bugs) | `docs/audit/reports/fase-b04-billing-report.md` |
 | B5 — Background Jobs | 🟡 1 P1 FIXED (parcial) + 3 P1 docs | `docs/audit/reports/fase-b05-jobs-report.md` |
 | B6 — Auth / Seguridad | 🟡 1 P1 FIXED + 2 P1 docs | `docs/audit/reports/fase-b06-auth-report.md` |
+| B7 — API Contracts | 🟡 1 P2 FIXED + 4 P2 docs | `docs/audit/reports/fase-b07-api-contracts-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -49,7 +50,12 @@
 - libuv assertion error stress test Windows-only (no aplica prod)
 - MP retry on InvalidTransitionError loser → Sentry filter en B10
 - B5: cron `generate-abonado-slots` sin comentario de intent → backlog
-- **B6: Server Actions CSRF = Next.js built-in (sin tokens custom)** → backlog (riesgo bajo)
+- B6: Server Actions CSRF = Next.js built-in (sin tokens custom) → backlog
+- **B7: 6 endpoints `[id]/{cancel,complete,no-show,status}` sin `parseRouteUuid()`** → backlog (mitigado parcial por tx rollback)
+- **B7: Output schema validation ausente en 34 endpoints** → backlog
+- **B7: Error format inconsistente (`{error: string}` vs `{error: {code,message}}`)** → backlog
+- **B7: No API versioning (`/api/v1/`)** → backlog antes de Año 2
+- **B7: Payload size limits = Next.js default 1MB** → backlog
 
 ### Deferidos
 - B2.6 Realtime cliente real → Fase F3
@@ -57,12 +63,12 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 7/26**
-- **Tests nuevos: 51** (todos verdes)
-- **Bugs fixed: 6** (1 P0 + 4 P1 + 1 P1 parcial)
+- **Fases completadas: 8/26**
+- **Tests nuevos: 59** (todos verdes)
+- **Bugs fixed: 7** (1 P0 + 4 P1 + 1 P1 parcial + 1 P2)
 - **Tests legacy ajustados: 3**
 
 ## Próximas decisiones para el humano
 
-1. **Mergear `audit/backend-b06` a main** (recomendado: sí)
-2. **¿Continuar B7 o pausar?** Bloque seguridad crítica completo. B7 es más liviana (Zod schemas + adversarial inputs).
+1. **Mergear `audit/backend-b07` a main** (recomendado: sí)
+2. **¿Continuar B8 o pausar?** B8 (Money/Cashflow) es liviano — 1 sesión. Después B9-B11 son operativas/runbook.

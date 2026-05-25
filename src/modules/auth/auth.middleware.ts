@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { tagSession } from '@/shared/middleware/observability'
 import type { AuthUser } from './types'
 
 /**
@@ -17,15 +18,18 @@ export async function extractAuthUser(): Promise<AuthUser | null> {
 
   if (meta.is_player === true || userMeta.is_player === true) {
     const playerId = typeof meta.player_id === 'string' ? meta.player_id : user.id
+    tagSession(null, playerId, 'player')
     return { type: 'player', id: user.id, playerId, email }
   }
   if (meta.is_system_admin === true) {
     const systemAdminId = typeof meta.system_admin_id === 'string' ? meta.system_admin_id : user.id
+    tagSession(null, systemAdminId, 'system_admin')
     return { type: 'system_admin', id: user.id, email, systemAdminId }
   }
   // Default: staff
   const tenantId = typeof meta.tenant_id === 'string' ? meta.tenant_id : null
   const staffUserId = typeof meta.staff_user_id === 'string' ? meta.staff_user_id : null
+  tagSession(tenantId, staffUserId ?? user.id, 'staff')
   return {
     type: 'staff',
     id: user.id,

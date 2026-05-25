@@ -10,6 +10,7 @@ import {
 } from '@/modules/billing/lifecycle.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { QUEUE_DUNNING_RETRY } from '../definitions'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Daily 13:00 ART sweep. Drives time-based escalations of the SaaS lifecycle.
@@ -143,9 +144,9 @@ export async function runDunningSweep(): Promise<void> {
           },
           tx,
         )
-        console.log(`[dunning-retry] tenant ${id}: past_due → suspended`)
+        logger.info('tenant transitioned past_due → suspended', { module: 'dunning-retry', tenantId: id })
       } catch (err) {
-        console.warn(`[dunning-retry] failed past_due→suspended for ${id}: ${String(err)}`)
+        logger.warn('failed past_due→suspended', { module: 'dunning-retry', tenantId: id, error: String(err) })
       }
     }
 
@@ -164,9 +165,9 @@ export async function runDunningSweep(): Promise<void> {
           },
           tx,
         )
-        console.log(`[dunning-retry] tenant ${id}: suspended → blocked`)
+        logger.info('tenant transitioned suspended → blocked', { module: 'dunning-retry', tenantId: id })
       } catch (err) {
-        console.warn(`[dunning-retry] failed suspended→blocked for ${id}: ${String(err)}`)
+        logger.warn('failed suspended→blocked', { module: 'dunning-retry', tenantId: id, error: String(err) })
       }
     }
 
@@ -188,9 +189,9 @@ export async function runDunningSweep(): Promise<void> {
           },
           tx,
         )
-        console.log(`[dunning-retry] tenant ${id}: blocked → churned`)
+        logger.info('tenant transitioned blocked → churned', { module: 'dunning-retry', tenantId: id })
       } catch (err) {
-        console.warn(`[dunning-retry] failed blocked→churned for ${id}: ${String(err)}`)
+        logger.warn('failed blocked→churned', { module: 'dunning-retry', tenantId: id, error: String(err) })
       }
     }
 
@@ -212,9 +213,9 @@ export async function runDunningSweep(): Promise<void> {
           },
           tx,
         )
-        console.log(`[dunning-retry] tenant ${id}: canceled → blocked (period ended)`)
+        logger.info('tenant transitioned canceled → blocked (period ended)', { module: 'dunning-retry', tenantId: id })
       } catch (err) {
-        console.warn(`[dunning-retry] failed canceled→blocked for ${id}: ${String(err)}`)
+        logger.warn('failed canceled→blocked', { module: 'dunning-retry', tenantId: id, error: String(err) })
       }
     }
 
@@ -235,9 +236,9 @@ export async function runDunningSweep(): Promise<void> {
           resourceId: item.tenant_id,
           metadata: { newPlanId: item.pendingPlanChange },
         })
-        console.log(`[dunning-retry] tenant ${item.tenant_id}: downgrade applied`)
+        logger.info('tenant downgrade applied', { module: 'dunning-retry', tenantId: item.tenant_id })
       } catch (err) {
-        console.warn(`[dunning-retry] failed downgrade for ${item.tenant_id}: ${String(err)}`)
+        logger.warn('failed downgrade', { module: 'dunning-retry', tenantId: item.tenant_id, error: String(err) })
       }
     }
   })
@@ -249,5 +250,5 @@ export async function registerDunningRetryWorker(boss: PgBoss): Promise<void> {
   await boss.work(QUEUE_DUNNING_RETRY, async () => {
     await runDunningSweep()
   })
-  console.log(`[workers] registered ${QUEUE_DUNNING_RETRY}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_DUNNING_RETRY })
 }

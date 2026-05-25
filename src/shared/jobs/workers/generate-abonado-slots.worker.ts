@@ -1,6 +1,7 @@
 import type PgBoss from 'pg-boss'
 import { getSql } from '@/shared/db/client'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
+import { logger } from '@/shared/lib/logger'
 
 const JOB_NAME = 'generate-abonado-slots'
 
@@ -108,7 +109,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
     }
 
     if (generated > 0) {
-      console.log(`[generate-abonado-slots] abonado ${abonado.id}: generated ${generated} slots`)
+      logger.info('generated abonado slots', { module: 'generate-abonado-slots', abonadoId: abonado.id, count: generated })
     }
   }
 }
@@ -118,5 +119,5 @@ export async function registerGenerateAbonadoSlotsWorker(boss: PgBoss): Promise<
   await boss.work(JOB_NAME, async () => {
     await runRollingSlotGeneration()
   })
-  console.log(`[workers] registered ${JOB_NAME}`)
+  logger.info('registered queue', { module: 'workers', queue: JOB_NAME })
 }

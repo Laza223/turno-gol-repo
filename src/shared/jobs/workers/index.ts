@@ -10,6 +10,7 @@ import { registerDataRetentionCleanupWorker } from './data-retention-cleanup.wor
 import { registerExpirePendingBookingWorker } from './expire-pending-booking.worker'
 import { registerRefreshMpTokensWorker } from './refresh-mp-tokens.worker'
 import { registerReconcilePendingPaymentsWorker } from './reconcile-pending-payments.worker'
+import { attachFailureHandlers } from '../dlq'
 
 export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerMpWebhookWorker(boss)
@@ -23,4 +24,7 @@ export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerExpirePendingBookingWorker(boss)
   await registerRefreshMpTokensWorker(boss)
   await registerReconcilePendingPaymentsWorker(boss)
+  // DLQ visibility (B10 T7): emit Sentry + structured log when a job exhausts
+  // retries and fails. Must be last so every worker's queue exists first.
+  await attachFailureHandlers(boss)
 }

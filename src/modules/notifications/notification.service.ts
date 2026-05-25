@@ -1,4 +1,4 @@
-import { eq, sql as drizzleSql } from 'drizzle-orm'
+import { and, eq, inArray, sql as drizzleSql } from 'drizzle-orm'
 import { notifications } from '@/shared/db/schema'
 import { getSql, getDb } from '@/shared/db/client'
 import type { DbTx } from '@/shared/db/client'
@@ -138,7 +138,7 @@ export async function claimNotificationForSend(
   const sql = getSql()
   const rows = await sql<{ id: string }[]>`
     UPDATE notifications
-    SET attempt_count = attempt_count + 1
+    SET status = 'sending', attempt_count = attempt_count + 1
     WHERE id = ${id}
       AND status = 'queued'
       AND attempt_count = ${expectedAttemptCount}
@@ -152,7 +152,7 @@ export async function markNotificationSent(id: string): Promise<void> {
   await db
     .update(notifications)
     .set({ status: 'sent', sentAt: new Date() })
-    .where(eq(notifications.id, id))
+    .where(and(eq(notifications.id, id), eq(notifications.status, 'sending')))
 }
 
 export async function markNotificationFailed(id: string, error: string): Promise<void> {
@@ -160,7 +160,7 @@ export async function markNotificationFailed(id: string, error: string): Promise
   await db
     .update(notifications)
     .set({ status: 'failed', lastError: error })
-    .where(eq(notifications.id, id))
+    .where(and(eq(notifications.id, id), inArray(notifications.status, ['queued', 'sending'])))
 }
 
 export async function updateNotificationLastError(
@@ -171,8 +171,8 @@ export async function updateNotificationLastError(
   const db = getDb()
   await db
     .update(notifications)
-    .set({ lastError: error, attemptCount: newAttemptCount })
-    .where(eq(notifications.id, id))
+    .set({ status: 'queued', lastError: error, attemptCount: newAttemptCount })
+    .where(and(eq(notifications.id, id), eq(notifications.status, 'sending')))
 }
 
 export async function resolveRecipientEmail(

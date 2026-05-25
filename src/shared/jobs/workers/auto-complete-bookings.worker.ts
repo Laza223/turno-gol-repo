@@ -2,6 +2,7 @@ import type PgBoss from 'pg-boss'
 import { getDb } from '@/shared/db/client'
 import { autoCompleteOverdueBookings } from '@/modules/bookings/booking.service'
 import { QUEUE_AUTO_COMPLETE } from '../definitions'
+import { logger } from '@/shared/lib/logger'
 
 export async function runAutoCompleteBookings(): Promise<void> {
   const db = getDb()
@@ -10,7 +11,7 @@ export async function runAutoCompleteBookings(): Promise<void> {
   })
 
   if (completed.length > 0) {
-    console.log(`[auto-complete-bookings] completed ${completed.length} bookings`)
+    logger.info('completed bookings', { module: 'auto-complete-bookings', count: completed.length })
   }
 }
 
@@ -19,5 +20,5 @@ export async function registerAutoCompleteBookingsWorker(boss: PgBoss): Promise<
   await boss.work(QUEUE_AUTO_COMPLETE, async () => {
     await runAutoCompleteBookings()
   })
-  console.log(`[workers] registered ${QUEUE_AUTO_COMPLETE}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_AUTO_COMPLETE })
 }

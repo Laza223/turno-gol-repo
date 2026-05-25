@@ -5,6 +5,7 @@ import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.ser
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { QUEUE_RECONCILE_PENDING_PAYMENTS } from '../definitions'
 import { track } from '@/shared/observability'
+import { logger } from '@/shared/lib/logger'
 
 type StuckBooking = {
   bookingId: string
@@ -76,15 +77,12 @@ export async function reconcilePendingPayments(): Promise<number> {
         })
       }
     } catch (err) {
-      console.error(
-        `[reconcile-pending-payments] failed for booking ${row.bookingId}:`,
-        err,
-      )
+      logger.error('failed reconcile for booking', { module: 'reconcile-pending-payments', bookingId: row.bookingId, error: err instanceof Error ? err.message : String(err) })
     }
   }
 
   if (reconciled > 0) {
-    console.log(`[reconcile-pending-payments] confirmed ${reconciled} booking(s)`)
+    logger.info('confirmed bookings via reconcile', { module: 'reconcile-pending-payments', count: reconciled })
   }
   return reconciled
 }
@@ -96,5 +94,5 @@ export async function registerReconcilePendingPaymentsWorker(
   await boss.work(QUEUE_RECONCILE_PENDING_PAYMENTS, async () => {
     await reconcilePendingPayments()
   })
-  console.log(`[workers] registered ${QUEUE_RECONCILE_PENDING_PAYMENTS}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_RECONCILE_PENDING_PAYMENTS })
 }

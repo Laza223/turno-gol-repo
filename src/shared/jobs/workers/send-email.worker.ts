@@ -12,6 +12,7 @@ import {
 } from '@/modules/notifications/notification.service'
 import { getEmailProvider } from '@/modules/notifications/email.provider'
 import { renderTemplate, isTemplateName } from '@/modules/notifications/templates'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Process a single notification. Exported for direct use in tests and
@@ -46,10 +47,10 @@ export async function processSingleNotification(notif: NotificationRow): Promise
     // PII scrub (B9 Ley 25.326): never log recipient email to stdout.
     // Vercel/Sentry retain logs; the notification id is sufficient to trace
     // back to the row (recipient_type + recipient_id, RLS-protected).
-    console.log(`[send-email] sent notification ${notif.id}`)
+    logger.info('sent notification', { module: 'send-email', notificationId: notif.id })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[send-email] failed notification ${notif.id} (attempt ${thisAttempt}/${MAX_ATTEMPTS}): ${msg}`)
+    logger.error('failed notification', { module: 'send-email', notificationId: notif.id, attempt: thisAttempt, maxAttempts: MAX_ATTEMPTS, error: msg })
     if (isLastAttempt) {
       await markNotificationFailed(notif.id, msg)
       return
@@ -94,5 +95,5 @@ export async function registerSendEmailWorker(boss: PgBoss): Promise<void> {
   await boss.work(QUEUE_SEND_EMAIL, async () => {
     await processQueuedNotifications()
   })
-  console.log(`[workers] registered ${QUEUE_SEND_EMAIL} (cron sweep)`)
+  logger.info('registered queue (cron sweep)', { module: 'workers', queue: QUEUE_SEND_EMAIL })
 }

@@ -135,6 +135,7 @@ export const notificationChannelEnum = pgEnum('notification_channel', ['email'])
 
 export const notificationStatusEnum = pgEnum('notification_status', [
   'queued',
+  'sending',
   'sent',
   'delivered',
   'failed',

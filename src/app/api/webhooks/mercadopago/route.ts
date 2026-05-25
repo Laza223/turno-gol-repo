@@ -8,6 +8,7 @@ import { webhookPayloadSchema } from '@/modules/payments/payment.schema'
 import type { MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { verifyWebhookSecret } from '@/modules/payments/webhook-auth'
 import { track } from '@/shared/observability'
+import { logger } from '@/shared/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await boss.send(QUEUE_PROCESS_MP_WEBHOOK, job, MP_WEBHOOK_SEND_OPTIONS)
   } catch (err) {
     // Enqueue failure → MP will retry. Return 5xx so MP doesn't mark delivered.
-    console.error('[mp-webhook] enqueue failed', err)
+    logger.error('enqueue failed', { module: 'mp-webhook', error: err instanceof Error ? err.message : String(err) })
     return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
   }
 

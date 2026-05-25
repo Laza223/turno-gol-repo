@@ -1,4 +1,5 @@
 import PgBoss from 'pg-boss'
+import { logger } from '@/shared/lib/logger'
 
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
@@ -16,7 +17,7 @@ export async function getBoss(): Promise<PgBoss> {
   const url = process.env.DATABASE_URL ?? DEFAULT_URL
   const boss = new PgBoss({ connectionString: url, schema: 'pgboss' })
   boss.on('error', (err) => {
-    console.error('[pg-boss] error', err)
+    logger.error('pg-boss error', { module: 'pg-boss', error: err instanceof Error ? err.message : String(err) })
   })
   await boss.start()
   _boss = boss

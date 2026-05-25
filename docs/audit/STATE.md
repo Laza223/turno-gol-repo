@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-25
 **Branch principal:** main
-**Worktrees activos:** `audit/backend-b07` (en `../TurnoGol-audit-b07`)
+**Worktrees activos:** `audit/backend-b08` (en `../TurnoGol-audit-b08`)
 
 ## Fase actual
 
-**B8 — Money Handling / Cashflow / Reportes** (siguiente, no iniciada)
+**B9 — Privacy / Compliance Ley 25.326** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -20,6 +20,7 @@
 | B5 — Background Jobs | 🟡 1 P1 FIXED (parcial) + 3 P1 docs | `docs/audit/reports/fase-b05-jobs-report.md` |
 | B6 — Auth / Seguridad | 🟡 1 P1 FIXED + 2 P1 docs | `docs/audit/reports/fase-b06-auth-report.md` |
 | B7 — API Contracts | 🟡 1 P2 FIXED + 4 P2 docs | `docs/audit/reports/fase-b07-api-contracts-report.md` |
+| B8 — Money / Cashflow | 🟢 SOLID (0 bugs) + 4 P2/P3 docs | `docs/audit/reports/fase-b08-money-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -51,11 +52,17 @@
 - MP retry on InvalidTransitionError loser → Sentry filter en B10
 - B5: cron `generate-abonado-slots` sin comentario de intent → backlog
 - B6: Server Actions CSRF = Next.js built-in (sin tokens custom) → backlog
-- **B7: 6 endpoints `[id]/{cancel,complete,no-show,status}` sin `parseRouteUuid()`** → backlog (mitigado parcial por tx rollback)
-- **B7: Output schema validation ausente en 34 endpoints** → backlog
-- **B7: Error format inconsistente (`{error: string}` vs `{error: {code,message}}`)** → backlog
-- **B7: No API versioning (`/api/v1/`)** → backlog antes de Año 2
-- **B7: Payload size limits = Next.js default 1MB** → backlog
+- B7: 6 endpoints `[id]/{cancel,complete,no-show,status}` sin `parseRouteUuid()` → backlog
+- B7: Output schema validation ausente en 34 endpoints → backlog
+- B7: Error format inconsistente → backlog
+- B7: No API versioning (`/api/v1/`) → backlog
+- B7: Payload size limits = Next.js default 1MB → backlog
+- **B8: `product_sale` CashFlow no decrementa `products.stock`** → by-design v1, docs ADR backlog
+- **B8: edge `pesosToCents(1.005) = 100`** → no aplica MP (2-decimal), documentado
+- **B8: edge `calcDeposit(1, 10) = 0`** → no aplica precios reales, documentado
+
+### P3 (bajo)
+- **B8: Reports SUM BIGINT → JS Number — pérdida potencial > 2^53** → no aplica rango realista
 
 ### Deferidos
 - B2.6 Realtime cliente real → Fase F3
@@ -63,12 +70,12 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 8/26**
-- **Tests nuevos: 59** (todos verdes)
+- **Fases completadas: 9/26**
+- **Tests nuevos: 75** (todos verdes)
 - **Bugs fixed: 7** (1 P0 + 4 P1 + 1 P1 parcial + 1 P2)
 - **Tests legacy ajustados: 3**
 
 ## Próximas decisiones para el humano
 
-1. **Mergear `audit/backend-b07` a main** (recomendado: sí)
-2. **¿Continuar B8 o pausar?** B8 (Money/Cashflow) es liviano — 1 sesión. Después B9-B11 son operativas/runbook.
+1. **Mergear `audit/backend-b08` a main** (recomendado: sí)
+2. **¿Continuar B9 o pausar?** B9 (Privacy/Ley 25.326) sensible legal — buena candidate para sesión fresca.

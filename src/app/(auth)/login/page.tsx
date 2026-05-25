@@ -2,6 +2,7 @@
 
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, Loader2, Mail, Sparkles } from 'lucide-react'
 import { loginAction, type LoginState } from './actions'
 
@@ -24,11 +25,13 @@ export default function LoginPage() {
 function ImagePane() {
   return (
     <div className="relative hidden lg:block">
-      <img
+      <Image
         src={HERO_IMG}
         alt="Cancha de fútbol iluminada"
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="eager"
+        fill
+        priority
+        sizes="50vw"
+        className="object-cover"
       />
       <div
         aria-hidden

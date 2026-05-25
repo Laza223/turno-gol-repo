@@ -21,7 +21,7 @@ type StuckBooking = {
  * If an approved payment exists on MP's side, process it through the standard
  * dispatchPaymentInfo flow — the booking gets confirmed instead of expiring.
  */
-async function reconcilePendingPayments(): Promise<number> {
+export async function reconcilePendingPayments(): Promise<number> {
   const sql = getSql()
 
   const stuck = await sql<StuckBooking[]>`

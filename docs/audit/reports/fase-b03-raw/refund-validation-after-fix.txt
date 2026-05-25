@@ -1,0 +1,8 @@
+
+ [32m✓[39m tests/integration/mp-refund-validation.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 1207[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 01:32:39
+[2m   Duration [22m 3.28s[2m (transform 308ms, setup 28ms, collect 1.21s, tests 1.21s, environment 0ms, prepare 163ms)[22m
+

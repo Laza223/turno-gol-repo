@@ -15,6 +15,7 @@ import type {
 import {
   BookingNotPendingPaymentError,
   PaymentNotFoundError,
+  RefundAmountExceedsOriginalError,
   RefundInvalidStateError,
 } from './payment.errors'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
@@ -397,6 +398,26 @@ export async function createRefund(
   }
 
   const refundAmount = amount ?? original.amount
+
+  // B3 audit fix: prevent over-refund and double-refund. Sum existing refunds
+  // (any status that consumes the original) and require that
+  // sumRefunded + requested <= original.amount.
+  const priorRows = await tx.execute(sql`
+    SELECT COALESCE(SUM(amount), 0)::bigint AS total
+    FROM payments
+    WHERE booking_id = ${original.bookingId}
+      AND type = 'refund'
+      AND status IN ('approved', 'pending')
+      AND description LIKE ${'%' + original.id + '%'}
+  `)
+  const priorTotal = Number(
+    (priorRows as unknown as Array<{ total: string | number }>)[0]?.total ?? 0,
+  )
+  const available = original.amount - priorTotal
+  if (refundAmount > available) {
+    throw new RefundAmountExceedsOriginalError(paymentId, refundAmount, available)
+  }
+
   const refund = await gateway.createRefund(original.mpPaymentId, refundAmount)
 
   const inserted = await tx

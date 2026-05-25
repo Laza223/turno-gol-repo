@@ -28,6 +28,8 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/public/cities/route.ts',
   // Health endpoint, no input.
   'src/app/api/status/route.ts',
+  // ARCO data export (B9): GET, no body/params/query. Player id from session.
+  'src/app/api/player/data-export/route.ts',
 ])
 
 function usesZod(src: string): boolean {

@@ -1,6 +1,7 @@
 import type PgBoss from 'pg-boss'
 import { getSql } from '@/shared/db/client'
 import { QUEUE_EXPIRE_TRIALS } from '../definitions'
+import { logger } from '@/shared/lib/logger'
 
 export async function runExpireTrials(): Promise<void> {
   const sql = getSql()
@@ -26,7 +27,7 @@ export async function runExpireTrials(): Promise<void> {
   `
 
   for (const t of expired) {
-    console.log(`[expire-trials] blocked tenant ${t.id} (${t.name})`)
+    logger.info('blocked tenant trial expired', { module: 'expire-trials', tenantId: t.id, tenantName: t.name })
   }
 }
 
@@ -36,5 +37,5 @@ export async function registerExpireTrialsWorker(boss: PgBoss): Promise<void> {
   await boss.work(QUEUE_EXPIRE_TRIALS, async () => {
     await runExpireTrials()
   })
-  console.log(`[workers] registered ${QUEUE_EXPIRE_TRIALS}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_EXPIRE_TRIALS })
 }

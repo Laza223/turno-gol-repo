@@ -2,6 +2,7 @@ import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getDb, getSql } from '@/shared/db/client'
 import { QUEUE_DATA_RETENTION } from '../definitions'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Weekly Sun 07:00 ART. Hard-deletes child rows for tenants past their
@@ -30,7 +31,7 @@ export async function runDataRetentionCleanup(): Promise<void> {
   const ids = targets.map((r) => r.id)
   if (ids.length === 0) return
 
-  console.log(`[data-retention] wiping ${ids.length} tenants`)
+  logger.info('wiping tenants', { module: 'data-retention', count: ids.length })
 
   for (const tenantId of ids) {
     try {
@@ -80,9 +81,9 @@ export async function runDataRetentionCleanup(): Promise<void> {
           WHERE id = ${tenantId}
         `)
       })
-      console.log(`[data-retention] wiped tenant ${tenantId}`)
+      logger.info('wiped tenant', { module: 'data-retention', tenantId })
     } catch (err) {
-      console.error(`[data-retention] failed wipe for tenant ${tenantId}:`, err)
+      logger.error('failed wipe for tenant', { module: 'data-retention', tenantId, error: err instanceof Error ? err.message : String(err) })
     }
   }
 }
@@ -93,5 +94,5 @@ export async function registerDataRetentionCleanupWorker(boss: PgBoss): Promise<
   await boss.work(QUEUE_DATA_RETENTION, async () => {
     await runDataRetentionCleanup()
   })
-  console.log(`[workers] registered ${QUEUE_DATA_RETENTION}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_DATA_RETENTION })
 }

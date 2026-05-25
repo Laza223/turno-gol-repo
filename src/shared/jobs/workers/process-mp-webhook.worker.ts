@@ -5,6 +5,7 @@ import {
   type MpWebhookJob,
 } from '@/modules/payments/mp-webhook.handler'
 import { track } from '@/shared/observability'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Register the `process-mp-webhook` consumer on a running pg-boss instance.
@@ -25,5 +26,5 @@ export async function registerMpWebhookWorker(boss: PgBoss): Promise<void> {
       throw err
     }
   })
-  console.log(`[workers] registered ${QUEUE_PROCESS_MP_WEBHOOK}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_PROCESS_MP_WEBHOOK })
 }

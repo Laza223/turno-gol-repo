@@ -10,6 +10,7 @@ import {
   dispatchEmail,
 } from '@/modules/notifications/notification.service'
 import { expirePendingBooking } from './booking.service'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Outcome of evaluating one pending_payment booking against the expiry policy.
@@ -199,7 +200,7 @@ export async function sweepExpiredPendingBookings(): Promise<number> {
     if (action === 'expired') expired += 1
   }
   if (expired > 0) {
-    console.log(`[expire-pending-booking-sweep] expired ${expired} booking(s)`)
+    logger.info('sweep expired bookings', { module: 'expire-pending-booking-sweep', count: expired })
   }
   return expired
 }

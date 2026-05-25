@@ -8,6 +8,7 @@ import {
   expirePendingBookingWithPolicy,
   sweepExpiredPendingBookings,
 } from '@/modules/bookings/booking.expiry'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Registers the pending_payment expiry consumer (Hallazgo 1 + 2):
@@ -33,5 +34,5 @@ export async function registerExpirePendingBookingWorker(
     await sweepExpiredPendingBookings()
   })
 
-  console.log(`[workers] registered ${QUEUE_EXPIRE_PENDING_BOOKING}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_EXPIRE_PENDING_BOOKING })
 }

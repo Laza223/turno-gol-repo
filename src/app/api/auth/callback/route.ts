@@ -9,6 +9,7 @@ import {
 } from '@/modules/auth/auth.service'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { logger } from '@/shared/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const supabase = createClient()
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
   if (error || !data?.user) {
-    console.error('Supabase auth exchange error:', error)
+    logger.error('Supabase auth exchange error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
     return redirectVerifyError(req, 'exchange_failed')
   }
 

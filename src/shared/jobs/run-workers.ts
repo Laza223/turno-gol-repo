@@ -1,5 +1,6 @@
 import { getBoss, stopBoss } from './boss'
 import { registerAllWorkers } from './workers'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Standalone Node entrypoint. Starts pg-boss + registers every worker.
@@ -9,10 +10,10 @@ import { registerAllWorkers } from './workers'
 async function main(): Promise<void> {
   const boss = await getBoss()
   await registerAllWorkers(boss)
-  console.log('[workers] running. Ctrl+C to stop.')
+  logger.info('running. Ctrl+C to stop.', { module: 'workers' })
 
   const shutdown = async (signal: string) => {
-    console.log(`[workers] received ${signal}, stopping...`)
+    logger.info('received signal, stopping...', { module: 'workers', signal })
     await stopBoss()
     process.exit(0)
   }
@@ -21,6 +22,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('[workers] fatal', err)
+  logger.error('fatal', { module: 'workers', error: err instanceof Error ? err.message : String(err) })
   process.exit(1)
 })

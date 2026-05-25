@@ -2,6 +2,7 @@ import type PgBoss from 'pg-boss'
 import { getSql } from '@/shared/db/client'
 import { refreshTenantMpToken } from '@/modules/payments/mp-oauth'
 import { QUEUE_REFRESH_MP_TOKENS } from '../definitions'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Proactively refresh every connected tenant's MP access token (Hallazgo 4).
@@ -24,12 +25,12 @@ export async function runRefreshMpTokens(): Promise<void> {
       await refreshTenantMpToken(row.id)
       refreshed += 1
     } catch (err) {
-      console.error(`[refresh-mp-tokens] tenant ${row.id} failed`, err)
+      logger.error('tenant token refresh failed', { module: 'refresh-mp-tokens', tenantId: row.id, error: err instanceof Error ? err.message : String(err) })
     }
   }
 
   if (rows.length > 0) {
-    console.log(`[refresh-mp-tokens] refreshed ${refreshed}/${rows.length} tenants`)
+    logger.info('refreshed mp tokens', { module: 'refresh-mp-tokens', refreshed, total: rows.length })
   }
 }
 
@@ -39,5 +40,5 @@ export async function registerRefreshMpTokensWorker(boss: PgBoss): Promise<void>
   await boss.work(QUEUE_REFRESH_MP_TOKENS, async () => {
     await runRefreshMpTokens()
   })
-  console.log(`[workers] registered ${QUEUE_REFRESH_MP_TOKENS}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_REFRESH_MP_TOKENS })
 }

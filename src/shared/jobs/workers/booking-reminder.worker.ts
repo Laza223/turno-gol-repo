@@ -5,6 +5,7 @@ import {
   enqueueNotification,
   dispatchEmail,
 } from '@/modules/notifications/notification.service'
+import { logger } from '@/shared/lib/logger'
 
 export async function processBookingReminderJob(
   job: PgBoss.Job<BookingReminderJobData>,
@@ -85,5 +86,5 @@ export async function registerBookingReminderWorker(boss: PgBoss): Promise<void>
     if (!j) return
     await processBookingReminderJob(j)
   })
-  console.log(`[workers] registered ${QUEUE_BOOKING_REMINDER}`)
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_BOOKING_REMINDER })
 }

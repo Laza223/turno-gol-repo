@@ -28,6 +28,8 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/public/cities/route.ts',
   // Health endpoint, no input.
   'src/app/api/status/route.ts',
+  // Health alias of /api/status (B10): re-export, no input.
+  'src/app/api/health/route.ts',
   // ARCO data export (B9): GET, no body/params/query. Player id from session.
   'src/app/api/player/data-export/route.ts',
   // Queue-depth monitor (B10): GET, no input. Super-admin id from session.

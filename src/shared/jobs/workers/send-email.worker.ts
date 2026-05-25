@@ -2,6 +2,7 @@ import type PgBoss from 'pg-boss'
 import { getSql } from '@/shared/db/client'
 import { QUEUE_SEND_EMAIL } from '../definitions'
 import {
+  claimNotificationForSend,
   getNotificationById,
   markNotificationSent,
   markNotificationFailed,
@@ -20,7 +21,15 @@ export async function processSingleNotification(notif: NotificationRow): Promise
   if (notif.status === 'sent') return
 
   const MAX_ATTEMPTS = 3
-  const isLastAttempt = notif.attemptCount >= MAX_ATTEMPTS
+
+  // Atomic pre-send claim. Prevents duplicate dispatches when multiple sweep
+  // workers race on the same queued row (Resend has no recipient-level dedup).
+  const claimed = await claimNotificationForSend(notif.id, notif.attemptCount)
+  if (!claimed) return
+
+  // Effective attempt number (claim incremented the counter).
+  const thisAttempt = notif.attemptCount + 1
+  const isLastAttempt = thisAttempt >= MAX_ATTEMPTS
 
   try {
     if (!notif.templateName || !isTemplateName(notif.templateName)) {
@@ -37,12 +46,14 @@ export async function processSingleNotification(notif: NotificationRow): Promise
     console.log(`[send-email] sent notification ${notif.id} to ${email}`)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[send-email] failed notification ${notif.id} (attempt ${notif.attemptCount}/${MAX_ATTEMPTS}): ${msg}`)
+    console.error(`[send-email] failed notification ${notif.id} (attempt ${thisAttempt}/${MAX_ATTEMPTS}): ${msg}`)
     if (isLastAttempt) {
       await markNotificationFailed(notif.id, msg)
       return
     }
-    await updateNotificationLastError(notif.id, msg, notif.attemptCount + 1)
+    // Reset to 'queued' so the next cron sweep retries — claim already bumped
+    // attempt_count, lastError records the failure detail.
+    await updateNotificationLastError(notif.id, msg, thisAttempt)
     throw err
   }
 }

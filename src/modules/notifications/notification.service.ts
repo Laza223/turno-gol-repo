@@ -120,6 +120,33 @@ export async function getNotificationById(id: string): Promise<NotificationRow |
   return (rows[0] as NotificationRow | undefined) ?? null
 }
 
+/**
+ * Atomic pre-send claim. Returns true if THIS caller acquired the right to
+ * dispatch the email (the row was queued and we successfully advanced its
+ * attempt_count). Returns false if another worker already claimed it, the
+ * notification is already sent/failed, or attempt_count moved on between the
+ * caller's SELECT and this UPDATE.
+ *
+ * Prevents duplicate sends when multiple sweep workers (or a redeploy overlap)
+ * pick up the same queued notification — Resend has no per-recipient dedup, so
+ * without this lock a crashed/restarted worker can spam the same email.
+ */
+export async function claimNotificationForSend(
+  id: string,
+  expectedAttemptCount: number,
+): Promise<boolean> {
+  const sql = getSql()
+  const rows = await sql<{ id: string }[]>`
+    UPDATE notifications
+    SET attempt_count = attempt_count + 1
+    WHERE id = ${id}
+      AND status = 'queued'
+      AND attempt_count = ${expectedAttemptCount}
+    RETURNING id
+  `
+  return rows.length > 0
+}
+
 export async function markNotificationSent(id: string): Promise<void> {
   const db = getDb()
   await db

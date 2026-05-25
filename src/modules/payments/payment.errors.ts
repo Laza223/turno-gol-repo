@@ -41,3 +41,12 @@ export class RefundInvalidStateError extends Error {
     this.name = 'RefundInvalidStateError'
   }
 }
+
+export class RefundAmountExceedsOriginalError extends Error {
+  constructor(paymentId: string, requested: number, available: number) {
+    super(
+      `Refund amount ${requested} exceeds available amount ${available} for payment ${paymentId} (original minus prior refunds)`,
+    )
+    this.name = 'RefundAmountExceedsOriginalError'
+  }
+}

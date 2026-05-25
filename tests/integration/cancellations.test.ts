@@ -472,7 +472,7 @@ describe('handleNoShow — 4D: ban after threshold', () => {
 
     // handleNoShow requires booking time to be in the past for markNoShow to work.
     // Force date to today so the DB trigger doesn't block (status='confirmed' → 'no_show' is allowed).
-    await sql`UPDATE bookings SET date = CURRENT_DATE WHERE id = ${bookingId}`
+    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${bookingId}`
 
     await withTenantContext(tenant.id, async (tx) => {
       await handleNoShow(bookingId, staff.id, tx)
@@ -506,7 +506,7 @@ describe('handleNoShow — 4D: ban after threshold', () => {
       tenantId: tenant.id, courtId, playerId: player.id,
       date: FUTURE_DATE, timeStart: '18:00', timeEnd: '19:00',
     })
-    await sql`UPDATE bookings SET date = CURRENT_DATE WHERE id = ${b1Id}`
+    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${b1Id}`
     await withTenantContext(tenant.id, async (tx) => {
       await handleNoShow(b1Id, staff.id, tx)
     })
@@ -525,7 +525,7 @@ describe('handleNoShow — 4D: ban after threshold', () => {
       tenantId: tenant.id, courtId, playerId: player.id,
       date: FUTURE_DATE, timeStart: '19:00', timeEnd: '20:00',
     })
-    await sql`UPDATE bookings SET date = CURRENT_DATE WHERE id = ${b2Id}`
+    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${b2Id}`
     await withTenantContext(tenant.id, async (tx) => {
       await handleNoShow(b2Id, staff.id, tx)
     })

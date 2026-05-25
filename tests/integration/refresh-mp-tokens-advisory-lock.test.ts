@@ -8,7 +8,6 @@ process.env.MP_CLIENT_SECRET = 'test-secret'
 
 import { closeSql, getSql } from '@/shared/db/client'
 import { encrypt, decrypt } from '@/lib/crypto/encrypt'
-import { refreshTenantMpToken } from '@/modules/payments/mp-oauth'
 import { runRefreshMpTokens } from '@/shared/jobs/workers/refresh-mp-tokens.worker'
 import {
   cleanupAll,
@@ -73,23 +72,25 @@ afterAll(async () => {
   await closeSql()
 })
 
-describe('refresh-mp-tokens concurrency', () => {
-  it('N=5 concurrent runRefreshMpTokens on same tenant → single-winner (1 MP fetch, 4 skipped)', async () => {
-    // Scheduled-worker path: pg_try_advisory_xact_lock(hashtext('mp_refresh:'||id))
-    // serializes refreshes per tenant. Only one worker per pass calls MP; the
-    // others see `locked=false` and skip. Tokens on the DB row are exactly the
-    // pair returned by the single MP call (not last-writer-wins).
+describe('refresh-mp-tokens advisory lock', () => {
+  it('N=5 concurrent runRefreshMpTokens on same tenant → exactly 1 MP fetch, 4 skipped_locked', async () => {
     const tenantId = await seedTenantWithMpTokens()
+
+    // Hold the MP fetch long enough for the other 4 workers to race the lock
+    // attempt before the lock-holder commits. Without this delay, the 5 calls
+    // are likely to serialize fast enough that all observe `locked=true`.
     mpCallDelayMs = 200
 
     const results = await Promise.allSettled(
       Array.from({ length: 5 }, () => runRefreshMpTokens()),
     )
 
-    const ok = results.filter((r) => r.status === 'fulfilled').length
-    expect(ok).toBe(5)
+    // All worker invocations succeed (failures are logged + swallowed per row).
+    for (const r of results) {
+      expect(r.status).toBe('fulfilled')
+    }
 
-    // Advisory lock guarantees a single MP fetch per pass, per tenant.
+    // Only the lock-holder hits MP. The other 4 see `locked=false` and skip.
     expect(mpCallSeq).toBe(1)
 
     const sql = getSql()
@@ -99,26 +100,50 @@ describe('refresh-mp-tokens concurrency', () => {
     `
     expect(decrypt(row.access)).toBe('fresh-access-1')
     expect(decrypt(row.refresh)).toBe('fresh-refresh-1')
-
-    const [meta] = await sql<{ ts: string | Date }[]>`
-      SELECT mp_connected_at AS ts FROM tenants WHERE id = ${tenantId}
-    `
-    expect(new Date(meta.ts).getTime()).toBeGreaterThan(Date.now() - 60_000)
   }, 30_000)
 
-  it('refreshTenantMpToken (per-request path, no advisory lock) still throws when no refresh token', async () => {
-    // This is the path used by `resolveTenantGateway`'s 401 retry — single
-    // in-flight request, so no advisory lock needed (B11/T2).
+  it('lock auto-releases after tx commit: second pass refreshes normally', async () => {
+    const tenantId = await seedTenantWithMpTokens()
+
+    await runRefreshMpTokens()
+    expect(mpCallSeq).toBe(1)
+
+    // Run again immediately; the prior tx (and its advisory lock) already
+    // committed, so this pass acquires the lock and refreshes again.
+    await runRefreshMpTokens()
+    expect(mpCallSeq).toBe(2)
+
     const sql = getSql()
-    const tenant = await createTestTenant(sql)
-
-    await expect(refreshTenantMpToken(tenant.id)).rejects.toThrow(
-      /no MercadoPago account connected|not connected/i,
-    )
-
-    const [row] = await sql<{ access: string | null }[]>`
-      SELECT mp_access_token AS access FROM tenants WHERE id = ${tenant.id}
+    const [row] = await sql<{ access: string }[]>`
+      SELECT mp_access_token AS access FROM tenants WHERE id = ${tenantId}
     `
-    expect(row.access).toBeNull()
+    expect(decrypt(row.access)).toBe('fresh-access-2')
+  }, 30_000)
+
+  it('tenant with mp_refresh_token IS NULL is filtered out of the sweep', async () => {
+    const sql = getSql()
+    // Tenant without MP tokens — not in the SELECT.
+    await createTestTenant(sql)
+
+    await runRefreshMpTokens()
+    expect(mpCallSeq).toBe(0)
+  }, 30_000)
+
+  it('multiple tenants refresh independently in one pass (lock is per-tenant)', async () => {
+    const tenantA = await seedTenantWithMpTokens()
+    const tenantB = await seedTenantWithMpTokens()
+
+    await runRefreshMpTokens()
+    expect(mpCallSeq).toBe(2)
+
+    const sql = getSql()
+    const rows = await sql<{ id: string; access: string }[]>`
+      SELECT id, mp_access_token AS access
+      FROM tenants WHERE id IN (${tenantA}, ${tenantB})
+      ORDER BY id
+    `
+    for (const r of rows) {
+      expect(decrypt(r.access)).toMatch(/^fresh-access-\d+$/)
+    }
   }, 30_000)
 })

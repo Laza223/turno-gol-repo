@@ -1,0 +1,96 @@
+ALTER TABLE players ENABLE ROW LEVEL SECURITY;
+CREATE POLICY staff_can_see_related_players ON players
+  FOR SELECT
+CREATE POLICY player_update_self ON players
+  FOR UPDATE
+  WITH CHECK (id = NULLIF(current_setting('app.current_player_id', true), '')::uuid);
+ALTER TABLE staff_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY staff_see_same_tenant_staff ON staff_users
+  FOR SELECT
+ALTER TABLE system_admins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY system_admin_self ON system_admins
+  FOR SELECT
+CREATE POLICY system_admin_self_update ON system_admins
+  FOR UPDATE
+  WITH CHECK (id = NULLIF(current_setting('app.current_system_admin_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_select ON courts FOR SELECT
+CREATE POLICY tenant_isolation_insert ON courts FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON courts FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON courts FOR DELETE
+CREATE POLICY tenant_isolation_select ON tenant_staff_members FOR SELECT
+CREATE POLICY tenant_isolation_insert ON tenant_staff_members FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON tenant_staff_members FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON tenant_staff_members FOR DELETE
+CREATE POLICY tenant_isolation_select ON tenant_subscriptions FOR SELECT
+CREATE POLICY tenant_isolation_insert ON tenant_subscriptions FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON tenant_subscriptions FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON tenant_subscriptions FOR DELETE
+CREATE POLICY tenant_isolation_select ON products FOR SELECT
+CREATE POLICY tenant_isolation_insert ON products FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON products FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON products FOR DELETE
+CREATE POLICY tenant_isolation_select ON abonados FOR SELECT
+CREATE POLICY tenant_isolation_insert ON abonados FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON abonados FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON abonados FOR DELETE
+CREATE POLICY tenant_isolation_select ON payments FOR SELECT
+CREATE POLICY tenant_isolation_insert ON payments FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON payments FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON payments FOR DELETE
+CREATE POLICY tenant_isolation_select ON cash_flows FOR SELECT
+CREATE POLICY tenant_isolation_insert ON cash_flows FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON cash_flows FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON cash_flows FOR DELETE
+CREATE POLICY tenant_isolation_select ON notifications FOR SELECT
+CREATE POLICY tenant_isolation_insert ON notifications FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON notifications FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON notifications FOR DELETE
+CREATE POLICY tenant_isolation_select ON daily_cash_closes FOR SELECT
+CREATE POLICY tenant_isolation_insert ON daily_cash_closes FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_select ON audit_logs FOR SELECT
+CREATE POLICY tenant_isolation_insert ON audit_logs FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_select ON bookings FOR SELECT
+CREATE POLICY tenant_isolation_insert ON bookings FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON bookings FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON bookings FOR DELETE
+CREATE POLICY player_own_bookings_select ON bookings FOR SELECT
+-- WITH CHECK garantiza que no pueda suplantar a otro player ni escapar del tenant.
+CREATE POLICY player_self_insert ON bookings FOR INSERT
+  WITH CHECK (
+CREATE POLICY realtime_tenant_select ON bookings
+  FOR SELECT
+CREATE POLICY tenant_isolation_select ON tenant_player_bans FOR SELECT
+CREATE POLICY tenant_isolation_insert ON tenant_player_bans FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON tenant_player_bans FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_delete ON tenant_player_bans FOR DELETE
+CREATE POLICY player_own_bans_select ON tenant_player_bans FOR SELECT
+CREATE POLICY tenant_isolation_select ON player_tenant_relationships FOR SELECT
+CREATE POLICY tenant_isolation_insert ON player_tenant_relationships FOR INSERT
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY tenant_isolation_update ON player_tenant_relationships FOR UPDATE
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+CREATE POLICY player_own_relationships_select ON player_tenant_relationships FOR SELECT
+CREATE POLICY player_self_ptr_insert ON player_tenant_relationships FOR INSERT
+  WITH CHECK (

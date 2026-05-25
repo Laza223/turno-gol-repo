@@ -30,7 +30,7 @@
     "supabase:reset": "supabase db reset",
     "db:sync-supabase": "node scripts/sync-supabase-migrations.mjs",
     "jobs:start": "tsx src/shared/jobs/run-workers.ts",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "cross-env ANALYZE=true next build"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.0",
@@ -70,6 +70,7 @@
     "@typescript-eslint/eslint-plugin": "^7",
     "@typescript-eslint/parser": "^7",
     "autoprefixer": "^10",
+    "cross-env": "^10.1.0",
     "dotenv": "^16.4",
     "drizzle-kit": "^0.20",
     "eslint": "^8",

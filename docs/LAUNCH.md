@@ -60,3 +60,56 @@
 - [ ] Commit SHA de versión anterior anotado
 - [ ] `vercel rollback <deployment-id>` documentado
 - [ ] Última migración aplicada documentada
+
+---
+
+## Staging strategy (v1)
+
+**Decisión (B11):** v1 usa **Vercel Preview Deployments** como staging. NO hay
+Supabase staging project separado.
+
+- Cada PR a `main` genera un preview deployment automático en Vercel.
+- El preview usa las **mismas** env vars que prod (mismo `DATABASE_URL`,
+  mismas keys MP, etc.). Excepción: `NEXT_PUBLIC_APP_URL` apunta al preview URL.
+- E2E + integration + isolation tests corren en CI antes del merge (`.github/workflows/ci.yml`).
+- Tras merge a `main`: `deploy.yml` deploya a Vercel production.
+
+**Riesgo aceptado v1:** el preview lee/escribe la misma DB de prod. Compensación:
+- CI integration usa DB ephemeral (Postgres GitHub Action service), no toca prod.
+- Pruebas manuales en preview deben usar tenants/users de testeo conocidos
+  (no datos reales de clientes).
+- El stress test corre LOCAL contra Supabase local, nunca contra prod.
+
+**Trigger v1.5 (Supabase staging dedicado):**
+- 10+ clientes en prod (riesgo de "preview toca prod" crece), o
+- Feature flags + tests destructivos en preview, o
+- Requerimiento contractual de aislamiento staging/prod.
+
+## Backup restore drill
+
+Cumple done-criterion MASTER_PLAN B11 ("backup restaurado exitosamente al menos 1 vez").
+
+- [ ] Drill ejecutado en los últimos 90 días siguiendo `docs/doc19_runbook.md` §10.6.
+  - Evidencia: `docs/audit/backup-drills/YYYY-MM-DD.md` con counts, screenshots, RTO/RPO medidos.
+- [ ] Supabase plan: PITR habilitado (Pro+).
+
+## Migration strategy
+
+Ver `docs/MIGRATIONS.md`. Dos trees coexistentes:
+- `src/shared/db/migrations/` → autoridad CI (orden numérico 001…012).
+- `supabase/migrations/` → mirror Supabase CLI (timestamped).
+
+- [ ] Última migration aplicada está en AMBOS trees (verificar antes de cada deploy).
+
+## Checks adicionales B11
+
+- [ ] `pnpm launch-check` ejecutado con env vars de prod, incluyendo:
+  - `bypassrls role check` — current_user NO tiene `rolbypassrls=true`.
+  - `encryption-key strength` — `ENCRYPTION_KEY` ≥64 hex chars, no es el placeholder.
+  - `mp credentials probe` — POST `/oauth/token` retorna 400 (creds válidas, grant rechazado).
+- [ ] Procedure de magic link debugging conocido (doc19 §3.10).
+- [ ] Procedure de rotación JWT secret conocido (doc19 §3.11).
+- [ ] Procedure de rotación ENCRYPTION_KEY conocido (doc19 §3.12).
+- [ ] Stress test ritual conocido (doc19 §4.4).
+- [ ] DPA template draft revisado por counsel legal (escalado, fuera de scope dev).
+- [ ] AAIP inscripción submitted (status en `docs/legal/aaip-status.md`).

@@ -419,6 +419,119 @@ DIAGNÓSTICO Y ACCIÓN:
 
 ---
 
+### 3.10 Debugging de Magic Link (SEV-3)
+
+**Síntomas:** usuario reporta que no puede entrar; el magic link no funciona.
+
+**TTL:** 10 minutos (Supabase-managed, no configurable en `supabase/config.toml`).
+**Single-use:** sí (Supabase invalida el token al primer uso exitoso).
+
+```
+1. ¿EL EMAIL NO LLEGA?
+   → Verificar en Resend dashboard que el mail salió: https://resend.com/emails
+   → Filtro por destinatario. Si `delivered: true`, problema del lado del usuario (spam/filtros).
+   → Si `delivered: false` o `bounced`, revisar SPF/DKIM/DMARC (§9).
+   → Si `queued` por > 5 min, Resend está caído → activar §3.5.
+
+2. ¿EL EMAIL LLEGA PERO EL LINK NO FUNCIONA?
+   → ¿Cuánto tardó el usuario en abrirlo?
+     * Si > 10 min → TTL vencido. Pedirle que re-solicite el link.
+     * Si < 10 min → continuar.
+   → ¿Hizo click en el link más de una vez? El primer click consume el token; clicks
+     posteriores devuelven 400 desde Supabase. Re-solicitar link.
+   → ¿Click desde otro device/browser que el que solicitó? Algunos clientes de email
+     hacen "preflight" del link (escaneo de seguridad) que consume el token. Workaround:
+     copiar URL y abrir manual.
+
+3. PROCEDIMIENTO MANUAL (último recurso):
+   → Supabase Dashboard → Authentication → Users → buscar email → "Send magic link"
+   → El admin de TurnoGol puede triggear envío sin necesidad del usuario.
+   → Documentar en audit_logs.
+
+4. NOTA:
+   El TTL de 10 min no es configurable desde nuestro código. Si se requiere extensión
+   por casos especiales, hay que abrir ticket con Supabase support (rara vez se hace).
+```
+
+---
+
+### 3.11 Rotación de JWT Secret (SEV-2)
+
+**Disclaimer importante:** el JWT signing secret es **gestionado por Supabase**, NO por
+TurnoGol. Nuestra app sólo verifica JWTs emitidos por Supabase Auth.
+
+```
+1. ¿CUÁNDO ROTAR?
+   → Filtración sospechada de SUPABASE_SERVICE_ROLE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY.
+   → Compromiso de credenciales de un admin (key access).
+   → Rotación preventiva anual (calendar evento + ejecución).
+
+2. PROCEDIMIENTO:
+   → Supabase Dashboard → Project Settings → API → "Rotate keys"
+   → Generar nueva ANON_KEY y SERVICE_ROLE_KEY.
+   → Vercel: actualizar env vars NEXT_PUBLIC_SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY.
+   → Vercel: Redeploy último deployment exitoso (los new envs aplican).
+
+3. EFECTO:
+   → Todas las sesiones activas (admin + jugador) quedan invalidadas. Los usuarios
+     deben re-login (magic link).
+   → Comunicar PROACTIVAMENTE antes de rotar (banner in-app + email "renová tu sesión").
+
+4. JWT signing secret propiamente (el que firma los tokens emitidos por Supabase Auth):
+   → No es accesible/rotable desde TurnoGol. Supabase lo rota internamente sin downtime.
+   → Si Supabase comunica una rotación forzada (security advisory), seguir su procedimiento.
+```
+
+---
+
+### 3.12 Rotación de ENCRYPTION_KEY (SEV-2)
+
+`ENCRYPTION_KEY` se usa para cifrar at-rest `tenants.mp_access_token` y `tenants.mp_refresh_token`
+(AES-256-GCM, `src/lib/crypto/encrypt.ts`). 64 hex chars (32 bytes).
+
+```
+1. ¿CUÁNDO ROTAR?
+   → Filtración sospechada (Vercel env compromise, leak de secrets en logs).
+   → Rotación anual preventiva.
+
+2. ESTRATEGIA v1 (single-key, sin versioning):
+   La key actual cifra TODOS los tokens MP. Si se rota directamente sin re-cifrar,
+   los tokens encriptados con la vieja key quedan ilegibles (gateway 401 a cada llamada).
+
+   Procedimiento simplificado v1:
+   → Generar key nueva:
+     ```
+     node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+     ```
+   → **Forzar reconexión OAuth de cada tenant** (más simple que re-cifrar):
+     ```sql
+     UPDATE tenants
+     SET mp_access_token = NULL,
+         mp_refresh_token = NULL,
+         mp_connected_at = NULL
+     WHERE mp_refresh_token IS NOT NULL;
+     ```
+   → Actualizar Vercel env var ENCRYPTION_KEY.
+   → Redeploy.
+   → Comunicar a cada complejo: "Por mantenimiento de seguridad, re-conectá MercadoPago
+     desde Configuración → MercadoPago".
+   → Monitorear conversión durante 7 días.
+
+3. ESTRATEGIA v1.5 (key versioning, sin reconexión forzada):
+   → Tabla `encryption_keys(id, key_hex, created_at, retired_at)`.
+   → Columna `mp_access_token_key_id` + `mp_refresh_token_key_id` en `tenants`.
+   → Re-cifrar gradualmente al next refresh (lazy migration).
+   → Cuando todos los tokens migrados (key_id != old), retirar la vieja.
+
+   Plan deferido. En v1 mantener single-key con rotación operacional.
+
+4. VALIDACIÓN POST-ROTACIÓN:
+   → `pnpm launch-check` valida que `ENCRYPTION_KEY` cumple length + hex + no es placeholder.
+   → Sentry watch: tasa de errores `MpGatewayError: ... 401` debe volver a baseline en < 24h.
+```
+
+---
+
 ## 4. Mantenimiento Programado
 
 ### 4.1 Tareas diarias (automáticas)
@@ -450,6 +563,42 @@ DIAGNÓSTICO Y ACCIÓN:
 | Revisar plan de Supabase | Admin | ¿Disk usage? ¿Connections? ¿Necesitamos escalar? |
 | Revisar API key de Resend | Admin | Verificar que la API key no está cerca de expirar, verificar dominio verificado |
 | Verificar backups | Admin | ¿Los backups de Supabase existen? Hacer un restore de prueba 1x/trimestre |
+
+### 4.4 Stress test pre-launch
+
+Ritual obligatorio antes de cada deploy a producción que toque el motor de reservas
+(bookings, abonados, slot-generator, exclusion constraints, refresh-mp-tokens).
+
+**Pre-requisito:** la app debe correr con la flag `NEXT_PUBLIC_E2E=1` para habilitar el
+endpoint `/api/e2e/create-booking` que el stress test consume.
+
+```
+TERMINAL 1 — servidor dev:
+  NEXT_PUBLIC_E2E=1 pnpm dev
+
+TERMINAL 2 — stress:
+  pnpm stress:bookings
+```
+
+**Salida esperada:** `Accepted: 1`, `Rejected: N-1` (donde N = concurrencia). Si
+`Accepted > 1` → **CRITICAL**: hay riesgo de doble booking en producción. NO deployar.
+
+Si todo OK, documentar evidencia con timestamp en `docs/audit/stress-runs/YYYY-MM-DD.md`
+(crear si no existe) — útil para auditoría post-incidente.
+
+`pnpm launch-check` incluye este step como obligatorio (`fatal: true`).
+
+### 4.5 Migration strategy (dos trees)
+
+Ver `docs/MIGRATIONS.md`. Resumen:
+
+- `src/shared/db/migrations/` → **autoridad de CI** (`.github/workflows/ci.yml`).
+  Orden numérico simple: `001_extensions.sql`, …, `012_system_admins_audit.sql`.
+- `supabase/migrations/` → mirror para Supabase CLI local + prod.
+  Formato timestamp: `YYYYMMDDHHMMSS_name.sql`.
+
+**Por cada cambio de schema, escribir SQL idéntico en AMBOS lugares**. Antes de PR,
+validar idempotencia ejecutando ambos contra la DB local con `psql`.
 
 ---
 
@@ -961,6 +1110,53 @@ CADA 3 MESES (checklist mensual §4.3):
   6. Eliminar el proyecto temporal
   7. Registrar resultado en el log de mantenimiento:
      "Backup verificado YYYY-MM-DD: OK / PROBLEMAS: [detalle]"
+```
+
+### 10.6 Backup Restore Drill (simulacro)
+
+Procedimiento completo de "restaurar y verificar" — para cumplir el done-criterion
+**MASTER_PLAN B11**: backup restaurado exitosamente al menos 1 vez con evidencia.
+
+**Frecuencia:** trimestral mínimo + cada vez que se cambie el plan de Supabase
+(p. ej., Free → Pro, distinto disk size).
+
+```
+1. PREPARACIÓN:
+   → Crear branch dedicado: `audit/backup-drill-YYYY-MM-DD`.
+   → Vercel preview deployment del branch (se levanta automático al push).
+   → NO usar el deployment de prod. NO sobreescribir prod DB.
+
+2. EJECUCIÓN — Opción A (Supabase PITR, plan Pro):
+   → Supabase Dashboard → Database → Backups → Point-in-time recovery
+   → Seleccionar timestamp: 24h atrás
+   → Restaurar a NUEVO Supabase project (no overwrite del actual)
+   → Anotar la connection string del nuevo project
+   → Vercel preview env vars: setear DATABASE_URL al new project temporalmente
+
+3. EJECUCIÓN — Opción B (pg_dump manual):
+   → Seguir §10.4 "Restauración desde pg_dump Manual" contra el new project
+   → Verificar tabla `tenants` count ±5% vs prod
+   → Verificar tabla `bookings` count ±5% vs prod
+
+4. VERIFICACIÓN POST-RESTORE:
+   → curl https://<preview-url>/api/health → debe responder 200
+   → curl https://<preview-url>/api/status → DB + pg-boss OK
+   → Login con un admin de prueba (no real) → grilla carga
+   → Crear booking de prueba → confirma persistencia
+
+5. DOCUMENTACIÓN DE EVIDENCIA (obligatoria):
+   Crear `docs/audit/backup-drills/YYYY-MM-DD.md` con:
+   - Quién ejecutó
+   - Timestamp del backup restaurado
+   - Counts antes/después (tenants, bookings, payments)
+   - Screenshot del /api/status devolviendo OK
+   - Tiempo total del restore (objetivo: RPO < 24h, RTO < 1h)
+   - Issues encontrados (idealmente: ninguno)
+
+6. CLEANUP:
+   → Eliminar el Supabase project de prueba (NO dejarlo encendido, cuesta $$)
+   → Vercel: revertir env vars del preview
+   → Push a main solo si el drill incluyó cambios al runbook
 ```
 
 ---

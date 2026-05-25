@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { BookingCard } from './BookingCard'
-import { BookingFormModal } from './BookingFormModal'
 import type { BookingStatus, BookingType, BookingRow } from '@/modules/bookings/booking.types'
+
+const BookingFormModal = dynamic(
+  () => import('./BookingFormModal').then((m) => m.BookingFormModal),
+  { ssr: false },
+)
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 

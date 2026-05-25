@@ -1,4 +1,18 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// PIN rate-limit was added in B6 (brute-force defense). Mock Upstash so the
+// existing happy-path tests below aren't blocked by the new pinAttempts policy.
+vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
+vi.mock('@upstash/ratelimit', () => {
+  class FakeRatelimit {
+    static tokenBucket(limit: number) { return { limit } }
+    constructor(_: unknown) {}
+    async limit(_key: string) {
+      return { success: true, limit: 5, remaining: 5, reset: Date.now() + 60_000 }
+    }
+  }
+  return { Ratelimit: FakeRatelimit }
+})
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(() => ({
@@ -29,6 +43,13 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
 }))
 
 import { verifyPin } from '@/modules/auth/pin'
+import { __resetLimitersForTests } from '@/shared/rate-limit/client'
+
+beforeEach(() => {
+  process.env.UPSTASH_REDIS_REST_URL = 'https://stub'
+  process.env.UPSTASH_REDIS_REST_TOKEN = 'stub-token'
+  __resetLimitersForTests()
+})
 
 describe('checkPinSessionAction', () => {
   it('returns false when no cookie', async () => {

@@ -14,6 +14,12 @@ export default defineConfig({
     },
     setupFiles: ['./tests/setup.ts'],
   },
+  // Use the automatic JSX runtime (same as Next.js production build) so server
+  // components compiled by esbuild for tests don't require `import React` and
+  // can be invoked directly as functions in smoke tests (see legal-pages.test.ts).
+  esbuild: {
+    jsx: 'automatic',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

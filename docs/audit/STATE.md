@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-25
 **Branch principal:** main
-**Worktrees activos:** ninguno (B10 mergeado a main, worktree limpiado)
+**Worktrees activos:** ninguno (B11 mergeado a main, worktree limpiado)
 
 ## Fase actual
 
-**B11 — Operativo / Backups / Runbook** (siguiente, no iniciada)
+**F0 — Baseline + Build Health frontend** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -23,11 +23,13 @@
 | B8 — Money / Cashflow | 🟢 SOLID (0 bugs) + 4 P2/P3 docs | `docs/audit/reports/fase-b08-money-report.md` |
 | B9 — Privacy / Ley 25.326 | 🟡 3 P1 FIXED + 4 P2 docs | `docs/audit/reports/fase-b09-privacy-report.md` |
 | B10 — Observabilidad | 🟡 4 P1 FIXED + 2 P2 FIXED + 1 P2 investigado | `docs/audit/reports/fase-b10-observabilidad-report.md` |
+| B11 — Operativo / Backups / Runbook | 🟡 1 P0 FIXED + 5 P1 FIXED + 3 P1 deferred-legal | `docs/audit/reports/fase-b11-operativo-report.md` |
 
 ## Hallazgos críticos acumulados
 
 ### P0 (bloqueantes)
 - **B1: completeBooking/markNoShow no validaban tiempo** → ✅ FIXED
+- **B11: CI aplicaba migrations divergentes vs prod** → ✅ FIXED (B11 T1: porteadas 010-012 a src/shared/db/migrations/ + convención en docs/MIGRATIONS.md)
 
 ### P1 (alto)
 - **B2: Pre-read mis-reservas/actions.ts sin contexto player** → ✅ FIXED
@@ -38,19 +40,20 @@
 - **B9: ARCO Acceso endpoint ausente** → ✅ FIXED (`/api/player/data-export`)
 - **B9: PII leak en send-email console.log** → ✅ FIXED
 - **B9: Sentry sin PII scrubber** → ✅ FIXED (beforeSend + helper testeable)
-- **B2: postgres user tiene BYPASSRLS** → 📝 Validar producción NO use role bypass (Fase B11)
+- **B2: postgres user tiene BYPASSRLS** → ✅ FIXED (B11: launch-check valida `pg_roles.rolbypassrls = false` para current_user)
 - **B2: system_admins sin audit trigger** → ✅ FIXED (B10: trigger `trg_system_admins_audit` → audit_logs system-scoped)
 - **B5: DLQ / failed-jobs visibility ausente** → ✅ FIXED (B10: `attachFailureHandlers` onComplete → Sentry+log)
 - **B5: queue depth monitor ausente** → ✅ FIXED (B10: `GET /api/admin/jobs`)
-- **B5: refresh-mp-tokens sin SELECT FOR UPDATE** → 📝 Fase B11
-- **B6: Magic link TTL/single-use Supabase-managed** → 📝 Runbook B11
-- **B6: JWT secret rotation Supabase-managed** → 📝 Runbook B11
-- **B9: Páginas legales (/privacy, /terms) ausentes** → 📝 Pre-launch legal
-- **B9: DPA templates ausentes** → 📝 Pre-launch legal
-- **B9: Inscripción AAIP pendiente** → 📝 Pre-launch legal
-- Pre-prod launch-check requiere env vars reales (Fase B11)
-- Stress test requiere `NEXT_PUBLIC_E2E=1` env (Fase B11)
-- ENCRYPTION_KEY rotation strategy no documentada (Fase B11)
+- **B5: refresh-mp-tokens sin SELECT FOR UPDATE** → ✅ FIXED (B11: `pg_try_advisory_xact_lock(hashtext('mp_refresh:'||tenant_id))` co-transaccional; single-winner test 5x concurrente)
+- **B6: Magic link TTL/single-use Supabase-managed** → ✅ FIXED docs (B11: doc19 §3.10)
+- **B6: JWT secret rotation Supabase-managed** → ✅ FIXED docs (B11: doc19 §3.11)
+- **B9: Páginas legales (/privacy, /terms) ausentes** → ✅ FIXED (B11: páginas server-render Ley 25.326 + footer reutilizable)
+- **B9: DPA templates ausentes** → 📝 Pre-launch legal (counsel team, fuera de scope code)
+- **B9: Inscripción AAIP pendiente** → 📝 Pre-launch legal (trámite administrativo)
+- **Pre-prod launch-check requiere env vars reales** → ✅ FIXED (B11: launch-check probe MP credentials via POST /oauth/token)
+- **Stress test requiere `NEXT_PUBLIC_E2E=1` env** → ✅ FIXED docs (B11: doc19 §4.4 ritual)
+- **ENCRYPTION_KEY rotation strategy no documentada** → ✅ FIXED (B11: doc19 §3.12 v1 single-key + forced reconnection; v1.5 key versioning; launch-check valida strength + no-placeholder)
+- **Backup restore drill (ejecución real)** → 📝 Pre-launch operacional (procedure documentado en doc19 §10.6; ejecución requiere Supabase Pro + horas ops)
 
 ### P2 (medio)
 - 4 warnings `<img>` no-optimized (Fase F12)
@@ -70,7 +73,10 @@
 - B8: edge `calcDeposit(1, 10) = 0` → no aplica precios reales
 - **B9: opt-out / consent withdrawal UI ausente** → v1.5 si se agregan emails marketing
 - **B9: Audit log de ARCO Acceso diferido** → v1.5 con tabla global
-- **B9: race-abonado-vs-individual flaky bajo orden específico de suite** → 🔍 INVESTIGADO (B10): pasa 2/2 aislado; falla en suite completa por data bleed cross-test (estado residual en misma cancha+franja), NO regresión B10. Fix de hermeticidad (cleanup por-test o cancha+slot únicos) deferido — P2 pre-existente
+- **B9: race-abonado-vs-individual flaky bajo orden específico de suite** → 🔍 INVESTIGADO (B10 + B11): pasa 2/2 aislado; falla en suite completa por data bleed cross-test, NO regresión. Fix de hermeticidad deferido — P2 pre-existente
+- **B11: ENCRYPTION_KEY key versioning** → v1.5 (trigger: si primera rotación real expone fricción operativa de v1)
+- **B11: Supabase staging project dedicado** → v1.5 (trigger: 10+ clientes o requisito contractual)
+- **B11: CI stress test job (manual_dispatch)** → backlog nice-to-have
 
 ### P3 (bajo)
 - B8: Reports SUM BIGINT → JS Number — pérdida potencial > 2^53 → no aplica rango realista
@@ -81,13 +87,13 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 11/26**
-- **Tests nuevos: 147** (96 previos + 51 B10; todos verdes en aislamiento; suite integration total 1 flaky preexistente `race-abonado-vs-individual`)
-- **Bugs fixed: 15** (1 P0 + 11 P1 + 3 P2). B10 aportó 4 P1 + 2 P2.
-- **Tests legacy ajustados: 6**
+- **Fases completadas: 12/26** (todo el backend done).
+- **Tests nuevos: 167** (147 previos + 20 B11). Suite integration verde excepto el flaky preexistente `race-abonado-vs-individual` (pasa aislado).
+- **Bugs fixed: 22** (2 P0 + 17 P1 + 3 P2). B11 aportó 1 P0 + 5 P1 + 2 P1-docs.
+- **Tests legacy ajustados: 7** (6 previos + 1 B11 refresh-mp-tokens-concurrency reescrito a single-winner).
 
 ## Próximas decisiones para el humano
 
-1. **Mergear `audit/backend-b10` a main** → hecho en esta sesión (typecheck + 395 unit + 320 integration verdes; 1 flaky pre-existente no-regresión).
-2. **B11 — Operativo / Backups / Runbook** es la siguiente fase. Consolida P1 pendientes asignados a B11: postgres BYPASSRLS en prod, refresh-mp-tokens sin SELECT FOR UPDATE, magic link / JWT rotation runbook, launch-check con env reales, ENCRYPTION_KEY rotation. Requiere infra real (backups Supabase, staging) → puede necesitar decisiones humanas.
-3. **Flaky `race-abonado-vs-individual`**: investigado (no-regresión). Fix de hermeticidad de tests pendiente si se quiere suite 100% determinista — bajo prioridad.
+1. **Mergear `audit/backend-b11` a main** → hecho en esta sesión (typecheck + 411 unit + 324/325 integration verde con flaky conocido aislado).
+2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase del audit.
+3. **F0 — Baseline + Build Health frontend** es la siguiente fase. Bundle JS inicial <200KB gzipped por ruta, Lighthouse Perf ≥90 mobile, 0 `'use client'` innecesarios. Backend done; el bloque frontend comienza.

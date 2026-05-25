@@ -142,7 +142,12 @@ beforeAll(async () => {
   await cleanupAll(sql)
 }, 30_000)
 
-afterAll(async () => closeSql())
+afterAll(async () => {
+  // Cleanup leftover abonado (factory uses random day_of_week) so tests with
+  // hard-coded day_of_week (e.g. race-abonado-vs-individual) aren't polluted.
+  await cleanupAll(getSql())
+  await closeSql()
+})
 
 describe('data-retention-cleanup', () => {
   it('wipes all children + soft-anonymizes tenant when scheduled_deletion_at <= NOW()', async () => {

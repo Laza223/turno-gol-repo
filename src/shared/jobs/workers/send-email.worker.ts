@@ -43,7 +43,10 @@ export async function processSingleNotification(notif: NotificationRow): Promise
     const rendered = renderTemplate(notif.templateName, notif.content)
     await getEmailProvider().send({ to: email, ...rendered })
     await markNotificationSent(notif.id)
-    console.log(`[send-email] sent notification ${notif.id} to ${email}`)
+    // PII scrub (B9 Ley 25.326): never log recipient email to stdout.
+    // Vercel/Sentry retain logs; the notification id is sufficient to trace
+    // back to the row (recipient_type + recipient_id, RLS-protected).
+    console.log(`[send-email] sent notification ${notif.id}`)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error(`[send-email] failed notification ${notif.id} (attempt ${thisAttempt}/${MAX_ATTEMPTS}): ${msg}`)

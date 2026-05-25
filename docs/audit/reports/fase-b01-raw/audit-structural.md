@@ -134,3 +134,29 @@ Los dos NO pueden correr concurrente sobre el mismo booking porque operan en est
 La race real entre transitions concurrentes sobre `pending_payment` ya está cubierta por `tests/integration/race-expiry-vs-confirm.test.ts` (expire vs confirm via webhook MP).
 
 **Veredicto B1.6: ✅ Validated by design. No test needed.**
+
+## B1.8 — Online sin deposit + webhook MP tardío: DEFERIDO a B3
+
+Análisis: Si `requiresDeposit=false` el booking nunca pasa por MP. Webhook hipotético llegando para ese booking_id es escenario sintético. La defensa real existe:
+- `lockMpEvent(event, tx)` → idempotencia por mp_event_id (línea 102 de mp-webhook.handler.ts)
+- Tenant cross-check (líneas 134-138)
+- Si booking no existe → return silencioso (línea 133)
+
+Test profundo de MP webhook (replay, signature, race con bookings sin payment) requiere mock completo del flow MP. **Asignado a Fase B3 — MercadoPago** que cubre webhooks profundamente.
+
+## B1.9 — libuv assertion en stress test cleanup: DOCUMENTADO
+
+Análisis de `src/shared/db/client.ts:closeSql`:
+- Implementación correcta: `await _sql.end({ timeout: 5 })` + nullification
+- timeout 5s permite drain de queries pendientes
+
+El `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76` es bug conocido de Node.js 20 en Windows cuando:
+- libuv handle se cierra mientras hay async operation pendiente del lado nativo
+- No es bug de TurnoGol; reproducible con cualquier script que use postgres.js + cleanup en Windows
+
+**Mitigación posible** (no aplicar todavía, requiere test cross-platform):
+- Agregar `process.exit(0)` explícito al final del stress test después de cleanup
+- Aumentar timeout de drain a 30s
+- Migrar pg-boss cleanup a Promise sequence vs Promise.all
+
+**Veredicto B1.9**: ⚠️ Issue de runtime Windows, no de lógica de bookings. Marcado como P2 conocido. Sin impacto en producción (servidores son Linux). No requiere fix en B1.

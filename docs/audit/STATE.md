@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-25
 **Branch principal:** main
-**Worktrees activos:** ninguno (F0 mergeado a main, worktree limpiado)
+**Worktrees activos:** `audit/frontend-f01` (pendiente merge a main)
 
 ## Fase actual
 
-**F1 — Design System + Componentes UI Base** (siguiente, no iniciada)
+**F2 — Auth + Onboarding Flows** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -25,6 +25,7 @@
 | B10 — Observabilidad | 🟡 4 P1 FIXED + 2 P2 FIXED + 1 P2 investigado | `docs/audit/reports/fase-b10-observabilidad-report.md` |
 | B11 — Operativo / Backups / Runbook | 🟡 1 P0 FIXED + 5 P1 FIXED + 3 P1 deferred-legal | `docs/audit/reports/fase-b11-operativo-report.md` |
 | F0 — Baseline + Build Health | 🟢 PASS (4/4 criteria) + 2 dead-weight removidos | `docs/audit/reports/fase-f00-baseline-report.md` |
+| F1 — Design System + UI Base | 🟢 PASS (2/2 criteria) + 3 primitives nuevos + 1 latent fix Sentry | `docs/audit/reports/fase-f01-design-system-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -79,7 +80,7 @@
 - **B11: ENCRYPTION_KEY key versioning** → v1.5 (trigger: si primera rotación real expone fricción operativa de v1)
 - **B11: Supabase staging project dedicado** → v1.5 (trigger: 10+ clientes o requisito contractual)
 - **B11: CI stress test job (manual_dispatch)** → backlog nice-to-have
-- **F0: `lucide-react` pinned a `^1.11.0`** (release 2021; línea mantenida es 0.4xx, semver invertido) → dep-upgrade task (toca 42 archivos, riesgo API). Candidato F1. `optimizePackageImports` ya mejora su tree-shaking
+- **F0/F1: `lucide-react` pinned a `^1.11.0`** (release 2021; línea mantenida es 0.4xx, semver invertido) → **F1 lo evaluó y mantuvo diferido**: F1 done-criteria no requiere upgrade; tocaría 42 archivos con riesgo de breaking API. Trigger para re-evaluar: CVE en versión vieja, o necesidad de icono no disponible. `optimizePackageImports` (F0) ya hace tree-shake efectivo
 - **F0: shared baseline 150KB** (Sentry SDK pesado en chunk común) → F12 si se necesita bajar más. F0 sólo aseguró toda ruta <200KB
 - **F0: `/staff` 190KB** (la ruta más cercana al techo de 200KB) → watch / candidato F12
 - **F0: Lighthouse assertion `error` (bloqueante) + corrida CI Linux** → F12/F14 (F0 dejó `warn` + config lista)
@@ -94,13 +95,13 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 13/26** (todo el backend B0-B11 + F0 frontend).
-- **Tests nuevos: 167** (147 previos + 20 B11). F0 no agregó tests (fase build-health, no de lógica). Suite integration verde excepto el flaky preexistente `race-abonado-vs-individual` (pasa aislado).
-- **Bugs fixed: 23** (2 P0 + 17 P1 + 4). F0 aportó 1 fix de bundle (`/grilla` 235→161KB) + 2 dead-weight removidos (dep `@phosphor-icons/react` + asset 777KB) + 4 lint warnings cerrados.
-- **Tests legacy ajustados: 7** (6 previos + 1 B11 refresh-mp-tokens-concurrency reescrito a single-winner).
+- **Fases completadas: 14/26** (todo el backend B0-B11 + F0 + F1 frontend).
+- **Tests nuevos: 167** (147 previos + 20 B11). F0 y F1 no agregaron tests (fases build-health + consistency visual; sin lógica nueva). Suite integration verde excepto los flaky preexistentes `race-abonado-vs-individual` y `daily-close-idempotency` (ambos confirmados pre-existentes, NO regresión).
+- **Bugs fixed: 24** (2 P0 + 17 P1 + 4 + F1: 1 latente Sentry reportes/error.tsx). F0 aportó 1 fix de bundle (`/grilla` 235→161KB) + 2 dead-weight removidos. F1 aportó: 1 fix latente de observabilidad (Sentry agregado a `(admin)/reportes/error.tsx`) + 1 stale dir eliminado (`design-system/turnogol/`) + 1 doc drift (doc20 Phosphor→Lucide) + 1 CSS var fix (`--ring` emerald-500 HSL exacto) + 2 palette drift fixes (abonados STATUS_COLORS + sidebar logo) + 3 componentes UI reusables nuevos (Skeleton + EmptyState + ErrorState).
+- **Tests legacy ajustados: 7** (6 previos + 1 B11).
 
 ## Próximas decisiones para el humano
 
-1. **F0 — Baseline + Build Health** → ✅ completado esta sesión. 4/4 done-criteria: bundle toda ruta <200KB gz (`/grilla` 235→161KB), Lighthouse mobile 94-96 (≥90), 0 `'use client'` innecesarios (36 auditados), build limpio (4 `<img>` warnings cerrados). Mergeado a main.
+1. **F1 — Design System + UI Base** → ✅ completado esta sesión. 2/2 done-criteria: 100% componentes UI siguen MASTER.md (drift palette eliminado; tokens consistentes); Skeleton + EmptyState + ErrorState primitives reusables (5 error boundaries refactorizadas a 1 source-of-truth, -150 LOC dedup). Pendiente merge a main.
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
-3. **F1 — Design System + Componentes UI Base** es la siguiente fase. `design-system/MASTER.md` fuente de verdad; Skeleton/Empty/Error states reusables. Candidato para resolver el pin de `lucide-react`. Trigger humano: confirmar continuar o pausar.
+3. **F2 — Auth + Onboarding Flows** es la siguiente fase. E2E magic link + E2E onboarding 4-pasos → primera reserva. Reabre los 2 E2E skipped del wizard. Trigger humano: confirmar continuar o pausar.

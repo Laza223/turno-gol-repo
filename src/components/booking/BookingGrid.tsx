@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { LayoutGrid, MoonStar } from 'lucide-react'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { BookingCard } from './BookingCard'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { BookingStatus, BookingType, BookingRow } from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -197,7 +199,9 @@ export function BookingGrid({
 
   return (
     <div className="space-y-4">
-      {/* Offline banner */}
+      {/* Offline banner — kept as an amber warning div, not ErrorState, because this is a
+          RECOVERABLE degraded state (realtime dropped → polling fallback). ErrorState's red
+          palette implies a fatal error; that would misrepresent the severity here. */}
       {status === 'OFFLINE' && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
           Sin conexión. Los datos pueden no estar actualizados.
@@ -241,15 +245,19 @@ export function BookingGrid({
       </div>
 
       {courts.length === 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-10 text-center">
-          <p className="text-sm text-muted-foreground">No tenés canchas configuradas.</p>
-        </div>
+        <EmptyState
+          icon={LayoutGrid}
+          title="Sin canchas configuradas"
+          description="Todavía no agregaste ninguna cancha. Configurá al menos una para empezar a tomar turnos."
+        />
       )}
 
       {closedToday && courts.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-10 text-center">
-          <p className="text-sm text-muted-foreground">Complejo cerrado este día.</p>
-        </div>
+        <EmptyState
+          icon={MoonStar}
+          title="Complejo cerrado este día"
+          description="Este día está marcado como cerrado en la configuración de horarios."
+        />
       )}
 
       {courts.length > 0 && !closedToday && (

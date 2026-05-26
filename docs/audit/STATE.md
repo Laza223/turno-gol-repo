@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-25
 **Branch principal:** main
-**Worktrees activos:** `audit/frontend-f01` (pendiente merge a main)
+**Worktrees activos:** `audit/frontend-f02` (pendiente merge a main)
 
 ## Fase actual
 
-**F2 — Auth + Onboarding Flows** (siguiente, no iniciada)
+**F3 — Admin Grilla + Realtime** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -26,6 +26,7 @@
 | B11 — Operativo / Backups / Runbook | 🟡 1 P0 FIXED + 5 P1 FIXED + 3 P1 deferred-legal | `docs/audit/reports/fase-b11-operativo-report.md` |
 | F0 — Baseline + Build Health | 🟢 PASS (4/4 criteria) + 2 dead-weight removidos | `docs/audit/reports/fase-f00-baseline-report.md` |
 | F1 — Design System + UI Base | 🟢 PASS (2/2 criteria) + 3 primitives nuevos + 1 latent fix Sentry | `docs/audit/reports/fase-f01-design-system-report.md` |
+| F2 — Auth + Onboarding Flows | 🟢 PASS (3/3 criteria) + 4 E2E nuevos + 2 reactivados + 6 a11y fixes wizard | `docs/audit/reports/fase-f02-auth-onboarding-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -59,7 +60,7 @@
 
 ### P2 (medio)
 - 4 warnings `<img>` no-optimized (Fase F12)
-- 2 E2E tests skipped en onboarding wizard (Fase F2)
+- ~~2 E2E tests skipped en onboarding wizard~~ → ✅ RESUELTO F2 (fresh admin fixture sin tenant; 2 reactivados + 1 nuevo full-wizard test)
 - ~~Sentry init no degrada gracefully con DSN inválido~~ → ✅ FIXED (B10: `isValidDsn` guard)
 - libuv assertion error stress test Windows-only (no aplica prod)
 - ~~MP retry on InvalidTransitionError loser → Sentry filter~~ → ✅ FIXED (B10: `beforeSend` drop por `name`)
@@ -95,13 +96,13 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 14/26** (todo el backend B0-B11 + F0 + F1 frontend).
-- **Tests nuevos: 167** (147 previos + 20 B11). F0 y F1 no agregaron tests (fases build-health + consistency visual; sin lógica nueva). Suite integration verde excepto los flaky preexistentes `race-abonado-vs-individual` y `daily-close-idempotency` (ambos confirmados pre-existentes, NO regresión).
-- **Bugs fixed: 24** (2 P0 + 17 P1 + 4 + F1: 1 latente Sentry reportes/error.tsx). F0 aportó 1 fix de bundle (`/grilla` 235→161KB) + 2 dead-weight removidos. F1 aportó: 1 fix latente de observabilidad (Sentry agregado a `(admin)/reportes/error.tsx`) + 1 stale dir eliminado (`design-system/turnogol/`) + 1 doc drift (doc20 Phosphor→Lucide) + 1 CSS var fix (`--ring` emerald-500 HSL exacto) + 2 palette drift fixes (abonados STATUS_COLORS + sidebar logo) + 3 componentes UI reusables nuevos (Skeleton + EmptyState + ErrorState).
+- **Fases completadas: 15/26** (backend B0-B11 + F0 + F1 + F2 frontend).
+- **Tests acumulados nuevos audit: 171** (167 backend previos + 4 E2E F2). F0/F1 no agregaron tests (fases build-health + consistency visual). F2 agregó 4 E2E nuevos (login accessibility + invalid-email + full-wizard + first-booking-aha) + reactivó 2 skipped → suite E2E pasó de 10 con 2 skipped a 14 con 0 skipped. Suite integration verde excepto los flaky pre-existentes `race-abonado-vs-individual` y `daily-close-idempotency` (confirmados pre-existentes, NO regresión).
+- **Bugs fixed: 25** (2 P0 + 17 P1 + 4 + F1: 1 latente Sentry reportes/error.tsx + F2: 1 latente a11y wizard labels). F0 aportó 1 fix bundle + 2 dead-weight removidos. F1 aportó: 1 fix latente Sentry, 1 stale dir, 1 doc drift, 1 CSS var fix, 2 palette drift fixes, 3 componentes UI nuevos. F2 aportó: 6 a11y fixes (StepIdentity 6 htmlFor/id pairs + autocomplete tel/email + role=alert; StepSchedule role=alert), 1 fresh admin E2E fixture, 1 seed E2E cascade cleanup extension.
 - **Tests legacy ajustados: 7** (6 previos + 1 B11).
 
 ## Próximas decisiones para el humano
 
-1. **F1 — Design System + UI Base** → ✅ completado esta sesión. 2/2 done-criteria: 100% componentes UI siguen MASTER.md (drift palette eliminado; tokens consistentes); Skeleton + EmptyState + ErrorState primitives reusables (5 error boundaries refactorizadas a 1 source-of-truth, -150 LOC dedup). Pendiente merge a main.
+1. **F2 — Auth + Onboarding Flows** → ✅ completado esta sesión. 3/3 done-criteria: E2E magic link completo (4 → 6 tests admin-login), E2E onboarding 4 pasos → primera reserva (2 skipped reabiertos + 1 full-wizard + 1 Aha Moment), estados error UX clara (audit 7 files; 5 PASS, 2 FIXED, 3 minor items deferred F11). Pendiente merge a main.
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
-3. **F2 — Auth + Onboarding Flows** es la siguiente fase. E2E magic link + E2E onboarding 4-pasos → primera reserva. Reabre los 2 E2E skipped del wizard. Trigger humano: confirmar continuar o pausar.
+3. **F3 — Admin Grilla + Realtime** es la siguiente fase. **Criticidad MÁXIMA** (negocio no funciona si rompe). E2E 2 admins distintos browsers: uno crea, otro ve <2s. Catch-up post-desconexión. Mobile usable. Lighthouse ≥90. Trigger humano: confirmar continuar o pausar.

@@ -60,7 +60,7 @@ function SidebarContent({
       <div className="flex items-center justify-between px-4 py-5 border-b border-slate-200/70">
         <div className="min-w-0">
           <span className="inline-flex items-center gap-2 text-base font-semibold text-slate-900">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500 text-xs font-bold text-slate-950 shadow-sm shadow-emerald-500/30">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-xs font-bold text-white shadow-sm shadow-emerald-600/30">
               TG
             </span>
             TurnoGol

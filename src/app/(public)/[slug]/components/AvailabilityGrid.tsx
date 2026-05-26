@@ -8,6 +8,7 @@ import type {
   PublicTenant,
   Slot,
 } from '@/modules/tenants/public.service'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type Props = {
   tenant: PublicTenant
@@ -185,7 +186,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
       </div>
 
       {/* Loading skeleton */}
-      {loading && <div className="skeleton h-48 rounded-lg" aria-busy="true" />}
+      {loading && <Skeleton className="h-48 rounded-lg" />}
 
       {/* No courts */}
       {!loading && noCourts && (

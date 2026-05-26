@@ -77,7 +77,7 @@ El design system de TurnoGol se persiste en `design-system/MASTER.md` y define:
 | **Font Pairing** | Tipografías con imports de Google Fonts |
 | **UX Guidelines** | Best practices, anti-patrones, accesibilidad |
 | **Chart Types** | Para dashboards y reportes |
-| **Iconos** | Librería de iconos seleccionada (Phosphor / Heroicons) |
+| **Iconos** | Librería de iconos seleccionada (Lucide React, ver MASTER §9) |
 
 ### 2.2 Cómo se genera
 
@@ -288,7 +288,7 @@ Antes de entregar cualquier pantalla, verificar:
 │    • Estilo visual completo                                    │
 │    • Paleta de colores alineada a la industria                │
 │    • Pairing de tipografías (Google Fonts)                    │
-│    • Librería de iconos (Phosphor / Heroicons)               │
+│    • Librería de iconos (Lucide React)                       │
 │    • Efectos, transiciones, micro-animaciones                │
 │    • Anti-patrones a evitar                                   │
 │    • Checklist pre-delivery                                   │

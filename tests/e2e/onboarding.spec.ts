@@ -63,18 +63,19 @@ test.describe('onboarding', () => {
     })
   })
 
-  test.describe('full wizard flow (step 1 - identity)', () => {
+  test.describe.serial('full wizard flow (step 1 - identity)', () => {
     test('step 1 has all complex identity fields', async ({ page, freshAdminStorageState }) => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
-      // Verify form fields on step 1
+      // Step 1 must render — if the full-wizard test below ran first and
+      // persisted a tenant, the seed-e2e cleanup (T1) reverts that on next
+      // run, but the serial() above guarantees order within this describe.
       const heading = page.getByRole('heading', { name: /tu complejo/i })
-      if (await heading.isVisible()) {
-        await expect(page.getByPlaceholder(/complejo san mart/i)).toBeVisible()
-        await expect(page.getByPlaceholder(/corrientes/i)).toBeVisible()
-        await expect(page.getByRole('button', { name: /continuar/i })).toBeVisible()
-      }
+      await expect(heading).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByPlaceholder(/complejo san mart/i)).toBeVisible()
+      await expect(page.getByPlaceholder(/corrientes/i)).toBeVisible()
+      await expect(page.getByRole('button', { name: /continuar/i })).toBeVisible()
     })
 
     test('completes full 4-step wizard and lands on /dashboard', async ({ page, freshAdminStorageState }) => {

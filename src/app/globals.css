@@ -31,7 +31,7 @@
 
     --border: 214 32% 91%;            /* slate-200 #E2E8F0 */
     --input: 214 32% 91%;
-    --ring: 161 94% 30%;              /* emerald-600 — focus ring */
+    --ring: 158 64% 52%;              /* emerald-500 #10B981 — matches MASTER §1 + literal ring-emerald-500 in JSX */
 
     --radius: 0.5rem;
 

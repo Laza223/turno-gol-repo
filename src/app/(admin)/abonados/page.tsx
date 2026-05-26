@@ -1,8 +1,11 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Users } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -48,9 +51,19 @@ export default async function AbоnadosPage() {
       </div>
 
       {abonados.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay abonados registrados. Creá el primero con el botón de arriba.
-        </p>
+        <EmptyState
+          icon={Users}
+          title="Sin abonados registrados"
+          description="Creá el primer abonado para que aparezca acá."
+          action={
+            <Link
+              href="/abonados/nuevo"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
+            >
+              + Nuevo Abonado
+            </Link>
+          }
+        />
       ) : (
         <div className="rounded-lg border">
           <table className="w-full text-sm">

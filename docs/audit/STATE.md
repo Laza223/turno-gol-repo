@@ -1,12 +1,12 @@
 # TurnoGol Audit — Estado Actual
 
-**Última actualización:** 2026-05-25
+**Última actualización:** 2026-05-26
 **Branch principal:** main
-**Worktrees activos:** `audit/frontend-f02` (pendiente merge a main)
+**Worktrees activos:** ninguno (F3 mergeado a main)
 
 ## Fase actual
 
-**F3 — Admin Grilla + Realtime** (siguiente, no iniciada)
+**F4 — Admin Bookings + Cashflow + Canchas (CRUDs core)** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -27,6 +27,7 @@
 | F0 — Baseline + Build Health | 🟢 PASS (4/4 criteria) + 2 dead-weight removidos | `docs/audit/reports/fase-f00-baseline-report.md` |
 | F1 — Design System + UI Base | 🟢 PASS (2/2 criteria) + 3 primitives nuevos + 1 latent fix Sentry | `docs/audit/reports/fase-f01-design-system-report.md` |
 | F2 — Auth + Onboarding Flows | 🟢 PASS (3/3 criteria) + 4 E2E nuevos + 2 reactivados + 6 a11y fixes wizard | `docs/audit/reports/fase-f02-auth-onboarding-report.md` |
+| F3 — Admin Grilla + Realtime | 🟡 PASS c/1 reserva (3/4 criteria; Lighthouse 88-89 medido, gap LCP→F12) + H1 catch-up + H2 publication versionada + H3 name backfill + 10 tests nuevos | `docs/audit/reports/fase-f03-grilla-realtime-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -57,6 +58,8 @@
 - **Stress test requiere `NEXT_PUBLIC_E2E=1` env** → ✅ FIXED docs (B11: doc19 §4.4 ritual)
 - **ENCRYPTION_KEY rotation strategy no documentada** → ✅ FIXED (B11: doc19 §3.12 v1 single-key + forced reconnection; v1.5 key versioning; launch-check valida strength + no-placeholder)
 - **Backup restore drill (ejecución real)** → 📝 Pre-launch operacional (procedure documentado en doc19 §10.6; ejecución requiere Supabase Pro + horas ops)
+- **F3-H1: catch-up ausente en reconnect realtime** (grilla pierde eventos del gap offline; Supabase sin queue offline) → ✅ FIXED (F3 T1: `fetchFromApi()` en cada SUBSCRIBED + 7 unit tests)
+- **F3-H2: publication realtime de `bookings` no versionada** (solo dashboard → re-provision/staging sin realtime, silencioso) → ✅ FIXED (F3 T2: migración guarded dual-tree `013_realtime_publication.sql` + REPLICA IDENTITY FULL)
 
 ### P2 (medio)
 - 4 warnings `<img>` no-optimized (Fase F12)
@@ -82,27 +85,31 @@
 - **B11: Supabase staging project dedicado** → v1.5 (trigger: 10+ clientes o requisito contractual)
 - **B11: CI stress test job (manual_dispatch)** → backlog nice-to-have
 - **F0/F1: `lucide-react` pinned a `^1.11.0`** (release 2021; línea mantenida es 0.4xx, semver invertido) → **F1 lo evaluó y mantuvo diferido**: F1 done-criteria no requiere upgrade; tocaría 42 archivos con riesgo de breaking API. Trigger para re-evaluar: CVE en versión vieja, o necesidad de icono no disponible. `optimizePackageImports` (F0) ya hace tree-shake efectivo
-- **F0: shared baseline 150KB** (Sentry SDK pesado en chunk común) → F12 si se necesita bajar más. F0 sólo aseguró toda ruta <200KB
+- **F0: shared baseline 150KB** (Sentry SDK pesado en chunk común) → F12. **F3 confirmó que es el driver del LCP 3.8s de /grilla** (Lighthouse 88-89; opportunities unused-JS ~900ms + render-blocking ~485ms). F12 done-criteria = LCP <2.5s
 - **F0: `/staff` 190KB** (la ruta más cercana al techo de 200KB) → watch / candidato F12
 - **F0: Lighthouse assertion `error` (bloqueante) + corrida CI Linux** → F12/F14 (F0 dejó `warn` + config lista)
-- **F0: medición Lighthouse de rutas dinámicas** (grilla/dashboard/explorar, requieren auth+DB) → F3/F6/F12
+- **F0: medición Lighthouse de rutas dinámicas** (grilla/dashboard/explorar, requieren auth+DB) → 🔍 `/grilla` MEDIDO en F3: **88-89 mobile** (gap 1-2 pts, LCP-driven → F12). Harness autenticado entregado (`pnpm lighthouse:grilla` + puppeteerScript cookie inject). dashboard/explorar → F6/F12
+- **F3: `/grilla` Lighthouse 88-89 < 90** (LCP 3.8s; banner offline es el LCP element en run headless + shared bundle 150KB) → **F12 (Performance)**. F3 entregó medición + harness honesto; el gap es estructural
 
 ### P3 (bajo)
 - B8: Reports SUM BIGINT → JS Number — pérdida potencial > 2^53 → no aplica rango realista
 
 ### Deferidos
-- B2.6 Realtime cliente real → Fase F3
+- ~~B2.6 Realtime cliente real~~ → ✅ RESUELTO F3 (catch-up on reconnect + debounced reconcile name-backfill + publication realtime versionada + REPLICA IDENTITY FULL + 7 unit tests del hook + 3 E2E multi-browser)
 - ~~B2.7 JWT forgery defense~~ → Resuelto en B6 (Supabase signed tokens)
 
 ## Stats acumulados
 
-- **Fases completadas: 15/26** (backend B0-B11 + F0 + F1 + F2 frontend).
-- **Tests acumulados nuevos audit: 171** (167 backend previos + 4 E2E F2). F0/F1 no agregaron tests (fases build-health + consistency visual). F2 agregó 4 E2E nuevos (login accessibility + invalid-email + full-wizard + first-booking-aha) + reactivó 2 skipped → suite E2E pasó de 10 con 2 skipped a 14 con 0 skipped. Suite integration verde excepto los flaky pre-existentes `race-abonado-vs-individual` y `daily-close-idempotency` (confirmados pre-existentes, NO regresión).
-- **Bugs fixed: 25** (2 P0 + 17 P1 + 4 + F1: 1 latente Sentry reportes/error.tsx + F2: 1 latente a11y wizard labels). F0 aportó 1 fix bundle + 2 dead-weight removidos. F1 aportó: 1 fix latente Sentry, 1 stale dir, 1 doc drift, 1 CSS var fix, 2 palette drift fixes, 3 componentes UI nuevos. F2 aportó: 6 a11y fixes (StepIdentity 6 htmlFor/id pairs + autocomplete tel/email + role=alert; StepSchedule role=alert), 1 fresh admin E2E fixture, 1 seed E2E cascade cleanup extension.
+- **Fases completadas: 16/26** (backend B0-B11 + F0 + F1 + F2 + F3 frontend).
+- **Tests acumulados nuevos audit: 181** (171 post-F2 + F3: 7 unit hook `use-booking-realtime` + 3 E2E `grilla-realtime`). Unit suite 411→418. E2E suite +3 (delegados a CI). Integration 325/325 (los 2 flaky pre-existentes `race-abonado`/`daily-close` no flakearon esta corrida; la migración F3 T2 no agregó fallas).
+- **Bugs fixed: 30** (25 post-F2 + F3: H1 catch-up realtime P0-fase + H2 publication no versionada P1 + H3 name backfill P2 + H7 tooling setCookie P2 + H8 tooling falso-positivo P2). H4/H5/H6 de F3 son hardening/cobertura (REPLICA IDENTITY FULL, F1 primitives, tests), no bugs de runtime.
 - **Tests legacy ajustados: 7** (6 previos + 1 B11).
+- **Deps nuevas (devDependencies): `@testing-library/react` + `happy-dom`** (F3 T1, para `renderHook` del hook realtime).
+- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql` ↔ `20260526000001`, dual-tree, guarded).
 
 ## Próximas decisiones para el humano
 
-1. **F2 — Auth + Onboarding Flows** → ✅ completado esta sesión. 3/3 done-criteria: E2E magic link completo (4 → 6 tests admin-login), E2E onboarding 4 pasos → primera reserva (2 skipped reabiertos + 1 full-wizard + 1 Aha Moment), estados error UX clara (audit 7 files; 5 PASS, 2 FIXED, 3 minor items deferred F11). Pendiente merge a main.
+1. **F3 — Admin Grilla + Realtime** → ✅ completado esta sesión, mergeado a main. 3/4 done-criteria plenos (multi-browser E2E <2s, catch-up FIXED + tested, mobile usable) + #4 Lighthouse **88-89 medido** (1-2 pts corto, gap LCP estructural → F12). 8 hallazgos resueltos (H1-H8). 1 migración realtime versionada. **Decisión de schema (T2):** migración aditiva/idempotente/guarded de publication realtime — no-op en prod existente, cierra riesgo silencioso en re-provision.
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
-3. **F3 — Admin Grilla + Realtime** es la siguiente fase. **Criticidad MÁXIMA** (negocio no funciona si rompe). E2E 2 admins distintos browsers: uno crea, otro ve <2s. Catch-up post-desconexión. Mobile usable. Lighthouse ≥90. Trigger humano: confirmar continuar o pausar.
+3. **F4 — Admin Bookings + Cashflow + Canchas (CRUDs core)** es la siguiente fase. **Criticidad 🔴🔴 Alta.** Cada CRUD happy path + 3 edge cases E2E, confirmaciones destructivas escalonadas, optimistic updates donde aplique. Trigger humano: confirmar continuar o pausar.
+4. **Pendiente F12 (Performance):** `/grilla` Lighthouse 88-89 (LCP 3.8s vía shared bundle 150KB Sentry). Harness autenticado (`pnpm lighthouse:grilla`) listo para re-medir tras el adelgazamiento del bundle.

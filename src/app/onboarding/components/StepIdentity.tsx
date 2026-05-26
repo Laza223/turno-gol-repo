@@ -57,10 +57,11 @@ export function StepIdentity() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-900 mb-1.5">
+          <label htmlFor="identity-name" className="block text-sm font-medium text-slate-900 mb-1.5">
             Nombre del complejo <span className="text-red-500">*</span>
           </label>
           <input
+            id="identity-name"
             name="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -79,10 +80,11 @@ export function StepIdentity() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-900 mb-1.5">
+          <label htmlFor="identity-address" className="block text-sm font-medium text-slate-900 mb-1.5">
             Dirección <span className="text-red-500">*</span>
           </label>
           <input
+            id="identity-address"
             name="address"
             placeholder="Ej: Av. Corrientes 1234"
             required
@@ -92,10 +94,11 @@ export function StepIdentity() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            <label htmlFor="identity-city" className="block text-sm font-medium text-slate-900 mb-1.5">
               Ciudad <span className="text-red-500">*</span>
             </label>
             <input
+              id="identity-city"
               name="city"
               placeholder="Ej: Luján"
               required
@@ -103,10 +106,11 @@ export function StepIdentity() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            <label htmlFor="identity-province" className="block text-sm font-medium text-slate-900 mb-1.5">
               Provincia <span className="text-red-500">*</span>
             </label>
             <select
+              id="identity-province"
               name="province"
               required
               defaultValue=""
@@ -126,24 +130,28 @@ export function StepIdentity() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            <label htmlFor="identity-phone" className="block text-sm font-medium text-slate-900 mb-1.5">
               Teléfono <span className="text-red-500">*</span>
             </label>
             <input
+              id="identity-phone"
               name="phone"
               type="tel"
+              autoComplete="tel"
               placeholder="+54 9 11 1234-5678"
               required
               className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-900 mb-1.5">
+            <label htmlFor="identity-email" className="block text-sm font-medium text-slate-900 mb-1.5">
               Email de contacto <span className="text-red-500">*</span>
             </label>
             <input
+              id="identity-email"
               name="email"
               type="email"
+              autoComplete="email"
               placeholder="admin@complejo.com"
               required
               className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
@@ -151,7 +159,7 @@ export function StepIdentity() {
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
 
         <button
           type="submit"

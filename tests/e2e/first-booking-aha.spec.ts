@@ -66,7 +66,12 @@ test.describe('aha moment — first online booking', () => {
     } finally {
       await ctx.close()
       // Cleanup: delete the test booking so subsequent runs start fresh.
-      await supabase.from('bookings').delete().eq('id', bookingId)
+      // If delete fails, surface the error — orphaned bookings pollute the
+      // checklist surface for any other test asserting "no bookings yet".
+      const { error: deleteErr } = await supabase.from('bookings').delete().eq('id', bookingId)
+      if (deleteErr) {
+        throw new Error(`Cleanup delete failed: ${deleteErr.message}`)
+      }
     }
   })
 })

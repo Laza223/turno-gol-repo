@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-25
 **Branch principal:** main
-**Worktrees activos:** ninguno (B11 mergeado a main, worktree limpiado)
+**Worktrees activos:** ninguno (F0 mergeado a main, worktree limpiado)
 
 ## Fase actual
 
-**F0 — Baseline + Build Health frontend** (siguiente, no iniciada)
+**F1 — Design System + Componentes UI Base** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -24,6 +24,7 @@
 | B9 — Privacy / Ley 25.326 | 🟡 3 P1 FIXED + 4 P2 docs | `docs/audit/reports/fase-b09-privacy-report.md` |
 | B10 — Observabilidad | 🟡 4 P1 FIXED + 2 P2 FIXED + 1 P2 investigado | `docs/audit/reports/fase-b10-observabilidad-report.md` |
 | B11 — Operativo / Backups / Runbook | 🟡 1 P0 FIXED + 5 P1 FIXED + 3 P1 deferred-legal | `docs/audit/reports/fase-b11-operativo-report.md` |
+| F0 — Baseline + Build Health | 🟢 PASS (4/4 criteria) + 2 dead-weight removidos | `docs/audit/reports/fase-f00-baseline-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -74,9 +75,15 @@
 - **B9: opt-out / consent withdrawal UI ausente** → v1.5 si se agregan emails marketing
 - **B9: Audit log de ARCO Acceso diferido** → v1.5 con tabla global
 - **B9: race-abonado-vs-individual flaky bajo orden específico de suite** → 🔍 INVESTIGADO (B10 + B11): pasa 2/2 aislado; falla en suite completa por data bleed cross-test, NO regresión. Fix de hermeticidad deferido — P2 pre-existente
+- **F0-surfaced: `daily-close-idempotency.test.ts` (B8.4) falla contra test-DB local con estado residual** → 🔍 CONFIRMADO pre-existente (falla idéntica en main 687cccd sin cambios F0). Espera DB limpia (`balance=1000000`); residual `cash_flows` de corridas previas lo rompe. CI (contenedor limpio/job) verde. Misma clase de hermeticidad que race-abonado. P2 backlog: agregar truncate/cleanup por-test o bootstrap fresco. NO bloquea — F0 no toca cash/DB
 - **B11: ENCRYPTION_KEY key versioning** → v1.5 (trigger: si primera rotación real expone fricción operativa de v1)
 - **B11: Supabase staging project dedicado** → v1.5 (trigger: 10+ clientes o requisito contractual)
 - **B11: CI stress test job (manual_dispatch)** → backlog nice-to-have
+- **F0: `lucide-react` pinned a `^1.11.0`** (release 2021; línea mantenida es 0.4xx, semver invertido) → dep-upgrade task (toca 42 archivos, riesgo API). Candidato F1. `optimizePackageImports` ya mejora su tree-shaking
+- **F0: shared baseline 150KB** (Sentry SDK pesado en chunk común) → F12 si se necesita bajar más. F0 sólo aseguró toda ruta <200KB
+- **F0: `/staff` 190KB** (la ruta más cercana al techo de 200KB) → watch / candidato F12
+- **F0: Lighthouse assertion `error` (bloqueante) + corrida CI Linux** → F12/F14 (F0 dejó `warn` + config lista)
+- **F0: medición Lighthouse de rutas dinámicas** (grilla/dashboard/explorar, requieren auth+DB) → F3/F6/F12
 
 ### P3 (bajo)
 - B8: Reports SUM BIGINT → JS Number — pérdida potencial > 2^53 → no aplica rango realista
@@ -87,13 +94,13 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 12/26** (todo el backend done).
-- **Tests nuevos: 167** (147 previos + 20 B11). Suite integration verde excepto el flaky preexistente `race-abonado-vs-individual` (pasa aislado).
-- **Bugs fixed: 22** (2 P0 + 17 P1 + 3 P2). B11 aportó 1 P0 + 5 P1 + 2 P1-docs.
+- **Fases completadas: 13/26** (todo el backend B0-B11 + F0 frontend).
+- **Tests nuevos: 167** (147 previos + 20 B11). F0 no agregó tests (fase build-health, no de lógica). Suite integration verde excepto el flaky preexistente `race-abonado-vs-individual` (pasa aislado).
+- **Bugs fixed: 23** (2 P0 + 17 P1 + 4). F0 aportó 1 fix de bundle (`/grilla` 235→161KB) + 2 dead-weight removidos (dep `@phosphor-icons/react` + asset 777KB) + 4 lint warnings cerrados.
 - **Tests legacy ajustados: 7** (6 previos + 1 B11 refresh-mp-tokens-concurrency reescrito a single-winner).
 
 ## Próximas decisiones para el humano
 
-1. **Mergear `audit/backend-b11` a main** → hecho en esta sesión (typecheck + 411 unit + 324/325 integration verde con flaky conocido aislado).
-2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase del audit.
-3. **F0 — Baseline + Build Health frontend** es la siguiente fase. Bundle JS inicial <200KB gzipped por ruta, Lighthouse Perf ≥90 mobile, 0 `'use client'` innecesarios. Backend done; el bloque frontend comienza.
+1. **F0 — Baseline + Build Health** → ✅ completado esta sesión. 4/4 done-criteria: bundle toda ruta <200KB gz (`/grilla` 235→161KB), Lighthouse mobile 94-96 (≥90), 0 `'use client'` innecesarios (36 auditados), build limpio (4 `<img>` warnings cerrados). Mergeado a main.
+2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
+3. **F1 — Design System + Componentes UI Base** es la siguiente fase. `design-system/MASTER.md` fuente de verdad; Skeleton/Empty/Error states reusables. Candidato para resolver el pin de `lucide-react`. Trigger humano: confirmar continuar o pausar.

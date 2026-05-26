@@ -9,7 +9,6 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
     <div
       className={cn('skeleton rounded-md', className)}
       aria-busy="true"
-      aria-live="polite"
       {...props}
     />
   )

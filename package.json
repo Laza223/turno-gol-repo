@@ -31,7 +31,8 @@
     "db:sync-supabase": "node scripts/sync-supabase-migrations.mjs",
     "jobs:start": "tsx src/shared/jobs/run-workers.ts",
     "analyze": "cross-env ANALYZE=true next build",
-    "lighthouse": "lhci autorun"
+    "lighthouse": "lhci autorun",
+    "lighthouse:grilla": "tsx scripts/lighthouse-grilla.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0",

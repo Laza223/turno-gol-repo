@@ -73,6 +73,7 @@ export function useBookingRealtime(opts: {
   const [bookings, setBookings] = useState<GridBooking[]>(opts.initialBookings)
   const [status, setStatus] = useState<RealtimeStatus>('CONNECTING')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const reconcileRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchFromApi = useCallback(async () => {
     try {
@@ -84,6 +85,13 @@ export function useBookingRealtime(opts: {
       // retry on next tick
     }
   }, [opts.date])
+
+  // Debounced authoritative refetch: collapses rapid INSERT/UPDATE bursts into
+  // one round-trip so player names (absent from the realtime payload) get backfilled.
+  const scheduleReconcile = useCallback(() => {
+    if (reconcileRef.current) clearTimeout(reconcileRef.current)
+    reconcileRef.current = setTimeout(() => void fetchFromApi(), 400)
+  }, [fetchFromApi])
 
   useEffect(() => {
     let cancelled = false
@@ -124,6 +132,8 @@ export function useBookingRealtime(opts: {
                 }
                 return [...prev, normalized]
               })
+              // Names absent from realtime payload — backfill via authoritative fetch
+              scheduleReconcile()
             } else if (payload.eventType === 'UPDATE') {
               if (!newRow['id']) return
               const normalized = normalizeRealtimeRow(newRow)
@@ -136,6 +146,8 @@ export function useBookingRealtime(opts: {
                 }
                 return prev
               })
+              // Names absent from realtime payload — backfill via authoritative fetch
+              scheduleReconcile()
             }
           },
         )
@@ -146,6 +158,10 @@ export function useBookingRealtime(opts: {
               clearInterval(pollRef.current)
               pollRef.current = null
             }
+            // Catch up on any events missed while OFFLINE (Supabase does not
+            // guarantee an event queue). Also covers the micro-window between
+            // the SSR snapshot and the first post-hydration SUBSCRIBED.
+            void fetchFromApi()
           } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
             setStatus('OFFLINE')
             if (!pollRef.current) {
@@ -165,8 +181,12 @@ export function useBookingRealtime(opts: {
         clearInterval(pollRef.current)
         pollRef.current = null
       }
+      if (reconcileRef.current) {
+        clearTimeout(reconcileRef.current)
+        reconcileRef.current = null
+      }
     }
-  }, [opts.tenantId, opts.date, fetchFromApi])
+  }, [opts.tenantId, opts.date, fetchFromApi, scheduleReconcile])
 
   return { bookings, status }
 }

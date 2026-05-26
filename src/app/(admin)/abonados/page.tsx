@@ -6,6 +6,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Badge } from '@/components/ui/badge'
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -21,10 +22,10 @@ const STATUS_LABELS: Record<string, string> = {
   canceled: 'Cancelado',
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-green-100 text-green-800',
-  paused: 'bg-yellow-100 text-yellow-800',
-  canceled: 'bg-gray-100 text-gray-500',
+const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'secondary'> = {
+  active: 'success',
+  paused: 'warning',
+  canceled: 'secondary',
 }
 
 export default async function AbоnadosPage() {
@@ -90,11 +91,9 @@ export default async function AbоnadosPage() {
                   <td className="p-3">{formatARS(a.pricePerSession)}</td>
                   <td className="p-3">{formatARS(a.monthlyPrice)}</td>
                   <td className="p-3">
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[a.status] ?? ''}`}
-                    >
+                    <Badge variant={STATUS_VARIANT[a.status] ?? 'secondary'}>
                       {STATUS_LABELS[a.status] ?? a.status}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="p-3 space-x-2">
                     {a.status === 'active' && (

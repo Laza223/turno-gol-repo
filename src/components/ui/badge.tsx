@@ -11,6 +11,7 @@ const badgeVariants = cva(
         secondary: 'border-transparent bg-slate-100 text-slate-900 hover:bg-slate-100/80',
         destructive: 'border-transparent bg-red-600 text-white hover:bg-red-600/80',
         success: 'border-transparent bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 hover:bg-emerald-100',
+        warning: 'border-transparent bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
         outline: 'text-slate-900 border-slate-200',
       },
     },

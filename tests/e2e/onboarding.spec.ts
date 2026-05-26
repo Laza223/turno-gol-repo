@@ -44,34 +44,17 @@ test.describe('onboarding', () => {
       await expect(page).toHaveURL(/\/login/)
     })
 
-    test('step 1 renders complex identity form', async ({ page, adminStorageState }) => {
-      // Use admin storage state — the buildStorageState fixture creates a staff
-      // session. If this admin already has a tenant and completed onboarding,
-      // they'll be redirected to /dashboard. We test the form renders at /onboarding.
-      await page.context().addCookies(JSON.parse(adminStorageState).cookies)
+    test('step 1 renders complex identity form', async ({ page, freshAdminStorageState }) => {
+      await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
-      // If admin already has a tenant, we may land on /dashboard or a later step.
-      // Verify the wizard page structure regardless of step.
-      const url = page.url()
-      if (url.includes('/onboarding')) {
-        // Wizard is visible — verify stepper progress indicator
-        await expect(page.getByText(/paso \d+ de 4/i)).toBeVisible()
-      } else {
-        // Already completed onboarding — admin redirected to dashboard
-        await expect(page).toHaveURL(/\/dashboard/)
-      }
+      // Fresh admin always lands on /onboarding step 1
+      await expect(page.getByText(/paso \d+ de 4/i)).toBeVisible()
     })
 
-    test('wizard shows progress stepper', async ({ page, adminStorageState }) => {
-      await page.context().addCookies(JSON.parse(adminStorageState).cookies)
+    test('wizard shows progress stepper', async ({ page, freshAdminStorageState }) => {
+      await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
-
-      const url = page.url()
-      if (!url.includes('/onboarding')) {
-        test.skip(true, 'Admin already completed onboarding')
-        return
-      }
 
       // Progress indicator
       await expect(page.getByText(/paso \d+ de 4/i)).toBeVisible()
@@ -80,24 +63,52 @@ test.describe('onboarding', () => {
     })
   })
 
-  test.describe('full wizard flow (step 1 - identity)', () => {
-    test('step 1 has all complex identity fields', async ({ page, adminStorageState }) => {
-      await page.context().addCookies(JSON.parse(adminStorageState).cookies)
+  test.describe.serial('full wizard flow (step 1 - identity)', () => {
+    test('step 1 has all complex identity fields', async ({ page, freshAdminStorageState }) => {
+      await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
-      const url = page.url()
-      if (!url.includes('/onboarding')) {
-        test.skip(true, 'Admin already completed onboarding')
-        return
-      }
-
-      // If on step 1, verify form fields
+      // Step 1 must render — if the full-wizard test below ran first and
+      // persisted a tenant, the seed-e2e cleanup (T1) reverts that on next
+      // run, but the serial() above guarantees order within this describe.
       const heading = page.getByRole('heading', { name: /tu complejo/i })
-      if (await heading.isVisible()) {
-        await expect(page.getByPlaceholder(/complejo san mart/i)).toBeVisible()
-        await expect(page.getByPlaceholder(/corrientes/i)).toBeVisible()
-        await expect(page.getByRole('button', { name: /continuar/i })).toBeVisible()
-      }
+      await expect(heading).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByPlaceholder(/complejo san mart/i)).toBeVisible()
+      await expect(page.getByPlaceholder(/corrientes/i)).toBeVisible()
+      await expect(page.getByRole('button', { name: /continuar/i })).toBeVisible()
+    })
+
+    test('completes full 4-step wizard and lands on /dashboard', async ({ page, freshAdminStorageState }) => {
+      await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
+      await page.goto('/onboarding')
+      await expect(page).toHaveURL(/\/onboarding/)
+
+      // Step 1: complex identity — fill required fields
+      // Labels use className without for/htmlFor, so locate by placeholder
+      await expect(page.getByRole('heading', { name: /tu complejo/i })).toBeVisible({ timeout: 10_000 })
+      await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard E2E')
+      await page.getByPlaceholder(/av\. corrientes/i).fill('Av. Test 123')
+      await page.getByPlaceholder(/luj[aá]n/i).fill('Buenos Aires')
+      await page.locator('select[name="province"]').selectOption({ index: 1 })
+      await page.getByPlaceholder(/\+54 9 11/i).fill('+5491100000000')
+      await page.getByPlaceholder(/admin@complejo\.com/i).fill('wizard-e2e@turnogol.test')
+      await page.getByRole('button', { name: /continuar/i }).click()
+
+      // Step 2: courts info-only — just continue
+      await expect(page.getByText(/paso 2 de 4/i)).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('button', { name: /continuar/i }).click()
+
+      // Step 3: schedule (pre-filled defaults)
+      await expect(page.getByText(/paso 3 de 4/i)).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('button', { name: /continuar/i }).click()
+
+      // Step 4: skip MP ("Terminar sin seña" button)
+      await expect(page.getByText(/paso 4 de 4/i)).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('button', { name: /terminar sin seña/i }).click()
+
+      // Landed on /dashboard
+      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
+      await expect(page.getByText(/Complejo Wizard E2E/i).first()).toBeVisible({ timeout: 10_000 })
     })
   })
 })

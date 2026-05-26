@@ -17,6 +17,9 @@ const E2E = {
   playerEmail: 'e2e-player@turnogol.test',
   playerId: '00000000-0000-4000-8000-000000000020',
   playerAuthUserId: '00000000-0000-4000-8000-000000000021',
+  freshAdminEmail: 'e2e-admin-fresh@turnogol.test',
+  freshAdminAuthUserId: '00000000-0000-4000-8000-000000000004',
+  freshStaffUserId: '00000000-0000-4000-8000-000000000005',
 }
 
 type SqlClient = ReturnType<typeof getSql>
@@ -27,6 +30,30 @@ type SqlClient = ReturnType<typeof getSql>
  * surfaces seed mistakes immediately.
  */
 async function cleanup(sql: SqlClient): Promise<void> {
+  // Cascade-delete any tenants the freshAdmin created during prior E2E runs.
+  // These have FKs into payments/bookings/courts/etc., so we need to clear
+  // their child tables first via the loop below. We collect IDs, then run
+  // the full reverse-FK cleanup for each.
+  const freshTenantsResult = await sql`
+    SELECT tenant_id FROM tenant_staff_members WHERE staff_user_id = ${E2E.freshStaffUserId}
+  `
+  for (const row of freshTenantsResult as unknown as Array<{ tenant_id: string }>) {
+    const tid = row.tenant_id
+    await sql`DELETE FROM audit_logs WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM notifications WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM cash_flows WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM payments WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM bookings WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM abonados WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM products WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM courts WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tenants WHERE id = ${tid}`
+  }
   await sql`DELETE FROM audit_logs WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.tenantId}`
@@ -43,6 +70,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM tenants WHERE id = ${E2E.tenantId}`
   await sql`DELETE FROM players WHERE id = ${E2E.playerId} OR email = ${E2E.playerEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`
+  await sql`DELETE FROM staff_users WHERE id = ${E2E.freshStaffUserId} OR email = ${E2E.freshAdminEmail}`
 }
 
 async function cleanupAuthUsers(): Promise<void> {
@@ -52,7 +80,7 @@ async function cleanupAuthUsers(): Promise<void> {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY required')
   }
   const supabase = createClient(url, key, { auth: { persistSession: false } })
-  for (const id of [E2E.adminAuthUserId, E2E.playerAuthUserId]) {
+  for (const id of [E2E.adminAuthUserId, E2E.playerAuthUserId, E2E.freshAdminAuthUserId]) {
     const { error } = await supabase.auth.admin.deleteUser(id)
     if (error && !/not found/i.test(error.message)) {
       throw error
@@ -133,6 +161,14 @@ async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
   `
 }
 
+async function seedFreshAdminStaff(sql: SqlClient): Promise<void> {
+  await sql`
+    INSERT INTO staff_users (id, email, first_name, last_name)
+    VALUES (${E2E.freshStaffUserId}, ${E2E.freshAdminEmail}, ${'Fresh'}, ${'Admin'})
+  `
+  // NO tenant_staff_members insert — fresh admin has 0 tenants → enters wizard.
+}
+
 async function seedAuthUsers(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -164,6 +200,17 @@ async function seedAuthUsers(): Promise<void> {
     })
     if (error) throw error
   }
+  // Fresh admin auth user (no tenant — for onboarding wizard E2E)
+  {
+    const { error } = await supabase.auth.admin.createUser({
+      id: E2E.freshAdminAuthUserId,
+      email: E2E.freshAdminEmail,
+      email_confirm: true,
+      // 0-tenant admin: callback sets only staff_user_id; wizard creates tenant.
+      app_metadata: { staff_user_id: E2E.freshStaffUserId },
+    })
+    if (error) throw error
+  }
 }
 
 async function main(): Promise<void> {
@@ -173,11 +220,13 @@ async function main(): Promise<void> {
     await cleanup(sql)
     await seedTenantAndCourt(sql)
     await seedStaffAndPlayer(sql)
+    await seedFreshAdminStaff(sql)
     await seedAuthUsers()
     console.log('E2E seed OK')
     console.log(`  tenant: ${E2E.tenantId} (${E2E.tenantSlug})`)
     console.log(`  admin:  ${E2E.adminEmail} (auth ${E2E.adminAuthUserId})`)
     console.log(`  player: ${E2E.playerEmail} (auth ${E2E.playerAuthUserId})`)
+    console.log(`  freshAdmin: ${E2E.freshAdminEmail} (auth ${E2E.freshAdminAuthUserId})`)
   } finally {
     await closeSql()
   }

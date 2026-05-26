@@ -5,6 +5,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 const ADMIN_EMAIL = 'e2e-admin@turnogol.test'
 const PLAYER_EMAIL = 'e2e-player@turnogol.test'
 const FRESH_ADMIN_EMAIL = 'e2e-admin-fresh@turnogol.test'
+const SECOND_ADMIN_EMAIL = 'e2e-admin-2@turnogol.test'
 
 type StorageState = {
   cookies: Array<{
@@ -94,6 +95,7 @@ type WorkerFixtures = {
   adminStorageState: string
   playerStorageState: string
   freshAdminStorageState: string
+  secondAdminStorageState: string
 }
 
 export const test = base.extend<NonNullable<unknown>, WorkerFixtures>({
@@ -105,6 +107,9 @@ export const test = base.extend<NonNullable<unknown>, WorkerFixtures>({
   }, { scope: 'worker' }],
   freshAdminStorageState: [async ({}, use) => {
     await use(JSON.stringify(await buildStorageState(FRESH_ADMIN_EMAIL)))
+  }, { scope: 'worker' }],
+  secondAdminStorageState: [async ({}, use) => {
+    await use(JSON.stringify(await buildStorageState(SECOND_ADMIN_EMAIL)))
   }, { scope: 'worker' }],
 })
 

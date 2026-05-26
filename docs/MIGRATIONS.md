@@ -69,6 +69,7 @@ src/shared/db/migrations/
   010_billing_columns.sql             ↔  supabase/migrations/20260424000009_billing_columns.sql
   011_notification_sending_enum.sql   ↔  supabase/migrations/20260525000001_notification_sending_enum.sql
   012_system_admins_audit.sql         ↔  supabase/migrations/20260525000002_system_admins_audit.sql
+  013_realtime_publication.sql        ↔  supabase/migrations/20260526000001_realtime_publication.sql
 ```
 
 Note that file **numbers and timestamps need not align**. The two trees are append-only sequences of "the same statements in the same order"; the supabase tree just uses timestamps so the CLI can place them chronologically among other potential migrations.

@@ -5,6 +5,7 @@ import { getPublicTenant, getPublicAvailability } from '@/modules/tenants/public
 import type { PublicTenant } from '@/modules/tenants/public.service'
 import TenantHeader from './components/TenantHeader'
 import AvailabilityGrid from './components/AvailabilityGrid'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type Props = { params: { slug: string }; searchParams: { date?: string } }
 
@@ -67,7 +68,7 @@ export default async function PublicComplexPage(props: Props) {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <TenantHeader tenant={tenant} />
-      <Suspense fallback={<div className="skeleton h-64 rounded-lg" />}>
+      <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
         <GridSection tenant={tenant} initialDate={initialDate} />
       </Suspense>
     </div>

@@ -20,6 +20,9 @@ const E2E = {
   freshAdminEmail: 'e2e-admin-fresh@turnogol.test',
   freshAdminAuthUserId: '00000000-0000-4000-8000-000000000004',
   freshStaffUserId: '00000000-0000-4000-8000-000000000005',
+  secondAdminEmail: 'e2e-admin-2@turnogol.test',
+  secondAdminAuthUserId: '00000000-0000-4000-8000-000000000006',
+  secondStaffUserId: '00000000-0000-4000-8000-000000000007',
 }
 
 type SqlClient = ReturnType<typeof getSql>
@@ -71,6 +74,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM players WHERE id = ${E2E.playerId} OR email = ${E2E.playerEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.freshStaffUserId} OR email = ${E2E.freshAdminEmail}`
+  await sql`DELETE FROM staff_users WHERE id = ${E2E.secondStaffUserId} OR email = ${E2E.secondAdminEmail}`
 }
 
 async function cleanupAuthUsers(): Promise<void> {
@@ -80,7 +84,7 @@ async function cleanupAuthUsers(): Promise<void> {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY required')
   }
   const supabase = createClient(url, key, { auth: { persistSession: false } })
-  for (const id of [E2E.adminAuthUserId, E2E.playerAuthUserId, E2E.freshAdminAuthUserId]) {
+  for (const id of [E2E.adminAuthUserId, E2E.playerAuthUserId, E2E.freshAdminAuthUserId, E2E.secondAdminAuthUserId]) {
     const { error } = await supabase.auth.admin.deleteUser(id)
     if (error && !/not found/i.test(error.message)) {
       throw error
@@ -152,6 +156,14 @@ async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
     VALUES (${E2E.tenantId}, ${E2E.staffUserId}, 'admin')
   `
   await sql`
+    INSERT INTO staff_users (id, email, first_name, last_name)
+    VALUES (${E2E.secondStaffUserId}, ${E2E.secondAdminEmail}, ${'E2E'}, ${'Admin2'})
+  `
+  await sql`
+    INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role)
+    VALUES (${E2E.tenantId}, ${E2E.secondStaffUserId}, 'admin')
+  `
+  await sql`
     INSERT INTO players (id, email, first_name, last_name, status, agreed_to_terms_at, terms_version)
     VALUES (${E2E.playerId}, ${E2E.playerEmail}, ${'E2E'}, ${'Player'}, 'active', NOW(), 'v1')
   `
@@ -211,6 +223,20 @@ async function seedAuthUsers(): Promise<void> {
     })
     if (error) throw error
   }
+  // Second admin auth user — same tenant as admin 1, for realtime multi-user E2E
+  {
+    const { error } = await supabase.auth.admin.createUser({
+      id: E2E.secondAdminAuthUserId,
+      email: E2E.secondAdminEmail,
+      email_confirm: true,
+      app_metadata: {
+        tenant_id: E2E.tenantId,
+        role: 'admin',
+        staff_user_id: E2E.secondStaffUserId,
+      },
+    })
+    if (error) throw error
+  }
 }
 
 async function main(): Promise<void> {
@@ -227,6 +253,7 @@ async function main(): Promise<void> {
     console.log(`  admin:  ${E2E.adminEmail} (auth ${E2E.adminAuthUserId})`)
     console.log(`  player: ${E2E.playerEmail} (auth ${E2E.playerAuthUserId})`)
     console.log(`  freshAdmin: ${E2E.freshAdminEmail} (auth ${E2E.freshAdminAuthUserId})`)
+    console.log(`  admin2: ${E2E.secondAdminEmail} (auth ${E2E.secondAdminAuthUserId})`)
   } finally {
     await closeSql()
   }

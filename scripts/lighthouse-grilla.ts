@@ -33,7 +33,7 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 
 import { execSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
@@ -205,14 +205,63 @@ async function main(): Promise<void> {
   }
 
   // -------------------------------------------------------------------------
-  // 5. Exit with meaningful code
+  // 5. Report the REAL measured score and exit honestly.
+  //    The LHCI assertion uses `warn` (mirrors F0), so `lhci assert` exits 0
+  //    even when the score is below threshold OR when zero runs were collected.
+  //    NEVER trust its exit code as a pass signal — read the generated LHR.
   // -------------------------------------------------------------------------
-  if (assertCode !== 0) {
-    console.error(`\nlhci assert failed (exit ${assertCode}) — Performance score may be below 0.90`)
-    process.exit(assertCode)
+  void assertCode // assert stdout is informational only; the LHR is source of truth
+  const score = readPerformanceScore()
+  if (score === null) {
+    console.error(
+      `\nNo Lighthouse result found (collect exited ${collectCode}). ` +
+        `collect did not produce an LHR — the run FAILED (this is NOT a passing measurement).`,
+    )
+    process.exit(1)
   }
+  const pct = Math.round(score * 100)
+  console.log(`\n/grilla mobile Performance (measured): ${pct}  (raw ${score.toFixed(2)})`)
+  if (score >= 0.9) {
+    console.log('PASS — Performance >= 90 (F3 done-criteria #4).')
+    process.exit(0)
+  }
+  console.error(
+    `BELOW THRESHOLD — measured ${pct} < 90. Inspect the LHR in .lighthouseci/ ` +
+      `for the LCP/TBT breakdown.`,
+  )
+  process.exit(1)
+}
 
-  console.log('\nlhci assert passed — /grilla Performance ≥ 0.90')
+/**
+ * Read the representative-run Performance score (0..1) from LHCI's raw output
+ * in `.lighthouseci/`. Prefers `manifest.json` (carries the representative-run
+ * summary); falls back to the newest `lhr-*.json`. Returns null if no result
+ * exists (i.e. collect failed to measure anything).
+ */
+function readPerformanceScore(): number | null {
+  const dir = '.lighthouseci'
+  try {
+    const manifest = JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf-8')) as Array<{
+      summary?: { performance?: number }
+      isRepresentativeRun?: boolean
+    }>
+    const rep = manifest.find((m) => m.isRepresentativeRun) ?? manifest[0]
+    if (rep?.summary?.performance != null) return rep.summary.performance
+  } catch {
+    // no manifest — fall through to scanning lhr-*.json
+  }
+  try {
+    const lhrs = readdirSync(dir)
+      .filter((f) => f.startsWith('lhr-') && f.endsWith('.json'))
+      .sort()
+    if (lhrs.length === 0) return null
+    const lhr = JSON.parse(
+      readFileSync(join(dir, lhrs[lhrs.length - 1]!), 'utf-8'),
+    ) as { categories?: { performance?: { score?: number } } }
+    return lhr.categories?.performance?.score ?? null
+  } catch {
+    return null
+  }
 }
 
 main().catch((err: unknown) => {

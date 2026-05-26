@@ -9,7 +9,7 @@
  * Format of the JSON file: Array<{ name, value, domain, path, expires,
  *   httpOnly, secure, sameSite }>  — exactly the @supabase/ssr cookie shape.
  *
- * @param {import('puppeteer').Browser} _browser
+ * @param {import('puppeteer').Browser} browser
  * @param {import('puppeteer').Page} page
  */
 // @ts-check
@@ -19,10 +19,10 @@ const fs = require('fs')
 const path = require('path')
 
 /**
- * @param {unknown} _browser
+ * @param {import('puppeteer-core').Browser} browser
  * @param {import('puppeteer-core').Page} page
  */
-module.exports = async function (_browser, page) {
+module.exports = async function (browser, page) {
   const cookiesFile = process.env.LHCI_GRILLA_COOKIES_FILE
   if (!cookiesFile) {
     throw new Error('LHCI_GRILLA_COOKIES_FILE env var not set')
@@ -49,5 +49,24 @@ module.exports = async function (_browser, page) {
     sameSite: /** @type {'Lax'|'Strict'|'None'} */ (c.sameSite),
   }))
 
-  await page.setCookie(...puppeteerCookies)
+  // Puppeteer v23+ (bundled by LHCI 0.15) moved setCookie from Page to Browser.
+  // Older versions keep it on Page. Fall back to CDP Network.setCookie if neither.
+  if (typeof browser.setCookie === 'function') {
+    await browser.setCookie(...puppeteerCookies)
+  } else if (typeof page.setCookie === 'function') {
+    await page.setCookie(...puppeteerCookies)
+  } else {
+    const client = await page.target().createCDPSession()
+    for (const c of puppeteerCookies) {
+      await client.send('Network.setCookie', {
+        name: c.name,
+        value: c.value,
+        domain: c.domain,
+        path: c.path,
+        httpOnly: c.httpOnly,
+        secure: c.secure,
+        sameSite: c.sameSite,
+      })
+    }
+  }
 }

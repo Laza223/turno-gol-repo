@@ -2,6 +2,7 @@
 
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react'
 import { registerAction, type RegisterState } from './actions'
 
@@ -24,11 +25,13 @@ export default function RegisterPage() {
 function ImagePane() {
   return (
     <div className="relative hidden lg:block">
-      <img
+      <Image
         src={HERO_IMG}
         alt="Cancha de fútbol al atardecer"
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="eager"
+        fill
+        priority
+        sizes="(min-width: 1024px) 50vw, 0vw"
+        className="object-cover"
       />
       <div
         aria-hidden

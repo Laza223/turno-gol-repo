@@ -12,3 +12,8 @@ Thumbs.db
 # Playwright artifacts
 test-results/
 playwright-report/
+
+# Lighthouse CI artifacts (HTML reports — bulky, keep only config + summary)
+.lighthouseci/
+docs/audit/reports/fase-f00-raw/lhci/*.html
+docs/audit/reports/fase-f00-raw/lhci/*.json

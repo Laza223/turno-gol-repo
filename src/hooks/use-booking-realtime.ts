@@ -1,8 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import type { BookingStatus, BookingType } from '@/modules/bookings/booking.types'
 
@@ -73,7 +72,6 @@ export function useBookingRealtime(opts: {
 }): { bookings: GridBooking[]; status: RealtimeStatus } {
   const [bookings, setBookings] = useState<GridBooking[]>(opts.initialBookings)
   const [status, setStatus] = useState<RealtimeStatus>('CONNECTING')
-  const supabase = useMemo(() => createClient(), [])
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchFromApi = useCallback(async () => {
@@ -88,75 +86,87 @@ export function useBookingRealtime(opts: {
   }, [opts.date])
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`bookings:${opts.tenantId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookings' },
-        (payload: RealtimePostgresChangesPayload<RawRow>) => {
-          const newRow = payload.new as RawRow
-          const oldRow = payload.old as RawRow
+    let cancelled = false
+    let teardown: (() => void) | undefined
 
-          const newDate =
-            typeof newRow['date'] === 'string' ? (newRow['date'] as string).slice(0, 10) : null
-          const oldDate =
-            typeof oldRow['date'] === 'string' ? (oldRow['date'] as string).slice(0, 10) : null
+    void (async () => {
+      const { createClient } = await import('@/lib/supabase/client')
+      if (cancelled) return
+      const supabase = createClient()
+      const channel = supabase
+        .channel(`bookings:${opts.tenantId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'bookings' },
+          (payload: RealtimePostgresChangesPayload<RawRow>) => {
+            const newRow = payload.new as RawRow
+            const oldRow = payload.old as RawRow
 
-          if (newDate !== opts.date && oldDate !== opts.date) return
+            const newDate =
+              typeof newRow['date'] === 'string' ? (newRow['date'] as string).slice(0, 10) : null
+            const oldDate =
+              typeof oldRow['date'] === 'string' ? (oldRow['date'] as string).slice(0, 10) : null
 
-          if (payload.eventType === 'DELETE') {
-            const deletedId = (oldRow['id'] as string | undefined) ?? ''
-            setBookings((prev) => prev.filter((b) => b.id !== deletedId))
-          } else if (payload.eventType === 'INSERT') {
-            if (!newRow['id']) return
-            const normalized = normalizeRealtimeRow(newRow)
-            setBookings((prev) => {
-              const idx = prev.findIndex((b) => b.id === normalized.id)
-              if (idx >= 0) {
-                const next = [...prev]
-                next[idx] = normalized
-                return next
-              }
-              return [...prev, normalized]
-            })
-          } else if (payload.eventType === 'UPDATE') {
-            if (!newRow['id']) return
-            const normalized = normalizeRealtimeRow(newRow)
-            setBookings((prev) => {
-              const idx = prev.findIndex((b) => b.id === normalized.id)
-              if (idx >= 0) {
-                const next = [...prev]
-                next[idx] = normalized
-                return next
-              }
-              return prev
-            })
+            if (newDate !== opts.date && oldDate !== opts.date) return
+
+            if (payload.eventType === 'DELETE') {
+              const deletedId = (oldRow['id'] as string | undefined) ?? ''
+              setBookings((prev) => prev.filter((b) => b.id !== deletedId))
+            } else if (payload.eventType === 'INSERT') {
+              if (!newRow['id']) return
+              const normalized = normalizeRealtimeRow(newRow)
+              setBookings((prev) => {
+                const idx = prev.findIndex((b) => b.id === normalized.id)
+                if (idx >= 0) {
+                  const next = [...prev]
+                  next[idx] = normalized
+                  return next
+                }
+                return [...prev, normalized]
+              })
+            } else if (payload.eventType === 'UPDATE') {
+              if (!newRow['id']) return
+              const normalized = normalizeRealtimeRow(newRow)
+              setBookings((prev) => {
+                const idx = prev.findIndex((b) => b.id === normalized.id)
+                if (idx >= 0) {
+                  const next = [...prev]
+                  next[idx] = normalized
+                  return next
+                }
+                return prev
+              })
+            }
+          },
+        )
+        .subscribe((s) => {
+          if (s === 'SUBSCRIBED') {
+            setStatus('SUBSCRIBED')
+            if (pollRef.current) {
+              clearInterval(pollRef.current)
+              pollRef.current = null
+            }
+          } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
+            setStatus('OFFLINE')
+            if (!pollRef.current) {
+              pollRef.current = setInterval(() => void fetchFromApi(), 30_000)
+            }
           }
-        },
-      )
-      .subscribe((s) => {
-        if (s === 'SUBSCRIBED') {
-          setStatus('SUBSCRIBED')
-          if (pollRef.current) {
-            clearInterval(pollRef.current)
-            pollRef.current = null
-          }
-        } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
-          setStatus('OFFLINE')
-          if (!pollRef.current) {
-            pollRef.current = setInterval(() => void fetchFromApi(), 30_000)
-          }
-        }
-      })
+        })
+      teardown = () => {
+        void supabase.removeChannel(channel)
+      }
+    })()
 
     return () => {
-      void supabase.removeChannel(channel)
+      cancelled = true
+      teardown?.()
       if (pollRef.current) {
         clearInterval(pollRef.current)
         pollRef.current = null
       }
     }
-  }, [supabase, opts.tenantId, opts.date, fetchFromApi])
+  }, [opts.tenantId, opts.date, fetchFromApi])
 
   return { bookings, status }
 }

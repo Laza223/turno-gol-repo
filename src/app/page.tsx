@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ArrowRight,
   Bell,
@@ -109,12 +110,14 @@ function Hero() {
   return (
     <section className="relative isolate overflow-hidden">
       {/* Background image */}
-      <img
+      <Image
         src={HERO_BG}
         alt=""
         aria-hidden
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="eager"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
       />
       {/* Dark overlay + gradient */}
       <div
@@ -236,12 +239,13 @@ function Features() {
 function ShowcaseStrip() {
   return (
     <section className="relative isolate overflow-hidden">
-      <img
+      <Image
         src={FEATURE_BG}
         alt=""
         aria-hidden
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="lazy"
+        fill
+        sizes="100vw"
+        className="object-cover"
       />
       <div
         aria-hidden

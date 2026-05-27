@@ -70,8 +70,7 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
           ) : (
             <DropdownMenuItem
               className="cursor-pointer"
-              onSelect={(e) => {
-                e.preventDefault()
+              onSelect={() => {
                 void handleResendInvite()
               }}
             >

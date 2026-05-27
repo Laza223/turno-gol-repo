@@ -2,8 +2,7 @@ import type { MetadataRoute } from 'next'
 import { listSitemapTenants } from '@/modules/tenants/sitemap.service'
 import { absoluteUrl } from '@/lib/seo/metadata'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 3600 // 1 hour — sitemap is dynamic but doesn't need per-request freshness
+export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()

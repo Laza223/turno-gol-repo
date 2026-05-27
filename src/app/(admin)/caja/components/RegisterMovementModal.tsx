@@ -18,7 +18,22 @@ const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
   ],
 }
 
-export function RegisterMovementModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+// El movimiento se registra en el día que se está viendo (consistente con closeDayAction).
+// Hoy → hora real; otro día → mediodía ART, cuya fecha-ART es exactamente `date`.
+function occurredAtForDate(date: string): Date {
+  const todayArt = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
+  return date === todayArt ? new Date() : new Date(`${date}T12:00:00-03:00`)
+}
+
+export function RegisterMovementModal({
+  open,
+  onClose,
+  date,
+}: {
+  open: boolean
+  onClose: () => void
+  date: string
+}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +62,7 @@ export function RegisterMovementModal({ open, onClose }: { open: boolean; onClos
         method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
         amount,
         description: description.trim(),
+        occurredAt: occurredAtForDate(date),
       })
       if (res.success) {
         toast({ title: 'Movimiento registrado', variant: 'success' })

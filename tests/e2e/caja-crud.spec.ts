@@ -6,13 +6,18 @@
  *              → row appears in table.
  *   #2  Edge — close day (type-to-confirm): "Cerrar caja" → confirm button disabled until typing "CERRAR" →
  *              type it → confirm → "Cerrada por" badge shown.
- *   #3  Edge — idempotency: after closing, attempt "+ Agregar movimiento" → error "ya fue cerrada".
+ *   #3  Edge — closed-day guard: a pre-closed day hides the write actions (CajaActions returns null
+ *              when isClosed) so neither a movement nor a second close can be issued from the UI.
+ *              The server-side idempotency guard ("ya fue cerrada") is covered by the integration
+ *              test daily-close-idempotency.
  *   #4  Edge — close with difference requires note: balance > 0, declared cash differs → note required →
  *              assert error without note, then fill note → success.
  *
- * ISOLATION STRATEGY: All tests use a DEDICATED past date (TEST_DATE_CLOSE / TEST_DATE_DIFF) far
- * from today so they never collide with real data or the pre-existing daily-close-idempotency test
- * which uses today. Cleanup removes cash_flows + daily_cash_closes for (TENANT_ID, testDate) in `finally`.
+ * ISOLATION STRATEGY: Each test uses its OWN dedicated past date (2019-03-10..13), far from today,
+ * so they never collide with real data, with each other (fullyParallel), or with the pre-existing
+ * daily-close-idempotency integration test (which uses today). Note: cash_flows has no `date`
+ * column — the ART-local date of `occurred_at` defines the day; cleanup deletes by that UTC range.
+ * Cleanup removes cash_flows + daily_cash_closes for the test date in `finally`.
  *
  * NOTE: Live E2E execution requires a running Next.js dev/prod server + Supabase DB
  *       + `pnpm e2e:seed`. Delegated to CI; these specs typecheck locally.
@@ -27,12 +32,15 @@ const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 
 // Use dedicated dates per test group — well in the past and unique to these specs.
-// TEST_DATE_MOVE: register-movement + idempotency test isolation.
+// One date per test so fullyParallel workers never collide on the same day.
+// TEST_DATE_MOVE: register-movement happy test.
 const TEST_DATE_MOVE = '2019-03-10'
-// TEST_DATE_CLOSE: close day test.
+// TEST_DATE_CLOSE: close day (type-to-confirm) test.
 const TEST_DATE_CLOSE = '2019-03-11'
 // TEST_DATE_DIFF: close-with-difference test.
 const TEST_DATE_DIFF = '2019-03-12'
+// TEST_DATE_CLOSED: pre-closed-day guard test.
+const TEST_DATE_CLOSED = '2019-03-13'
 
 // ── Service-role client factory ──────────────────────────────────────────────
 function makeServiceClient() {
@@ -46,16 +54,29 @@ function makeServiceClient() {
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
+// cash_flows has no `date` column — rows belong to the ART-local date of `occurred_at`
+// (see cashflow.service.ts). The ART day D spans UTC [D 03:00, D+1 03:00).
+function artDayUtcRange(date: string): { gte: string; lt: string } {
+  const next = new Date(`${date}T00:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  return {
+    gte: `${date}T03:00:00.000Z`,
+    lt: `${next.toISOString().slice(0, 10)}T03:00:00.000Z`,
+  }
+}
+
 async function cleanupCajaDate(
   supabase: ReturnType<typeof makeServiceClient>,
   date: string,
 ): Promise<void> {
-  // Delete child rows first (cash_flows), then daily_cash_closes.
+  // cash_flows: delete by occurred_at range (no `date` column). daily_cash_closes: has `date`.
+  const { gte, lt } = artDayUtcRange(date)
   const { error: cfErr } = await supabase
     .from('cash_flows')
     .delete()
     .eq('tenant_id', TENANT_ID)
-    .eq('date', date)
+    .gte('occurred_at', gte)
+    .lt('occurred_at', lt)
   if (cfErr) throw new Error(`Cleanup cash_flows failed: ${cfErr.message}`)
 
   const { error: dcErr } = await supabase
@@ -80,9 +101,10 @@ async function seedCashFlow(
     method: 'cash',
     amount: 100000, // 1000 ARS
     description: 'E2E seed movement',
-    date,
+    // No `date` column — the ART-local date of occurred_at defines the day.
+    // 10:00Z = 07:00 ART → ART-date === `date`.
     occurred_at: `${date}T10:00:00.000Z`,
-    created_by: STAFF_USER_ID,
+    registered_by: STAFF_USER_ID, // FK to staff_users (NOT NULL)
   })
   if (error) throw new Error(`Service-role cash_flow INSERT failed: ${error.message}`)
 }
@@ -97,12 +119,14 @@ async function seedDailyClose(
     id,
     tenant_id: TENANT_ID,
     date,
+    total_income: 100000,
+    total_adjustments: 0,
     balance: 100000,
+    declared_cash: 100000, // NOT NULL (default 0) — pass an explicit value, never null
+    diff_amount: 0, // real column is `diff_amount`, NOT `diff`; NOT NULL
+    note: null,
     closed_by: STAFF_USER_ID,
     closed_at: `${date}T23:00:00.000Z`,
-    note: null,
-    declared_cash: null,
-    diff: null,
   })
   if (error) throw new Error(`Service-role daily_cash_closes INSERT failed: ${error.message}`)
 }
@@ -219,37 +243,36 @@ test.describe('caja — edge: close day (type-to-confirm)', () => {
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 3 — Edge: idempotency — adding movement to already-closed day
 // ════════════════════════════════════════════════════════════════════════════
-test.describe('caja — edge: idempotency (already closed)', () => {
+test.describe('caja — edge: closed-day guard (no writes on a closed day)', () => {
   test(
-    'pre-seed a closed day → attempt "+ Agregar movimiento" via action → error "ya fue cerrada"',
+    'pre-closed day → "Cerrada por" badge shown and write actions (movimiento / cerrar) are hidden',
     async ({ browser, adminStorageState }) => {
-      // NOTE: CajaActions returns null when isClosed=true, hiding the "+ Agregar movimiento" button.
-      // So we exercise the server action directly via the page's fetch context to get the
-      // "ya fue cerrada" error, which is the definitive idempotency guard.
-      // We navigate to the closed day page and verify the UI correctly hides the write actions,
-      // then trigger the action via page.evaluate to confirm the server-side guard fires.
+      // A closed day must not accept new movements or a second close. The UI enforces this by
+      // hiding CajaActions entirely (it returns null when isClosed=true), so there is no button
+      // to issue a write — that is the guard we assert here. The server-side guard
+      // ("La caja … ya fue cerrada", thrown by createCashFlow / closeDailyRegister) is covered
+      // by the integration test daily-close-idempotency.
       const supabase = makeServiceClient()
       const closeId = randomUUID()
       const context = await browser.newContext()
       try {
-        await seedDailyClose(supabase, TEST_DATE_MOVE, closeId)
+        await seedDailyClose(supabase, TEST_DATE_CLOSED, closeId)
 
         await context.addCookies(JSON.parse(adminStorageState).cookies)
         const page = await context.newPage()
 
-        await page.goto(`/caja?date=${TEST_DATE_MOVE}`)
+        await page.goto(`/caja?date=${TEST_DATE_CLOSED}`)
         await expect(page.getByRole('heading', { name: /Caja/i })).toBeVisible({ timeout: 15_000 })
 
         // The "Cerrada por" badge must appear — CajaActions is hidden (isClosed=true).
         await expect(page.getByText(/Cerrada por/i)).toBeVisible()
 
-        // "+ Agregar movimiento" button must NOT be in the DOM (CajaActions returns null when closed).
+        // Write actions must NOT be present (CajaActions returns null when closed).
         await expect(page.getByRole('button', { name: '+ Agregar movimiento' })).not.toBeVisible()
         await expect(page.getByRole('button', { name: 'Cerrar caja' })).not.toBeVisible()
       } finally {
         await context.close()
-        // Delete the seeded close (and any cash_flows for this date).
-        await cleanupCajaDate(supabase, TEST_DATE_MOVE)
+        await cleanupCajaDate(supabase, TEST_DATE_CLOSED)
       }
     },
   )

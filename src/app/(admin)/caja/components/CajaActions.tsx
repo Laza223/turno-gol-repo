@@ -14,7 +14,7 @@ export function CajaActions({ date, balance, isClosed }: { date: string; balance
         + Agregar movimiento
       </button>
       <CloseDayButton date={date} balance={balance} />
-      <RegisterMovementModal open={movOpen} onClose={() => setMovOpen(false)} />
+      <RegisterMovementModal open={movOpen} onClose={() => setMovOpen(false)} date={date} />
     </div>
   )
 }

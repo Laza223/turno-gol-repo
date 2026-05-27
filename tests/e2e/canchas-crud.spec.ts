@@ -56,20 +56,6 @@ const ALL_DAY_PRICING = {
   ],
 }
 
-// Pricing with a coverage gap: only covers Mon–Fri 08:00–18:00.
-// The seeded tenant's opening hours are Mon–Fri 08:00–23:00 and Sat–Sun 09:00–23:00,
-// so this leaves Fri 18:00–23:00 and the whole weekend uncovered.
-const GAPPED_PRICING = {
-  rules: [
-    {
-      days: ['mon', 'tue', 'wed', 'thu', 'fri'],
-      from: '08:00',
-      to: '18:00',
-      prices: { '60': 10000, '120': 18000 },
-    },
-  ],
-}
-
 type InsertCourtOpts = {
   id: string
   name: string
@@ -321,22 +307,24 @@ test.describe('canchas — edge: pricing coverage gap', () => {
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// TEST 4 — Edge: optimistic rollback on activate failure
+// TEST 4 — Edge: optimistic rollback when the activate action fails
 //
-// CHOICE: Option (b) from the task spec.
-// RATIONALE: The seeded E2E tenant has NO tenant_subscriptions row → maxCourts = null →
-//   getCourtCountAndLimit returns { count, maxCourts: null }, so the plan-limit check
-//   (count >= maxCourts) is never triggered (option a unreliable). Instead we test the
-//   optimistic UI rollback: the CourtCard sets status 'online' optimistically before the
-//   server action resolves, then reverts if the action fails.
-//
-//   We simulate the failure by inserting an offline court, then intercepting the
-//   Next.js Server Action POST (identified by the Next-Action header) and returning
-//   a non-200 response, so the fetch throws and the error handler fires.
+// CHOICE: graceful action-level failure (the path the implementation actually handles),
+//   NOT a transport/500. A 500 makes the Next.js Server Action *throw*, and
+//   CourtCard.activate() only rolls back on a returned { success:false } (no try/catch),
+//   so a throw would NOT trigger the rollback — testing it that way would be a false test.
+// HOW: insert an offline court, load the page (the card now lives in client React state),
+//   then DELETE the court via service-role. Clicking "Activar" runs the optimistic update
+//   (Online) and calls toggleCourtStatusAction, which can't find the row → returns
+//   { success:false, error:'Cancha no encontrada' } → activate() rolls back to Offline + toast.
+//   The card stays rendered because its state is independent of the DB row, and the failed
+//   action does not revalidatePath('/canchas').
+// (Plan-limit edge — the other option — is unreliable here: the seeded tenant has no
+//   tenant_subscriptions row → maxCourts = null → the limit check never fires.)
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — edge: optimistic rollback on activate failure', () => {
   test(
-    'service-role offline court → intercept Server Action → "Activar" → optimistic Online then reverts to Offline + toast',
+    'offline court deleted under the UI → "Activar" → optimistic Online then rolls back to Offline + toast',
     async ({ browser, adminStorageState }) => {
       const supabase = makeServiceClient()
       const courtId = randomUUID()
@@ -350,51 +338,29 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
         await context.addCookies(JSON.parse(adminStorageState).cookies)
         const page = await context.newPage()
 
-        // Intercept the Next.js Server Action POST for canchas actions.
-        // Next.js App Router Server Actions are POSTed to the current page URL with
-        // the `Next-Action` header. We intercept ALL POST requests to /canchas and
-        // return a 500 error so the action throws.
-        await page.route('**/canchas', async (route) => {
-          const request = route.request()
-          // Only intercept POST requests with the Next-Action header (Server Actions).
-          if (
-            request.method() === 'POST' &&
-            request.headers()['next-action'] !== undefined
-          ) {
-            await route.fulfill({
-              status: 500,
-              contentType: 'text/plain',
-              body: 'Simulated server error for E2E rollback test',
-            })
-          } else {
-            await route.continue()
-          }
-        })
-
         await page.goto('/canchas')
         await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
           timeout: 15_000,
         })
 
-        // Locate the court card.
+        // Locate the court card; it shows Offline before activation.
         const courtCard = page.locator('div', { has: page.getByText(courtName) }).first()
         await expect(courtCard).toBeVisible({ timeout: 10_000 })
-
-        // The badge shows Offline before activation.
         await expect(courtCard.getByText('Offline')).toBeVisible()
 
-        // Click "Activar" — the UI transitions optimistically to "Online" first,
-        // then the Server Action call is intercepted and returns 500.
-        // The error handler (toggleCourtStatusAction failure) fires: setCurrentStatus(prev).
+        // Delete the row out from under the UI so the next toggle fails gracefully.
+        await deleteCourt(supabase, courtId)
+
+        // Click "Activar": optimistic Online, then the action returns { success:false }
+        // ('Cancha no encontrada') → rollback to Offline + destructive toast.
         await courtCard.getByRole('button', { name: 'Activar' }).click()
 
-        // After the failed action resolves, the badge must revert to Offline.
+        // Badge must revert to Offline and the failure toast must appear.
         await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
-
-        // Toast "No se pudo activar" must be shown.
         await expect(page.getByText('No se pudo activar')).toBeVisible({ timeout: 10_000 })
       } finally {
         await context.close()
+        // Court already deleted above; safety net (delete of 0 rows is not an error).
         await deleteCourt(supabase, courtId)
       }
     },

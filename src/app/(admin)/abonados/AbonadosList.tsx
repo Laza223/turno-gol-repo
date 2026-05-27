@@ -49,26 +49,21 @@ type RowState = {
   dialog: DialogKind
   /** Cancel-specific fields */
   cancelFromDate: string
-  cancelNotes: string
   /** Reactivate preview data */
   reactivatePreviewDates: string[]
   reactivatePreviewConflicts: string[]
   reactivatePreviewLoading: boolean
   reactivatePreviewError: string | null
-  /** Row-level inline error (for when no dialog is open) */
-  inlineError: string | null
 }
 
 function defaultRowState(): RowState {
   return {
     dialog: null,
     cancelFromDate: defaultCancelDate(),
-    cancelNotes: '',
     reactivatePreviewDates: [],
     reactivatePreviewConflicts: [],
     reactivatePreviewLoading: false,
     reactivatePreviewError: null,
-    inlineError: null,
   }
 }
 
@@ -124,7 +119,7 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
   const isPending = state.dialog !== null
 
   function openDialog(dialog: DialogKind) {
-    setState((prev) => ({ ...prev, dialog, inlineError: null }))
+    setState((prev) => ({ ...prev, dialog }))
   }
 
   function closeDialog() {
@@ -150,7 +145,6 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
       reactivatePreviewError: null,
       reactivatePreviewDates: [],
       reactivatePreviewConflicts: [],
-      inlineError: null,
     }))
 
     const preview = await previewAbonadoSlotsAction({
@@ -254,11 +248,6 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
               </button>
             </>
           )}
-          {state.inlineError && (
-            <p className="text-xs text-red-600 mt-1" role="alert">
-              {state.inlineError}
-            </p>
-          )}
         </td>
       </tr>
 
@@ -318,37 +307,20 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
         confirmationPhrase="CANCELAR"
         onConfirm={onConfirmCancel}
       >
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label htmlFor={`cancel-date-${a.id}`} className="text-xs font-medium text-slate-700">
-              Cancelar desde
-            </label>
-            <input
-              id={`cancel-date-${a.id}`}
-              type="date"
-              min={todayART()}
-              value={state.cancelFromDate}
-              onChange={(e) =>
-                setState((prev) => ({ ...prev, cancelFromDate: e.target.value }))
-              }
-              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor={`cancel-notes-${a.id}`} className="text-xs font-medium text-slate-700">
-              Notas (opcional)
-            </label>
-            <textarea
-              id={`cancel-notes-${a.id}`}
-              rows={2}
-              value={state.cancelNotes}
-              onChange={(e) =>
-                setState((prev) => ({ ...prev, cancelNotes: e.target.value }))
-              }
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-              placeholder="Motivo de cancelación..."
-            />
-          </div>
+        <div className="space-y-1">
+          <label htmlFor={`cancel-date-${a.id}`} className="text-xs font-medium text-slate-700">
+            Cancelar desde
+          </label>
+          <input
+            id={`cancel-date-${a.id}`}
+            type="date"
+            min={todayART()}
+            value={state.cancelFromDate}
+            onChange={(e) =>
+              setState((prev) => ({ ...prev, cancelFromDate: e.target.value }))
+            }
+            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
         </div>
       </ConfirmDialog>
     </>

@@ -3,7 +3,7 @@ import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { completeBooking } from '@/modules/bookings/booking.service'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
-import { uuid } from '@/shared/validation/primitives'
+import { parseRouteUuid } from '@/shared/api/route-params'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,12 +11,9 @@ export const POST = withTenant(async (req, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
 
-  const parts = req.nextUrl.pathname.split('/')
-  const parsedId = uuid.safeParse(parts[parts.length - 2])
-  if (!parsedId.success) {
-    return NextResponse.json({ error: { code: 'BAD_REQUEST', message: 'invalid_id' } }, { status: 400 })
-  }
-  const bookingId = parsedId.data
+  const idResult = parseRouteUuid(req, 'second-last')
+  if ('response' in idResult) return idResult.response
+  const bookingId = idResult.uuid
 
   try {
     const booking = await completeBooking(bookingId, 'admin', tx)

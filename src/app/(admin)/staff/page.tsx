@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
-import { UserPlus, Mail, MoreHorizontal } from 'lucide-react'
+import { UserPlus, Mail } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -16,13 +16,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { inviteStaffAction, deactivateStaffAction, resendInviteAction } from './actions'
+import { inviteStaffAction } from './actions'
+import { StaffActions } from './StaffActions'
 
 type FormAction = (formData: FormData) => Promise<void>
 
@@ -58,6 +53,7 @@ async function getStaffMembers(tenantId: string): Promise<StaffMember[]> {
 export default async function StaffPage() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+  const staffUserId: string = user.staffUserId
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
@@ -141,7 +137,7 @@ export default async function StaffPage() {
                 <tr key={m.memberId} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">
                     {m.firstName} {m.lastName}
-                    {m.staffUserId === user.staffUserId && (
+                    {m.staffUserId === staffUserId && (
                       <span className="ml-2 text-xs text-slate-400">(vos)</span>
                     )}
                   </td>
@@ -158,36 +154,18 @@ export default async function StaffPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {m.staffUserId !== user.staffUserId && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label="Opciones">
-                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {m.isActive ? (
-                            <form action={deactivateStaffAction.bind(null, m.memberId) as unknown as FormAction}>
-                              <DropdownMenuItem asChild>
-                                <button
-                                  type="submit"
-                                  className="w-full cursor-pointer text-left text-red-600"
-                                >
-                                  Desactivar
-                                </button>
-                              </DropdownMenuItem>
-                            </form>
-                          ) : (
-                            <form action={resendInviteAction.bind(null, m.email) as unknown as FormAction}>
-                              <DropdownMenuItem asChild>
-                                <button type="submit" className="w-full cursor-pointer text-left">
-                                  Reenviar invitación
-                                </button>
-                              </DropdownMenuItem>
-                            </form>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    {m.staffUserId !== staffUserId && (
+                      <StaffActions
+                        member={{
+                          memberId: m.memberId,
+                          email: m.email,
+                          firstName: m.firstName,
+                          lastName: m.lastName,
+                          isActive: m.isActive,
+                        }}
+                        currentUserStaffId={staffUserId}
+                        activeCount={activeCount}
+                      />
                     )}
                   </td>
                 </tr>

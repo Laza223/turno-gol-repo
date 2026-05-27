@@ -8,18 +8,8 @@ vi.mock('@/app/(admin)/abonados/nuevo/actions', () => ({
   previewAbonadoSlotsAction: vi.fn(),
 }))
 
-// Mock react-dom server hooks (useFormState / useFormStatus)
-vi.mock('react-dom', async (importOriginal) => {
-  const original = await importOriginal<typeof import('react-dom')>()
-  return {
-    ...original,
-    useFormState: (_action: unknown, init: unknown) => [init, _action],
-    useFormStatus: () => ({ pending: false }),
-  }
-})
-
 import AbonadoForm, { PreviewSlotsView } from '@/app/(admin)/abonados/nuevo/AbonadoForm'
-import { previewAbonadoSlotsAction } from '@/app/(admin)/abonados/nuevo/actions'
+import { previewAbonadoSlotsAction, submitNewAbonado } from '@/app/(admin)/abonados/nuevo/actions'
 
 const mockCourts = [
   { id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Cancha A' },
@@ -175,6 +165,71 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     // Should remain on form phase
+    expect(screen.getByRole('button', { name: /Vista previa/i })).toBeTruthy()
+  })
+
+  it('calls submitNewAbonado with reconstructed FormData when "Confirmar creación" clicked', async () => {
+    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+      success: true,
+      dates: MOCK_DATES,
+      conflicts: MOCK_CONFLICTS,
+    })
+    // submitNewAbonado succeeds → component does redirect() server-side (no state update)
+    vi.mocked(submitNewAbonado).mockResolvedValue({ status: 'idle' })
+
+    render(<AbonadoForm courts={mockCourts} />)
+    fillFormAndSubmit()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Confirmar creación' })).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar creación' }))
+
+    await waitFor(() => {
+      expect(vi.mocked(submitNewAbonado)).toHaveBeenCalledTimes(1)
+    })
+
+    // Verify the FormData reconstruction preserves all submitted values
+    const [, fd] = vi.mocked(submitNewAbonado).mock.calls[0]!
+    expect(fd).toBeInstanceOf(FormData)
+    expect((fd as FormData).get('courtId')).toBe(mockCourts[0]!.id)
+    expect((fd as FormData).get('timeStart')).toBe('10:00')
+    expect((fd as FormData).get('timeEnd')).toBe('11:00')
+    expect((fd as FormData).get('contactName')).toBe('Grupo Test')
+    expect((fd as FormData).get('contactPhone')).toBe('1199887766')
+    expect((fd as FormData).get('pricePerSession')).toBe('5000')
+    expect((fd as FormData).get('monthlyPrice')).toBe('20000')
+    expect((fd as FormData).get('startsOn')).toBe('2026-06-01')
+    expect((fd as FormData).get('paymentMethod')).toBe('cash')
+  })
+
+  it('returns to form phase with error when submitNewAbonado returns error', async () => {
+    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+      success: true,
+      dates: MOCK_DATES,
+      conflicts: MOCK_CONFLICTS,
+    })
+    vi.mocked(submitNewAbonado).mockResolvedValue({
+      status: 'error',
+      message: 'Conflicto al crear',
+    })
+
+    render(<AbonadoForm courts={mockCourts} />)
+    fillFormAndSubmit()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Confirmar creación' })).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar creación' }))
+
+    await waitFor(() => {
+      const alert = screen.getByRole('alert')
+      expect(alert.textContent).toContain('Conflicto al crear')
+    })
+
+    // Should be back on form phase
     expect(screen.getByRole('button', { name: /Vista previa/i })).toBeTruthy()
   })
 })

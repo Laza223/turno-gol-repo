@@ -5,6 +5,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { listTenantBookings } from './queries'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -76,10 +77,7 @@ export default async function ReservasPage({ searchParams }: Props) {
       </nav>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-slate-400">
-          <CalendarX className="h-10 w-10" aria-hidden />
-          <p className="text-sm">No hay reservas con este filtro.</p>
-        </div>
+        <EmptyState icon={CalendarX} title="Sin reservas" description="No hay reservas para los filtros seleccionados." />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">

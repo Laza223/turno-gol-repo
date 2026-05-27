@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-27
 **Branch principal:** main
-**Worktrees activos:** ninguno (F4 mergeado a main)
+**Worktrees activos:** ninguno (F5 mergeado a main)
 
 ## Fase actual
 
-**F5 — Admin Reportes + Settings + Abonados + Staff** (siguiente, no iniciada)
+**F6 — Public Landing + Search + Portal Complejo** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -29,6 +29,7 @@
 | F2 — Auth + Onboarding Flows | 🟢 PASS (3/3 criteria) + 4 E2E nuevos + 2 reactivados + 6 a11y fixes wizard | `docs/audit/reports/fase-f02-auth-onboarding-report.md` |
 | F3 — Admin Grilla + Realtime | 🟡 PASS c/1 reserva (3/4 criteria; Lighthouse 88-89 medido, gap LCP→F12) + H1 catch-up + H2 publication versionada + H3 name backfill + 10 tests nuevos | `docs/audit/reports/fase-f03-grilla-realtime-report.md` |
 | F4 — Admin Bookings + Cashflow + Canchas | 🟢 PASS (3/3 criteria) + ConfirmDialog reusable + write-side caja + optimistic toggle c/rollback + H8 parseRouteUuid + 16 tests; 6 bugs de specs + 1 inconsistencia UI cazados en verify | `docs/audit/reports/fase-f04-bookings-cashflow-canchas-report.md` |
+| F5 — Admin Reportes + Settings + Abonados + Staff | 🟢 PASS (3/3 criteria) + 4 stubbed buttons P0 → funcionales (H1) + preview slots abonado (H2) + lockout UX countdown (H5) + staff desactivar c/ConfirmDialog (H4) + F1 states 4 rutas + 16 E2E nuevos + 39 unit nuevos; 3 issues cazados en verify (notes-no-enviadas, Cyrillic 'о', preventDefault dropdown) | `docs/audit/reports/fase-f05-reportes-settings-abonados-staff-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -64,6 +65,10 @@
 - **F4-H1: cancel admin sin elección reembolso/motivo ni confirmación escalonada** (seña pagada, US-CAN-003) → ✅ FIXED (F4 T2: ConfirmDialog con radios reembolso si seña pagada + motivo obligatorio + warning del efecto $ por método)
 - **F4-H2: write-side de caja ausente en la UI** (actions `createCashFlowAction`/`closeDayAction` existían sin trigger) → ✅ FIXED (F4 T3: RegisterMovementModal + CloseDayButton type-to-confirm + nav fecha + EmptyState)
 - **F4-H3: desactivar cancha con reservas futuras/abonados sin warning escalonado** (doc6 Court invariante) → ✅ FIXED (F4 T4: `getCourtDeactivationImpactAction` + ConfirmDialog con conteo real)
+- **F5-H1: 4 botones de acciones de abonado stubbed sin handler** (`pausar/reactivar/cancelar` `type="button"` sin onClick/formAction — UI mentirosa, click no-op) → ✅ FIXED (F5 T1: AbonadosList client island + ConfirmDialog escalonado + date picker en cancel + reactivate preview)
+- **F5-H2: preview de slots futuros ausente al crear abonado** (US-ABO-001 done-criteria F5; conflictos solo aparecían en `audit_logs.metadata` post-facto) → ✅ FIXED (F5 T2: `previewAbonadoSlotsAction` + `getAbonadoSlotConflicts` reusan `generateSlotDates` del cron B5; 2-fase form con badges OK/Conflicto)
+- **F5-H4: desactivar staff con un click submit sin confirmación** (acción destructiva: pierde acceso panel + sesiones invalidadas) → ✅ FIXED (F5 T3: StaffActions client island + ConfirmDialog destructive + type-to-confirm email)
+- **F5-H5: PIN lockout funciona backend pero la UI no muestra contador/countdown/disable** (done-criteria F5) → ✅ FIXED (F5 T4: VerifyPinResult 3-variant + countdown M:SS + input/button disabled durante lockout + warning attemptsLeft ≤2)
 
 ### P2 (medio)
 - 4 warnings `<img>` no-optimized (Fase F12)
@@ -102,20 +107,26 @@
 - ~~B2.6 Realtime cliente real~~ → ✅ RESUELTO F3 (catch-up on reconnect + debounced reconcile name-backfill + publication realtime versionada + REPLICA IDENTITY FULL + 7 unit tests del hook + 3 E2E multi-browser)
 - ~~B2.7 JWT forgery defense~~ → Resuelto en B6 (Supabase signed tokens)
 - **F4: optimistic rollback solo cubre fallo graceful `{success:false}`, no un throw/500 de red** (propaga al error boundary) → nice-to-have v1 (try/catch con rollback-on-throw); fallo de negocio devuelve `{success:false}`, un 500 de transporte es raro
-- **F4: venta rápida productos/cantina (US-CAJ-004) + CRUD abonados + settings/horarios + reportes financieros** → F5
+- ~~**F4: venta rápida productos/cantina (US-CAJ-004) + CRUD abonados + settings/horarios + reportes financieros** → F5~~ → **PARCIALMENTE RESUELTO F5:** abonados CRUD funcional con preview (T1+T2); reportes con loading.tsx + E2E (T5+T6); settings ya estaba sólido (PinGate + Zod actions). **DEFERIDO post-F5:** venta rápida productos + CRUD productos (US-CAJ-004/US-ADM-004; v1.5).
+- **F5: emails transaccionales `abonado.paused/canceled/reactivated`** (US-ABO-003/004 los pide pero B5 send-email no tiene templates) → backlog (no es done-criteria F5).
+- **F5: PinGate en /reportes?** (decisión consciente: NO agregado, consistencia con /caja; pero data financiera es sensible) → backlog si Marcelo lo pide.
+- **F5: `zod-coverage` test reconozca `parseRouteUuid()` como validation** (2 fallos preexistentes desde merge F4 en `bookings/[id]/{complete,no-show}/route.ts`; el test busca `import { z }` o `*.schema`, no reconoce el helper compartido) → backlog P3 (no es regresión, F4 T6 introdujo el helper).
+- **F5: E2E reset hook para Upstash en test env** (sin `UPSTASH_REDIS_REST_URL` los 2 tests pin-lockout 3+4 se skipean) → backlog P3 (mock Redis o fixture stub).
+- **F5: E2E settings (4 sub-rutas PIN + Zod)** → backlog P3 (settings actions ya tienen tests integration).
 
 ## Stats acumulados
 
-- **Fases completadas: 17/26** (backend B0-B11 + F0 + F1 + F2 + F3 + F4 frontend).
-- **Tests acumulados nuevos audit: 197** (181 post-F3 + F4: 4 unit `confirm-dialog` + 12 E2E CRUD reservas/caja/canchas). Unit suite 418→422. E2E suite +12 (delegados a CI). Integration 325/325 (los 2 flaky pre-existentes no flakearon; `daily-close-idempotency` 5/5 esta corrida).
-- **Bugs fixed: 34** (30 post-F3 + F4: H1 cancel UI sin reembolso/motivo P1 + H2 write-side caja ausente P0-fase + H3 desactivar sin warning P1 + H8 UUID route leak cancel/status P2). H4/H5/H6/H7 de F4 son hardening/cobertura. **+6 bugs de specs + 1 inconsistencia UI** (caja registraba en hoy, no en el día visto) cazados en trust-but-verify de T5 — sobre código no mergeado a main, no cuentan como runtime.
-- **Tests legacy ajustados: 7** (6 previos + 1 B11).
-- **Deps nuevas (devDependencies): `@testing-library/react` + `happy-dom`** (F3 T1; F4 las reusó, +0 deps).
-- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql` ↔ `20260526000001`, dual-tree, guarded; F4 +0 — no tocó schema).
+- **Fases completadas: 18/26** (backend B0-B11 + F0 + F1 + F2 + F3 + F4 + F5 frontend).
+- **Tests acumulados nuevos audit: 236** (197 post-F4 + F5: 39 unit nuevos `preview-abonado-slots`/`abonados-list`/`staff-actions`/`pin-gate` + 1 integration `getAbonadoSlotConflicts returns all conflict dates` + 16 E2E nuevos en 4 specs). Unit suite **422→461**. E2E suite +16 (13 activos + 3 gated por env, delegados a CI). Integration **325→326**.
+- **Bugs fixed: 38** (34 post-F4 + F5: H1 4 stubbed buttons P0 + H2 preview slots ausente P0/done-criteria + H4 staff desactivar sin confirm P1 + H5 PIN lockout UX P1). H3/H6/H7/H8/H9/H10/H11 de F5 son hardening/cobertura/latentes. **+3 issues cazados en trust-but-verify F5** (notes-no-enviadas T1 + Cyrillic 'о' T1 latente + preventDefault dropdown T3) — corregidos en commits separados, no llegaron a main.
+- **Tests legacy ajustados: 8** (7 previos + 1 F5: `pin.test.ts` assertion sobre wrong-PIN ahora chequea `locked === false` + `attemptsLeft` type en lugar de exact-match completo).
+- **Deps nuevas (devDependencies): `@testing-library/react` + `happy-dom`** (F3 T1; F4 + F5 las reusaron, +0 deps). `@upstash/redis` ya estaba en runtime deps.
+- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql`; F4 + F5 +0 — no tocaron schema).
+- **Bundle audit F5:** `/staff` 190KB → 192KB (+2KB de ConfirmDialog en chunk compartido; bajo 200KB). `/abonados` 177KB. `/abonados/nuevo` 162KB. `/reportes` 151KB. Todas las rutas admin pasan.
 
 ## Próximas decisiones para el humano
 
-1. **F4 — Admin Bookings + Cashflow + Canchas** → ✅ completado esta sesión, mergeado a main. **3/3 done-criteria** (CRUDs happy+3edge E2E, confirmaciones destructivas escalonadas, optimistic c/rollback). ConfirmDialog reusable + write-side completo de caja + toggle optimista de canchas. **T6 (bonus) cerró B7 parseRouteUuid (H8).** **Trust-but-verify cazó 6 bugs de specs (columnas DB inexistentes, test de rollback falso) + 1 inconsistencia UI real (caja registraba el movimiento en hoy, no en el día visto)** — todos corregidos. Sin cambios de schema. (F3 quedó 3/4 con Lighthouse 88-89→F12.)
+1. **F5 — Admin Reportes + Settings + Abonados + Staff** → ✅ completado esta sesión, mergeado a main. **3/3 done-criteria** (reportes funcionan con datos sintéticos + Skeleton + E2E; PIN lockout UX con countdown + disable + attemptsLeft; abonados con preview de slots reusando `generateSlotDates` del cron B5). **Plus:** 4 botones stubbed de abonados (P0 latente) → funcionales con ConfirmDialog escalonado; staff desactivar con type-to-confirm email; F1 states aplicados en /abonados + /staff + /reportes. **Trust-but-verify cazó 3 issues** (notes-field UI mentirosa, Cyrillic 'о' en function name latente desde el primer commit del archivo, preventDefault impedía cerrar dropdown) — todos corregidos antes del merge. Sin cambios de schema.
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
-3. **F5 — Admin Reportes + Settings + Abonados + Staff** es la siguiente fase (MASTER_PLAN 186-190). Incluye lo diferido de F4: venta rápida de productos/cantina (depende del CRUD de productos), CRUD de abonados, settings/políticas/horarios-feriados, reportes financieros. Trigger humano: confirmar continuar o pausar.
+3. **F6 — Public Landing + Search + Portal Complejo** es la siguiente fase (MASTER_PLAN 192-196, criticidad 🔴🔴 Alta). Done criteria: Lighthouse SEO 100 + Performance ≥90 mobile + Schema.org LocalBusiness validado + sitemap + robots. Trigger humano: confirmar continuar o pausar.
 4. **Pendiente F12 (Performance):** `/grilla` Lighthouse 88-89 (LCP 3.8s vía shared bundle 150KB Sentry). Harness autenticado (`pnpm lighthouse:grilla`) listo para re-medir tras el adelgazamiento del bundle.

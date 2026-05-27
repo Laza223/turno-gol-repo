@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { CalendarDays, MapPin, Phone } from 'lucide-react'
 import type { PublicTenant } from '@/modules/tenants/public.service'
@@ -21,24 +22,13 @@ export default function TenantHeader({ tenant }: Props) {
     <div className="space-y-4">
       {tenant.coverUrl && (
         <div className="relative h-48 sm:h-56 rounded-xl overflow-hidden bg-slate-100">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={tenant.coverUrl}
-            alt={`Foto de ${tenant.name}`}
-            className="w-full h-full object-cover"
-            loading="eager"
-          />
+          <Image src={tenant.coverUrl} alt={`Foto de ${tenant.name}`} fill sizes="(max-width: 1024px) 100vw, 1024px" priority className="object-cover" />
         </div>
       )}
 
       <div className="flex items-start gap-4">
         {tenant.logoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={tenant.logoUrl}
-            alt={`Logo de ${tenant.name}`}
-            className="h-14 w-14 rounded-lg object-cover border border-slate-200 shadow-sm flex-shrink-0"
-          />
+          <Image src={tenant.logoUrl} alt={`Logo de ${tenant.name}`} width={56} height={56} sizes="56px" className="h-14 w-14 rounded-lg object-cover border border-slate-200 shadow-sm flex-shrink-0" />
         )}
         <div className="space-y-1 min-w-0">
           <h1 className="text-2xl font-semibold text-foreground truncate">{tenant.name}</h1>

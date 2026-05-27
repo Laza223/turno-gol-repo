@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
@@ -10,8 +11,7 @@ export default function TenantCard({ tenant }: { tenant: PublicTenantCard }) {
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
         {tenant.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={tenant.coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          <Image fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" alt={tenant.name} src={tenant.coverUrl} className="object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-3xl font-bold text-emerald-600/40">
             {tenant.name.slice(0, 2).toUpperCase()}

@@ -3,8 +3,10 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ChevronLeft } from 'lucide-react'
 import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/public.service'
-import { buildMetadata } from '@/lib/seo/metadata'
+import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import WeeklyAvailability from './components/WeeklyAvailability'
+import JsonLd from '@/components/seo/JsonLd'
+import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +26,13 @@ export default async function DisponibilidadPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+      <JsonLd
+        data={buildBreadcrumbList([
+          { name: 'Inicio', url: absoluteUrl('/') },
+          { name: tenant.name, url: absoluteUrl(`/${tenant.slug}`) },
+          { name: 'Disponibilidad', url: absoluteUrl(`/${tenant.slug}/disponibilidad`) },
+        ])}
+      />
       <Link href={`/${tenant.slug}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
         <ChevronLeft className="h-4 w-4" aria-hidden /> {tenant.name}
       </Link>

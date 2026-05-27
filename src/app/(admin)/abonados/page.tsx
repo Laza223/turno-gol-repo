@@ -1,34 +1,11 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Users } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
-import { EmptyState } from '@/components/ui/empty-state'
-import { Badge } from '@/components/ui/badge'
+import { AbonadosList } from './AbonadosList'
 
-const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
-    centavos / 100,
-  )
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Activo',
-  paused: 'Pausado',
-  canceled: 'Cancelado',
-}
-
-const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'secondary'> = {
-  active: 'success',
-  paused: 'warning',
-  canceled: 'secondary',
-}
-
-export default async function AbоnadosPage() {
+export default async function AbonadosPage() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -51,84 +28,7 @@ export default async function AbоnadosPage() {
         </a>
       </div>
 
-      {abonados.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="Sin abonados registrados"
-          description="Creá el primer abonado para que aparezca acá."
-          action={
-            <Link
-              href="/abonados/nuevo"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
-            >
-              + Nuevo Abonado
-            </Link>
-          }
-        />
-      ) : (
-        <div className="rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="p-3">Día / Horario</th>
-                <th className="p-3">Contacto</th>
-                <th className="p-3">Precio sesión</th>
-                <th className="p-3">Precio mensual</th>
-                <th className="p-3">Estado</th>
-                <th className="p-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {abonados.map((a) => (
-                <tr key={a.id} className="border-b last:border-0">
-                  <td className="p-3 font-medium">
-                    {DAY_NAMES[a.dayOfWeek]} {a.timeStart}–{a.timeEnd}
-                  </td>
-                  <td className="p-3">
-                    <div>{a.contactName}</div>
-                    <div className="text-muted-foreground text-xs">{a.contactPhone}</div>
-                  </td>
-                  <td className="p-3">{formatARS(a.pricePerSession)}</td>
-                  <td className="p-3">{formatARS(a.monthlyPrice)}</td>
-                  <td className="p-3">
-                    <Badge variant={STATUS_VARIANT[a.status] ?? 'secondary'}>
-                      {STATUS_LABELS[a.status] ?? a.status}
-                    </Badge>
-                  </td>
-                  <td className="p-3 space-x-2">
-                    {a.status === 'active' && (
-                      <>
-                        <form action={`/api/abonados/${a.id}`} method="post" className="inline">
-                          <button
-                            formAction={`/api/abonados/${a.id}`}
-                            className="text-xs text-yellow-700 hover:underline"
-                            type="button"
-                          >
-                            Pausar
-                          </button>
-                        </form>
-                        <button className="text-xs text-destructive hover:underline" type="button">
-                          Cancelar
-                        </button>
-                      </>
-                    )}
-                    {a.status === 'paused' && (
-                      <>
-                        <button className="text-xs text-green-700 hover:underline" type="button">
-                          Reactivar
-                        </button>
-                        <button className="text-xs text-destructive hover:underline" type="button">
-                          Cancelar
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <AbonadosList abonados={abonados} />
     </div>
   )
 }

@@ -1,7 +1,8 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
-import { submitNewAbonado, type NewAbonadoState } from './actions'
+import { useTransition, useState } from 'react'
+import { submitNewAbonado, previewAbonadoSlotsAction, type NewAbonadoState, type PreviewAbonadoSlotsInput } from './actions'
+import { Badge } from '@/components/ui/badge'
 
 const DAYS = [
   { value: '1', label: 'Lunes' }, { value: '2', label: 'Martes' }, { value: '3', label: 'Miércoles' },
@@ -12,20 +13,167 @@ const field = 'h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus
 const labelCls = 'space-y-1 text-sm block'
 const labelSpan = 'font-medium text-slate-900'
 
-function Submit() {
-  const { pending } = useFormStatus()
+type PreviewData = {
+  dates: string[]
+  conflicts: string[]
+}
+
+type FormValues = {
+  courtId: string
+  dayOfWeek: string
+  timeStart: string
+  timeEnd: string
+  contactName: string
+  contactPhone: string
+  pricePerSession: string
+  monthlyPrice: string
+  startsOn: string
+  paymentMethod: string
+  notes: string
+}
+
+export function PreviewSlotsView({
+  dates,
+  conflicts,
+  onBack,
+  onConfirm,
+  isConfirming,
+}: {
+  dates: string[]
+  conflicts: string[]
+  onBack: () => void
+  onConfirm: () => void
+  isConfirming: boolean
+}) {
+  const conflictSet = new Set(conflicts)
+  const goodCount = dates.length - conflicts.length
+  const noSlots = goodCount === 0
+
   return (
-    <button type="submit" disabled={pending}
-      className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors">
-      {pending ? 'Guardando…' : 'Crear abonado'}
-    </button>
+    <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-slate-900">Vista previa de slots</h2>
+      <ul className="divide-y divide-slate-100">
+        {dates.map((d) => {
+          const isConflict = conflictSet.has(d)
+          return (
+            <li key={d} className="flex items-center justify-between py-2">
+              <span className="text-sm text-slate-700">{d}</span>
+              {isConflict
+                ? <Badge variant="warning">Conflicto</Badge>
+                : <Badge variant="success">OK</Badge>
+              }
+            </li>
+          )
+        })}
+      </ul>
+      <p className="text-sm text-slate-600">
+        Se crearán {goodCount} slot{goodCount !== 1 ? 's' : ''}. {conflicts.length} fecha(s) con conflicto se saltarán.
+      </p>
+      {noSlots && (
+        <p role="alert" className="text-xs text-amber-700">
+          No se generarán slots — revisá horario o cancelá abonados existentes.
+        </p>
+      )}
+      <div className="flex gap-3 flex-wrap">
+        <button
+          type="button"
+          onClick={onBack}
+          className="h-10 rounded-lg border border-slate-200 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+        >
+          Volver a editar
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={noSlots || isConfirming}
+          className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+        >
+          {isConfirming ? 'Guardando…' : 'Confirmar creación'}
+        </button>
+      </div>
+    </div>
   )
 }
 
 export default function AbonadoForm({ courts }: { courts: { id: string; name: string }[] }) {
-  const [state, formAction] = useFormState(submitNewAbonado, initial)
+  const [phase, setPhase] = useState<'form' | 'preview'>('form')
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null)
+  const [formValues, setFormValues] = useState<FormValues | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [isPreviewing, startPreviewTransition] = useTransition()
+  const [isConfirming, startConfirmTransition] = useTransition()
+
+  function handlePreviewSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = e.currentTarget
+    const fd = new FormData(form)
+
+    const values: FormValues = {
+      courtId: fd.get('courtId') as string,
+      dayOfWeek: fd.get('dayOfWeek') as string,
+      timeStart: fd.get('timeStart') as string,
+      timeEnd: fd.get('timeEnd') as string,
+      contactName: fd.get('contactName') as string,
+      contactPhone: fd.get('contactPhone') as string,
+      pricePerSession: fd.get('pricePerSession') as string,
+      monthlyPrice: fd.get('monthlyPrice') as string,
+      startsOn: fd.get('startsOn') as string,
+      paymentMethod: (fd.get('paymentMethod') as string) || 'cash',
+      notes: (fd.get('notes') as string) || '',
+    }
+
+    const input: PreviewAbonadoSlotsInput = {
+      courtId: values.courtId,
+      dayOfWeek: Number(values.dayOfWeek),
+      timeStart: values.timeStart,
+      timeEnd: values.timeEnd,
+      startsOn: values.startsOn,
+    }
+
+    setPreviewError(null)
+    startPreviewTransition(async () => {
+      const result = await previewAbonadoSlotsAction(input)
+      if (!result.success) {
+        setPreviewError(result.error)
+        return
+      }
+      setFormValues(values)
+      setPreviewData({ dates: result.dates, conflicts: result.conflicts })
+      setPhase('preview')
+    })
+  }
+
+  function handleConfirm() {
+    if (!formValues) return
+    const fd = new FormData()
+    for (const [key, val] of Object.entries(formValues)) {
+      fd.set(key, val)
+    }
+    startConfirmTransition(async () => {
+      const result = await submitNewAbonado(initial, fd)
+      if (result.status === 'error') {
+        setPhase('form')
+        setPreviewData(null)
+        setPreviewError(result.message)
+      }
+      // On success, submitNewAbonado calls redirect('/abonados'), so no explicit state update needed
+    })
+  }
+
+  if (phase === 'preview' && previewData) {
+    return (
+      <PreviewSlotsView
+        dates={previewData.dates}
+        conflicts={previewData.conflicts}
+        onBack={() => { setPhase('form'); setPreviewData(null) }}
+        onConfirm={handleConfirm}
+        isConfirming={isConfirming}
+      />
+    )
+  }
+
   return (
-    <form action={formAction} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <form onSubmit={handlePreviewSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className={labelCls}>
           <span className={labelSpan}>Cancha</span>
@@ -56,8 +204,16 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
         </label>
       </div>
       <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
-      {state.status === 'error' && <p role="alert" className="text-xs text-red-600">{state.message}</p>}
-      <Submit />
+      {previewError && (
+        <p role="alert" className="text-xs text-red-600">{previewError}</p>
+      )}
+      <button
+        type="submit"
+        disabled={isPreviewing}
+        className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+      >
+        {isPreviewing ? 'Cargando…' : 'Vista previa de slots'}
+      </button>
     </form>
   )
 }

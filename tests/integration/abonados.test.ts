@@ -13,6 +13,7 @@ import {
   pauseAbonado,
   reactivateAbonado,
   cancelAbonado,
+  getAbonadoSlotConflicts,
 } from '@/modules/abonados/abonado.service'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { runRollingSlotGeneration } from '@/shared/jobs/workers/generate-abonado-slots.worker'
@@ -272,6 +273,63 @@ describe('abonado service', () => {
     await runRollingSlotGeneration()
 
     expect(await countFutureBookings(abonado.id)).toBeGreaterThanOrEqual(4)
+  })
+
+  it('getAbonadoSlotConflicts returns all conflict dates (not just first)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    // Build 8 future Saturdays starting 2031-01-04
+    // 2031-01-04 is a Saturday (dayOfWeek=6)
+    const PREVIEW_START = '2031-01-04'
+    const PREVIEW_DOW = 6 // Saturday
+
+    // Generate the same 8 slot dates the preview action would use
+    const { generateSlotDates } = await import('@/modules/abonados/slot-generator')
+    const dates = generateSlotDates({
+      dayOfWeek: PREVIEW_DOW,
+      startsOn: PREVIEW_START,
+      endsOn: null,
+      fromDate: PREVIEW_START,
+      count: 8,
+      closedDates: [],
+    })
+
+    expect(dates).toHaveLength(8)
+
+    // Seed conflicting bookings on the 2nd and 5th dates (index 1 and 4)
+    const conflictDate1 = dates[1]!
+    const conflictDate2 = dates[4]!
+
+    await sql`
+      INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end,
+        type, status, price_snapshot, deposit_amount, deposit_status)
+      VALUES
+        (${tenant.id}, ${courtId}, ${conflictDate1}::date, '14:00'::time, '15:00'::time,
+         'spontaneous', 'confirmed', ${100000}, 0, 'not_required'),
+        (${tenant.id}, ${courtId}, ${conflictDate2}::date, '14:00'::time, '15:00'::time,
+         'spontaneous', 'confirmed', ${100000}, 0, 'not_required')
+    `
+
+    const conflicts = await withTenantContext(tenant.id, (tx) =>
+      getAbonadoSlotConflicts(tenant.id, courtId, '14:00', '15:00', dates, tx),
+    )
+
+    // Should return both conflict dates (sorted)
+    expect(conflicts).toHaveLength(2)
+    expect(conflicts).toContain(conflictDate1)
+    expect(conflicts).toContain(conflictDate2)
+    expect(conflicts).toEqual([conflictDate1, conflictDate2].sort())
+
+    // Non-conflicting dates should NOT appear
+    for (const d of dates) {
+      if (d !== conflictDate1 && d !== conflictDate2) {
+        expect(conflicts).not.toContain(d)
+      }
+    }
   })
 
   it('PTR: createOnlineBooking creates player_tenant_relationships row', async () => {

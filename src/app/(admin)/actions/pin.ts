@@ -19,14 +19,17 @@ export async function checkPinSessionAction(): Promise<boolean> {
   return value ? verifyPinCookie(value) : false
 }
 
-export type VerifyPinResult = { ok: true } | { ok: false; error: string }
+export type VerifyPinResult =
+  | { ok: true }
+  | { ok: false; error: string; locked: true; retryAtMs: number }
+  | { ok: false; error: string; locked: false; attemptsLeft?: number }
 
 export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
   const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return { ok: false, error: 'Tenant no encontrado.' }
+  if (!tenant) return { ok: false, error: 'Tenant no encontrado.', locked: false }
 
   // Brute-force defense (B6 P1 fix): 5 attempts per 5 minutes per tenant.
   // 4-digit PIN = 10k combinations; without this, exhaustive search trivial.
@@ -37,14 +40,25 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
     return {
       ok: false,
       error: `Demasiados intentos fallidos. Volvé a intentar en ${retryMin} min.`,
+      locked: true,
+      retryAtMs: rl.reset,
     }
   }
 
   const hash = tenant.settings.staff_pin_hash ?? null
-  if (!hash) return { ok: false, error: 'PIN no configurado. Configuralo en Ajustes → Seguridad.' }
+  if (!hash) return { ok: false, error: 'PIN no configurado. Configuralo en Ajustes → Seguridad.', locked: false }
 
   const ok = await verifyPin(pin, hash)
-  if (!ok) return { ok: false, error: 'PIN incorrecto.' }
+  if (!ok) {
+    // rl.remaining is always number per RateLimitOutcome; expose it so the UI
+    // can show "Te quedan N intentos" when N <= 2.
+    return {
+      ok: false,
+      error: 'PIN incorrecto.',
+      locked: false,
+      attemptsLeft: rl.remaining,
+    }
+  }
 
   const jar = cookies()
   jar.set({

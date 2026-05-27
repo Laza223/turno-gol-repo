@@ -359,6 +359,42 @@ export async function cancelAbonado(
   return rowToAbonadoRow(updated[0]!)
 }
 
+/**
+ * Returns the subset of `dates` that have at least one conflicting booking
+ * (same overlap semantics as checkBookingOverlap, but does NOT abort on first hit).
+ * Used by the preview action before creating an abonado.
+ */
+export async function getAbonadoSlotConflicts(
+  tenantId: string,
+  courtId: string,
+  timeStart: string,
+  timeEnd: string,
+  dates: string[],
+  tx: DbTx,
+): Promise<string[]> {
+  if (dates.length === 0) return []
+
+  // Build a single query: for each date check if there is a conflicting booking.
+  // We use ANY(ARRAY[...]) to avoid N+1. tenant context is already set via SET LOCAL.
+  const rows = await tx.execute(sql`
+    SELECT DISTINCT date::text AS date_str
+    FROM bookings
+    WHERE court_id = ${courtId}
+      AND date = ANY(ARRAY[${sql.join(
+        dates.map((d) => sql`${d}::date`),
+        sql`, `,
+      )}])
+      AND status NOT IN ('canceled_refunded','canceled_no_refund')
+      AND time_start < ${timeEnd}::time
+      AND time_end > ${timeStart}::time
+  `)
+
+  const conflictSet = new Set(
+    (rows as unknown as Array<{ date_str: string }>).map((r) => r.date_str),
+  )
+  return dates.filter((d) => conflictSet.has(d)).sort()
+}
+
 export async function getAbonados(
   tenantId: string,
   filters: { status?: AbonadoStatus },

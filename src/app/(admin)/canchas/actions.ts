@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { and, eq, gte, inArray, sql as dsql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -13,6 +14,7 @@ import {
   validatePricingRulesCoverage,
 } from '@/modules/courts/court.service'
 import { createCourtSchema, updateCourtSchema } from '@/modules/courts/court.schema'
+import { bookings, abonados } from '@/shared/db/schema'
 
 export type CourtActionResult =
   | { success: true; courtId?: string }
@@ -139,4 +141,41 @@ export async function toggleCourtStatusAction(
 
   if (result.success) revalidatePath('/canchas')
   return result
+}
+
+export type CourtDeactivationImpactResult =
+  | { success: true; futureBookings: number; activeAbonados: number }
+  | { success: false; error: string }
+
+export async function getCourtDeactivationImpactAction(
+  courtId: string,
+): Promise<CourtDeactivationImpactResult> {
+  const tenant = await requireStaffTenant()
+  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  // ART = UTC-3; shift back 3 hours to get the current date in Argentina
+  const todayArt = new Date(Date.now() - 3 * 3600_000)
+  todayArt.setUTCHours(0, 0, 0, 0)
+
+  return withTenantContext(tenant.id, async (tx) => {
+    const [b] = await tx
+      .select({ n: dsql<number>`count(*)::int` })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.courtId, courtId),
+          gte(bookings.date, todayArt),
+          inArray(bookings.status, ['confirmed', 'pending_payment']),
+        ),
+      )
+    const [a] = await tx
+      .select({ n: dsql<number>`count(*)::int` })
+      .from(abonados)
+      .where(and(eq(abonados.courtId, courtId), eq(abonados.status, 'active')))
+    return {
+      success: true as const,
+      futureBookings: b?.n ?? 0,
+      activeAbonados: a?.n ?? 0,
+    }
+  })
 }

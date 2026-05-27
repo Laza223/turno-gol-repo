@@ -5,7 +5,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
 import { AbonadosList } from './AbonadosList'
 
-export default async function AbоnadosPage() {
+export default async function AbonadosPage() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

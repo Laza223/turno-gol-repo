@@ -1,12 +1,12 @@
 # TurnoGol Audit — Estado Actual
 
-**Última actualización:** 2026-05-26
+**Última actualización:** 2026-05-27
 **Branch principal:** main
-**Worktrees activos:** ninguno (F3 mergeado a main)
+**Worktrees activos:** ninguno (F4 mergeado a main)
 
 ## Fase actual
 
-**F4 — Admin Bookings + Cashflow + Canchas (CRUDs core)** (siguiente, no iniciada)
+**F5 — Admin Reportes + Settings + Abonados + Staff** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -28,6 +28,7 @@
 | F1 — Design System + UI Base | 🟢 PASS (2/2 criteria) + 3 primitives nuevos + 1 latent fix Sentry | `docs/audit/reports/fase-f01-design-system-report.md` |
 | F2 — Auth + Onboarding Flows | 🟢 PASS (3/3 criteria) + 4 E2E nuevos + 2 reactivados + 6 a11y fixes wizard | `docs/audit/reports/fase-f02-auth-onboarding-report.md` |
 | F3 — Admin Grilla + Realtime | 🟡 PASS c/1 reserva (3/4 criteria; Lighthouse 88-89 medido, gap LCP→F12) + H1 catch-up + H2 publication versionada + H3 name backfill + 10 tests nuevos | `docs/audit/reports/fase-f03-grilla-realtime-report.md` |
+| F4 — Admin Bookings + Cashflow + Canchas | 🟢 PASS (3/3 criteria) + ConfirmDialog reusable + write-side caja + optimistic toggle c/rollback + H8 parseRouteUuid + 16 tests; 6 bugs de specs + 1 inconsistencia UI cazados en verify | `docs/audit/reports/fase-f04-bookings-cashflow-canchas-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -60,6 +61,9 @@
 - **Backup restore drill (ejecución real)** → 📝 Pre-launch operacional (procedure documentado en doc19 §10.6; ejecución requiere Supabase Pro + horas ops)
 - **F3-H1: catch-up ausente en reconnect realtime** (grilla pierde eventos del gap offline; Supabase sin queue offline) → ✅ FIXED (F3 T1: `fetchFromApi()` en cada SUBSCRIBED + 7 unit tests)
 - **F3-H2: publication realtime de `bookings` no versionada** (solo dashboard → re-provision/staging sin realtime, silencioso) → ✅ FIXED (F3 T2: migración guarded dual-tree `013_realtime_publication.sql` + REPLICA IDENTITY FULL)
+- **F4-H1: cancel admin sin elección reembolso/motivo ni confirmación escalonada** (seña pagada, US-CAN-003) → ✅ FIXED (F4 T2: ConfirmDialog con radios reembolso si seña pagada + motivo obligatorio + warning del efecto $ por método)
+- **F4-H2: write-side de caja ausente en la UI** (actions `createCashFlowAction`/`closeDayAction` existían sin trigger) → ✅ FIXED (F4 T3: RegisterMovementModal + CloseDayButton type-to-confirm + nav fecha + EmptyState)
+- **F4-H3: desactivar cancha con reservas futuras/abonados sin warning escalonado** (doc6 Court invariante) → ✅ FIXED (F4 T4: `getCourtDeactivationImpactAction` + ConfirmDialog con conteo real)
 
 ### P2 (medio)
 - 4 warnings `<img>` no-optimized (Fase F12)
@@ -69,7 +73,7 @@
 - ~~MP retry on InvalidTransitionError loser → Sentry filter~~ → ✅ FIXED (B10: `beforeSend` drop por `name`)
 - B5: cron `generate-abonado-slots` sin comentario de intent → backlog
 - B6: Server Actions CSRF = Next.js built-in (sin tokens custom) → backlog
-- B7: 6 endpoints `[id]/{cancel,complete,no-show,status}` sin `parseRouteUuid()` → backlog
+- ~~B7: endpoints `[id]/{cancel,complete,no-show,status}` sin `parseRouteUuid()`~~ → ✅ RESUELTO F4 (T6/H8): `cancel` + `courts/status` pasaban el segmento crudo a Drizzle (22P02 SQL leak) → ruteados por `parseRouteUuid(req,'second-last')` → 400 limpio; `complete`/`no-show` ya validaban con `uuid.safeParse` (convertidos al helper por uniformidad, preserva comportamiento)
 - B7: Output schema validation ausente en 34 endpoints → backlog
 - B7: Error format inconsistente → backlog
 - B7: No API versioning (`/api/v1/`) → backlog
@@ -97,19 +101,21 @@
 ### Deferidos
 - ~~B2.6 Realtime cliente real~~ → ✅ RESUELTO F3 (catch-up on reconnect + debounced reconcile name-backfill + publication realtime versionada + REPLICA IDENTITY FULL + 7 unit tests del hook + 3 E2E multi-browser)
 - ~~B2.7 JWT forgery defense~~ → Resuelto en B6 (Supabase signed tokens)
+- **F4: optimistic rollback solo cubre fallo graceful `{success:false}`, no un throw/500 de red** (propaga al error boundary) → nice-to-have v1 (try/catch con rollback-on-throw); fallo de negocio devuelve `{success:false}`, un 500 de transporte es raro
+- **F4: venta rápida productos/cantina (US-CAJ-004) + CRUD abonados + settings/horarios + reportes financieros** → F5
 
 ## Stats acumulados
 
-- **Fases completadas: 16/26** (backend B0-B11 + F0 + F1 + F2 + F3 frontend).
-- **Tests acumulados nuevos audit: 181** (171 post-F2 + F3: 7 unit hook `use-booking-realtime` + 3 E2E `grilla-realtime`). Unit suite 411→418. E2E suite +3 (delegados a CI). Integration 325/325 (los 2 flaky pre-existentes `race-abonado`/`daily-close` no flakearon esta corrida; la migración F3 T2 no agregó fallas).
-- **Bugs fixed: 30** (25 post-F2 + F3: H1 catch-up realtime P0-fase + H2 publication no versionada P1 + H3 name backfill P2 + H7 tooling setCookie P2 + H8 tooling falso-positivo P2). H4/H5/H6 de F3 son hardening/cobertura (REPLICA IDENTITY FULL, F1 primitives, tests), no bugs de runtime.
+- **Fases completadas: 17/26** (backend B0-B11 + F0 + F1 + F2 + F3 + F4 frontend).
+- **Tests acumulados nuevos audit: 197** (181 post-F3 + F4: 4 unit `confirm-dialog` + 12 E2E CRUD reservas/caja/canchas). Unit suite 418→422. E2E suite +12 (delegados a CI). Integration 325/325 (los 2 flaky pre-existentes no flakearon; `daily-close-idempotency` 5/5 esta corrida).
+- **Bugs fixed: 34** (30 post-F3 + F4: H1 cancel UI sin reembolso/motivo P1 + H2 write-side caja ausente P0-fase + H3 desactivar sin warning P1 + H8 UUID route leak cancel/status P2). H4/H5/H6/H7 de F4 son hardening/cobertura. **+6 bugs de specs + 1 inconsistencia UI** (caja registraba en hoy, no en el día visto) cazados en trust-but-verify de T5 — sobre código no mergeado a main, no cuentan como runtime.
 - **Tests legacy ajustados: 7** (6 previos + 1 B11).
-- **Deps nuevas (devDependencies): `@testing-library/react` + `happy-dom`** (F3 T1, para `renderHook` del hook realtime).
-- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql` ↔ `20260526000001`, dual-tree, guarded).
+- **Deps nuevas (devDependencies): `@testing-library/react` + `happy-dom`** (F3 T1; F4 las reusó, +0 deps).
+- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql` ↔ `20260526000001`, dual-tree, guarded; F4 +0 — no tocó schema).
 
 ## Próximas decisiones para el humano
 
-1. **F3 — Admin Grilla + Realtime** → ✅ completado esta sesión, mergeado a main. 3/4 done-criteria plenos (multi-browser E2E <2s, catch-up FIXED + tested, mobile usable) + #4 Lighthouse **88-89 medido** (1-2 pts corto, gap LCP estructural → F12). 8 hallazgos resueltos (H1-H8). 1 migración realtime versionada. **Decisión de schema (T2):** migración aditiva/idempotente/guarded de publication realtime — no-op en prod existente, cierra riesgo silencioso en re-provision.
+1. **F4 — Admin Bookings + Cashflow + Canchas** → ✅ completado esta sesión, mergeado a main. **3/3 done-criteria** (CRUDs happy+3edge E2E, confirmaciones destructivas escalonadas, optimistic c/rollback). ConfirmDialog reusable + write-side completo de caja + toggle optimista de canchas. **T6 (bonus) cerró B7 parseRouteUuid (H8).** **Trust-but-verify cazó 6 bugs de specs (columnas DB inexistentes, test de rollback falso) + 1 inconsistencia UI real (caja registraba el movimiento en hoy, no en el día visto)** — todos corregidos. Sin cambios de schema. (F3 quedó 3/4 con Lighthouse 88-89→F12.)
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
-3. **F4 — Admin Bookings + Cashflow + Canchas (CRUDs core)** es la siguiente fase. **Criticidad 🔴🔴 Alta.** Cada CRUD happy path + 3 edge cases E2E, confirmaciones destructivas escalonadas, optimistic updates donde aplique. Trigger humano: confirmar continuar o pausar.
+3. **F5 — Admin Reportes + Settings + Abonados + Staff** es la siguiente fase (MASTER_PLAN 186-190). Incluye lo diferido de F4: venta rápida de productos/cantina (depende del CRUD de productos), CRUD de abonados, settings/políticas/horarios-feriados, reportes financieros. Trigger humano: confirmar continuar o pausar.
 4. **Pendiente F12 (Performance):** `/grilla` Lighthouse 88-89 (LCP 3.8s vía shared bundle 150KB Sentry). Harness autenticado (`pnpm lighthouse:grilla`) listo para re-medir tras el adelgazamiento del bundle.

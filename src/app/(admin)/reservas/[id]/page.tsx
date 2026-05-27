@@ -72,7 +72,13 @@ export default async function ReservaDetailPage({ params }: Props) {
         )}
       </div>
 
-      <BookingActions bookingId={booking.id} status={booking.status} />
+      <BookingActions
+        bookingId={booking.id}
+        status={booking.status}
+        depositStatus={booking.depositStatus}
+        depositAmount={booking.depositAmount}
+        paymentMethod={booking.paymentMethod ?? null}
+      />
     </div>
   )
 }

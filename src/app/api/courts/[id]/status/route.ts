@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { parseRouteUuid } from '@/shared/api/route-params'
 import { toggleStatus } from '@/modules/courts/court.service'
 
 export const dynamic = 'force-dynamic'
@@ -10,8 +11,9 @@ const toggleStatusSchema = z.object({
 })
 
 export const PATCH = withTenant(async (req, _user, tx) => {
-  const segments = req.nextUrl.pathname.split('/')
-  const courtId = segments[segments.length - 2]!
+  const idResult = parseRouteUuid(req, 'second-last')
+  if ('response' in idResult) return idResult.response
+  const courtId = idResult.uuid
 
   let body: unknown
   try {

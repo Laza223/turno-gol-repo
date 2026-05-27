@@ -1,8 +1,12 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Receipt } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
+import { EmptyState } from '@/components/ui/empty-state'
+import { CajaActions } from './components/CajaActions'
 
 function artDateOf(ts: Date): string {
   return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
@@ -14,7 +18,13 @@ function formatARS(centavos: number): string {
   )
 }
 
-export default async function CajaPage() {
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+export default async function CajaPage({ searchParams }: { searchParams: { date?: string } }) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -22,24 +32,53 @@ export default async function CajaPage() {
   if (!tenant) redirect('/login')
 
   const today = artDateOf(new Date())
+  const date = searchParams.date ?? today
 
   const { summary, cashFlows } = await withTenantContext(tenant.id, async (tx) => {
     const [s, cf] = await Promise.all([
-      getDaySummary(tenant.id, today, tx),
-      getCashFlows(tenant.id, today, tx),
+      getDaySummary(tenant.id, date, tx),
+      getCashFlows(tenant.id, date, tx),
     ])
     return { summary: s, cashFlows: cf }
   })
 
+  const prevDay = addDays(date, -1)
+  const nextDay = addDays(date, 1)
+
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Caja — {today}</h1>
-        {summary.isClosed && (
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-500/20">
-            Cerrada por {summary.close?.closedBy}
-          </span>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">Caja — {date}</h1>
+          {summary.isClosed && (
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-500/20">
+              Cerrada por {summary.close?.closedBy}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border border-slate-200 bg-white overflow-hidden">
+            <Link
+              href={`/caja?date=${prevDay}`}
+              className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-r border-slate-200"
+            >
+              ← Anterior
+            </Link>
+            <Link
+              href="/caja"
+              className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-r border-slate-200"
+            >
+              Hoy
+            </Link>
+            <Link
+              href={`/caja?date=${nextDay}`}
+              className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Siguiente →
+            </Link>
+          </div>
+          <CajaActions date={date} balance={summary.balance} isClosed={summary.isClosed} />
+        </div>
       </div>
 
       {/* Summary */}
@@ -79,9 +118,11 @@ export default async function CajaPage() {
           <h2 className="font-medium text-slate-900">Movimientos del día</h2>
         </div>
         {cashFlows.length === 0 ? (
-          <p className="p-4 text-sm text-slate-500">
-            No hay movimientos registrados para este día.
-          </p>
+          <EmptyState
+            icon={Receipt}
+            title="Sin movimientos"
+            description="No hay movimientos registrados para este día."
+          />
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -111,12 +152,6 @@ export default async function CajaPage() {
           </table>
         )}
       </div>
-
-      {!summary.isClosed && (
-        <p className="text-sm text-muted-foreground">
-          Usá las acciones del panel para agregar movimientos o cerrar la caja.
-        </p>
-      )}
     </div>
   )
 }

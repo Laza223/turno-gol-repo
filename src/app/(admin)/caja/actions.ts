@@ -25,7 +25,8 @@ const createCashFlowSchema = z.object({
   description: boundedText(500),
   bookingId: uuid.optional(),
   productId: uuid.optional(),
-  occurredAt: z.date().optional(),
+  // coerce: a Server Action may deliver this as a Date or an ISO string across the boundary.
+  occurredAt: z.coerce.date().optional(),
 })
 
 const closeDaySchema = z.object({

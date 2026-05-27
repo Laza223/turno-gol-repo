@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { parseRouteUuid } from '@/shared/api/route-params'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByAdmin } from '@/modules/bookings/booking.cancellation'
@@ -20,8 +21,9 @@ export const POST = withTenant(async (req, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
 
-  const parts = req.nextUrl.pathname.split('/')
-  const bookingId = parts[parts.length - 2]!
+  const idResult = parseRouteUuid(req, 'second-last')
+  if ('response' in idResult) return idResult.response
+  const bookingId = idResult.uuid
 
   let body: unknown
   try {

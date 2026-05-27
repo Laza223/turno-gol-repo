@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { LayoutGrid } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import { toggleCourtStatusAction } from '../actions'
+import { toggleCourtStatusAction, getCourtDeactivationImpactAction } from '../actions'
 import { CourtForm } from './CourtForm'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { toast } from '@/hooks/use-toast'
 
 const SURFACE_LABELS: Record<string, string> = {
   synthetic_grass: 'Césped sintético',
@@ -76,11 +80,20 @@ export function CourtList({ initialCourts, openingHours }: Props) {
       </div>
 
       {courts.length === 0 ? (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            No tenés canchas todavía. Creá la primera para aparecer en búsquedas públicas.
-          </p>
-        </div>
+        <EmptyState
+          icon={LayoutGrid}
+          title="Sin canchas todavía"
+          description="Creá la primera para aparecer en búsquedas públicas."
+          action={
+            <button
+              type="button"
+              onClick={openCreate}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
+            >
+              + Nueva cancha
+            </button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {courts.map((court) => (
@@ -92,23 +105,63 @@ export function CourtList({ initialCourts, openingHours }: Props) {
   )
 }
 
-function CourtCard({
-  court,
-  onEdit,
-}: {
-  court: CourtRow
-  onEdit: (court: CourtRow) => void
-}) {
+function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRow) => void }) {
   const [isPending, startTransition] = useTransition()
   const [currentStatus, setCurrentStatus] = useState<'online' | 'offline'>(court.status)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [impact, setImpact] = useState<{ futureBookings: number; activeAbonados: number } | null>(
+    null,
+  )
+  const [loadingImpact, setLoadingImpact] = useState(false)
 
-  function handleToggle() {
-    const next = currentStatus === 'online' ? 'offline' : 'online'
+  function activate() {
+    const prev = currentStatus
+    setCurrentStatus('online')
     startTransition(async () => {
-      const result = await toggleCourtStatusAction(court.id, next)
-      if (result.success) setCurrentStatus(next)
+      const res = await toggleCourtStatusAction(court.id, 'online')
+      if (!res.success) {
+        setCurrentStatus(prev)
+        toast({ title: 'No se pudo activar', description: res.error, variant: 'destructive' })
+      }
     })
   }
+
+  async function openDeactivate() {
+    setLoadingImpact(true)
+    const res = await getCourtDeactivationImpactAction(court.id)
+    setLoadingImpact(false)
+    setImpact(
+      res.success
+        ? { futureBookings: res.futureBookings, activeAbonados: res.activeAbonados }
+        : { futureBookings: 0, activeAbonados: 0 },
+    )
+    setConfirmOpen(true)
+  }
+
+  async function onConfirmDeactivate(): Promise<{ success: boolean; error?: string }> {
+    const prev = currentStatus
+    setCurrentStatus('offline')
+    const res = await toggleCourtStatusAction(court.id, 'offline')
+    if (!res.success) {
+      setCurrentStatus(prev)
+      return res
+    }
+    toast({ title: 'Cancha desactivada', variant: 'success' })
+    return res
+  }
+
+  function handleToggleClick() {
+    if (currentStatus === 'online') void openDeactivate()
+    else activate()
+  }
+
+  const warningLines: string[] = []
+  if (impact && impact.futureBookings > 0)
+    warningLines.push(
+      `Hay ${impact.futureBookings} reserva(s) futura(s) en esta cancha. Gestionalas antes (las existentes se mantienen hasta que las canceles).`,
+    )
+  if (impact && impact.activeAbonados > 0)
+    warningLines.push(`Hay ${impact.activeAbonados} abonado(s) activo(s) en esta cancha.`)
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 flex items-center justify-between gap-4">
@@ -140,13 +193,33 @@ function CourtCard({
         </button>
         <button
           type="button"
-          onClick={handleToggle}
-          disabled={isPending}
+          onClick={handleToggleClick}
+          disabled={isPending || loadingImpact}
           className="text-xs border border-slate-200 px-2 py-1 rounded text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
         >
-          {isPending ? '...' : currentStatus === 'online' ? 'Desactivar' : 'Activar'}
+          {isPending || loadingImpact ? '…' : currentStatus === 'online' ? 'Desactivar' : 'Activar'}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Desactivar ${court.name}`}
+        description={
+          <div className="space-y-2">
+            <p>Una cancha offline no recibe reservas nuevas.</p>
+            {warningLines.map((l, i) => (
+              <p key={i} className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                {l}
+              </p>
+            ))}
+          </div>
+        }
+        variant="destructive"
+        confirmLabel="Desactivar"
+        cancelLabel="Volver"
+        onConfirm={onConfirmDeactivate}
+      />
     </div>
   )
 }

@@ -32,7 +32,8 @@
     "jobs:start": "tsx src/shared/jobs/run-workers.ts",
     "analyze": "cross-env ANALYZE=true next build",
     "lighthouse": "lhci autorun",
-    "lighthouse:grilla": "tsx scripts/lighthouse-grilla.ts"
+    "lighthouse:grilla": "tsx scripts/lighthouse-grilla.ts",
+    "lighthouse:public": "tsx scripts/lighthouse-public.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0",

@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { and, eq, gte, inArray, sql as dsql } from 'drizzle-orm'
+import { and, eq, inArray, sql as dsql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -153,9 +153,10 @@ export async function getCourtDeactivationImpactAction(
   const tenant = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
 
-  // ART = UTC-3; shift back 3 hours to get the current date in Argentina
-  const todayArt = new Date(Date.now() - 3 * 3600_000)
-  todayArt.setUTCHours(0, 0, 0, 0)
+  // ART = UTC-3. Fecha de hoy en Argentina (YYYY-MM-DD); se compara contra la
+  // columna `date` con cast explícito ::date — misma convención que
+  // booking.service.ts (evita ambigüedad de serialización de Date en Drizzle).
+  const dateStr = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
 
   return withTenantContext(tenant.id, async (tx) => {
     const [b] = await tx
@@ -164,7 +165,7 @@ export async function getCourtDeactivationImpactAction(
       .where(
         and(
           eq(bookings.courtId, courtId),
-          gte(bookings.date, todayArt),
+          dsql`${bookings.date} >= ${dateStr}::date`,
           inArray(bookings.status, ['confirmed', 'pending_payment']),
         ),
       )

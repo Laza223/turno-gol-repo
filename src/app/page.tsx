@@ -1,3 +1,4 @@
+import { buildMetadata } from '@/lib/seo/metadata'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -16,6 +17,13 @@ import {
 } from 'lucide-react'
 import SiteNav from '@/components/site/SiteNav'
 import SiteFooter from '@/components/site/SiteFooter'
+
+export const metadata = buildMetadata({
+  title: 'TurnoGol — Reservá tu cancha de fútbol',
+  description: 'Encontrá complejos de fútbol cerca tuyo y reservá tu cancha online en segundos. Sin llamados, sin esperas.',
+  path: '/',
+  titleAbsolute: true,
+})
 
 const HERO_BG = '/hero-bg.png'
 const FEATURE_BG =

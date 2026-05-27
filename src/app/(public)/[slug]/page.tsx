@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { getPublicTenant, getPublicAvailability } from '@/modules/tenants/public.service'
+import { buildMetadata } from '@/lib/seo/metadata'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 import TenantHeader from './components/TenantHeader'
 import AvailabilityGrid from './components/AvailabilityGrid'
@@ -78,8 +79,18 @@ export default async function PublicComplexPage(props: Props) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
-  return {
-    title: `${tenant.name} — TurnoGol`,
-    description: `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+  if (UNAVAILABLE_STATUSES.has(tenant.status)) {
+    return buildMetadata({
+      title: tenant.name,
+      description: `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+      path: `/${tenant.slug}`,
+      noIndex: true,
+    })
   }
+  return buildMetadata({
+    title: tenant.name,
+    description: tenant.description ?? `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+    path: `/${tenant.slug}`,
+    image: tenant.coverUrl ?? undefined,
+  })
 }

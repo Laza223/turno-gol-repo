@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ChevronLeft } from 'lucide-react'
 import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/public.service'
+import { buildMetadata } from '@/lib/seo/metadata'
 import WeeklyAvailability from './components/WeeklyAvailability'
 
 export const dynamic = 'force-dynamic'
@@ -35,5 +36,17 @@ export default async function DisponibilidadPage({ params }: Props) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
-  return { title: `Disponibilidad — ${tenant.name} · TurnoGol` }
+  if (UNAVAILABLE.has(tenant.status)) {
+    return buildMetadata({
+      title: `Disponibilidad — ${tenant.name}`,
+      description: `Mirá los turnos disponibles esta semana en ${tenant.name}, ${tenant.city}.`,
+      path: `/${tenant.slug}/disponibilidad`,
+      noIndex: true,
+    })
+  }
+  return buildMetadata({
+    title: `Disponibilidad — ${tenant.name}`,
+    description: `Mirá los turnos disponibles esta semana en ${tenant.name}, ${tenant.city}.`,
+    path: `/${tenant.slug}/disponibilidad`,
+  })
 }

@@ -1,15 +1,16 @@
-import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
 import { listPublicCities, searchPublicTenants } from '@/modules/tenants/search.service'
+import { buildMetadata } from '@/lib/seo/metadata'
 import SearchBar from './components/SearchBar'
 import TenantCard from './components/TenantCard'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = {
-  title: 'Explorá complejos de fútbol — TurnoGol',
+export const metadata = buildMetadata({
+  title: 'Explorá complejos de fútbol',
   description: 'Encontrá canchas de fútbol y reservá online en tu ciudad.',
-}
+  path: '/explorar',
+})
 
 const PAGE_SIZE = 20
 

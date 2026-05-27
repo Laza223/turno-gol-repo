@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
+import { SITE_URL, SITE_NAME, SITE_LOCALE, DEFAULT_OG_IMAGE } from '@/lib/seo/metadata'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -10,8 +11,18 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'TurnoGol',
-  description: 'Gestión de turnos para complejos de fútbol',
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+  description: 'Gestión de turnos para complejos de fútbol en Argentina.',
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+    images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: SITE_NAME }],
+  },
+  twitter: { card: 'summary_large_image', images: [DEFAULT_OG_IMAGE] },
+  formatDetection: { telephone: false, email: false, address: false },
 }
 
 export default function RootLayout({

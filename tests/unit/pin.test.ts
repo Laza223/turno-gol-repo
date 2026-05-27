@@ -60,11 +60,17 @@ describe('checkPinSessionAction', () => {
 })
 
 describe('verifyPinAction', () => {
-  it('returns ok:false when PIN invalid', async () => {
+  it('returns ok:false, locked:false, attemptsLeft when PIN invalid', async () => {
     vi.mocked(verifyPin).mockResolvedValueOnce(false)
     const { verifyPinAction } = await import('@/app/(admin)/actions/pin')
     const result = await verifyPinAction('0000')
-    expect(result).toEqual({ ok: false, error: 'PIN incorrecto.' })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toBe('PIN incorrecto.')
+      expect(result.locked).toBe(false)
+      // attemptsLeft is number because FakeRatelimit always returns remaining=5
+      expect(typeof (result as { attemptsLeft?: number }).attemptsLeft).toBe('number')
+    }
   })
 
   it('returns ok:true when PIN valid', async () => {

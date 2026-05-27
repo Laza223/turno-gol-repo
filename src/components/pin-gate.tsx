@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,15 +12,53 @@ interface PinGateProps {
   children: ReactNode
 }
 
+/** Format ms remaining as M:SS or "0:00". */
+function formatCountdown(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000))
+  const min = Math.floor(totalSec / 60)
+  const sec = totalSec % 60
+  return `${min}:${String(sec).padStart(2, '0')}`
+}
+
 export function PinGate({ children }: PinGateProps) {
   const [verified, setVerified] = useState<boolean | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [attemptsLeft, setAttemptsLeft] = useState<number | undefined>(undefined)
+  // lockedUntilMs: ms-since-epoch when the lockout expires (0 = not locked).
+  const [lockedUntilMs, setLockedUntilMs] = useState(0)
+  // now: updated every second while locked, so the countdown re-renders.
+  const [now, setNow] = useState(() => Date.now())
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [, startTransition] = useTransition()
 
   useEffect(() => {
     checkPinSessionAction().then(setVerified)
   }, [])
+
+  // Countdown interval: starts when locked, stops when countdown reaches 0.
+  useEffect(() => {
+    if (lockedUntilMs > Date.now()) {
+      intervalRef.current = setInterval(() => {
+        const current = Date.now()
+        setNow(current)
+        if (current >= lockedUntilMs) {
+          setLockedUntilMs(0)
+          setError(null)
+          if (intervalRef.current !== null) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
+        }
+      }, 1000)
+    }
+    return () => {
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [lockedUntilMs])
 
   if (verified === null) {
     return (
@@ -36,15 +74,26 @@ export function PinGate({ children }: PinGateProps) {
 
   if (verified) return <>{children}</>
 
+  const isLocked = lockedUntilMs > now
+  const msRemaining = isLocked ? lockedUntilMs - now : 0
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (isLocked) return
     setError(null)
+    setAttemptsLeft(undefined)
     startTransition(async () => {
       const result = await verifyPinAction(pin)
       if (result.ok) {
         setVerified(true)
+      } else if (result.locked) {
+        setLockedUntilMs(result.retryAtMs)
+        setNow(Date.now())
+        setError(result.error)
+        setPin('')
       } else {
         setError(result.error)
+        setAttemptsLeft(result.attemptsLeft)
         setPin('')
       }
     })
@@ -76,18 +125,29 @@ export function PinGate({ children }: PinGateProps) {
               placeholder="••••"
               autoFocus
               autoComplete="current-password"
+              disabled={isLocked}
               className="h-10 text-center text-lg tracking-widest"
             />
-            {error && (
+            {isLocked && (
+              <p className="text-xs font-medium text-red-600" role="alert">
+                Bloqueado hasta {formatCountdown(msRemaining)}
+              </p>
+            )}
+            {!isLocked && error && (
               <p className="text-xs text-red-600" role="alert">
                 {error}
+              </p>
+            )}
+            {!isLocked && attemptsLeft !== undefined && attemptsLeft <= 2 && (
+              <p className="text-xs text-amber-700" role="status">
+                Te quedan {attemptsLeft} intentos antes del bloqueo.
               </p>
             )}
           </div>
           <Button
             type="submit"
             className="w-full bg-emerald-600 hover:bg-emerald-500"
-            disabled={pin.length < 4}
+            disabled={pin.length < 4 || isLocked}
           >
             Confirmar
           </Button>

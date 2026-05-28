@@ -50,6 +50,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
     await sql`DELETE FROM notifications WHERE tenant_id = ${tid}`
     await sql`DELETE FROM cash_flows WHERE tenant_id = ${tid}`
     await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tid}`
+    await sql`UPDATE bookings SET payment_id = NULL, payment_method = NULL WHERE tenant_id = ${tid}`
     await sql`DELETE FROM payments WHERE tenant_id = ${tid}`
     await sql`DELETE FROM bookings WHERE tenant_id = ${tid}`
     await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${tid}`
@@ -65,6 +66,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.tenantId}`
+  await sql`UPDATE bookings SET payment_id = NULL, payment_method = NULL WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.tenantId}`
@@ -79,6 +81,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`UPDATE bookings SET payment_id = NULL, payment_method = NULL WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.depositTenantId}`
@@ -118,7 +121,10 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
       {
         days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
         from: '00:00',
-        to: '00:00', // 00:00 close == 24h, covers every slot
+        // NOTE: '23:59' (not '00:00'). public.service.getPriceForSlot does NOT
+        // treat to=0 as 24h, so '00:00' would return null price for every slot.
+        // (booking.service.priceForDuration DOES; helper inconsistency tracked.)
+        to: '23:59',
         prices: { '60': 10000, '120': 18000 },
       },
     ],
@@ -171,7 +177,8 @@ async function seedDepositTenantAndCourt(sql: SqlClient): Promise<void> {
       {
         days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
         from: '00:00',
-        to: '00:00', // 00:00 close == 24h, covers every slot
+        // Match demo tenant: '23:59' so public.service.getPriceForSlot matches.
+        to: '23:59',
         prices: { '60': 10000, '120': 18000 },
       },
     ],

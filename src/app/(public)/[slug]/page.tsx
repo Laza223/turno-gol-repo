@@ -2,10 +2,13 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { getPublicTenant, getPublicAvailability } from '@/modules/tenants/public.service'
+import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 import TenantHeader from './components/TenantHeader'
 import AvailabilityGrid from './components/AvailabilityGrid'
 import { Skeleton } from '@/components/ui/skeleton'
+import JsonLd from '@/components/seo/JsonLd'
+import { buildLocalBusiness, buildBreadcrumbList } from '@/lib/seo/structured-data'
 
 type Props = { params: { slug: string }; searchParams: { date?: string } }
 
@@ -67,6 +70,16 @@ export default async function PublicComplexPage(props: Props) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <JsonLd
+        data={[
+          buildLocalBusiness(tenant),
+          buildBreadcrumbList([
+            { name: 'Inicio', url: absoluteUrl('/') },
+            { name: 'Explorar', url: absoluteUrl('/explorar') },
+            { name: tenant.name, url: absoluteUrl(`/${tenant.slug}`) },
+          ]),
+        ]}
+      />
       <TenantHeader tenant={tenant} />
       <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
         <GridSection tenant={tenant} initialDate={initialDate} />
@@ -78,8 +91,18 @@ export default async function PublicComplexPage(props: Props) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
-  return {
-    title: `${tenant.name} — TurnoGol`,
-    description: `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+  if (UNAVAILABLE_STATUSES.has(tenant.status)) {
+    return buildMetadata({
+      title: tenant.name,
+      description: `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+      path: `/${tenant.slug}`,
+      noIndex: true,
+    })
   }
+  return buildMetadata({
+    title: tenant.name,
+    description: tenant.description ?? `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+    path: `/${tenant.slug}`,
+    image: tenant.coverUrl ?? undefined,
+  })
 }

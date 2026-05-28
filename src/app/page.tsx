@@ -1,3 +1,6 @@
+import { buildMetadata } from '@/lib/seo/metadata'
+import JsonLd from '@/components/seo/JsonLd'
+import { buildOrganization, buildWebSite } from '@/lib/seo/structured-data'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -16,6 +19,13 @@ import {
 } from 'lucide-react'
 import SiteNav from '@/components/site/SiteNav'
 import SiteFooter from '@/components/site/SiteFooter'
+
+export const metadata = buildMetadata({
+  title: 'TurnoGol — Reservá tu cancha de fútbol',
+  description: 'Encontrá complejos de fútbol cerca tuyo y reservá tu cancha online en segundos. Sin llamados, sin esperas.',
+  path: '/',
+  titleAbsolute: true,
+})
 
 const HERO_BG = '/hero-bg.png'
 const FEATURE_BG =
@@ -94,6 +104,7 @@ const testimonials = [
 export default function HomePage() {
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
+      <JsonLd data={[buildOrganization(), buildWebSite()]} />
       <SiteNav variant="overlay" />
       <Hero />
       <StatsBar />

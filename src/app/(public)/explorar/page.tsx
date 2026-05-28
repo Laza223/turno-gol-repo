@@ -1,15 +1,18 @@
-import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
 import { listPublicCities, searchPublicTenants } from '@/modules/tenants/search.service'
+import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import SearchBar from './components/SearchBar'
 import TenantCard from './components/TenantCard'
+import JsonLd from '@/components/seo/JsonLd'
+import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = {
-  title: 'Explorá complejos de fútbol — TurnoGol',
+export const metadata = buildMetadata({
+  title: 'Explorá complejos de fútbol',
   description: 'Encontrá canchas de fútbol y reservá online en tu ciudad.',
-}
+  path: '/explorar',
+})
 
 const PAGE_SIZE = 20
 
@@ -42,6 +45,12 @@ export default async function ExplorarPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <JsonLd
+        data={buildBreadcrumbList([
+          { name: 'Inicio', url: absoluteUrl('/') },
+          { name: 'Explorar', url: absoluteUrl('/explorar') },
+        ])}
+      />
       <header className="mb-6 space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Explorá complejos</h1>
         <p className="text-sm text-slate-500">{total} complejo{total === 1 ? '' : 's'} disponible{total === 1 ? '' : 's'}.</p>

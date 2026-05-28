@@ -28,7 +28,8 @@ describe('buildMetadata', () => {
     })
     expect(md.alternates?.canonical).toBe(`${SITE_URL}/foo`)
     expect(md.openGraph?.title).toBe('X')
-    expect(md.twitter?.card).toBe('summary_large_image')
+    const twitter = md.twitter as { card: string }
+    expect(twitter.card).toBe('summary_large_image')
     // robots is an object when noIndex=true
     const robots = md.robots as { index: boolean; follow: boolean }
     expect(robots.index).toBe(false)

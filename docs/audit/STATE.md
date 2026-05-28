@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-27
 **Branch principal:** main
-**Worktrees activos:** ninguno (F5 mergeado a main)
+**Worktrees activos:** ninguno (F6 mergeado a main)
 
 ## Fase actual
 
-**F6 — Public Landing + Search + Portal Complejo** (siguiente, no iniciada)
+**F7 — Booking Flow Jugador End-to-End** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -30,6 +30,7 @@
 | F3 — Admin Grilla + Realtime | 🟡 PASS c/1 reserva (3/4 criteria; Lighthouse 88-89 medido, gap LCP→F12) + H1 catch-up + H2 publication versionada + H3 name backfill + 10 tests nuevos | `docs/audit/reports/fase-f03-grilla-realtime-report.md` |
 | F4 — Admin Bookings + Cashflow + Canchas | 🟢 PASS (3/3 criteria) + ConfirmDialog reusable + write-side caja + optimistic toggle c/rollback + H8 parseRouteUuid + 16 tests; 6 bugs de specs + 1 inconsistencia UI cazados en verify | `docs/audit/reports/fase-f04-bookings-cashflow-canchas-report.md` |
 | F5 — Admin Reportes + Settings + Abonados + Staff | 🟢 PASS (3/3 criteria) + 4 stubbed buttons P0 → funcionales (H1) + preview slots abonado (H2) + lockout UX countdown (H5) + staff desactivar c/ConfirmDialog (H4) + F1 states 4 rutas + 16 E2E nuevos + 39 unit nuevos; 3 issues cazados en verify (notes-no-enviadas, Cyrillic 'о', preventDefault dropdown) | `docs/audit/reports/fase-f05-reportes-settings-abonados-staff-report.md` |
+| F6 — Public Landing + Search + Portal Complejo | 🟢 PASS (4/4 criteria) + sitemap dinámico + robots + manifest + favicon/apple-icon/OG default via ImageResponse + JSON-LD SportsActivityLocation+BreadcrumbList+WebSite+Organization + buildMetadata helper c/canonical+OG+Twitter+titleAbsolute + 3 `<img>`→`<Image>` migrations + 3 loading.tsx + Lighthouse public harness c/SEO=1.0 hard assert + 19 unit + 5 integration + 6 E2E scenarios; 6 issues cazados en review+verify (force-dynamic/revalidate conflict, tsbuildinfo committed, manifest size mismatch, absoluteUrl mutation, robots.host deprecated, twitter.card union typecheck) | `docs/audit/reports/fase-f06-public-landing-search-portal-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -116,17 +117,18 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 18/26** (backend B0-B11 + F0 + F1 + F2 + F3 + F4 + F5 frontend).
-- **Tests acumulados nuevos audit: 236** (197 post-F4 + F5: 39 unit nuevos `preview-abonado-slots`/`abonados-list`/`staff-actions`/`pin-gate` + 1 integration `getAbonadoSlotConflicts returns all conflict dates` + 16 E2E nuevos en 4 specs). Unit suite **422→461**. E2E suite +16 (13 activos + 3 gated por env, delegados a CI). Integration **325→326**.
-- **Bugs fixed: 38** (34 post-F4 + F5: H1 4 stubbed buttons P0 + H2 preview slots ausente P0/done-criteria + H4 staff desactivar sin confirm P1 + H5 PIN lockout UX P1). H3/H6/H7/H8/H9/H10/H11 de F5 son hardening/cobertura/latentes. **+3 issues cazados en trust-but-verify F5** (notes-no-enviadas T1 + Cyrillic 'о' T1 latente + preventDefault dropdown T3) — corregidos en commits separados, no llegaron a main.
-- **Tests legacy ajustados: 8** (7 previos + 1 F5: `pin.test.ts` assertion sobre wrong-PIN ahora chequea `locked === false` + `attemptsLeft` type en lugar de exact-match completo).
-- **Deps nuevas (devDependencies): `@testing-library/react` + `happy-dom`** (F3 T1; F4 + F5 las reusaron, +0 deps). `@upstash/redis` ya estaba en runtime deps.
-- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql`; F4 + F5 +0 — no tocaron schema).
-- **Bundle audit F5:** `/staff` 190KB → 192KB (+2KB de ConfirmDialog en chunk compartido; bajo 200KB). `/abonados` 177KB. `/abonados/nuevo` 162KB. `/reportes` 151KB. Todas las rutas admin pasan.
+- **Fases completadas: 19/26** (backend B0-B11 + F0-F6 frontend).
+- **Tests acumulados nuevos audit: 260** (236 post-F5 + F6: 19 unit nuevos `seo-structured-data`/`seo-metadata`/`robots-route` + 5 integration `sitemap-route` + 6 E2E scenarios en `public-seo`). Unit suite **461→480** (478 passing; 2 fallos pre-existentes `zod-coverage` `bookings/[id]/{complete,no-show}` desde F4, NO regresión F6). Integration **326→331** (329 passing; 2 fallos pre-existentes `daily-close-idempotency` + `race-abonado-vs-individual`, NO regresión F6). E2E suite +6 (delegado a CI).
+- **Bugs fixed: 38** (sin nuevos en F6 — F6 son features SEO/perf, no fixes de funcionalidad rota). **+6 issues cazados en review+trust-but-verify F6** (force-dynamic/revalidate conflict T1, tsbuildinfo committed T1, manifest size mismatch T1 reviewer, absoluteUrl mutation T1 reviewer, robots.host deprecated T1 reviewer, twitter.card discriminated union T7) — corregidos pre-merge.
+- **Tests legacy ajustados: 8** (sin cambios en F6).
+- **Deps nuevas: 0** en F6 (`@lhci/cli` via npx — patrón F0/F3).
+- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql`; F4 + F5 + F6 +0 — no tocaron schema).
+- **Bundle audit F6:** `/` 158KB, `/explorar` 159KB, `/[slug]` 167KB, `/[slug]/disponibilidad` 154KB, `/[slug]/reservar` 155KB (F7 scope), `/privacy`/`/terms` 152KB, `/sitemap.xml`/`/robots.txt`/`/manifest.webmanifest` 0 B static, `/icon`/`/apple-icon`/`/opengraph-image` 0 B edge. **Todas <200KB ✓**. Shared baseline sigue 150KB (Sentry, F12 gap).
 
 ## Próximas decisiones para el humano
 
-1. **F5 — Admin Reportes + Settings + Abonados + Staff** → ✅ completado esta sesión, mergeado a main. **3/3 done-criteria** (reportes funcionan con datos sintéticos + Skeleton + E2E; PIN lockout UX con countdown + disable + attemptsLeft; abonados con preview de slots reusando `generateSlotDates` del cron B5). **Plus:** 4 botones stubbed de abonados (P0 latente) → funcionales con ConfirmDialog escalonado; staff desactivar con type-to-confirm email; F1 states aplicados en /abonados + /staff + /reportes. **Trust-but-verify cazó 3 issues** (notes-field UI mentirosa, Cyrillic 'о' en function name latente desde el primer commit del archivo, preventDefault impedía cerrar dropdown) — todos corregidos antes del merge. Sin cambios de schema.
+1. **F6 — Public Landing + Search + Portal Complejo** → ✅ completado esta sesión, mergeado a main. **4/4 done-criteria** (sitemap dinámico filtrando tenants active|trialing; robots con allow + disallow + Sitemap directive; Schema.org SportsActivityLocation + BreadcrumbList + WebSite SearchAction + Organization; Lighthouse public harness con SEO=error minScore 1.0 hard CI assert). **Plus:** OG + Twitter Card + canonical en todas rutas públicas; tenants `UNAVAILABLE_STATUSES` retornan `robots: noindex,nofollow`; manifest PWA + favicon + apple-icon + OG default 1200x630 via Edge ImageResponse; 3 `<img>` → `<Image>` migration (cover priority/LCP + logo + card cover); 3 `loading.tsx` con Skeleton (CLS=0); 19 unit + 5 integration + 6 E2E scenarios. **Trust-but-verify + reviewer cazaron 6 issues** (force-dynamic/revalidate conflict, tsbuildinfo committed, manifest size mismatch, absoluteUrl mutation, robots.host deprecated, twitter.card discriminated union typecheck) — todos corregidos pre-merge. Sin cambios de schema. **Lighthouse local NO ejecutado en sesión** (harness listo, run delegado a CI o local con seed activo — honesto, F3 dejó script que mentía, F6 no replica).
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
-3. **F6 — Public Landing + Search + Portal Complejo** es la siguiente fase (MASTER_PLAN 192-196, criticidad 🔴🔴 Alta). Done criteria: Lighthouse SEO 100 + Performance ≥90 mobile + Schema.org LocalBusiness validado + sitemap + robots. Trigger humano: confirmar continuar o pausar.
-4. **Pendiente F12 (Performance):** `/grilla` Lighthouse 88-89 (LCP 3.8s vía shared bundle 150KB Sentry). Harness autenticado (`pnpm lighthouse:grilla`) listo para re-medir tras el adelgazamiento del bundle.
+3. **F7 — Booking Flow Jugador End-to-End** es la siguiente fase (MASTER_PLAN 198-202, criticidad 🔴🔴🔴 Crítica). Done criteria: E2E completo search → complejo → slot → form → pago MP mock → confirmación + cancelación MP → reintenta + timeout webhook → polling actualiza. Trigger humano: confirmar continuar o pausar.
+4. **Pendiente F12 (Performance):** `/grilla` Lighthouse 88-89 (LCP 3.8s vía shared bundle 150KB Sentry). Harness autenticado (`pnpm lighthouse:grilla`) listo para re-medir tras el adelgazamiento del bundle. Público F6 (`/explorar`, `/[slug]`) probablemente supera 90 por simplicidad, pero comparte el techo structural.
+5. **F6 deferred (no-blocking):** ejecutar `pnpm lighthouse:public` con seed activo para validar SEO=100/Perf≥90 numéricamente; validar JSON-LD manual contra schema.org validator; validar OG preview con Facebook Sharing Debugger; rate-limit explícito en `/api/public/*` (CSP+CDN baseline, gap documentado).

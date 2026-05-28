@@ -16,6 +16,10 @@ describe('validateServerEnv', () => {
     RESEND_API_KEY: 're_xxx',
     UPSTASH_REDIS_REST_URL: 'https://stub',
     UPSTASH_REDIS_REST_TOKEN: 'a'.repeat(32),
+    VAPID_PUBLIC_KEY: 'a'.repeat(80),
+    VAPID_PRIVATE_KEY: 'a'.repeat(40),
+    VAPID_SUBJECT: 'mailto:contact@turnogol.com',
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'a'.repeat(80),
   }
 
   it('passes with all required vars', () => {

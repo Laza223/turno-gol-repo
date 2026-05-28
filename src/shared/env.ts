@@ -18,6 +18,10 @@ function makeSchema(isProd: boolean) {
     RESEND_API_KEY: z.string().min(1),
     UPSTASH_REDIS_REST_URL: isProd ? z.string().url() : z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: isProd ? z.string().min(20) : z.string().min(20).optional(),
+    VAPID_PUBLIC_KEY: isProd ? minLen(80, 'VAPID_PUBLIC_KEY') : minLen(80, 'VAPID_PUBLIC_KEY').optional(),
+    VAPID_PRIVATE_KEY: isProd ? minLen(40, 'VAPID_PRIVATE_KEY') : minLen(40, 'VAPID_PRIVATE_KEY').optional(),
+    VAPID_SUBJECT: isProd ? z.string().regex(/^mailto:.+@.+$/, 'VAPID_SUBJECT must be mailto:email') : z.string().regex(/^mailto:.+@.+$/).optional(),
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: isProd ? minLen(80, 'NEXT_PUBLIC_VAPID_PUBLIC_KEY') : minLen(80, 'NEXT_PUBLIC_VAPID_PUBLIC_KEY').optional(),
   })
 }
 

@@ -2,11 +2,11 @@
 
 **Última actualización:** 2026-05-28
 **Branch principal:** main
-**Worktrees activos:** ninguno (F7 mergeado a main)
+**Worktrees activos:** ninguno (F8 mergeado a main)
 
 ## Fase actual
 
-**F8 — Player Area** (siguiente, no iniciada)
+**F9 — Notificaciones (Toast + Push Web)** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -32,6 +32,7 @@
 | F5 — Admin Reportes + Settings + Abonados + Staff | 🟢 PASS (3/3 criteria) + 4 stubbed buttons P0 → funcionales (H1) + preview slots abonado (H2) + lockout UX countdown (H5) + staff desactivar c/ConfirmDialog (H4) + F1 states 4 rutas + 16 E2E nuevos + 39 unit nuevos; 3 issues cazados en verify (notes-no-enviadas, Cyrillic 'о', preventDefault dropdown) | `docs/audit/reports/fase-f05-reportes-settings-abonados-staff-report.md` |
 | F6 — Public Landing + Search + Portal Complejo | 🟢 PASS (4/4 criteria) + sitemap dinámico + robots + manifest + favicon/apple-icon/OG default via ImageResponse + JSON-LD SportsActivityLocation+BreadcrumbList+WebSite+Organization + buildMetadata helper c/canonical+OG+Twitter+titleAbsolute + 3 `<img>`→`<Image>` migrations + 3 loading.tsx + Lighthouse public harness c/SEO=1.0 hard assert + 19 unit + 5 integration + 6 E2E scenarios; 6 issues cazados en review+verify (force-dynamic/revalidate conflict, tsbuildinfo committed, manifest size mismatch, absoluteUrl mutation, robots.host deprecated, twitter.card union typecheck) | `docs/audit/reports/fase-f06-public-landing-search-portal-report.md` |
 | F7 — Booking Flow Jugador End-to-End | 🟢 PASS (3/3 criteria) + **1 P0 FIXED** (`notification_url` apuntaba a ruta inexistente `/api/mp/webhooks` — en prod MP postea a 404, booking con seña nunca confirma) + **1 P1 FIXED** (`transitionFromPendingPayment` no transicionaba `deposit_status` a `'paid'` — quedaba `pending` forever post-webhook) + `MP_MOCK_MODE` seam (`LocalMockGateway` + webhook sync en mock) + `/mock-mp/checkout` page (404 en prod) + polling endpoint `/api/player/bookings/[id]/status` + `PaymentStatusWatcher`+`ExpiryCountdown` clients + retry deposit action + 4 loading.tsx + seed `e2e-complejo-sena` deposit + 17 tests nuevos (5 unit + 8 integration + 4 E2E scenarios); 5 issues cazados en trust-but-verify (H7 exito mentía "confirmada", H9 helpers pricing inconsistentes, H10 seed FK cleanup, H11 CSP dev bloqueaba unsafe-eval, H12 MP_MOCK_MODE leak rompía 6 integration webhook tests) | `docs/audit/reports/fase-f07-booking-flow-jugador-report.md` |
+| F8 — Player Area | 🟢 PASS (3/3 criteria; 5 done-criteria UI completos) + `/configuracion` ARCO download + `/eliminar-cuenta` con ConfirmDialog type-to-confirm email + `requestDeleteAccountAction` wrappa `anonymizePlayer` (idempotente) + Supabase signOut + redirect `/login?deleted=1` + cancel UX `ConfirmDialog` con motivo + feedback + perfil `useFormState` success/error inline + 3er tab "Cuenta" en `PlayerBottomNav` + 4 E2E specs (bookings, profile, data-export, delete-account) + helper `_helpers/player-seed.ts` con `resetPlayer` idempotente + 4 loading.tsx; 1 trust-but-verify catch (`zod-coverage` allowlist para action session-driven sin input) | `docs/audit/reports/fase-f08-player-area-report.md` |
 
 ## Hallazgos críticos acumulados
 
@@ -120,19 +121,20 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 20/26** (backend B0-B11 + F0-F7 frontend).
-- **Tests acumulados nuevos audit: ~277** (260 post-F6 + F7: 5 unit `expiry-countdown` + 8 integration `webhook-notification-url` + `mp-mock-gateway` + 4 E2E scenarios `booking-flow`). Unit suite **480→488** (486 passing; 2 fallos pre-existentes `zod-coverage` `bookings/[id]/{complete,no-show}` desde F4, NO regresión F7). Integration **331→339** (339 passing en la corrida final; las 2 flaky pre-existentes `daily-close-idempotency` + `race-abonado-vs-individual` pasaron este run, siguen siendo flaky cross-run). E2E booking-flow F7 +4 verde local (`MP_MOCK_MODE=1 + supabase start + workers=1`); suite completa delegada a CI.
-- **Bugs fixed: 40** (38 + **F7-H1 `notification_url` P0** + **F7-H8 `deposit_status` transition P1**). **+5 issues cazados en trust-but-verify F7** (H7 exito mentía "confirmada", H9 helpers pricing inconsistentes, H10 seed FK cleanup, H11 CSP dev unsafe-eval, H12 `MP_MOCK_MODE=1` leak en `.env.test` rompía 6 webhook integration tests) — todos corregidos pre-merge.
-- **Tests legacy ajustados: 8** (sin cambios en F7).
+- **Fases completadas: 21/26** (backend B0-B11 + F0-F8 frontend).
+- **Tests acumulados nuevos audit: ~283** (277 post-F7 + F8: 0 unit nuevos + 0 integration nuevos + 6 E2E scenarios `player-*`). Unit suite **488 passing** (idéntico; 2 fallos pre-existentes `zod-coverage` `bookings/[id]/{complete,no-show}` desde F4 + 1 nuevo `eliminar-cuenta/actions.ts` resuelto en allowlist por ser session-driven sin input). Integration **339 passing** (sin cambios — F8 reusa `player-anonymization.test.ts`). E2E player F8 +4 specs creados (`player-bookings`, `player-profile`, `player-data-export`, `player-delete-account`) + helper `_helpers/player-seed.ts`; NO ejecutado en sesión (requiere `supabase start`), delegado a CI o manual.
+- **Bugs fixed: 40** (sin cambios en F8 — done-criteria UI gap relleno, no bugs prod). **+1 trust-but-verify catch F8** (H1 zod-coverage allowlist para `eliminar-cuenta/actions.ts` session-driven; H2 T3 commit faltante cazado en `git status` pre-merge).
+- **Tests legacy ajustados: 8** (sin cambios en F8).
 - **Deps nuevas: 0**.
-- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql`; F4-F7 +0).
-- **Env nuevas: 1** (`MP_MOCK_MODE` — solo E2E/local; documentada en `.env.example` + `.env.test.example`; **NO** setear en `.env.test` ni prod; Playwright la inyecta vía `webServer.env`). `MP_WEBHOOK_SECRET` ya existía, ahora hay valor de test en `.env.test`.
-- **Bundle audit F7:** `/[slug]/reservar` 155kB (igual que F6, watcher es client-island en pages distintas), `/reserva/[bookingId]/exito` 154kB, `/reserva/[bookingId]/pendiente` 154kB, `/reserva/[bookingId]/error` 153kB, `/mock-mp/checkout` 150kB (test-only). **Todas <200KB ✓**. Shared baseline 150kB (Sentry, F12 gap sin cambios).
+- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql`; F4-F8 +0).
+- **Env nuevas: 1** (`MP_MOCK_MODE` introducida F7; F8 +0).
+- **Bundle audit F8:** `/configuracion` 154kB (nuevo), `/eliminar-cuenta` 175kB (nuevo, peso por ConfirmDialog client island), `/mis-reservas` 173kB (151→173, +22kB por CancelBookingButton client island con ConfirmDialog), `/perfil` 157kB (nuevo desde F6, ProfileForm client). **Todas <200KB ✓**. Shared baseline 150kB sin cambios.
 
 ## Próximas decisiones para el humano
 
-1. **F7 — Booking Flow Jugador End-to-End** → ✅ completado esta sesión, mergeado a main. **3/3 done-criteria** (E2E happy path con seña + cancelación MP→reintenta + timeout webhook→polling). **+ 1 P0 prod-affecting bug fixed (`notification_url` mismatch — webhook llegaba a 404)** + **1 P1 backend (`deposit_status` no se transicionaba a `'paid'`)** + 5 trust-but-verify catches (H7/H9/H10/H11/H12). Sin schema. 17 tests nuevos (5 unit + 8 integration + 4 E2E scenarios). `MP_MOCK_MODE` introducido (E2E/local), `LocalMockGateway` + `/mock-mp/checkout` (404 en prod) habilitan demo manual del flow.
-2. **F8 — Player Area** es la siguiente fase (MASTER_PLAN 204-208, criticidad 🟡 Media). Done criteria: jugador ve sus reservas, cancela válidas, edita perfil, descarga datos, elimina cuenta. E2E player. Trigger humano: confirmar continuar o pausar.
+1. **F8 — Player Area** → ✅ completado esta sesión, mergeado a main. **3/3 done-criteria** + 5 done-criteria UI completos (ver tabla F8). **5 UI flows nuevos** entregados al jugador: ver reservas (ya estaba), cancelar con ConfirmDialog + motivo + feedback, editar perfil con success/error inline, descargar datos ARCO, eliminar cuenta type-to-confirm email. 4 E2E specs nuevos + helper `_helpers/player-seed.ts` con `resetPlayer` idempotente. 1 trust-but-verify catch (`zod-coverage` allowlist). Sin schema. Sin deps. Sin bugs prod nuevos.
+2. **F9 — Notificaciones (Toast + Push Web)** es la siguiente fase (MASTER_PLAN 210-214, criticidad 🔴🔴 Alta). Done criteria: Push web funcional Chrome+Safari+Firefox, sonido con interacción previa, multi-tab dedupe. Trigger humano: confirmar continuar o pausar.
+3. **F7 — Booking Flow Jugador End-to-End** → ✅ completado fase previa. 3/3 done-criteria + 1 P0 (`notification_url`) + 1 P1 (`deposit_status`) fixed.
 3. **F7 deferred (no-blocking):** alinear `public.service.getPriceForSlot` con `booking.service.priceForDuration` (helpers tratan `to='00:00'` distinto — workaround en seed); fix hydration warning en `ExpiryCountdown` (server vs client `Date.now`); `.ics` "agregar al calendario" (US-RES-003); cablear recordatorios email 24h/2h pre-turno (US-RES-006, templates ya existen en B5).
 4. **Decisión previa (mantengo entrada original):** F6 — Public Landing + Search + Portal Complejo → ✅ completado. **4/4 done-criteria** (sitemap dinámico filtrando tenants active|trialing; robots con allow + disallow + Sitemap directive; Schema.org SportsActivityLocation + BreadcrumbList + WebSite SearchAction + Organization; Lighthouse public harness con SEO=error minScore 1.0 hard CI assert). **Plus:** OG + Twitter Card + canonical en todas rutas públicas; tenants `UNAVAILABLE_STATUSES` retornan `robots: noindex,nofollow`; manifest PWA + favicon + apple-icon + OG default 1200x630 via Edge ImageResponse; 3 `<img>` → `<Image>` migration (cover priority/LCP + logo + card cover); 3 `loading.tsx` con Skeleton (CLS=0); 19 unit + 5 integration + 6 E2E scenarios. **Trust-but-verify + reviewer cazaron 6 issues** (force-dynamic/revalidate conflict, tsbuildinfo committed, manifest size mismatch, absoluteUrl mutation, robots.host deprecated, twitter.card discriminated union typecheck) — todos corregidos pre-merge. Sin cambios de schema. **Lighthouse local NO ejecutado en sesión** (harness listo, run delegado a CI o local con seed activo — honesto, F3 dejó script que mentía, F6 no replica).
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.

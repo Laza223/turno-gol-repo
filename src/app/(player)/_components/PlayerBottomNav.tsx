@@ -1,12 +1,13 @@
 'use client'
 
-import { Calendar, User } from 'lucide-react'
+import { Calendar, Settings, User } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const NAV_ITEMS = [
   { href: '/mis-reservas', label: 'Reservas', Icon: Calendar },
   { href: '/perfil', label: 'Perfil', Icon: User },
+  { href: '/configuracion', label: 'Cuenta', Icon: Settings },
 ]
 
 export function PlayerBottomNav() {

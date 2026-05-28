@@ -15,7 +15,12 @@ const profileSchema = z.object({
   preferred_area: z.string().max(100).optional(),
 })
 
-export async function updateProfileAction(formData: FormData): Promise<void> {
+export type UpdateProfileResult = { success: true } | { success: false; error: string }
+
+export async function updateProfileAction(
+  _prevState: UpdateProfileResult,
+  formData: FormData,
+): Promise<UpdateProfileResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/login')
 
@@ -27,7 +32,9 @@ export async function updateProfileAction(formData: FormData): Promise<void> {
   }
 
   const parsed = profileSchema.safeParse(raw)
-  if (!parsed.success) return
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
 
   await withPlayerContext(user.playerId, (tx) =>
     tx
@@ -42,4 +49,5 @@ export async function updateProfileAction(formData: FormData): Promise<void> {
   )
 
   revalidatePath('/perfil')
+  return { success: true }
 }

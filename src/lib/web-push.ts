@@ -63,9 +63,15 @@ export async function sendPushNotification(
     track.notification('notification.push.sent', { statusCode, endpoint: subscription.endpoint, payloadType: payload.type })
     return { success: true, statusCode }
   } catch (err: unknown) {
-    const e = err as { statusCode?: number; body?: string; message?: string }
+    // web-push throws WebPushError (has statusCode + body). We duck-type so the
+    // unit tests can reject with plain {statusCode, body} objects from vi.mock
+    // without instantiating the real class.
+    const e = (err ?? {}) as { statusCode?: unknown; body?: unknown; message?: unknown }
     const statusCode = typeof e.statusCode === 'number' ? e.statusCode : 0
-    const errorMessage = e.body ?? e.message ?? 'unknown'
+    const errorMessage =
+      (typeof e.body === 'string' && e.body) ||
+      (typeof e.message === 'string' && e.message) ||
+      'unknown'
     if (statusCode === 410) {
       // Subscription expired/revoked — caller MUST delete the row.
       track.notification('notification.push.failed', { statusCode: 410, reason: 'gone', endpoint: subscription.endpoint })

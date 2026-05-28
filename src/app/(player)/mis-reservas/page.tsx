@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm'
 import { CalendarX } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
-import { cancelMyBookingAction } from './actions'
+import { CancelBookingButton } from './CancelBookingButton'
 
 type BookingRow = {
   id: string
@@ -52,11 +52,6 @@ const STATUS_CLASSES: Record<string, string> = {
   canceled_refunded: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20',
   canceled_no_refund: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20',
   no_show: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20',
-}
-
-async function handleCancel(bookingId: string, _formData: FormData) {
-  'use server'
-  await cancelMyBookingAction(bookingId)
 }
 
 export default async function MisReservasPage({
@@ -162,14 +157,12 @@ export default async function MisReservasPage({
                     </span>
                   )}
                   {b.status === 'confirmed' && (
-                    <form action={handleCancel.bind(null, b.id)}>
-                      <button
-                        type="submit"
-                        className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors duration-150 h-11 px-3 rounded-md hover:bg-red-50 active:scale-[0.98]"
-                      >
-                        Cancelar
-                      </button>
-                    </form>
+                    <CancelBookingButton
+                      bookingId={b.id}
+                      courtName={b.court_name}
+                      dateLabel={formatDate(b.date)}
+                      timeLabel={`${b.time_start.slice(0, 5)}–${b.time_end.slice(0, 5)}`}
+                    />
                   )}
                 </div>
               </div>

@@ -24,9 +24,16 @@ export async function transitionFromPendingPayment(
 ): Promise<TransitionResult> {
   assertTransition('pending_payment', newStatus, { actor: 'system' })
 
+  // doc7 Flujo 2 PASO 5: on MP approval, booking transitions to 'confirmed'
+  // AND deposit_status transitions to 'paid'. Without this, the deposit row
+  // stays 'pending' forever even though the payment was approved.
   const rows = await tx
     .update(bookings)
-    .set({ status: newStatus, updatedAt: new Date() })
+    .set({
+      status: newStatus,
+      ...(newStatus === 'confirmed' ? { depositStatus: 'paid' as const } : {}),
+      updatedAt: new Date(),
+    })
     .where(
       and(eq(bookings.id, bookingId), eq(bookings.status, 'pending_payment')),
     )

@@ -41,14 +41,19 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     return () => clearTimeout(id)
   }, [status])
 
-  // Polling effect — re-runs whenever status changes so early-return cleans up
+  // Polling effect — re-runs whenever status changes so early-return cleans up.
+  // Cache-bust query param: dev/SSR caches occasionally serve stale 'pending'
+  // even with `cache: 'no-store'`; a varying URL guarantees a fresh response.
   useEffect(() => {
     if (TERMINAL_STATUSES.has(status)) return
 
     const id = setInterval(() => {
       void (async () => {
         try {
-          const res = await fetch(`/api/player/bookings/${bookingId}/status`)
+          const res = await fetch(
+            `/api/player/bookings/${bookingId}/status?t=${Date.now()}`,
+            { cache: 'no-store' },
+          )
           if (!res.ok) return
           const json = (await res.json()) as StatusResponse
           setStatus(json.data.status)

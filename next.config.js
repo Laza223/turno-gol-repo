@@ -1,12 +1,19 @@
 const { withSentryConfig } = require('@sentry/nextjs')
 const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' })
 
+// 'unsafe-eval' is required by Next.js dev mode (webpack eval source maps) for
+// client hydration of interactive components. Production builds do NOT use
+// eval, so we keep CSP strict in prod and relax it only in dev.
+const scriptSrc = process.env.NODE_ENV === 'production'
+  ? "script-src 'self' 'unsafe-inline'"
+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' *.supabase.co images.unsplash.com data: blob:",
       "font-src 'self'",

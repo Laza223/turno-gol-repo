@@ -23,6 +23,10 @@ const E2E = {
   secondAdminEmail: 'e2e-admin-2@turnogol.test',
   secondAdminAuthUserId: '00000000-0000-4000-8000-000000000006',
   secondStaffUserId: '00000000-0000-4000-8000-000000000007',
+  depositTenantId: '00000000-0000-4000-8000-000000000030',
+  depositTenantSlug: 'e2e-complejo-sena',
+  depositTenantName: 'E2E Complejo Seña',
+  depositCourtId: '00000000-0000-4000-8000-000000000031',
 }
 
 type SqlClient = ReturnType<typeof getSql>
@@ -71,6 +75,20 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenants WHERE id = ${E2E.tenantId}`
+  await sql`DELETE FROM audit_logs WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM products WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM courts WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tenants WHERE id = ${E2E.depositTenantId}`
   await sql`DELETE FROM players WHERE id = ${E2E.playerId} OR email = ${E2E.playerEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.freshStaffUserId} OR email = ${E2E.freshAdminEmail}`
@@ -146,6 +164,59 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
   `
 }
 
+async function seedDepositTenantAndCourt(sql: SqlClient): Promise<void> {
+  // Same pricing + opening hours as the demo tenant.
+  const pricing = {
+    rules: [
+      {
+        days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+        from: '00:00',
+        to: '00:00', // 00:00 close == 24h, covers every slot
+        prices: { '60': 10000, '120': 18000 },
+      },
+    ],
+  }
+  const openingHours = {
+    mon: { open: '08:00', close: '23:00' },
+    tue: { open: '08:00', close: '23:00' },
+    wed: { open: '08:00', close: '23:00' },
+    thu: { open: '08:00', close: '23:00' },
+    fri: { open: '08:00', close: '23:00' },
+    sat: { open: '09:00', close: '23:00' },
+    sun: { open: '09:00', close: '23:00' },
+  }
+  // requires_deposit:true → online bookings require MP deposit before confirmation.
+  const settings = {
+    requires_deposit: true,
+    deposit_percentage: 50,
+    cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
+    no_show_penalty: { type: 'none', days: 0 },
+    accepts_cash: true,
+    accepts_transfer: true,
+    accepts_mercadopago: true,
+    allow_online_booking: true,
+    booking_advance_days: 6,
+    booking_duration_minutes: [60, 120],
+    auto_complete_minutes: 30,
+    onboarding_completed: true,
+  }
+  await sql`
+    INSERT INTO tenants (
+      id, slug, name, address, city, province, phone, email, status,
+      opening_hours, settings, mp_access_token
+    ) VALUES (
+      ${E2E.depositTenantId}, ${E2E.depositTenantSlug}, ${E2E.depositTenantName},
+      ${'Av. Siempreviva 743'}, ${'Buenos Aires'}, ${'Buenos Aires'},
+      ${'+541100000001'}, ${'e2e-tenant-sena@turnogol.test'}, 'active',
+      ${sql.json(openingHours)}, ${sql.json(settings)}, ${'mock-mp-token'}
+    )
+  `
+  await sql`
+    INSERT INTO courts (id, tenant_id, name, capacity, status, pricing)
+    VALUES (${E2E.depositCourtId}, ${E2E.depositTenantId}, ${'Cancha Seña 1'}, 10, 'online', ${sql.json(pricing)})
+  `
+}
+
 async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
   await sql`
     INSERT INTO staff_users (id, email, first_name, last_name)
@@ -170,6 +241,10 @@ async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
   await sql`
     INSERT INTO player_tenant_relationships (tenant_id, player_id)
     VALUES (${E2E.tenantId}, ${E2E.playerId})
+  `
+  await sql`
+    INSERT INTO player_tenant_relationships (tenant_id, player_id)
+    VALUES (${E2E.depositTenantId}, ${E2E.playerId})
   `
 }
 
@@ -245,11 +320,13 @@ async function main(): Promise<void> {
     await cleanupAuthUsers()
     await cleanup(sql)
     await seedTenantAndCourt(sql)
+    await seedDepositTenantAndCourt(sql)
     await seedStaffAndPlayer(sql)
     await seedFreshAdminStaff(sql)
     await seedAuthUsers()
     console.log('E2E seed OK')
     console.log(`  tenant: ${E2E.tenantId} (${E2E.tenantSlug})`)
+    console.log(`  depositTenant: ${E2E.depositTenantId} (${E2E.depositTenantSlug})`)
     console.log(`  admin:  ${E2E.adminEmail} (auth ${E2E.adminAuthUserId})`)
     console.log(`  player: ${E2E.playerEmail} (auth ${E2E.playerAuthUserId})`)
     console.log(`  freshAdmin: ${E2E.freshAdminEmail} (auth ${E2E.freshAdminAuthUserId})`)

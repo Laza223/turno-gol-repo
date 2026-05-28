@@ -2,9 +2,18 @@
 
 import { redirect, notFound } from 'next/navigation'
 import { sql } from 'drizzle-orm'
+import { z } from 'zod'
 import { getDb } from '@/shared/db/client'
 import { buildMockPaymentId, buildMockEventId } from '@/modules/payments/mock-mp'
 import { logger } from '@/shared/lib/logger'
+
+const bookingFormSchema = z.object({ booking: z.string().uuid() })
+
+function parseBookingId(formData: FormData): string {
+  const parsed = bookingFormSchema.safeParse({ booking: formData.get('booking') })
+  if (!parsed.success) notFound()
+  return parsed.data.booking
+}
 
 // Defense-in-depth: actions are test-only and must 404 in production.
 function guardMockMode(): void {
@@ -27,8 +36,7 @@ async function resolveTenantId(bookingId: string): Promise<string> {
 
 export async function mockPay(formData: FormData): Promise<void> {
   guardMockMode()
-  const bookingId = String(formData.get('booking') ?? '')
-  if (!bookingId) notFound()
+  const bookingId = parseBookingId(formData)
 
   const tenantId = await resolveTenantId(bookingId)
 
@@ -73,8 +81,7 @@ export async function mockPay(formData: FormData): Promise<void> {
 
 export async function mockReject(formData: FormData): Promise<void> {
   guardMockMode()
-  const bookingId = String(formData.get('booking') ?? '')
-  if (!bookingId) notFound()
+  const bookingId = parseBookingId(formData)
 
   const tenantId = await resolveTenantId(bookingId)
 
@@ -119,8 +126,7 @@ export async function mockReject(formData: FormData): Promise<void> {
 
 export async function mockCancel(formData: FormData): Promise<void> {
   guardMockMode()
-  const bookingId = String(formData.get('booking') ?? '')
-  if (!bookingId) notFound()
+  const bookingId = parseBookingId(formData)
 
   redirect(`/reserva/${bookingId}/error`)
 }

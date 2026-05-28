@@ -1,12 +1,12 @@
 # TurnoGol Audit — Estado Actual
 
-**Última actualización:** 2026-05-27
+**Última actualización:** 2026-05-28
 **Branch principal:** main
-**Worktrees activos:** ninguno (F6 mergeado a main)
+**Worktrees activos:** ninguno (F7 mergeado a main)
 
 ## Fase actual
 
-**F7 — Booking Flow Jugador End-to-End** (siguiente, no iniciada)
+**F8 — Player Area** (siguiente, no iniciada)
 
 ## Fases completadas
 
@@ -31,12 +31,14 @@
 | F4 — Admin Bookings + Cashflow + Canchas | 🟢 PASS (3/3 criteria) + ConfirmDialog reusable + write-side caja + optimistic toggle c/rollback + H8 parseRouteUuid + 16 tests; 6 bugs de specs + 1 inconsistencia UI cazados en verify | `docs/audit/reports/fase-f04-bookings-cashflow-canchas-report.md` |
 | F5 — Admin Reportes + Settings + Abonados + Staff | 🟢 PASS (3/3 criteria) + 4 stubbed buttons P0 → funcionales (H1) + preview slots abonado (H2) + lockout UX countdown (H5) + staff desactivar c/ConfirmDialog (H4) + F1 states 4 rutas + 16 E2E nuevos + 39 unit nuevos; 3 issues cazados en verify (notes-no-enviadas, Cyrillic 'о', preventDefault dropdown) | `docs/audit/reports/fase-f05-reportes-settings-abonados-staff-report.md` |
 | F6 — Public Landing + Search + Portal Complejo | 🟢 PASS (4/4 criteria) + sitemap dinámico + robots + manifest + favicon/apple-icon/OG default via ImageResponse + JSON-LD SportsActivityLocation+BreadcrumbList+WebSite+Organization + buildMetadata helper c/canonical+OG+Twitter+titleAbsolute + 3 `<img>`→`<Image>` migrations + 3 loading.tsx + Lighthouse public harness c/SEO=1.0 hard assert + 19 unit + 5 integration + 6 E2E scenarios; 6 issues cazados en review+verify (force-dynamic/revalidate conflict, tsbuildinfo committed, manifest size mismatch, absoluteUrl mutation, robots.host deprecated, twitter.card union typecheck) | `docs/audit/reports/fase-f06-public-landing-search-portal-report.md` |
+| F7 — Booking Flow Jugador End-to-End | 🟢 PASS (3/3 criteria) + **1 P0 FIXED** (`notification_url` apuntaba a ruta inexistente `/api/mp/webhooks` — en prod MP postea a 404, booking con seña nunca confirma) + **1 P1 FIXED** (`transitionFromPendingPayment` no transicionaba `deposit_status` a `'paid'` — quedaba `pending` forever post-webhook) + `MP_MOCK_MODE` seam (`LocalMockGateway` + webhook sync en mock) + `/mock-mp/checkout` page (404 en prod) + polling endpoint `/api/player/bookings/[id]/status` + `PaymentStatusWatcher`+`ExpiryCountdown` clients + retry deposit action + 4 loading.tsx + seed `e2e-complejo-sena` deposit + 17 tests nuevos (5 unit + 8 integration + 4 E2E scenarios); 5 issues cazados en trust-but-verify (H7 exito mentía "confirmada", H9 helpers pricing inconsistentes, H10 seed FK cleanup, H11 CSP dev bloqueaba unsafe-eval, H12 MP_MOCK_MODE leak rompía 6 integration webhook tests) | `docs/audit/reports/fase-f07-booking-flow-jugador-report.md` |
 
 ## Hallazgos críticos acumulados
 
 ### P0 (bloqueantes)
 - **B1: completeBooking/markNoShow no validaban tiempo** → ✅ FIXED
 - **B11: CI aplicaba migrations divergentes vs prod** → ✅ FIXED (B11 T1: porteadas 010-012 a src/shared/db/migrations/ + convención en docs/MIGRATIONS.md)
+- **F7-H1: MercadoPago `notification_url` apuntaba a `/api/mp/webhooks` (ruta inexistente)** — en prod MP postea a 404 → webhook nunca llega → booking con seña queda en `pending_payment` para siempre → conversión = $0. B3 había testeado el handler directo, nunca el string del preferencia. → ✅ FIXED (F7 T1: cambio a `/api/webhooks/mercadopago` + test regresión `webhook-notification-url.test.ts` con capturing gateway)
 
 ### P1 (alto)
 - **B2: Pre-read mis-reservas/actions.ts sin contexto player** → ✅ FIXED
@@ -70,6 +72,7 @@
 - **F5-H2: preview de slots futuros ausente al crear abonado** (US-ABO-001 done-criteria F5; conflictos solo aparecían en `audit_logs.metadata` post-facto) → ✅ FIXED (F5 T2: `previewAbonadoSlotsAction` + `getAbonadoSlotConflicts` reusan `generateSlotDates` del cron B5; 2-fase form con badges OK/Conflicto)
 - **F5-H4: desactivar staff con un click submit sin confirmación** (acción destructiva: pierde acceso panel + sesiones invalidadas) → ✅ FIXED (F5 T3: StaffActions client island + ConfirmDialog destructive + type-to-confirm email)
 - **F5-H5: PIN lockout funciona backend pero la UI no muestra contador/countdown/disable** (done-criteria F5) → ✅ FIXED (F5 T4: VerifyPinResult 3-variant + countdown M:SS + input/button disabled durante lockout + warning attemptsLeft ≤2)
+- **F7-H8: `transitionFromPendingPayment` no transicionaba `deposit_status` a `'paid'` en transition `pending_payment→confirmed`** (doc7 Flujo 2 PASO 5 explícito) — quedaba `pending` para siempre post-webhook, datos inconsistentes para reportes/queries. Cazado por trust-but-verify en E2E. → ✅ FIXED (F7 T8: `set({ status, ...(newStatus==='confirmed' ? { depositStatus: 'paid' } : {}) })` atómico en la misma UPDATE race-safe)
 
 ### P2 (medio)
 - 4 warnings `<img>` no-optimized (Fase F12)
@@ -117,17 +120,21 @@
 
 ## Stats acumulados
 
-- **Fases completadas: 19/26** (backend B0-B11 + F0-F6 frontend).
-- **Tests acumulados nuevos audit: 260** (236 post-F5 + F6: 19 unit nuevos `seo-structured-data`/`seo-metadata`/`robots-route` + 5 integration `sitemap-route` + 6 E2E scenarios en `public-seo`). Unit suite **461→480** (478 passing; 2 fallos pre-existentes `zod-coverage` `bookings/[id]/{complete,no-show}` desde F4, NO regresión F6). Integration **326→331** (329 passing; 2 fallos pre-existentes `daily-close-idempotency` + `race-abonado-vs-individual`, NO regresión F6). E2E suite +6 (delegado a CI).
-- **Bugs fixed: 38** (sin nuevos en F6 — F6 son features SEO/perf, no fixes de funcionalidad rota). **+6 issues cazados en review+trust-but-verify F6** (force-dynamic/revalidate conflict T1, tsbuildinfo committed T1, manifest size mismatch T1 reviewer, absoluteUrl mutation T1 reviewer, robots.host deprecated T1 reviewer, twitter.card discriminated union T7) — corregidos pre-merge.
-- **Tests legacy ajustados: 8** (sin cambios en F6).
-- **Deps nuevas: 0** en F6 (`@lhci/cli` via npx — patrón F0/F3).
-- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql`; F4 + F5 + F6 +0 — no tocaron schema).
-- **Bundle audit F6:** `/` 158KB, `/explorar` 159KB, `/[slug]` 167KB, `/[slug]/disponibilidad` 154KB, `/[slug]/reservar` 155KB (F7 scope), `/privacy`/`/terms` 152KB, `/sitemap.xml`/`/robots.txt`/`/manifest.webmanifest` 0 B static, `/icon`/`/apple-icon`/`/opengraph-image` 0 B edge. **Todas <200KB ✓**. Shared baseline sigue 150KB (Sentry, F12 gap).
+- **Fases completadas: 20/26** (backend B0-B11 + F0-F7 frontend).
+- **Tests acumulados nuevos audit: ~277** (260 post-F6 + F7: 5 unit `expiry-countdown` + 8 integration `webhook-notification-url` + `mp-mock-gateway` + 4 E2E scenarios `booking-flow`). Unit suite **480→488** (486 passing; 2 fallos pre-existentes `zod-coverage` `bookings/[id]/{complete,no-show}` desde F4, NO regresión F7). Integration **331→339** (339 passing en la corrida final; las 2 flaky pre-existentes `daily-close-idempotency` + `race-abonado-vs-individual` pasaron este run, siguen siendo flaky cross-run). E2E booking-flow F7 +4 verde local (`MP_MOCK_MODE=1 + supabase start + workers=1`); suite completa delegada a CI.
+- **Bugs fixed: 40** (38 + **F7-H1 `notification_url` P0** + **F7-H8 `deposit_status` transition P1**). **+5 issues cazados en trust-but-verify F7** (H7 exito mentía "confirmada", H9 helpers pricing inconsistentes, H10 seed FK cleanup, H11 CSP dev unsafe-eval, H12 `MP_MOCK_MODE=1` leak en `.env.test` rompía 6 webhook integration tests) — todos corregidos pre-merge.
+- **Tests legacy ajustados: 8** (sin cambios en F7).
+- **Deps nuevas: 0**.
+- **Migraciones nuevas: 1** (F3 `013_realtime_publication.sql`; F4-F7 +0).
+- **Env nuevas: 1** (`MP_MOCK_MODE` — solo E2E/local; documentada en `.env.example` + `.env.test.example`; **NO** setear en `.env.test` ni prod; Playwright la inyecta vía `webServer.env`). `MP_WEBHOOK_SECRET` ya existía, ahora hay valor de test en `.env.test`.
+- **Bundle audit F7:** `/[slug]/reservar` 155kB (igual que F6, watcher es client-island en pages distintas), `/reserva/[bookingId]/exito` 154kB, `/reserva/[bookingId]/pendiente` 154kB, `/reserva/[bookingId]/error` 153kB, `/mock-mp/checkout` 150kB (test-only). **Todas <200KB ✓**. Shared baseline 150kB (Sentry, F12 gap sin cambios).
 
 ## Próximas decisiones para el humano
 
-1. **F6 — Public Landing + Search + Portal Complejo** → ✅ completado esta sesión, mergeado a main. **4/4 done-criteria** (sitemap dinámico filtrando tenants active|trialing; robots con allow + disallow + Sitemap directive; Schema.org SportsActivityLocation + BreadcrumbList + WebSite SearchAction + Organization; Lighthouse public harness con SEO=error minScore 1.0 hard CI assert). **Plus:** OG + Twitter Card + canonical en todas rutas públicas; tenants `UNAVAILABLE_STATUSES` retornan `robots: noindex,nofollow`; manifest PWA + favicon + apple-icon + OG default 1200x630 via Edge ImageResponse; 3 `<img>` → `<Image>` migration (cover priority/LCP + logo + card cover); 3 `loading.tsx` con Skeleton (CLS=0); 19 unit + 5 integration + 6 E2E scenarios. **Trust-but-verify + reviewer cazaron 6 issues** (force-dynamic/revalidate conflict, tsbuildinfo committed, manifest size mismatch, absoluteUrl mutation, robots.host deprecated, twitter.card discriminated union typecheck) — todos corregidos pre-merge. Sin cambios de schema. **Lighthouse local NO ejecutado en sesión** (harness listo, run delegado a CI o local con seed activo — honesto, F3 dejó script que mentía, F6 no replica).
+1. **F7 — Booking Flow Jugador End-to-End** → ✅ completado esta sesión, mergeado a main. **3/3 done-criteria** (E2E happy path con seña + cancelación MP→reintenta + timeout webhook→polling). **+ 1 P0 prod-affecting bug fixed (`notification_url` mismatch — webhook llegaba a 404)** + **1 P1 backend (`deposit_status` no se transicionaba a `'paid'`)** + 5 trust-but-verify catches (H7/H9/H10/H11/H12). Sin schema. 17 tests nuevos (5 unit + 8 integration + 4 E2E scenarios). `MP_MOCK_MODE` introducido (E2E/local), `LocalMockGateway` + `/mock-mp/checkout` (404 en prod) habilitan demo manual del flow.
+2. **F8 — Player Area** es la siguiente fase (MASTER_PLAN 204-208, criticidad 🟡 Media). Done criteria: jugador ve sus reservas, cancela válidas, edita perfil, descarga datos, elimina cuenta. E2E player. Trigger humano: confirmar continuar o pausar.
+3. **F7 deferred (no-blocking):** alinear `public.service.getPriceForSlot` con `booking.service.priceForDuration` (helpers tratan `to='00:00'` distinto — workaround en seed); fix hydration warning en `ExpiryCountdown` (server vs client `Date.now`); `.ics` "agregar al calendario" (US-RES-003); cablear recordatorios email 24h/2h pre-turno (US-RES-006, templates ya existen en B5).
+4. **Decisión previa (mantengo entrada original):** F6 — Public Landing + Search + Portal Complejo → ✅ completado. **4/4 done-criteria** (sitemap dinámico filtrando tenants active|trialing; robots con allow + disallow + Sitemap directive; Schema.org SportsActivityLocation + BreadcrumbList + WebSite SearchAction + Organization; Lighthouse public harness con SEO=error minScore 1.0 hard CI assert). **Plus:** OG + Twitter Card + canonical en todas rutas públicas; tenants `UNAVAILABLE_STATUSES` retornan `robots: noindex,nofollow`; manifest PWA + favicon + apple-icon + OG default 1200x630 via Edge ImageResponse; 3 `<img>` → `<Image>` migration (cover priority/LCP + logo + card cover); 3 `loading.tsx` con Skeleton (CLS=0); 19 unit + 5 integration + 6 E2E scenarios. **Trust-but-verify + reviewer cazaron 6 issues** (force-dynamic/revalidate conflict, tsbuildinfo committed, manifest size mismatch, absoluteUrl mutation, robots.host deprecated, twitter.card discriminated union typecheck) — todos corregidos pre-merge. Sin cambios de schema. **Lighthouse local NO ejecutado en sesión** (harness listo, run delegado a CI o local con seed activo — honesto, F3 dejó script que mentía, F6 no replica).
 2. **B11 backlog operacional (no code):** ejecutar backup restore drill 1 vez (doc19 §10.6), counsel review DPA template, AAIP inscripción. Todos pre-launch, no bloquean siguiente fase.
 3. **F7 — Booking Flow Jugador End-to-End** es la siguiente fase (MASTER_PLAN 198-202, criticidad 🔴🔴🔴 Crítica). Done criteria: E2E completo search → complejo → slot → form → pago MP mock → confirmación + cancelación MP → reintenta + timeout webhook → polling actualiza. Trigger humano: confirmar continuar o pausar.
 4. **Pendiente F12 (Performance):** `/grilla` Lighthouse 88-89 (LCP 3.8s vía shared bundle 150KB Sentry). Harness autenticado (`pnpm lighthouse:grilla`) listo para re-medir tras el adelgazamiento del bundle. Público F6 (`/explorar`, `/[slug]`) probablemente supera 90 por simplicidad, pero comparte el techo structural.

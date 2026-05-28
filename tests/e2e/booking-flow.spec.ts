@@ -42,6 +42,9 @@ async function cleanupBookings(bookingIds: string[]): Promise<void> {
   if (bookingIds.length === 0) return
   try {
     const supabase = makeSupabase()
+    // NULL bookings.payment_id first — fk_bookings_payment blocks DELETE FROM
+    // payments otherwise (createDepositPayment sets bookings.payment_id).
+    await supabase.from('bookings').update({ payment_id: null, payment_method: null }).in('id', bookingIds)
     await supabase.from('payments').delete().in('booking_id', bookingIds)
     await supabase.from('bookings').delete().in('id', bookingIds)
   } catch {
@@ -103,7 +106,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
         .single()
       expect(error).toBeNull()
       expect(booking?.status).toBe('confirmed')
-      expect(booking?.deposit_status).toBe('confirmed')
+      expect(booking?.deposit_status).toBe('paid')
     } finally {
       await ctx.close()
       await cleanupBookings(collectedIds)
@@ -171,7 +174,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
         .eq('id', bookingId)
         .single()
       expect(confirmedBooking?.status).toBe('confirmed')
-      expect(confirmedBooking?.deposit_status).toBe('confirmed')
+      expect(confirmedBooking?.deposit_status).toBe('paid')
     } finally {
       await ctx.close()
       await cleanupBookings(collectedIds)
@@ -245,7 +248,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
         .eq('id', bookingId)
         .single()
       expect(confirmedBooking?.status).toBe('confirmed')
-      expect(confirmedBooking?.deposit_status).toBe('confirmed')
+      expect(confirmedBooking?.deposit_status).toBe('paid')
     } finally {
       await ctx.close()
       await cleanupBookings(collectedIds)

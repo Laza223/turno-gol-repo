@@ -20,6 +20,8 @@ import {
 } from '@/modules/bookings/booking.errors'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const TERMS_VERSION = 'v1'
 
 const gateSchema = z.object({
@@ -134,4 +136,55 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   }
 
   redirect(redirectTo)
+}
+
+export async function retryDepositPaymentAction(formData: FormData): Promise<void> {
+  const bookingId = String(formData.get('bookingId') ?? '')
+  if (!UUID_RE.test(bookingId)) redirect('/')
+
+  const user = await extractAuthUser()
+  if (!user || user.type !== 'player') redirect('/login')
+
+  // Load booking player-scoped to verify ownership
+  const bookingRow = await withPlayerContext(user.playerId, async (tx) => {
+    const rows = (await tx.execute(sql`
+      SELECT b.status, b.player_id AS "playerId", b.tenant_id AS "tenantId"
+      FROM bookings b
+      WHERE b.id = ${bookingId} LIMIT 1
+    `)) as unknown as Array<{ status: string; playerId: string | null; tenantId: string }>
+    return rows[0] ?? null
+  })
+
+  if (!bookingRow || bookingRow.playerId !== user.playerId) redirect('/')
+
+  if (bookingRow.status !== 'pending_payment') {
+    // Already resolved (webhook landed while player was on error page)
+    redirect(`/reserva/${bookingId}/exito`)
+  }
+
+  const tenantId = bookingRow.tenantId
+
+  const db = getDb()
+  const tRows = await db
+    .select({ mpAccessToken: tenants.mpAccessToken })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1)
+
+  const mpAccessToken = tRows[0]?.mpAccessToken ?? null
+  if (!mpAccessToken) {
+    // No gateway configured — drop player to pending watcher
+    redirect(`/reserva/${bookingId}/pendiente`)
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const gateway = resolveTenantGateway(tenantId, mpAccessToken)
+  // Re-invoking createDepositPayment is safe: payments has no UNIQUE on
+  // (booking_id, type); a second pending row is allowed and bookings.payment_id
+  // will be updated to the newer payment row.
+  const pref = await withTenantContext(tenantId, (tx) =>
+    createDepositPayment(bookingId, gateway, tx, appUrl),
+  )
+
+  redirect(pref.initPoint)
 }

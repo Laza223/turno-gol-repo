@@ -4,6 +4,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const uuid = z.string().regex(UUID_RE, 'UUID inválido')
 
 const MP_ID_RE = /^\d{1,32}$/
+// Mock payment ids (only accepted when MP_MOCK_MODE=1): MOCK-(APPROVED|REJECTED)-<uuid>
+const MOCK_MP_ID_RE = /^MOCK-(APPROVED|REJECTED)-[0-9a-fA-F-]{36}$/
 
 export const createDepositPaymentSchema = z.object({
   bookingId: uuid,
@@ -26,7 +28,12 @@ export const webhookPayloadSchema = z.object({
     id: z
       .union([z.string(), z.number()])
       .transform((v) => String(v))
-      .refine((v) => MP_ID_RE.test(v), 'invalid mpPaymentId'),
+      .refine(
+        (v) =>
+          MP_ID_RE.test(v) ||
+          (process.env.MP_MOCK_MODE === '1' && MOCK_MP_ID_RE.test(v)),
+        'invalid mpPaymentId',
+      ),
   }),
   date_created: z.string().optional(),
   user_id: z.union([z.string(), z.number()]).optional(),

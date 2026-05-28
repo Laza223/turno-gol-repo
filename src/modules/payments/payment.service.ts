@@ -85,7 +85,7 @@ export async function createDepositPayment(
     successUrl: `${appUrl}/reserva/${bookingId}/exito`,
     failureUrl: `${appUrl}/reserva/${bookingId}/error`,
     pendingUrl: `${appUrl}/reserva/${bookingId}/pendiente`,
-    notificationUrl: `${appUrl}/api/mp/webhooks?tenant=${booking.tenantId}`,
+    notificationUrl: `${appUrl}/api/webhooks/mercadopago?tenant=${booking.tenantId}`,
     expiresAt,
   }
   const preference = await gateway.createPreference(preferenceInput)

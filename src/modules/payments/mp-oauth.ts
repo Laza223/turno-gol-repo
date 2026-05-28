@@ -5,6 +5,7 @@ import { decrypt, encrypt } from '@/lib/crypto/encrypt'
 import { MercadoPagoGateway } from './mp-gateway.implementation'
 import { MpGatewayError, TenantMpNotConnectedError } from './payment.errors'
 import type { PaymentGateway } from './mp-gateway'
+import { MP_MOCK_ENABLED, LocalMockGateway } from './mock-mp'
 
 const MP_OAUTH_TOKEN_URL = 'https://api.mercadopago.com/oauth/token'
 
@@ -110,6 +111,7 @@ export function resolveTenantGateway(
   tenantId: string,
   encryptedAccessToken: string,
 ): PaymentGateway {
+  if (MP_MOCK_ENABLED) return new LocalMockGateway()
   return new MercadoPagoGateway(encryptedAccessToken, {
     onUnauthorized: () => refreshTenantMpToken(tenantId),
   })

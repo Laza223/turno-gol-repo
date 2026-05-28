@@ -45,6 +45,10 @@ export default defineConfig({
       MP_CLIENT_SECRET: process.env.MP_CLIENT_SECRET ?? 'e2e-placeholder',
       RESEND_API_KEY: process.env.RESEND_API_KEY ?? 'e2e-placeholder',
       SENTRY_DSN: process.env.SENTRY_DSN ?? 'e2e-placeholder',
+      // Enable mock MercadoPago so the checkout page and webhook handler
+      // run in deterministic mock mode during E2E.
+      MP_MOCK_MODE: '1',
+      MP_WEBHOOK_SECRET: process.env.MP_WEBHOOK_SECRET ?? 'test-webhook-secret',
     },
   },
 })

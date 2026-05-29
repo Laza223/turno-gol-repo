@@ -6,7 +6,7 @@
  * MockBroadcastChannel that routes postMessage calls to all instances sharing
  * the same channel name (simulating cross-tab broadcast within the same test).
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 
 // ─── Mock use-toast so it doesn't touch real state ───────────────────────────
@@ -51,45 +51,7 @@ class MockBroadcastChannel {
   }
 }
 
-// Install globally before any imports touch it.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(globalThis as any).BroadcastChannel = MockBroadcastChannel
-
-// ─── Mock browser APIs absent from happy-dom ─────────────────────────────────
-// Notification
-Object.defineProperty(globalThis, 'Notification', {
-  value: { permission: 'default', requestPermission: vi.fn() },
-  writable: true,
-  configurable: true,
-})
-
-// navigator.serviceWorker
-Object.defineProperty(navigator, 'serviceWorker', {
-  value: { getRegistration: vi.fn().mockResolvedValue(undefined) },
-  writable: true,
-  configurable: true,
-})
-
-// PushManager (just needs to exist for the feature-detection branch)
-Object.defineProperty(globalThis, 'PushManager', {
-  value: class PushManager {},
-  writable: true,
-  configurable: true,
-})
-
-// HTMLMediaElement.play/pause (happy-dom stubs don't resolve these)
-Object.defineProperty(HTMLMediaElement.prototype, 'play', {
-  value: vi.fn().mockResolvedValue(undefined),
-  writable: true,
-  configurable: true,
-})
-Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
-  value: vi.fn(),
-  writable: true,
-  configurable: true,
-})
-
-// localStorage
+// ─── localStorage mock (IIFE — no global side-effects here) ──────────────────
 const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
@@ -99,10 +61,45 @@ const localStorageMock = (() => {
     clear: () => { store = {} },
   }
 })()
-Object.defineProperty(globalThis, 'localStorage', {
-  value: localStorageMock,
-  writable: true,
-  configurable: true,
+
+// ─── Capture original descriptors before patching ────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const origBroadcastChannel = (globalThis as any).BroadcastChannel
+const origNotification = Object.getOwnPropertyDescriptor(globalThis, 'Notification')
+const origPushManager = Object.getOwnPropertyDescriptor(globalThis, 'PushManager')
+const origLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+const origServiceWorker = Object.getOwnPropertyDescriptor(navigator, 'serviceWorker')
+const origPlay = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'play')
+const origPause = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'pause')
+
+beforeAll(() => {
+  // Install MockBroadcastChannel
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(globalThis as any).BroadcastChannel = MockBroadcastChannel
+  // Install browser API mocks absent from happy-dom
+  Object.defineProperty(globalThis, 'Notification', { value: { permission: 'default', requestPermission: vi.fn() }, writable: true, configurable: true })
+  Object.defineProperty(globalThis, 'PushManager', { value: class {}, writable: true, configurable: true })
+  Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true, configurable: true })
+  Object.defineProperty(navigator, 'serviceWorker', { value: { getRegistration: vi.fn().mockResolvedValue(undefined) }, writable: true, configurable: true })
+  Object.defineProperty(HTMLMediaElement.prototype, 'play', { value: vi.fn().mockResolvedValue(undefined), writable: true, configurable: true })
+  Object.defineProperty(HTMLMediaElement.prototype, 'pause', { value: vi.fn(), writable: true, configurable: true })
+})
+
+afterAll(() => {
+  function restore(obj: object, prop: string, desc: PropertyDescriptor | undefined) {
+    if (desc) Object.defineProperty(obj, prop, desc)
+    else delete (obj as any)[prop] // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (origBroadcastChannel === undefined) delete (globalThis as any).BroadcastChannel
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  else (globalThis as any).BroadcastChannel = origBroadcastChannel
+  restore(globalThis, 'Notification', origNotification)
+  restore(globalThis, 'PushManager', origPushManager)
+  restore(globalThis, 'localStorage', origLocalStorage)
+  restore(navigator, 'serviceWorker', origServiceWorker)
+  restore(HTMLMediaElement.prototype, 'play', origPlay)
+  restore(HTMLMediaElement.prototype, 'pause', origPause)
 })
 
 // ─── Import the component AFTER globals are set up ────────────────────────────

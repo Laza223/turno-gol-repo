@@ -19,6 +19,7 @@ const securityHeaders = [
       "font-src 'self'",
       "connect-src 'self' *.supabase.co *.mercadopago.com",
       "frame-src *.mercadopago.com",
+      "worker-src 'self'",
     ].join('; '),
   },
   { key: 'X-Frame-Options', value: 'DENY' },

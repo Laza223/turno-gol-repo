@@ -38,6 +38,7 @@
     "test:isolation": "vitest run tests/integration/isolation.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --reporter=github,html",
+    "test:e2e:cross-browser": "playwright test --project webkit --project firefox --project mobile-safari",
     "e2e:seed": "tsx scripts/seed-e2e.ts",
     "stress:bookings": "tsx scripts/stress-test.ts",
     "launch:check": "tsx scripts/launch-check.ts",

@@ -64,6 +64,7 @@
     "zod": "^3.23"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@faker-js/faker": "^8.4",
     "@lhci/cli": "^0.15.1",
     "@next/bundle-analyzer": "^16.2.6",

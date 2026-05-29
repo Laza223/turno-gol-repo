@@ -85,6 +85,9 @@ dependencies:
     version: 3.25.76
 
 devDependencies:
+  '@axe-core/playwright':
+    specifier: ^4.11.3
+    version: 4.11.3(playwright-core@1.59.1)
   '@faker-js/faker':
     specifier: ^8.4
     version: 8.4.1
@@ -169,6 +172,15 @@ packages:
   /@alloc/quick-lru@5.2.0:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
+    dev: true
+
+  /@axe-core/playwright@4.11.3(playwright-core@1.59.1):
+    resolution: {integrity: sha512-h/kfksv4F0cVIDlKpT4700OehdRgpvuVskuQ2nb7/JmtWUXpe9ftHAPtwyXGvVSsa6SJ64A9ER7Zrzc/sIvC4w==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
+    dependencies:
+      axe-core: 4.11.4
+      playwright-core: 1.59.1
     dev: true
 
   /@babel/code-frame@7.29.7:
@@ -3376,6 +3388,11 @@ packages:
 
   /axe-core@4.11.3:
     resolution: {integrity: sha512-zBQouZixDTbo3jMGqHKyePxYxr1e5W8UdTmBQ7sNtaA9M2bE32daxxPLS/jojhKOHxQ7LWwPjfiwf/fhaJWzlg==}
+    engines: {node: '>=4'}
+    dev: true
+
+  /axe-core@4.11.4:
+    resolution: {integrity: sha512-KunSNx+TVpkAw/6ULfhnx+HWRecjqZGTOyquAoWHYLRSdK1tB5Ihce1ZW+UY3fj33bYAFWPu7W/GRSmmrCGuxA==}
     engines: {node: '>=4'}
     dev: true
 

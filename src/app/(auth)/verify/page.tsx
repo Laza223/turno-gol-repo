@@ -17,7 +17,7 @@ export default function VerifyPage({
   const isError = Boolean(errCode)
 
   return (
-    <main className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12">
+    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12">
       <div
         aria-hidden
         className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.12),_transparent_60%)]"
@@ -34,7 +34,7 @@ export default function VerifyPage({
           {isError ? <ErrorState code={errCode!} /> : <LoadingState />}
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 

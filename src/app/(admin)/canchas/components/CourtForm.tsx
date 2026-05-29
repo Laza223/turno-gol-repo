@@ -169,7 +169,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: Cancha 1"
             required
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
 
@@ -181,7 +181,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
             name="surfaceType"
             value={surfaceType}
             onChange={(e) => setSurfaceType(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             {SURFACE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -199,7 +199,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
             name="capacity"
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
-            className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             {CAPACITY_OPTIONS.map((c) => (
               <option key={c} value={c}>
@@ -251,7 +251,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   type="time"
                   value={rule.from}
                   onChange={(e) => updateRuleField(idx, 'from', e.target.value)}
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
               </div>
               <div>
@@ -260,7 +260,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   type="time"
                   value={rule.to === '00:00' ? '00:00' : rule.to}
                   onChange={(e) => updateRuleField(idx, 'to', e.target.value || '00:00')}
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
               </div>
               <div>
@@ -273,7 +273,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   step={100}
                   inputMode="decimal"
                   autoComplete="off"
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
               </div>
               <div>
@@ -286,7 +286,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   step={100}
                   inputMode="decimal"
                   autoComplete="off"
-                  className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full border rounded px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
               </div>
             </div>

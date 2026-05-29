@@ -66,7 +66,7 @@ export function CancelBookingButton({ bookingId, courtName, dateLabel, timeLabel
             maxLength={500}
             rows={2}
             placeholder="Ej: no puedo ir, lluvia, equivocación de horario..."
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 resize-none"
           />
         </div>
       </ConfirmDialog>

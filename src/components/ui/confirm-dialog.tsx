@@ -87,7 +87,7 @@ export function ConfirmDialog({
               autoComplete="off"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         ) : null}
@@ -101,7 +101,7 @@ export function ConfirmDialog({
             type="button"
             disabled={isPending}
             onClick={() => handleOpenChange(false)}
-            className="h-10 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+            className="h-10 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
           >
             {cancelLabel}
           </button>
@@ -109,7 +109,7 @@ export function ConfirmDialog({
             type="button"
             disabled={confirmDisabled}
             onClick={handleConfirm}
-            className={`inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${confirmClasses}`}
+            className={`inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${confirmClasses}`}
           >
             {isPending ? 'Procesando…' : confirmLabel}
           </button>

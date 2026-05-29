@@ -30,7 +30,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
           </button>
         </form>
       </header>
-      <main className="flex-1 pb-20">{children}</main>
+      <main id="main-content" className="flex-1 pb-20">{children}</main>
       <PlayerBottomNav />
     </div>
   )

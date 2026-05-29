@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react'
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
-  return <div className="min-h-dvh">{children}</div>
+  return (
+    <div className="min-h-dvh">
+      <main id="main-content">{children}</main>
+    </div>
+  )
 }

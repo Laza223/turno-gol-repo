@@ -11,8 +11,11 @@
 
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
-import { QUEUE_PUSH_SEND } from '@/shared/jobs/definitions'
-import { PUSH_SEND_SEND_OPTIONS, type PushSendJobData } from '@/shared/jobs/definitions'
+import {
+  PUSH_SEND_SEND_OPTIONS,
+  QUEUE_PUSH_SEND,
+  type PushSendJobData,
+} from '@/shared/jobs/definitions'
 import { logger } from '@/shared/lib/logger'
 
 export type AdminPushPayload = PushSendJobData['payload']
@@ -61,5 +64,12 @@ export async function notifyStaffPush(
     const data: PushSendJobData = { subscription_id: sub.id, payload }
     await boss.send(QUEUE_PUSH_SEND, data, PUSH_SEND_SEND_OPTIONS)
   }
+  logger.info('enqueued staff push notifications', {
+    module: 'push.service',
+    tenantId,
+    staffUserId,
+    count: subs.length,
+    payloadType: payload.type,
+  })
   return { enqueued: subs.length }
 }

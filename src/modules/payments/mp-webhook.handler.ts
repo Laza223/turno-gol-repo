@@ -173,6 +173,8 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   if (confirmedBookingId) {
     const bookingId = confirmedBookingId
     try {
+      // Re-fetch booking context post-commit (no shared scope with withTenantContext above).
+      // Service-role getSql() bypasses RLS — booking already exists + committed.
       const notifSql = getSql()
       const bookingCtxRows = await notifSql<{
         court_name: string

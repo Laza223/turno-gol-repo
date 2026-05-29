@@ -7,6 +7,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { tenantSubscriptions } from '@/shared/db/schema'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { signOutAction } from '@/app/(admin)/actions/auth'
+import { PushNotificationManager } from '@/components/admin/PushNotificationManager'
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await extractAuthUser()
@@ -38,6 +39,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       signOut={signOutAction}
     >
       {children}
+      <PushNotificationManager />
     </AdminLayoutShell>
   )
 }

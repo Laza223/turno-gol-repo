@@ -21,6 +21,10 @@ export const POLICIES = {
   // closed: if Upstash is down, deny new attempts (prefer false locks over
   // unmetered guessing).
   pinAttempts:        { limit: 5,   window: '5 m',  keyBy: 'tenant', failMode: 'closed' },
+  // VAPID public key endpoint (F9): public GET, no auth. 5 req/min per IP to
+  // prevent bulk scraping. Fail open: if Upstash is down, allow the request
+  // (VAPID public key is intentionally public).
+  vapidPublic:        { limit: 5,   window: '60 s', keyBy: 'ip',     failMode: 'open'   },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

@@ -61,6 +61,8 @@ export function CloseDayButton({ date, balance }: { date: string; balance: numbe
             <label htmlFor="declared" className="text-xs font-medium text-slate-700">Efectivo contado (opcional, pesos)</label>
             <input id="declared" type="number" min="0" step="0.01" value={declaredPesos}
               onChange={(e) => setDeclaredPesos(e.target.value)}
+              inputMode="decimal"
+              autoComplete="off"
               className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm tabular-nums" />
           </div>
           {diff !== null && diff !== 0 && (

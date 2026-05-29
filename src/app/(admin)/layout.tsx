@@ -5,9 +5,14 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { tenantSubscriptions } from '@/shared/db/schema'
+import dynamic from 'next/dynamic'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { signOutAction } from '@/app/(admin)/actions/auth'
-import { PushNotificationManager } from '@/components/admin/PushNotificationManager'
+
+const PushNotificationManager = dynamic(
+  () => import('@/components/admin/PushNotificationManager').then((m) => m.PushNotificationManager),
+  { ssr: false, loading: () => null },
+)
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await extractAuthUser()

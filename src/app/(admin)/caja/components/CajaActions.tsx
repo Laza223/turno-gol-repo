@@ -1,8 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { RegisterMovementModal } from './RegisterMovementModal'
+import dynamic from 'next/dynamic'
 import { CloseDayButton } from './CloseDayButton'
+
+const RegisterMovementModal = dynamic(
+  () => import('./RegisterMovementModal').then((m) => m.RegisterMovementModal),
+  { ssr: false },
+)
 
 export function CajaActions({ date, balance, isClosed }: { date: string; balance: number; isClosed: boolean }) {
   const [movOpen, setMovOpen] = useState(false)

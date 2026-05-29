@@ -53,7 +53,7 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.firstName}
             autoComplete="given-name"
             required
-            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
         <div className="space-y-1">
@@ -67,7 +67,7 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.lastName}
             autoComplete="family-name"
             required
-            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
       </div>
@@ -82,7 +82,7 @@ export function ProfileForm({ defaultValues }: Props) {
           type="tel"
           defaultValue={defaultValues.phone}
           autoComplete="tel"
-          className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
 
@@ -96,7 +96,7 @@ export function ProfileForm({ defaultValues }: Props) {
           type="text"
           defaultValue={defaultValues.preferredArea}
           placeholder="Ej: Palermo, Villa Crespo..."
-          className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
 

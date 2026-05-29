@@ -50,7 +50,7 @@ export default function LoginGate({ next }: { next: string }) {
         <input name="email" type="email" autoComplete="email" required placeholder="vos@email.com" className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" />
       </label>
       <label className="flex items-start gap-2 text-xs text-slate-600">
-        <input type="checkbox" name="terms" required className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+        <input type="checkbox" name="terms" required className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus-visible:ring-emerald-500" />
         <span>Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada).</span>
       </label>
       {state.status === 'error' && <p role="alert" className="text-xs text-red-600">{state.message}</p>}

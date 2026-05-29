@@ -1,30 +1,32 @@
 'use client'
 
+import React from 'react'
 import { cn } from '@/lib/utils'
 import type { GridBooking } from './BookingGrid'
 
-type Props = {
+type BookingCardProps = {
   booking: GridBooking | null
   timeStart: string
   isPast: boolean
   rowSpan?: number
-  onClick?: () => void
+  courtId?: string
+  onSlotClick?: (courtId: string, slotTime: string) => void
 }
 
-export function BookingCard({ booking, timeStart, isPast, rowSpan = 1, onClick }: Props) {
+function BookingCardComponent({ booking, timeStart, isPast, rowSpan = 1, courtId, onSlotClick }: BookingCardProps) {
   if (!booking) {
-    const interactive = !isPast && !!onClick
+    const interactive = !isPast && !!onSlotClick && !!courtId
     return (
       <td
         {...(interactive
           ? {
               role: 'button',
               tabIndex: 0,
-              onClick,
+              onClick: () => onSlotClick?.(courtId!, timeStart),
               onKeyDown: (e: React.KeyboardEvent<HTMLTableCellElement>) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  onClick?.()
+                  onSlotClick?.(courtId!, timeStart)
                 }
               },
               'aria-label': `Reservar turno ${timeStart}`,
@@ -96,3 +98,5 @@ export function BookingCard({ booking, timeStart, isPast, rowSpan = 1, onClick }
     </td>
   )
 }
+
+export const BookingCard = React.memo(BookingCardComponent)

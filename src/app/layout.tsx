@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
@@ -23,6 +23,14 @@ export const metadata: Metadata = {
   },
   twitter: { card: 'summary_large_image', images: [DEFAULT_OG_IMAGE] },
   formatDetection: { telephone: false, email: false, address: false },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+  themeColor: '#059669',
 }
 
 export default function RootLayout({

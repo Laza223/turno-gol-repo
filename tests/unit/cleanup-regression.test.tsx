@@ -6,7 +6,7 @@
  * (clearInterval, clearTimeout, BroadcastChannel.close) on unmount.
  * The investigator confirmed 0 leaks exist today; these tests prevent regressions.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 
 // ─── Mock server actions used by PinGate ─────────────────────────────────────
@@ -20,42 +20,15 @@ vi.mock('@/hooks/use-toast', () => ({
   toast: vi.fn(),
 }))
 
-// ─── Mock browser APIs absent from happy-dom ─────────────────────────────────
+// ─── Save original property descriptors (before any patching) ────────────────
+const origNotification = Object.getOwnPropertyDescriptor(globalThis, 'Notification')
+const origPushManager = Object.getOwnPropertyDescriptor(globalThis, 'PushManager')
+const origLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+const origServiceWorker = Object.getOwnPropertyDescriptor(navigator, 'serviceWorker')
+const origPlay = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'play')
+const origPause = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'pause')
 
-// Notification API
-Object.defineProperty(globalThis, 'Notification', {
-  value: { permission: 'default', requestPermission: vi.fn() },
-  writable: true,
-  configurable: true,
-})
-
-// navigator.serviceWorker
-Object.defineProperty(navigator, 'serviceWorker', {
-  value: { getRegistration: vi.fn().mockResolvedValue(undefined) },
-  writable: true,
-  configurable: true,
-})
-
-// PushManager (feature-detection only)
-Object.defineProperty(globalThis, 'PushManager', {
-  value: class PushManager {},
-  writable: true,
-  configurable: true,
-})
-
-// HTMLMediaElement.play/pause
-Object.defineProperty(HTMLMediaElement.prototype, 'play', {
-  value: vi.fn().mockResolvedValue(undefined),
-  writable: true,
-  configurable: true,
-})
-Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
-  value: vi.fn(),
-  writable: true,
-  configurable: true,
-})
-
-// localStorage
+// ─── localStorage mock factory (does not touch globals until beforeAll) ───────
 const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
@@ -65,13 +38,8 @@ const localStorageMock = (() => {
     clear: () => { store = {} },
   }
 })()
-Object.defineProperty(globalThis, 'localStorage', {
-  value: localStorageMock,
-  writable: true,
-  configurable: true,
-})
 
-// ─── Imports (after global stubs are set) ────────────────────────────────────
+// ─── Imports ──────────────────────────────────────────────────────────────────
 import ExpiryCountdown from '@/components/booking/ExpiryCountdown'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import { PinGate } from '@/components/pin-gate'
@@ -85,6 +53,61 @@ function futureISO(ms = 600_000): string {
 }
 
 // ─── Setup / teardown ────────────────────────────────────────────────────────
+
+beforeAll(() => {
+  // Notification API
+  Object.defineProperty(globalThis, 'Notification', {
+    value: { permission: 'default', requestPermission: vi.fn() },
+    writable: true,
+    configurable: true,
+  })
+
+  // PushManager (feature-detection only)
+  Object.defineProperty(globalThis, 'PushManager', {
+    value: class PushManager {},
+    writable: true,
+    configurable: true,
+  })
+
+  // localStorage
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: localStorageMock,
+    writable: true,
+    configurable: true,
+  })
+
+  // navigator.serviceWorker
+  Object.defineProperty(navigator, 'serviceWorker', {
+    value: { getRegistration: vi.fn().mockResolvedValue(undefined) },
+    writable: true,
+    configurable: true,
+  })
+
+  // HTMLMediaElement.play/pause
+  Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+    value: vi.fn().mockResolvedValue(undefined),
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
+    value: vi.fn(),
+    writable: true,
+    configurable: true,
+  })
+})
+
+afterAll(() => {
+  function restore(obj: object, prop: string, desc: PropertyDescriptor | undefined) {
+    if (desc) Object.defineProperty(obj, prop, desc)
+    else delete (obj as any)[prop]
+  }
+  restore(globalThis, 'Notification', origNotification)
+  restore(globalThis, 'PushManager', origPushManager)
+  restore(globalThis, 'localStorage', origLocalStorage)
+  restore(navigator, 'serviceWorker', origServiceWorker)
+  restore(HTMLMediaElement.prototype, 'play', origPlay)
+  restore(HTMLMediaElement.prototype, 'pause', origPause)
+})
 
 beforeEach(() => {
   vi.useFakeTimers()

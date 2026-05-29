@@ -61,7 +61,7 @@ export function AdminLayoutShell({
 
       {/* Main content */}
       <div className="lg:pl-60">
-        <div className="pt-16">
+        <div className="pt-[calc(4rem+env(safe-area-inset-top))]">
           {/* Status banner */}
           <StatusBanner
             tenantStatus={tenantStatus}

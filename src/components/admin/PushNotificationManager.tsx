@@ -183,7 +183,7 @@ export function PushNotificationManager() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 max-w-sm rounded-lg border border-slate-200 bg-white p-4 shadow-lg">
+    <div className="fixed bottom-[max(env(safe-area-inset-bottom),1rem)] left-4 z-40 max-w-[calc(100vw-2rem)] sm:max-w-sm rounded-lg border border-slate-200 bg-white p-4 shadow-lg">
       <p className="text-sm font-semibold text-slate-900">¿Habilitar notificaciones?</p>
       <p className="mt-1 text-xs text-slate-600">
         Recibí un aviso cuando se confirma una reserva online, incluso si no tenés la grilla abierta.
@@ -192,7 +192,7 @@ export function PushNotificationManager() {
         type="button"
         onClick={enable}
         disabled={status === 'pending'}
-        className="mt-3 inline-flex h-10 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+        className="mt-3 inline-flex h-11 md:h-10 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
       >
         {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
       </button>

@@ -13,7 +13,7 @@ const NAV_ITEMS = [
 export function PlayerBottomNav() {
   const pathname = usePathname()
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex z-10">
+    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex z-10 pb-[env(safe-area-inset-bottom)]">
       {NAV_ITEMS.map(({ href, label, Icon }) => {
         const active = pathname.startsWith(href)
         return (

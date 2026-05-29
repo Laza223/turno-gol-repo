@@ -261,7 +261,7 @@ export function BookingGrid({
       )}
 
       {courts.length > 0 && !closedToday && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+        <div className="overflow-x-auto touch-pan-x rounded-lg border border-slate-200 shadow-sm">
           <table className="border-collapse bg-white text-sm" style={{ tableLayout: 'fixed', minWidth: `${80 + courts.length * 160}px` }}>
             <colgroup>
               <col style={{ width: '80px' }} />

@@ -15,8 +15,14 @@ export const runtime = 'nodejs'
  * Returns: { success: true, dispatched: number }
  */
 export const POST = withTenant(async (_req, user) => {
+  if (!user.staffUserId) {
+    return NextResponse.json(
+      { error: 'forbidden', code: 'NO_STAFF_USER_ID' },
+      { status: 403 },
+    )
+  }
   const tenantId = user.tenantId!
-  const staffUserId = user.staffUserId!
+  const staffUserId = user.staffUserId
 
   const { enqueued } = await notifyStaffPush(tenantId, staffUserId, {
     type: 'test',

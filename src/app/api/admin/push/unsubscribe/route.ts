@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const unsubscribeSchema = z.object({
-  endpoint: z.string().url('endpoint must be a valid URL'),
+  endpoint: z.string().url('endpoint must be a valid URL').max(2000, 'endpoint too long'),
 })
 
 export const POST = withTenant(async (req: NextRequest, user) => {
@@ -28,8 +28,14 @@ export const POST = withTenant(async (req: NextRequest, user) => {
   }
 
   const { endpoint } = parsed.data
+  if (!user.staffUserId) {
+    return NextResponse.json(
+      { error: 'forbidden', code: 'NO_STAFF_USER_ID' },
+      { status: 403 },
+    )
+  }
   const tenantId = user.tenantId!
-  const staffUserId = user.staffUserId!
+  const staffUserId = user.staffUserId
 
   const sql = getSql()
   const rows = await sql<{ id: string }[]>`

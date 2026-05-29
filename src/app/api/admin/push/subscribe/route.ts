@@ -8,10 +8,10 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const subscribeSchema = z.object({
-  endpoint: z.string().url('endpoint must be a valid URL'),
+  endpoint: z.string().url('endpoint must be a valid URL').max(2000, 'endpoint too long'),
   keys: z.object({
-    p256dh: z.string().min(80, 'p256dh must be at least 80 chars'),
-    auth: z.string().min(16, 'auth must be at least 16 chars'),
+    p256dh: z.string().min(80, 'p256dh must be at least 80 chars').max(200),
+    auth: z.string().min(16, 'auth must be at least 16 chars').max(200),
   }),
   userAgent: z.string().max(500).optional(),
 })
@@ -33,8 +33,14 @@ export const POST = withTenant(async (req: NextRequest, user) => {
   }
 
   const { endpoint, keys, userAgent } = parsed.data
+  if (!user.staffUserId) {
+    return NextResponse.json(
+      { error: 'forbidden', code: 'NO_STAFF_USER_ID' },
+      { status: 403 },
+    )
+  }
   const tenantId = user.tenantId!
-  const staffUserId = user.staffUserId!
+  const staffUserId = user.staffUserId
 
   const sql = getSql()
   const rows = await sql<{ id: string }[]>`

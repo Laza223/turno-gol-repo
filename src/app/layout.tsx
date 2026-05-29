@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SITE_URL, SITE_NAME, SITE_LOCALE, DEFAULT_OG_IMAGE } from '@/lib/seo/metadata'
+import { WebVitalsReporter } from '@/components/perf/WebVitalsReporter'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -49,6 +50,7 @@ export default function RootLayout({
         </a>
         {children}
         <Toaster />
+        <WebVitalsReporter />
       </body>
     </html>
   )

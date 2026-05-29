@@ -136,4 +136,16 @@ describe('computeCells', () => {
     expect(index.has('court1:10:00:00')).toBe(false)
     expect(index.get('court1:10:00')).toBe(booking)
   })
+
+  // -------------------------------------------------------------------------
+  // Test 5: buildBookingsIndex preserves first-wins semantics for duplicate keys
+  // -------------------------------------------------------------------------
+
+  it('T5: buildBookingsIndex first-wins — duplicate courtId:timeStart keeps the first booking', () => {
+    const first = makeBooking({ id: 'first', courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00' })
+    const second = makeBooking({ id: 'second', courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00' })
+    const index = buildBookingsIndex([first, second])
+
+    expect(index.get('court1:10:00')?.id).toBe('first')
+  })
 })

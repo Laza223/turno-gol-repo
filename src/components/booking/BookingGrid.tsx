@@ -97,16 +97,18 @@ export function BookingGrid({
   )
 
   const handleSlotClick = useCallback(
-    (court: CourtRow, slotTime: string) => {
+    (courtId: string, slotTime: string) => {
+      const court = courts.find((c) => c.id === courtId)
+      if (!court) return
       setSelectedSlot({
-        courtId: court.id,
+        courtId,
         courtName: court.name,
         date,
         timeStart: slotTime,
         durationMins: 60,
       })
     },
-    [date],
+    [courts, date],
   )
 
   const handleBookingSuccess = useCallback((_booking: BookingRow) => {
@@ -249,11 +251,8 @@ export function BookingGrid({
                         booking={null}
                         timeStart={slotTime}
                         isPast={isSlotPast(slotTime)}
-                        onClick={
-                          court.status === 'online' && !isSlotPast(slotTime)
-                            ? () => handleSlotClick(court, slotTime)
-                            : undefined
-                        }
+                        courtId={court.status === 'online' && !isSlotPast(slotTime) ? court.id : undefined}
+                        onSlotClick={court.status === 'online' && !isSlotPast(slotTime) ? handleSlotClick : undefined}
                       />
                     )
                   })}

@@ -70,7 +70,7 @@ export function buildBookingsIndex(bookings: GridBooking[]): Map<string, GridBoo
   const index = new Map<string, GridBooking>()
   for (const b of bookings) {
     const key = `${b.courtId}:${b.timeStart.slice(0, 5)}`
-    index.set(key, b)
+    if (!index.has(key)) index.set(key, b)
   }
   return index
 }

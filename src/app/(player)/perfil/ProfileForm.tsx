@@ -80,6 +80,7 @@ export function ProfileForm({ defaultValues }: Props) {
           id="phone"
           name="phone"
           type="tel"
+          inputMode="tel"
           defaultValue={defaultValues.phone}
           autoComplete="tel"
           className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"

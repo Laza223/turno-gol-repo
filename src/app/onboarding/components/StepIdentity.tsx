@@ -137,6 +137,7 @@ export function StepIdentity() {
               id="identity-phone"
               name="phone"
               type="tel"
+              inputMode="tel"
               autoComplete="tel"
               placeholder="+54 9 11 1234-5678"
               required

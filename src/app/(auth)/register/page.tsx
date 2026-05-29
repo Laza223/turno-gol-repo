@@ -157,6 +157,7 @@ function FormCard({
           name="phone"
           label="Celular"
           type="tel"
+          inputMode="tel"
           autoComplete="tel"
           placeholder="+54 9 11 1234-5678"
           helper="Formato argentino con prefijo +54 9"
@@ -201,6 +202,7 @@ function Field(props: {
   name: string
   label: string
   type?: string
+  inputMode?: 'text' | 'tel' | 'email' | 'numeric' | 'decimal' | 'search' | 'url' | 'none'
   autoComplete?: string
   placeholder?: string
   helper?: string
@@ -215,6 +217,7 @@ function Field(props: {
         id={props.id}
         name={props.name}
         type={props.type ?? 'text'}
+        inputMode={props.inputMode}
         autoComplete={props.autoComplete}
         placeholder={props.placeholder}
         required

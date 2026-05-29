@@ -5,7 +5,7 @@ import { logger } from '@/shared/lib/logger'
 /**
  * Canonical list of active pg-boss queue names — every queue that a worker
  * registers via `boss.work(...)` in `registerAllWorkers`. Kept in sync with
- * `src/shared/jobs/workers/index.ts` (11 worker registrations, 12 work queues:
+ * `src/shared/jobs/workers/index.ts` (12 worker registrations, 13 work queues:
  * `expire-pending-booking` also registers a `-sweep` safety-net queue).
  *
  * Used both for DLQ failure subscriptions and the queue-depth admin endpoint.
@@ -23,6 +23,7 @@ export const ALL_QUEUES: readonly string[] = [
   'expire-pending-booking-sweep',
   'refresh-mp-tokens',
   'reconcile-pending-payments',
+  'push-send',
 ] as const
 
 /**

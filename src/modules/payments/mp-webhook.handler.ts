@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
-import { getDb, withTenantContext } from '@/shared/db/client'
+import { getDb, getSql, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from './mp-oauth'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
@@ -11,7 +11,9 @@ import {
 } from '@/modules/billing/dunning.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
+import { notifyAdminPush } from '@/modules/notifications/push.service'
 import { track } from '@/shared/observability'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Payload for the `process-mp-webhook` queue. The route enqueues this; the
@@ -57,6 +59,12 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // per-tenant access token expired between cron refreshes, the gateway
   // refreshes it on the fly and retries the failing call.
   const gateway = resolveTenantGateway(job.tenantId, tenant.mpAccessToken)
+
+  // Capture the booking id when a deposit is confirmed, so we can enqueue a
+  // push notification AFTER the transaction commits. This avoids threading
+  // bookingId through WebhookOutcome's type (minimal change, same pattern
+  // as how dispatchEmail fires post-commit).
+  let confirmedBookingId: string | null = null
 
   const outcome = await withTenantContext(job.tenantId, async (tx) => {
     if (job.eventType === 'subscription_authorized_payment') {
@@ -137,7 +145,17 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       )
     }
 
-    return dispatchPaymentInfo(info, job.tenantId, tx)
+    const depositOutcome = await dispatchPaymentInfo(info, job.tenantId, tx)
+    // Capture bookingId only when the booking transition actually succeeded (won).
+    // dispatchPaymentInfo returns result='confirmed' for the approved+won path.
+    if (
+      depositOutcome &&
+      !depositOutcome.alreadyProcessed &&
+      depositOutcome.result === 'confirmed'
+    ) {
+      confirmedBookingId = info.externalReference
+    }
+    return depositOutcome
   })
 
   // Dispatch any notifications enqueued inside the tx (e.g. late-payment admin
@@ -146,6 +164,58 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   if (outcome && !outcome.alreadyProcessed) {
     for (const id of outcome.notificationIds ?? []) {
       await dispatchEmail(id)
+    }
+  }
+
+  // Push notification to admin when a booking deposit is confirmed.
+  // Fired AFTER the tx commits; wrapped in try/catch so a push failure never
+  // rolls back or fails the payment confirmation.
+  if (confirmedBookingId) {
+    const bookingId = confirmedBookingId
+    try {
+      const notifSql = getSql()
+      const bookingCtxRows = await notifSql<{
+        court_name: string
+        date: string
+        time_start: string
+        time_end: string
+      }[]>`
+        SELECT c.name AS court_name,
+               b.date::text AS date,
+               b.time_start AS time_start,
+               b.time_end AS time_end
+        FROM bookings b
+        JOIN courts c ON c.id = b.court_id
+        WHERE b.id = ${bookingId}
+        LIMIT 1
+      `
+      const ctx = bookingCtxRows[0]
+      const ymd = ctx?.date?.slice(0, 10) ?? ''
+      const dateLabel = ctx?.date
+        ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('es-AR', {
+            day: 'numeric',
+            month: 'long',
+            timeZone: 'America/Argentina/Buenos_Aires',
+          })
+        : ymd
+      const timeStart = ctx?.time_start ?? ''
+      const timeEnd = ctx?.time_end ?? ''
+      const timeLabel = timeStart && timeEnd ? `${timeStart}–${timeEnd}` : timeStart
+
+      await notifyAdminPush(job.tenantId, {
+        type: 'booking.confirmed_online',
+        bookingId,
+        courtName: ctx?.court_name,
+        dateLabel,
+        timeLabel,
+        url: `/admin/grilla?date=${ymd}&highlight=${bookingId}`,
+      })
+    } catch (err) {
+      logger.error('push dispatch after booking confirmation failed', {
+        module: 'mp-webhook',
+        bookingId,
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 

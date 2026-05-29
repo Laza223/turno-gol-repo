@@ -52,6 +52,17 @@ type AuthCtx = {
   playerId?: string
 }
 
+type NotificationEvent =
+  | 'notification.push.sent'
+  | 'notification.push.failed'
+
+type NotificationCtx = {
+  statusCode?: number
+  endpoint?: string
+  payloadType?: string
+  reason?: string
+}
+
 function emit(category: string, message: string, data: Record<string, unknown>): void {
   Sentry.addBreadcrumb({ category, message, data, level: 'info' })
 }
@@ -61,4 +72,5 @@ export const track = {
   payment: (ev: PaymentEvent, ctx: PaymentCtx) => emit('payment', ev, ctx),
   webhook: (ev: WebhookEvent, ctx: WebhookCtx) => emit('webhook', ev, ctx),
   auth: (ev: AuthEvent, ctx: AuthCtx) => emit('auth', ev, ctx),
+  notification: (ev: NotificationEvent, ctx: NotificationCtx) => emit('notification', ev, ctx),
 }

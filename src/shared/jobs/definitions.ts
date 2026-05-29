@@ -6,6 +6,7 @@
 // ─── Queue names ─────────────────────────────────────────────────────────────
 
 export const QUEUE_SEND_EMAIL = 'send-email'
+export const QUEUE_PUSH_SEND = 'push-send'
 export const QUEUE_EXPIRE_TRIALS = 'expire-trials'
 export const QUEUE_AUTO_COMPLETE = 'auto-complete-bookings'
 export const QUEUE_BOOKING_REMINDER = 'booking-reminder'
@@ -59,4 +60,26 @@ export const EXPIRE_PENDING_BOOKING_SEND_OPTIONS = {
   retryBackoff: true,
   // Must outlive the 48h in_process cutoff so a rescheduled job isn't dropped.
   expireInHours: 49,
+} as const
+
+// ─── Push notifications ───────────────────────────────────────────────────────
+
+export type PushSendJobData = {
+  subscription_id: string
+  payload: {
+    type: string
+    bookingId?: string
+    courtName?: string
+    dateLabel?: string
+    timeLabel?: string
+    url?: string
+    [k: string]: unknown
+  }
+}
+
+export const PUSH_SEND_SEND_OPTIONS = {
+  retryLimit: 3,
+  retryDelay: 30,
+  retryBackoff: true,
+  expireInHours: 1,
 } as const

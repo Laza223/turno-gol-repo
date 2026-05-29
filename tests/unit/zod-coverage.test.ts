@@ -36,6 +36,10 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/admin/jobs/route.ts',
   // ARCO Supresion (F8 Ley 25.326): no args; player id from session.
   'src/app/(player)/eliminar-cuenta/actions.ts',
+  // VAPID public key (F9): GET, no body/params. Public key is intentionally public.
+  'src/app/api/admin/push/vapid/route.ts',
+  // Push test trigger (F9): POST, no body. tenant_id + staff_user_id from JWT.
+  'src/app/api/admin/push/test/route.ts',
 ])
 
 function usesZod(src: string): boolean {

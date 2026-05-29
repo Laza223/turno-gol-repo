@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
 import { AxeBuilder } from '@axe-core/playwright'
 
 export type AxeOptions = {
@@ -46,6 +46,4 @@ export async function expectNoAxeViolations(page: Page, options: AxeOptions = {}
       `axe-core found ${blocking.length} blocking violation(s):\n${summary}\n\nFull rule docs: https://dequeuniversity.com/rules/axe/`,
     )
   }
-
-  expect(blocking.length).toBe(0)
 }

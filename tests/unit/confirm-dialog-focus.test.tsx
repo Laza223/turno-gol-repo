@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+
+afterEach(cleanup)
 
 describe('ConfirmDialog focus-visible rings', () => {
   it('confirmation phrase input uses focus-visible:ring', () => {

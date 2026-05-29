@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { PlayerBottomNav } from '@/app/(player)/_components/PlayerBottomNav'
 import { AdminSidebar } from '@/components/layout/admin-sidebar'
+
+afterEach(cleanup)
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({

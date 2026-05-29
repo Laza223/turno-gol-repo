@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect } from 'vitest'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+
+afterEach(cleanup)
 
 describe('focus-visible rings on primitives', () => {
   it('Button uses focus-visible:ring-emerald-500 (not focus:)', () => {

@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+
+afterEach(cleanup)
 
 describe('Skip-to-content link', () => {
   it('renders with href="#main-content" and is sr-only by default', () => {

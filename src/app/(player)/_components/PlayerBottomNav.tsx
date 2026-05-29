@@ -13,13 +13,14 @@ const NAV_ITEMS = [
 export function PlayerBottomNav() {
   const pathname = usePathname()
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex z-10 pb-[env(safe-area-inset-bottom)]">
+    <nav aria-label="Navegación del jugador" className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex z-10 pb-[env(safe-area-inset-bottom)]">
       {NAV_ITEMS.map(({ href, label, Icon }) => {
         const active = pathname.startsWith(href)
         return (
           <Link
             key={href}
             href={href}
+            aria-current={active ? 'page' : undefined}
             className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors duration-150 ${
               active ? 'text-emerald-700' : 'text-slate-500 hover:text-slate-900'
             }`}

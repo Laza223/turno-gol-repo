@@ -86,7 +86,7 @@ function SidebarContent({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+      <nav aria-label="Navegación del panel" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {NAV_ITEMS.map(({ href, icon: Icon, label, pin }) => {
           const isActive =
             pathname === href ||
@@ -96,6 +96,7 @@ function SidebarContent({
             <Link
               key={href}
               href={href}
+              aria-current={isActive ? 'page' : undefined}
               onClick={isMobile ? onClose : undefined}
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',

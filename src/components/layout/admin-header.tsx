@@ -15,7 +15,7 @@ export function AdminHeader({
   onSignOut,
 }: AdminHeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-20 flex h-16 items-center border-b border-slate-200 bg-white/95 backdrop-blur-sm shadow-sm shadow-slate-200/50 px-4 sm:px-6 lg:left-60">
+    <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-slate-200 bg-white/95 backdrop-blur-sm shadow-sm shadow-slate-200/50 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
       {/* Mobile hamburger */}
       <Button
         variant="ghost"

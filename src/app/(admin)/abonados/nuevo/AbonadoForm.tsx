@@ -192,8 +192,8 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
         <label className={labelCls}><span className={labelSpan}>Hora fin</span><input name="timeEnd" type="time" required className={field} /></label>
         <label className={labelCls}><span className={labelSpan}>Nombre de contacto</span><input name="contactName" required className={field} /></label>
         <label className={labelCls}><span className={labelSpan}>Teléfono</span><input name="contactPhone" required className={field} /></label>
-        <label className={labelCls}><span className={labelSpan}>Precio por turno (ARS)</span><input name="pricePerSession" type="number" min="0" step="0.01" required className={field} /></label>
-        <label className={labelCls}><span className={labelSpan}>Precio mensual (ARS)</span><input name="monthlyPrice" type="number" min="0" step="0.01" required className={field} /></label>
+        <label className={labelCls}><span className={labelSpan}>Precio por turno (ARS)</span><input name="pricePerSession" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} /></label>
+        <label className={labelCls}><span className={labelSpan}>Precio mensual (ARS)</span><input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} /></label>
         <label className={labelCls}><span className={labelSpan}>Desde</span><input name="startsOn" type="date" required className={field} /></label>
         <label className={labelCls}>
           <span className={labelSpan}>Método de pago</span>

@@ -122,6 +122,7 @@ font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
 **Rules:**
 - Min height: 40px (`h-10`) desktop / 44px (`h-11`) mobile-facing
+- **Mobile-first cascade in primitives:** `Button` and `Input` use `h-11 md:h-10` (44px <768px, 40px ≥md). Enforces WCAG 2.5.5 touch size on mobile while preserving desktop density. Custom heights (`size="lg"` already `h-11`, `size="sm"` cascades `h-10 md:h-9`).
 - Loading state: disable + spinner (never silent)
 - One primary CTA per view; secondary actions subordinate
 

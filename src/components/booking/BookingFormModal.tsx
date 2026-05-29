@@ -115,7 +115,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                     key={d}
                     type="button"
                     onClick={() => setDuration(d)}
-                    className={`flex-1 py-1.5 rounded border text-sm font-medium transition-colors duration-100 ${
+                    className={`flex-1 py-1.5 min-h-11 md:min-h-9 rounded border text-sm font-medium transition-colors duration-100 ${
                       duration === d
                         ? 'bg-emerald-600 text-white border-emerald-600'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -139,7 +139,8 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                 name="guestName"
                 type="text"
                 maxLength={200}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                autoComplete="name"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="Ej: Juan Pérez"
               />
             </div>
@@ -156,8 +157,10 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                 name="guestPhone"
                 type="tel"
                 maxLength={50}
+                inputMode="tel"
+                autoComplete="tel"
                 aria-invalid={!!phoneError}
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                className={`w-full rounded-md border px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   phoneError ? 'border-red-400' : 'border-slate-200'
                 }`}
                 placeholder="Ej: 11-1234-5678"
@@ -181,7 +184,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                 name="notesInternal"
                 maxLength={1000}
                 rows={2}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-[44px] md:min-h-0 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                 placeholder="Solo visible para el staff"
               />
             </div>
@@ -196,7 +199,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
               <Dialog.Close asChild>
                 <button
                   type="button"
-                  className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors duration-100"
+                  className="px-4 py-2 min-h-11 md:min-h-10 text-sm font-medium text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors duration-100"
                 >
                   Cancelar
                 </button>
@@ -204,7 +207,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
               <button
                 type="submit"
                 disabled={isPending}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-11 md:min-h-10 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100"
               >
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 {isPending ? 'Guardando…' : 'Confirmar'}

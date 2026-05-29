@@ -271,6 +271,8 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   onChange={(e) => updateRulePrice(idx, '60', Number(e.target.value) * 100)}
                   min={0}
                   step={100}
+                  inputMode="decimal"
+                  autoComplete="off"
                   className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -282,6 +284,8 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                   onChange={(e) => updateRulePrice(idx, '120', Number(e.target.value) * 100)}
                   min={0}
                   step={100}
+                  inputMode="decimal"
+                  autoComplete="off"
                   className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>

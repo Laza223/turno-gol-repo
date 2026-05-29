@@ -1,9 +1,10 @@
 'use client'
 
+import React from 'react'
 import { cn } from '@/lib/utils'
 import type { GridBooking } from './BookingGrid'
 
-type Props = {
+type BookingCardProps = {
   booking: GridBooking | null
   timeStart: string
   isPast: boolean
@@ -11,7 +12,7 @@ type Props = {
   onClick?: () => void
 }
 
-export function BookingCard({ booking, timeStart, isPast, rowSpan = 1, onClick }: Props) {
+function BookingCardComponent({ booking, timeStart, isPast, rowSpan = 1, onClick }: BookingCardProps) {
   if (!booking) {
     const interactive = !isPast && !!onClick
     return (
@@ -96,3 +97,5 @@ export function BookingCard({ booking, timeStart, isPast, rowSpan = 1, onClick }
     </td>
   )
 }
+
+export const BookingCard = React.memo(BookingCardComponent)

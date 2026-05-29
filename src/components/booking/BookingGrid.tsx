@@ -1,34 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { LayoutGrid, MoonStar } from 'lucide-react'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { BookingCard } from './BookingCard'
 import { EmptyState } from '@/components/ui/empty-state'
-import type { BookingStatus, BookingType, BookingRow } from '@/modules/bookings/booking.types'
+import {
+  addDays,
+  buildBookingsIndex,
+  computeCells,
+  DAY_KEYS,
+  generateTimeSlots,
+} from '@/lib/booking/grid-cells'
+import type { GridBooking } from '@/lib/booking/grid-cells'
+import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+
+// Re-export GridBooking so BookingCard (and others) can import it from here.
+export type { GridBooking } from '@/lib/booking/grid-cells'
 
 const BookingFormModal = dynamic(
   () => import('./BookingFormModal').then((m) => m.BookingFormModal),
   { ssr: false },
 )
-
-export type GridBooking = {
-  id: string
-  courtId: string
-  date: string
-  timeStart: string
-  timeEnd: string
-  status: BookingStatus
-  type: BookingType
-  guestName: string | null
-  playerFirstName: string | null
-  playerLastName: string | null
-  priceSnapshot: number
-}
 
 type SelectedSlot = {
   courtId: string
@@ -36,90 +33,6 @@ type SelectedSlot = {
   date: string
   timeStart: string
   durationMins: 60 | 120
-}
-
-type CellState =
-  | { kind: 'free' }
-  | { kind: 'booking'; booking: GridBooking; rowSpan: number }
-  | { kind: 'skip' }
-
-const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
-
-function timeToMins(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number)
-  return (h ?? 0) * 60 + (m ?? 0)
-}
-
-function minsToTime(mins: number): string {
-  const h = Math.floor(mins / 60) % 24
-  const m = mins % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
-function addDays(dateStr: string, n: number): string {
-  const d = new Date(`${dateStr}T12:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-
-function generateTimeSlots(openHhmm: string, closeHhmm: string): string[] {
-  const openMins = timeToMins(openHhmm)
-  let closeMins = timeToMins(closeHhmm)
-  if (closeMins === 0) closeMins = 24 * 60
-  const slots: string[] = []
-  for (let t = openMins; t < closeMins; t += 60) {
-    slots.push(minsToTime(t))
-  }
-  return slots
-}
-
-function computeCells(
-  slots: string[],
-  courts: CourtRow[],
-  bookings: GridBooking[],
-): Map<string, CellState> {
-  const cells = new Map<string, CellState>()
-
-  for (const court of courts) {
-    const coveredSlots = new Set<number>()
-
-    for (let si = 0; si < slots.length; si++) {
-      const slotTime = slots[si]!
-      const key = `${court.id}:${slotTime}`
-
-      if (coveredSlots.has(si)) {
-        cells.set(key, { kind: 'skip' })
-        continue
-      }
-
-      const booking = bookings.find((b) => {
-        if (b.courtId !== court.id) return false
-        if (b.timeStart.slice(0, 5) !== slotTime) return false
-        return (
-          b.status === 'confirmed' ||
-          b.status === 'pending_payment' ||
-          b.status === 'completed' ||
-          b.status === 'no_show' ||
-          b.type === 'block'
-        )
-      })
-
-      if (booking) {
-        const startMins = timeToMins(booking.timeStart.slice(0, 5))
-        const endMins = timeToMins(booking.timeEnd.slice(0, 5))
-        const durationMins = (endMins === 0 ? 24 * 60 : endMins) - startMins
-        const rowSpan = Math.max(1, Math.round(durationMins / 60))
-        cells.set(key, { kind: 'booking', booking, rowSpan })
-        for (let j = si + 1; j < si + rowSpan; j++) {
-          coveredSlots.add(j)
-        }
-      } else {
-        cells.set(key, { kind: 'free' })
-      }
-    }
-  }
-
-  return cells
 }
 
 type Props = {
@@ -160,42 +73,61 @@ export function BookingGrid({
 
   const openHhmm = dayHours?.open ?? '08:00'
   const closeHhmm = dayHours?.close ?? '23:00'
-  const slots = closedToday ? [] : generateTimeSlots(openHhmm, closeHhmm)
 
-  const cells = computeCells(slots, courts, bookings)
+  const slots = useMemo(
+    () => (closedToday ? [] : generateTimeSlots(openHhmm, closeHhmm)),
+    [openHhmm, closeHhmm, closedToday],
+  )
 
-  function isSlotPast(slotTime: string): boolean {
-    if (!artNow.date) return false
-    if (date < artNow.date) return true
-    if (date > artNow.date) return false
-    return slotTime < artNow.time
-  }
+  const bookingsByKey = useMemo(() => buildBookingsIndex(bookings), [bookings])
 
-  function handleSlotClick(court: CourtRow, slotTime: string) {
-    setSelectedSlot({
-      courtId: court.id,
-      courtName: court.name,
-      date,
-      timeStart: slotTime,
-      durationMins: 60,
-    })
-  }
+  const cells = useMemo(
+    () => computeCells(slots, courts, bookingsByKey),
+    [slots, courts, bookingsByKey],
+  )
 
-  function handleBookingSuccess(_booking: BookingRow) {
+  const isSlotPast = useCallback(
+    (slotTime: string): boolean => {
+      if (!artNow.date) return false
+      if (date < artNow.date) return true
+      if (date > artNow.date) return false
+      return slotTime < artNow.time
+    },
+    [artNow, date],
+  )
+
+  const handleSlotClick = useCallback(
+    (court: CourtRow, slotTime: string) => {
+      setSelectedSlot({
+        courtId: court.id,
+        courtName: court.name,
+        date,
+        timeStart: slotTime,
+        durationMins: 60,
+      })
+    },
+    [date],
+  )
+
+  const handleBookingSuccess = useCallback((_booking: BookingRow) => {
     setSelectedSlot(null)
     // Realtime will propagate the new booking automatically
-  }
+  }, [])
 
   const LABEL_DAYS: Record<string, string> = {
     mon: 'Lun', tue: 'Mar', wed: 'Mié', thu: 'Jue',
     fri: 'Vie', sat: 'Sáb', sun: 'Dom',
   }
 
-  const dateLabel = new Date(`${date}T12:00:00Z`).toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'America/Argentina/Buenos_Aires',
-  })
+  const dateLabel = useMemo(
+    () =>
+      new Date(`${date}T12:00:00Z`).toLocaleDateString('es-AR', {
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'America/Argentina/Buenos_Aires',
+      }),
+    [date],
+  )
 
   return (
     <div className="space-y-4">

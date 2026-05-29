@@ -49,7 +49,16 @@ self.addEventListener('push', (event) => {
           resolve(true)
         }
       }
-      bc.postMessage({ id })
+      // Include payload so listeners can show a payload-specific toast
+      // (courtName, dateLabel, timeLabel) instead of generic copy.
+      bc.postMessage({
+        id,
+        courtName: payload.courtName,
+        dateLabel: payload.dateLabel,
+        timeLabel: payload.timeLabel,
+        url: payload.url,
+        type: payload.type,
+      })
     })
     bc.close()
     if (acked) return

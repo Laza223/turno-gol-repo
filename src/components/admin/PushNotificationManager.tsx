@@ -89,18 +89,30 @@ export function PushNotificationManager() {
     bcRef.current = bc
     const seen = new Set<string>()
     bc.onmessage = async (msg) => {
-      const data = (msg.data || {}) as { id?: string; ack?: boolean }
+      const data = (msg.data || {}) as {
+        id?: string
+        ack?: boolean
+        courtName?: string
+        dateLabel?: string
+        timeLabel?: string
+        url?: string
+        type?: string
+      }
       if (!data.id || data.ack) return
       if (seen.has(data.id)) return
       seen.add(data.id)
       // Claim the show: ack first, then render.
       bc.postMessage({ id: data.id, ack: true })
-      // Fetch payload from SW? In v1 we re-derive from in-page state; the
-      // SW fallback is the canonical view. For the in-page toast we just
-      // show a "Nueva reserva" message and let the user click through.
+      // Render payload-specific toast: title=courtName, description=date+time.
+      // SW broadcasts include courtName/dateLabel/timeLabel from the push payload.
+      const title = data.courtName
+        ? `Nueva reserva — ${data.courtName}`
+        : 'Nueva reserva'
+      const description = [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ')
+        || 'Tenés una nueva reserva confirmada en la grilla.'
       toast({
-        title: 'Nueva reserva',
-        description: 'Tenés una nueva reserva confirmada en la grilla.',
+        title,
+        description,
         variant: 'success',
       })
       try {

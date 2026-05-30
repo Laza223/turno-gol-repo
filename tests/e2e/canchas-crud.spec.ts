@@ -363,8 +363,11 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
         await courtCard.getByRole('button', { name: 'Activar' }).click()
 
         // Badge must revert to Offline and the failure toast must appear.
+        // exact:true — the aria-live announcement renders
+        // "Notification No se pudo activarCancha no encontrada" which
+        // substring-matches and trips strict mode.
         await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText('No se pudo activar')).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByText('No se pudo activar', { exact: true })).toBeVisible({ timeout: 10_000 })
       } finally {
         await context.close()
         // Court already deleted above; safety net (delete of 0 rows is not an error).

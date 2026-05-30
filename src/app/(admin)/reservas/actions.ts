@@ -80,7 +80,14 @@ export async function createBookingAction(
     }
   })
 
-  if (result.success) revalidatePath('/reservas')
+  if (result.success) {
+    // Revalidate both the reservas list and the grilla — the grilla is the
+    // surface most likely to be open when the admin creates a booking
+    // (BookingFormModal is launched from there), so its cached server data
+    // would otherwise still show the slot as free even after success.
+    revalidatePath('/reservas')
+    revalidatePath('/grilla')
+  }
   return result
 }
 

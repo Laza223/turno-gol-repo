@@ -40,7 +40,13 @@ test.describe('Player bookings', () => {
     playerStorageState,
   }) => {
     const supabase = makeServiceClient()
-    const bookingId = await insertPlayerBooking(supabase, { date: artTomorrowISO() })
+    // Slot 20:00–21:00 — avoids collisions with grilla-realtime (10:00, 14:00),
+    // admin-create-booking-ui (16:00), admin-cancel-mp-refund (18:00).
+    const bookingId = await insertPlayerBooking(supabase, {
+      date: artTomorrowISO(),
+      timeStart: '20:00',
+      timeEnd: '21:00',
+    })
 
     const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
     const page = await ctx.newPage()
@@ -108,7 +114,10 @@ test.describe('Player bookings', () => {
       // The player cancel policy decides refunded vs no_refund based on hours_before —
       // we assert against either value to avoid coupling to tenant policy config.
       const bookingId = await insertPlayerBooking(supabase, {
+        // Slot 21:00–22:00 — avoids collisions with other tomorrow specs.
         date: artTomorrowISO(),
+        timeStart: '21:00',
+        timeEnd: '22:00',
         status: 'confirmed',
         depositStatus: 'paid',
         depositAmount: 30000,

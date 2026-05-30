@@ -46,8 +46,16 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
       const supabase = makeServiceClient()
       const tomorrow = tomorrowDateIsoArt()
 
-      // Insert a booking for the demo tenant with payment_method='mercadopago' and
-      // deposit_status='paid'. payment_id is left null intentionally — see DECISION above.
+      // Insert a booking for the demo tenant with deposit_status='paid' but
+      // payment_method=null. The DB constraint chk_booking_payment_consistency
+      // requires mercadopago bookings to have a non-null payment_id, and we
+      // intentionally don't want a real payment row here (see DECISION above).
+      // The UI flow tested below doesn't depend on payment_method:
+      //   - "Refund radios" appear whenever depositStatus='paid' & amount>0
+      //   - cancelByAdmin skips the MP API call when payment_id is null,
+      //     regardless of payment_method
+      // The only visible difference is the refundWarning copy (cash vs MP),
+      // which the spec does not assert.
       const bookingId = await insertBookingServiceRole(supabase, {
         tenantId: E2E_TENANT_ID,
         courtId: E2E_COURT_ID,
@@ -57,7 +65,6 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
         status: 'confirmed',
         depositStatus: 'paid',
         depositAmount: 50000, // 500 ARS in centavos
-        paymentMethod: 'mercadopago',
         createdByStaff: E2E_STAFF_USER_ID,
       })
 

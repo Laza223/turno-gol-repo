@@ -193,8 +193,10 @@ test.describe('reservas — edge: cancel with paid deposit', () => {
         await page.getByRole('button', { name: 'Cancelar reserva' }).click()
 
         // After success the dialog closes and status updates to Cancelada.
+        // Use dd filter — getByText(/Cancelada/i) also matches the toast
+        // ("Reserva cancelada") + aria-live announcement (strict mode).
         await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText(/Cancelada/i)).toBeVisible({ timeout: 10_000 })
+        await expect(page.locator('dd').filter({ hasText: /Cancelada/i })).toBeVisible({ timeout: 10_000 })
 
         // Action buttons must disappear.
         await expect(page.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()

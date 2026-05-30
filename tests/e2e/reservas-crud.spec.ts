@@ -170,8 +170,10 @@ test.describe('reservas — edge: cancel with paid deposit', () => {
         await page.getByRole('button', { name: 'Cancelar' }).click()
 
         // ConfirmDialog should open with title "Cancelar reserva".
+        // Use heading role: the dialog also contains a confirm button labelled
+        // "Cancelar reserva", so getByText would resolve 2 elements (strict mode).
         await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByText('Cancelar reserva')).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
 
         // Refund radios must be shown (hasPaidDeposit = true).
         await expect(page.getByText('¿Reembolsar la seña?')).toBeVisible()
@@ -245,8 +247,9 @@ test.describe('reservas — edge: cancel blocked without reason', () => {
         await expect(page.getByRole('alert')).toContainText(/Ingresá un motivo/i)
 
         // Dialog must stay open — booking still confirmed.
+        // Use heading role (dialog also has confirm button with same label).
         await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByText('Cancelar reserva')).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
       } finally {
         await context.close()
         await deleteBooking(supabase, bookingId)
@@ -296,8 +299,10 @@ test.describe('reservas — edge: no-show', () => {
         await page.getByRole('button', { name: 'Marcar ausente' }).last().click()
 
         // After router.refresh() the status badge should update to "Ausente".
+        // Use the dd badge selector specifically: getByText('Ausente') also matches
+        // the success toast ("Marcada como ausente", case-insensitive substring).
         await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText('Ausente')).toBeVisible({ timeout: 10_000 })
+        await expect(page.locator('dd').filter({ hasText: 'Ausente' })).toBeVisible({ timeout: 10_000 })
 
         // Action buttons must disappear (status != 'confirmed').
         await expect(page.getByRole('button', { name: 'Marcar ausente' })).not.toBeVisible()

@@ -84,9 +84,11 @@ test.describe('Reportes', () => {
 
       await page.goto('/reportes')
 
-      // KPIs render with non-zero values
-      await expect(page.getByText('Ingresos')).toBeVisible()
-      await expect(page.getByText('Reservas')).toBeVisible()
+      // KPIs render with non-zero values.
+      // Use the KPI <p> specifically: "Ingresos"/"Reservas" also appear as <th>
+      // column headers in the "Por cancha" table below (strict mode).
+      await expect(page.getByRole('paragraph').filter({ hasText: 'Ingresos' })).toBeVisible()
+      await expect(page.getByRole('paragraph').filter({ hasText: 'Reservas' })).toBeVisible()
       // "Por cancha" table appears when there's at least one booking
       await expect(page.getByRole('heading', { name: /Por cancha/i })).toBeVisible()
       // Cancha E2E 1 row should appear

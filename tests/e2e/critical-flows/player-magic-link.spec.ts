@@ -26,9 +26,12 @@ test.describe('player magic link', () => {
         await page.getByLabel(/email/i).fill(E2E_PLAYER_EMAIL)
         await page.getByRole('button', { name: /(enviar|entrar|continuar)/i }).click()
 
-        // Success: "Revisá tu email" heading appears
+        // Success: SentState h1 "Revisá tu email" appears.
+        // Use heading role specifically — the FormCard subtitle on /login also
+        // contains "Te enviamos un enlace mágico a tu email" (visible by default),
+        // so a plain getByText would match that too and lead to false positives.
         await expect(
-          page.getByText(/(revis[áa] tu (mail|email)|enviamos|check your inbox)/i),
+          page.getByRole('heading', { name: /revis[áa] tu (mail|email)/i }),
         ).toBeVisible({ timeout: 10_000 })
 
         // Must NOT have navigated to /mis-reservas (player is not yet authenticated)
@@ -52,9 +55,12 @@ test.describe('player magic link', () => {
         // Submit without filling email (form has noValidate; server returns error state)
         await page.getByRole('button', { name: /(enviar|entrar|continuar)/i }).click()
 
-        // Must NOT show the "sent" success state
+        // Must NOT show the SentState h1.
+        // The FormCard subtitle ("Te enviamos un enlace mágico a tu email") is
+        // always visible on /login and would match a plain "enviamos" regex,
+        // making the assertion always fail. Anchor on the heading role instead.
         await expect(
-          page.getByText(/(revis[áa] tu (mail|email)|enviamos|check your inbox)/i),
+          page.getByRole('heading', { name: /revis[áa] tu (mail|email)/i }),
         ).not.toBeVisible({ timeout: 2_000 })
 
         // Must stay on /login

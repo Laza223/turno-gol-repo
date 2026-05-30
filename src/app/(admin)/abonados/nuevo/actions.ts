@@ -15,8 +15,10 @@ const schema = z.object({
   contactName: z.string().trim().min(1, 'Nombre requerido'),
   contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
   dayOfWeek: z.coerce.number().int().min(0).max(6),
-  timeStart: z.string().regex(/^\d{2}:\d{2}$/, 'Horario inválido'),
-  timeEnd: z.string().regex(/^\d{2}:\d{2}$/, 'Horario inválido'),
+  // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
+  // reactivate dialog, which renders the abonado row's stored time directly).
+  timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+  timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
   pricePerSession: z.coerce.number().positive('El precio por sesión es requerido'),
   monthlyPrice: z.coerce.number().positive('El precio mensual es requerido'),
   startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
@@ -27,8 +29,10 @@ const schema = z.object({
 const previewSchema = z.object({
   courtId: z.string().uuid('Elegí una cancha'),
   dayOfWeek: z.coerce.number().int().min(0).max(6),
-  timeStart: z.string().regex(/^\d{2}:\d{2}$/, 'Horario inválido'),
-  timeEnd: z.string().regex(/^\d{2}:\d{2}$/, 'Horario inválido'),
+  // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
+  // reactivate dialog, which renders the abonado row's stored time directly).
+  timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+  timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
   startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
   endsOn: z
     .string()

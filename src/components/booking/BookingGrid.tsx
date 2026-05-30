@@ -113,8 +113,13 @@ export function BookingGrid({
 
   const handleBookingSuccess = useCallback((_booking: BookingRow) => {
     setSelectedSlot(null)
-    // Realtime will propagate the new booking automatically
-  }, [])
+    // Force a server re-fetch so the new booking shows immediately. Realtime
+    // will eventually propagate it too, but with a noticeable lag (the
+    // subscribe round-trip + DB notification) — and in E2E it can miss the
+    // 10 s assertion window entirely. router.refresh() is a no-op for state
+    // that realtime already updated, so the two paths don't conflict.
+    router.refresh()
+  }, [router])
 
   const LABEL_DAYS: Record<string, string> = {
     mon: 'Lun', tue: 'Mar', wed: 'Mié', thu: 'Jue',

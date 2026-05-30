@@ -70,15 +70,15 @@ El `--grep @critical` en `test:e2e:flake-detect` hace match sobre ese sufijo.
 Para correr un spec específico:
 
 ```sh
-pnpm playwright test booking-flow --project chromium
-pnpm playwright test booking-flow --project chromium --headed
-pnpm playwright test booking-flow --project chromium --debug
+pnpm exec playwright test booking-flow --project chromium
+pnpm exec playwright test booking-flow --project chromium --headed
+pnpm exec playwright test booking-flow --project chromium --debug
 ```
 
 Para listar tests que matchean `@critical` sin correrlos:
 
 ```sh
-pnpm test:e2e:flake-detect --list
+pnpm exec playwright test --project chromium --grep @critical --list
 ```
 
 ## Troubleshooting

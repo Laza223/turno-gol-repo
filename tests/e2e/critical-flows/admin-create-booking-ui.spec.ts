@@ -14,24 +14,13 @@
  */
 
 import { test, expect } from '../fixtures'
-import { createClient } from '@supabase/supabase-js'
 import {
   tomorrowDateIsoArt,
   cleanupBookingsByIds,
+  makeServiceClient,
   E2E_TENANT_ID,
   E2E_COURT_ID,
 } from '../_helpers/booking-seed'
-
-function makeServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) {
-    throw new Error(
-      'NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY required for admin-create-booking-ui spec',
-    )
-  }
-  return createClient(url, key, { auth: { persistSession: false } })
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST — Admin crea reserva manual vía modal de la grilla (guest path)

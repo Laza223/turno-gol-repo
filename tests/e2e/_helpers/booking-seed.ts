@@ -43,6 +43,8 @@ type InsertBookingOpts = {
   priceSnapshot?: number
   depositAmount?: number
   depositStatus?: string
+  paymentMethod?: string | null
+  playerId?: string | null
   guestName?: string | null
   guestPhone?: string | null
   createdByStaff?: string | null
@@ -77,6 +79,8 @@ export async function insertBookingServiceRole(
     price_snapshot: opts.priceSnapshot ?? 10000,
     deposit_amount: opts.depositAmount ?? 0,
     deposit_status: opts.depositStatus ?? 'not_required',
+    payment_method: opts.paymentMethod ?? null,
+    player_id: opts.playerId ?? null,
     guest_name: opts.guestName ?? null,
     guest_phone: opts.guestPhone ?? null,
     created_by_staff: opts.createdByStaff !== undefined ? opts.createdByStaff : E2E_STAFF_USER_ID,

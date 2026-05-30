@@ -40,7 +40,9 @@ test.describe('Player data export (ARCO)', () => {
 
     try {
       await page.goto('/configuracion')
-      await expect(page.getByRole('heading', { name: 'Mi cuenta' })).toBeVisible()
+      // exact:true — the page also renders <h2>Eliminar mi cuenta</h2> which
+      // substring-matches "Mi cuenta" by default (strict-mode violation).
+      await expect(page.getByRole('heading', { name: 'Mi cuenta', exact: true })).toBeVisible()
 
       const [download] = await Promise.all([
         page.waitForEvent('download'),

@@ -160,7 +160,10 @@ test.describe('canchas — happy: create court', () => {
         // The new court card should appear with the correct name and Online badge.
         await expect(page.getByText(courtName)).toBeVisible({ timeout: 10_000 })
         // Inline badge next to the court name should say "Online".
-        const courtCard = page.locator('div', { has: page.getByText(courtName) }).first()
+        // Anchor on the card's own outer class — using a bare `locator('div')`
+        // matches every ancestor (incl. the page container that has every card),
+        // so getByText('Online') would match all status badges.
+        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
         await expect(courtCard.getByText('Online')).toBeVisible()
 
         // Capture the created court id for cleanup by finding it via the DB.
@@ -214,7 +217,9 @@ test.describe('canchas — edge: deactivate with future bookings', () => {
         })
 
         // Find the court card and click "Desactivar".
-        const courtCard = page.locator('div', { has: page.getByText(courtName) }).first()
+        // Anchor on the card's class (rounded-lg) — bare locator('div') matches
+        // every ancestor and would match every Desactivar button on the page.
+        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
         await expect(courtCard).toBeVisible({ timeout: 10_000 })
         await courtCard.getByRole('button', { name: 'Desactivar' }).click()
 
@@ -344,7 +349,9 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
         })
 
         // Locate the court card; it shows Offline before activation.
-        const courtCard = page.locator('div', { has: page.getByText(courtName) }).first()
+        // Anchor on the card's class (rounded-lg) to avoid resolving to the
+        // page container which holds every other card too.
+        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
         await expect(courtCard).toBeVisible({ timeout: 10_000 })
         await expect(courtCard.getByText('Offline')).toBeVisible()
 

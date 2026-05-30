@@ -76,6 +76,15 @@ export async function createBookingAction(
   return result
 }
 
+// NOTE: detail/action mutations also need to revalidate `/reservas/[id]`.
+// revalidatePath('/reservas') alone only invalidates the list page — the
+// dynamic detail route keeps its cached server data and router.refresh()
+// re-renders the same stale booking. Use a helper to invalidate BOTH.
+function revalidateBooking(bookingId: string): void {
+  revalidatePath('/reservas')
+  revalidatePath(`/reservas/${bookingId}`)
+}
+
 export async function completeBookingAction(
   bookingId: string,
 ): Promise<BookingActionResult> {
@@ -94,7 +103,7 @@ export async function completeBookingAction(
     }
   })
 
-  if (result.success) revalidatePath('/reservas')
+  if (result.success) revalidateBooking(bookingId)
   return result
 }
 
@@ -118,7 +127,7 @@ export async function markNoShowAction(
     }
   })
 
-  if (result.success) revalidatePath('/reservas')
+  if (result.success) revalidateBooking(bookingId)
   return result
 }
 
@@ -158,6 +167,6 @@ export async function cancelBookingAction(
     }
   })
 
-  if (result.success) revalidatePath('/reservas')
+  if (result.success) revalidateBooking(bookingId)
   return result
 }

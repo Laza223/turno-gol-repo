@@ -150,9 +150,11 @@ test.describe('caja — happy: register movement', () => {
         // Open the movement modal.
         await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
 
-        // Dialog title: "Agregar movimiento"
+        // Dialog title: "Agregar movimiento".
+        // Use heading role: the trigger button is "+ Agregar movimiento" so
+        // getByText would match both (strict mode).
         await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByText('Agregar movimiento')).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
 
         // Fill the form fields.
         await page.locator('#cf-type').selectOption('income')

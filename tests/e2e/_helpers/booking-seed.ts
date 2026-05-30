@@ -15,7 +15,12 @@ import { addDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { makeServiceClient } from './player-seed'
 
-export { E2E_TENANT_ID, E2E_COURT_ID, makeServiceClient } from './player-seed'
+export {
+  E2E_TENANT_ID,
+  E2E_COURT_ID,
+  E2E_DEPOSIT_COURT_ID,
+  makeServiceClient,
+} from './player-seed'
 
 export const E2E_STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 

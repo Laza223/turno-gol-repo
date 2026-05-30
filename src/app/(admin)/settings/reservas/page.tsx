@@ -85,6 +85,7 @@ export default async function ReservasPolicyPage() {
                   id="depositPercentage"
                   name="depositPercentage"
                   type="number"
+                  inputMode="numeric"
                   min={10}
                   max={100}
                   defaultValue={s.deposit_percentage ?? 30}
@@ -126,6 +127,7 @@ export default async function ReservasPolicyPage() {
                 id="cancellationHoursBefore"
                 name="cancellationHoursBefore"
                 type="number"
+                inputMode="numeric"
                 min={0}
                 max={72}
                 defaultValue={s.cancellation_policy?.hours_before ?? 12}
@@ -165,6 +167,7 @@ export default async function ReservasPolicyPage() {
                     id="noShowPenaltyThreshold"
                     name="noShowPenaltyThreshold"
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     max={10}
                     defaultValue={s.no_show_penalty?.threshold ?? 2}
@@ -177,6 +180,7 @@ export default async function ReservasPolicyPage() {
                     id="noShowPenaltyDays"
                     name="noShowPenaltyDays"
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     max={30}
                     defaultValue={s.no_show_penalty?.days ?? 7}

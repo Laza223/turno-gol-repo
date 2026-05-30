@@ -41,11 +41,26 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
   const publicUrl = `${appUrl}/c/${tenantSlug}`
 
   async function handleCopyLink() {
-    await navigator.clipboard.writeText(publicUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-    if (!state.publicLinkShared) {
-      startTransition(() => markPublicLinkSharedAction())
+    const canCopy = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
+    if (canCopy) {
+      try {
+        await navigator.clipboard.writeText(publicUrl)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+        if (!state.publicLinkShared) {
+          startTransition(() => markPublicLinkSharedAction())
+        }
+        return
+      } catch {
+        // fallthrough to prompt fallback
+      }
+    }
+    // Fallback: prompt user to copy manually (Safari Private Mode, HTTP context, etc.)
+    if (typeof window !== 'undefined') {
+      window.prompt('Copiá el enlace público:', publicUrl)
+      if (!state.publicLinkShared) {
+        startTransition(() => markPublicLinkSharedAction())
+      }
     }
   }
 

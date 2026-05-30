@@ -6,6 +6,26 @@
   "engines": {
     "node": ">=20"
   },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "last 2 Chrome versions",
+      "last 2 Firefox versions",
+      "Firefox ESR",
+      "last 2 Safari versions",
+      "last 2 iOS versions",
+      "last 2 ChromeAndroid versions",
+      "Edge >= 108",
+      "not dead",
+      "not op_mini all",
+      "not IE 11"
+    ],
+    "development": [
+      "last 1 Chrome version",
+      "last 1 Firefox version",
+      "last 1 Safari version"
+    ]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -18,6 +38,7 @@
     "test:isolation": "vitest run tests/integration/isolation.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --reporter=github,html",
+    "test:e2e:cross-browser": "playwright test --project webkit --project firefox --project mobile-safari",
     "e2e:seed": "tsx scripts/seed-e2e.ts",
     "stress:bookings": "tsx scripts/stress-test.ts",
     "launch:check": "tsx scripts/launch-check.ts",

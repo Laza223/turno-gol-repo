@@ -27,7 +27,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /(mobile|a11y)\/.*\.spec\.ts$/,
+      testIgnore: /(mobile|a11y|cross-browser)\/.*\.spec\.ts$/,
     },
     {
       name: 'mobile-chrome',
@@ -38,6 +38,21 @@ export default defineConfig({
       name: 'axe-audit',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /a11y\/.*\.spec\.ts$/,
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /cross-browser\/.*\.spec\.ts$/,
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+      testMatch: /cross-browser\/.*\.spec\.ts$/,
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 14'] },
+      testMatch: /cross-browser\/.*\.spec\.ts$/,
     },
   ],
   webServer: {

@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   },
   twitter: { card: 'summary_large_image', images: [DEFAULT_OG_IMAGE] },
   formatDetection: { telephone: false, email: false, address: false },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: SITE_NAME,
+  },
 }
 
 export const viewport: Viewport = {

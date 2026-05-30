@@ -37,6 +37,15 @@ type SqlClient = ReturnType<typeof getSql>
  * surfaces seed mistakes immediately.
  */
 async function cleanup(sql: SqlClient): Promise<void> {
+  // Bypass the booking invariants trigger during cleanup so terminal-state
+  // bookings (canceled_refunded / canceled_no_refund / completed / no_show /
+  // expired) left over from prior runs can have their payment_id nulled out
+  // before payments are deleted. enforce_booking_invariants_fn would otherwise
+  // raise "Booking en estado terminal no puede modificarse" on the UPDATE.
+  // ALTER TABLE DISABLE is table-level (persists across connection-pool conns)
+  // and is reverted at the end of cleanup.
+  await sql`ALTER TABLE bookings DISABLE TRIGGER enforce_booking_invariants`
+
   // Cascade-delete any tenants the freshAdmin created during prior E2E runs.
   // These have FKs into payments/bookings/courts/etc., so we need to clear
   // their child tables first via the loop below. We collect IDs, then run
@@ -96,6 +105,10 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.freshStaffUserId} OR email = ${E2E.freshAdminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.secondStaffUserId} OR email = ${E2E.secondAdminEmail}`
+
+  // Restore the booking invariants trigger for the rest of the seed and any
+  // subsequent app traffic.
+  await sql`ALTER TABLE bookings ENABLE TRIGGER enforce_booking_invariants`
 }
 
 async function cleanupAuthUsers(): Promise<void> {

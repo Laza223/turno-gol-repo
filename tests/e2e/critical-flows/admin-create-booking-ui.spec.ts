@@ -63,7 +63,10 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         await page.getByRole('button', { name: 'Confirmar' }).click()
 
         // Toast success.
-        await expect(page.getByText('Reserva creada')).toBeVisible({ timeout: 10_000 })
+        // exact:true — the aria-live announcement renders
+        // "Notification Reserva creadaCancha E2E 1…" which substring-matches
+        // and trips strict mode.
+        await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({ timeout: 10_000 })
 
         // Dialog closes after success.
         await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 })

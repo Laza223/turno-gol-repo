@@ -40,7 +40,12 @@ test.describe('admin login flow', () => {
     await page.getByRole('button', { name: /(enviar|entrar|continuar)/i }).click()
     // Native HTML5 validation prevents submit; if server-side, returns 'Email inválido'.
     // Either way, we should NOT see the "sent" success state.
-    await expect(page.getByText(/(revis[áa] tu mail|enviamos)/i)).not.toBeVisible({ timeout: 2_000 })
+    // Anchor on the SentState heading — the FormCard subtitle on /login
+    // ("Te enviamos un enlace mágico a tu email") would also match the
+    // /enviamos/ regex and is always visible, making this assertion always fail.
+    await expect(
+      page.getByRole('heading', { name: /revis[áa] tu (mail|email)/i }),
+    ).not.toBeVisible({ timeout: 2_000 })
     // And we should still be on /login (not advanced past).
     await expect(page).toHaveURL(/\/login/)
   })

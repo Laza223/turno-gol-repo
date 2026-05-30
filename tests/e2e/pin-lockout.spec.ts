@@ -130,7 +130,7 @@ test.describe('PIN lockout UX', () => {
       await expect(page.getByText(/Te quedan 1 intentos antes del bloqueo/i)).toBeVisible()
     })
 
-    test('#3 edge — 6th attempt is blocked with countdown', async ({
+    test('#3 edge — 6th attempt is blocked with countdown @critical', async ({
       page,
       adminStorageState,
     }) => {

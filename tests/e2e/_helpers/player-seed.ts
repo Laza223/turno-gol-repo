@@ -19,6 +19,8 @@ export const E2E_PLAYER_AUTH_USER_ID = '00000000-0000-4000-8000-000000000021'
 export const E2E_TENANT_ID = '00000000-0000-4000-8000-000000000001'
 export const E2E_DEPOSIT_TENANT_ID = '00000000-0000-4000-8000-000000000030'
 export const E2E_COURT_ID = '00000000-0000-4000-8000-000000000010'
+/** Court belonging to the deposit tenant (mirrors seed-e2e.ts depositCourtId). */
+export const E2E_DEPOSIT_COURT_ID = '00000000-0000-4000-8000-000000000031'
 
 // ─── Service-role client factory ─────────────────────────────────────────────
 
@@ -108,11 +110,22 @@ type InsertPlayerBookingOpts = {
   status?: string
   timeStart?: string
   timeEnd?: string
+  /** Override tenant (default: E2E_TENANT_ID). */
+  tenantId?: string
+  /** Override court (default: E2E_COURT_ID). */
+  courtId?: string
+  /** deposit_status column (default: 'not_required'). */
+  depositStatus?: string
+  /** deposit_amount in centavos (default: 0). */
+  depositAmount?: number
 }
 
 /**
- * Inserts a confirmed booking owned by the E2E player.
+ * Inserts a booking owned by the E2E player.
  * Returns the generated booking ID.
+ *
+ * Backwards-compatible: callers that only pass `{ date }` continue to work
+ * because all new fields have defaults that match the previous hard-coded values.
  */
 export async function insertPlayerBooking(
   supabase: ReturnType<typeof makeServiceClient>,
@@ -122,11 +135,15 @@ export async function insertPlayerBooking(
   const timeStart = opts.timeStart ?? '14:00'
   const timeEnd = opts.timeEnd ?? '15:00'
   const status = opts.status ?? 'confirmed'
+  const tenantId = opts.tenantId ?? E2E_TENANT_ID
+  const courtId = opts.courtId ?? E2E_COURT_ID
+  const depositStatus = opts.depositStatus ?? 'not_required'
+  const depositAmount = opts.depositAmount ?? 0
 
   const { error } = await supabase.from('bookings').insert({
     id: bookingId,
-    tenant_id: E2E_TENANT_ID,
-    court_id: E2E_COURT_ID,
+    tenant_id: tenantId,
+    court_id: courtId,
     player_id: E2E_PLAYER_ID,
     date: opts.date,
     time_start: `${timeStart}:00`,
@@ -134,8 +151,8 @@ export async function insertPlayerBooking(
     type: 'spontaneous',
     status,
     price_snapshot: 1500000,
-    deposit_amount: 0,
-    deposit_status: 'not_required',
+    deposit_amount: depositAmount,
+    deposit_status: depositStatus,
   })
 
   if (error) {

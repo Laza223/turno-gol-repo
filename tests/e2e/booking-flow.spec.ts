@@ -11,6 +11,9 @@ const DEMO_TENANT_SLUG = 'e2e-complejo-demo'
 const DEMO_COURT_ID = '00000000-0000-4000-8000-000000000010'
 
 // Test date: today + 2 days, within the 6-day advance window.
+// TODO(f14-tz): migrate to tomorrowDateIsoArt() from ./_helpers/booking-seed
+// once we confirm no test depends on the +2d window specifically (they use
+// different time slots so today+1 would also be safe).
 function getTestDate(): string {
   const d = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
   return d.toISOString().slice(0, 10)
@@ -59,7 +62,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
 
   // ── Scenario 1: Happy path — deposit → mock MP → confirmed ────────────────
 
-  test('S1: deposit happy path → /exito + DB confirmed', async ({
+  test('S1: deposit happy path → /exito + DB confirmed @critical', async ({
     browser,
     playerStorageState,
   }) => {
@@ -115,7 +118,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
 
   // ── Scenario 2: MP rejected → error page → retry → confirmed ─────────────
 
-  test('S2: payment rejected → reintentar → confirmed', async ({
+  test('S2: payment rejected → reintentar → confirmed @critical', async ({
     browser,
     playerStorageState,
   }) => {
@@ -183,7 +186,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
 
   // ── Scenario 3: Timeout webhook → polling watcher → confirmed ─────────────
 
-  test('S3: webhook arrives out-of-band → polling flips to confirmed', async ({
+  test('S3: webhook arrives out-of-band → polling flips to confirmed @critical', async ({
     browser,
     playerStorageState,
     request,
@@ -257,7 +260,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
 
   // ── Scenario 4: Regression — no deposit → instant confirm ────────────────
 
-  test('S4: no-deposit tenant → instant confirmation, no MP redirect', async ({
+  test('S4: no-deposit tenant → instant confirmation, no MP redirect @critical', async ({
     browser,
     playerStorageState,
   }) => {

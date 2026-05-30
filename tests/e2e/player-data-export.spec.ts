@@ -28,7 +28,7 @@ test.describe('Player data export (ARCO)', () => {
     await resetPlayer(supabase)
   })
 
-  test('downloads JSON bundle with profile + bookings + consents', async ({
+  test('downloads JSON bundle with profile + bookings + consents @critical', async ({
     browser,
     playerStorageState,
   }) => {

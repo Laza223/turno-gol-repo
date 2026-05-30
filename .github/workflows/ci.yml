@@ -195,10 +195,15 @@ jobs:
           done
 
       - name: Install Playwright browsers
+        # Only chromium is installed in CI. Projects webkit/firefox/mobile-safari
+        # run locally via `pnpm test:e2e:cross-browser` or in a future nightly job.
         run: npx playwright install --with-deps chromium
 
       - name: E2E tests
-        run: pnpm test:e2e
+        # test:e2e:ci runs only core projects (chromium, mobile-chrome, axe-audit)
+        # that have chromium available. Running `pnpm test:e2e` here would silently
+        # skip or error on webkit/firefox/mobile-safari specs (not installed).
+        run: pnpm test:e2e:ci
 
       - name: Upload test results
         if: failure()

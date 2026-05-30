@@ -136,7 +136,7 @@ async function seedDailyClose(
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — happy: register movement', () => {
   test(
-    '/caja?date=TEST_DATE → "+ Agregar movimiento" → fill → "Guardar" → row appears in table',
+    '/caja?date=TEST_DATE → "+ Agregar movimiento" → fill → "Guardar" → row appears in table @critical',
     async ({ browser, adminStorageState }) => {
       const supabase = makeServiceClient()
       const context = await browser.newContext()
@@ -188,7 +188,7 @@ test.describe('caja — happy: register movement', () => {
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — edge: close day (type-to-confirm)', () => {
   test(
-    '"Cerrar caja" → confirm button disabled until typing CERRAR → type it → confirm → "Cerrada por" badge',
+    '"Cerrar caja" → confirm button disabled until typing CERRAR → type it → confirm → "Cerrada por" badge @critical',
     async ({ browser, adminStorageState }) => {
       const supabase = makeServiceClient()
       const seedId = randomUUID()

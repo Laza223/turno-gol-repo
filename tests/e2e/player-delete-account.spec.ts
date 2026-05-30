@@ -31,7 +31,7 @@ test.describe('Player delete account (Ley 25.326)', () => {
     await resetPlayer(supabase)
   })
 
-  test('type-to-confirm email → anonymize → redirect to login', async ({
+  test('type-to-confirm email → anonymize → redirect to login @critical', async ({
     browser,
     playerStorageState,
   }) => {

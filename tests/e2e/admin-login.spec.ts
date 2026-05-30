@@ -11,7 +11,7 @@ test.describe('admin login flow', () => {
     await expect(page.getByLabel(/email/i)).toBeVisible()
   })
 
-  test('submitting email triggers "check your inbox" message', async ({ page }) => {
+  test('submitting email triggers "check your inbox" message @critical', async ({ page }) => {
     await page.goto('/login')
     await page.getByLabel(/email/i).fill('e2e-admin@turnogol.test')
     await page.getByRole('button', { name: /(enviar|entrar|continuar)/i }).click()

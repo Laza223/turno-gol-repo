@@ -130,7 +130,7 @@ async function insertConfirmedBooking(
 }
 
 test.describe('Abonados CRUD', () => {
-  test('#1 happy — create with preview shows 8 OK badges then redirects', async ({
+  test('#1 happy — create with preview shows 8 OK badges then redirects @critical', async ({
     page,
     adminStorageState,
   }) => {

@@ -140,7 +140,7 @@ test.describe('reservas — happy: mark completed', () => {
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — edge: cancel with paid deposit', () => {
   test(
-    'INSERT confirmed booking with cash deposit → "Cancelar" → refund radios visible → cancel with reason → canceled status',
+    'INSERT confirmed booking with cash deposit → "Cancelar" → refund radios visible → cancel with reason → canceled status @critical',
     async ({ browser, adminStorageState }) => {
       const supabase = makeServiceClient()
       const bookingId = randomUUID()

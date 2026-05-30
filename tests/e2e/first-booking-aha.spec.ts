@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { tomorrowDateIsoArt } from './_helpers/booking-seed'
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const COURT_ID = '00000000-0000-4000-8000-000000000010'
@@ -26,9 +27,8 @@ test.describe('aha moment — first online booking', () => {
     }
     const supabase = createClient(url, key, { auth: { persistSession: false } })
 
-    // Use a date tomorrow (YYYY-MM-DD) to satisfy any future-date constraints.
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    const bookingDate = tomorrow.toISOString().slice(0, 10)
+    // Use tomorrow in ART (DST-aware) to satisfy any future-date constraints.
+    const bookingDate = tomorrowDateIsoArt()
     const bookingId = randomUUID()
 
     const { error: insertErr } = await supabase

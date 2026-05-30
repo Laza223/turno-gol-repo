@@ -17,6 +17,7 @@
 import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { tomorrowDateIsoArt } from './_helpers/booking-seed'
 
 // ── Seeded E2E constants (matches scripts/seed-e2e.ts) ──────────────────────
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
@@ -25,12 +26,10 @@ const COURT_ID = '00000000-0000-4000-8000-000000000010'
 // handler overwrites it from the authenticated JWT, so the value is nominal.
 const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 
-// Target date = tomorrow in ART (UTC−3) so slots are in the future:
+// Target date = tomorrow in ART (America/Argentina/Buenos_Aires), DST-aware.
 // - Cells won't be `isPast`, so they render as interactive (role="button").
 // - Avoids collisions with "today" tests running concurrently.
-const TARGET_DATE = new Date(Date.now() - 3 * 60 * 60 * 1000 + 24 * 60 * 60 * 1000)
-  .toISOString()
-  .slice(0, 10)
+const TARGET_DATE = tomorrowDateIsoArt()
 
 // En-dash (U+2013) as rendered by BookingCard: `{timeStart}–{booking.timeEnd}`
 const EN_DASH = '–'
@@ -133,15 +132,14 @@ test.describe('grilla realtime — multi-browser <2s', () => {
         // Navigate both pages to the grid concurrently.
         await Promise.all([pageA.goto(gridUrl), pageB.goto(gridUrl)])
 
-        // Wait for B's grid table to be visible, then give Supabase Realtime
-        // ~1.5s to establish the WebSocket channel (SUBSCRIBED state).
-        // We also assert the offline banner is NOT visible as a proxy for
-        // the subscription being up.
+        // Wait for B's grid table to be visible, then assert the offline banner
+        // is NOT visible — subscription readiness assumed when offline banner is
+        // gone (or never appeared). Timeout 10s is sufficient for the Realtime
+        // WebSocket SUBSCRIBED state to be established.
         await expect(pageB.locator('table')).toBeVisible({ timeout: 15_000 })
-        await pageB.waitForTimeout(1500)
         await expect(
           pageB.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
-        ).not.toBeVisible()
+        ).not.toBeVisible({ timeout: 10_000 })
 
         // Admin A creates a booking via the authenticated API.
         const t0 = Date.now()
@@ -194,11 +192,10 @@ test.describe('grilla realtime — catch-up after disconnect', () => {
 
         await page.goto(`/grilla?date=${TARGET_DATE}`)
         await expect(page.locator('table')).toBeVisible({ timeout: 15_000 })
-        // Wait for the Realtime subscription to establish.
-        await page.waitForTimeout(1500)
+        // Subscription readiness assumed when offline banner is gone (or never appeared).
         await expect(
           page.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
-        ).not.toBeVisible()
+        ).not.toBeVisible({ timeout: 10_000 })
 
         // Go offline.
         await context.setOffline(true)

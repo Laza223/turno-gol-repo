@@ -46,7 +46,7 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
   )
 
   test(
-    'BroadcastChannel message triggers payload-specific toast on /admin/grilla',
+    'BroadcastChannel message triggers payload-specific toast on /admin/grilla @critical',
     async ({ browser, adminStorageState }) => {
       const context = await browser.newContext({
         storageState: JSON.parse(adminStorageState),

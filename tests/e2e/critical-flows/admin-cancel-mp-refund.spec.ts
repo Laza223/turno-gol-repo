@@ -84,8 +84,10 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
         await page.getByRole('button', { name: 'Cancelar' }).click()
 
         // ConfirmDialog must open with refund radios (deposit_status='paid').
+        // Use heading role — the dialog has both the title h2 and the confirm
+        // button labelled "Cancelar reserva" (strict-mode violation otherwise).
         await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
-        await expect(page.getByText('Cancelar reserva')).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
         await expect(page.getByText('¿Reembolsar la seña?')).toBeVisible()
         await expect(page.getByRole('radio', { name: /Sin reembolso/i })).toBeVisible()
         await expect(page.getByRole('radio', { name: /Con reembolso/i })).toBeVisible()
@@ -98,8 +100,9 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
         await page.getByRole('button', { name: 'Cancelar reserva' }).click()
 
         // Dialog closes and status badge updates to "Cancelada".
+        // Use dd filter — /Cancelada/i also matches the toast + aria-live.
         await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText(/Cancelada/i)).toBeVisible({ timeout: 10_000 })
+        await expect(page.locator('dd').filter({ hasText: /Cancelada/i })).toBeVisible({ timeout: 10_000 })
 
         // Action buttons must be gone (booking is no longer 'confirmed').
         await expect(page.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()

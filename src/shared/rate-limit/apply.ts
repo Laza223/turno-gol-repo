@@ -10,6 +10,14 @@ export type RateLimitOutcome = {
 }
 
 export async function enforce(name: PolicyName, key: string): Promise<RateLimitOutcome> {
+  // E2E test runs don't have Upstash credentials. Policies with
+  // failMode='closed' (authMagicLink, authVerify, pinAttempts) would otherwise
+  // block every request and make those flows untestable. NEXT_PUBLIC_E2E=1 is
+  // set ONLY by the playwright webServer config and never in real envs.
+  if (process.env.NEXT_PUBLIC_E2E === '1') {
+    const p = POLICIES[name]
+    return { ok: true, limit: p.limit, remaining: p.limit, reset: 0, unavailable: true }
+  }
   try {
     const l = getLimiter(name)
     const r = await l.limit(key)

@@ -43,12 +43,20 @@ export async function createBookingAction(
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
 
-  const parsed = createManualBookingSchema.safeParse(data)
+  // staffUserId is required by the schema but is NOT sent by the client form
+  // (BookingFormModal has no way to know the admin's staff_user_id — that's
+  // resolved server-side from the session). Merge it in before parsing so the
+  // schema validates successfully instead of returning "Required".
+  const staffUserId = user.staffUserId!
+  const dataWithStaff =
+    typeof data === 'object' && data !== null
+      ? { ...(data as Record<string, unknown>), staffUserId }
+      : data
+
+  const parsed = createManualBookingSchema.safeParse(dataWithStaff)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
-
-  const staffUserId = user.staffUserId!
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {

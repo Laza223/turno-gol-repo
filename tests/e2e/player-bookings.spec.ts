@@ -121,6 +121,13 @@ test.describe('Player bookings', () => {
         .in('id', ids)
       if (delErr) throw new Error(`Cleanup DELETE failed: ${delErr.message}`)
     }
+    // Sanity: post-cleanup, the player must have 0 bookings. If this throws,
+    // the test failure tells us the orphan was undeletable (not a UI bug).
+    const { count: postCount } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('player_id', E2E_PLAYER_ID)
+    expect(postCount ?? 0).toBe(0)
 
     const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
     const page = await ctx.newPage()

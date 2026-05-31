@@ -133,6 +133,20 @@ test.describe('Player bookings', () => {
     const page = await ctx.newPage()
 
     try {
+      // Re-check just before goto — if a booking appears here, it's coming
+      // from a background process (pg-boss job, leftover Realtime subscriber,
+      // or another spec's still-running afterEach).
+      const { count: preGotoCount, data: ghosts } = await supabase
+        .from('bookings')
+        .select('id, time_start, date, status', { count: 'exact' })
+        .eq('player_id', E2E_PLAYER_ID)
+      if ((preGotoCount ?? 0) > 0) {
+        // Fail loud with the ghost details so we can fix the source.
+        throw new Error(
+          `Ghost booking appeared between cleanup and goto: ${JSON.stringify(ghosts)}`,
+        )
+      }
+
       await page.goto('/mis-reservas')
       await expect(page.getByText('No tenés reservas próximas.')).toBeVisible()
     } finally {

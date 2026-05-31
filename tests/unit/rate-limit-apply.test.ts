@@ -1,4 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// `.env.test` sets NEXT_PUBLIC_E2E=1 (loaded by tests/setup.ts) so the rest of
+// the suite can exercise E2E-bypassed flows. This file is the ONLY one that
+// tests the REAL `enforce` path (throttling + fail-open/closed), so the bypass
+// must be off here. Capture and restore so we don't leak into later files.
+const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
 vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
 
@@ -40,8 +46,13 @@ import { __resetLimitersForTests } from '@/shared/rate-limit/client'
 beforeEach(() => {
   ;(Ratelimit as unknown as { __reset: () => void }).__reset()
   __resetLimitersForTests()
+  delete process.env.NEXT_PUBLIC_E2E
   process.env.UPSTASH_REDIS_REST_URL = 'https://stub'
   process.env.UPSTASH_REDIS_REST_TOKEN = 'stub-token'
+})
+
+afterAll(() => {
+  if (ORIGINAL_E2E !== undefined) process.env.NEXT_PUBLIC_E2E = ORIGINAL_E2E
 })
 
 describe('enforce', () => {

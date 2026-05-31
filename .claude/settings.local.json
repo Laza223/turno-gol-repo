@@ -53,7 +53,24 @@
       "Bash(printf '\\\\n# E2E\\\\nNEXT_PUBLIC_E2E=1\\\\nUPSTASH_REDIS_REST_URL=\\\\nUPSTASH_REDIS_REST_TOKEN=\\\\nE2E_BASE_URL=http://localhost:3000\\\\n')",
       "Bash(ls src/components/ui/)",
       "Bash(find src *)",
-      "Bash(find \"src/app/\\(admin\\)/grilla\" -type f)"
+      "Bash(find \"src/app/\\(admin\\)/grilla\" -type f)",
+      "Bash(Select-Object -First 25)",
+      "Bash(echo \"de3ad6d-in-history-exit:$? \\(0=yes\\)\")",
+      "Bash(ps -W)",
+      "Bash(xargs -I{} ls -l --time-style=+%H:%M:%S {})",
+      "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/pw-chromium.json pnpm exec playwright test --project chromium --reporter=list,json)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:3000/api/status)",
+      "Bash(curl -s http://127.0.0.1:3000/sitemap.xml)",
+      "Bash(curl -s -o test-results/_demo.html -w \"%{http_code}\" http://127.0.0.1:3000/e2e-complejo-demo)",
+      "Bash(curl -s -o test-results/_exp.html -w \"%{http_code}\" http://127.0.0.1:3000/explorar)",
+      "Bash(curl -s http://127.0.0.1:3000/api/status)",
+      "Bash(> test-results/_conn-monitor.log)",
+      "Bash(awk -F'|' '$2 ~ /^[0-9]+$/ {if\\($2>maxt\\)maxt=$2; if\\($3>maxa\\)maxa=$3; n++} END{print \"samples=\"n\"  max_total=\"maxt\"  max_app=\"maxa}' test-results/_conn-monitor.log)",
+      "Bash(awk -F'|' '$2 ~ /^[0-9]+$/ && NR%8==1 {print $1\" total=\"$2\" app=\"$3}' test-results/_conn-monitor.log)",
+      "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=_pw.json pnpm exec playwright test --project chromium abonados-crud pin-lockout player-bookings player-delete-account push --reporter=list,json)",
+      "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=_pw.json pnpm exec playwright test --project=chromium abonados-crud pin-lockout player-bookings player-delete-account push --reporter=list,json)",
+      "Bash(netstat -ano)",
+      "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=_pw-push.json pnpm exec playwright test --project=chromium push --reporter=list,json)"
     ]
   }
 }

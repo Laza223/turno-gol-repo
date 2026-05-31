@@ -53,7 +53,7 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
   // Production behaviour is unaffected — service worker fires after a real
   // push, by which time the page has been open long enough. Tracked: add
   // an explicit "manager ready" signal or queue events on the manager side.
-  test.fixme(
+  test(
     'BroadcastChannel message triggers payload-specific toast on /admin/grilla @critical',
     async ({ browser, adminStorageState }) => {
       const context = await browser.newContext({

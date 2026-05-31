@@ -5,6 +5,12 @@ const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
 let _boss: PgBoss | null = null
 
+// Dev-only: persist pg-boss across Next.js module reloads (HMR / lazy route
+// compilation). Without this, recompiles leak a new pg-boss instance — each
+// with its own connection pool — exhausting Postgres slots under E2E load.
+// Production evaluates modules once, so the global is never written.
+const globalForBoss = globalThis as unknown as { __turnogolBoss?: PgBoss }
+
 /**
  * Returns the singleton pg-boss instance, starting it on first call.
  *
@@ -14,6 +20,10 @@ let _boss: PgBoss | null = null
  */
 export async function getBoss(): Promise<PgBoss> {
   if (_boss) return _boss
+  if (globalForBoss.__turnogolBoss) {
+    _boss = globalForBoss.__turnogolBoss
+    return _boss
+  }
   const url = process.env.DATABASE_URL ?? DEFAULT_URL
   const boss = new PgBoss({ connectionString: url, schema: 'pgboss' })
   boss.on('error', (err) => {
@@ -21,6 +31,9 @@ export async function getBoss(): Promise<PgBoss> {
   })
   await boss.start()
   _boss = boss
+  if (process.env.NODE_ENV !== 'production') {
+    globalForBoss.__turnogolBoss = boss
+  }
   return boss
 }
 
@@ -28,4 +41,5 @@ export async function stopBoss(): Promise<void> {
   if (!_boss) return
   await _boss.stop({ graceful: true, timeout: 5000 })
   _boss = null
+  globalForBoss.__turnogolBoss = undefined
 }

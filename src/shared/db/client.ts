@@ -24,14 +24,28 @@ export type ContextOpts = {
 
 let _sql: Sql | null = null
 
+// Dev-only: persist the pool across Next.js module reloads (HMR / lazy route
+// compilation). Without this, each recompile re-evaluates this module, resets
+// `_sql`, and leaks a fresh `max:10` pool — exhausting Postgres connection
+// slots under E2E load. In production modules evaluate once, so the global is
+// never written and behavior is identical to the bare module singleton.
+const globalForDb = globalThis as unknown as { __turnogolSql?: Sql }
+
 export function getSql(): Sql {
   if (_sql) return _sql
+  if (globalForDb.__turnogolSql) {
+    _sql = globalForDb.__turnogolSql
+    return _sql
+  }
   const url = process.env.DATABASE_URL ?? DEFAULT_URL
   _sql = postgres(url, {
     max: 10,
     prepare: false,
     onnotice: () => {},
   })
+  if (process.env.NODE_ENV !== 'production') {
+    globalForDb.__turnogolSql = _sql
+  }
   return _sql
 }
 
@@ -40,6 +54,7 @@ export async function closeSql(): Promise<void> {
     await _sql.end({ timeout: 5 })
     _sql = null
     _db = null
+    globalForDb.__turnogolSql = undefined
   }
 }
 

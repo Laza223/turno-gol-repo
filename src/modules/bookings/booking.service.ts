@@ -6,6 +6,11 @@ import {
 } from '@/shared/db/schema'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import type { DbTx } from '@/shared/db/client'
+import { withTenantContext } from '@/shared/db/client'
+import {
+  invalidateCourtDateSlots,
+  readThroughSlots,
+} from '@/shared/cache/slots-cache'
 import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
@@ -188,6 +193,7 @@ export async function createManualBooking(
       .returning()
 
     const created = rowToBookingRow(inserted[0]!)
+    await invalidateCourtDateSlots(input.courtId, input.date)
     track.booking('booking.manual.create.success', {
       bookingId: created.id,
       tenantId: created.tenantId,
@@ -275,6 +281,7 @@ export async function createOnlineBooking(
       .returning()
 
     const booking = rowToBookingRow(inserted[0]!)
+    await invalidateCourtDateSlots(input.courtId, input.date)
     await ensurePTR(input.playerId, tenantId, tx)
 
     const playerRows = await tx.execute(sql`
@@ -391,7 +398,9 @@ export async function completeBooking(
     .returning()
 
   if (rows.length === 0) throw new BookingNotInConfirmedError(bookingId)
-  return rowToBookingRow(rows[0]!)
+  const completed = rowToBookingRow(rows[0]!)
+  await invalidateCourtDateSlots(completed.courtId, completed.date)
+  return completed
 }
 
 /**
@@ -442,7 +451,9 @@ export async function markNoShow(
     .returning()
 
   if (rows.length === 0) throw new BookingNotInConfirmedError(bookingId)
-  return rowToBookingRow(rows[0]!)
+  const noShow = rowToBookingRow(rows[0]!)
+  await invalidateCourtDateSlots(noShow.courtId, noShow.date)
+  return noShow
 }
 
 // ─── expirePendingBooking ───────────────────────────────────────────
@@ -583,5 +594,28 @@ export async function getAvailableSlots(
     occupied,
     durationMins,
   })
+}
+
+/**
+ * Read-through cached variant of getAvailableSlots for read-only callers
+ * (public/player availability lookups). On a cache miss it opens its own
+ * tenant-scoped read context and caches the result for 30s.
+ *
+ * Do NOT call this inside an already-open write transaction — pass the existing
+ * `tx` to getAvailableSlots() there instead, to avoid nested-connection
+ * deadlocks against rows the outer tx already locked.
+ */
+export async function getAvailableSlotsCached(
+  tenantId: string,
+  courtId: string,
+  dateStr: string,
+  durationMins: 60 | 120,
+): Promise<AvailableSlot[]> {
+  const { slots } = await readThroughSlots(courtId, dateStr, durationMins, () =>
+    withTenantContext(tenantId, (tx) =>
+      getAvailableSlots(tenantId, courtId, dateStr, durationMins, tx),
+    ),
+  )
+  return slots
 }
 

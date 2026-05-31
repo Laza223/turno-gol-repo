@@ -57,7 +57,10 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
 
       try {
         const page = await context.newPage()
-        await page.goto('/admin/grilla')
+        // /grilla — the (admin) folder is a Next.js route group, not part of
+        // the URL. Hitting /admin/grilla returns 404 and the test times out
+        // waiting for the table.
+        await page.goto('/grilla')
 
         // Wait for the page to be interactive (table or heading visible).
         await expect(page.locator('table')).toBeVisible({ timeout: 15_000 })

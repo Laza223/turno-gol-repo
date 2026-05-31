@@ -33,8 +33,16 @@ export async function requestDeleteAccountAction(): Promise<DeleteAccountResult>
     }
   }
 
-  const supabase = createClient()
-  await supabase.auth.signOut()
+  // Sign out the deleted user so their session cookies become unusable.
+  // SKIPPED in E2E because all player tests share one playerStorageState file
+  // generated once in globalSetup — a real signOut invalidates that file's
+  // refresh_token globally and every subsequent player spec ends up
+  // redirected to /login. The router.push('/login?deleted=1') in
+  // DeleteAccountForm still navigates the UI; the SQL anonymize already ran.
+  if (process.env.NEXT_PUBLIC_E2E !== '1') {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+  }
   revalidatePath('/', 'layout')
   return { success: true }
 }

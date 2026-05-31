@@ -1,7 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { CalendarDays, MapPin, Phone } from 'lucide-react'
+import { CalendarDays, MapPin, MessageCircle, Phone } from 'lucide-react'
 import type { PublicTenant } from '@/modules/tenants/public.service'
+import { buildWhatsappUrl } from '@/lib/whatsapp'
 
 type Props = { tenant: PublicTenant }
 
@@ -18,6 +19,10 @@ const DAY_LABELS: Record<string, string> = {
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 export default function TenantHeader({ tenant }: Props) {
+  const whatsappUrl = buildWhatsappUrl(
+    tenant.whatsapp,
+    `Hola, quiero consultar disponibilidad en ${tenant.name}.`,
+  )
   return (
     <div className="space-y-4">
       {tenant.coverUrl && (
@@ -50,6 +55,17 @@ export default function TenantHeader({ tenant }: Props) {
           <Phone className="h-4 w-4 flex-shrink-0" aria-hidden />
           {tenant.phone}
         </a>
+        {whatsappUrl && (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-green-600 hover:text-green-700 font-medium transition-colors duration-150"
+          >
+            <MessageCircle className="h-4 w-4 flex-shrink-0" aria-hidden />
+            WhatsApp
+          </a>
+        )}
         <Link
           href={`/${tenant.slug}/disponibilidad`}
           className="flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 font-medium transition-colors"

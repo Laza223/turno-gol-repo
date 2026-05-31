@@ -82,12 +82,18 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
         // PushNotificationManager.onmessage claims the notification (acks first)
         // then calls toast({ title: 'Nueva reserva — Cancha 1', ... }).
         // Toast title format: `Nueva reserva — ${courtName}`.
-        await expect(page.getByText('Nueva reserva — Cancha 1')).toBeVisible({
-          timeout: 2_000,
+        // 10 s timeout — under flake-detect (10 sequential runs of every
+        // @critical) the broadcast-to-render path occasionally takes more
+        // than the original 2 s; the toast still arrives, just later.
+        // exact:true — the aria-live announcement also contains the title.
+        await expect(page.getByText('Nueva reserva — Cancha 1', { exact: true })).toBeVisible({
+          timeout: 10_000,
         })
 
         // Also assert the date+time description is rendered.
-        await expect(page.getByText('mañana · 20:00')).toBeVisible({ timeout: 2_000 })
+        await expect(page.getByText('mañana · 20:00', { exact: true })).toBeVisible({
+          timeout: 10_000,
+        })
       } finally {
         await context.close()
       }

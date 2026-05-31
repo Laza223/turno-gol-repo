@@ -162,7 +162,7 @@ export function BookingGrid({
           <button
             type="button"
             onClick={() => router.push(`/grilla?date=${addDays(date, -1)}`)}
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
+            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
           >
             ← Anterior
           </button>
@@ -172,14 +172,14 @@ export function BookingGrid({
               const today = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
               router.push(`/grilla?date=${today}`)
             }}
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
+            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
           >
             Hoy
           </button>
           <button
             type="button"
             onClick={() => router.push(`/grilla?date=${addDays(date, 1)}`)}
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
+            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
           >
             Siguiente →
           </button>

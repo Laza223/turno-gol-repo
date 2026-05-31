@@ -37,7 +37,9 @@ export function AdminHeader({
         </span>
         <Button
           variant="ghost"
-          className="h-10 gap-2 text-slate-700 hover:text-slate-900"
+          // No explicit h-* — let Button's default size (h-11 md:h-10) keep
+          // the 44 px mobile touch target.
+          className="gap-2 text-slate-700 hover:text-slate-900"
           onClick={onSignOut}
           aria-label="Cerrar sesión"
         >

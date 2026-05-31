@@ -1,0 +1,32 @@
+# Normalize line endings across the team (Windows + macOS + Linux + CI).
+# The repo had a mix of CRLF/LF; this enforces LF in the repository and on
+# checkout for every text file, which keeps diffs clean and matches what CI
+# (ubuntu-latest) and the tooling (eslint, prettier, tsc) expect.
+* text=auto eol=lf
+
+# Shell scripts must stay LF or they break on POSIX shells.
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Windows-only scripts must stay CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Treat lockfiles as text but never let editors reformat them.
+pnpm-lock.yaml -diff linguist-generated
+
+# Binary assets — never apply EOL normalization or text diffs.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.svg  text
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.pdf  binary
+*.zip  binary

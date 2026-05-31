@@ -2,7 +2,7 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 
 import { execSync } from 'node:child_process'
-import { encryptionKeyStrengthCheck } from './launch-check.helpers'
+import { encryptionKeyStrengthCheck, e2eBypassDisabledCheck } from './launch-check.helpers'
 
 type Step = {
   name: string
@@ -140,6 +140,15 @@ async function mpCredentialsProbe(): Promise<boolean> {
 
 const steps: Step[] = [
   { name: 'env vars present',          check: async () => envCheck(),                                                              fatal: true  },
+  {
+    name: 'e2e bypass disabled',
+    check: async () => {
+      const r = e2eBypassDisabledCheck(process.env.NEXT_PUBLIC_E2E)
+      if (!r.ok) console.error(r.error)
+      return r.ok
+    },
+    fatal: true,
+  },
   { name: 'bypassrls role check',      check: bypassRlsCheck,                                                                       fatal: true  },
   {
     name: 'encryption-key strength',

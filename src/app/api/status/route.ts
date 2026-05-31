@@ -1,5 +1,6 @@
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
+import { getRedis } from '@/shared/rate-limit/client'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -11,6 +12,7 @@ type Check = {
   status: CheckStatus
   latencyMs?: number
   error?: string
+  note?: string
 }
 
 async function checkDb(): Promise<Check> {
@@ -44,6 +46,23 @@ async function checkPgBoss(): Promise<Check> {
   }
 }
 
+async function checkUpstash(): Promise<Check> {
+  const t0 = Date.now()
+  // Not configured (dev/E2E): rate limiting degrades gracefully (enforce()
+  // fail-open/closed). Report ok so the health gate stays 200 — launch-check
+  // REQUIRED_ENV already guarantees Upstash is configured for production.
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return { name: 'upstash', status: 'ok', note: 'not configured (rate limiting degrades gracefully)' }
+  }
+  try {
+    const redis = getRedis()
+    await redis.ping()
+    return { name: 'upstash', status: 'ok', latencyMs: Date.now() - t0 }
+  } catch (err) {
+    return { name: 'upstash', status: 'down', error: (err as Error).message }
+  }
+}
+
 function checkConfigured(): Check[] {
   const envs: Record<string, boolean> = {
     mercadopago: !!process.env.MP_CLIENT_ID && !!process.env.MP_CLIENT_SECRET,
@@ -63,8 +82,8 @@ function overallFrom(checks: Check[]): CheckStatus {
 }
 
 export async function GET(): Promise<Response> {
-  const [db, pgboss] = await Promise.all([checkDb(), checkPgBoss()])
-  const checks: Check[] = [db, pgboss, ...checkConfigured()]
+  const [db, pgboss, upstash] = await Promise.all([checkDb(), checkPgBoss(), checkUpstash()])
+  const checks: Check[] = [db, pgboss, upstash, ...checkConfigured()]
   const status = overallFrom(checks)
   const httpStatus = status === 'ok' ? 200 : 503
   return Response.json(

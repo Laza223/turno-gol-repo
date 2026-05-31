@@ -55,3 +55,25 @@ export function encryptionKeyStrengthCheck(
   }
   return { ok: true }
 }
+
+/**
+ * Fails if NEXT_PUBLIC_E2E=1 in the launch environment.
+ *
+ * That flag is the Playwright-only switch that makes `enforce()` short-circuit
+ * and return ok for every request (src/shared/rate-limit/apply.ts). If it ever
+ * leaked into production, the fail-closed brute-force defenses (PIN attempts,
+ * magic link, auth verify) would silently stop blocking. It must NEVER be set
+ * outside the test webServer.
+ *
+ * Pure (no I/O): safe to import from tests.
+ */
+export function e2eBypassDisabledCheck(value: string | undefined): CheckResult {
+  if (value === '1') {
+    return {
+      ok: false,
+      error:
+        'NEXT_PUBLIC_E2E=1 disables rate limiting (brute-force/PIN/magic-link defenses) — it must NEVER be set in production',
+    }
+  }
+  return { ok: true }
+}

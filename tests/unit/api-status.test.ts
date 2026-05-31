@@ -7,10 +7,14 @@ vi.mock('@/shared/db/client', () => ({
 vi.mock('@/shared/jobs/boss', () => ({
   getBoss: vi.fn(),
 }))
+vi.mock('@/shared/rate-limit/client', () => ({
+  getRedis: vi.fn(),
+}))
 
 import { GET } from '@/app/api/status/route'
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
+import { getRedis } from '@/shared/rate-limit/client'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -18,6 +22,11 @@ beforeEach(() => {
   process.env.MP_CLIENT_SECRET = 'set'
   process.env.RESEND_API_KEY = 'set'
   process.env.SENTRY_DSN = 'set'
+  process.env.UPSTASH_REDIS_REST_URL = 'https://stub'
+  process.env.UPSTASH_REDIS_REST_TOKEN = 'stub-token'
+  ;(getRedis as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    ping: vi.fn().mockResolvedValue('PONG'),
+  })
 })
 
 describe('GET /api/status', () => {
@@ -93,5 +102,53 @@ describe('GET /api/status', () => {
     const body = await res.json()
     const mp = body.checks.find((c: { name: string }) => c.name === 'mercadopago')
     expect(mp.status).toBe('down')
+  })
+
+  it('reports upstash ok on successful ping', async () => {
+    const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
+    ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
+    ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      getQueueSize: vi.fn().mockResolvedValue(0),
+    })
+
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const upstash = body.checks.find((c: { name: string }) => c.name === 'upstash')
+    expect(upstash.status).toBe('ok')
+  })
+
+  it('reports upstash down (503) when ping throws', async () => {
+    const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
+    ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
+    ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      getQueueSize: vi.fn().mockResolvedValue(0),
+    })
+    ;(getRedis as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      ping: vi.fn().mockRejectedValue(new Error('redis unreachable')),
+    })
+
+    const res = await GET()
+    expect(res.status).toBe(503)
+    const body = await res.json()
+    const upstash = body.checks.find((c: { name: string }) => c.name === 'upstash')
+    expect(upstash.status).toBe('down')
+  })
+
+  it('reports upstash ok (not configured) without 503 when env missing', async () => {
+    delete process.env.UPSTASH_REDIS_REST_URL
+    delete process.env.UPSTASH_REDIS_REST_TOKEN
+    const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
+    ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
+    ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      getQueueSize: vi.fn().mockResolvedValue(0),
+    })
+
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const upstash = body.checks.find((c: { name: string }) => c.name === 'upstash')
+    expect(upstash.status).toBe('ok')
+    expect(upstash.note).toMatch(/not configured/i)
   })
 })

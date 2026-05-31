@@ -45,7 +45,12 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
 function usesZod(src: string): boolean {
   return /from\s+['"]zod['"]/.test(src) ||
          /from\s+['"]@\/shared\/validation/.test(src) ||
-         /from\s+['"][^'"]+\/[a-z-]+\.schema['"]/.test(src)
+         /from\s+['"][^'"]+\/[a-z-]+\.schema['"]/.test(src) ||
+         // parseRouteUuid() validates the route's UUID param and returns a clean
+         // 400 on a malformed id (F4-T6 shared helper). Routes whose only input
+         // is that id — no body/query — are fully covered by it (e.g.
+         // bookings/[id]/{complete,no-show}). Counts as input validation.
+         /parseRouteUuid\s*\(/.test(src)
 }
 
 describe('Zod coverage on actions + route handlers', () => {

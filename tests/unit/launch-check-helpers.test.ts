@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ENCRYPTION_KEY_PLACEHOLDER,
   encryptionKeyStrengthCheck,
+  e2eBypassDisabledCheck,
 } from '../../scripts/launch-check.helpers'
 
 describe('encryptionKeyStrengthCheck', () => {
@@ -49,5 +50,26 @@ describe('encryptionKeyStrengthCheck', () => {
     expect(key).toHaveLength(65)
     const r = encryptionKeyStrengthCheck(key)
     expect(r.ok).toBe(true)
+  })
+})
+
+describe('e2eBypassDisabledCheck', () => {
+  it('rejects NEXT_PUBLIC_E2E=1 (the test bypass must never reach prod)', () => {
+    const r = e2eBypassDisabledCheck('1')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/E2E|bypass|rate.?limit|brute/i)
+  })
+
+  it('accepts undefined (not set — correct for production)', () => {
+    expect(e2eBypassDisabledCheck(undefined).ok).toBe(true)
+  })
+
+  it('accepts empty string', () => {
+    expect(e2eBypassDisabledCheck('').ok).toBe(true)
+  })
+
+  it('accepts "0" and other non-"1" values', () => {
+    expect(e2eBypassDisabledCheck('0').ok).toBe(true)
+    expect(e2eBypassDisabledCheck('false').ok).toBe(true)
   })
 })

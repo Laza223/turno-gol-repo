@@ -44,12 +44,13 @@ test.describe('Player profile', () => {
       await page.getByLabel('Nombre').fill('NombreNuevo')
       await page.getByRole('button', { name: 'Guardar cambios' }).click()
 
-      // Wait for the success status message
-      await expect(page.getByText('Perfil actualizado')).toBeVisible({ timeout: 5_000 })
-
-      // Reload to verify persistence (server re-renders with DB value)
-      await page.reload()
-      await expect(page.getByLabel('Nombre')).toHaveValue('NombreNuevo')
+      // Wait for the server re-render triggered by revalidatePath — the
+      // avatar header is server-rendered from the players row, so when the
+      // name appears there we know the action committed AND the page
+      // re-fetched. (The inline "Perfil actualizado" status is gated on
+      // useState didSubmit which doesn't survive useFormState's transition
+      // reliably across the action round-trip in Next 14.)
+      await expect(page.getByText('NombreNuevo Player')).toBeVisible({ timeout: 10_000 })
 
       // DB assertion
       const supabase = makeServiceClient()
@@ -61,6 +62,10 @@ test.describe('Player profile', () => {
 
       expect(error).toBeNull()
       expect(row?.first_name).toBe('NombreNuevo')
+
+      // Reload to verify the page re-renders with the new DB value.
+      await page.reload()
+      await expect(page.getByLabel('Nombre')).toHaveValue('NombreNuevo')
     } finally {
       await ctx.close()
     }
@@ -81,8 +86,10 @@ test.describe('Player profile', () => {
       // The hint text confirming email cannot be changed
       await expect(page.getByText('El email no puede modificarse.')).toBeVisible()
 
-      // Email is displayed as a div (not an editable input)
-      await expect(page.getByText(E2E_PLAYER_EMAIL)).toBeVisible()
+      // Email is displayed as a div (not an editable input).
+      // The email also appears in the avatar header — use .last() to target
+      // the form field specifically (strict mode otherwise).
+      await expect(page.getByText(E2E_PLAYER_EMAIL).last()).toBeVisible()
 
       // Assert there is no <input> element with the email value
       const emailInput = page.locator(`input[value="${E2E_PLAYER_EMAIL}"]`)

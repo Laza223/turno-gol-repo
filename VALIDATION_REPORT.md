@@ -172,3 +172,49 @@ Corrí los `@critical` de verdad (Playwright auto-levanta el dev server; Supabas
 **PRIORIDAD 3 — Quick wins UX pública:** precio "Desde $X", dirección, WhatsApp, `next/image`, OG tags.
 
 > **Regla respetada:** cada fix → commit atómico; nada de push a `main` sin mostrarte; decisiones de producto anotadas, no implementadas.
+
+---
+
+## FASE C — Ejecutado (8 commits sobre `audit/opus-4.8-validation`)
+
+### Gates finales
+
+| Check | Antes (Fase A) | Después (Fase C) |
+|-------|----------------|------------------|
+| `pnpm typecheck` | ✅ 0 | ✅ 0 |
+| `pnpm lint` | ✅ 0 | ✅ 0 |
+| `pnpm test` (unit) | ❌ 4 fail / 588 | ✅ **604 passed** (+12 tests nuevos) |
+| `pnpm build` | ✅ | ✅ (34 páginas) |
+| push integration (4 specs) | ❌ tabla ausente | ✅ 8/8 |
+| push `@critical` E2E | 🔴 flaky | ✅ 5/5 con `--repeat-each=5` |
+
+### PRIORIDAD 1 — Gates verde
+
+1. **`rate-limit-apply.test.ts` hermético** (`01d71f2`) — `delete NEXT_PUBLIC_E2E` en beforeEach + restore en afterAll. Ahora ejercita la lógica real de throttle + fail-closed. Cierra 2 de las 4 fallas.
+2. **`zod-coverage` reconoce `parseRouteUuid`** (`cc48a68`) — heurística `usesZod` extendida. Cierra las otras 2 fallas honestamente (los routes validan su único input, el UUID).
+3. **Migration 014 aplicada local + bug latente fixeado** (`d9120f6`) — `push-dispatch` pasa; descubrí y corregí un bug REAL en `push-subscribe-rls` Case 2 (usaba el id de la fila push como `tenant_id`/`staff_user_id` con "conflict fires anyway", pero `ON CONFLICT DO UPDATE SET tenant_id = EXCLUDED.tenant_id` propaga el valor bogus → FK violation). Estaba enmascarado mientras la tabla no existía.
+4. **Push BroadcastChannel race** (`dfe2d31`) — el único flaky-serial real. Re-post determinístico vía `expect().toPass()` (el manager deduplica por id). Verificado 5/5.
+
+### PRIORIDAD 2 — Hardening de prod
+
+5. **`/api/status` checkea Upstash de verdad** (`ffc9dbd`) — PING real cuando está configurado; `ok`+nota cuando no (no rompe el gate del webServer E2E). **Corrección a Fase B:** `/api/status` YA hacía checks reales de DB (`SELECT 1`+latencia) y pg-boss (`getQueueSize`); solo faltaba Upstash. Mi score de Observabilidad (6) era algo duro.
+6. **Anti-foot-gun `NEXT_PUBLIC_E2E`** (`c8ec389`) — helper puro `e2eBypassDisabledCheck` (4 tests) como step fatal de launch-check. Cierra el riesgo oculto #2.
+7. **Timeout MP** — **ya estaba** (`mpClient` setea `options:{timeout:8000}`, cubre todas las llamadas incl. `getPaymentStatus`). **Corrección a Fase B:** mi afirmación "sin timeout" era errónea. Quedan circuit-breaker + retry/backoff como gaps reales (TODO Fase 3).
+
+### PRIORIDAD 3 — Quick wins UX pública
+
+8. **Botón WhatsApp en perfil** (`8b0be3f`) — helper `buildWhatsappUrl` (5 tests, normaliza a dígitos, mensaje prellenado) + link en `TenantHeader` (solo si hay número). No adivina código de país (espera número internacional completo).
+9. **Dirección completa en TenantCard** (`e6ae2fa`) — `tenants.address` (tabla global, sin RLS) agregado al search + render estilo ATC.
+- **OG tags `/[slug]`** — **ya estaban** (F6: `generateMetadata`+`buildMetadata` con OG/Twitter/canonical). El TODO.md estaba desactualizado.
+- **`next/image`** — **ya adoptado** en todo lo público (TenantCard + TenantHeader); 0 `<img>` crudos en `src/`.
+
+### Documentado, NO implementado (requiere tu decisión)
+
+- **Precio "Desde $X" en TenantCard** — **NO es un quick win.** `courts` tiene RLS tenant-scoped; el search lista N tenants sin contexto de tenant, así que un subquery a `courts.pricing` devolvería 0 filas bajo el rol `turnogol_app` de prod (funciona local solo por superuser). Opciones: **(A)** denormalizar `tenants.from_price_cents` (migración + mantenimiento write-side al cambiar pricing); **(B)** función `SECURITY DEFINER` que agregue el mínimo sin romper RLS; **(C)** policy de lectura pública en `courts` exponiendo solo pricing. Recomiendo **A** (lecturas simples, cache-friendly, SEO). Decisión tuya.
+- **E2E no hermético bajo paralelo (workers locales).** En CI corre serial (`workers:1`) y `flake-detect` también → **no bloquea ningún gate**. El verde-en-serie ya está. El fix para 0-flaky-en-paralelo es aislamiento per-spec (player dedicado para `delete-account`, reserva de slot per-test). Es rearquitectura de fixtures → lo dejo documentado para tu OK (regla de "fallo arquitectónico").
+- **Resiliencia MP: circuit breaker + retry/backoff en 5xx** (TODO Fase 3). El timeout ya está; estos son los gaps reales.
+- **Proceso de migrations frágil** — la 014 no estaba aplicada en la DB local de tests. Falta un paso automatizado "aplicar todas las migrations" para dev/CI (TODO Fase 1: estrategia de migrations versionadas).
+
+### Correcciones a mi propia Fase B (honestidad)
+
+Tres cosas que scoreé peor de lo que están: el **timeout MP existe** (8s), **`/api/status` ya hace checks reales** de DB+pg-boss, y **OG tags + `next/image` ya estaban** hechos en F6. El TODO.md (pre-auditoría) está desactualizado respecto a lo que F6/F7 entregaron.

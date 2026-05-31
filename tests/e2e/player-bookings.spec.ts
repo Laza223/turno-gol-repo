@@ -100,13 +100,27 @@ test.describe('Player bookings', () => {
     // /reservar UI flow (which sets player_id from the session). Those
     // bookings can persist across the suite if their owner spec fails before
     // cleanup. Belt-and-braces: nuke ANY bookings owned by the E2E player
-    // on the demo tenant right before asserting empty state.
+    // — null payment_id, delete any payment row that references them, then
+    // delete the bookings themselves. Use .select() to make Supabase return
+    // the row count / error and fail loud if cleanup itself errors.
     const supabase = makeServiceClient()
-    await supabase
+    const { data: existing } = await supabase
       .from('bookings')
-      .update({ payment_id: null, payment_method: null })
+      .select('id')
       .eq('player_id', E2E_PLAYER_ID)
-    await supabase.from('bookings').delete().eq('player_id', E2E_PLAYER_ID)
+    const ids = (existing ?? []).map((r) => r.id)
+    if (ids.length > 0) {
+      await supabase
+        .from('bookings')
+        .update({ payment_id: null, payment_method: null })
+        .in('id', ids)
+      await supabase.from('payments').delete().in('booking_id', ids)
+      const { error: delErr } = await supabase
+        .from('bookings')
+        .delete()
+        .in('id', ids)
+      if (delErr) throw new Error(`Cleanup DELETE failed: ${delErr.message}`)
+    }
 
     const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
     const page = await ctx.newPage()

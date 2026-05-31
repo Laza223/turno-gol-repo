@@ -87,8 +87,14 @@ describe('push subscribe / unsubscribe RLS (F9 T4)', () => {
     const sql = getSql()
 
     // First, ensure ENDPOINT_A has a row (from Case 1 or fresh insert).
-    const beforeRows = await sql<{ id: string; last_used_at: Date | null }[]>`
-      SELECT id, last_used_at FROM push_subscriptions WHERE endpoint = ${ENDPOINT_A}
+    // Pull the real tenant_id + staff_user_id: ON CONFLICT DO UPDATE SET
+    // tenant_id = EXCLUDED.tenant_id propagates the INSERT row's value, so the
+    // proposed values must reference rows that exist (FK), not a placeholder.
+    const beforeRows = await sql<
+      { id: string; tenant_id: string; staff_user_id: string; last_used_at: Date | null }[]
+    >`
+      SELECT id, tenant_id, staff_user_id, last_used_at
+      FROM push_subscriptions WHERE endpoint = ${ENDPOINT_A}
     `
     expect(beforeRows).toHaveLength(1)
     const originalId = beforeRows[0]!.id
@@ -100,8 +106,8 @@ describe('push subscribe / unsubscribe RLS (F9 T4)', () => {
       INSERT INTO push_subscriptions
         (tenant_id, staff_user_id, endpoint, p256dh_key, auth_key)
       VALUES
-        (${beforeRows[0]!.id /* reuse any valid uuid for dummy re-use — use existing tenant */},
-         ${beforeRows[0]!.id /* placeholder — conflict fires anyway */},
+        (${beforeRows[0]!.tenant_id},
+         ${beforeRows[0]!.staff_user_id},
          ${ENDPOINT_A}, ${'p256dh-key-a-v2'}, ${'auth-key-a-v2'})
       ON CONFLICT (endpoint) DO UPDATE SET
         tenant_id     = EXCLUDED.tenant_id,

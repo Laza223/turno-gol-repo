@@ -20,6 +20,7 @@ import {
   insertPlayerBooking,
   cleanupPlayerBookings,
   artTomorrowISO,
+  E2E_PLAYER_ID,
 } from './_helpers/player-seed'
 
 test.describe('Player bookings', () => {
@@ -94,6 +95,19 @@ test.describe('Player bookings', () => {
     browser,
     playerStorageState,
   }) => {
+    // Defensive cleanup: cleanupPlayerBookings in beforeEach only deletes by
+    // player_id, but other specs in the suite create bookings via the player
+    // /reservar UI flow (which sets player_id from the session). Those
+    // bookings can persist across the suite if their owner spec fails before
+    // cleanup. Belt-and-braces: nuke ANY bookings owned by the E2E player
+    // on the demo tenant right before asserting empty state.
+    const supabase = makeServiceClient()
+    await supabase
+      .from('bookings')
+      .update({ payment_id: null, payment_method: null })
+      .eq('player_id', E2E_PLAYER_ID)
+    await supabase.from('bookings').delete().eq('player_id', E2E_PLAYER_ID)
+
     const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
     const page = await ctx.newPage()
 

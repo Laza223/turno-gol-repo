@@ -37,7 +37,7 @@
     "test:integration": "vitest run --dir tests/integration",
     "test:isolation": "vitest run tests/integration/isolation.test.ts",
     "test:e2e": "playwright test",
-    "test:e2e:ci": "playwright test --project chromium --project mobile-chrome --project axe-audit --reporter=github,html",
+    "test:e2e:ci": "playwright test --project chromium --reporter=github,html && playwright test --project mobile-chrome --reporter=github,html && playwright test --project axe-audit --reporter=github,html",
     "test:e2e:cross-browser": "playwright test --project webkit --project firefox --project mobile-safari",
     "test:e2e:flake-detect": "playwright test --project chromium --grep @critical --repeat-each=10 --retries=0 --workers=2",
     "e2e:seed": "tsx scripts/seed-e2e.ts",

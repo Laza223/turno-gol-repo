@@ -35,6 +35,10 @@ test.describe('Player profile', () => {
     try {
       await page.goto('/perfil')
 
+      // Anchor on the heading first — the Nombre input is rendered in a
+      // client component and can be briefly absent during hydration.
+      await expect(page.getByRole('heading', { name: 'Mi Perfil' })).toBeVisible()
+
       // The label is "Nombre" (htmlFor="first_name")
       await expect(page.getByLabel('Nombre')).toBeVisible()
       await page.getByLabel('Nombre').fill('NombreNuevo')
@@ -68,6 +72,11 @@ test.describe('Player profile', () => {
 
     try {
       await page.goto('/perfil')
+
+      // Wait for the form to render (hydration can briefly delay the inline
+      // <p> hint below the email field — anchor on the page heading first so
+      // the visibility check for the hint runs on a stable DOM).
+      await expect(page.getByRole('heading', { name: 'Mi Perfil' })).toBeVisible()
 
       // The hint text confirming email cannot be changed
       await expect(page.getByText('El email no puede modificarse.')).toBeVisible()

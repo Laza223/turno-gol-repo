@@ -45,14 +45,12 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
     'Web Push E2E supported only in Chromium for v1 (see spec header).',
   )
 
-  // FIXME: race between page hydration / PushNotificationManager subscribing
-  // to the BroadcastChannel and the test posting a message. Passes in normal
-  // CI=1 runs (the manager is usually subscribed by the time the table is
-  // visible) but fails reproducibly in flake-detect (10× sequential runs)
-  // because the channel registration occasionally lands after the post.
-  // Production behaviour is unaffected — service worker fires after a real
-  // push, by which time the page has been open long enough. Tracked: add
-  // an explicit "manager ready" signal or queue events on the manager side.
+  // Race handled deterministically below: PushNotificationManager subscribes to
+  // the BroadcastChannel in a mount useEffect, and BroadcastChannel does NOT
+  // queue for late subscribers — so a single post can land before the listener
+  // is registered. We re-post inside expect().toPass() until the toast renders;
+  // the manager dedupes by id, so re-posting the same id is a no-op once
+  // delivered. Production is unaffected (a real SW push fires long after mount).
   test(
     'BroadcastChannel message triggers payload-specific toast on /admin/grilla @critical',
     async ({ browser, adminStorageState }) => {
@@ -73,30 +71,28 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
         // Wait for the page to be interactive (table or heading visible).
         await expect(page.locator('table')).toBeVisible({ timeout: 15_000 })
 
-        // Manually post a BroadcastChannel message from the page's JS context.
-        // This simulates what public/sw.js broadcasts when it receives a real
-        // Web Push notification from the server.
-        await page.evaluate(() => {
-          const bc = new BroadcastChannel('notif-dedupe')
-          bc.postMessage({
-            id: 'e2e-push-test-001',
-            courtName: 'Cancha 1',
-            dateLabel: 'mañana',
-            timeLabel: '20:00',
+        // Re-post a BroadcastChannel message from the page's JS context until the
+        // toast renders. This simulates what public/sw.js broadcasts on a real
+        // Web Push, and survives the hydration race (see note above): the manager
+        // dedupes by id, so re-posting the same id after delivery is a no-op.
+        // PushNotificationManager.onmessage acks first, then calls
+        // toast({ title: 'Nueva reserva — Cancha 1', ... }). exact:true because
+        // the aria-live announcement also contains the title.
+        await expect(async () => {
+          await page.evaluate(() => {
+            const bc = new BroadcastChannel('notif-dedupe')
+            bc.postMessage({
+              id: 'e2e-push-test-001',
+              courtName: 'Cancha 1',
+              dateLabel: 'mañana',
+              timeLabel: '20:00',
+            })
+            bc.close()
           })
-          bc.close()
-        })
-
-        // PushNotificationManager.onmessage claims the notification (acks first)
-        // then calls toast({ title: 'Nueva reserva — Cancha 1', ... }).
-        // Toast title format: `Nueva reserva — ${courtName}`.
-        // 10 s timeout — under flake-detect (10 sequential runs of every
-        // @critical) the broadcast-to-render path occasionally takes more
-        // than the original 2 s; the toast still arrives, just later.
-        // exact:true — the aria-live announcement also contains the title.
-        await expect(page.getByText('Nueva reserva — Cancha 1', { exact: true })).toBeVisible({
-          timeout: 10_000,
-        })
+          await expect(
+            page.getByText('Nueva reserva — Cancha 1', { exact: true }),
+          ).toBeVisible({ timeout: 1_000 })
+        }).toPass({ timeout: 15_000 })
 
         // Also assert the date+time description is rendered.
         await expect(page.getByText('mañana · 20:00', { exact: true })).toBeVisible({

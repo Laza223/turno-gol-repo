@@ -64,7 +64,7 @@ export function BookingGrid({
     })
   }, [])
 
-  const { bookings, status } = useBookingRealtime({ tenantId, date, initialBookings })
+  const { bookings, status, refetch } = useBookingRealtime({ tenantId, date, initialBookings })
 
   const dayIdx = new Date(`${date}T12:00:00Z`).getUTCDay()
   const dayKey = DAY_KEYS[dayIdx]!
@@ -113,13 +113,16 @@ export function BookingGrid({
 
   const handleBookingSuccess = useCallback((_booking: BookingRow) => {
     setSelectedSlot(null)
-    // Force a server re-fetch so the new booking shows immediately. Realtime
-    // will eventually propagate it too, but with a noticeable lag (the
-    // subscribe round-trip + DB notification) — and in E2E it can miss the
-    // 10 s assertion window entirely. router.refresh() is a no-op for state
-    // that realtime already updated, so the two paths don't conflict.
+    // Refresh both: router.refresh re-runs the server component (updates the
+    // initialBookings prop), and refetch hits /api/bookings to update the
+    // hook's local state — the hook's useState only reads initialBookings on
+    // mount, so without an explicit refetch the new booking would only appear
+    // when Realtime eventually pushes it. In E2E that lag misses the
+    // assertion window; in a browser tab that lost the websocket, it never
+    // arrives at all.
     router.refresh()
-  }, [router])
+    void refetch()
+  }, [router, refetch])
 
   const LABEL_DAYS: Record<string, string> = {
     mon: 'Lun', tue: 'Mar', wed: 'Mié', thu: 'Jue',

@@ -69,7 +69,7 @@ export function useBookingRealtime(opts: {
   tenantId: string
   date: string
   initialBookings: GridBooking[]
-}): { bookings: GridBooking[]; status: RealtimeStatus } {
+}): { bookings: GridBooking[]; status: RealtimeStatus; refetch: () => Promise<void> } {
   const [bookings, setBookings] = useState<GridBooking[]>(opts.initialBookings)
   const [status, setStatus] = useState<RealtimeStatus>('CONNECTING')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -188,5 +188,5 @@ export function useBookingRealtime(opts: {
     }
   }, [opts.tenantId, opts.date, fetchFromApi, scheduleReconcile])
 
-  return { bookings, status }
+  return { bookings, status, refetch: fetchFromApi }
 }

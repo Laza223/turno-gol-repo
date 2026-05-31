@@ -27,8 +27,9 @@ export default function TenantCard({ tenant }: { tenant: PublicTenantCard }) {
         <h3 className="text-base font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">{tenant.name}</h3>
         <p className="flex items-center gap-1.5 text-sm text-slate-500">
           <MapPin className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
-          {tenant.city}, {tenant.province}
+          <span className="truncate">{tenant.address}</span>
         </p>
+        <p className="text-xs text-slate-400">{tenant.city}, {tenant.province}</p>
       </div>
     </Link>
   )

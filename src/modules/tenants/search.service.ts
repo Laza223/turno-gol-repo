@@ -7,6 +7,7 @@ export type PublicTenantCard = {
   id: string
   slug: string
   name: string
+  address: string
   city: string
   province: string
   logoUrl: string | null
@@ -49,6 +50,7 @@ export async function searchPublicTenants(params: SearchParams): Promise<SearchR
         id: tenants.id,
         slug: tenants.slug,
         name: tenants.name,
+        address: tenants.address,
         city: tenants.city,
         province: tenants.province,
         logoUrl: tenants.logoUrl,
@@ -67,6 +69,7 @@ export async function searchPublicTenants(params: SearchParams): Promise<SearchR
     id: r.id,
     slug: r.slug,
     name: r.name,
+    address: r.address,
     city: r.city,
     province: r.province,
     logoUrl: r.logoUrl,

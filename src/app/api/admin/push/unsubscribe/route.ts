@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { getSql } from '@/shared/db/client'
 
 export const dynamic = 'force-dynamic'
@@ -12,6 +13,9 @@ const unsubscribeSchema = z.object({
 })
 
 export const POST = withTenant(async (req: NextRequest, user) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   let body: unknown
   try {
     body = await req.json()

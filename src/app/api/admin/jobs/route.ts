@@ -1,4 +1,5 @@
 import { getBoss } from '@/shared/jobs/boss'
+import { enforce, rateLimit429 } from '@/shared/rate-limit'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
 
@@ -15,6 +16,10 @@ export async function GET(): Promise<Response> {
   if (!user || user.type !== 'system_admin') {
     return Response.json({ error: 'forbidden' }, { status: 403 })
   }
+  // adminCrud bucket keyed by the super-admin id (no tenant context here).
+  const rl = await enforce('adminCrud', user.systemAdminId)
+  if (!rl.ok) return rateLimit429(rl)
+
   const boss = await getBoss()
   const queues = await Promise.all(
     ALL_QUEUES.map(async (queue) => {

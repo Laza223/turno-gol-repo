@@ -9,6 +9,7 @@ import { sanitizeNext } from '@/lib/safe-redirect'
 import { getDb, withPlayerContext, withTenantContext } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { enforce } from '@/shared/rate-limit'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
@@ -49,6 +50,13 @@ export async function sendPlayerMagicLink(_prev: GateState, formData: FormData):
     return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
 
+  // authMagicLink (5/60s per email): same defense as staff loginAction — stops
+  // a player's inbox being flooded with magic-link emails.
+  const rl = await enforce('authMagicLink', parsed.data.email)
+  if (!rl.ok) {
+    return { status: 'error', message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.' }
+  }
+
   const origin = headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
   const safeNext = sanitizeNext(parsed.data.next, '/mis-reservas')
   const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
@@ -81,6 +89,12 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
 
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect(`/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`)
+
+  // playerBooking (20/60s per player): caps online-booking + MP-preference spam
+  // from a single authenticated player (the public booking path, separate from
+  // the /api/player/bookings route which is already guarded).
+  const rl = await enforce('playerBooking', user!.playerId)
+  if (!rl.ok) redirect(`${backTo}&error=rate_limited`)
 
   const db = getDb()
   const tRows = await db
@@ -144,6 +158,9 @@ export async function retryDepositPaymentAction(formData: FormData): Promise<voi
 
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/login')
+
+  const rl = await enforce('playerBooking', user.playerId)
+  if (!rl.ok) redirect(`/reserva/${bookingId}/error`)
 
   // Load booking player-scoped to verify ownership
   const bookingRow = await withPlayerContext(user.playerId, async (tx) => {

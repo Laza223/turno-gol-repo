@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 
 export async function markPublicLinkSharedAction(): Promise<void> {
@@ -14,6 +15,9 @@ export async function markPublicLinkSharedAction(): Promise<void> {
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return
 
   await withTenantContext(tenant.id, async (tx) => {
     await tx

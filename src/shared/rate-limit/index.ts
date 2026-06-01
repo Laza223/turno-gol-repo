@@ -1,3 +1,5 @@
 export { parseClientIp } from './key'
 export { enforce, rateLimit429 } from './apply'
+export { guard } from './route-guard'
+export { adminRateLimited, ADMIN_RATE_LIMIT_MESSAGE } from './server-action'
 export { POLICIES, type PolicyName } from './policies'

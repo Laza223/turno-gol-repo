@@ -6,6 +6,7 @@ import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, boundedText } from '@/shared/validation/primitives'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { enforce } from '@/shared/rate-limit'
 import { withPlayerContext, withTenantContext, getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
@@ -39,6 +40,9 @@ export async function cancelMyBookingAction(
   const parsed = cancelSchema.safeParse({ bookingId, reason })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const user = await requirePlayer()
+
+  const rl = await enforce('playerBooking', user.playerId)
+  if (!rl.ok) return { success: false, error: 'Demasiadas solicitudes. Esperá un momento.' }
 
   // B2 audit fix: pre-read with withPlayerContext so RLS player_own_bookings_select
   // filters to ONLY bookings owned by this player, even if the connection role bypasses RLS.

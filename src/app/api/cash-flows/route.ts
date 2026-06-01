@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import {
   createCashFlow,
   getCashFlows,
@@ -31,12 +32,18 @@ const createCashFlowSchema = z.object({
 })
 
 export const GET = withTenant(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const date = new URL(req.url).searchParams.get('date') ?? artDateOf(new Date())
   const rows = await getCashFlows(user.tenantId!, date, tx)
   return NextResponse.json({ data: rows })
 })
 
 export const POST = withTenant(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   let body: unknown
   try {
     body = await req.json()

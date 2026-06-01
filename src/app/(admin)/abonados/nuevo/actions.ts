@@ -6,6 +6,7 @@ import { createAbonadoAction } from '../actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
 import { getAbonadoSlotConflicts } from '@/modules/abonados/abonado.service'
 import type { CreateAbonadoInput } from '@/modules/abonados/abonado.types'
@@ -59,6 +60,9 @@ export async function previewAbonadoSlotsAction(
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const { courtId, dayOfWeek, timeStart, timeEnd, startsOn, endsOn } = parsed.data
 

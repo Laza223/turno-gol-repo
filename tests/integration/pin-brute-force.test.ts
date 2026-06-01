@@ -1,4 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// `.env.test` sets NEXT_PUBLIC_E2E=1 which makes `enforce` short-circuit, so the
+// fail-closed pinAttempts policy never throttles. This file tests the REAL
+// brute-force protection; capture + restore the bypass.
+const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
 vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
 vi.mock('@upstash/ratelimit', () => {
@@ -76,6 +81,7 @@ import { verifyPinAction } from '@/app/(admin)/actions/pin'
 import { __resetLimitersForTests } from '@/shared/rate-limit/client'
 
 beforeEach(async () => {
+  delete process.env.NEXT_PUBLIC_E2E
   process.env.UPSTASH_REDIS_REST_URL = 'https://stub'
   process.env.UPSTASH_REDIS_REST_TOKEN = 'stub-token'
   process.env.PIN_COOKIE_SECRET = 'test-pin-secret-1234567890'
@@ -83,6 +89,10 @@ beforeEach(async () => {
   __resetLimitersForTests()
   cookieJar.clear()
   pinHash = await hashPin('1234')
+})
+
+afterAll(() => {
+  if (ORIGINAL_E2E !== undefined) process.env.NEXT_PUBLIC_E2E = ORIGINAL_E2E
 })
 
 describe('PIN brute force protection (B6.2)', () => {

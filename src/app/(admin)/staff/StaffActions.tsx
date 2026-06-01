@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,9 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { deactivateStaffAction, resendInviteAction } from './actions'
+
+// The deactivate confirmation pulls in the Radix AlertDialog (~13KB). It is only
+// needed once an admin opens it, so lazy-load and mount it on demand instead of
+// shipping it in every Staff row's initial chunk.
+const ConfirmDialog = dynamic(
+  () => import('@/components/ui/confirm-dialog').then((m) => m.ConfirmDialog),
+  { ssr: false },
+)
 
 interface StaffActionsProps {
   member: {
@@ -80,6 +88,7 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {deactivateOpen && (
       <ConfirmDialog
         open={deactivateOpen}
         onOpenChange={setDeactivateOpen}
@@ -100,6 +109,7 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
         confirmationPhrase={member.email}
         onConfirm={onConfirmDeactivate}
       />
+      )}
     </>
   )
 }

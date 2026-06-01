@@ -1,14 +1,39 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { LayoutGrid } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { toggleCourtStatusAction, getCourtDeactivationImpactAction } from '../actions'
-import { CourtForm } from './CourtForm'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
+
+// The deactivate confirmation pulls in the Radix AlertDialog; only needed once an
+// admin clicks "Desactivar", so lazy-load and mount it on demand.
+const ConfirmDialog = dynamic(
+  () => import('@/components/ui/confirm-dialog').then((m) => m.ConfirmDialog),
+  { ssr: false },
+)
+
+// The court editor (pricing-rules builder + opening-hours grid) is the heaviest
+// chunk on this route but only renders after a "Nueva cancha"/"Editar" click.
+// Code-split it so it never weighs down the initial Canchas paint.
+const CourtForm = dynamic(() => import('./CourtForm').then((m) => m.CourtForm), {
+  ssr: false,
+  loading: () => (
+    <div className="space-y-4" aria-busy="true" aria-label="Cargando formulario…">
+      <Skeleton className="h-9 w-48" aria-hidden />
+      <Skeleton className="h-32 w-full" aria-hidden />
+      <Skeleton className="h-48 w-full" aria-hidden />
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-28" aria-hidden />
+        <Skeleton className="h-10 w-28" aria-hidden />
+      </div>
+    </div>
+  ),
+})
 
 const SURFACE_LABELS: Record<string, string> = {
   synthetic_grass: 'Césped sintético',
@@ -201,6 +226,7 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
         </button>
       </div>
 
+      {confirmOpen && (
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -220,6 +246,7 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
         cancelLabel="Volver"
         onConfirm={onConfirmDeactivate}
       />
+      )}
     </div>
   )
 }

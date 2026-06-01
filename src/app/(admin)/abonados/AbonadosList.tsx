@@ -1,15 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Users } from 'lucide-react'
 import Link from 'next/link'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
 import { pauseAbonadoAction, reactivateAbonadoAction, cancelAbonadoAction } from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
+
+// The pause/reactivate/cancel dialogs pull in the Radix-backed ConfirmDialog and
+// are only needed once an admin clicks a row action. Lazy-load the whole subtree
+// and mount it only while a dialog is open, so ConfirmDialog stays out of the
+// initial Abonados chunk.
+const AbonadoDialogs = dynamic(
+  () => import('./AbonadoDialogs').then((m) => m.AbonadoDialogs),
+  { ssr: false },
+)
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -251,137 +260,28 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
         </td>
       </tr>
 
-      {/* ── Pause dialog ── */}
-      <ConfirmDialog
-        open={state.dialog === 'pause'}
-        onOpenChange={(open) => { if (!open) closeDialog() }}
-        title="Pausar abonado"
-        description={
-          <div className="space-y-2">
-            <p>
-              Eliminará todas las reservas futuras de este abonado. Podés reactivar después.
-            </p>
-          </div>
-        }
-        variant="default"
-        confirmLabel="Pausar"
-        cancelLabel="Volver"
-        onConfirm={onConfirmPause}
-      />
-
-      {/* ── Reactivate dialog ── */}
-      <ConfirmDialog
-        open={state.dialog === 'reactivate'}
-        onOpenChange={(open) => { if (!open) closeDialog() }}
-        title="Reactivar abonado"
-        description={
-          <ReactivatePreview
-            loading={state.reactivatePreviewLoading}
-            dates={state.reactivatePreviewDates}
-            conflicts={state.reactivatePreviewConflicts}
-            error={state.reactivatePreviewError}
-          />
-        }
-        variant="default"
-        confirmLabel="Reactivar"
-        cancelLabel="Volver"
-        onConfirm={onConfirmReactivate}
-      />
-
-      {/* ── Cancel dialog ── */}
-      <ConfirmDialog
-        open={state.dialog === 'cancel'}
-        onOpenChange={(open) => { if (!open) closeDialog() }}
-        title="Cancelar abonado"
-        description={
-          <div className="space-y-2">
-            <p>Esta acción es permanente. Se eliminarán todas las reservas futuras desde la fecha elegida.</p>
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
-              Las reservas futuras desde esa fecha serán borradas sin posibilidad de recuperación.
-            </p>
-          </div>
-        }
-        variant="destructive"
-        confirmLabel="Cancelar abonado"
-        cancelLabel="Volver"
-        confirmationPhrase="CANCELAR"
-        onConfirm={onConfirmCancel}
-      >
-        <div className="space-y-1">
-          <label htmlFor={`cancel-date-${a.id}`} className="text-xs font-medium text-slate-700">
-            Cancelar desde
-          </label>
-          <input
-            id={`cancel-date-${a.id}`}
-            type="date"
-            min={todayART()}
-            value={state.cancelFromDate}
-            onChange={(e) =>
-              setState((prev) => ({ ...prev, cancelFromDate: e.target.value }))
-            }
-            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-          />
-        </div>
-      </ConfirmDialog>
+      {state.dialog !== null && (
+        <tr>
+          <td colSpan={6} className="p-0">
+            <AbonadoDialogs
+              abonadoId={a.id}
+              dialog={state.dialog}
+              cancelFromDate={state.cancelFromDate}
+              onCancelFromDateChange={(date) =>
+                setState((prev) => ({ ...prev, cancelFromDate: date }))
+              }
+              reactivatePreviewLoading={state.reactivatePreviewLoading}
+              reactivatePreviewDates={state.reactivatePreviewDates}
+              reactivatePreviewConflicts={state.reactivatePreviewConflicts}
+              reactivatePreviewError={state.reactivatePreviewError}
+              onClose={closeDialog}
+              onConfirmPause={onConfirmPause}
+              onConfirmReactivate={onConfirmReactivate}
+              onConfirmCancel={onConfirmCancel}
+            />
+          </td>
+        </tr>
+      )}
     </>
-  )
-}
-
-function ReactivatePreview({
-  loading,
-  dates,
-  conflicts,
-  error,
-}: {
-  loading: boolean
-  dates: string[]
-  conflicts: string[]
-  error: string | null
-}) {
-  if (loading) {
-    return <p className="text-sm text-slate-500">Cargando slots disponibles…</p>
-  }
-  if (error) {
-    return (
-      <p className="text-sm text-red-600" role="alert">
-        No se pudo cargar la vista previa: {error}
-      </p>
-    )
-  }
-  if (dates.length === 0) {
-    return <p className="text-sm text-slate-500">No se encontraron slots futuros para generar.</p>
-  }
-
-  const available = dates.filter((d) => !conflicts.includes(d))
-  const conflictSet = new Set(conflicts)
-
-  return (
-    <div className="space-y-2">
-      <p className="text-sm">
-        Se generarán <strong>{available.length}</strong> slot{available.length !== 1 ? 's' : ''} futuros
-        {conflicts.length > 0 && (
-          <span className="text-amber-700">
-            {' '}({conflicts.length} con conflicto, se saltarán)
-          </span>
-        )}
-        .
-      </p>
-      <ul className="max-h-40 overflow-y-auto space-y-1">
-        {dates.map((d) => (
-          <li key={d} className="flex items-center justify-between text-xs">
-            <span>{d}</span>
-            {conflictSet.has(d) ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                Conflicto
-              </span>
-            ) : (
-              <span className="rounded-full bg-green-50 px-2 py-0.5 text-green-700 ring-1 ring-inset ring-green-600/20">
-                OK
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
   )
 }

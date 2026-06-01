@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import {
   pauseAbonado,
   reactivateAbonado,
@@ -23,6 +24,9 @@ const patchSchema = z.discriminatedUnion('action', [
 ])
 
 export const PATCH = withTenant(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const id = req.nextUrl.pathname.split('/').at(-1)!
 
   let body: unknown

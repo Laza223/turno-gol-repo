@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { createAbonado, getAbonados } from '@/modules/abonados/abonado.service'
 import { AbonadoConflictError } from '@/modules/abonados/abonado.errors'
 import type { NextRequest } from 'next/server'
@@ -24,11 +25,17 @@ const createAbonadoSchema = z.object({
 })
 
 export const GET = withTenant(async (_req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const rows = await getAbonados(user.tenantId!, {}, tx)
   return NextResponse.json({ data: rows })
 })
 
 export const POST = withTenant(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   let body: unknown
   try {
     body = await req.json()

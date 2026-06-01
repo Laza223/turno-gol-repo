@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { parseRouteUuid } from '@/shared/api/route-params'
 import { toggleStatus } from '@/modules/courts/court.service'
 
@@ -10,7 +11,10 @@ const toggleStatusSchema = z.object({
   status: z.enum(['online', 'offline']),
 })
 
-export const PATCH = withTenant(async (req, _user, tx) => {
+export const PATCH = withTenant(async (req, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const idResult = parseRouteUuid(req, 'second-last')
   if ('response' in idResult) return idResult.response
   const courtId = idResult.uuid

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { notifyStaffPush } from '@/modules/notifications/push.service'
 
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,9 @@ export const runtime = 'nodejs'
  * Returns: { success: true, dispatched: number }
  */
 export const POST = withTenant(async (_req, user) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   if (!user.staffUserId) {
     return NextResponse.json(
       { error: 'forbidden', code: 'NO_STAFF_USER_ID' },

@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 import { hashPin, verifyPin } from '@/modules/auth/pin'
 import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
@@ -45,6 +46,9 @@ export async function setPinAction(formData: FormData): Promise<PinConfigResult>
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const hasExistingPin = !!tenant.settings.staff_pin_hash
 

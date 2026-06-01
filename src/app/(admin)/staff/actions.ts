@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -32,6 +33,9 @@ export async function inviteStaffAction(
 ): Promise<StaffActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const parsed = inviteSchema.safeParse({
     email: formData.get('email'),
@@ -120,6 +124,9 @@ export async function deactivateStaffAction(
   const { tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const result = await withTenantContext(tenant.id, async (tx) => {
     const [activeCount] = await tx
       .select({ value: count() })
@@ -160,6 +167,9 @@ export async function deactivateStaffAction(
 export async function resendInviteAction(email: string): Promise<StaffActionResult> {
   const { tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const adminClient = createAdminClient()
   const { error } = await adminClient.auth.admin.inviteUserByEmail(email, {

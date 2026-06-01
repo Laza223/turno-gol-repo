@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext, getDb } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 import {
   createManualBooking,
@@ -42,6 +43,9 @@ export async function createBookingAction(
 ): Promise<BookingActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   // staffUserId is required by the schema but is NOT sent by the client form
   // (BookingFormModal has no way to know the admin's staff_user_id — that's
@@ -106,6 +110,9 @@ export async function completeBookingAction(
   const { tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
       const booking = await completeBooking(bookingId, 'admin', tx)
@@ -127,6 +134,9 @@ export async function markNoShowAction(
 ): Promise<BookingActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const staffUserId = user.staffUserId ?? ''
 
@@ -153,6 +163,9 @@ export async function cancelBookingAction(
 ): Promise<BookingActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const staffUserId = user.staffUserId ?? ''
 

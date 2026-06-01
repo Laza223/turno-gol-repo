@@ -1,0 +1,116 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CircuitBreaker, CircuitOpenError } from '@/modules/payments/mp-circuit-breaker'
+
+const KEY = 'tenant-1'
+const ok = () => Promise.resolve('ok')
+const boom = () => Promise.reject(new Error('boom'))
+
+describe('CircuitBreaker', () => {
+  let now: number
+  let cb: CircuitBreaker
+
+  beforeEach(() => {
+    now = 0
+    cb = new CircuitBreaker({ failureThreshold: 3, openMs: 60_000, now: () => now })
+  })
+
+  describe('CLOSED', () => {
+    it('passes calls through and returns the result', async () => {
+      await expect(cb.execute(KEY, ok)).resolves.toBe('ok')
+      expect(cb.stateOf(KEY)).toBe('closed')
+    })
+
+    it('stays closed below the failure threshold', async () => {
+      await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      expect(cb.stateOf(KEY)).toBe('closed')
+    })
+
+    it('a success resets the consecutive-failure counter', async () => {
+      await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      await expect(cb.execute(KEY, ok)).resolves.toBe('ok') // reset
+      await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      expect(cb.stateOf(KEY)).toBe('closed') // only 2 since reset
+    })
+  })
+
+  describe('OPEN', () => {
+    beforeEach(async () => {
+      for (let i = 0; i < 3; i++) await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+    })
+
+    it('opens after 3 consecutive failures', () => {
+      expect(cb.stateOf(KEY)).toBe('open')
+    })
+
+    it('fails fast without invoking the operation while open', async () => {
+      const op = vi.fn(ok)
+      await expect(cb.execute(KEY, op)).rejects.toBeInstanceOf(CircuitOpenError)
+      expect(op).not.toHaveBeenCalled()
+    })
+
+    it('stays open until the cooldown elapses', async () => {
+      now += 59_999
+      const op = vi.fn(ok)
+      await expect(cb.execute(KEY, op)).rejects.toBeInstanceOf(CircuitOpenError)
+      expect(op).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('HALF_OPEN', () => {
+    beforeEach(async () => {
+      for (let i = 0; i < 3; i++) await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      now += 60_000 // cooldown elapsed
+    })
+
+    it('transitions to half_open once the cooldown passes', () => {
+      expect(cb.stateOf(KEY)).toBe('half_open')
+    })
+
+    it('a successful trial closes the circuit', async () => {
+      await expect(cb.execute(KEY, ok)).resolves.toBe('ok')
+      expect(cb.stateOf(KEY)).toBe('closed')
+    })
+
+    it('a failed trial re-opens the circuit and resets the cooldown', async () => {
+      await expect(cb.execute(KEY, boom)).rejects.toThrow('boom')
+      expect(cb.stateOf(KEY)).toBe('open')
+      // cooldown restarted: still open just before 60s
+      now += 59_999
+      const op = vi.fn(ok)
+      await expect(cb.execute(KEY, op)).rejects.toBeInstanceOf(CircuitOpenError)
+      expect(op).not.toHaveBeenCalled()
+    })
+
+    it('admits only ONE trial request concurrently', async () => {
+      let release: (v: string) => void = () => {}
+      const slow = () => new Promise<string>((res) => { release = res })
+      const trial = cb.execute(KEY, slow) // claims the single trial slot
+      const op = vi.fn(ok)
+      await expect(cb.execute(KEY, op)).rejects.toBeInstanceOf(CircuitOpenError)
+      expect(op).not.toHaveBeenCalled()
+      release('ok')
+      await expect(trial).resolves.toBe('ok')
+    })
+  })
+
+  describe('isolation + reset', () => {
+    it('keeps per-key state independent', async () => {
+      for (let i = 0; i < 3; i++) await expect(cb.execute('a', boom)).rejects.toThrow('boom')
+      expect(cb.stateOf('a')).toBe('open')
+      expect(cb.stateOf('b')).toBe('closed')
+      await expect(cb.execute('b', ok)).resolves.toBe('ok')
+    })
+
+    it('reset(key) clears a single circuit; reset() clears all', async () => {
+      for (let i = 0; i < 3; i++) await expect(cb.execute('a', boom)).rejects.toThrow('boom')
+      cb.reset('a')
+      expect(cb.stateOf('a')).toBe('closed')
+      for (let i = 0; i < 3; i++) await expect(cb.execute('a', boom)).rejects.toThrow('boom')
+      cb.reset()
+      expect(cb.stateOf('a')).toBe('closed')
+    })
+  })
+})

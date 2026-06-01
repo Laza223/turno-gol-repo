@@ -6,6 +6,7 @@ import { and, eq, inArray, sql as dsql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
   createCourt,
   updateCourt,
@@ -30,6 +31,9 @@ async function requireStaffTenant() {
 export async function createCourtAction(formData: FormData): Promise<CourtActionResult> {
   const tenant = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const pricingRaw = formData.get('pricing')
   let pricingParsed: unknown
@@ -84,6 +88,9 @@ export async function updateCourtAction(
   const tenant = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const pricingRaw = formData.get('pricing')
   let pricingParsed: unknown
   try {
@@ -133,6 +140,9 @@ export async function toggleCourtStatusAction(
   const tenant = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const result = await withTenantContext(tenant.id, async (tx) => {
     const court = await toggleStatus(courtId, status, tx)
     if (!court) return { success: false as const, error: 'Cancha no encontrada' }
@@ -152,6 +162,9 @@ export async function getCourtDeactivationImpactAction(
 ): Promise<CourtDeactivationImpactResult> {
   const tenant = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   // ART = UTC-3. Fecha de hoy en Argentina (YYYY-MM-DD); se compara contra la
   // columna `date` con cast explícito ::date — misma convención que

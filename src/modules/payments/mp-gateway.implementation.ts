@@ -33,6 +33,14 @@ function mapStatus(raw: string | undefined): MpPaymentStatus {
 
 const MP_ID_RE = /^\d{1,32}$/
 
+/**
+ * Explicit per-call timeout for getPaymentStatus (deposit-confirmation polling).
+ * The SDK client already defaults to 8s, but pinning it on the call keeps the
+ * bound from silently changing if the client default is ever edited — a slow MP
+ * must never stall the conversion path (doc5 NFR: p95 < 500ms).
+ */
+export const MP_GET_TIMEOUT_MS = 8000
+
 function pesosToCents(amount: number | undefined | null): number {
   if (typeof amount !== 'number' || !Number.isFinite(amount)) return 0
   return Math.round(amount * 100)
@@ -126,7 +134,10 @@ export class MercadoPagoGateway implements PaymentGateway {
     }
     try {
       const res = await this.withRefresh(() =>
-        new Payment(this.config).get({ id: mpPaymentId }),
+        new Payment(this.config).get({
+          id: mpPaymentId,
+          requestOptions: { timeout: MP_GET_TIMEOUT_MS },
+        }),
       )
       return {
         mpPaymentId: String(res.id ?? mpPaymentId),

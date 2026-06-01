@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import {
   listCourts,
   createCourt,
@@ -10,12 +11,18 @@ import { createCourtSchema } from '@/modules/courts/court.schema'
 
 export const dynamic = 'force-dynamic'
 
-export const GET = withTenant(async (_req, _user, tx) => {
+export const GET = withTenant(async (_req, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const rows = await listCourts(tx)
   return NextResponse.json(rows)
 })
 
 export const POST = withTenant(async (req, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   let body: unknown
   try {
     body = await req.json()

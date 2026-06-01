@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 
@@ -39,6 +40,9 @@ export async function updateHorariosAction(
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const raw = Object.fromEntries(
     DAYS.map((day) => [
@@ -81,6 +85,9 @@ export async function addClosedDateAction(formData: FormData): Promise<HorariosA
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const existing = (tenant.closedDates ?? []) as unknown as string[]
   if (!existing.includes(date)) {
     await withTenantContext(tenant.id, async (tx) => {
@@ -108,6 +115,9 @@ export async function removeClosedDateAction(formData: FormData): Promise<Horari
   const date = formData.get('date') as string
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const filtered = ((tenant.closedDates ?? []) as unknown as string[]).filter((d) => d !== date)
 

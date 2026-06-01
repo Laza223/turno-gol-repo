@@ -7,6 +7,7 @@ import { uuid, dateStr, moneyCents, boundedText } from '@/shared/validation/prim
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import {
@@ -58,6 +59,9 @@ export async function createCashFlowAction(
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
       const cashFlow = await createCashFlow(tenant.id, user.staffUserId!, parsed.data, tx)
@@ -86,6 +90,9 @@ export async function closeDayAction(
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {

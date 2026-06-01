@@ -7,6 +7,7 @@ import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validatio
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
   createAbonado,
   pauseAbonado,
@@ -58,6 +59,9 @@ export async function createAbonadoAction(
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
       const { abonado, slotsGenerated, conflictDates } = await createAbonado(
@@ -85,6 +89,9 @@ export async function pauseAbonadoAction(id: string): Promise<AbonadoActionResul
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
       const abonado = await pauseAbonado(tenant.id, parsedId.data, user.staffUserId!, tx)
@@ -106,6 +113,9 @@ export async function reactivateAbonadoAction(id: string): Promise<AbonadoAction
   if (!parsedId.success) return { success: false, error: 'ID inválido.' }
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
@@ -140,6 +150,9 @@ export async function cancelAbonadoAction(
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {

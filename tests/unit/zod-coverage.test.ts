@@ -40,6 +40,11 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/admin/push/vapid/route.ts',
   // Push test trigger (F9): POST, no body. tenant_id + staff_user_id from JWT.
   'src/app/api/admin/push/test/route.ts',
+  // CSP violation sink (security/hardening): POSTed browser telemetry, parsed
+  // defensively in src/shared/observability/csp-report.ts (8KB cap, tolerates
+  // both legacy + Reporting-API shapes, never used to mutate state). A strict
+  // zod schema would reject valid browser variants; the handler IS the guard.
+  'src/app/api/csp-report/route.ts',
 ])
 
 function usesZod(src: string): boolean {

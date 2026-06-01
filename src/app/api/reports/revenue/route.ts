@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { dateStr } from '@/shared/validation/primitives'
+import { enforce, rateLimit429 } from '@/shared/rate-limit'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getCashFlowsForExport } from '@/modules/reports/report.service'
@@ -30,6 +31,9 @@ export async function GET(req: Request): Promise<Response> {
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return new Response(null, { status: 401 })
+
+  const rl = await enforce('adminCrud', tenant.id)
+  if (!rl.ok) return rateLimit429(rl)
 
   const fromDate = new Date(`${from}T00:00:00.000Z`)
   const toDate = new Date(`${to}T23:59:59.999Z`)

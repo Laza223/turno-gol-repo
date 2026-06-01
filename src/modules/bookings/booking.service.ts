@@ -395,13 +395,28 @@ export async function completeBooking(
 }
 
 /**
+ * Advisory-lock key for the auto-complete cron. Hashed via `hashtext` into the
+ * advisory-lock space (same convention as refresh-mp-tokens.worker).
+ */
+export const AUTO_COMPLETE_LOCK_KEY = 'auto_complete_bookings'
+
+/**
  * Bulk auto-complete: confirms all bookings whose time_end + 30min has passed.
  * Used by the cron job (Flujo 4D, scenario B). Returns affected rows.
+ *
+ * Concurrency safety: takes a transaction-scoped advisory lock before the
+ * UPDATE so a manual run overlapping the every-30-min schedule can't
+ * double-process the same overdue set. The blocking `pg_advisory_xact_lock`
+ * is intentional — the
+ * job is short, so a second run simply waits and then no-ops on the
+ * already-completed rows. The lock auto-releases at tx end.
  */
 export async function autoCompleteOverdueBookings(
   tx: DbTx,
   graceMinutes = 30,
 ): Promise<BookingRow[]> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${AUTO_COMPLETE_LOCK_KEY}))`)
+
   const rows = await tx.execute(sql`
     UPDATE bookings
     SET status = 'completed', updated_at = NOW()

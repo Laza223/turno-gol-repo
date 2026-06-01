@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withTenant } from '@/shared/middleware/with-tenant'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
 import type { NextRequest } from 'next/server'
 import { dateStr } from '@/shared/validation/primitives'
@@ -11,6 +12,9 @@ function artDateOf(ts: Date): string {
 }
 
 export const GET = withTenant(async (req: NextRequest, user, tx) => {
+  const throttled = await guard('adminCrud', user.tenantId!)
+  if (throttled) return throttled
+
   const raw = new URL(req.url).searchParams.get('date')
   let date: string
   if (raw === null) {

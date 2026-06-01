@@ -13,6 +13,7 @@ import {
   updateTenant,
 } from '@/modules/tenants/tenant.service'
 import { createTenantSchema } from '@/modules/tenants/tenant.schema'
+import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 
 export type WizardActionResult = { success: true } | { success: false; error: string }
@@ -23,6 +24,9 @@ export async function createTenantAction(
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff') redirect('/login')
   if (!user.staffUserId) return { success: false, error: 'Staff ID no disponible' }
+
+  const limited = await adminRateLimited(user.staffUserId)
+  if (limited) return { success: false, error: limited }
 
   const raw = {
     name: formData.get('name'),
@@ -62,6 +66,9 @@ export async function advanceStepAction(nextStep: number): Promise<WizardActionR
   }
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
   await updateOnboardingStep(tenant.id, nextStep)
   revalidatePath('/onboarding')
   return { success: true }
@@ -76,6 +83,9 @@ export async function updateScheduleAction(
   }
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
   await updateTenant(tenant.id, { openingHours })
   await updateOnboardingStep(tenant.id, 3)
   revalidatePath('/onboarding')

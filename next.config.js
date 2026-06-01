@@ -8,6 +8,13 @@ const scriptSrc = process.env.NODE_ENV === 'production'
   ? "script-src 'self' 'unsafe-inline'"
   : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
 
+// CSP violation reports are POSTed to /api/csp-report. We emit both the legacy
+// `report-uri` (Firefox/Safari + older Chrome) and the modern `report-to`
+// (Chrome, paired with the Reporting-Endpoints header below) so coverage spans
+// browsers. When both are present Chrome honours report-to; same endpoint either
+// way. See src/shared/observability/csp-report.ts.
+const CSP_REPORT_PATH = '/api/csp-report'
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
@@ -20,8 +27,12 @@ const securityHeaders = [
       "connect-src 'self' *.supabase.co *.mercadopago.com",
       "frame-src *.mercadopago.com",
       "worker-src 'self'",
+      `report-uri ${CSP_REPORT_PATH}`,
+      'report-to csp-endpoint',
     ].join('; '),
   },
+  // Defines the `csp-endpoint` group referenced by `report-to` above.
+  { key: 'Reporting-Endpoints', value: `csp-endpoint="${CSP_REPORT_PATH}"` },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

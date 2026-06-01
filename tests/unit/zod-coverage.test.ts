@@ -34,6 +34,8 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/player/data-export/route.ts',
   // Queue-depth monitor (B10): GET, no input. Super-admin id from session.
   'src/app/api/admin/jobs/route.ts',
+  // Business metrics (Fase 5): GET, no input. tenant_id from session via withTenant.
+  'src/app/api/admin/metrics/route.ts',
   // ARCO Supresion (F8 Ley 25.326): no args; player id from session.
   'src/app/(player)/eliminar-cuenta/actions.ts',
   // VAPID public key (F9): GET, no body/params. Public key is intentionally public.

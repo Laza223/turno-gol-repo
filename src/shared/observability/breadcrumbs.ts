@@ -47,9 +47,33 @@ type WebhookCtx = {
 
 type AuthEvent =
   | 'player.anonymized'
+  | 'player.login'
+  | 'staff.login'
+  | 'staff.onboarding'
+  | 'auth.exchange_failed'
 
 type AuthCtx = {
   playerId?: string
+  staffUserId?: string
+  tenantCount?: number
+}
+
+type AvailabilityEvent = 'availability.public.query'
+
+type AvailabilityCtx = {
+  tenantId?: string
+  date?: string
+  courts?: number
+}
+
+type SearchEvent = 'search.public.query'
+
+type SearchCtx = {
+  q?: string
+  city?: string
+  province?: string
+  onlineOnly?: boolean
+  results?: number
 }
 
 type NotificationEvent =
@@ -72,5 +96,7 @@ export const track = {
   payment: (ev: PaymentEvent, ctx: PaymentCtx) => emit('payment', ev, ctx),
   webhook: (ev: WebhookEvent, ctx: WebhookCtx) => emit('webhook', ev, ctx),
   auth: (ev: AuthEvent, ctx: AuthCtx) => emit('auth', ev, ctx),
+  availability: (ev: AvailabilityEvent, ctx: AvailabilityCtx) => emit('availability', ev, ctx),
+  search: (ev: SearchEvent, ctx: SearchCtx) => emit('search', ev, ctx),
   notification: (ev: NotificationEvent, ctx: NotificationCtx) => emit('notification', ev, ctx),
 }

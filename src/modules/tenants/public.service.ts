@@ -1,6 +1,7 @@
 import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts } from '@/shared/db/schema'
+import { track, withSpan } from '@/shared/observability'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -204,10 +205,20 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
   }
 }
 
-export async function getPublicAvailability(
+export function getPublicAvailability(
   tenant: PublicTenant,
   dateStr: string, // YYYY-MM-DD
 ): Promise<AvailabilityResponse> {
+  return withSpan('availability.public', 'http.server.availability', () =>
+    getPublicAvailabilityImpl(tenant, dateStr),
+  )
+}
+
+async function getPublicAvailabilityImpl(
+  tenant: PublicTenant,
+  dateStr: string, // YYYY-MM-DD
+): Promise<AvailabilityResponse> {
+  track.availability('availability.public.query', { tenantId: tenant.id, date: dateStr })
   // Current time in ART. Argentina = UTC-3, no DST.
   const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
   const nowDateStr = artNow.toISOString().slice(0, 10)

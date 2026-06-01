@@ -39,7 +39,7 @@ import type {
   CreateOnlineBookingInput,
   TransitionResult,
 } from './booking.types'
-import { track } from '@/shared/observability'
+import { track, withSpan } from '@/shared/observability'
 
 const PG_EXCLUSION_VIOLATION = '23P01'
 
@@ -212,7 +212,20 @@ export async function createManualBooking(
 // (migration 009 allows this; P10 sets payment_method='mercadopago' + payment_id).
 // Without deposit: status='confirmed', deposit_status='not_required'.
 // Always upserts player_tenant_relationships and checks for active bans.
-export async function createOnlineBooking(
+export function createOnlineBooking(
+  tenantId: string,
+  input: CreateOnlineBookingInput,
+  tx: DbTx,
+): Promise<BookingRow> {
+  // Span wraps the whole create so it covers every caller (player API route,
+  // reserve server action, e2e route) and groups under `booking.create` in
+  // Sentry Performance alongside the existing booking breadcrumbs.
+  return withSpan('booking.create.online', 'booking.create', () =>
+    createOnlineBookingImpl(tenantId, input, tx),
+  )
+}
+
+async function createOnlineBookingImpl(
   tenantId: string,
   input: CreateOnlineBookingInput,
   tx: DbTx,

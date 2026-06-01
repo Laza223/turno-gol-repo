@@ -8,7 +8,7 @@ import { webhookPayloadSchema } from '@/modules/payments/payment.schema'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { verifyWebhookSecret } from '@/modules/payments/webhook-auth'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
-import { track } from '@/shared/observability'
+import { track, withSpan } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
 
 export const runtime = 'nodejs'
@@ -67,12 +67,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    if (MP_MOCK_ENABLED) {
-      await handleMpWebhookJob(job) // process inline → deterministic for E2E
-    } else {
-      const boss = await getBoss()
-      await boss.send(QUEUE_PROCESS_MP_WEBHOOK, job, MP_WEBHOOK_SEND_OPTIONS)
-    }
+    await withSpan('mp.webhook.process', 'webhook.mp', async () => {
+      if (MP_MOCK_ENABLED) {
+        await handleMpWebhookJob(job) // process inline → deterministic for E2E
+      } else {
+        const boss = await getBoss()
+        await boss.send(QUEUE_PROCESS_MP_WEBHOOK, job, MP_WEBHOOK_SEND_OPTIONS)
+      }
+    })
   } catch (err) {
     // Enqueue/processing failure → MP will retry. Return 5xx so MP doesn't mark delivered.
     logger.error('webhook processing failed', { module: 'mp-webhook', error: err instanceof Error ? err.message : String(err) })

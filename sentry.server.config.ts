@@ -2,6 +2,39 @@ import * as Sentry from '@sentry/nextjs'
 import { scrubObject, scrubQueryString } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 
+// ─────────────────────────────────────────────────────────────────────────
+// ALERTS (doc17 §Observabilidad) — configured in the Sentry UI, NOT in code.
+//
+// Sentry's SDK cannot declare alert rules; they live in the project dashboard
+// (Settings → Alerts → Create Alert). The data they need is already emitted by
+// this file: `tracesSampler` below produces the transactions for latency
+// percentiles + failure rate, and `Sentry.captureException` (here + dlq.ts)
+// produces the error events. Spans added via `withSpan` and the tags set in
+// src/shared/middleware/observability.ts (tenant_id, request_id, user_type)
+// let you scope/group any alert.
+//
+// Create these two Metric Alerts (dataset = Transactions, env = production):
+//
+//   1) Error rate > 5%
+//      Metric:    failure_rate()
+//      Trigger:   Critical when failure_rate() > 0.05 over a 5-minute window
+//      Notify:    on-call channel (Slack / email)
+//
+//   2) Latency P95 > 2s
+//      Metric:    p95(transaction.duration)
+//      Trigger:   Critical when p95 > 2000ms over a 5-minute window
+//      (Tip: add a separate alert filtered to `transaction:/api/bookings*` and
+//       `/api/webhooks*` — those carry the 0.3/0.5 sample rates below and are
+//       the revenue path, so they deserve a tighter threshold.)
+//
+// Related (separate from this file): pg-boss queue depth > 100 is exposed by
+// GET /api/admin/jobs; alert on it via an uptime/synthetic check or the
+// Sentry cron-monitor, not via transaction metrics.
+//
+// To codify these instead of clicking, provision them with the Sentry API /
+// Terraform provider — out of scope for v1 (kept as UI config per decision).
+// ─────────────────────────────────────────────────────────────────────────
+
 const dsn = process.env.SENTRY_DSN
 
 if (dsn && !isValidDsn(dsn)) {

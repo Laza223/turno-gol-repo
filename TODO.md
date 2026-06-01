@@ -227,7 +227,7 @@
 
 ## Fase 3 — Resiliencia (P1)
 
-- [ ] Implementar circuit breaker para MercadoPago gateway (3 fallos → open 60s → half-open)
+- [ ] Cablear circuit breaker al gateway de MercadoPago (Decidido: Opción A - Error inmediato "Pagos temporalmente no disponibles" cuando el breaker esté abierto. Diferido a post-launch)
 - [ ] Agregar timeout explícito en `gateway.getPaymentStatus()` (no heredar default del SDK)
 - [ ] Agregar advisory lock en `autoCompleteOverdueBookings` para prevenir ejecución paralela del cron
 - [ ] Implementar health ping periódico a MP, Supabase, Resend (cron cada 5min → alertar si falla)

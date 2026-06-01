@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import type { StaffUser } from '@/modules/auth/types'
 import type { DbTx } from '@/shared/db/client'
+import { forbidden } from '@/shared/api-error'
 
 // v1: el único rol staff es 'admin'. Zonas sensibles se protegen con PIN, no con rol.
 export type Role = 'admin'
@@ -21,10 +22,10 @@ export function withRole(
 ): RoleInnerHandler {
   return async (req, user, tx) => {
     if (user.role !== required) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'ROLE_REQUIRED', required },
-        { status: 403 },
-      )
+      return forbidden('No tenés el rol requerido para esta acción.', {
+        code: 'ROLE_REQUIRED',
+        details: { required },
+      })
     }
     return handler(req, user, tx)
   }

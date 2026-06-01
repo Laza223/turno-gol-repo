@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
+import { badRequest } from '@/shared/api-error'
 
 const uuidSchema = z.string().uuid()
 
@@ -26,12 +27,7 @@ export function parseRouteUuid(
   const raw = position === 'last' ? parts[parts.length - 1] : parts[parts.length - 2]
   const parsed = uuidSchema.safeParse(raw)
   if (!parsed.success) {
-    return {
-      response: NextResponse.json(
-        { error: { code: 'INVALID_ID', message: 'ID inválido.' } },
-        { status: 400 },
-      ),
-    }
+    return { response: badRequest('ID inválido.', { code: 'INVALID_ID' }) }
   }
   return { uuid: parsed.data }
 }

@@ -74,9 +74,23 @@ export async function enforce(name: PolicyName, key: string): Promise<RateLimitO
   }
 }
 
-export function rateLimit429(outcome: RateLimitOutcome): Response {
+/**
+ * 429 response in the standard doc15 envelope. Built inline (not via
+ * `@/shared/api-error`) to stay edge-safe: this is called from the edge
+ * middleware, which cannot import `node:async_hooks`. The caller may pass the
+ * trace `requestId`; the edge middleware also echoes it via the `x-request-id`
+ * response header.
+ */
+export function rateLimit429(outcome: RateLimitOutcome, requestId?: string): Response {
   const retryAfter = Math.max(1, Math.ceil((outcome.reset - Date.now()) / 1000))
-  return new Response(JSON.stringify({ error: 'RATE_LIMITED' }), {
+  const body = {
+    error: {
+      code: 'RATE_LIMITED',
+      message: 'Demasiados requests. Probá de nuevo en unos segundos.',
+    },
+    meta: { request_id: requestId ?? null },
+  }
+  return new Response(JSON.stringify(body), {
     status: 429,
     headers: {
       'Content-Type': 'application/json',

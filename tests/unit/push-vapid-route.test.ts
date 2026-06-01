@@ -46,7 +46,7 @@ describe('GET /api/admin/push/vapid', () => {
 
     const res = await GET()
     expect(res.status).toBe(500)
-    const json = await res.json() as { error: string }
-    expect(json.error).toBe('vapid_not_configured')
+    const json = (await res.json()) as { error: { code: string } }
+    expect(json.error.code).toBe('VAPID_NOT_CONFIGURED')
   })
 })

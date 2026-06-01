@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { enforce, rateLimit429 } from '@/shared/rate-limit'
 import { parseClientIp } from '@/shared/rate-limit'
+import { internal } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -20,7 +21,9 @@ export async function GET(): Promise<Response> {
 
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   if (!publicKey) {
-    return Response.json({ error: 'vapid_not_configured' }, { status: 500 })
+    return internal('Las notificaciones push no están configuradas.', {
+      code: 'VAPID_NOT_CONFIGURED',
+    })
   }
 
   return Response.json({ publicKey })

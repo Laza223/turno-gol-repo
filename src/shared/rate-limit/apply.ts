@@ -1,3 +1,4 @@
+import { captureMessage } from '@/lib/sentry'
 import { POLICIES, type PolicyName } from './policies'
 import { getLimiter } from './client'
 
@@ -7,6 +8,38 @@ export type RateLimitOutcome = {
   remaining: number
   reset: number
   unavailable: boolean
+}
+
+// Upstash-down alerting. A sustained outage makes EVERY request hit the catch
+// block, so we dedupe to at most one Sentry event per policy per cooldown to
+// avoid flooding. State is per-isolate (fine for serverless/edge); a real
+// outage still surfaces on every instance.
+const ALERT_COOLDOWN_MS = 60_000
+const lastAlertAt = new Map<PolicyName, number>()
+
+function reportLimiterUnavailable(name: PolicyName, err: unknown): void {
+  // Alerting must NEVER break the limiter — swallow anything Sentry throws.
+  try {
+    const now = Date.now()
+    const last = lastAlertAt.get(name) ?? 0
+    if (now - last < ALERT_COOLDOWN_MS) return
+    lastAlertAt.set(name, now)
+    captureMessage(`Rate limiter unavailable (Upstash) for policy "${name}"`, {
+      level: 'warning',
+      extra: {
+        policy: name,
+        failMode: POLICIES[name].failMode,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+  } catch {
+    /* noop */
+  }
+}
+
+/** Test-only: clears the alert-dedup state between cases. */
+export function __resetLimiterAlertsForTests(): void {
+  lastAlertAt.clear()
 }
 
 export async function enforce(name: PolicyName, key: string): Promise<RateLimitOutcome> {
@@ -28,8 +61,9 @@ export async function enforce(name: PolicyName, key: string): Promise<RateLimitO
       reset: r.reset,
       unavailable: false,
     }
-  } catch {
+  } catch (err) {
     const p = POLICIES[name]
+    reportLimiterUnavailable(name, err)
     return {
       ok: p.failMode === 'open',
       limit: p.limit,

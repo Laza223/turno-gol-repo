@@ -23,7 +23,7 @@ function redirectVerifyError(req: NextRequest, code: string): NextResponse {
   return NextResponse.redirect(url)
 }
 
-export function GET(req: NextRequest): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   return withSpan('auth.callback', 'auth.session.exchange', () => handleAuthCallback(req))
 }
 

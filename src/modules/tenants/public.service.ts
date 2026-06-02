@@ -205,7 +205,7 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
   }
 }
 
-export function getPublicAvailability(
+export async function getPublicAvailability(
   tenant: PublicTenant,
   dateStr: string, // YYYY-MM-DD
 ): Promise<AvailabilityResponse> {

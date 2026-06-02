@@ -30,10 +30,8 @@ export type CityCount = { city: string; province: string; count: number }
 
 const VISIBLE = ['active', 'trialing']
 
-export function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
-  return withSpan('search.public', 'db.query.search', () =>
-    searchPublicTenantsImpl(params),
-  )
+export async function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
+  return withSpan('search.public', 'db.query.search', () => searchPublicTenantsImpl(params))
 }
 
 async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResult> {
@@ -84,8 +82,11 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     allowOnlineBooking: (r.settings as TenantSettings).allow_online_booking ?? true,
   }))
   const total = countRows[0]?.count ?? 0
+  // Do NOT log the raw query text (params.q) — it is free-form user input and
+  // beforeSend does not scrub breadcrumbs (Ley 25.326). Log only whether a text
+  // query was present; city/province come from bounded filters, not free text.
   track.search('search.public.query', {
-    q: params.q,
+    hasQuery: Boolean(params.q?.trim()),
     city: params.city,
     province: params.province,
     onlineOnly: params.onlineOnly,

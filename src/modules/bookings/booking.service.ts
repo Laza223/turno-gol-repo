@@ -212,7 +212,7 @@ export async function createManualBooking(
 // (migration 009 allows this; P10 sets payment_method='mercadopago' + payment_id).
 // Without deposit: status='confirmed', deposit_status='not_required'.
 // Always upserts player_tenant_relationships and checks for active bans.
-export function createOnlineBooking(
+export async function createOnlineBooking(
   tenantId: string,
   input: CreateOnlineBookingInput,
   tx: DbTx,

@@ -69,7 +69,7 @@ type AvailabilityCtx = {
 type SearchEvent = 'search.public.query'
 
 type SearchCtx = {
-  q?: string
+  hasQuery?: boolean // never the raw query text — PII-safe (Ley 25.326)
   city?: string
   province?: string
   onlineOnly?: boolean

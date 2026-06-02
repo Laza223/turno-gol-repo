@@ -53,6 +53,13 @@ export function buildLocalBusiness(tenant: PublicTenant): JsonLdNode {
     openingHoursSpecification: buildOpeningHoursSpec(tenant.openingHours),
   }
   if (tenant.description) node.description = tenant.description
+  if (tenant.latitude != null && tenant.longitude != null) {
+    node.geo = {
+      '@type': 'GeoCoordinates',
+      latitude: tenant.latitude,
+      longitude: tenant.longitude,
+    }
+  }
   return node
 }
 

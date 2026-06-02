@@ -36,6 +36,9 @@ const FIXTURE_TENANT: PublicTenant = {
   depositPercentage: 30,
   bookingDurationMinutes: [60],
   bookingAdvanceDays: 6,
+  amenities: { techado: true, estacionamiento: true },
+  latitude: -34.5703,
+  longitude: -59.105,
 }
 
 describe('buildLocalBusiness', () => {

@@ -11,6 +11,7 @@ import {
   CreditCard,
   LineChart,
   Quote,
+  Search,
   Shield,
   Star,
   Users,
@@ -19,6 +20,18 @@ import {
 } from 'lucide-react'
 import SiteNav from '@/components/site/SiteNav'
 import SiteFooter from '@/components/site/SiteFooter'
+import HeroSearch from '@/components/site/HeroSearch'
+import FeaturedComplexCard from '@/components/site/FeaturedComplexCard'
+import OpenMatchCard from '@/components/site/OpenMatchCard'
+import Reveal from '@/components/site/Reveal'
+import {
+  listPublicCities,
+  searchPublicTenants,
+  type CityCount,
+  type PublicTenantCard,
+} from '@/modules/tenants/search.service'
+import { getOpenMatches } from '@/modules/open-matches/open-match.service'
+import type { OpenMatchCard as OpenMatch } from '@/modules/open-matches/open-match.types'
 
 export const metadata = buildMetadata({
   title: 'TurnoGol — Reservá tu cancha de fútbol',
@@ -26,6 +39,38 @@ export const metadata = buildMetadata({
   path: '/',
   titleAbsolute: true,
 })
+
+// ISR: la landing se regenera cada 5 min (destacados + partidos abiertos frescos
+// sin pegarle a la DB en cada visita). Mejor LCP/SEO que force-dynamic.
+export const revalidate = 300
+
+// Cargas resilientes: si la DB falla o está vacía, la sección no se rompe ni
+// tira abajo el build (prerender ISR). Devuelven vacío y la sección se oculta.
+async function loadCities(): Promise<CityCount[]> {
+  try {
+    return await listPublicCities()
+  } catch {
+    return []
+  }
+}
+
+async function loadFeatured(): Promise<PublicTenantCard[]> {
+  try {
+    const { results } = await searchPublicTenants({ sort: 'rating', limit: 6 })
+    return results
+  } catch {
+    return []
+  }
+}
+
+async function loadOpenMatches(): Promise<OpenMatch[]> {
+  try {
+    const { matches } = await getOpenMatches({ status: 'open', limit: 6 })
+    return matches
+  } catch {
+    return []
+  }
+}
 
 const HERO_BG = '/hero-bg.png'
 const FEATURE_BG =
@@ -101,12 +146,20 @@ const testimonials = [
   },
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [cities, featured, openMatches] = await Promise.all([
+    loadCities(),
+    loadFeatured(),
+    loadOpenMatches(),
+  ])
+
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
       <JsonLd data={[buildOrganization(), buildWebSite()]} />
       <SiteNav variant="overlay" />
-      <Hero />
+      <Hero cities={cities} />
+      {featured.length > 0 && <FeaturedComplexes complexes={featured} />}
+      {openMatches.length > 0 && <OpenMatchesShowcase matches={openMatches} />}
       <StatsBar />
       <Features />
       <ShowcaseStrip />
@@ -117,7 +170,7 @@ export default function HomePage() {
   )
 }
 
-function Hero() {
+function Hero({ cities }: { cities: CityCount[] }) {
   return (
     <section className="relative isolate overflow-hidden">
       {/* Background image */}
@@ -187,6 +240,87 @@ function Hero() {
               Soporte por email
             </li>
           </ul>
+        </div>
+
+        {/* Buscador embebido — camino del jugador (B2C), diferenciado del pitch B2B */}
+        <div className="mt-12 max-w-4xl">
+          <p className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-300">
+            <Search className="h-4 w-4 text-emerald-400" aria-hidden />
+            ¿Sos jugador? Encontrá y reservá tu cancha
+          </p>
+          <HeroSearch cities={cities} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[] }) {
+  return (
+    <section className="bg-slate-950 py-20 sm:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
+                Cerca tuyo
+              </p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                Complejos destacados
+              </h2>
+              <p className="mt-3 max-w-xl text-base text-slate-400">
+                Los mejor valorados de la plataforma. Mirá horarios y reservá online en segundos.
+              </p>
+            </div>
+            <Link
+              href="/explorar"
+              className="group inline-flex h-11 shrink-0 items-center gap-2 self-start rounded-lg border border-white/15 bg-white/5 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:self-auto"
+            >
+              Ver todos
+              <ArrowRight
+                className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
+                aria-hidden
+              />
+            </Link>
+          </div>
+        </Reveal>
+
+        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {complexes.map((t, i) => (
+            <Reveal key={t.id} delay={i * 60} className="h-full">
+              <FeaturedComplexCard tenant={t} />
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function OpenMatchesShowcase({ matches }: { matches: OpenMatch[] }) {
+  return (
+    <section className="border-y border-white/5 bg-slate-900/40 py-20 sm:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Reveal>
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
+              Comunidad · Falta uno
+            </p>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              Partidos abiertos
+            </h2>
+            <p className="mt-3 text-base text-slate-400">
+              ¿Te falta gente o querés sumarte a un partido ya armado? Encontrá dónde jugar hoy.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {matches.map((m, i) => (
+            <Reveal key={m.id} delay={i * 60} className="h-full">
+              <OpenMatchCard match={m} />
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>

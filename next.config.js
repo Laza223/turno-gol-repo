@@ -22,7 +22,7 @@ const securityHeaders = [
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' *.supabase.co images.unsplash.com data: blob:",
+      "img-src 'self' *.supabase.co images.unsplash.com *.tile.openstreetmap.org data: blob:",
       "font-src 'self'",
       "connect-src 'self' *.supabase.co *.mercadopago.com",
       "frame-src *.mercadopago.com",
@@ -43,6 +43,8 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: { optimizePackageImports: ['lucide-react', 'date-fns'] },
+  // react-leaflet v4 es ESM-only; Next necesita transpilarlo para el build.
+  transpilePackages: ['react-leaflet', '@react-leaflet/core'],
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [

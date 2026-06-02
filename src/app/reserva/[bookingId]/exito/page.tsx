@@ -5,6 +5,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
+import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
 
 type Props = { params: { bookingId: string } }
 
@@ -18,6 +19,11 @@ type BookingRow = {
   priceSnapshot: number
   courtName: string
   tenantName: string
+  tenantSlug: string
+  address: string
+  city: string
+  latitude: string | null
+  longitude: string | null
   timeStart: string
   timeEnd: string
   date: string
@@ -34,7 +40,12 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
              b.time_start::text AS "timeStart",
              b.time_end::text AS "timeEnd",
              c.name AS "courtName",
-             t.name AS "tenantName"
+             t.name AS "tenantName",
+             t.slug AS "tenantSlug",
+             t.address AS "address",
+             t.city AS "city",
+             t.latitude AS "latitude",
+             t.longitude AS "longitude"
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
@@ -104,9 +115,22 @@ export default async function ReservaExitoPage({ params }: Props) {
           <p>Resta abonar en el complejo: ${fmtArs(remainingAmount)}</p>
         </div>
       )}
+      <BookingSuccessExtras
+        tenantName={booking.tenantName}
+        courtName={booking.courtName}
+        slug={booking.tenantSlug}
+        date={booking.date}
+        timeStart={booking.timeStart}
+        timeEnd={booking.timeEnd}
+        address={booking.address}
+        city={booking.city}
+        latitude={booking.latitude == null ? null : Number(booking.latitude)}
+        longitude={booking.longitude == null ? null : Number(booking.longitude)}
+      />
+
       <Link
         href="/mis-reservas"
-        className="mt-8 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+        className="mt-6 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
       >
         Ver mis reservas
       </Link>

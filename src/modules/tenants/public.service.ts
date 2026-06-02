@@ -27,6 +27,20 @@ export type PublicTenant = {
   depositPercentage: number
   bookingDurationMinutes: number[]
   bookingAdvanceDays: number
+  // Interfaz pública estilo ATC: amenities + coordenadas (ya en la fila tenants).
+  amenities: Record<string, boolean>
+  latitude: number | null
+  longitude: number | null
+}
+
+// Tarjeta pública de cancha para el perfil del complejo.
+export type PublicCourtCard = {
+  id: string
+  name: string
+  surfaceType: string
+  capacity: number
+  photos: string[]
+  fromPriceCents: number | null
 }
 
 export type SlotStatus = 'free' | 'occupied' | 'past'
@@ -174,6 +188,9 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
       status: true,
       timezone: true,
       settings: true,
+      amenities: true,
+      latitude: true,
+      longitude: true,
       // NEVER: email, mpAccessToken, mpRefreshToken, mpUserId, mpPublicKey
     },
   })
@@ -202,7 +219,49 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
     depositPercentage: s.deposit_percentage ?? 30,
     bookingDurationMinutes: s.booking_duration_minutes ?? [60],
     bookingAdvanceDays: s.booking_advance_days ?? 6,
+    amenities: (row.amenities ?? {}) as Record<string, boolean>,
+    latitude: row.latitude == null ? null : Number(row.latitude),
+    longitude: row.longitude == null ? null : Number(row.longitude),
   }
+}
+
+/** Precio mínimo (centavos) entre todas las reglas/duraciones del pricing. */
+function minPriceFromPricing(pricing: CourtPricingData): number | null {
+  let min: number | null = null
+  for (const rule of pricing.rules ?? []) {
+    for (const value of Object.values(rule.prices ?? {})) {
+      if (typeof value === 'number' && (min === null || value < min)) min = value
+    }
+  }
+  return min
+}
+
+/**
+ * Tarjetas de canchas del complejo (perfil público). Lee courts dentro de
+ * withTenantContext (RLS-safe, igual que la grilla de disponibilidad).
+ */
+export async function getPublicCourtCards(tenant: PublicTenant): Promise<PublicCourtCard[]> {
+  const rows = await withTenantContext(tenant.id, async (tx) =>
+    tx
+      .select({
+        id: courts.id,
+        name: courts.name,
+        surfaceType: courts.surfaceType,
+        capacity: courts.capacity,
+        photos: courts.photos,
+        pricing: courts.pricing,
+      })
+      .from(courts)
+      .where(eq(courts.status, 'online')),
+  )
+  return rows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    surfaceType: c.surfaceType,
+    capacity: c.capacity,
+    photos: (c.photos ?? []) as string[],
+    fromPriceCents: minPriceFromPricing(c.pricing as CourtPricingData),
+  }))
 }
 
 export async function getPublicAvailability(

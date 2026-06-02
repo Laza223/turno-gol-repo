@@ -147,3 +147,14 @@ export const auditActorTypeEnum = pgEnum('audit_actor_type', [
   'player',
   'system',
 ])
+
+// ─── Open match ("Falta Uno") ───────────────────────────────────
+// 'canceled' (una L) por convención de schema. open → full cuando se
+// completan los cupos; canceled = cancelado por el creador; completed =
+// el partido ya se jugó.
+export const openMatchStatusEnum = pgEnum('open_match_status', [
+  'open',
+  'full',
+  'canceled',
+  'completed',
+])

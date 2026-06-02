@@ -1,10 +1,18 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { getPublicTenant, getPublicAvailability } from '@/modules/tenants/public.service'
+import {
+  getPublicTenant,
+  getPublicAvailability,
+  getPublicCourtCards,
+} from '@/modules/tenants/public.service'
+import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 import TenantHeader from './components/TenantHeader'
+import TenantGallery from './components/TenantGallery'
+import CourtCard from './components/CourtCard'
+import ReviewsSection from './components/ReviewsSection'
 import AvailabilityGrid from './components/AvailabilityGrid'
 import { Skeleton } from '@/components/ui/skeleton'
 import JsonLd from '@/components/seo/JsonLd'
@@ -50,7 +58,7 @@ export default async function PublicComplexPage(props: Props) {
   if (UNAVAILABLE_STATUSES.has(tenant.status)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-md text-center space-y-3">
+        <div className="max-w-md space-y-3 text-center">
           <h1 className="text-xl font-semibold text-foreground">{tenant.name}</h1>
           <p className="text-sm text-muted-foreground">
             Este complejo no está disponible temporalmente.
@@ -59,6 +67,18 @@ export default async function PublicComplexPage(props: Props) {
       </div>
     )
   }
+
+  // Datos complementarios (rating, canchas, reseñas). Resilientes: si fallan, la
+  // página igual renderiza con la grilla y el header.
+  const [summary, courtCards, reviewsPage] = await Promise.all([
+    getAverageRating(tenant.id).catch(() => ({ average: 0, count: 0 })),
+    getPublicCourtCards(tenant).catch(() => []),
+    getReviewsByTenant(tenant.id, 10, 0).catch(() => ({ reviews: [], total: 0 })),
+  ])
+
+  const galleryPhotos = Array.from(
+    new Set([tenant.coverUrl, ...courtCards.flatMap((c) => c.photos)].filter(Boolean)),
+  ) as string[]
 
   const todayStr = getArtToday()
   const maxStr = addDaysStr(todayStr, tenant.bookingAdvanceDays)
@@ -69,7 +89,7 @@ export default async function PublicComplexPage(props: Props) {
       : todayStr
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <JsonLd
         data={[
           buildLocalBusiness(tenant),
@@ -80,10 +100,34 @@ export default async function PublicComplexPage(props: Props) {
           ]),
         ]}
       />
-      <TenantHeader tenant={tenant} />
+
+      {galleryPhotos.length > 0 && <TenantGallery photos={galleryPhotos} name={tenant.name} />}
+
+      <TenantHeader tenant={tenant} avgRating={summary.average} reviewCount={summary.count} />
+
+      {courtCards.length > 0 && (
+        <section aria-label="Canchas" className="space-y-3">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Canchas <span className="text-sm font-normal text-slate-400">({courtCards.length})</span>
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {courtCards.map((court) => (
+              <CourtCard key={court.id} court={court} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
         <GridSection tenant={tenant} initialDate={initialDate} />
       </Suspense>
+
+      <ReviewsSection
+        tenantId={tenant.id}
+        initial={reviewsPage.reviews}
+        total={reviewsPage.total}
+        average={summary.average}
+      />
     </div>
   )
 }

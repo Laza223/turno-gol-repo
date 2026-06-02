@@ -25,6 +25,10 @@
 > Todo lo que ATC Sports tiene en su portal público (B2C) y que TurnoGol
 > necesita implementar o mejorar para competir al mismo nivel.
 > Estado: ✅ Existe | 🟡 Parcial/Básico | ❌ No existe
+>
+> **Nota de diseño (V1):** La interfaz pública se construye **solo en light mode**
+> (coherente con `design-system/MASTER.md §11`). El **dark mode queda diferido a una
+> versión próxima** — hay que implementarlo también. Ver "Dark Mode (diferido)" más abajo.
 
 ### 1. Landing Page (`/`)
 
@@ -181,6 +185,18 @@
 - [ ] ❌ Twitter Card meta tags
 - [ ] ❌ ISR (Incremental Static Regeneration) en rutas públicas en vez de `force-dynamic`
 - [ ] ❌ Usar `next/image` en todas las imágenes públicas (actualmente usa `<img>`)
+
+### 7b. Dark Mode (diferido a V próxima) 🌙
+
+> La interfaz pública V1 se construye en light mode. El dark mode se difiere
+> pero **hay que hacerlo**. Los componentes nuevos se escriben con tokens semánticos
+> para facilitar la migración.
+
+- [ ] ❌ Soporte de dark mode en toda la interfaz pública (landing, explorar, perfil, reserva, área jugador)
+  - [ ] Definir tokens de color dark en `design-system/MASTER.md` (variantes desaturadas, no inversión directa)
+  - [ ] Verificar contraste AA independiente en dark (texto primario ≥4.5:1, secundario ≥3:1)
+  - [ ] Toggle de tema (light / dark / system) con persistencia
+  - [ ] Auditar todos los componentes públicos nuevos y agregar variantes `dark:`
 
 ### 8. Modelo de datos — Campos faltantes para soportar estas features
 

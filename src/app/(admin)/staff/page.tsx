@@ -1,25 +1,14 @@
 import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
-import { UserPlus, Mail } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { PinGate } from '@/components/pin-gate'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { inviteStaffAction } from './actions'
+import { InviteStaffButton } from './InviteStaffButton'
 import { StaffActions } from './StaffActions'
-
-type FormAction = (formData: FormData) => Promise<void>
+import { inviteStaffAction } from './actions'
 
 interface StaffMember {
   memberId: string
@@ -72,48 +61,7 @@ export default async function StaffPage() {
             </p>
           </div>
 
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="bg-emerald-600 hover:bg-emerald-500">
-                <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
-                Agregar admin
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Invitar nuevo admin</DialogTitle>
-              </DialogHeader>
-              <form action={inviteStaffAction as unknown as FormAction} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="firstName">Nombre</Label>
-                    <Input id="firstName" name="firstName" required className="h-10" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lastName">Apellido</Label>
-                    <Input id="lastName" name="lastName" required className="h-10" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    className="h-10"
-                  />
-                  <p className="text-xs text-slate-500">
-                    Recibirán un email para activar su cuenta.
-                  </p>
-                </div>
-                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500">
-                  Enviar invitación
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <InviteStaffButton inviteAction={inviteStaffAction} />
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">

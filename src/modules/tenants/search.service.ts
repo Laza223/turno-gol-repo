@@ -1,6 +1,7 @@
 import { and, eq, ilike, inArray, sql } from 'drizzle-orm'
 import { getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
+import { track, withSpan } from '@/shared/observability'
 import type { TenantSettings } from './tenant.types'
 
 export type PublicTenantCard = {
@@ -30,6 +31,10 @@ export type CityCount = { city: string; province: string; count: number }
 const VISIBLE = ['active', 'trialing']
 
 export async function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
+  return withSpan('search.public', 'db.query.search', () => searchPublicTenantsImpl(params))
+}
+
+async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResult> {
   const db = getDb()
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 50)
   const offset = Math.max(params.offset ?? 0, 0)
@@ -76,7 +81,18 @@ export async function searchPublicTenants(params: SearchParams): Promise<SearchR
     coverUrl: r.coverUrl,
     allowOnlineBooking: (r.settings as TenantSettings).allow_online_booking ?? true,
   }))
-  return { results, total: countRows[0]?.count ?? 0 }
+  const total = countRows[0]?.count ?? 0
+  // Do NOT log the raw query text (params.q) — it is free-form user input and
+  // beforeSend does not scrub breadcrumbs (Ley 25.326). Log only whether a text
+  // query was present; city/province come from bounded filters, not free text.
+  track.search('search.public.query', {
+    hasQuery: Boolean(params.q?.trim()),
+    city: params.city,
+    province: params.province,
+    onlineOnly: params.onlineOnly,
+    results: total,
+  })
+  return { results, total }
 }
 
 export async function listPublicCities(): Promise<CityCount[]> {

@@ -10,6 +10,7 @@ import {
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { logger } from '@/shared/lib/logger'
+import { track, withSpan } from '@/shared/observability'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,10 @@ function redirectVerifyError(req: NextRequest, code: string): NextResponse {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  return withSpan('auth.callback', 'auth.session.exchange', () => handleAuthCallback(req))
+}
+
+async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   const parsedCode = codeSchema.safeParse(new URL(req.url).searchParams.get('code'))
   if (!parsedCode.success) return redirectVerifyError(req, 'invalid')
   const code = parsedCode.data
@@ -31,6 +36,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
   if (error || !data?.user) {
     logger.error('Supabase auth exchange error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
+    track.auth('auth.exchange_failed', {})
     return redirectVerifyError(req, 'exchange_failed')
   }
 
@@ -63,6 +69,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       await supabase.auth.refreshSession()
     }
 
+    track.auth('player.login', { playerId: player.id })
     const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
     return NextResponse.redirect(new URL(next, req.url))
   }
@@ -89,6 +96,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       app_metadata: { ...meta, staff_user_id: ourStaff.id }
     })
     await supabase.auth.refreshSession()
+    track.auth('staff.onboarding', { staffUserId: ourStaff.id, tenantCount: 0 })
     return NextResponse.redirect(new URL('/onboarding', req.url))
   }
 
@@ -96,9 +104,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     await setStaffTenantClaim(user.id, tenants[0].tenantId, ourStaff.id)
     // Force refresh so the new app_metadata.tenant_id appears in the next JWT.
     await supabase.auth.refreshSession()
+    track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: 1 })
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
   // N tenants → user picks at /select-tenant (out of scope here).
+  track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: tenants.length })
   return NextResponse.redirect(new URL('/select-tenant', req.url))
 }

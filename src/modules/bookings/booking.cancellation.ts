@@ -6,6 +6,7 @@ import { createRefund } from '@/modules/payments/payment.service'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { markNoShow } from './booking.service'
+import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import {
   BookingNotInConfirmedError,
@@ -37,6 +38,7 @@ function artDateAt(dateStr: string, hhmm: string): Date {
 type LockedBooking = {
   id: string
   tenant_id: string
+  court_id: string
   player_id: string | null
   status: string
   deposit_status: string
@@ -51,6 +53,7 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
     SELECT
       id,
       tenant_id,
+      court_id,
       player_id,
       status,
       deposit_status,
@@ -141,6 +144,8 @@ export async function cancelByPlayer(
     metadata: { reason: reason ?? null, inPolicy, depositStatus: newDepositStatus },
   })
 
+  await invalidateCourtDateSlots(b.court_id, b.date)
+
   return rowToBookingRow(updated[0]!)
 }
 
@@ -192,6 +197,8 @@ export async function cancelByAdmin(
     resourceId: bookingId,
     metadata: { reason, shouldRefund, depositStatus: newDepositStatus },
   })
+
+  await invalidateCourtDateSlots(b.court_id, b.date)
 
   return rowToBookingRow(updated[0]!)
 }

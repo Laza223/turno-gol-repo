@@ -58,3 +58,39 @@ describe('track.webhook', () => {
     })
   })
 })
+
+describe('track.availability', () => {
+  it('emits breadcrumb with category=availability', () => {
+    track.availability('availability.public.query', { tenantId: 't-1', date: '2026-06-01' })
+    expect(addBreadcrumb).toHaveBeenCalledWith({
+      category: 'availability',
+      message: 'availability.public.query',
+      data: { tenantId: 't-1', date: '2026-06-01' },
+      level: 'info',
+    })
+  })
+})
+
+describe('track.search', () => {
+  it('emits breadcrumb with category=search and no raw query text (PII-safe)', () => {
+    track.search('search.public.query', { hasQuery: true, city: 'La Plata', onlineOnly: true, results: 7 })
+    expect(addBreadcrumb).toHaveBeenCalledWith({
+      category: 'search',
+      message: 'search.public.query',
+      data: { hasQuery: true, city: 'La Plata', onlineOnly: true, results: 7 },
+      level: 'info',
+    })
+  })
+})
+
+describe('track.auth', () => {
+  it('emits a login breadcrumb with category=auth', () => {
+    track.auth('staff.login', { staffUserId: 's-1', tenantCount: 1 })
+    expect(addBreadcrumb).toHaveBeenCalledWith({
+      category: 'auth',
+      message: 'staff.login',
+      data: { staffUserId: 's-1', tenantCount: 1 },
+      level: 'info',
+    })
+  })
+})

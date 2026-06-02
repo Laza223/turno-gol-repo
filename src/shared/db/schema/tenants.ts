@@ -79,6 +79,17 @@ export const tenants = pgTable(
     // precios de canchas 'online' del complejo). NULL = sin canchas online.
     fromPriceCents: integer('from_price_cents'),
 
+    // Facets denormalizados de las canchas 'online' para filtros públicos sin
+    // tocar courts (RLS-aislada). Mantenidos por courts_recalc_from_price.
+    courtSurfaces: text('court_surfaces')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    courtFormats: integer('court_formats')
+      .array()
+      .notNull()
+      .default(sql`'{}'::integer[]`),
+
     mpAccessToken: text('mp_access_token'),
     mpRefreshToken: text('mp_refresh_token'),
     mpUserId: text('mp_user_id'),

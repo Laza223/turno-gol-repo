@@ -19,14 +19,21 @@ const AMENITIES = [
   'iluminacion',
 ] as const
 
-// CSV → lista validada contra un set permitido (descarta valores desconocidos).
-const csv = (raw: string | null): string[] | undefined =>
-  raw
-    ? raw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : undefined
+// CSV → lista de valores, descartando los que no estén en el set permitido
+// (una chip obsoleta/desconocida no debe romper toda la búsqueda con 400).
+// allowed: como string para comparar (los formatos numéricos se comparan por texto).
+const csvAllowed = (
+  raw: string | null,
+  allowed: readonly (string | number)[],
+): string[] | undefined => {
+  if (!raw) return undefined
+  const allowedSet = new Set(allowed.map(String))
+  const vals = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((v) => v && allowedSet.has(v))
+  return vals.length ? vals : undefined
+}
 
 const querySchema = z.object({
   q: boundedText(128).optional(),
@@ -52,9 +59,9 @@ export async function GET(req: NextRequest) {
     city: sp.get('city') ?? undefined,
     province: sp.get('province') ?? undefined,
     online: sp.get('online') ?? undefined,
-    surfaces: csv(sp.get('surfaces')),
-    formats: csv(sp.get('formats')),
-    amenities: csv(sp.get('amenities')),
+    surfaces: csvAllowed(sp.get('surfaces'), SURFACES),
+    formats: csvAllowed(sp.get('formats'), FORMATS),
+    amenities: csvAllowed(sp.get('amenities'), AMENITIES),
     minPrice: sp.get('minPrice') ?? undefined,
     maxPrice: sp.get('maxPrice') ?? undefined,
     sort: sp.get('sort') ?? undefined,

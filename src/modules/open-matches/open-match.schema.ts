@@ -50,9 +50,18 @@ const openMatchItemResponseSchema = z
   })
   .strict()
 
-const openMatchCardResponseSchema = openMatchItemResponseSchema
-  .extend({
+// Card pública: sin creatorPlayerId/bookingId (UUIDs internos — Ley 25.326).
+const openMatchCardResponseSchema = z
+  .object({
+    id: uuid,
+    tenantId: uuid,
+    slotsTotal: z.number().int(),
+    slotsFilled: z.number().int(),
     slotsRemaining: z.number().int(),
+    restrictions: z.record(z.unknown()),
+    status: openMatchStatus,
+    createdAt: z.string(),
+    expiresAt: z.string().nullable(),
     tenant: z
       .object({
         slug: z.string(),

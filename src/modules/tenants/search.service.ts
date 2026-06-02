@@ -63,29 +63,28 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
   if (params.city) conds.push(eq(tenants.city, params.city))
   if (params.province) conds.push(eq(tenants.province, params.province))
   if (params.onlineOnly) {
-    conds.push(sql`(${tenants.settings} ->> 'allow_online_booking') = 'true'`)
+    // Clave ausente = habilitado (coincide con el default del card mapping).
+    conds.push(
+      sql`COALESCE((${tenants.settings} ->> 'allow_online_booking')::boolean, true) = true`,
+    )
   }
 
-  // Filtro por superficie: el complejo tiene ≥1 cancha online con esa superficie.
+  // Filtro por superficie/formato vía facets denormalizados en tenants (overlap &&).
+  // NO se consulta courts (RLS-aislada, sin policy pública → daría 0 en producción).
   if (params.surfaces?.length) {
     const list = sql.join(
       params.surfaces.map((s) => sql`${s}`),
       sql`, `,
     )
-    conds.push(
-      sql`EXISTS (SELECT 1 FROM courts c WHERE c.tenant_id = ${tenants.id} AND c.status = 'online' AND c.surface_type::text IN (${list}))`,
-    )
+    conds.push(sql`${tenants.courtSurfaces} && ARRAY[${list}]::text[]`)
   }
 
-  // Filtro por formato (capacity = jugadores por equipo).
   if (params.formats?.length) {
     const list = sql.join(
       params.formats.map((f) => sql`${f}`),
       sql`, `,
     )
-    conds.push(
-      sql`EXISTS (SELECT 1 FROM courts c WHERE c.tenant_id = ${tenants.id} AND c.status = 'online' AND c.capacity IN (${list}))`,
-    )
+    conds.push(sql`${tenants.courtFormats} && ARRAY[${list}]::integer[]`)
   }
 
   // Filtro por amenities: todas las solicitadas deben ser true.

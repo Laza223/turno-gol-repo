@@ -77,22 +77,31 @@ export async function createOpenMatch(
     throw new OpenMatchAlreadyExistsError()
   }
 
-  const inserted = await tx
-    .insert(openMatches)
-    .values({
-      bookingId,
-      creatorPlayerId: playerId,
-      tenantId: booking.tenantId,
-      slotsTotal,
-      restrictions: (restrictions ?? {}) as Record<string, unknown>,
-      // expires_at = inicio del partido (no se puede sumar gente después).
-      expiresAt: sql`(
-        SELECT (b.date + b.time_start) AT TIME ZONE t.timezone
-        FROM bookings b JOIN tenants t ON t.id = b.tenant_id
-        WHERE b.id = ${bookingId}
-      )` as unknown as Date,
-    })
-    .returning()
+  let inserted: (typeof openMatches.$inferSelect)[]
+  try {
+    inserted = await tx
+      .insert(openMatches)
+      .values({
+        bookingId,
+        creatorPlayerId: playerId,
+        tenantId: booking.tenantId,
+        slotsTotal,
+        restrictions: (restrictions ?? {}) as Record<string, unknown>,
+        // expires_at = inicio del partido (no se puede sumar gente después).
+        expiresAt: sql`(
+          SELECT (b.date + b.time_start) AT TIME ZONE t.timezone
+          FROM bookings b JOIN tenants t ON t.id = b.tenant_id
+          WHERE b.id = ${bookingId}
+        )` as unknown as Date,
+      })
+      .returning()
+  } catch (e) {
+    // Carrera con uq_open_match_active_booking: el chequeo previo no es atómico.
+    if ((e as { code?: string }).code === '23505') {
+      throw new OpenMatchAlreadyExistsError()
+    }
+    throw e
+  }
   return rowToOpenMatchRow(inserted[0]!)
 }
 
@@ -204,10 +213,9 @@ async function getOpenMatchesImpl(
 
   const [rows, countRows] = await Promise.all([
     db
+      // Proyección pública: sin creatorPlayerId/bookingId (UUIDs internos — Ley 25.326).
       .select({
         id: openMatches.id,
-        bookingId: openMatches.bookingId,
-        creatorPlayerId: openMatches.creatorPlayerId,
         tenantId: openMatches.tenantId,
         slotsTotal: openMatches.slotsTotal,
         slotsFilled: openMatches.slotsFilled,
@@ -236,8 +244,6 @@ async function getOpenMatchesImpl(
 
   const matches = rows.map((r) => ({
     id: r.id,
-    bookingId: r.bookingId,
-    creatorPlayerId: r.creatorPlayerId,
     tenantId: r.tenantId,
     slotsTotal: r.slotsTotal,
     slotsFilled: r.slotsFilled,

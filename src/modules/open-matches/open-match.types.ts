@@ -31,10 +31,19 @@ export type OpenMatchTenantInfo = {
 }
 
 // Tarjeta pública de "Falta Uno". expiresAt = horario de inicio del partido.
-// El detalle de cancha/booking requiere una consulta autenticada aparte (bookings
-// es tenant-isolated por RLS y no se expone públicamente).
-export type OpenMatchCard = OpenMatchRow & {
+// NO expone creatorPlayerId/bookingId (UUIDs internos — Ley 25.326); el detalle
+// de cancha/booking requiere una consulta autenticada aparte (bookings es
+// tenant-isolated por RLS y no se expone públicamente).
+export type OpenMatchCard = {
+  id: string
+  tenantId: string
+  slotsTotal: number
+  slotsFilled: number
   slotsRemaining: number
+  restrictions: OpenMatchRestrictions
+  status: OpenMatchStatus
+  createdAt: Date
+  expiresAt: Date | null
   tenant: OpenMatchTenantInfo
 }
 

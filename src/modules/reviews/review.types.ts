@@ -14,7 +14,15 @@ export type RatingSummary = {
   count: number
 }
 
+// Proyección pública: NO expone UUIDs internos (playerId/bookingId) — Ley 25.326.
+export type PublicReviewItem = {
+  id: string
+  rating: number
+  comment: string | null
+  createdAt: Date
+}
+
 export type ReviewsPage = {
-  reviews: ReviewRow[]
+  reviews: PublicReviewItem[]
   total: number
 }

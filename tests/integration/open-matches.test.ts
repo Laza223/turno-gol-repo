@@ -457,3 +457,100 @@ describe('open-matches RLS', () => {
     ).rejects.toThrow()
   })
 })
+
+// Regresiones de la revisión adversarial (migración 020).
+describe('open-matches review fixes', () => {
+  it('#4 creates concurrentes para la misma reserva: uno gana, el otro AlreadyExists', async () => {
+    const tenant = await createTestTenant()
+    const court = await insertCourt(tenant.id)
+    const creator = await createTestPlayer()
+    const bookingId = await confirmedBooking(tenant.id, court, creator.id)
+
+    const results = await Promise.allSettled([
+      withPlayerContext(creator.id, (tx) => createOpenMatch(creator.id, bookingId, 2, null, tx)),
+      withPlayerContext(creator.id, (tx) => createOpenMatch(creator.id, bookingId, 2, null, tx)),
+    ])
+    const ok = results.filter((r) => r.status === 'fulfilled')
+    const rej = results.filter((r) => r.status === 'rejected')
+    expect(ok).toHaveLength(1)
+    expect(rej).toHaveLength(1)
+    expect((rej[0] as PromiseRejectedResult).reason).toBeInstanceOf(OpenMatchAlreadyExistsError)
+  })
+
+  it('#2 el creador NO puede repuntar booking_id/tenant_id (trigger inmutable)', async () => {
+    const tenant = await createTestTenant()
+    const court = await insertCourt(tenant.id)
+    const creator = await createTestPlayer()
+    const bookingId = await confirmedBooking(tenant.id, court, creator.id)
+    const match = await withPlayerContext(creator.id, (tx) =>
+      createOpenMatch(creator.id, bookingId, 2, null, tx),
+    )
+    // Otra reserva del mismo creador en otro complejo.
+    const other = await createTestTenant()
+    const courtO = await insertCourt(other.id)
+    const bookingO = await confirmedBooking(other.id, courtO, creator.id)
+
+    await expect(
+      withContextRollback({ role: 'authenticated', playerId: creator.id }, (tx) =>
+        tx`UPDATE open_matches SET booking_id = ${bookingO}, tenant_id = ${other.id} WHERE id = ${match.id}`,
+      ),
+    ).rejects.toThrow()
+  })
+
+  it('#6 el creador no puede anotarse ni por inserción directa (backstop DB)', async () => {
+    const tenant = await createTestTenant()
+    const court = await insertCourt(tenant.id)
+    const creator = await createTestPlayer()
+    const bookingId = await confirmedBooking(tenant.id, court, creator.id)
+    const match = await withPlayerContext(creator.id, (tx) =>
+      createOpenMatch(creator.id, bookingId, 3, null, tx),
+    )
+
+    await expect(
+      withContextRollback({ role: 'authenticated', playerId: creator.id }, (tx) =>
+        tx`INSERT INTO open_match_players (open_match_id, player_id) VALUES (${match.id}, ${creator.id})`,
+      ),
+    ).rejects.toThrow()
+  })
+
+  it('#7 bajarse de un partido ya expirado NO lo reabre', async () => {
+    const tenant = await createTestTenant()
+    const court = await insertCourt(tenant.id)
+    const creator = await createTestPlayer()
+    const p1 = await createTestPlayer()
+    const bookingId = await confirmedBooking(tenant.id, court, creator.id)
+    const match = await withPlayerContext(creator.id, (tx) =>
+      createOpenMatch(creator.id, bookingId, 1, null, tx),
+    )
+    await withPlayerContext(p1.id, (tx) => joinMatch(p1.id, match.id, tx)) // → full
+
+    const sql = getSql()
+    // Simula que el partido expiró luego de llenarse.
+    await sql`UPDATE open_matches SET expires_at = now() - interval '1 hour' WHERE id = ${match.id}`
+    await withPlayerContext(p1.id, (tx) =>
+      tx.execute(
+        drizzleSql`DELETE FROM open_match_players WHERE open_match_id = ${match.id} AND player_id = ${p1.id}`,
+      ),
+    )
+
+    const row = await sql<{ status: string; slots_filled: number }[]>`
+      SELECT status, slots_filled FROM open_matches WHERE id = ${match.id}
+    `
+    expect(row[0]!.status).toBe('full') // NO reabrió pese a liberar cupo
+    expect(row[0]!.slots_filled).toBe(0)
+  })
+
+  it('#3 la card pública NO expone creatorPlayerId/bookingId', async () => {
+    const tenant = await createTestTenant()
+    const court = await insertCourt(tenant.id)
+    const creator = await createTestPlayer()
+    const bookingId = await confirmedBooking(tenant.id, court, creator.id)
+    await withPlayerContext(creator.id, (tx) => createOpenMatch(creator.id, bookingId, 2, null, tx))
+
+    const { matches } = await getOpenMatches({ tenantId: tenant.id })
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+    const card = matches[0]! as Record<string, unknown>
+    expect(card.creatorPlayerId).toBeUndefined()
+    expect(card.bookingId).toBeUndefined()
+  })
+})

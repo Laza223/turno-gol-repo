@@ -7,7 +7,11 @@ import {
   ReviewBookingNotCompletedError,
   ReviewBookingNotFoundError,
 } from './review.errors'
-import type { RatingSummary, ReviewRow, ReviewsPage } from './review.types'
+import type {
+  RatingSummary,
+  ReviewRow,
+  ReviewsPage,
+} from './review.types'
 
 function rowToReviewRow(r: typeof reviews.$inferSelect): ReviewRow {
   return {
@@ -123,7 +127,13 @@ async function getReviewsByTenantImpl(
   const off = Math.max(offset, 0)
   const [rows, countRows] = await Promise.all([
     db
-      .select()
+      // Proyección pública: sin playerId/bookingId (UUIDs internos — Ley 25.326).
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+      })
       .from(reviews)
       .where(eq(reviews.tenantId, tenantId))
       .orderBy(desc(reviews.createdAt))
@@ -132,7 +142,15 @@ async function getReviewsByTenantImpl(
     db.select({ c: count() }).from(reviews).where(eq(reviews.tenantId, tenantId)),
   ])
   const total = countRows[0]?.c ?? 0
-  return { reviews: rows.map(rowToReviewRow), total }
+  return {
+    reviews: rows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      comment: r.comment ?? null,
+      createdAt: r.createdAt,
+    })),
+    total,
+  }
 }
 
 export async function getAverageRating(tenantId: string): Promise<RatingSummary> {

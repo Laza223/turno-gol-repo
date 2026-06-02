@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { closeSql, getSql, withPlayerContext } from '@/shared/db/client'
+import { closeSql, getSql, withContext, withPlayerContext } from '@/shared/db/client'
 import { searchPublicTenants } from '@/modules/tenants/search.service'
 import { createReview } from '@/modules/reviews/review.service'
 import {
@@ -110,6 +110,39 @@ describe('search upgrade: filtros', () => {
     const ids = results.map((r) => r.id)
     expect(ids).toContain(full.id)
     expect(ids).not.toContain(partial.id)
+  })
+
+  it('#1 los filtros de superficie/formato NO dependen de RLS de courts (regresión)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await insertCourt(tenant.id, { surface: 'indoor', capacity: 11 }) // trigger denormaliza facets
+
+    // Facets en tenants (tabla global, sin RLS) → legibles sin tenant context.
+    const byFacet = await withContext({ role: 'authenticated' }, (tx) =>
+      tx`SELECT id FROM tenants WHERE id = ${tenant.id} AND court_surfaces && ARRAY['indoor']::text[] AND court_formats && ARRAY[11]::integer[]` as unknown as Promise<
+        unknown[]
+      >,
+    )
+    expect((byFacet as unknown as unknown[]).length).toBe(1)
+
+    // En cambio courts NO es legible sin tenant context (por eso el viejo EXISTS daba 0 en prod).
+    const courtsVisible = await withContext({ role: 'authenticated' }, (tx) =>
+      tx`SELECT 1 FROM courts WHERE tenant_id = ${tenant.id}` as unknown as Promise<unknown[]>,
+    )
+    expect((courtsVisible as unknown as unknown[]).length).toBe(0)
+  })
+
+  it('#5 onlineOnly: clave ausente = habilitado (coherente con el card)', async () => {
+    const sql = getSql()
+    await cleanupAll(sql)
+    const t = await createTestTenant(sql)
+    await insertCourt(t.id)
+    await sql`UPDATE tenants SET settings = '{}'::jsonb WHERE id = ${t.id}`
+
+    const { results } = await searchPublicTenants({ onlineOnly: true })
+    const card = results.find((r) => r.id === t.id)
+    expect(card).toBeTruthy() // incluido pese a la clave ausente
+    expect(card!.allowOnlineBooking).toBe(true) // el card coincide con el filtro
   })
 
   it('filtra por rango de precio sobre from_price_cents', async () => {

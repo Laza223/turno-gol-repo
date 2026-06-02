@@ -1,7 +1,5 @@
--- Backport from src/shared/db/migrations/009_relax_payment_consistency.sql
--- (B11 unification — supabase tree was missing this migration).
--- Relax chk_booking_payment_consistency to allow pending_payment bookings
--- before the MP preference is created (P10 sets payment_method='mercadopago'
+-- Migration 009: Relax chk_booking_payment_consistency to allow pending_payment
+-- bookings before the MP preference is created (P10 sets payment_method='mercadopago'
 -- and payment_id once the preference is generated).
 ALTER TABLE bookings
   DROP CONSTRAINT IF EXISTS chk_booking_payment_consistency;

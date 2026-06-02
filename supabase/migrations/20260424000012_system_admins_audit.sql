@@ -1,3 +1,13 @@
+-- ============================================================
+-- 012_system_admins_audit.sql
+-- B10 — Audit trigger on system_admins table.
+--
+-- Port of supabase/migrations/20260525000002_system_admins_audit.sql
+-- (see docs/MIGRATIONS.md). Idempotent: DROP NOT NULL is a no-op when the
+-- column is already nullable; CREATE OR REPLACE FUNCTION and
+-- DROP TRIGGER IF EXISTS ... CREATE TRIGGER are idempotent by construction.
+-- ============================================================
+
 -- System-scoped audit rows (system_admins changes) carry no tenant.
 ALTER TABLE audit_logs ALTER COLUMN tenant_id DROP NOT NULL;
 

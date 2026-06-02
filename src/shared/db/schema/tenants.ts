@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   date,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -68,6 +69,15 @@ export const tenants = pgTable(
     featureOverrides: jsonb('feature_overrides')
       .notNull()
       .default(sql`'{}'::jsonb`),
+
+    // Servicios del complejo para filtros/badges de la interfaz pública.
+    // { duchas, estacionamiento, bar, parrilla, vestuario, wifi, techado, iluminacion }
+    amenities: jsonb('amenities').notNull().default(sql`'{}'::jsonb`),
+
+    // Precio mínimo denormalizado (centavos ARS) para mostrar "Desde $X" en cards.
+    // Mantenido por el trigger courts_recalc_from_price (recalcula el MIN de los
+    // precios de canchas 'online' del complejo). NULL = sin canchas online.
+    fromPriceCents: integer('from_price_cents'),
 
     mpAccessToken: text('mp_access_token'),
     mpRefreshToken: text('mp_refresh_token'),

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { withRole } from '@/shared/middleware/with-role'
+import { guard } from '@/shared/rate-limit/route-guard'
 import { getTenantMetrics } from '@/modules/metrics/metrics.service'
 
 export const dynamic = 'force-dynamic'
@@ -17,6 +18,9 @@ export const dynamic = 'force-dynamic'
  */
 export const GET = withTenant(
   withRole('admin', async (_req: NextRequest, user, tx) => {
+    const throttled = await guard('adminCrud', user.tenantId!)
+    if (throttled) return throttled
+
     const metrics = await getTenantMetrics(user.tenantId!, tx)
     return NextResponse.json({ data: metrics })
   }),

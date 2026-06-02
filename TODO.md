@@ -30,6 +30,17 @@
 > (coherente con `design-system/MASTER.md §11`). El **dark mode queda diferido a una
 > versión próxima** — hay que implementarlo también. Ver "Dark Mode (diferido)" más abajo.
 
+> **✅ Implementado en branch `feature/public-ui-atc`** (resumen):
+> - **Landing**: buscador embebido (Localidad/Deporte/Fecha/Hora) + "Destacados" + "Partidos abiertos" + reveals en scroll.
+> - **Explorar**: barra estructurada, filtros (superficie/formato/servicios/precio/cerramiento), orden (precio/rating/cercanía con geolocalización), toggle Lista/Mapa (Leaflet, pines de precio + popup), TenantCard premium (precio Desde, rating, favorito, badges, amenities), paginación URL-based, skeletons, contador dinámico.
+> - **Perfil `/[slug]`**: galería con lightbox, "Cómo llegar" (Google Maps), amenities, rating + reseñas (ver más), compartir, favorito, cards por cancha.
+> - **Reserva (éxito)**: mini-mapa, compartir por WhatsApp, agregar al calendario (.ics).
+> - **Jugador**: dejar reseña post-partido + reservar de nuevo.
+> - **SEO**: `SportsActivityLocation` enriquecido con `geo`; sitemap/robots/OG ya existían.
+> - **Backend (lecturas aditivas, flageadas)**: `lat/lng` + facets en búsqueda; `amenities/geo` + `getPublicCourtCards` en detalle.
+>
+> **Pendiente (no hecho aún):** detección de ubicación auto en landing, autocompletado de localidad, búsqueda por disponibilidad real cross-complejo, "Más reservado"/duración como filtros, píldoras de turnos + carrusel en cards, datepicker visual en la grilla, filtro/disponibilidad por cancha, lista de favoritos + preferencias de notif + historial de actividad en perfil del jugador (requieren endpoints nuevos), QR/comprobante PDF, ISR en `/explorar` y `/[slug]` (siguen dynamic por searchParams/disponibilidad live).
+
 ### 1. Landing Page (`/`)
 
 - [x] ✅ Hero con headline, CTA y fondo visual

@@ -22,6 +22,12 @@ export type PublicTenantCard = {
   avgRating: number
   reviewCount: number
   distanceKm: number | null
+  // Coordenadas (para el mapa) + facets denormalizados (para badges de la card).
+  // Ya existen en la fila tenants y se usan internamente; se exponen para la UI.
+  latitude: number | null
+  longitude: number | null
+  courtSurfaces: string[]
+  courtFormats: number[]
 }
 
 export type SearchParams = {
@@ -158,6 +164,10 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
         settings: tenants.settings,
         fromPriceCents: tenants.fromPriceCents,
         amenities: tenants.amenities,
+        latitude: tenants.latitude,
+        longitude: tenants.longitude,
+        courtSurfaces: tenants.courtSurfaces,
+        courtFormats: tenants.courtFormats,
         avgRating: sql<number>`COALESCE(${ratings.avg}, 0)`,
         reviewCount: sql<number>`COALESCE(${ratings.cnt}, 0)`,
         distanceKm: distanceSql,
@@ -187,6 +197,10 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     reviewCount: Number(r.reviewCount ?? 0),
     distanceKm:
       r.distanceKm == null ? null : Math.round(Number(r.distanceKm) * 10) / 10,
+    latitude: r.latitude == null ? null : Number(r.latitude),
+    longitude: r.longitude == null ? null : Number(r.longitude),
+    courtSurfaces: r.courtSurfaces ?? [],
+    courtFormats: r.courtFormats ?? [],
   }))
   const total = countRows[0]?.count ?? 0
   // No loguear params.q (texto libre, PII — Ley 25.326). Solo presencia y filtros acotados.

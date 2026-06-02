@@ -1,9 +1,11 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { sql } from 'drizzle-orm'
-import { CalendarX } from 'lucide-react'
+import { CalendarX, RotateCcw } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { CancelBookingButton } from './CancelBookingButton'
+import { LeaveReviewButton } from './LeaveReviewButton'
 
 type BookingRow = {
   id: string
@@ -15,6 +17,8 @@ type BookingRow = {
   price_snapshot: number
   court_name: string
   tenant_name: string
+  tenant_slug: string
+  has_review: boolean
 }
 
 function artToday(): string {
@@ -69,7 +73,8 @@ export default async function MisReservasPage({
     tx.execute(sql`
       SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
              b.type, b.status, b.price_snapshot,
-             c.name AS court_name, t.name AS tenant_name
+             c.name AS court_name, t.name AS tenant_name, t.slug AS tenant_slug,
+             EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS has_review
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
@@ -166,6 +171,21 @@ export default async function MisReservasPage({
                   )}
                 </div>
               </div>
+
+              {b.status === 'completed' && (
+                <div className="flex flex-wrap items-center gap-1 border-t border-slate-100 pt-2">
+                  {!b.has_review && (
+                    <LeaveReviewButton bookingId={b.id} tenantName={b.tenant_name} />
+                  )}
+                  <Link
+                    href={`/${b.tenant_slug}`}
+                    className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                  >
+                    <RotateCcw className="h-4 w-4" aria-hidden />
+                    Reservar de nuevo
+                  </Link>
+                </div>
+              )}
             </li>
           ))}
         </ul>

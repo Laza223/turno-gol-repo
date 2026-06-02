@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { redirectIfTenantSuspended } from '@/shared/kill-switch'
 import { tenantSubscriptions } from '@/shared/db/schema'
 import dynamic from 'next/dynamic'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
@@ -22,6 +23,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
+
+  // Kill switch: an ops-flipped `suspended` flag locks the tenant out of the
+  // panel instantly (no redeploy). Distinct from tenant_status — see kill-switch.ts.
+  await redirectIfTenantSuspended(tenant.id)
 
   if (tenant.settings.onboarding_completed !== true) redirect('/onboarding')
 

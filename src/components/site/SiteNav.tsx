@@ -14,9 +14,8 @@ export default function SiteNav({ variant = 'solid' }: Props) {
             <span className="text-lg font-semibold tracking-tight">TurnoGol</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm text-slate-300 hover:text-white transition-colors">Funcionalidades</a>
-            <a href="#testimonios" className="text-sm text-slate-300 hover:text-white transition-colors">Testimonios</a>
             <Link href="/explorar" className="text-sm text-slate-300 hover:text-white transition-colors">Explorar</Link>
+            <Link href="/para-complejos" className="text-sm text-slate-300 hover:text-white transition-colors">Para complejos</Link>
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/login" className="hidden text-sm font-medium text-slate-200 hover:text-white transition-colors sm:inline">
@@ -40,6 +39,7 @@ export default function SiteNav({ variant = 'solid' }: Props) {
         </Link>
         <nav className="flex items-center gap-6">
           <Link href="/explorar" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Explorar</Link>
+          <Link href="/para-complejos" className="hidden text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors sm:inline">Para complejos</Link>
           <Link href="/login" className="inline-flex h-9 items-center rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors">
             Ingresar
           </Link>

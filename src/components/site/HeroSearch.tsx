@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Clock, MapPin, Search, Volleyball } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Search } from 'lucide-react'
 import type { CityCount } from '@/modules/tenants/search.service'
 
 type Props = { cities: CityCount[] }
@@ -17,9 +17,10 @@ function todayLocal(): string {
 const HOURS = Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`)
 
 /**
- * Buscador embebido en el hero (estilo ATC). Recolecta Localidad + Deporte +
- * Fecha + Hora y redirige a /explorar con los filtros como query params.
- * La fecha/hora se reenvían para el filtrado por disponibilidad (en /explorar).
+ * Buscador protagonista del hero (estilo ATC). Recolecta Localidad + Fecha +
+ * Hora y redirige a /explorar con los filtros como query params. Solo fútbol por
+ * ahora, así que no hay selector de deporte. La fecha/hora se reenvían para el
+ * filtrado por disponibilidad (en /explorar).
  */
 export default function HeroSearch({ cities }: Props) {
   const router = useRouter()
@@ -39,17 +40,17 @@ export default function HeroSearch({ cities }: Props) {
   }
 
   const fieldClass =
-    'h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-14 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-base text-slate-900 shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
   return (
     <form
       onSubmit={onSubmit}
       aria-label="Buscar canchas de fútbol"
-      className="rounded-2xl border border-white/10 bg-white/95 p-4 shadow-2xl shadow-emerald-950/30 backdrop-blur-md sm:p-5"
+      className="rounded-2xl border border-white/10 bg-white/95 p-5 shadow-2xl shadow-emerald-950/30 backdrop-blur-md sm:p-6"
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-9 lg:items-end">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
         {/* Localidad */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-4">
           <label htmlFor="hero-city" className="mb-1.5 block text-xs font-semibold text-slate-700">
             Localidad
           </label>
@@ -72,26 +73,8 @@ export default function HeroSearch({ cities }: Props) {
           </div>
         </div>
 
-        {/* Deporte (solo Fútbol por ahora) */}
-        <div className="lg:col-span-2">
-          <label htmlFor="hero-sport" className="mb-1.5 block text-xs font-semibold text-slate-700">
-            Deporte
-          </label>
-          <div className="relative">
-            <Volleyball className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
-            <select
-              id="hero-sport"
-              defaultValue="futbol"
-              className={`${fieldClass} appearance-none pr-8`}
-              title="Por ahora solo fútbol"
-            >
-              <option value="futbol">Fútbol</option>
-            </select>
-          </div>
-        </div>
-
         {/* Fecha */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <label htmlFor="hero-date" className="mb-1.5 block text-xs font-semibold text-slate-700">
             Fecha
           </label>
@@ -130,15 +113,16 @@ export default function HeroSearch({ cities }: Props) {
             </select>
           </div>
         </div>
-      </div>
 
-      <button
-        type="submit"
-        className="group mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.99] motion-reduce:hover:translate-y-0"
-      >
-        <Search className="h-4 w-4" aria-hidden />
-        Buscar canchas
-      </button>
+        {/* Buscar */}
+        <button
+          type="submit"
+          className="group inline-flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.99] motion-reduce:hover:translate-y-0 lg:col-span-3"
+        >
+          <Search className="h-5 w-5" aria-hidden />
+          Buscar canchas
+        </button>
+      </div>
     </form>
   )
 }

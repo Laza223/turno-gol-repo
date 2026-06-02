@@ -47,7 +47,11 @@ export async function enforce(name: PolicyName, key: string): Promise<RateLimitO
   // failMode='closed' (authMagicLink, authVerify, pinAttempts) would otherwise
   // block every request and make those flows untestable. NEXT_PUBLIC_E2E=1 is
   // set ONLY by the playwright webServer config and never in real envs.
-  if (process.env.NEXT_PUBLIC_E2E === '1') {
+  const isDevWithoutUpstash =
+    process.env.NODE_ENV === 'development' &&
+    (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN)
+
+  if (process.env.NEXT_PUBLIC_E2E === '1' || isDevWithoutUpstash) {
     const p = POLICIES[name]
     return { ok: true, limit: p.limit, remaining: p.limit, reset: 0, unavailable: true }
   }

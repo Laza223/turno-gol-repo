@@ -1,0 +1,57 @@
+/**
+ * Helpers de formateo para la interfaz pública.
+ *
+ * Los montos se guardan SIEMPRE en centavos de ARS (integer). Ver CLAUDE.md.
+ * Estos helpers son la fuente única para mostrar precios/fechas en el front público.
+ */
+
+const arsFormatter = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0,
+})
+
+/** Centavos de ARS → string de moneda. Ej: 1250000 → "$12.500". */
+export function formatArs(cents: number): string {
+  return arsFormatter.format(Math.round(cents) / 100)
+}
+
+/** "Desde $X" para tarjetas de complejo. Devuelve null si no hay precio. */
+export function formatFromPrice(cents: number | null | undefined): string | null {
+  if (cents == null) return null
+  return `Desde ${formatArs(cents)}`
+}
+
+const dateFormatter = new Intl.DateTimeFormat('es-AR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+})
+
+const dateShortFormatter = new Intl.DateTimeFormat('es-AR', {
+  day: 'numeric',
+  month: 'short',
+})
+
+/** Date | "YYYY-MM-DD" → "lunes, 2 de junio". */
+export function formatDateLong(value: Date | string): string {
+  const d = typeof value === 'string' ? parseDateOnly(value) : value
+  return dateFormatter.format(d)
+}
+
+/** Date | "YYYY-MM-DD" → "2 jun". */
+export function formatDateShort(value: Date | string): string {
+  const d = typeof value === 'string' ? parseDateOnly(value) : value
+  return dateShortFormatter.format(d)
+}
+
+/** Parsea "YYYY-MM-DD" como fecha local (evita el shift UTC de new Date(str)). */
+export function parseDateOnly(value: string): Date {
+  const [y, m, day] = value.split('-').map(Number)
+  return new Date(y ?? 1970, (m ?? 1) - 1, day ?? 1)
+}
+
+/** "HH:MM:SS" | "HH:MM" → "HH:MM". */
+export function formatTime(value: string): string {
+  return value.slice(0, 5)
+}

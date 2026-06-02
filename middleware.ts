@@ -52,7 +52,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse | Respo
   if (policy) {
     const outcome = await enforce(policy, ip)
     if (!outcome.ok) {
-      const res = rateLimit429(outcome)
+      const res = rateLimit429(outcome, requestId)
       res.headers.set('x-request-id', requestId)
       return res
     }

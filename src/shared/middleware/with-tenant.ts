@@ -1,7 +1,8 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import type { NextRequest, NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { StaffUser } from '@/modules/auth/types'
 import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'
+import { forbidden, notFound, unauthorized } from '@/shared/api-error'
 
 /**
  * Tenant lifecycle gating per doc4 §2 (P18).
@@ -30,45 +31,33 @@ export function withTenant(handler: TenantHandler): (req: NextRequest) => Promis
   return async (req) => {
     const user = await extractAuthUser()
     if (!user) {
-      return NextResponse.json(
-        { error: 'unauthorized', code: 'AUTH_REQUIRED' },
-        { status: 401 },
-      )
+      return unauthorized('Autenticación requerida.', { code: 'AUTH_REQUIRED' })
     }
     if (user.type !== 'staff') {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'STAFF_REQUIRED' },
-        { status: 403 },
-      )
+      return forbidden('Se requiere una cuenta de staff.', { code: 'STAFF_REQUIRED' })
     }
     if (!user.tenantId) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'NO_TENANT_CONTEXT' },
-        { status: 403 },
-      )
+      return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
     }
     const sql = getSql()
     const rows = await sql<{ status: string }[]>`
       SELECT status FROM tenants WHERE id = ${user.tenantId} LIMIT 1
     `
     if (rows.length === 0) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'TENANT_NOT_FOUND' },
-        { status: 403 },
-      )
+      return forbidden('El complejo no existe.', { code: 'TENANT_NOT_FOUND' })
     }
     const status = rows[0].status
     if (BLOCKED_TENANT_STATUSES.has(status)) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'TENANT_BLOCKED', status },
-        { status: 403 },
-      )
+      return forbidden('El complejo está bloqueado.', {
+        code: 'TENANT_BLOCKED',
+        details: { status },
+      })
     }
     if (READ_ONLY_TENANT_STATUSES.has(status) && !READ_METHODS.has(req.method)) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'TENANT_SUSPENDED_READ_ONLY', status },
-        { status: 403 },
-      )
+      return forbidden('El complejo está suspendido (solo lectura).', {
+        code: 'TENANT_SUSPENDED_READ_ONLY',
+        details: { status },
+      })
     }
     return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
   }
@@ -86,55 +75,37 @@ export function withBillingTenant(
   return async (req) => {
     const user = await extractAuthUser()
     if (!user) {
-      return NextResponse.json(
-        { error: 'unauthorized', code: 'AUTH_REQUIRED' },
-        { status: 401 },
-      )
+      return unauthorized('Autenticación requerida.', { code: 'AUTH_REQUIRED' })
     }
     if (user.type !== 'staff') {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'STAFF_REQUIRED' },
-        { status: 403 },
-      )
+      return forbidden('Se requiere una cuenta de staff.', { code: 'STAFF_REQUIRED' })
     }
     if (!user.tenantId) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'NO_TENANT_CONTEXT' },
-        { status: 403 },
-      )
+      return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
     }
     const sql = getSql()
     const rows = await sql<{ status: string }[]>`
       SELECT status FROM tenants WHERE id = ${user.tenantId} LIMIT 1
     `
     if (rows.length === 0) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'TENANT_NOT_FOUND' },
-        { status: 403 },
-      )
+      return forbidden('El complejo no existe.', { code: 'TENANT_NOT_FOUND' })
     }
     const status = rows[0].status
     if (status === 'deleted') {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'TENANT_DELETED' },
-        { status: 403 },
-      )
+      return forbidden('El complejo fue eliminado.', { code: 'TENANT_DELETED' })
     }
     if (status === 'blocked') {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'TENANT_BLOCKED' },
-        { status: 403 },
-      )
+      return forbidden('El complejo está bloqueado.', { code: 'TENANT_BLOCKED' })
     }
     // Allow canceled, churned, suspended, past_due, active, trialing.
     if (
       !BILLING_REACTIVATE_ALLOWED.has(status) &&
       !['active', 'trialing', 'past_due', 'suspended'].includes(status)
     ) {
-      return NextResponse.json(
-        { error: 'forbidden', code: 'TENANT_INVALID_STATE', status },
-        { status: 403 },
-      )
+      return forbidden('El complejo está en un estado que no permite esta acción.', {
+        code: 'TENANT_INVALID_STATE',
+        details: { status },
+      })
     }
     return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
   }
@@ -157,18 +128,18 @@ export function withPublicTenant(
   return async (req, ctx) => {
     const slug = ctx.params.slug
     if (!slug) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 })
+      return notFound('El complejo no existe.')
     }
     const sql = getSql()
     const rows = await sql<{ id: string; status: string }[]>`
       SELECT id, status FROM tenants WHERE slug = ${slug} LIMIT 1
     `
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 })
+      return notFound('El complejo no existe.')
     }
     const { id: tenantId, status } = rows[0]
     if (BLOCKED_TENANT_STATUSES.has(status)) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 })
+      return notFound('El complejo no existe.')
     }
     if (READ_ONLY_TENANT_STATUSES.has(status) && !READ_METHODS.has(req.method)) {
       // Public players can still book on suspended tenants per doc4 §2 — the

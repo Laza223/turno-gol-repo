@@ -4,12 +4,13 @@ import {
   MP_WEBHOOK_SEND_OPTIONS,
   QUEUE_PROCESS_MP_WEBHOOK,
 } from '@/shared/jobs/queue-names'
-import { webhookPayloadSchema } from '@/modules/payments/payment.schema'
+import { webhookPayloadSchema, webhookResponseSchema } from '@/modules/payments/payment.schema'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { verifyWebhookSecret } from '@/modules/payments/webhook-auth'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
 import { track, withSpan } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
+import { validatedJson } from '@/shared/api-output'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,7 +56,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     'subscription_preapproval',
   ])
   if (!HANDLED_TYPES.has(payload.type)) {
-    return NextResponse.json({ ok: true, ignored: payload.type })
+    return validatedJson(
+      webhookResponseSchema,
+      { ok: true, ignored: payload.type },
+      'POST /api/webhooks/mercadopago',
+    )
   }
 
   const job: MpWebhookJob = {
@@ -81,5 +86,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  return validatedJson(webhookResponseSchema, { ok: true }, 'POST /api/webhooks/mercadopago')
 }

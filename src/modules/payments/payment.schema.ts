@@ -42,3 +42,36 @@ export const webhookPayloadSchema = z.object({
 })
 
 export type WebhookPayload = z.infer<typeof webhookPayloadSchema>
+
+// ── Output (response) contracts — doc15 §2 ────────────────────────────────────
+// The MP webhook ACKs with a tiny body: `{ ok: true }`, plus `ignored` for
+// event types we deliberately skip. Error paths keep their compact machine-facing
+// shape and are not validated here.
+export const webhookResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    ignored: z.string().optional(),
+  })
+  .strict()
+
+// Deposit/payment status as polled by the player on the pending-payment screen
+// (GET /api/player/bookings/:id/status → `{ data: { status, depositStatus, expiresAt } }`).
+export const paymentStatusResponseSchema = z
+  .object({
+    data: z
+      .object({
+        status: z.enum([
+          'pending_payment',
+          'confirmed',
+          'expired',
+          'canceled_refunded',
+          'canceled_no_refund',
+          'completed',
+          'no_show',
+        ]),
+        depositStatus: z.enum(['not_required', 'pending', 'paid', 'refunded', 'captured']),
+        expiresAt: z.string(),
+      })
+      .strict(),
+  })
+  .strict()

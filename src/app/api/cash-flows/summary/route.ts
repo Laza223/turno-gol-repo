@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+import { badRequest } from '@/shared/api-error'
+import { validatedJson } from '@/shared/api-output'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
+import { daySummaryResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import type { NextRequest } from 'next/server'
 import { dateStr } from '@/shared/validation/primitives'
 
@@ -22,10 +24,10 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
   } else {
     const parsed = dateStr.safeParse(raw)
     if (!parsed.success) {
-      return NextResponse.json({ error: { code: 'BAD_REQUEST', message: 'invalid_date' } }, { status: 400 })
+      return badRequest('invalid_date', { code: 'BAD_REQUEST' })
     }
     date = parsed.data
   }
   const summary = await getDaySummary(user.tenantId!, date, tx)
-  return NextResponse.json({ data: summary })
+  return validatedJson(daySummaryResponseSchema, { data: summary }, 'GET /api/cash-flows/summary')
 })

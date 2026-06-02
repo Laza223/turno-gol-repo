@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { badRequest, conflict, notFound, validationError } from '@/shared/api-error'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { cancelSchema } from '@/modules/billing/billing.schema'
@@ -20,14 +21,11 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
   const parsed = cancelSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
   try {
     const result = await cancel(
@@ -39,16 +37,10 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
     return NextResponse.json({ data: result }, { status: 200 })
   } catch (err) {
     if (err instanceof InvalidTransitionError) {
-      return NextResponse.json(
-        { error: { code: 'INVALID_STATE', message: err.message } },
-        { status: 409 },
-      )
+      return conflict(err.message, { code: 'INVALID_STATE' })
     }
     if (err instanceof SubscriptionNotFoundError) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: err.message } },
-        { status: 404 },
-      )
+      return notFound(err.message)
     }
     throw err
   }

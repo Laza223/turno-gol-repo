@@ -2,6 +2,7 @@ import { getBoss } from '@/shared/jobs/boss'
 import { enforce, rateLimit429 } from '@/shared/rate-limit'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
+import { forbidden } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -14,7 +15,7 @@ export const runtime = 'nodejs'
 export async function GET(): Promise<Response> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'system_admin') {
-    return Response.json({ error: 'forbidden' }, { status: 403 })
+    return forbidden('Solo el super admin puede acceder a este recurso.')
   }
   // adminCrud bucket keyed by the super-admin id (no tenant context here).
   const rl = await enforce('adminCrud', user.systemAdminId)

@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// `.env.test` sets NEXT_PUBLIC_E2E=1 which makes `enforce` short-circuit and
+// never throttle. This file tests the REAL enforce path; capture + restore.
+const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
 vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
 vi.mock('@upstash/ratelimit', () => {
@@ -42,10 +46,15 @@ import { loginAction } from '@/app/(auth)/login/actions'
 import { __resetLimitersForTests } from '@/shared/rate-limit/client'
 
 beforeEach(() => {
+  delete process.env.NEXT_PUBLIC_E2E
   process.env.UPSTASH_REDIS_REST_URL = 'https://stub'
   process.env.UPSTASH_REDIS_REST_TOKEN = 'stub-token'
   ;(Ratelimit as unknown as { __reset: () => void }).__reset()
   __resetLimitersForTests()
+})
+
+afterAll(() => {
+  if (ORIGINAL_E2E !== undefined) process.env.NEXT_PUBLIC_E2E = ORIGINAL_E2E
 })
 
 function fd(email: string): FormData {

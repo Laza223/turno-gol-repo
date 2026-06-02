@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { badRequest, businessRule, conflict, validationError } from '@/shared/api-error'
+import { validatedJson } from '@/shared/api-output'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import {
@@ -7,6 +9,7 @@ import {
   getCashFlows,
   validateCashFlowCombo,
 } from '@/modules/cashflow/cashflow.service'
+import { cashFlowResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import {
   InvalidCashFlowTypeError,
   InvalidCashFlowCategoryError,
@@ -48,15 +51,12 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = createCashFlowSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   // Double-check combo even though Zod enum restricts it (defense-in-depth)
@@ -64,10 +64,7 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
     validateCashFlowCombo(parsed.data.type, parsed.data.category)
   } catch (err) {
     if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: (err as Error).message } },
-        { status: 422 },
-      )
+      return businessRule((err as Error).message, { code: 'VALIDATION_ERROR' })
     }
     throw err
   }
@@ -88,19 +85,15 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
       },
       tx,
     )
-    return NextResponse.json({ data: cashFlow }, { status: 201 })
+    return validatedJson(cashFlowResponseSchema, { data: cashFlow }, 'POST /api/cash-flows', {
+      status: 201,
+    })
   } catch (err) {
     if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: (err as Error).message } },
-        { status: 422 },
-      )
+      return businessRule((err as Error).message, { code: 'VALIDATION_ERROR' })
     }
     if (err instanceof DayAlreadyClosedError) {
-      return NextResponse.json(
-        { error: { code: 'DAY_CLOSED', message: (err as Error).message } },
-        { status: 409 },
-      )
+      return conflict((err as Error).message, { code: 'DAY_CLOSED' })
     }
     throw err
   }

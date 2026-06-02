@@ -4,6 +4,7 @@ import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { createAbonado, getAbonados } from '@/modules/abonados/abonado.service'
 import { AbonadoConflictError } from '@/modules/abonados/abonado.errors'
+import { badRequest, validationError, conflict } from '@/shared/api-error'
 import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -40,15 +41,12 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = createAbonadoSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const d = parsed.data
@@ -76,10 +74,7 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
     return NextResponse.json({ data: result }, { status: 201 })
   } catch (err) {
     if (err instanceof AbonadoConflictError) {
-      return NextResponse.json(
-        { error: { code: 'ABONADO_CONFLICT', message: (err as Error).message } },
-        { status: 409 },
-      )
+      return conflict((err as Error).message, { code: 'ABONADO_CONFLICT' })
     }
     throw err
   }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { badRequest, validationError, notFound, conflict, businessRule } from '@/shared/api-error'
 import {
   pauseAbonado,
   reactivateAbonado,
@@ -33,15 +34,12 @@ export const PATCH = withTenant(async (req: NextRequest, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   try {
@@ -63,22 +61,13 @@ export const PATCH = withTenant(async (req: NextRequest, user, tx) => {
     return NextResponse.json({ data: abonado })
   } catch (err) {
     if (err instanceof AbonadoNotFoundError) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: (err as Error).message } },
-        { status: 404 },
-      )
+      return notFound((err as Error).message)
     }
     if (err instanceof AbonadoConflictError || err instanceof ReactivationConflictError) {
-      return NextResponse.json(
-        { error: { code: 'CONFLICT', message: (err as Error).message } },
-        { status: 409 },
-      )
+      return conflict((err as Error).message)
     }
     if (err instanceof AbonadoAlreadyCanceledError) {
-      return NextResponse.json(
-        { error: { code: 'ALREADY_CANCELED', message: (err as Error).message } },
-        { status: 422 },
-      )
+      return businessRule((err as Error).message, { code: 'ALREADY_CANCELED' })
     }
     throw err
   }

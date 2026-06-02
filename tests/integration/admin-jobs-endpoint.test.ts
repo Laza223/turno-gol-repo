@@ -27,14 +27,16 @@ describe('GET /api/admin/jobs (queue depth — B10 T7)', () => {
     asUser(null)
     const res = await getJobs()
     expect(res.status).toBe(403)
-    expect(await res.json()).toEqual({ error: 'forbidden' })
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('returns 403 for a non-admin (player)', async () => {
     asUser({ type: 'player', id: 'auth-1', playerId: 'p1', email: 'p@test.local' })
     const res = await getJobs()
     expect(res.status).toBe(403)
-    expect(await res.json()).toEqual({ error: 'forbidden' })
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('returns 200 with queue depths for a system_admin', async () => {

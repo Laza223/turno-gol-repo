@@ -10,6 +10,7 @@ import {
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
+import { badRequest, businessRule, conflict, notFound, validationError } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,51 +22,33 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
   const parsed = downgradeSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
   try {
     const result = await downgrade(user.tenantId!, parsed.data.targetPlanId, tx)
     return NextResponse.json({ data: result }, { status: 200 })
   } catch (err) {
     if (err instanceof DowngradeBlockedError) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'DOWNGRADE_BLOCKED',
-            message: err.message,
-            details: {
-              currentCourtCount: err.currentCourtCount,
-              targetMaxCourts: err.targetMaxCourts,
-            },
-          },
+      return businessRule(err.message, {
+        code: 'DOWNGRADE_BLOCKED',
+        details: {
+          currentCourtCount: err.currentCourtCount,
+          targetMaxCourts: err.targetMaxCourts,
         },
-        { status: 422 },
-      )
+      })
     }
     if (err instanceof PlanNotFoundError) {
-      return NextResponse.json(
-        { error: { code: 'PLAN_NOT_FOUND', message: err.message } },
-        { status: 404 },
-      )
+      return notFound(err.message, { code: 'PLAN_NOT_FOUND' })
     }
     if (err instanceof ReactivateNotAllowedError) {
-      return NextResponse.json(
-        { error: { code: 'INVALID_STATE', message: err.message } },
-        { status: 409 },
-      )
+      return conflict(err.message, { code: 'INVALID_STATE' })
     }
     if (err instanceof SubscriptionNotFoundError) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: err.message } },
-        { status: 404 },
-      )
+      return notFound(err.message, { code: 'NOT_FOUND' })
     }
     throw err
   }

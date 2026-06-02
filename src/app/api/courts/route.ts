@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { badRequest, forbidden, validationError } from '@/shared/api-error'
 import {
   listCourts,
   createCourt,
@@ -27,29 +28,21 @@ export const POST = withTenant(async (req, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = createCourtSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? 'Datos inválidos' },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const tenantId = user.tenantId!
   const { count, maxCourts, planSlug } = await getCourtCountAndLimit(tenantId, tx)
   if (maxCourts !== null && count >= maxCourts) {
-    return NextResponse.json(
-      {
-        error: 'PLAN_LIMIT_EXCEEDED',
-        limit: maxCourts,
-        current: count,
-        upgrade_to: nextPlanSlug(planSlug),
-      },
-      { status: 403 },
-    )
+    return forbidden('Alcanzaste el límite de canchas de tu plan.', {
+      code: 'PLAN_LIMIT_EXCEEDED',
+      details: { limit: maxCourts, current: count, upgrade_to: nextPlanSlug(planSlug) },
+    })
   }
 
   const court = await createCourt(tenantId, parsed.data, tx)

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
+import { badRequest, validationError, conflict } from '@/shared/api-error'
+import { validatedJson } from '@/shared/api-output'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
@@ -7,6 +8,7 @@ import { parseRouteUuid } from '@/shared/api/route-params'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByAdmin } from '@/modules/bookings/booking.cancellation'
+import { bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
@@ -29,15 +31,12 @@ export const POST = withTenant(async (req, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = cancelBodySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const { reason, should_refund: shouldRefund } = parsed.data
@@ -64,13 +63,10 @@ export const POST = withTenant(async (req, user, tx) => {
       gateway,
       tx,
     )
-    return NextResponse.json({ data: booking })
+    return validatedJson(bookingResponseSchema, { data: booking }, 'POST /api/bookings/:id/cancel')
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
-      return NextResponse.json(
-        { error: { code: 'CONFLICT', message: 'La reserva no está en estado confirmado.' } },
-        { status: 409 },
-      )
+      return conflict('La reserva no está en estado confirmado.', { code: 'CONFLICT' })
     }
     throw err
   }

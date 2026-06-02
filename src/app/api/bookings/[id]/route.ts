@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { parseRouteUuid } from '@/shared/api/route-params'
+import { badRequest, notFound, validationError } from '@/shared/api-error'
 import { bookings, courts, players } from '@/shared/db/schema'
 
 export const dynamic = 'force-dynamic'
@@ -36,7 +37,7 @@ export const GET = withTenant(async (req, user, tx) => {
     .limit(1)
 
   const row = rows[0]
-  if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (!row) return notFound('La reserva no existe.')
 
   return NextResponse.json({
     data: {
@@ -82,20 +83,12 @@ export const PATCH = withTenant(async (req, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = updateNotesSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: parsed.error.issues[0]?.message ?? 'Datos inválidos',
-        },
-      },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const updates: {
@@ -112,6 +105,6 @@ export const PATCH = withTenant(async (req, user, tx) => {
     .where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, user.tenantId!)))
     .returning()
 
-  if (rows.length === 0) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (rows.length === 0) return notFound('La reserva no existe.')
   return NextResponse.json({ data: rows[0] })
 })

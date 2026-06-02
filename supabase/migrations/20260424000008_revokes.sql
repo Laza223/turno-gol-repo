@@ -5,16 +5,12 @@
 -- Fixes aplicados:
 --   * #20 doc13: audit_logs es INSERT ONLY.
 --   * #21 F2:    daily_cash_closes es INMUTABLE post-cierre.
---   * Create turnogol_app role defensively if it does not yet exist.
+--
+-- Asume que el rol `turnogol_app` ya existe (creado en setup de DB).
+-- Si no existe, el archivo falla intencionalmente — agregar el rol antes:
+--   CREATE ROLE turnogol_app NOLOGIN;
+--   GRANT turnogol_app TO authenticator;  -- (Supabase) o al rol que use el pool.
 -- ============================================================
-
--- Create app role defensively (idempotent).
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'turnogol_app') THEN
-    CREATE ROLE turnogol_app NOLOGIN;
-  END IF;
-END $$;
 
 -- audit_logs: solo INSERT (registro de auditoría inmutable).
 REVOKE UPDATE, DELETE ON audit_logs FROM turnogol_app;

@@ -51,7 +51,7 @@ describe('withAuth', () => {
     const res = await handler(makeRequest())
     expect(res.status).toBe(401)
     const body = await res.json()
-    expect(body.code).toBe('AUTH_REQUIRED')
+    expect(body.error.code).toBe('AUTH_REQUIRED')
   })
 
   it('calls handler when session present', async () => {
@@ -83,7 +83,7 @@ describe('withTenant', () => {
     const res = await handler(makeRequest())
     expect(res.status).toBe(403)
     const body = await res.json()
-    expect(body.code).toBe('STAFF_REQUIRED')
+    expect(body.error.code).toBe('STAFF_REQUIRED')
   })
 
   it('rejects staff without tenant_id → 403 NO_TENANT_CONTEXT', async () => {
@@ -96,7 +96,7 @@ describe('withTenant', () => {
     const res = await handler(makeRequest())
     expect(res.status).toBe(403)
     const body = await res.json()
-    expect(body.code).toBe('NO_TENANT_CONTEXT')
+    expect(body.error.code).toBe('NO_TENANT_CONTEXT')
   })
 
   it('rejects no session → 401 AUTH_REQUIRED', async () => {
@@ -105,7 +105,7 @@ describe('withTenant', () => {
     const res = await handler(makeRequest())
     expect(res.status).toBe(401)
     const body = await res.json()
-    expect(body.code).toBe('AUTH_REQUIRED')
+    expect(body.error.code).toBe('AUTH_REQUIRED')
   })
 })
 
@@ -124,7 +124,7 @@ describe('withRole', () => {
     const res = await handler(makeRequest(), fakeUser, fakeTx)
     expect(res.status).toBe(403)
     const body = await res.json()
-    expect(body.code).toBe('ROLE_REQUIRED')
+    expect(body.error.code).toBe('ROLE_REQUIRED')
   })
 
   it('passes when role matches', async () => {

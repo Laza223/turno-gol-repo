@@ -1,5 +1,5 @@
 -- ============================================================
--- 20260526000001_realtime_publication.sql
+-- 013_realtime_publication.sql
 -- Versiona la membresía de `bookings` en la publication
 -- `supabase_realtime` (requisito de postgres_changes para la grilla admin).
 --

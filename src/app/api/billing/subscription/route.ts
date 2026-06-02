@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { notFound } from '@/shared/api-error'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
@@ -16,10 +17,7 @@ export const GET = withTenant(async (_req: NextRequest, user, tx) => {
     return NextResponse.json({ data: state }, { status: 200 })
   } catch (err) {
     if (err instanceof SubscriptionNotFoundError) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: err.message } },
-        { status: 404 },
-      )
+      return notFound(err.message)
     }
     throw err
   }

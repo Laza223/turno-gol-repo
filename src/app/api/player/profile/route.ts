@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
+import { badRequest, notFound, validationError } from '@/shared/api-error'
 import { players } from '@/shared/db/schema'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,7 @@ export const GET = withPlayer(async (_req, user, tx) => {
     .limit(1)
 
   if (!rows[0]) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    return notFound('El jugador no existe.')
   }
 
   return NextResponse.json({ data: { player: rows[0] } })
@@ -32,15 +33,12 @@ export const PATCH = withPlayer(async (req, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const { first_name, last_name, phone, preferred_area } = parsed.data

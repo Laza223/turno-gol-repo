@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { badRequest } from '@/shared/api-error'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
@@ -22,7 +23,7 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
   } else {
     const parsed = dateStr.safeParse(raw)
     if (!parsed.success) {
-      return NextResponse.json({ error: { code: 'BAD_REQUEST', message: 'invalid_date' } }, { status: 400 })
+      return badRequest('invalid_date', { code: 'BAD_REQUEST' })
     }
     date = parsed.data
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { withPlayer } from '@/shared/middleware/with-player'
+import { notFound } from '@/shared/api-error'
 import { getSql } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'
 
@@ -32,10 +33,7 @@ export const GET = withPlayer(async (_req, user, tx) => {
     .limit(1)
 
   if (!profileRows[0]) {
-    return NextResponse.json(
-      { error: { code: 'NOT_FOUND', message: 'Player no encontrado.' } },
-      { status: 404 },
-    )
+    return notFound('Player no encontrado.')
   }
   const profile = profileRows[0]
 

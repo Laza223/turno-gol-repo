@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { withPlayer } from '@/shared/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { badRequest, notFound } from '@/shared/api-error'
 import { uuid } from '@/shared/validation/primitives'
 
 export const dynamic = 'force-dynamic'
@@ -17,7 +18,7 @@ export const GET = withPlayer(async (req, user, tx) => {
   // Path is .../[id]/status — the booking id is the second-to-last segment.
   const parsedId = uuid.safeParse(req.nextUrl.pathname.split('/').at(-2))
   if (!parsedId.success) {
-    return NextResponse.json({ error: 'invalid_id' }, { status: 400 })
+    return badRequest('ID inválido.', { code: 'INVALID_ID' })
   }
   const bookingId = parsedId.data
 
@@ -34,7 +35,7 @@ export const GET = withPlayer(async (req, user, tx) => {
 
   if (!row) {
     // RLS hides other players' bookings → null → 404 (desired behavior).
-    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    return notFound('La reserva no existe.')
   }
 
   const { status, depositStatus, createdAt } = row

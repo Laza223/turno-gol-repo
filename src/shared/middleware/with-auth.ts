@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import type { NextRequest, NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { AuthUser } from '@/modules/auth/types'
 import { unauthorized } from '@/shared/api-error'

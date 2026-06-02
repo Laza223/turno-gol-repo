@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { parseRouteUuid } from '@/shared/api/route-params'
+import { badRequest, notFound, validationError } from '@/shared/api-error'
 import { toggleStatus } from '@/modules/courts/court.service'
 
 export const dynamic = 'force-dynamic'
@@ -23,18 +24,15 @@ export const PATCH = withTenant(async (req, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = toggleStatusSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'status debe ser "online" o "offline"' },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422, message: 'status debe ser "online" o "offline"' })
   }
 
   const court = await toggleStatus(courtId, parsed.data.status, tx)
-  if (!court) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (!court) return notFound('La cancha no existe.')
   return NextResponse.json(court)
 })

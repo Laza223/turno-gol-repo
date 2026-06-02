@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { forbidden } from '@/shared/api-error'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { notifyStaffPush } from '@/modules/notifications/push.service'
@@ -20,10 +21,7 @@ export const POST = withTenant(async (_req, user) => {
   if (throttled) return throttled
 
   if (!user.staffUserId) {
-    return NextResponse.json(
-      { error: 'forbidden', code: 'NO_STAFF_USER_ID' },
-      { status: 403 },
-    )
+    return forbidden('Acceso denegado.', { code: 'NO_STAFF_USER_ID' })
   }
   const tenantId = user.tenantId!
   const staffUserId = user.staffUserId

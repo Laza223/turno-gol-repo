@@ -4,6 +4,7 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { handleNoShow } from '@/modules/bookings/booking.cancellation'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
 import { parseRouteUuid } from '@/shared/api/route-params'
+import { conflict } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,10 +22,7 @@ export const POST = withTenant(async (req, user, tx) => {
     return NextResponse.json({ data: booking })
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
-      return NextResponse.json(
-        { error: { code: 'CONFLICT', message: 'La reserva no está en estado confirmado.' } },
-        { status: 409 },
-      )
+      return conflict('La reserva no está en estado confirmado.')
     }
     throw err
   }

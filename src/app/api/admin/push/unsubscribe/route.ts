@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { getSql } from '@/shared/db/client'
+import { badRequest, forbidden, validationError } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -20,23 +21,17 @@ export const POST = withTenant(async (req: NextRequest, user) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = unsubscribeSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'VALIDATION_ERROR', details: parsed.error.issues },
-      { status: 400 },
-    )
+    return validationError(parsed.error)
   }
 
   const { endpoint } = parsed.data
   if (!user.staffUserId) {
-    return NextResponse.json(
-      { error: 'forbidden', code: 'NO_STAFF_USER_ID' },
-      { status: 403 },
-    )
+    return forbidden('Acceso denegado.', { code: 'NO_STAFF_USER_ID' })
   }
   const tenantId = user.tenantId!
   const staffUserId = user.staffUserId

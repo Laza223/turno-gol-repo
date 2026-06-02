@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import type { NextRequest, NextResponse } from 'next/server'
 import type { StaffUser } from '@/modules/auth/types'
 import type { DbTx } from '@/shared/db/client'
 import { forbidden } from '@/shared/api-error'

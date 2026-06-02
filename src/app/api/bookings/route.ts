@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { and, count, eq, lt, or, sql } from 'drizzle-orm'
+import { badRequest, businessRule, conflict, validationError } from '@/shared/api-error'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
@@ -137,15 +138,12 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = createManualBookingSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const tenantId = user.tenantId!
@@ -167,28 +165,16 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
         parsed.data.durationMins,
         tx,
       )
-      return NextResponse.json(
-        {
-          error: {
-            code: 'SLOT_UNAVAILABLE',
-            message: 'Este turno acaba de ser tomado por otro jugador.',
-            details: { suggested_alternatives: alternatives },
-          },
-        },
-        { status: 409 },
-      )
+      return conflict('Este turno acaba de ser tomado por otro jugador.', {
+        code: 'SLOT_UNAVAILABLE',
+        details: { suggested_alternatives: alternatives },
+      })
     }
     if (err instanceof CourtOfflineError) {
-      return NextResponse.json(
-        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'La cancha no está disponible.' } },
-        { status: 422 },
-      )
+      return businessRule('La cancha no está disponible.')
     }
     if (err instanceof PriceUnavailableError) {
-      return NextResponse.json(
-        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'No hay precio configurado para este horario.' } },
-        { status: 422 },
-      )
+      return businessRule('No hay precio configurado para este horario.')
     }
     throw err
   }

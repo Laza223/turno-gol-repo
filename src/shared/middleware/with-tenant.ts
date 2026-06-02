@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import type { NextRequest, NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { StaffUser } from '@/modules/auth/types'
 import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'

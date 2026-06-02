@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import type { NextResponse, NextRequest } from 'next/server'
 import { z } from 'zod'
 import { badRequest } from '@/shared/api-error'
 

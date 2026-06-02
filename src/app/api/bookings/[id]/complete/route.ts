@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { conflict } from '@/shared/api-error'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { completeBooking } from '@/modules/bookings/booking.service'
@@ -20,10 +21,7 @@ export const POST = withTenant(async (req, user, tx) => {
     return NextResponse.json({ data: booking })
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
-      return NextResponse.json(
-        { error: { code: 'CONFLICT', message: 'La reserva no está en estado confirmado.' } },
-        { status: 409 },
-      )
+      return conflict('La reserva no está en estado confirmado.')
     }
     throw err
   }

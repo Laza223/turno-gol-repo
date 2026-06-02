@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { dateStr } from '@/shared/validation/primitives'
 import { enforce, rateLimit429 } from '@/shared/rate-limit'
+import { unauthorized, validationError } from '@/shared/api-error'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getCashFlowsForExport } from '@/modules/reports/report.service'
@@ -15,7 +16,7 @@ const querySchema = z.object({
 export async function GET(req: Request): Promise<Response> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) {
-    return new Response(null, { status: 401 })
+    return unauthorized()
   }
 
   const { searchParams } = new URL(req.url)
@@ -25,12 +26,12 @@ export async function GET(req: Request): Promise<Response> {
     format: searchParams.get('format'),
   })
   if (!parsed.success) {
-    return new Response('Bad Request', { status: 400 })
+    return validationError(parsed.error)
   }
   const { from, to } = parsed.data
 
   const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return new Response(null, { status: 401 })
+  if (!tenant) return unauthorized()
 
   const rl = await enforce('adminCrud', tenant.id)
   if (!rl.ok) return rateLimit429(rl)

@@ -10,6 +10,7 @@ import {
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
+import { badRequest, conflict, notFound, validationError } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,14 +22,14 @@ export const POST = withBillingTenant(async (req: NextRequest, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
   const parsed = reactivateSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, {
+      status: 422,
+      message: parsed.error.issues[0]?.message ?? 'Datos inválidos',
+    })
   }
   try {
     const result = await reactivate(
@@ -41,22 +42,13 @@ export const POST = withBillingTenant(async (req: NextRequest, user, tx) => {
     return NextResponse.json({ data: result }, { status: 201 })
   } catch (err) {
     if (err instanceof ReactivateNotAllowedError) {
-      return NextResponse.json(
-        { error: { code: 'REACTIVATE_NOT_ALLOWED', message: err.message } },
-        { status: 409 },
-      )
+      return conflict(err.message, { code: 'REACTIVATE_NOT_ALLOWED' })
     }
     if (err instanceof PlanNotFoundError) {
-      return NextResponse.json(
-        { error: { code: 'PLAN_NOT_FOUND', message: err.message } },
-        { status: 404 },
-      )
+      return notFound(err.message, { code: 'PLAN_NOT_FOUND' })
     }
     if (err instanceof SubscriptionNotFoundError) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: err.message } },
-        { status: 404 },
-      )
+      return notFound(err.message)
     }
     throw err
   }

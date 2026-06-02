@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { SlotTakenError } from '@/modules/bookings/booking.errors'
 import { withTenantContext } from '@/shared/db/client'
+import { notFound, badRequest, validationError, conflict, internal } from '@/shared/api-error'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -28,21 +29,21 @@ function durationMins(timeStart: string, timeEnd: string): 60 | 120 {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isE2EAllowed()) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    return notFound('No encontrado.')
   }
   const playerId = req.headers.get('x-e2e-player-id')
   if (!playerId) {
-    return NextResponse.json({ error: 'missing player header' }, { status: 400 })
+    return badRequest('Falta el header del jugador.', { code: 'MISSING_PLAYER_HEADER' })
   }
   let body: unknown
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'invalid body' }, { status: 400 })
+    return validationError(parsed.error)
   }
 
   try {
@@ -67,8 +68,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (e) {
     const msg = (e as Error).message ?? 'unknown'
     if (e instanceof SlotTakenError || /SlotTaken|exclusion|23P01/i.test(msg)) {
-      return NextResponse.json({ error: 'SLOT_TAKEN' }, { status: 409 })
+      return conflict('El turno ya fue tomado.', { code: 'SLOT_TAKEN' })
     }
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return internal(msg)
   }
 }

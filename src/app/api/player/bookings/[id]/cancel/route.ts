@@ -3,6 +3,7 @@ import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { conflict, forbidden, notFound } from '@/shared/api-error'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
@@ -45,7 +46,7 @@ export const POST = withPlayer(async (req, user, tx) => {
   `)
   const pre = (preRead as unknown as Array<{ tenant_id: string; deposit_status: string }>)[0]
   if (!pre) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    return notFound('La reserva no existe.')
   }
 
   // Set tenant context so audit_logs INSERT passes RLS (same pattern as /api/player/bookings).
@@ -71,26 +72,15 @@ export const POST = withPlayer(async (req, user, tx) => {
     return NextResponse.json({ data: booking })
   } catch (err) {
     if (err instanceof BookingNotOwnedByPlayerError) {
-      return NextResponse.json(
-        { error: { code: 'FORBIDDEN', message: 'No tenés permiso para cancelar esta reserva.' } },
-        { status: 403 },
-      )
+      return forbidden('No tenés permiso para cancelar esta reserva.')
     }
     if (err instanceof BookingNotInConfirmedError) {
-      return NextResponse.json(
-        { error: { code: 'CONFLICT', message: 'La reserva no está en estado confirmado.' } },
-        { status: 409 },
-      )
+      return conflict('La reserva no está en estado confirmado.')
     }
     if (err instanceof TenantInactiveError) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'TENANT_INACTIVE',
-            message: 'Este complejo no está disponible. Contactá al complejo para gestionar la cancelación.',
-          },
-        },
-        { status: 409 },
+      return conflict(
+        'Este complejo no está disponible. Contactá al complejo para gestionar la cancelación.',
+        { code: 'TENANT_INACTIVE' },
       )
     }
     throw err

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
+import { badRequest, validationError, conflict } from '@/shared/api-error'
 import { z } from 'zod'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
@@ -29,15 +30,12 @@ export const POST = withTenant(async (req, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = cancelBodySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Datos inválidos' } },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const { reason, should_refund: shouldRefund } = parsed.data
@@ -67,10 +65,7 @@ export const POST = withTenant(async (req, user, tx) => {
     return NextResponse.json({ data: booking })
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
-      return NextResponse.json(
-        { error: { code: 'CONFLICT', message: 'La reserva no está en estado confirmado.' } },
-        { status: 409 },
-      )
+      return conflict('La reserva no está en estado confirmado.', { code: 'CONFLICT' })
     }
     throw err
   }

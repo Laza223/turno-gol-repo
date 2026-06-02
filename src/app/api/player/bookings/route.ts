@@ -4,6 +4,7 @@ import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { badRequest, businessRule, conflict, forbidden, notFound, validationError } from '@/shared/api-error'
 import { tenants } from '@/shared/db/schema'
 import {
   createOnlineBooking,
@@ -65,20 +66,12 @@ export const POST = withPlayer(async (req, user, tx) => {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
 
   const parsed = playerBookingSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: parsed.error.issues[0]?.message ?? 'Datos inválidos',
-        },
-      },
-      { status: 422 },
-    )
+    return validationError(parsed.error, { status: 422 })
   }
 
   const tenantRows = await tx
@@ -89,7 +82,7 @@ export const POST = withPlayer(async (req, user, tx) => {
 
   const tenant = tenantRows[0]
   if (!tenant || BLOCKED_STATUSES.includes(tenant.status as typeof BLOCKED_STATUSES[number])) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    return notFound('El complejo no existe.')
   }
 
   // Set tenant context in the same player tx so PTR ON CONFLICT DO UPDATE
@@ -120,16 +113,10 @@ export const POST = withPlayer(async (req, user, tx) => {
     return NextResponse.json({ data: { booking } }, { status: 201 })
   } catch (err) {
     if (err instanceof PlayerBannedError) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'PLAYER_BANNED',
-            message: 'No podés reservar en este complejo actualmente.',
-            details: { reason: err.reason ?? 'PLAYER_BANNED', global: err.bannedGlobal },
-          },
-        },
-        { status: 403 },
-      )
+      return forbidden('No podés reservar en este complejo actualmente.', {
+        code: 'PLAYER_BANNED',
+        details: { reason: err.reason ?? 'PLAYER_BANNED', global: err.bannedGlobal },
+      })
     }
     if (err instanceof SlotTakenError) {
       const alternatives = await getAlternatives(
@@ -139,28 +126,16 @@ export const POST = withPlayer(async (req, user, tx) => {
         parsed.data.duration_mins,
         tx,
       )
-      return NextResponse.json(
-        {
-          error: {
-            code: 'SLOT_UNAVAILABLE',
-            message: 'Este turno acaba de ser tomado por otro jugador.',
-            details: { suggested_alternatives: alternatives },
-          },
-        },
-        { status: 409 },
-      )
+      return conflict('Este turno acaba de ser tomado por otro jugador.', {
+        code: 'SLOT_UNAVAILABLE',
+        details: { suggested_alternatives: alternatives },
+      })
     }
     if (err instanceof CourtOfflineError) {
-      return NextResponse.json(
-        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'La cancha no está disponible.' } },
-        { status: 422 },
-      )
+      return businessRule('La cancha no está disponible.')
     }
     if (err instanceof PriceUnavailableError) {
-      return NextResponse.json(
-        { error: { code: 'BUSINESS_RULE_VIOLATION', message: 'No hay precio configurado para este horario.' } },
-        { status: 422 },
-      )
+      return businessRule('No hay precio configurado para este horario.')
     }
     throw err
   }

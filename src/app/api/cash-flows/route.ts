@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { badRequest, businessRule, conflict, validationError } from '@/shared/api-error'
+import { validatedJson } from '@/shared/api-output'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import {
@@ -8,6 +9,7 @@ import {
   getCashFlows,
   validateCashFlowCombo,
 } from '@/modules/cashflow/cashflow.service'
+import { cashFlowResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import {
   InvalidCashFlowTypeError,
   InvalidCashFlowCategoryError,
@@ -83,7 +85,9 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
       },
       tx,
     )
-    return NextResponse.json({ data: cashFlow }, { status: 201 })
+    return validatedJson(cashFlowResponseSchema, { data: cashFlow }, 'POST /api/cash-flows', {
+      status: 201,
+    })
   } catch (err) {
     if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
       return businessRule((err as Error).message, { code: 'VALIDATION_ERROR' })

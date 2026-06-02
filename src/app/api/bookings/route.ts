@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { and, count, eq, lt, or, sql } from 'drizzle-orm'
 import { badRequest, businessRule, conflict, validationError } from '@/shared/api-error'
+import { validatedJson } from '@/shared/api-output'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
@@ -8,7 +9,7 @@ import {
   createManualBooking,
   getAvailableSlots,
 } from '@/modules/bookings/booking.service'
-import { createManualBookingSchema } from '@/modules/bookings/booking.schema'
+import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import {
   CourtOfflineError,
   PriceUnavailableError,
@@ -155,7 +156,9 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
       { ...parsed.data, staffUserId },
       tx,
     )
-    return NextResponse.json({ data: booking }, { status: 201 })
+    return validatedJson(bookingResponseSchema, { data: booking }, 'POST /api/bookings', {
+      status: 201,
+    })
   } catch (err) {
     if (err instanceof SlotTakenError) {
       const alternatives = await getSuggestedAlternatives(

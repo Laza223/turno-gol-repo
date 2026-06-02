@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { eq, sql } from 'drizzle-orm'
+import { validatedJson } from '@/shared/api-output'
 import { z } from 'zod'
 import { withPlayer } from '@/shared/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
@@ -7,6 +7,7 @@ import { conflict, forbidden, notFound } from '@/shared/api-error'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
+import { bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
@@ -69,7 +70,7 @@ export const POST = withPlayer(async (req, user, tx) => {
 
   try {
     const booking = await cancelByPlayer(bookingId, user.playerId, reason, gateway, tx)
-    return NextResponse.json({ data: booking })
+    return validatedJson(bookingResponseSchema, { data: booking }, 'POST /api/player/bookings/:id/cancel')
   } catch (err) {
     if (err instanceof BookingNotOwnedByPlayerError) {
       return forbidden('No tenés permiso para cancelar esta reserva.')

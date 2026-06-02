@@ -152,9 +152,15 @@ export async function getTenantMetrics(tenantId: string, tx: DbTx): Promise<Tena
     )
     .groupBy(cashFlows.category)
 
-  const byCategory: Record<string, number> = {}
+  // Seed the income categories (per the cash_flows type/category check
+  // constraint) at 0 so the response shape is stable even when a category has
+  // no rows in the window.
+  const byCategory: Record<string, number> = { booking: 0, product_sale: 0, other: 0 }
   let totalCents = 0
   for (const r of revenueRows) {
+    // Number() is safe here: realistic 30-day per-tenant income stays well under
+    // JS's 2^53 safe-integer ceiling (~9e15 centavos). The bigint cast above only
+    // guards the SQL-side int32 sum overflow.
     const cents = Number(r.total)
     byCategory[r.category] = cents
     totalCents += cents

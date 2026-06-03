@@ -38,7 +38,7 @@ export const GET = withPlayer(async (req: NextRequest, user, tx) => {
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
     JOIN tenants t ON t.id = b.tenant_id
-    WHERE 1=1 ${dateFilter}
+    WHERE b.player_id = ${user.playerId} ${dateFilter}
     ORDER BY b.date DESC, b.time_start DESC
     LIMIT 100
   `)

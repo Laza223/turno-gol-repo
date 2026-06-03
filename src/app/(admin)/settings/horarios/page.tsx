@@ -31,9 +31,10 @@ export default async function HorariosPage() {
 
   const hours = tenant.openingHours as OpeningHours
   const closedDates = (tenant.closedDates ?? []) as unknown as string[]
+  const hasPin = !!tenant.settings.staff_pin_hash
 
   return (
-    <PinGate>
+    <PinGate pinRequired={hasPin}>
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
 

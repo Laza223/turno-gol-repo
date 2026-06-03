@@ -45,7 +45,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
             total: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
           })
           .from(cashFlows)
-          .where(and(gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
+          .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
           .groupBy(cashFlows.type, cashFlows.method),
 
         // Q2a: income + booking count per court (from cash_flows linked to bookings)
@@ -61,6 +61,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
           .innerJoin(courts, eq(bookings.courtId, courts.id))
           .where(
             and(
+              eq(cashFlows.tenantId, tenantId),
               gte(cashFlows.occurredAt, from),
               lt(cashFlows.occurredAt, to),
               isNotNull(cashFlows.bookingId),
@@ -81,6 +82,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
           .from(bookings)
           .where(
             and(
+              eq(bookings.tenantId, tenantId),
               sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${toStr}::date`,
               inArray(bookings.status, ACTIVE_STATUSES),
             ),
@@ -93,6 +95,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
           .from(bookings)
           .where(
             and(
+              eq(bookings.tenantId, tenantId),
               sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${toStr}::date`,
               inArray(bookings.status, ACTIVE_STATUSES),
             ),
@@ -102,7 +105,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
         tx
           .select({ count: sql<number>`CAST(COUNT(*) AS BIGINT)` })
           .from(courts)
-          .where(eq(courts.status, 'online')),
+          .where(and(eq(courts.tenantId, tenantId), eq(courts.status, 'online'))),
       ])
 
     const income = typeRows
@@ -213,7 +216,7 @@ export async function getCashFlowsForExport(
       .from(cashFlows)
       .leftJoin(bookings, eq(cashFlows.bookingId, bookings.id))
       .leftJoin(courts, eq(bookings.courtId, courts.id))
-      .where(and(gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
+      .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
       .orderBy(cashFlows.occurredAt)
 
     return rows.map((r) => ({

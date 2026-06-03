@@ -16,7 +16,7 @@ export const GET = withTenant(async (_req, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
 
-  const rows = await listCourts(tx)
+  const rows = await listCourts(user.tenantId!, tx)
   return NextResponse.json(rows)
 })
 

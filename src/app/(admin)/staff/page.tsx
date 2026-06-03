@@ -49,9 +49,10 @@ export default async function StaffPage() {
 
   const members = await getStaffMembers(tenant.id)
   const activeCount = members.filter((m) => m.isActive).length
+  const hasPin = !!tenant.settings.staff_pin_hash
 
   return (
-    <PinGate>
+    <PinGate pinRequired={hasPin}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

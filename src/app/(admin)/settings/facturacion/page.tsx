@@ -41,9 +41,10 @@ export default async function FacturacionPage() {
     sub = null
   }
   const mpConnected = !!tenant.mpConnectedAt
+  const hasPin = !!tenant.settings.staff_pin_hash
 
   return (
-    <PinGate>
+    <PinGate pinRequired={hasPin}>
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
 

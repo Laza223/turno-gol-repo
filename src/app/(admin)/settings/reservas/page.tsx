@@ -22,9 +22,10 @@ export default async function ReservasPolicyPage() {
   if (!tenant) redirect('/login')
 
   const s = tenant.settings
+  const hasPin = !!s.staff_pin_hash
 
   return (
-    <PinGate>
+    <PinGate pinRequired={hasPin}>
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
 

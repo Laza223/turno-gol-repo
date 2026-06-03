@@ -10,6 +10,14 @@ import { checkPinSessionAction, verifyPinAction } from '@/app/(admin)/actions/pi
 
 interface PinGateProps {
   children: ReactNode
+  /**
+   * Si el tenant no tiene PIN configurado, pasar `false` (derivado de
+   * `!!tenant.settings.staff_pin_hash`): el gate se vuelve un no-op y se
+   * renderizan los children directamente. Default `true` (gate estricto).
+   * Unifica el enforcement: si hay PIN se exige en todas las zonas sensibles;
+   * si no hay, no se exige en ninguna (evita el lockout de Configuración).
+   */
+  pinRequired?: boolean
 }
 
 /** Format ms remaining as M:SS or "0:00". */
@@ -20,7 +28,7 @@ function formatCountdown(ms: number): string {
   return `${min}:${String(sec).padStart(2, '0')}`
 }
 
-export function PinGate({ children }: PinGateProps) {
+export function PinGate({ children, pinRequired = true }: PinGateProps) {
   const [verified, setVerified] = useState<boolean | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -33,8 +41,9 @@ export function PinGate({ children }: PinGateProps) {
   const [, startTransition] = useTransition()
 
   useEffect(() => {
+    if (!pinRequired) return
     checkPinSessionAction().then(setVerified)
-  }, [])
+  }, [pinRequired])
 
   // Countdown interval: starts when locked, stops when countdown reaches 0.
   useEffect(() => {
@@ -59,6 +68,9 @@ export function PinGate({ children }: PinGateProps) {
       }
     }
   }, [lockedUntilMs])
+
+  // Sin PIN configurado para este tenant → gate deshabilitado.
+  if (!pinRequired) return <>{children}</>
 
   if (verified === null) {
     return (

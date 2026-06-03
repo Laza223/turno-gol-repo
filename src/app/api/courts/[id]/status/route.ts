@@ -32,7 +32,7 @@ export const PATCH = withTenant(async (req, user, tx) => {
     return validationError(parsed.error, { status: 422, message: 'status debe ser "online" o "offline"' })
   }
 
-  const court = await toggleStatus(courtId, parsed.data.status, tx)
+  const court = await toggleStatus(courtId, user.tenantId!, parsed.data.status, tx)
   if (!court) return notFound('La cancha no existe.')
   return NextResponse.json(court)
 })

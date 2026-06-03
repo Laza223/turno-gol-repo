@@ -15,7 +15,7 @@ export const GET = withTenant(async (req, user, tx) => {
   const idResult = parseRouteUuid(req)
   if ('response' in idResult) return idResult.response
   const courtId = idResult.uuid
-  const court = await getCourtById(courtId, tx)
+  const court = await getCourtById(courtId, user.tenantId!, tx)
   if (!court) return notFound('La cancha no existe.')
   return NextResponse.json(court)
 })
@@ -40,7 +40,7 @@ export const PATCH = withTenant(async (req, user, tx) => {
     return validationError(parsed.error, { status: 422 })
   }
 
-  const court = await updateCourt(courtId, parsed.data, tx)
+  const court = await updateCourt(courtId, user.tenantId!, parsed.data, tx)
   if (!court) return notFound('La cancha no existe.')
   return NextResponse.json(court)
 })

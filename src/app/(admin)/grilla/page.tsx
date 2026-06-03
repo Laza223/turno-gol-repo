@@ -24,7 +24,7 @@ export default async function GrillaPage({
   const dateStr = searchParams.date ?? todayArt
 
   const [courts, rawBookings] = await withTenantContext(tenant.id, async (tx) => {
-    const courtList = await listCourts(tx)
+    const courtList = await listCourts(tenant.id, tx)
     const bookingRows = await tx
       .select({
         id: bookings.id,

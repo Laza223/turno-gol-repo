@@ -3,6 +3,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
+import { PinGate } from '@/components/pin-gate'
 import { CourtList } from './components/CourtList'
 
 export default async function CanchasPage() {
@@ -12,9 +13,10 @@ export default async function CanchasPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/onboarding')
 
-  const courts = await withTenantContext(tenant.id, (tx) => listCourts(tx))
+  const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
+  const hasPin = !!tenant.settings.staff_pin_hash
 
-  return (
+  const content = (
     <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -28,4 +30,6 @@ export default async function CanchasPage() {
       <CourtList initialCourts={courts} openingHours={tenant.openingHours} />
     </main>
   )
+
+  return <PinGate pinRequired={hasPin}>{content}</PinGate>
 }

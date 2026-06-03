@@ -124,7 +124,7 @@ export async function updateCourtAction(
   }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
-    const court = await updateCourt(courtId, parsed.data, tx)
+    const court = await updateCourt(courtId, tenant.id, parsed.data, tx)
     if (!court) return { success: false as const, error: 'Cancha no encontrada' }
     return { success: true as const, courtId: court.id }
   })
@@ -144,7 +144,7 @@ export async function toggleCourtStatusAction(
   if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
-    const court = await toggleStatus(courtId, status, tx)
+    const court = await toggleStatus(courtId, tenant.id, status, tx)
     if (!court) return { success: false as const, error: 'Cancha no encontrada' }
     return { success: true as const, courtId: court.id }
   })
@@ -177,6 +177,7 @@ export async function getCourtDeactivationImpactAction(
       .from(bookings)
       .where(
         and(
+          eq(bookings.tenantId, tenant.id),
           eq(bookings.courtId, courtId),
           dsql`${bookings.date} >= ${dateStr}::date`,
           inArray(bookings.status, ['confirmed', 'pending_payment']),
@@ -185,7 +186,7 @@ export async function getCourtDeactivationImpactAction(
     const [a] = await tx
       .select({ n: dsql<number>`count(*)::int` })
       .from(abonados)
-      .where(and(eq(abonados.courtId, courtId), eq(abonados.status, 'active')))
+      .where(and(eq(abonados.tenantId, tenant.id), eq(abonados.courtId, courtId), eq(abonados.status, 'active')))
     return {
       success: true as const,
       futureBookings: b?.n ?? 0,

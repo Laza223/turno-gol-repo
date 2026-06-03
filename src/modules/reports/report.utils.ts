@@ -1,4 +1,5 @@
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import { capitalizeFirst } from '@/lib/format'
 
 // Matches getUTCDay() — 0=Sunday, 1=Monday, ..., 6=Saturday
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -30,11 +31,13 @@ export function nextMonthStr(month: string): string {
 /** Returns a Spanish locale label like "mayo 2026". */
 export function formatMonthLabel(month: string): string {
   const { from } = getMonthBounds(month)
-  return from.toLocaleDateString('es-AR', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+  return capitalizeFirst(
+    from.toLocaleDateString('es-AR', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }),
+  )
 }
 
 /**

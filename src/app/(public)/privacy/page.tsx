@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Política de Privacidad — TurnoGol',
+  title: 'Política de Privacidad',
   description: 'Cómo TurnoGol recolecta, usa y protege tus datos personales (Ley 25.326).',
 }
 

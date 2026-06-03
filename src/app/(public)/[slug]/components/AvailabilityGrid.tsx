@@ -9,6 +9,7 @@ import type {
   Slot,
 } from '@/modules/tenants/public.service'
 import { Skeleton } from '@/components/ui/skeleton'
+import { capitalizeFirst } from '@/lib/format'
 
 type Props = {
   tenant: PublicTenant
@@ -18,12 +19,14 @@ type Props = {
 
 function formatDateES(dateStr: string): string {
   const dt = new Date(dateStr + 'T12:00:00Z')
-  return new Intl.DateTimeFormat('es-AR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  }).format(dt)
+  return capitalizeFirst(
+    new Intl.DateTimeFormat('es-AR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    }).format(dt),
+  )
 }
 
 function addDays(dateStr: string, n: number): string {
@@ -170,7 +173,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
-          <span className="text-sm font-medium text-foreground min-w-[180px] text-center capitalize tabular-nums">
+          <span className="text-sm font-medium text-foreground min-w-[180px] text-center tabular-nums">
             {formatDateES(date)}
           </span>
           <button

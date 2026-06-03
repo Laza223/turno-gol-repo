@@ -61,7 +61,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
 
   const [name, setName] = useState(court?.name ?? '')
   const [surfaceType, setSurfaceType] = useState<string>(court?.surfaceType ?? 'synthetic_grass')
-  const [capacity, setCapacity] = useState<number>(court?.capacity ?? 10)
+  const [capacity, setCapacity] = useState<number>(court?.capacity ?? 5)
   const [rules, setRules] = useState<PricingRule[]>(
     court?.pricing.rules ?? DEFAULT_RULES,
   )

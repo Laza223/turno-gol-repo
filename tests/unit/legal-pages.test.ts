@@ -64,8 +64,8 @@ function collectText(root: ReactElement): string {
 
 describe('privacy page', () => {
   it('exports metadata with the expected title and description', () => {
-    expect(privacyMetadata.title).toMatch(/Política de Privacidad/i)
-    expect(privacyMetadata.title).toMatch(/TurnoGol/)
+    // El título es solo la parte específica; el template del root layout añade " · TurnoGol".
+    expect(privacyMetadata.title).toBe('Política de Privacidad')
     expect(privacyMetadata.description).toMatch(/Ley 25\.326/)
   })
 
@@ -91,8 +91,7 @@ describe('privacy page', () => {
 
 describe('terms page', () => {
   it('exports metadata with the expected title and description', () => {
-    expect(termsMetadata.title).toMatch(/Términos y Condiciones/i)
-    expect(termsMetadata.title).toMatch(/TurnoGol/)
+    expect(termsMetadata.title).toBe('Términos y Condiciones')
     expect(termsMetadata.description).toMatch(/TurnoGol/)
   })
 

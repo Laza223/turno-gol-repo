@@ -103,7 +103,7 @@ export default async function ReportesPage({
             </button>
           </form>
 
-          <span className="min-w-[11rem] text-center text-sm font-medium capitalize text-slate-700">
+          <span className="min-w-[11rem] text-center text-sm font-medium text-slate-700">
             {formatMonthLabel(month)}
           </span>
 

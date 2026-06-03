@@ -24,6 +24,25 @@ function addDays(dateStr: string, n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+// Labels en español para los ENUMs de cash_flows (evita mostrar los valores
+// crudos "income"/"booking"/"cash" en la UI). Mismo criterio que RegisterMovementModal.
+const TYPE_LABELS: Record<string, string> = {
+  income: 'Ingreso',
+  adjustment: 'Ajuste',
+}
+const CATEGORY_LABELS: Record<string, string> = {
+  booking: 'Reserva',
+  product_sale: 'Venta de producto',
+  other: 'Otro',
+  no_show_correction: 'Corrección no-show',
+}
+const METHOD_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  transfer: 'Transferencia',
+  mercadopago: 'MercadoPago',
+  other: 'Otro',
+}
+
 export default async function CajaPage({ searchParams }: { searchParams: { date?: string } }) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
@@ -104,7 +123,7 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
           <div className="space-y-1">
             {Object.entries(summary.byMethod).map(([method, total]) => (
               <div key={method} className="flex justify-between text-sm">
-                <span className="capitalize">{method}</span>
+                <span>{METHOD_LABELS[method] ?? method}</span>
                 <span>{formatARS(total ?? 0)}</span>
               </div>
             ))}
@@ -138,9 +157,9 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
             <tbody className="divide-y divide-slate-100">
               {cashFlows.map((cf) => (
                 <tr key={cf.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-3 capitalize text-slate-900">{cf.type}</td>
-                  <td className="p-3 text-slate-700">{cf.category}</td>
-                  <td className="p-3 capitalize text-slate-700">{cf.method}</td>
+                  <td className="p-3 text-slate-900">{TYPE_LABELS[cf.type] ?? cf.type}</td>
+                  <td className="p-3 text-slate-700">{CATEGORY_LABELS[cf.category] ?? cf.category}</td>
+                  <td className="p-3 text-slate-700">{METHOD_LABELS[cf.method] ?? cf.method}</td>
                   <td className="p-3 max-w-xs truncate text-slate-700">{cf.description}</td>
                   <td className="p-3 text-right font-medium tabular-nums text-slate-900">{formatARS(cf.amount)}</td>
                   <td className="p-3 tabular-nums text-slate-500">

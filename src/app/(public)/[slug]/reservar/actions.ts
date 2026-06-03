@@ -26,7 +26,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const TERMS_VERSION = 'v1'
 
 const gateSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().email({ message: 'Ingresá un email válido' }),
   firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80),
   lastName: z.string().trim().max(80).optional().default(''),
   terms: z.literal('on', { errorMap: () => ({ message: 'Tenés que aceptar los términos.' }) }),

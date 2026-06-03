@@ -5,7 +5,7 @@ import { headers } from 'next/headers'
 import { signInWithMagicLink } from '@/modules/auth/auth.service'
 import { enforce } from '@/shared/rate-limit/apply'
 
-const schema = z.object({ email: z.string().trim().toLowerCase().email() })
+const schema = z.object({ email: z.string().trim().toLowerCase().email({ message: 'Ingresá un email válido' }) })
 
 export type LoginState =
   | { status: 'idle' }

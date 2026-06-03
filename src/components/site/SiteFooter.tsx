@@ -9,10 +9,12 @@ export default function SiteFooter() {
           <span className="text-sm font-semibold text-white">TurnoGol</span>
           <span className="text-xs text-slate-500">© {new Date().getFullYear()} · Argentina</span>
         </div>
-        <div className="flex gap-6 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
           <Link href="/explorar" className="hover:text-white transition-colors">Explorar</Link>
           <Link href="/login" className="hover:text-white transition-colors">Iniciar sesión</Link>
           <a href="mailto:hola@turnogol.com.ar" className="hover:text-white transition-colors">Contacto</a>
+          <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
+          <Link href="/terms" className="hover:text-white transition-colors">Términos</Link>
         </div>
       </div>
     </footer>

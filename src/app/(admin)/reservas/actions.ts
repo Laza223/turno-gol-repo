@@ -23,6 +23,8 @@ import {
   CourtOfflineError,
   PriceUnavailableError,
   BookingNotInConfirmedError,
+  BookingNotYetEndedError,
+  BookingNotYetStartedError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
@@ -121,6 +123,12 @@ export async function completeBookingAction(
       if (err instanceof BookingNotInConfirmedError) {
         return { success: false as const, error: 'La reserva no está en estado confirmado.' }
       }
+      if (err instanceof BookingNotYetEndedError) {
+        return {
+          success: false as const,
+          error: 'El turno todavía no terminó. Podés marcarla completada recién después del horario de fin.',
+        }
+      }
       throw err
     }
   })
@@ -147,6 +155,12 @@ export async function markNoShowAction(
     } catch (err) {
       if (err instanceof BookingNotInConfirmedError) {
         return { success: false as const, error: 'La reserva no está en estado confirmado.' }
+      }
+      if (err instanceof BookingNotYetStartedError) {
+        return {
+          success: false as const,
+          error: 'El turno todavía no empezó. Podés marcar ausente recién después del horario de inicio.',
+        }
       }
       throw err
     }

@@ -3,7 +3,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react'
 
 import PrivacyPage, { metadata as privacyMetadata } from '@/app/(public)/privacy/page'
 import TermsPage, { metadata as termsMetadata } from '@/app/(public)/terms/page'
-import { LegalFooter } from '@/components/site/legal-footer'
+import SiteFooter from '@/components/site/SiteFooter'
 
 /**
  * The vitest environment is `node` (see vitest.config.ts) and the project does not
@@ -111,9 +111,9 @@ describe('terms page', () => {
   })
 })
 
-describe('LegalFooter', () => {
+describe('SiteFooter (legal links)', () => {
   it('renders links to /privacy and /terms', () => {
-    const tree = LegalFooter()
+    const tree = SiteFooter()
     expect(isValidElement(tree)).toBe(true)
     const hrefs = collectHrefs(tree)
     expect(hrefs).toContain('/privacy')
@@ -121,9 +121,9 @@ describe('LegalFooter', () => {
   })
 
   it('renders the expected anchor labels', () => {
-    const text = collectText(LegalFooter())
-    expect(text).toMatch(/Política de Privacidad/)
-    expect(text).toMatch(/Términos y Condiciones/)
+    const text = collectText(SiteFooter())
+    expect(text).toMatch(/Privacidad/)
+    expect(text).toMatch(/Términos/)
     expect(text).toMatch(/TurnoGol/)
   })
 })

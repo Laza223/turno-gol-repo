@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import * as Sentry from '@sentry/nextjs'
 import { Loader2 } from 'lucide-react'
 import { createBookingAction } from '@/app/(admin)/reservas/actions'
 import { toast } from '@/hooks/use-toast'
@@ -90,9 +91,11 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
         } else {
           setError(result.error)
         }
-      } catch {
+      } catch (err) {
         // A thrown action (network drop, server crash) must not leave the submit
         // button stuck on "Guardando…" — surface a recoverable error instead.
+        // Report it too: a silent catch would hide a real server failure.
+        Sentry.captureException(err)
         setError('No pudimos crear la reserva. Revisá tu conexión e intentá de nuevo.')
       }
     })

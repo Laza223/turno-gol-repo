@@ -2,12 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
+import { fetchWithTimeout, withTimeout } from '@/shared/utils/async'
 
 type Status = 'idle' | 'unsupported' | 'denied' | 'unsubscribed' | 'subscribed' | 'pending'
 
 const SW_PATH = '/sw.js'
 const SW_SCOPE = '/admin/'
 const SOUND_ENABLED_KEY = 'turnogol:notif-sound'
+// Safety deadline for the non-abortable service worker activation step so the
+// "Habilitando…" button can never hang forever.
+const SW_READY_TIMEOUT_MS = 10_000
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -20,7 +24,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 async function fetchVapidKey(): Promise<string | null> {
   try {
-    const res = await fetch('/api/admin/push/vapid', { cache: 'no-store' })
+    const res = await fetchWithTimeout('/api/admin/push/vapid', { cache: 'no-store' })
     if (!res.ok) return null
     const data = (await res.json()) as { publicKey?: unknown }
     return typeof data.publicKey === 'string' ? data.publicKey : null
@@ -32,7 +36,7 @@ async function fetchVapidKey(): Promise<string | null> {
 async function subscribeOnServer(sub: PushSubscription): Promise<boolean> {
   try {
     const json = sub.toJSON()
-    const res = await fetch('/api/admin/push/subscribe', {
+    const res = await fetchWithTimeout('/api/admin/push/subscribe', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -63,8 +67,9 @@ export function PushNotificationManager() {
       setStatus('denied')
       return
     }
-    // Check current subscription.
-    ;(async () => {
+    // Check current subscription. Fire-and-forget: the IIFE swallows all errors
+    // internally (catch → 'unsubscribed'), so it can never reject.
+    void (async () => {
       try {
         const reg = await navigator.serviceWorker.getRegistration(SW_SCOPE)
         if (!reg) {
@@ -134,9 +139,17 @@ export function PushNotificationManager() {
     if (typeof window === 'undefined') return
     setStatus('pending')
     try {
-      const permission = await Notification.requestPermission()
+      // requestPermission() is NOT abortable and can stay pending forever if the
+      // user ignores or dismisses the prompt. Bound it so the button can recover.
+      const permission = await withTimeout(
+        Notification.requestPermission(),
+        SW_READY_TIMEOUT_MS,
+        'No respondiste al pedido de permiso',
+      )
       if (permission !== 'granted') {
-        setStatus('denied')
+        // 'denied' (blocked) and 'default' (dismissed/timed out) both land here;
+        // only a true block should hide the button permanently.
+        setStatus(permission === 'denied' ? 'denied' : 'unsubscribed')
         return
       }
       // User gesture present: enable sound playback for future broadcasts.
@@ -146,7 +159,14 @@ export function PushNotificationManager() {
         try { await audioRef.current.play(); audioRef.current.pause() } catch { /* noop */ }
       }
       await navigator.serviceWorker.register(SW_PATH, { scope: SW_SCOPE })
-      const ready = await navigator.serviceWorker.ready
+      // serviceWorker.ready never resolves if the SW fails to activate (scope
+      // mismatch, install error). Cap the wait so we surface an error instead of
+      // hanging on "Habilitando…".
+      const ready = await withTimeout(
+        navigator.serviceWorker.ready,
+        SW_READY_TIMEOUT_MS,
+        'El service worker no se activó',
+      )
       const vapidKey = await fetchVapidKey()
       if (!vapidKey) {
         setStatus('unsubscribed')

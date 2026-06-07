@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Loader2 } from 'lucide-react'
 import { createBookingAction } from '@/app/(admin)/reservas/actions'
@@ -40,6 +40,13 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
 
+  // If the parent reuses this modal instance for a different slot, the duration
+  // useState initializer won't re-run — resync it so the summary and payload
+  // don't go stale.
+  useEffect(() => {
+    setDuration(slot.durationMins)
+  }, [slot.courtId, slot.date, slot.timeStart, slot.durationMins])
+
   const timeEnd = minsToTime(timeToMins(slot.timeStart) + duration)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -69,18 +76,24 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
 
     setError(null)
     startTransition(async () => {
-      const result = await createBookingAction(data)
-      if (result.success) {
-        formRef.current?.reset()
-        setDuration(slot.durationMins)
-        toast({
-          title: 'Reserva creada',
-          description: `${slot.courtName} · ${slot.timeStart}–${timeEnd}`,
-          variant: 'success',
-        })
-        onSuccess(result.booking)
-      } else {
-        setError(result.error)
+      try {
+        const result = await createBookingAction(data)
+        if (result.success) {
+          formRef.current?.reset()
+          setDuration(slot.durationMins)
+          toast({
+            title: 'Reserva creada',
+            description: `${slot.courtName} · ${slot.timeStart}–${timeEnd}`,
+            variant: 'success',
+          })
+          onSuccess(result.booking)
+        } else {
+          setError(result.error)
+        }
+      } catch {
+        // A thrown action (network drop, server crash) must not leave the submit
+        // button stuck on "Guardando…" — surface a recoverable error instead.
+        setError('No pudimos crear la reserva. Revisá tu conexión e intentá de nuevo.')
       }
     })
   }

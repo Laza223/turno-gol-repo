@@ -42,7 +42,9 @@ export function PinGate({ children, pinRequired = true }: PinGateProps) {
 
   useEffect(() => {
     if (!pinRequired) return
-    checkPinSessionAction().then(setVerified)
+    // On rejection, fall back to "not verified" so the gate shows the PIN prompt
+    // instead of hanging on the null/loading state forever.
+    checkPinSessionAction().then(setVerified, () => setVerified(false))
   }, [pinRequired])
 
   // Countdown interval: starts when locked, stops when countdown reaches 0.

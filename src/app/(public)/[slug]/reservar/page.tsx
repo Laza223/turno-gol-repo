@@ -85,6 +85,16 @@ export default async function ReservarPage({ params, searchParams }: Props) {
           No podés reservar en este complejo actualmente.
         </p>
       )}
+      {searchParams.error === 'rate_limited' && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-600/20">
+          Demasiados intentos seguidos. Esperá unos segundos y volvé a intentar.
+        </p>
+      )}
+      {searchParams.error === 'unavailable' && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-600/20">
+          Este turno no está disponible en este momento. Probá con otro horario.
+        </p>
+      )}
 
       <BookingSummary
         data={{

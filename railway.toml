@@ -1,0 +1,21 @@
+# Configuración de Railway para el servicio de WORKERS de pg-boss.
+# La web Next.js NO se deploya acá (va a Vercel) — este servicio solo corre
+# el proceso de background jobs 24/7. Ver docs/infraestructura.md.
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.worker"
+
+[deploy]
+startCommand = "pnpm jobs:start"
+# 1 réplica con auto-restart alcanza para año 1: pg-boss persiste los jobs en
+# Postgres, así que un reinicio los retoma donde quedaron. Subir a 2 para HA.
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Variables de entorno (setear en el dashboard de Railway, NO acá):
+#   DATABASE_URL  -> conexión DIRECTA a Supabase Postgres (:5432), no el pooler
+#   NODE_ENV=production
+#   RESEND_API_KEY, claves de MercadoPago, encryption key de tokens MP,
+#   SUPABASE_*, VAPID keys (push), SENTRY_DSN

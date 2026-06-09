@@ -70,9 +70,9 @@ El dueño de un complejo de fútbol 5 en Lanús que entra a ATC ve fotos de canc
 |---|---|
 | Stock / bar / artículos / inventario | ATC lo tiene, pero muchos complejos no lo usan. Agrega complejidad. Se puede agregar en V2 si hay demanda. |
 | App nativa iOS/Android | Web responsive + PWA es suficiente. Post-MVP si hay demanda. |
-| "Falta 1" / Partidos abiertos | Feature social de ATC que no aplica a nuestro SaaS B2B de gestión. |
+| "Falta 1" / Partidos abiertos | Feature social de ATC que no aplica a nuestro foco inicial, aunque el sistema es B2B2C. |
 | Multi-deporte (pádel, tenis, etc.) | Decisión estratégica: solo fútbol. Es nuestro diferencial. |
-| Perfiles de jugador con stats/rating | No es el negocio. El negocio es el SaaS B2B. |
+| Perfiles de jugador con stats/rating | No es el core inicial. El negocio es la venta B2B (el complejo), apalancada por la adopción B2C (el jugador). |
 | Comunidad / feed social / gamificación | No somos una red social. Somos un software de gestión. |
 | Precios dinámicos con IA | Overengineering. El dueño quiere configurar sus precios, no que un algoritmo los cambie. |
 | WhatsApp QR scraping | ATC lo usa para automatizaciones. Riesgo de ban. Vamos por API oficial de Meta (V1). |

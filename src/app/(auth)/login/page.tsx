@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Loader2, Mail, Sparkles } from 'lucide-react'
 import { loginAction, type LoginState } from './actions'
+import { Logo } from '@/components/ui/logo'
 
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -60,11 +61,8 @@ function ImagePane() {
         className="absolute inset-0 bg-gradient-to-br from-slate-950/85 via-slate-950/60 to-emerald-900/45"
       />
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
-        <Link href="/" className="flex items-center gap-2 text-white">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-emerald-500 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/30">
-            TG
-          </span>
-          <span className="text-lg font-semibold tracking-tight">TurnoGol</span>
+        <Link href="/">
+          <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30" />
         </Link>
 
         <div className="max-w-md">
@@ -99,11 +97,8 @@ function FormPane({
       </Link>
 
       <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center gap-2 lg:hidden">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">
-            TG
-          </span>
-          <span className="text-base font-semibold text-slate-900">TurnoGol</span>
+        <div className="mb-8 flex justify-center lg:hidden">
+          <Logo variant="vertical" className="w-32" />
         </div>
 
         {state.status === 'sent' ? <SentState email={state.email} /> : <FormCard state={state} formAction={formAction} />}

@@ -1,6 +1,7 @@
 # TurnoGol
 
-SaaS de gestión para complejos de fútbol en Argentina. Stack: Next.js 14, Supabase, Drizzle ORM, MercadoPago.
+Plataforma SaaS B2B2C y Marketplace para la gestión de complejos de fútbol en Argentina. Consta de un Panel Admin privado para el complejo y un Portal Público de reservas para el jugador.
+Stack: Next.js 14, Supabase, Drizzle ORM, MercadoPago.
 
 ---
 

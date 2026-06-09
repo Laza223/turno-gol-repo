@@ -4,10 +4,10 @@
 > When building a specific page, check `design-system/pages/[page].md` first.
 > If that file exists, its rules **override** this file. Otherwise use this exclusively.
 
-**Project:** TurnoGol — SaaS B2B para complejos de fútbol (Argentina)
+**Project:** TurnoGol — SaaS B2B2C para complejos de fútbol (Argentina)
 **Stack:** Next.js 14 · TypeScript · shadcn/ui · Tailwind CSS
 **Generated:** 2026-04-27
-**Product type:** B2B SaaS admin dashboard
+**Product type:** B2B2C SaaS admin dashboard & public portal
 **Users:** Complejo owners/operators, tech literacy 2–3/5
 
 ---

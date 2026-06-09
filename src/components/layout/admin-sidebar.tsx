@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Logo } from '@/components/ui/logo'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -59,12 +60,9 @@ function SidebarContent({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-slate-700/60">
         <div className="min-w-0">
-          <span className="inline-flex items-center gap-2 text-base font-semibold text-white">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-xs font-bold text-white shadow-sm shadow-emerald-600/30">
-              TG
-            </span>
-            TurnoGol
-          </span>
+          <Link href="/dashboard" className="block outline-none rounded-sm">
+            <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95" />
+          </Link>
           <div className="mt-1">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
               Complejo

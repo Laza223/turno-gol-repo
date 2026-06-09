@@ -154,7 +154,9 @@ No "dueños de complejos deportivos". Sino:
 
 ---
 
-## 5. Hipótesis de Valor
+## 5. Hipótesis de Valor (Ecosistema B2B2C)
+
+El valor de TurnoGol radica en su modelo **B2B2C**. La solución al problema del complejo (B2B) se logra proveyendo un portal de autogestión y reservas superior para el jugador final (2C).
 
 **Para el dueño del complejo (B2B)**:
 

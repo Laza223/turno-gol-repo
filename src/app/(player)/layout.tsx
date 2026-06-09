@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { PlayerBottomNav } from './_components/PlayerBottomNav'
+import { Logo } from '@/components/ui/logo'
 import type { ReactNode } from 'react'
 
 async function signOutAction() {
@@ -20,7 +21,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-10 bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow-sm">
-        <span className="font-semibold text-base">TurnoGol</span>
+        <Logo variant="horizontal" textClassName="text-white font-semibold text-base" iconClassName="bg-white/95" />
         <form action={signOutAction}>
           <button
             type="submit"

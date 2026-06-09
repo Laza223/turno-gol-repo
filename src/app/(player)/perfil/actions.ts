@@ -39,8 +39,9 @@ export async function updateProfileAction(
 
   // #37: sin try/catch, un fallo de DB (timeout/conexion perdida) se propagaba
   // como uncaught server error al cliente, sin mensaje amigable ni reporte.
+  let updated: { id: string }[]
   try {
-    await withPlayerContext(user.playerId, (tx) =>
+    updated = await withPlayerContext(user.playerId, (tx) =>
       tx
         .update(players)
         .set({
@@ -49,11 +50,18 @@ export async function updateProfileAction(
           phone: parsed.data.phone ?? null,
           preferredArea: parsed.data.preferred_area ?? null,
         })
-        .where(eq(players.id, user.playerId)),
+        .where(eq(players.id, user.playerId))
+        .returning({ id: players.id }),
     )
   } catch (err) {
     captureException(err)
     return { success: false, error: 'No pudimos guardar tus cambios. Intentá de nuevo.' }
+  }
+
+  // #38: si el playerId no existe, el UPDATE no afecta filas. Sin este chequeo la
+  // action devolvia success:true dando un feedback de exito falso.
+  if (updated.length === 0) {
+    return { success: false, error: 'No encontramos tu perfil.' }
   }
 
   revalidatePath('/perfil')

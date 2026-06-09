@@ -32,6 +32,10 @@ const FILTERS = [
   { value: 'completed', label: 'Completadas' },
   { value: 'no_show', label: 'Ausentes' },
 ]
+// #30: allowlist de estados filtrables. Un ?status fuera de este set (texto
+// basura o un enum no listado) reventaba el cast `${status}::booking_status`
+// en la query -> 500/error.tsx. Lo degradamos a "sin filtro" (Todas).
+const ALLOWED_STATUS = new Set(FILTERS.map((f) => f.value).filter(Boolean))
 
 function formatARS(cents: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(cents / 100)
@@ -48,7 +52,8 @@ export default async function ReservasPage({ searchParams }: Props) {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const status = searchParams.status ?? ''
+  const requested = searchParams.status ?? ''
+  const status = ALLOWED_STATUS.has(requested) ? requested : ''
   const rows = await withTenantContext(tenant.id, (tx) =>
     listTenantBookings(tenant.id, status ? { status } : {}, tx),
   )

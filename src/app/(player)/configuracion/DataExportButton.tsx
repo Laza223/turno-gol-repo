@@ -19,8 +19,17 @@ export function DataExportButton() {
         return
       }
 
-      const data = (await res.json()) as { data: unknown }
-      const bundle = data.data
+      const parsed = (await res.json()) as { data?: unknown }
+      const bundle = parsed?.data
+
+      // #18: un 200 con JSON sin el campo `data` dejaba bundle=undefined y
+      // JSON.stringify(undefined) produce un Blob con la cadena literal
+      // "undefined". Validar la forma antes de descargar.
+      if (bundle === undefined || bundle === null) {
+        setStatus('error')
+        setError('No se pudo generar la exportación. Intentá de nuevo en unos minutos.')
+        return
+      }
 
       const filename = `turnogol-mis-datos-${new Date().toLocaleDateString('en-CA', {
         timeZone: 'America/Argentina/Buenos_Aires',

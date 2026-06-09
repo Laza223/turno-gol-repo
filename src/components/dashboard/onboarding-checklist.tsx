@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { CheckCircle2, Circle, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
 import { markPublicLinkSharedAction } from '@/app/(admin)/dashboard/actions'
 
@@ -38,9 +38,14 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
   const [copied, setCopied] = useState(false)
   const [, startTransition] = useTransition()
 
-  const publicUrl = `${appUrl}/c/${tenantSlug}`
-
   async function handleCopyLink() {
+    // Resolve an absolute URL: prefer NEXT_PUBLIC_APP_URL, fall back to the
+    // browser origin. If neither yields an absolute base, abort instead of
+    // copying/sharing a useless relative link (and marking it as shared).
+    const origin = typeof window !== 'undefined' ? window.location.origin : null
+    const publicUrl = buildPublicLinkUrl(appUrl, origin, tenantSlug)
+    if (!publicUrl) return
+
     const canCopy = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
     if (canCopy) {
       try {

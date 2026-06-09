@@ -30,6 +30,7 @@ const horariosSchema = z.object({
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
 export async function updateHorariosAction(
+  _prevState: HorariosActionResult,
   formData: FormData,
 ): Promise<HorariosActionResult> {
   const user = await extractAuthUser()
@@ -70,7 +71,10 @@ export async function updateHorariosAction(
   return { success: true }
 }
 
-export async function addClosedDateAction(formData: FormData): Promise<HorariosActionResult> {
+export async function addClosedDateAction(
+  _prevState: HorariosActionResult,
+  formData: FormData,
+): Promise<HorariosActionResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -105,7 +109,10 @@ export async function addClosedDateAction(formData: FormData): Promise<HorariosA
   return { success: true }
 }
 
-export async function removeClosedDateAction(formData: FormData): Promise<HorariosActionResult> {
+export async function removeClosedDateAction(
+  _prevState: HorariosActionResult,
+  formData: FormData,
+): Promise<HorariosActionResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

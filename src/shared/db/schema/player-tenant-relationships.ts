@@ -25,6 +25,12 @@ export const playerTenantRelationships = pgTable(
 
     bookingsCount: integer('bookings_count').notNull().default(0),
     noshowCount: integer('noshow_count').notNull().default(0),
+
+    // Saldo deudor del jugador en este complejo, en centavos de ARS.
+    // Si > 0, el jugador queda bloqueado para reservar online en este complejo
+    // (ver CLAUDE.md §schema y createOnlineBooking). No es una billetera virtual:
+    // refunds/no-shows se concilian entre jugador y complejo.
+    balance: integer('balance').notNull().default(0),
     lastBookingAt: timestamp('last_booking_at', {
       withTimezone: true,
       mode: 'date',

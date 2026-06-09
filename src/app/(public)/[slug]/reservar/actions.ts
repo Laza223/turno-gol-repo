@@ -16,6 +16,7 @@ import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import {
   CourtOfflineError,
   PlayerBannedError,
+  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
@@ -145,6 +146,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   } catch (err) {
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
     if (err instanceof PlayerBannedError) redirect(`${backTo}&error=banned`)
+    if (err instanceof PlayerHasOutstandingBalanceError) redirect(`${backTo}&error=debt`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError) redirect(`${backTo}&error=unavailable`)
     throw err
   }

@@ -108,7 +108,8 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // N tenants → user picks at /select-tenant (out of scope here).
+  // N tenants → user picks one at /select-tenant (page + selectTenantAction set
+  // the tenant_id claim and refresh the session before entering /dashboard).
   track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: tenants.length })
   return NextResponse.redirect(new URL('/select-tenant', req.url))
 }

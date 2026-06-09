@@ -9,6 +9,12 @@ vi.mock('@/app/(admin)/actions/pin', () => ({
   verifyPinAction: vi.fn(),
 }))
 
+// --- Mock next/navigation router (#9: refresh tras verificar) ---
+const { refreshMock } = vi.hoisted(() => ({ refreshMock: vi.fn() }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: refreshMock }),
+}))
+
 // --- Import mocks after vi.mock so they resolve correctly ---
 import { checkPinSessionAction, verifyPinAction } from '@/app/(admin)/actions/pin'
 import { PinGate } from '@/components/pin-gate'
@@ -264,6 +270,27 @@ describe('PinGate — success path', () => {
     }, { timeout: 5000 })
 
     expect(screen.queryByLabelText('PIN')).toBeNull()
+  })
+
+  it('calls router.refresh() after successful verification (#9)', async () => {
+    mockCheck.mockResolvedValue(false)
+    mockVerify.mockResolvedValue({ ok: true })
+
+    render(<PinGate><div>SECRET</div></PinGate>)
+    await waitForForm()
+
+    typePin('1234')
+
+    await act(async () => {
+      clickSubmit()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('SECRET')).toBeTruthy()
+    }, { timeout: 5000 })
+
+    expect(refreshMock).toHaveBeenCalledTimes(1)
   })
 
   it('renders children immediately when session already active', async () => {

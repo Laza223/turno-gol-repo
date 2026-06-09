@@ -4,6 +4,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
+import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 import { PinGate } from '@/components/pin-gate'
 
 const SETTINGS_TABS = [
@@ -34,17 +35,27 @@ export default async function FacturacionPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
-  try {
-    sub = await withTenantContext(tenant.id, (tx) => getSubscriptionState(tenant.id, tx))
-  } catch {
-    sub = null
-  }
-  const mpConnected = !!tenant.mpConnectedAt
   const hasPin = !!tenant.settings.staff_pin_hash
+  // #9: no fetchear ni renderizar datos sensibles (plan, estado, proximo cobro,
+  // conexion MP) hasta tener una sesion PIN valida server-side. De lo contrario
+  // viajan en el payload RSC aunque el usuario nunca ingrese el PIN (el PinGate
+  // cliente solo los oculta visualmente).
+  const authorized = !hasPin || (await checkPinSessionAction())
+
+  let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
+  let mpConnected = false
+  if (authorized) {
+    try {
+      sub = await withTenantContext(tenant.id, (tx) => getSubscriptionState(tenant.id, tx))
+    } catch {
+      sub = null
+    }
+    mpConnected = !!tenant.mpConnectedAt
+  }
 
   return (
     <PinGate pinRequired={hasPin}>
+      {authorized ? (
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
 
@@ -118,6 +129,7 @@ export default async function FacturacionPage() {
           )}
         </section>
       </div>
+      ) : null}
     </PinGate>
   )
 }

@@ -5,18 +5,18 @@
 
 ---
 
-## Fase 0 — Terminar Auditoría (en curso)
+## Fase 0 — Terminar Auditoría (Completada)
 
-- [ ] Completar F5 — Admin Reportes + Settings + Abonados + Staff
-- [ ] Completar F6 — Public Landing + Search + Portal Complejo + SEO
-- [ ] Completar F7 — Booking Flow Jugador End-to-End (flujo de conversión = $$$)
-- [ ] Completar F8 — Player Area (mis reservas, cancelar, perfil, eliminar cuenta)
-- [ ] Completar F9 — Notificaciones (Toast + Push Web)
-- [ ] Completar F10 — Responsive / Mobile (admin usa celular para gestionar)
-- [ ] Completar F11 — Accessibility (WCAG 2.1 AA)
-- [ ] Completar F12 — Performance / Core Web Vitals (LCP < 2.5s, grilla actual 3.8s)
-- [ ] Completar F13 — Cross-Browser + Cross-Device
-- [ ] Completar F14 — E2E Coverage Final + CI gate
+- [x] Completar F5 — Admin Reportes + Settings + Abonados + Staff
+- [x] Completar F6 — Public Landing + Search + Portal Complejo + SEO
+- [x] Completar F7 — Booking Flow Jugador End-to-End (flujo de conversión = $$$)
+- [x] Completar F8 — Player Area (mis reservas, cancelar, perfil, eliminar cuenta)
+- [x] Completar F9 — Notificaciones (Toast + Push Web)
+- [x] Completar F10 — Responsive / Mobile (admin usa celular para gestionar)
+- [x] Completar F11 — Accessibility (WCAG 2.1 AA)
+- [x] Completar F12 — Performance / Core Web Vitals (LCP < 2.5s, grilla actual 3.8s)
+- [x] Completar F13 — Cross-Browser + Cross-Device
+- [x] Completar F14 — E2E Coverage Final + CI gate
 
 ---
 
@@ -38,7 +38,7 @@
 > - **Jugador**: dejar reseña post-partido + reservar de nuevo.
 > - **SEO**: `SportsActivityLocation` enriquecido con `geo`; sitemap/robots/OG ya existían.
 > - **Backend (lecturas aditivas, flageadas)**: `lat/lng` + facets en búsqueda; `amenities/geo` + `getPublicCourtCards` en detalle.
->
+
 > **Pendiente (no hecho aún):** detección de ubicación auto en landing, autocompletado de localidad, búsqueda por disponibilidad real cross-complejo, "Más reservado"/duración como filtros, píldoras de turnos + carrusel en cards, datepicker visual en la grilla, filtro/disponibilidad por cancha, lista de favoritos + preferencias de notif + historial de actividad en perfil del jugador (requieren endpoints nuevos), QR/comprobante PDF, ISR en `/explorar` y `/[slug]` (siguen dynamic por searchParams/disponibilidad live).
 
 ### 1. Landing Page (`/`)
@@ -48,79 +48,78 @@
 - [x] ✅ Stats sociales (+10.000 turnos, 50+ complejos, etc.)
 - [x] ✅ Testimonios de complejos reales
 - [x] ✅ Footer institucional
-- [ ] ❌ Buscador inteligente embebido en el hero (Localidad + Fecha + Hora + Deporte) — ATC lo tiene como pieza central
+- [x] ✅ Buscador inteligente embebido en el hero (Localidad + Fecha + Hora + Deporte)
 - [ ] ❌ Detección automática de ubicación del usuario (geolocalización) para pre-llenar la ciudad
-- [ ] ❌ Sección "Complejos destacados cerca tuyo" — cards de complejos populares en la landing
-- [ ] ❌ Sección "Partidos abiertos" / "Falta uno" en la landing — vitrina social
+- [x] ✅ Sección "Complejos destacados cerca tuyo" — cards de complejos populares en la landing
+- [x] ✅ Sección "Partidos abiertos" / "Falta uno" en la landing — vitrina social
 - [ ] ❌ App download banners (links a App Store / Google Play cuando tengas PWA/App)
 
 ### 2. Buscador y Exploración (`/explorar`)
 
 #### 2.1 Buscador principal (cabecera)
-- [x] 🟡 Input de texto por nombre de complejo (básico, solo texto libre)
-- [x] 🟡 Filtro por ciudad (select simple con conteo)
-- [x] 🟡 Filtro "Reserva online" (checkbox)
-- [ ] ❌ Buscador estructurado estilo ATC: Localidad + Deporte + Fecha + Hora en una sola barra
-- [ ] ❌ Selector de fecha (datepicker) integrado en la barra de búsqueda
-- [ ] ❌ Selector de hora preferida integrado en la barra de búsqueda
+- [x] ✅ Input de texto por nombre de complejo
+- [x] ✅ Filtro por ciudad
+- [x] ✅ Filtro "Reserva online" (checkbox)
+- [x] ✅ Buscador estructurado estilo ATC: Localidad + Fecha + Hora + Texto en una sola barra
+- [x] ✅ Selector de fecha (datepicker) integrado en la barra de búsqueda
+- [x] ✅ Selector de hora preferida integrado en la barra de búsqueda
 - [ ] ❌ Búsqueda por disponibilidad real (cruzar agendas de todos los complejos y mostrar solo los que tengan turnos libres a esa hora)
 - [ ] ❌ Autocompletado predictivo de localidad/complejo
-- [ ] ❌ Geolocalización para ordenar por cercanía
+- [x] ✅ Geolocalización para ordenar por cercanía (con permisos de ubicación)
 
 #### 2.2 Filtros avanzados (barra secundaria)
-- [ ] ❌ Filtro por tipo de superficie (sintético, natural, cemento, indoor) — dato ya existe en `courts.surfaceType`
-- [ ] ❌ Filtro por duración del turno (60 min / 120 min) — dato ya existe en `courts.pricing.rules`
-- [ ] ❌ Filtro por formato de cancha (Fútbol 5 / 7 / 11) — derivable de `courts.capacity`
-- [ ] ❌ Filtro por servicios del club (duchas, estacionamiento, bar, parrilla, vestuario)
-- [ ] ❌ Filtro por cerramiento (techado / descubierto)
-- [ ] ❌ Ordenar por: Más cercano, Precio más bajo, Mejor valorado, Más reservado
-- [ ] ❌ Filtro por rango de precios (slider $min — $max)
+- [x] ✅ Filtro por tipo de superficie (sintético, natural, cemento, indoor)
+- [ ] ❌ Filtro por duración del turno (60 min / 120 min)
+- [x] ✅ Filtro por formato de cancha (Fútbol 5 / 7 / 11)
+- [x] ✅ Filtro por servicios del club (duchas, estacionamiento, bar, parrilla, vestuario)
+- [x] ✅ Filtro por cerramiento (techado / descubierto)
+- [ ] 🟡 Ordenar por: Más cercano, Precio más bajo, Mejor valorado (Falta: Más reservado)
+- [x] ✅ Filtro por rango de precios (mín/máx inputs)
 
 #### 2.3 Vista de mapa
-- [ ] ❌ Toggle "Mostrar el mapa" — vista split (lista + mapa) o mapa completo
-- [ ] ❌ Mapa interactivo con pines por complejo (Google Maps / Mapbox / Leaflet)
-- [ ] ❌ Pines con precio superpuesto (estilo Airbnb/ATC)
-- [ ] ❌ Hover en pin → preview card del complejo
-- [ ] ❌ Coordenadas ya existen en la DB (`tenants.latitude`, `tenants.longitude`) — hay que poblarlas
+- [x] ✅ Toggle "Mostrar el mapa" — vista toggle (lista / mapa)
+- [x] ✅ Mapa interactivo con pines por complejo (Leaflet)
+- [x] ✅ Pines con precio superpuesto (estilo Airbnb/ATC)
+- [ ] ❌ Hover en pin → preview card del complejo (se abre al hacer click por default de Leaflet Popup)
+- [ ] 🟡 Coordenadas ya existen en la DB (tenants.latitude, tenants.longitude) — hay que poblarlas
 
 #### 2.4 Tarjeta de complejo (TenantCard)
-- [x] 🟡 Imagen de portada (o fallback con iniciales)
-- [x] 🟡 Nombre del complejo
-- [x] 🟡 Ciudad y provincia
-- [x] 🟡 Badge "Reserva online"
-- [x] 🟡 Hover con zoom y sombra
-- [ ] ❌ Precio "Desde $X" superpuesto en la imagen — requiere JOIN con `courts.pricing` en `search.service.ts`
-- [ ] ❌ Dirección completa (calle y altura) — dato ya existe en `tenants.address`
-- [ ] ❌ Píldoras de turnos disponibles directamente en la card (ej: `16:00` · `17:00` · `18:00`) — requiere consulta de disponibilidad por complejo
-- [ ] ❌ Badges de formato (Fútbol 5 / 7 / 11) — derivable de canchas del complejo
-- [ ] ❌ Badges de superficie (Sintético / Techado) — dato ya existe
-- [ ] ❌ Micro-íconos de servicios (duchas, estacionamiento, bar, wifi)
-- [ ] ❌ Carrusel de fotos en la card (si el complejo tiene varias) — `courts.photos` ya es array en DB
-- [ ] ❌ Calificación promedio (⭐ 4.8) — requiere sistema de reviews (ver sección 6)
-- [ ] ❌ Botón de favorito (❤️) para guardar complejos
+- [x] ✅ Imagen de portada (o fallback con iniciales)
+- [x] ✅ Nombre del complejo
+- [x] ✅ Ciudad y provincia
+- [x] ✅ Badge "Reserva online"
+- [x] ✅ Hover con zoom y sombra
+- [x] ✅ Precio "Desde $X" superpuesto en la imagen
+- [x] ✅ Dirección completa (calle y altura)
+- [ ] ❌ Píldoras de turnos disponibles directamente en la card
+- [x] ✅ Badges de formato (Fútbol 5 / 7 / 11)
+- [x] ✅ Badges de superficie (Sintético / Techado)
+- [x] ✅ Micro-íconos de servicios (duchas, estacionamiento, bar, wifi)
+- [ ] ❌ Carrusel de fotos en la card
+- [x] ✅ Calificación promedio (⭐ 4.8) y cantidad de reseñas
+- [x] ✅ Botón de favorito (❤️) para guardar complejos
 
 #### 2.5 Paginación y UX
-- [x] 🟡 Paginación "Ver más" (offset manual)
-- [ ] ❌ Infinite scroll o paginación con URL-based (mejor UX + SEO)
-- [ ] ❌ Skeleton loading mientras cargan los resultados
-- [ ] ❌ Contador de resultados con feedback dinámico al aplicar filtros
+- [x] ✅ Paginación con URL-based (offset query param)
+- [x] ✅ Skeleton loading mientras cargan los resultados (loading.tsx)
+- [x] ✅ Contador de resultados con feedback dinámico al aplicar filtros
 
 ### 3. Perfil del Complejo (`/[slug]`)
 
 #### 3.1 Cabecera del complejo
-- [x] 🟡 Nombre, descripción, logo y cover
-- [x] 🟡 Dirección + teléfono clickeable
-- [x] 🟡 Horarios de apertura
-- [ ] ❌ Galería de fotos del complejo (carrusel o lightbox con todas las fotos de las canchas)
-- [ ] ❌ Enlace a Google Maps / Waze (abrir dirección en mapa externo)
-- [ ] ❌ Botón de WhatsApp directo (`tenant.whatsapp` ya existe en DB)
-- [ ] ❌ Badges de servicios/amenities del complejo
-- [ ] ❌ Calificación general y cantidad de reseñas
-- [ ] ❌ Botón "Compartir" (copiar link, WhatsApp, redes sociales)
-- [ ] ❌ Botón de favorito (❤️)
+- [x] ✅ Nombre, descripción, logo y cover
+- [x] ✅ Dirección + teléfono clickeable
+- [x] ✅ Horarios de apertura
+- [x] ✅ Galería de fotos del complejo (carrusel / lightbox)
+- [x] ✅ Enlace a Google Maps / Waze (abrir dirección en mapa externo)
+- [x] ✅ Botón de WhatsApp directo
+- [x] ✅ Badges de servicios/amenities del complejo
+- [x] ✅ Calificación general y cantidad de reseñas
+- [x] ✅ Botón "Compartir" (copiar link/WhatsApp)
+- [x] ✅ Botón de favorito (❤️)
 
 #### 3.2 Lista de canchas del complejo
-- [ ] ❌ Cards individuales por cancha mostrando: nombre, superficie, capacidad (formato), fotos, precio
+- [x] ✅ Cards individuales por cancha mostrando: nombre, superficie, capacidad, fotos, precio (CourtCard.tsx)
 - [ ] ❌ Filtro rápido por tipo de cancha dentro del complejo
 - [ ] ❌ Estado de disponibilidad por cancha para el día seleccionado
 
@@ -133,11 +132,11 @@
 - [ ] ❌ Colores claros para distinguir: disponible / ocupado / turno fijo / bloqueado
 
 #### 3.4 Reseñas y calificaciones
-- [ ] ❌ Sistema de reseñas de jugadores (solo post-reserva completada)
-- [ ] ❌ Calificación por estrellas (1-5)
-- [ ] ❌ Texto de reseña con moderación básica
-- [ ] ❌ Promedio visible en el perfil y en las cards de `/explorar`
-- [ ] ❌ Tabla DB: `reviews` (player_id, tenant_id, booking_id, rating, comment, created_at)
+- [x] ✅ Sistema de reseñas de jugadores (ReviewsSection.tsx)
+- [x] ✅ Calificación por estrellas (1-5)
+- [x] ✅ Texto de reseña
+- [x] ✅ Promedio visible en el perfil y en las cards de `/explorar`
+- [x] ✅ Tabla DB: reviews (creada e integrada)
 
 ### 4. Flujo de Reserva (`/[slug]/reservar`)
 
@@ -147,11 +146,11 @@
 - [x] ✅ Página de éxito post-reserva (`/reserva/[bookingId]/exito`)
 - [x] ✅ Página de pago pendiente (`/reserva/[bookingId]/pendiente`)
 - [x] ✅ Página de error de reserva (`/reserva/[bookingId]/error`)
-- [ ] ❌ Reserva exprés desde la tarjeta de `/explorar` (click en píldora de horario → directo a confirmar)
+- [ ] ❌ Reserva exprés desde la tarjeta de `/explorar`
 - [ ] ❌ Selección de método de pago visual (iconos de MercadoPago, efectivo, transferencia)
-- [ ] ❌ Compartir reserva por WhatsApp post-confirmación ("¡Reservé una cancha! Venite")
-- [ ] ❌ Agregar reserva al calendario (Google Calendar / iCal) con un click
-- [ ] ❌ Pantalla de éxito con mapa de cómo llegar al complejo
+- [x] ✅ Compartir reserva por WhatsApp post-confirmación (BookingSuccessExtras.tsx)
+- [x] ✅ Agregar reserva al calendario (.ics download)
+- [x] ✅ Pantalla de éxito con mini-mapa (Leaflet)
 - [ ] ❌ Código QR de la reserva para mostrar en el club
 
 ### 5. Área del Jugador (`/mis-reservas`, `/perfil`)
@@ -159,10 +158,10 @@
 #### 5.1 Mis Reservas
 - [x] 🟡 Lista de reservas próximas e historial (con tabs)
 - [x] 🟡 Botón de cancelar reserva
-- [ ] ❌ Detalle expandible de cada reserva (mapa, datos del complejo, comprobante de pago)
-- [ ] ❌ Re-reservar turno pasado con un click ("Reservar de nuevo")
+- [ ] ❌ Detalle expandible de cada reserva
+- [x] ✅ Re-reservar turno pasado con un click ("Reservar de nuevo")
 - [ ] ❌ Descargar comprobante de reserva (PDF o imagen)
-- [ ] ❌ Dejar reseña post-partido (solo si `status = completed`)
+- [x] ✅ Dejar reseña post-partido (LeaveReviewButton.tsx)
 
 #### 5.2 Perfil del jugador
 - [x] ✅ Editar nombre, apellido, teléfono, zona preferida
@@ -170,7 +169,7 @@
 - [ ] ❌ Historial de actividad (cantidad de partidos jugados, complejos visitados)
 - [ ] ❌ Lista de complejos favoritos (❤️)
 - [ ] ❌ Preferencias de notificación (email, push)
-- [ ] ❌ Eliminar cuenta (GDPR/Ley 25.326 compliance)
+- [x] ✅ Eliminar cuenta (GDPR/Ley 25.326 compliance)
 
 ### 6. Social y Comunidad (Diferenciador vs ATC)
 
@@ -187,15 +186,15 @@
 - [ ] ❌ **Torneos** — inscripción a torneos organizados por complejos
 - [ ] ❌ **Comunidades / Grupos** — grupos de jugadores recurrentes
 
-### 7. SEO y Meta Tags (actualmente inexistente)
+### 7. SEO y Meta Tags
 
-- [ ] ❌ `sitemap.xml` dinámico con todas las URLs públicas
-- [ ] ❌ `robots.txt` configurado para buscadores
-- [ ] ❌ Schema.org structured data (LocalBusiness + SportsActivityLocation)
-- [ ] ❌ Open Graph tags dinámicos por complejo (`/[slug]`) para preview en WhatsApp/redes
-- [ ] ❌ Twitter Card meta tags
-- [ ] ❌ ISR (Incremental Static Regeneration) en rutas públicas en vez de `force-dynamic`
-- [ ] ❌ Usar `next/image` en todas las imágenes públicas (actualmente usa `<img>`)
+- [x] ✅ sitemap.xml dinámico
+- [x] ✅ robots.txt configurado
+- [x] ✅ Schema.org structured data (SportsActivityLocation)
+- [x] ✅ Open Graph tags dinámicos
+- [x] ✅ Twitter Card meta tags
+- [ ] 🟡 ISR en landing (revalidate=300), /explorar y /[slug] siguen dynamic
+- [x] ✅ Usar next/image en imágenes públicas
 
 ### 7b. Dark Mode (diferido a V próxima) 🌙
 
@@ -215,13 +214,13 @@
 > o campos nuevos que hay que agregar.
 
 - [ ] 🟡 `tenants.latitude` / `tenants.longitude` — existen pero probablemente vacíos → poblar con geocoding
-- [ ] 🟡 `tenants.whatsapp` — existe pero no se muestra en el perfil público
-- [ ] 🟡 `courts.photos` — existe como array pero no se usa en la UI pública
-- [ ] ❌ `tenants.amenities` — JSONB nuevo: `{duchas, estacionamiento, bar, parrilla, vestuario, wifi, techado, iluminacion}`
-- [ ] ❌ Tabla `reviews` — rating + comment por jugador post-partido
-- [ ] ❌ Tabla `player_favorites` — complejos favoritos del jugador
-- [ ] ❌ Tabla `open_matches` — partidos abiertos ("Falta Uno")
-- [ ] ❌ Tabla `open_match_players` — jugadores anotados a cada partido abierto
+- [x] ✅ `tenants.whatsapp` — existe y se muestra en el perfil público
+- [x] ✅ `courts.photos` — se usa en la galería y cards
+- [x] ✅ `tenants.amenities` — JSONB e integrado
+- [x] ✅ Tabla `reviews`
+- [x] ✅ Tabla `player_favorites`
+- [x] ✅ Tabla `open_matches`
+- [x] ✅ Tabla `open_match_players`
 
 ---
 
@@ -229,73 +228,73 @@
 
 > Sin esto no salís a producción. Todo paralelizable entre sí.
 
-- [ ] Configurar GitHub Actions CI: typecheck + lint + unit + integration en cada PR
-- [ ] Configurar deploy automático a Vercel con preview por PR
-- [ ] Proteger branch `main` (no push directo, solo merge via PR con CI verde)
-- [ ] Agregar `pnpm audit` como step en CI (detectar dependencias vulnerables)
-- [ ] Implementar estrategia de migrations con SQL versionado (reemplazar `push:pg` para producción)
-- [ ] Documentar rollback procedure (Vercel revert + migración reversa)
-- [ ] Configurar Supavisor (connection pooler de Supabase Pro) como DATABASE_URL de producción
-- [ ] Reducir `max` del pool de postgres a 3 para serverless, mantener 10 solo para worker pg-boss
-- [ ] Resolver dónde correr pg-boss workers (Railway / Fly.io / VPS — NO puede ser Vercel serverless)
-- [ ] Crear proyecto de Supabase staging separado
+- [x] Configurar GitHub Actions CI: typecheck + lint + unit + integration en cada PR
+- [ ] Configurar deploy automático a Vercel (Requiere cuenta/plan de producción)
+- [ ] Proteger branch `main` (Configuración manual en GitHub Settings)
+- [x] Agregar `pnpm audit` como step en CI
+- [x] Implementar estrategia de migrations con SQL versionado
+- [x] Documentar rollback procedure
+- [ ] Configurar Supavisor (Requiere plan Supabase Pro)
+- [ ] Reducir `max` del pool a 3 para serverless (Configuración de prod)
+- [ ] Resolver dónde correr pg-boss workers (Pendiente decisión)
+- [ ] Crear proyecto de Supabase staging separado (Requiere plan/creación)
 
 ---
 
 ## Fase 2 — Seguridad Post-Auditoría (P0/P1)
 
-- [ ] Auditar que TODOS los endpoints admin aplican rate limiting `adminCrud` (grep por rutas sin `enforce()`)
-- [ ] Enriquecer `/api/status` con health checks reales: DB, pg-boss, Upstash, Resend
-- [ ] Implementar CSP `report-uri` / `report-to` para monitorear violaciones de Content Security Policy
-- [ ] Documentar el riesgo de CSRF como decisión aceptada o implementar tokens custom para Server Actions
-- [ ] Implementar `Sec-Fetch-*` header validation en endpoints sensibles (pagos, cancelaciones)
+- [x] Auditar que TODOS los endpoints admin aplican rate limiting `adminCrud` (grep por rutas sin `enforce()`)
+- [x] Enriquecer `/api/status` con health checks reales: DB, pg-boss, Upstash, Resend
+- [x] Implementar CSP `report-uri` / `report-to` para monitorear violaciones de Content Security Policy
+- [x] Documentar el riesgo de CSRF como decisión aceptada o implementar tokens custom para Server Actions
+- [x] Implementar `Sec-Fetch-*` header validation en endpoints sensibles (pagos, cancelaciones)
 
 ---
 
 ## Fase 3 — Resiliencia (P1)
 
-- [ ] Cablear circuit breaker al gateway de MercadoPago (Decidido: Opción A - Error inmediato "Pagos temporalmente no disponibles" cuando el breaker esté abierto. Diferido a post-launch)
-- [ ] Agregar timeout explícito en `gateway.getPaymentStatus()` (no heredar default del SDK)
-- [ ] Agregar advisory lock en `autoCompleteOverdueBookings` para prevenir ejecución paralela del cron
-- [ ] Implementar health ping periódico a MP, Supabase, Resend (cron cada 5min → alertar si falla)
-- [ ] Alertar vía Sentry cuando rate limiter entra en `unavailable: true` (Upstash caído)
+- [ ] Cablear circuit breaker (Existe módulo, no cableado en gateway de MP - Diferido post-launch)
+- [x] Agregar timeout explícito en `gateway.getPaymentStatus()`
+- [x] Agregar advisory lock en `autoCompleteOverdueBookings`
+- [ ] Implementar health ping periódico a MP, Supabase, Resend
+- [x] Alertar vía Sentry cuando rate limiter entra en `unavailable: true` (Upstash caído)
 
 ---
 
 ## Fase 4 — Performance y Optimización (P1)
 
-- [ ] Implementar cache de `getAvailableSlots` en Upstash Redis (TTL 30s, invalidar on booking change)
-- [ ] Reducir shared bundle: lazy-load Sentry SDK, split `@sentry/nextjs` (blocker de LCP < 2.5s)
-- [ ] Implementar `React.lazy()` + Suspense en rutas admin pesadas (ej: `/staff` a 190KB)
-- [ ] Agregar `stale-while-revalidate` headers en endpoints públicos de disponibilidad
-- [ ] Implementar edge caching en rutas públicas de exploración (`/explorar`, `[slug]`)
+- [x] Implementar cache de `getAvailableSlots` en Upstash Redis (TTL 30s, invalidar on booking change)
+- [x] Reducir shared bundle: lazy-load Sentry SDK
+- [x] Implementar `React.lazy()` + Suspense en rutas admin pesadas
+- [x] Agregar `stale-while-revalidate` headers en endpoints públicos
+- [ ] 🟡 Implementar edge caching / ISR (Solo landing tiene ISR, /explorar y /[slug] siguen force-dynamic)
 
 ---
 
 ## Fase 5 — Observabilidad (P1)
 
-- [ ] Activar Sentry Performance (transactions) para medir latencia de API por endpoint
-- [ ] Implementar métricas de negocio básicas: reservas/día, tasa de no-show, ingresos por tenant
-- [ ] Implementar alertas: error rate > 5%, latencia P95 > 2s, queue depth > 100
-- [ ] Crear dashboard con: error rate, latencia P50/P95, queue depth de pg-boss
+- [x] Activar Sentry Performance (transactions) para medir latencia de API por endpoint
+- [x] Implementar métricas de negocio básicas: reservas/día, tasa de no-show, ingresos por tenant
+- [ ] Implementar alertas en Sentry.io (Requiere configuración en el dashboard de Sentry.io)
+- [ ] Crear dashboard (Endpoint JSON disponible, falta UI)
 
 ---
 
 ## Fase 6 — Deuda Técnica (P1)
 
-- [ ] Estandarizar formato de error en todos los endpoints a `{error: string, code: string}`
-- [ ] Agregar output schemas Zod en endpoints críticos (bookings, payments, cash-flows)
-- [ ] Fijar los 2 tests flaky pre-existentes (truncate/cleanup per-test para hermeticidad)
-- [ ] Implementar feature flags mínimos (JSON en DB o Upstash): online booking on/off, MP on/off
-- [ ] Implementar kill switch rápido para suspender un tenant sin redeploy
+- [x] Estandarizar formato de error en todos los endpoints a `{error: string, code: string}`
+- [x] Agregar output schemas Zod en endpoints críticos (bookings, payments, cash-flows)
+- [x] Fijar los 2 tests flaky pre-existentes (truncate/cleanup per-test para hermeticidad)
+- [x] Implementar feature flags mínimos (JSON en DB o Upstash): online booking on/off, MP on/off
+- [x] Implementar kill switch rápido para suspender un tenant sin redeploy
 
 ---
 
 ## Fase 7 — Testing Avanzado (P1)
 
-- [ ] Implementar load testing con k6: simular 100-500 usuarios concurrentes reservando
-- [ ] Agregar contract test para MP webhook payload schema (detectar cambios en API de MP)
-- [ ] Test de stress para cancelación concurrente (admin + player + expiry simultáneos)
+- [ ] Implementar load testing con k6 (Requiere entorno de staging)
+- [x] Agregar contract test para MP webhook payload schema
+- [x] Test de stress para cancelación concurrente
 
 ---
 

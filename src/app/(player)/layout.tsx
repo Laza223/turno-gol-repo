@@ -18,7 +18,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-10 bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow-sm">
         <span className="font-semibold text-base">TurnoGol</span>
         <form action={signOutAction}>

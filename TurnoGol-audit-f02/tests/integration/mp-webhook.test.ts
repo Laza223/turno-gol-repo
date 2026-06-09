@@ -1,0 +1,313 @@
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { closeSql, getSql } from '@/shared/db/client'
+import { MockGateway } from '@/modules/payments/mp-gateway.mock'
+import {
+  cleanupAll,
+  createTestPlayer,
+  createTestStaffUser,
+  createTestTenant,
+  ensureRoles,
+  linkStaffToTenant,
+} from '../helpers/tenant'
+
+// Keep post-commit email dispatch off the real pg-boss.
+vi.mock('@/shared/jobs/boss', () => ({
+  getBoss: vi.fn(async () => ({ send: vi.fn(async () => {}) })),
+  stopBoss: vi.fn(async () => {}),
+}))
+
+// Shared mock gateway instance — replaces MercadoPagoGateway in handler.
+const mockGateway = new MockGateway()
+
+vi.mock('@/modules/payments/mp-gateway.implementation', () => {
+  return {
+    MercadoPagoGateway: class {
+      constructor(_encryptedAccessToken: string) {}
+      createPreference = (...args: Parameters<MockGateway['createPreference']>) =>
+        mockGateway.createPreference(...args)
+      getPaymentStatus = (...args: Parameters<MockGateway['getPaymentStatus']>) =>
+        mockGateway.getPaymentStatus(...args)
+      createRefund = (...args: Parameters<MockGateway['createRefund']>) =>
+        mockGateway.createRefund(...args)
+    },
+  }
+})
+
+// Static import — vi.mock is hoisted above all imports, so the mock applies
+// before the handler module loads `MercadoPagoGateway`.
+import { handleMpWebhookJob } from '@/modules/payments/mp-webhook.handler'
+
+const PRICING = {
+  rules: [
+    {
+      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      from: '08:00',
+      to: '23:00',
+      prices: { '60': 800000, '120': 1500000 },
+    },
+  ],
+}
+
+const FUTURE_DATE = '2027-06-01'
+
+async function insertCourt(tenantId: string): Promise<string> {
+  const sql = getSql()
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO courts (tenant_id, name, capacity, pricing, status)
+    VALUES (${tenantId}, ${'Cancha Webhook'}, ${10}, ${sql.json(PRICING)}, 'online')
+    RETURNING id
+  `
+  return rows[0]!.id
+}
+
+async function setTenantMpToken(tenantId: string): Promise<void> {
+  const sql = getSql()
+  // Real value irrelevant — gateway is mocked.
+  await sql`
+    UPDATE tenants
+    SET mp_access_token = ${'dummy-encrypted-token'}
+    WHERE id = ${tenantId}
+  `
+}
+
+async function insertPendingBooking(opts: {
+  tenantId: string
+  courtId: string
+  playerId: string
+  date: string
+  timeStart: string
+  timeEnd: string
+}): Promise<string> {
+  const sql = getSql()
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO bookings (
+      tenant_id, court_id, player_id, date, time_start, time_end,
+      price_snapshot, deposit_amount, deposit_status, payment_method, status
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+      ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${800000}, ${240000}, 'pending', NULL, 'pending_payment'
+    )
+    RETURNING id
+  `
+  return rows[0]!.id
+}
+
+async function getBookingStatus(bookingId: string): Promise<string> {
+  const sql = getSql()
+  const rows = await sql<{ status: string }[]>`
+    SELECT status FROM bookings WHERE id = ${bookingId}
+  `
+  return rows[0]!.status
+}
+
+async function countPaymentRows(bookingId: string): Promise<number> {
+  const sql = getSql()
+  const rows = await sql<{ c: string }[]>`
+    SELECT COUNT(*)::text AS c FROM payments WHERE booking_id = ${bookingId}
+  `
+  return Number(rows[0]!.c)
+}
+
+async function countProcessedWebhooks(mpEventId: string): Promise<number> {
+  const sql = getSql()
+  const rows = await sql<{ c: string }[]>`
+    SELECT COUNT(*)::text AS c FROM processed_webhooks WHERE mp_event_id = ${mpEventId}
+  `
+  return Number(rows[0]!.c)
+}
+
+async function getAuditLogs(bookingId: string) {
+  const sql = getSql()
+  return sql<
+    Array<{
+      action: string
+      actor_type: string
+      resource_id: string
+      metadata: Record<string, unknown> | null
+    }>
+  >`
+    SELECT action, actor_type, resource_id, metadata
+    FROM audit_logs
+    WHERE resource_id = ${bookingId}
+    ORDER BY created_at
+  `
+}
+
+beforeAll(async () => {
+  const sql = getSql()
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+  await sql.unsafe(`TRUNCATE TABLE processed_webhooks RESTART IDENTITY CASCADE`)
+}, 30_000)
+
+afterAll(async () => {
+  await closeSql()
+})
+
+describe('handleMpWebhookJob — idempotency across 3 deliveries', () => {
+  it('same mpEventId 3x → single confirmation + single processed_webhooks row', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '08:00',
+      timeEnd: '09:00',
+    })
+
+    const mpPaymentId = `mp-pay-3x-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-3x-${bookingId.slice(0, 8)}`
+
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'account_money',
+    }
+    const callsBefore = mockGateway.statusCalls.length
+
+    const job = {
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    }
+
+    await handleMpWebhookJob(job)
+    await handleMpWebhookJob(job)
+    await handleMpWebhookJob(job)
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+    expect(await countProcessedWebhooks(mpEventId)).toBe(1)
+    // First call upserts payment row; subsequent calls short-circuit on
+    // alreadyProcessed before any DB writes.
+    expect(await countPaymentRows(bookingId)).toBe(1)
+    // Gateway.getPaymentStatus consulted only on first call.
+    expect(mockGateway.statusCalls.length - callsBefore).toBe(1)
+  })
+})
+
+describe('handleMpWebhookJob — late payment attempt', () => {
+  it('booking already expired + approved webhook → audit_logs entry, status unchanged', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '09:00',
+      timeEnd: '10:00',
+    })
+
+    // Force terminal state before webhook arrives.
+    await sql`UPDATE bookings SET status = 'expired' WHERE id = ${bookingId}`
+
+    const mpPaymentId = `mp-pay-late-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-late-${bookingId.slice(0, 8)}`
+
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'visa',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    expect(await getBookingStatus(bookingId)).toBe('expired')
+
+    const audits = await getAuditLogs(bookingId)
+    const lateEntries = audits.filter(
+      (a) => a.action === 'booking.late_payment_attempt',
+    )
+    expect(lateEntries).toHaveLength(1)
+    expect(lateEntries[0]!.actor_type).toBe('system')
+    const meta =
+      typeof lateEntries[0]!.metadata === 'string'
+        ? (JSON.parse(lateEntries[0]!.metadata as unknown as string) as Record<string, unknown>)
+        : (lateEntries[0]!.metadata as Record<string, unknown>)
+    expect(meta).toMatchObject({
+      mpPaymentId,
+      currentStatus: 'expired',
+    })
+
+    // Payment row still recorded as approved for audit trail.
+    const paymentRows = await sql<
+      Array<{ status: string; mp_payment_id: string }>
+    >`
+      SELECT status, mp_payment_id
+      FROM payments
+      WHERE booking_id = ${bookingId} AND mp_payment_id = ${mpPaymentId}
+    `
+    expect(paymentRows).toHaveLength(1)
+    expect(paymentRows[0]!.status).toBe('approved')
+  })
+
+  it('booking already expired + approved webhook → enqueues a prominent admin notification', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '11:00',
+      timeEnd: '12:00',
+    })
+    await sql`UPDATE bookings SET status = 'expired' WHERE id = ${bookingId}`
+
+    const mpPaymentId = `mp-pay-notif-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-notif-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'visa',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    const notifs = await sql<
+      Array<{ template_name: string; recipient_type: string; recipient_id: string }>
+    >`
+      SELECT template_name, recipient_type, recipient_id
+      FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'admin_late_payment'
+    `
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_type).toBe('tenant_owner')
+    expect(notifs[0]!.recipient_id).toBe(staff.id)
+  })
+})

@@ -1,0 +1,216 @@
+import { faker } from '@faker-js/faker'
+import type { Sql } from 'postgres'
+
+const dayMs = 86400000
+
+export async function getOrCreatePlanId(sql: Sql): Promise<string> {
+  const existing = await sql<{ id: string }[]>`
+    SELECT id FROM plans WHERE slug = 'predio' LIMIT 1
+  `
+  if (existing.length) return existing[0].id
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, is_active)
+    VALUES ('Predio', ${'predio-test-' + faker.string.alphanumeric(6)}, 3, 4700000, 3760000, true)
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertCourt(sql: Sql, tenantId: string): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO courts (tenant_id, name, capacity)
+    VALUES (${tenantId}, ${faker.commerce.productName().slice(0, 30)}, 10)
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertProduct(sql: Sql, tenantId: string): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO products (tenant_id, name, price)
+    VALUES (${tenantId}, ${faker.commerce.product()}, ${faker.number.int({ min: 100, max: 500000 })})
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertAbonado(
+  sql: Sql,
+  tenantId: string,
+  courtId: string,
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO abonados (
+      tenant_id, court_id, contact_name, contact_phone,
+      day_of_week, time_start, time_end, price_per_session, monthly_price, starts_on
+    )
+    VALUES (
+      ${tenantId}, ${courtId}, ${faker.person.fullName()}, ${faker.phone.number()},
+      ${faker.number.int({ min: 0, max: 6 })}, '20:00', '21:00',
+      ${1500000}, ${6000000}, ${new Date().toISOString().slice(0, 10)}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertBooking(
+  sql: Sql,
+  opts: {
+    tenantId: string
+    courtId: string
+    playerId?: string | null
+    date?: string
+    timeStart?: string
+    timeEnd?: string
+    status?: string
+    depositStatus?: string
+    depositAmount?: number
+  },
+): Promise<string> {
+  const date = opts.date ?? new Date(Date.now() + 7 * dayMs).toISOString().slice(0, 10)
+  const timeStart = opts.timeStart ?? '14:00'
+  const timeEnd = opts.timeEnd ?? '15:00'
+  const depositStatus = opts.depositStatus ?? 'not_required'
+  const depositAmount = opts.depositAmount ?? 0
+  // chk_booking_payment_consistency: payment_method NULL is valid for
+  //   deposit_status='not_required' OR (migration 009) 'pending'.
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO bookings (
+      tenant_id, court_id, player_id, date, time_start, time_end,
+      price_snapshot, deposit_amount, deposit_status, payment_method
+      ${opts.status ? sql`, status` : sql``}
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.courtId}, ${opts.playerId ?? null},
+      ${date}, ${timeStart}, ${timeEnd},
+      ${800000}, ${depositAmount}, ${depositStatus}, NULL
+      ${opts.status ? sql`, ${opts.status}::booking_status` : sql``}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertPayment(
+  sql: Sql,
+  opts: { tenantId: string; bookingId?: string | null; playerId?: string | null },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO payments (tenant_id, booking_id, player_id, amount, type, method, status)
+    VALUES (
+      ${opts.tenantId}, ${opts.bookingId ?? null}, ${opts.playerId ?? null},
+      ${500000}, 'full_payment', 'cash', 'approved'
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertCashFlow(
+  sql: Sql,
+  opts: { tenantId: string; registeredBy: string; bookingId?: string | null },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO cash_flows (
+      tenant_id, type, category, amount, method, description,
+      booking_id, registered_by, occurred_at
+    )
+    VALUES (
+      ${opts.tenantId}, 'income', 'booking', ${500000}, 'cash',
+      ${'Cobro turno'}, ${opts.bookingId ?? null}, ${opts.registeredBy}, NOW()
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertDailyCashClose(
+  sql: Sql,
+  opts: { tenantId: string; closedBy: string; date?: string },
+): Promise<string> {
+  const date = opts.date ?? new Date().toISOString().slice(0, 10)
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO daily_cash_closes (
+      tenant_id, date, total_income, total_adjustments, balance,
+      declared_cash, diff_amount, closed_by
+    )
+    VALUES (
+      ${opts.tenantId}, ${date}, ${500000}, ${0}, ${500000},
+      ${500000}, ${0}, ${opts.closedBy}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertSubscription(
+  sql: Sql,
+  opts: { tenantId: string; planId: string },
+): Promise<string> {
+  const start = new Date()
+  const end = new Date(start.getTime() + 30 * dayMs)
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tenant_subscriptions (
+      tenant_id, plan_id, current_period_start, current_period_end
+    )
+    VALUES (${opts.tenantId}, ${opts.planId}, ${start.toISOString()}, ${end.toISOString()})
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertBan(
+  sql: Sql,
+  opts: { tenantId: string; playerId: string; bannedBy?: string | null },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tenant_player_bans (tenant_id, player_id, reason, banned_by)
+    VALUES (${opts.tenantId}, ${opts.playerId}, ${'no-show repetido'}, ${opts.bannedBy ?? null})
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertNotification(
+  sql: Sql,
+  opts: {
+    tenantId: string
+    recipientType: 'player' | 'staff' | 'tenant_owner'
+    recipientId: string
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO notifications (
+      tenant_id, recipient_type, recipient_id, channel, trigger_event, content
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.recipientType}, ${opts.recipientId},
+      'email', ${'booking.confirmed'}, ${sql.json({ subject: 'test' })}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertAuditLog(
+  sql: Sql,
+  opts: {
+    tenantId: string
+    actorId: string
+    actorType: 'staff' | 'player' | 'system'
+    resourceId: string
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO audit_logs (
+      tenant_id, actor_id, actor_type, action, resource_type, resource_id
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.actorId}, ${opts.actorType},
+      ${'booking.create'}, ${'booking'}, ${opts.resourceId}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}

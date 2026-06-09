@@ -1,0 +1,77 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import type { WeeklyAvailabilityResponse } from '@/modules/tenants/public.service'
+
+function formatDayTab(dateStr: string): { dow: string; dm: string } {
+  const dt = new Date(dateStr + 'T12:00:00Z')
+  const dow = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' }).format(dt)
+  const dm = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(dt)
+  return { dow, dm }
+}
+
+function formatARS(cents: number): string {
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(cents / 100)
+}
+
+export default function WeeklyAvailability({ slug, week }: { slug: string; week: WeeklyAvailabilityResponse }) {
+  const [active, setActive] = useState(0)
+  const day = week.days[active]!
+
+  return (
+    <section className="space-y-4" aria-label="Disponibilidad semanal">
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+        {week.days.map((d, i) => {
+          const { dow, dm } = formatDayTab(d.date)
+          const isActive = i === active
+          return (
+            <button
+              key={d.date}
+              type="button"
+              onClick={() => setActive(i)}
+              aria-pressed={isActive}
+              className={`flex min-w-[68px] snap-start flex-col items-center rounded-xl border px-3 py-2 text-xs transition-colors ${
+                isActive ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <span className="font-semibold capitalize">{dow}</span>
+              <span className="tabular-nums">{dm}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {day.courts.length === 0 ? (
+        <p className="py-10 text-center text-sm text-slate-500">Sin canchas disponibles este día.</p>
+      ) : (
+        <div className="space-y-5">
+          {day.courts.map((court) => {
+            const free = court.slots.filter((s) => s.status === 'free')
+            return (
+              <div key={court.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold text-slate-900">{court.name}</h3>
+                {free.length === 0 ? (
+                  <p className="text-xs text-slate-400">Sin turnos libres.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {free.map((s) => (
+                      <Link
+                        key={s.time}
+                        href={`/${slug}/reservar?court=${court.id}&date=${day.date}&time=${s.time}&dur=${s.duration}`}
+                        className="flex flex-col items-center rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 hover:bg-green-100 active:scale-[0.98] transition-colors"
+                      >
+                        <span className="tabular-nums">{s.time}</span>
+                        {s.price && <span className="text-[10px] text-green-600 tabular-nums">{formatARS(s.price)}</span>}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}

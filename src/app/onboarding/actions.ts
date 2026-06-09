@@ -28,6 +28,12 @@ export async function createTenantAction(
   const limited = await adminRateLimited(user.staffUserId)
   if (limited) return { success: false, error: limited }
 
+  // #35: idempotencia. Si el staff ya tiene un tenant (ej. volvio con "atras" del
+  // navegador y reenvio el Paso 1), no crear un duplicado ni una segunda fila en
+  // tenant_staff_members: devolver success con el tenant existente.
+  const existingTenant = await getStaffTenant(user.staffUserId)
+  if (existingTenant) return { success: true }
+
   const raw = {
     name: formData.get('name'),
     address: formData.get('address'),

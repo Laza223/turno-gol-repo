@@ -3,9 +3,9 @@ import { Shield } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { PinGate } from '@/components/pin-gate'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { setPinAction } from './actions'
 
 const SETTINGS_TABS = [
@@ -112,9 +112,9 @@ export default async function PinSettingsPage() {
                 placeholder="••••"
               />
             </div>
-            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500">
+            <SubmitButton pendingLabel="Procesando…" className="w-full bg-emerald-600 hover:bg-emerald-500">
               {hasPin ? 'Cambiar PIN' : 'Configurar PIN'}
-            </Button>
+            </SubmitButton>
           </form>
 
           {!hasPin && (

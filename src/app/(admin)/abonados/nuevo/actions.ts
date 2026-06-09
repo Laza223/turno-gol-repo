@@ -11,35 +11,50 @@ import { generateSlotDates } from '@/modules/abonados/slot-generator'
 import { getAbonadoSlotConflicts } from '@/modules/abonados/abonado.service'
 import type { CreateAbonadoInput } from '@/modules/abonados/abonado.types'
 
-const schema = z.object({
-  courtId: z.string().uuid('Elegí una cancha'),
-  contactName: z.string().trim().min(1, 'Nombre requerido'),
-  contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
-  dayOfWeek: z.coerce.number().int().min(0).max(6),
-  // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
-  // reactivate dialog, which renders the abonado row's stored time directly).
-  timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  pricePerSession: z.coerce.number().positive('El precio por sesión es requerido'),
-  monthlyPrice: z.coerce.number().positive('El precio mensual es requerido'),
-  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
-  paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
-  notes: z.string().trim().max(1000).optional(),
-})
+// #33: comparamos timeEnd > timeStart en segundos del dia. Acepta HH:MM y
+// HH:MM:SS (la comparacion lexicografica fallaria al mezclar ambos formatos).
+function timeToSeconds(t: string): number {
+  const [h, m, s] = t.split(':').map(Number)
+  return h * 3600 + m * 60 + (s ?? 0)
+}
 
-const previewSchema = z.object({
-  courtId: z.string().uuid('Elegí una cancha'),
-  dayOfWeek: z.coerce.number().int().min(0).max(6),
-  // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
-  // reactivate dialog, which renders the abonado row's stored time directly).
-  timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
-  endsOn: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
-    .optional(),
-})
+const TIME_RANGE_MSG = 'El horario de fin debe ser posterior al de inicio.'
+const endAfterStart = (d: { timeStart: string; timeEnd: string }): boolean =>
+  timeToSeconds(d.timeEnd) > timeToSeconds(d.timeStart)
+
+const schema = z
+  .object({
+    courtId: z.string().uuid('Elegí una cancha'),
+    contactName: z.string().trim().min(1, 'Nombre requerido'),
+    contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
+    dayOfWeek: z.coerce.number().int().min(0).max(6),
+    // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
+    // reactivate dialog, which renders the abonado row's stored time directly).
+    timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    pricePerSession: z.coerce.number().positive('El precio por sesión es requerido'),
+    monthlyPrice: z.coerce.number().positive('El precio mensual es requerido'),
+    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
+    notes: z.string().trim().max(1000).optional(),
+  })
+  .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
+
+const previewSchema = z
+  .object({
+    courtId: z.string().uuid('Elegí una cancha'),
+    dayOfWeek: z.coerce.number().int().min(0).max(6),
+    // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
+    // reactivate dialog, which renders the abonado row's stored time directly).
+    timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    endsOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
+      .optional(),
+  })
+  .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
 
 export type PreviewAbonadoSlotsInput = z.infer<typeof previewSchema>
 

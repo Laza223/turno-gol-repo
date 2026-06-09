@@ -52,10 +52,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // Decode tenantId from state payload
+  // Decode tenantId + issued-at timestamp from the state payload.
+  // Formato (ver oauth-start/route.ts): base64url(`${tenantId}:${Date.now()}`)
   const decoded = Buffer.from(payload, 'base64url').toString('utf8')
-  const tenantId = decoded.split(':')[0]
-  if (!tenantId) {
+  const [tenantId, tsRaw] = decoded.split(':')
+  if (!tenantId || !tsRaw) {
+    return NextResponse.redirect(
+      new URL('/onboarding?error=mp_invalid_state', req.url),
+    )
+  }
+
+  // Anti-replay (#10): el state va por la URL de redirect de MP (queda en logs,
+  // historial, Referer). El ts esta firmado por HMAC, asi que solo lo evaluamos
+  // sobre payloads con firma valida. Rechazar states expirados o con ts futuro.
+  const issuedAt = Number(tsRaw)
+  const STATE_TTL_MS = 10 * 60 * 1000 // 10 minutos
+  const age = Date.now() - issuedAt
+  if (!Number.isFinite(issuedAt) || age < 0 || age > STATE_TTL_MS) {
     return NextResponse.redirect(
       new URL('/onboarding?error=mp_invalid_state', req.url),
     )

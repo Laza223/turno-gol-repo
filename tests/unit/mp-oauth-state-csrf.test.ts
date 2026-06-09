@@ -112,3 +112,46 @@ describe('MP OAuth callback state CSRF (B6.6)', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
+
+describe('MP OAuth callback state expiry (replay protection, #10)', () => {
+  it('state older than 10 min → reject, no token fetch', async () => {
+    const state = makeState(TENANT, SECRET, Date.now() - (10 * 60 * 1000 + 1000))
+    const req = new NextRequest(
+      `https://app.test.local/api/mp/callback?code=authcode&state=${state}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('state with future timestamp (clock skew / forjado) → reject', async () => {
+    const state = makeState(TENANT, SECRET, Date.now() + 60 * 60 * 1000)
+    const req = new NextRequest(
+      `https://app.test.local/api/mp/callback?code=authcode&state=${state}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('state firmado pero sin segmento de timestamp → reject', async () => {
+    const payload = Buffer.from(TENANT, 'utf8').toString('base64url')
+    const sig = createHmac('sha256', SECRET).update(payload).digest('base64url')
+    const req = new NextRequest(
+      `https://app.test.local/api/mp/callback?code=authcode&state=${payload}.${sig}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('state fresco dentro de la ventana → intercambia token', async () => {
+    const state = makeState(TENANT, SECRET, Date.now())
+    const req = new NextRequest(
+      `https://app.test.local/api/mp/callback?code=authcode&state=${state}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/\/dashboard$/)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})

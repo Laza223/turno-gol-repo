@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export type ConfirmDialogProps = {
@@ -51,13 +52,21 @@ export function ConfirmDialog({
   function handleConfirm() {
     setError(null)
     startTransition(async () => {
-      const res = await onConfirm()
-      if (res && res.success === false) {
-        setError(res.error ?? 'No se pudo completar la acción.')
-        return
+      try {
+        const res = await onConfirm()
+        if (res && res.success === false) {
+          setError(res.error ?? 'No se pudo completar la acción.')
+          return
+        }
+        setTyped('')
+        onOpenChange(false)
+      } catch (err) {
+        // #17: si onConfirm lanza (ej. error DB inesperado, re-throw), sin este
+        // catch la transicion quedaba rechazada y el modal colgado en
+        // "Procesando…". Reportamos a Sentry y mostramos error inline sin cerrar.
+        Sentry.captureException(err)
+        setError('No se pudo completar la acción. Revisá tu conexión e intentá de nuevo.')
       }
-      setTyped('')
-      onOpenChange(false)
     })
   }
 

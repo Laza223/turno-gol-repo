@@ -8,7 +8,10 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
-import { getAbonadoSlotConflicts } from '@/modules/abonados/abonado.service'
+import {
+  checkAbonadoSlotConflict,
+  getAbonadoSlotConflicts,
+} from '@/modules/abonados/abonado.service'
 import type { CreateAbonadoInput } from '@/modules/abonados/abonado.types'
 
 // #33: comparamos timeEnd > timeStart en segundos del dia. Acepta HH:MM y
@@ -91,11 +94,38 @@ export async function previewAbonadoSlotsAction(
     closedDates,
   })
 
-  const conflicts = await withTenantContext(tenant.id, (tx) =>
-    getAbonadoSlotConflicts(tenant.id, courtId, timeStart, timeEnd, dates, tx),
-  )
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    // #34: el preview tambien debe detectar un abonado ACTIVO en el mismo
+    // court/dia/horario (getAbonadoSlotConflicts solo mira bookings). Sin esto
+    // el choque recien explotaba al confirmar (createAbonado lanza
+    // AbonadoConflictError) en vez de avisarse en la vista previa.
+    const abonadoConflict = await checkAbonadoSlotConflict(
+      courtId,
+      dayOfWeek,
+      timeStart,
+      timeEnd,
+      tenant.id,
+      null,
+      tx,
+    )
+    if (abonadoConflict) return { abonadoConflict: true as const }
+    const conflicts = await getAbonadoSlotConflicts(
+      tenant.id,
+      courtId,
+      timeStart,
+      timeEnd,
+      dates,
+      tx,
+    )
+    return { abonadoConflict: false as const, conflicts }
+  })
 
-  return { success: true, dates, conflicts }
+  if (result.abonadoConflict) {
+    // Mismo mensaje que AbonadoConflictError (la barrera del create path).
+    return { success: false, error: 'Ya existe un turno fijo activo en ese horario.' }
+  }
+
+  return { success: true, dates, conflicts: result.conflicts }
 }
 
 export type NewAbonadoState = { status: 'idle' } | { status: 'error'; message: string }

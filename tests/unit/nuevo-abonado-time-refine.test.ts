@@ -21,6 +21,7 @@ vi.mock('@/modules/abonados/slot-generator', () => ({
   generateSlotDates: vi.fn(() => ['2026-06-15']),
 }))
 vi.mock('@/modules/abonados/abonado.service', () => ({
+  checkAbonadoSlotConflict: vi.fn(async () => false),
   getAbonadoSlotConflicts: vi.fn(async () => []),
 }))
 vi.mock('next/navigation', () => ({

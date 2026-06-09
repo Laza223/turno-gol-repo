@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'
+import { captureException } from '@/lib/sentry'
 
 const profileSchema = z.object({
   first_name: z.string().min(1, 'Nombre requerido').max(100),
@@ -36,17 +37,24 @@ export async function updateProfileAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
 
-  await withPlayerContext(user.playerId, (tx) =>
-    tx
-      .update(players)
-      .set({
-        firstName: parsed.data.first_name,
-        lastName: parsed.data.last_name,
-        phone: parsed.data.phone ?? null,
-        preferredArea: parsed.data.preferred_area ?? null,
-      })
-      .where(eq(players.id, user.playerId)),
-  )
+  // #37: sin try/catch, un fallo de DB (timeout/conexion perdida) se propagaba
+  // como uncaught server error al cliente, sin mensaje amigable ni reporte.
+  try {
+    await withPlayerContext(user.playerId, (tx) =>
+      tx
+        .update(players)
+        .set({
+          firstName: parsed.data.first_name,
+          lastName: parsed.data.last_name,
+          phone: parsed.data.phone ?? null,
+          preferredArea: parsed.data.preferred_area ?? null,
+        })
+        .where(eq(players.id, user.playerId)),
+    )
+  } catch (err) {
+    captureException(err)
+    return { success: false, error: 'No pudimos guardar tus cambios. Intentá de nuevo.' }
+  }
 
   revalidatePath('/perfil')
   return { success: true }

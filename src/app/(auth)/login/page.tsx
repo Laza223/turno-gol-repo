@@ -6,10 +6,32 @@ import Image from 'next/image'
 import { ArrowLeft, Loader2, Mail, Sparkles } from 'lucide-react'
 import { loginAction, type LoginState } from './actions'
 
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+
 const HERO_IMG =
   'https://images.unsplash.com/photo-1551958219-acbc608c6377?q=80&w=2000&auto=format&fit=crop'
 
 const initial: LoginState = { status: 'idle' }
+
+function DeletedNotice() {
+  const searchParams = useSearchParams()
+  const deleted = searchParams.get('deleted')
+
+  if (deleted !== '1') return null
+
+  return (
+    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-sm shadow-emerald-100 flex items-start gap-3">
+      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 ring-2 ring-emerald-50">
+        <span className="text-xs font-bold text-emerald-700">✓</span>
+      </div>
+      <div>
+        <p className="font-semibold text-emerald-900">Tu cuenta fue eliminada</p>
+        <p className="text-xs text-emerald-700 mt-0.5">Lamentamos verte partir. Podés volver a registrarte cuando quieras.</p>
+      </div>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(loginAction, initial)
@@ -107,6 +129,10 @@ function FormCard({
           Te enviamos un enlace mágico a tu email. Sin contraseñas.
         </p>
       </header>
+
+      <Suspense fallback={null}>
+        <DeletedNotice />
+      </Suspense>
 
       <form action={formAction} className="space-y-4" noValidate>
         <div className="space-y-1.5">

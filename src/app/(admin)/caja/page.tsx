@@ -5,6 +5,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
+import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CajaActions } from './components/CajaActions'
 
@@ -51,7 +52,9 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
   if (!tenant) redirect('/login')
 
   const today = artDateOf(new Date())
-  const date = searchParams.date ?? today
+  // #16: validar el ?date del deep-link. Un valor basura/imposible (2026-13-45)
+  // reventaba el cast SQL ::date y addDays(); degradar a hoy (ART) en su lugar.
+  const date = safeDateParam(searchParams.date, today)
 
   const { summary, cashFlows } = await withTenantContext(tenant.id, async (tx) => {
     const [s, cf] = await Promise.all([

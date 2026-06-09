@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { LayoutGrid, MoonStar } from 'lucide-react'
+import { useArtNow } from '@/hooks/use-art-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { BookingCard } from './BookingCard'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -54,15 +55,9 @@ export function BookingGrid({
 }: Props) {
   const router = useRouter()
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
-  const [artNow, setArtNow] = useState({ date: '', time: '' })
-
-  useEffect(() => {
-    const d = new Date(Date.now() - 3 * 60 * 60 * 1000)
-    setArtNow({
-      date: d.toISOString().slice(0, 10),
-      time: d.toISOString().slice(11, 16),
-    })
-  }, [])
+  // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
+  // congelado en una grilla abierta sin recargar.
+  const artNow = useArtNow()
 
   const { bookings, status, refetch } = useBookingRealtime({ tenantId, date, initialBookings })
 

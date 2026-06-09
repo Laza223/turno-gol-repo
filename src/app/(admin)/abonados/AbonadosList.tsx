@@ -162,6 +162,10 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
       timeStart: a.timeStart,
       timeEnd: a.timeEnd,
       startsOn: todayART(),
+      // #15: respetar la fecha de fin del abonado para que el preview genere los
+      // mismos slots que reactivateAbonado (que usa abonado.endsOn). Mismo formato
+      // YYYY-MM-DD que abonado.service.ts para evitar drift de timezone.
+      endsOn: a.endsOn ? a.endsOn.toISOString().slice(0, 10) : undefined,
     })
 
     setState((prev) => ({

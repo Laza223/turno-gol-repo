@@ -36,7 +36,18 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
   const pct = Math.round((completed / total) * 100)
   const [minimized, setMinimized] = useState(completed === total)
   const [copied, setCopied] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
+
+  // Persist the "link shared" checklist step. The action can fail silently
+  // (e.g. rate limit) so we surface its result instead of assuming success.
+  function persistShared() {
+    if (state.publicLinkShared) return
+    startTransition(async () => {
+      const res = await markPublicLinkSharedAction()
+      setShareError(res.success ? null : res.error)
+    })
+  }
 
   async function handleCopyLink() {
     // Resolve an absolute URL: prefer NEXT_PUBLIC_APP_URL, fall back to the
@@ -45,6 +56,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
     const origin = typeof window !== 'undefined' ? window.location.origin : null
     const publicUrl = buildPublicLinkUrl(appUrl, origin, tenantSlug)
     if (!publicUrl) return
+    setShareError(null)
 
     const canCopy = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
     if (canCopy) {
@@ -52,9 +64,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
         await navigator.clipboard.writeText(publicUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-        if (!state.publicLinkShared) {
-          startTransition(() => markPublicLinkSharedAction())
-        }
+        persistShared()
         return
       } catch {
         // fallthrough to prompt fallback
@@ -63,9 +73,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
     // Fallback: prompt user to copy manually (Safari Private Mode, HTTP context, etc.)
     if (typeof window !== 'undefined') {
       window.prompt('Copiá el enlace público:', publicUrl)
-      if (!state.publicLinkShared) {
-        startTransition(() => markPublicLinkSharedAction())
-      }
+      persistShared()
     }
   }
 
@@ -138,15 +146,26 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
               </span>
 
               {!done && action === 'copy-link' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyLink}
-                  className="h-8 text-xs"
-                >
-                  <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                  {copied ? 'Copiado!' : 'Copiar link'}
-                </Button>
+                <div className="flex flex-col items-end gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyLink}
+                    className="h-8 text-xs"
+                  >
+                    <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                    {copied ? 'Copiado!' : 'Copiar link'}
+                  </Button>
+                  {shareError && (
+                    <p
+                      role="status"
+                      aria-live="polite"
+                      className="max-w-[12rem] text-right text-xs text-red-600"
+                    >
+                      {shareError}
+                    </p>
+                  )}
+                </div>
               )}
 
               {!done && href && (

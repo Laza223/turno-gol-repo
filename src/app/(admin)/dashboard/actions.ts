@@ -9,15 +9,19 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 
-export async function markPublicLinkSharedAction(): Promise<void> {
+export type MarkSharedResult = { success: true } | { success: false; error: string }
+
+export async function markPublicLinkSharedAction(): Promise<MarkSharedResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
   const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return
+  if (!tenant) return { success: false, error: 'No encontramos tu complejo.' }
 
   const limited = await adminRateLimited(tenant.id)
-  if (limited) return
+  if (limited) {
+    return { success: false, error: limited }
+  }
 
   await withTenantContext(tenant.id, async (tx) => {
     await tx
@@ -30,4 +34,5 @@ export async function markPublicLinkSharedAction(): Promise<void> {
   })
 
   revalidatePath('/dashboard')
+  return { success: true }
 }

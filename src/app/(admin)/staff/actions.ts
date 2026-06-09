@@ -10,10 +10,44 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 
 export type StaffActionResult =
   | { success: true }
   | { success: false; error: string }
+
+/**
+ * Estados de tenant que bloquean la gestion de staff (Fase 3 #14). Mismo
+ * criterio que la reserva online ((public)/[slug]/reservar/actions.ts): solo
+ * trialing/active/past_due pueden mutar staff.
+ */
+const STAFF_WRITE_BLOCKED_STATUSES = [
+  'deleted',
+  'blocked',
+  'canceled',
+  'churned',
+  'suspended',
+]
+
+/**
+ * Guard server-side compartido para mutaciones de staff (Fase 3 #13/#14):
+ * - Re-valida la sesion de PIN: la cookie tg_pin_session expira a los 30 min y
+ *   el PinGate es solo UI, asi que una accion invocada directamente con la
+ *   cookie vencida debe rechazarse. Mismo patron que settings/reservas/actions.ts.
+ * - Bloquea tenants en estado no operativo (suspended/blocked/canceled/churned/
+ *   deleted), que getStaffTenant no filtra.
+ * Devuelve un StaffActionResult de error, o null si la mutacion puede continuar.
+ */
+async function guardStaffMutation(tenant: {
+  status: string
+}): Promise<{ success: false; error: string } | null> {
+  const pinOk = await checkPinSessionAction()
+  if (!pinOk) return { success: false, error: 'PIN requerido.' }
+  if (STAFF_WRITE_BLOCKED_STATUSES.includes(tenant.status)) {
+    return { success: false, error: 'El complejo no está activo.' }
+  }
+  return null
+}
 
 const inviteSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -33,6 +67,9 @@ export async function inviteStaffAction(
 ): Promise<StaffActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const guard = await guardStaffMutation(tenant)
+  if (guard) return guard
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -124,6 +161,9 @@ export async function deactivateStaffAction(
   const { tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
+  const guard = await guardStaffMutation(tenant)
+  if (guard) return guard
+
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
@@ -168,11 +208,39 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   const { tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
+  const guard = await guardStaffMutation(tenant)
+  if (guard) return guard
+
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
+  // Fase 3 #12: el email no debe ser arbitrario; tiene que pertenecer a un
+  // miembro ACTIVO del tenant actual antes de disparar inviteUserByEmail.
+  const parsedEmail = z.string().email().safeParse(email)
+  if (!parsedEmail.success) return { success: false, error: 'Email inválido.' }
+  const normalizedEmail = parsedEmail.data.toLowerCase()
+
+  const member = await withTenantContext(tenant.id, async (tx) =>
+    tx
+      .select({ id: tenantStaffMembers.id })
+      .from(tenantStaffMembers)
+      .innerJoin(staffUsers, eq(staffUsers.id, tenantStaffMembers.staffUserId))
+      .where(
+        and(
+          eq(staffUsers.email, normalizedEmail),
+          eq(tenantStaffMembers.tenantId, tenant.id),
+          eq(tenantStaffMembers.isActive, true),
+        ),
+      )
+      .limit(1),
+  )
+
+  if (member.length === 0) {
+    return { success: false, error: 'Este email no es un miembro activo del complejo.' }
+  }
+
   const adminClient = createAdminClient()
-  const { error } = await adminClient.auth.admin.inviteUserByEmail(email, {
+  const { error } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
   })
 

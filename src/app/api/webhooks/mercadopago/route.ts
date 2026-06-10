@@ -6,7 +6,7 @@ import {
 } from '@/shared/jobs/queue-names'
 import { webhookPayloadSchema, webhookResponseSchema } from '@/modules/payments/payment.schema'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
-import { verifyWebhookSecret } from '@/modules/payments/webhook-auth'
+import { verifyWebhookSignature } from '@/modules/payments/webhook-auth'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
 import { track, withSpan } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
@@ -22,10 +22,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'missing tenant' }, { status: 400 })
   }
 
-  if (!verifyWebhookSecret(req.headers.get('x-webhook-secret'))) {
-    return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
-  }
-
   let body: unknown
   try {
     body = await req.json()
@@ -38,6 +34,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
   }
   const payload = parsed.data
+
+  const xSignature = req.headers.get('x-signature')
+  const xRequestId = req.headers.get('x-request-id')
+  const dataId = url.searchParams.get('data.id') ?? payload.data.id
+
+  if (!verifyWebhookSignature(xSignature, xRequestId, dataId)) {
+    return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
+  }
 
   track.webhook('mp.webhook.received', {
     mpEventId: payload.id,

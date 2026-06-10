@@ -18,7 +18,7 @@ export async function loginAction(
 ): Promise<LoginState> {
   const parsed = schema.safeParse({ email: formData.get('email') })
   if (!parsed.success) {
-    return { status: 'error', message: 'Email inválido.' }
+    return { status: 'error', message: 'Ingresá un email válido.' }
   }
 
   const rl = await enforce('authMagicLink', parsed.data.email)

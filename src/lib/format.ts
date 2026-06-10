@@ -60,3 +60,8 @@ export function parseDateOnly(value: string): Date {
 export function formatTime(value: string): string {
   return value.slice(0, 5)
 }
+
+/** Iniciales de un nombre para avatares. Ej: ("Tomás", "Pérez") → "TP". */
+export function initials(firstName: string, lastName: string): string {
+  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
+}

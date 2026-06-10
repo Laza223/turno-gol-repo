@@ -35,7 +35,7 @@ export default async function ReservaErrorPage({ params }: Props) {
     new Date(booking.createdAt).getTime() + 15 * 60 * 1000 > now
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 ring-8 ring-red-50">
         <XCircle className="h-8 w-8 text-red-600" aria-hidden />
       </div>

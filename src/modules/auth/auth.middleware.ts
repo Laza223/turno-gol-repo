@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { tagSession } from '@/shared/middleware/observability'
 import type { AuthUser } from './types'
@@ -5,8 +6,11 @@ import type { AuthUser } from './types'
 /**
  * Read the Supabase session from cookies and map to AuthUser.
  * Returns null if no session (caller responsible for 401).
+ *
+ * Cacheado por request (React.cache): layout, shell y página comparten una
+ * sola lectura de `supabase.auth.getUser()` en lugar de repetirla N veces.
  */
-export async function extractAuthUser(): Promise<AuthUser | null> {
+export const extractAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = createClient()
   const { data, error } = await supabase.auth.getUser()
   if (error || !data?.user) return null
@@ -38,4 +42,4 @@ export async function extractAuthUser(): Promise<AuthUser | null> {
     tenantId,
     role: 'admin',
   }
-}
+})

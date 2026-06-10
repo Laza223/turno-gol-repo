@@ -10,8 +10,9 @@ import {
 import { insertCashFlow } from '../helpers/factories'
 import { closeDailyRegister, getDailyClose } from '@/modules/cashflow/daily-close.service'
 import { DayAlreadyCloseExistsError } from '@/modules/cashflow/cashflow.errors'
+import { todayART } from '@/shared/time/art-date'
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = todayART()
 
 async function seedTenantWithCashflows() {
   const sql = getSql()

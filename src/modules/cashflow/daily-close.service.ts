@@ -2,7 +2,8 @@ import { sql } from 'drizzle-orm'
 import { dailyCashCloses } from '@/shared/db/schema'
 import { insertAuditLog } from '@/shared/db/audit'
 import type { DbTx } from '@/shared/db/client'
-import { DayAlreadyCloseExistsError } from './cashflow.errors'
+import { todayART } from '@/shared/time/art-date'
+import { CloseDateInFutureError, DayAlreadyCloseExistsError } from './cashflow.errors'
 import type { DailyCashCloseRow, CashFlowType } from './cashflow.types'
 
 function isUniqueViolation(err: unknown): boolean {
@@ -43,6 +44,10 @@ export async function closeDailyRegister(
   opts: { declaredCash?: number; note?: string },
   tx: DbTx,
 ): Promise<DailyCashCloseRow> {
+  if (date > todayART()) {
+    throw new CloseDateInFutureError(date)
+  }
+
   const existing = await tx.execute(
     sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
   )

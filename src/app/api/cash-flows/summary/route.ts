@@ -5,13 +5,10 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { daySummaryResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import type { NextRequest } from 'next/server'
+import { artDateOf } from '@/shared/time/art-date'
 import { dateStr } from '@/shared/validation/primitives'
 
 export const dynamic = 'force-dynamic'
-
-function artDateOf(ts: Date): string {
-  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
-}
 
 export const GET = withTenant(async (req: NextRequest, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)

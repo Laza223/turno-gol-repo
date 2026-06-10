@@ -124,12 +124,13 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Duración</label>
-              <div className="flex gap-2">
+              <label id="duration-label" className="block text-sm font-medium text-foreground mb-1">Duración</label>
+              <div role="group" aria-labelledby="duration-label" className="flex gap-2">
                 {([60, 120] as const).map((d) => (
                   <button
                     key={d}
                     type="button"
+                    aria-pressed={duration === d}
                     onClick={() => setDuration(d)}
                     className={`flex-1 py-1.5 min-h-11 md:min-h-9 rounded border text-sm font-medium transition-colors duration-100 ${
                       duration === d

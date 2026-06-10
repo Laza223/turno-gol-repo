@@ -11,6 +11,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import {
+  CloseDateInFutureError,
   DayAlreadyClosedError,
   DayAlreadyCloseExistsError,
   InvalidCashFlowTypeError,
@@ -105,6 +106,9 @@ export async function closeDayAction(
       )
       return { success: true as const, close }
     } catch (err) {
+      if (err instanceof CloseDateInFutureError) {
+        return { success: false as const, error: 'No se puede cerrar una fecha futura.' }
+      }
       if (err instanceof DayAlreadyCloseExistsError) {
         return { success: false as const, error: `La caja del ${parsed.data.date} ya fue cerrada.` }
       }

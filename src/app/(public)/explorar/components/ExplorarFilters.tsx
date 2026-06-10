@@ -41,6 +41,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
   const [online, setOnline] = useState(false)
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [priceError, setPriceError] = useState<string | null>(null)
 
   // (Re)inicializar el borrador desde la URL cada vez que cambia.
   useEffect(() => {
@@ -70,6 +71,13 @@ export default function ExplorarFilters({ onApplied }: Props) {
   }
 
   function apply() {
+    const minCents = pesosToCents(minPrice)
+    const maxCents = pesosToCents(maxPrice)
+    if (minCents && maxCents && Number(minCents) > Number(maxCents)) {
+      setPriceError('El precio mínimo no puede superar el máximo.')
+      return
+    }
+    setPriceError(null)
     const amenities = Array.from(services)
     if (techado) amenities.push('techado')
     router.push(
@@ -78,8 +86,8 @@ export default function ExplorarFilters({ onApplied }: Props) {
         formats: formats.size ? Array.from(formats).join(',') : undefined,
         amenities: amenities.length ? amenities.join(',') : undefined,
         online: online ? '1' : undefined,
-        minPrice: pesosToCents(minPrice),
-        maxPrice: pesosToCents(maxPrice),
+        minPrice: minCents,
+        maxPrice: maxCents,
       }),
     )
     onApplied?.()
@@ -216,6 +224,9 @@ export default function ExplorarFilters({ onApplied }: Props) {
             />
           </div>
         </div>
+        {priceError && (
+          <p role="alert" className="mt-1.5 text-xs text-red-600">{priceError}</p>
+        )}
       </fieldset>
 
       {/* Reserva online */}

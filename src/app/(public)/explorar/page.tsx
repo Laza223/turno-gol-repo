@@ -6,6 +6,10 @@ import {
   type SortOption,
 } from '@/modules/tenants/search.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { withPlayerContext } from '@/shared/db/client'
+import { playerFavorites } from '@/shared/db/schema'
+import { eq } from 'drizzle-orm'
 import SearchBar from './components/SearchBar'
 import TenantCard from './components/TenantCard'
 import ExplorarToolbar from './components/ExplorarToolbar'
@@ -45,6 +49,17 @@ function pageUrl(sp: SP, offset: number): string {
   return `/explorar?${p.toString()}`
 }
 
+async function getPlayerFavoriteIds(playerId: string): Promise<Set<string>> {
+  try {
+    const rows = await withPlayerContext(playerId, (tx) =>
+      tx.select({ tenantId: playerFavorites.tenantId }).from(playerFavorites).where(eq(playerFavorites.playerId, playerId)),
+    )
+    return new Set(rows.map((r) => r.tenantId))
+  } catch {
+    return new Set()
+  }
+}
+
 export default async function ExplorarPage({ searchParams }: { searchParams: SP }) {
   const offset = Math.max(num(searchParams.offset) ?? 0, 0)
   const view = searchParams.view === 'map' ? 'map' : 'list'
@@ -53,6 +68,10 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
     : undefined
   // En el mapa mostramos más pines de una (sin paginar).
   const limit = view === 'map' ? 50 : PAGE_SIZE
+
+  const authUser = await extractAuthUser().catch(() => null)
+  const playerId = authUser?.type === 'player' ? authUser.playerId : null
+  const favoriteIds = playerId ? await getPlayerFavoriteIds(playerId) : new Set<string>()
 
   const [{ results, total }, cities] = await Promise.all([
     searchPublicTenants({
@@ -118,7 +137,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
             <>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {results.map((t) => (
-                  <TenantCard key={t.id} tenant={t} />
+                  <TenantCard key={t.id} tenant={t} initialFavorited={favoriteIds.has(t.id)} />
                 ))}
               </div>
               {hasMore && (

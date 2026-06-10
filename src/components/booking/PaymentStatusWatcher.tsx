@@ -27,7 +27,11 @@ type StatusResponse = {
 export default function PaymentStatusWatcher({ bookingId, initialStatus, expiresAt }: Props) {
   const [status, setStatus] = useState(initialStatus)
   const [showDelayNote, setShowDelayNote] = useState(false)
+  // `stalled` corta el spinner indefinido: 'expired' = se agotó el tiempo sin
+  // transición terminal (#45, #48); 'error' = el polling falló repetidamente (#46).
+  const [stalled, setStalled] = useState<null | 'expired' | 'error'>(null)
   const mountTimeRef = useRef(Date.now())
+  const failuresRef = useRef(0)
 
   // Delay note: show after 30s still pending
   useEffect(() => {
@@ -41,11 +45,25 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     return () => clearTimeout(id)
   }, [status])
 
-  // Polling effect — re-runs whenever status changes so early-return cleans up.
+  // Tiempo agotado: si el contador de expiración llega a 0 (con un pequeño margen
+  // para un webhook tardío) y el backend aún no transicionó, dejamos de mostrar
+  // "Confirmando…" para siempre y pasamos a la UI de tiempo agotado (#45, #48).
+  useEffect(() => {
+    if (TERMINAL_STATUSES.has(status)) return
+    const ms = new Date(expiresAt).getTime() + 5000 - Date.now()
+    if (ms <= 0) {
+      setStalled((s) => s ?? 'expired')
+      return
+    }
+    const id = setTimeout(() => setStalled((s) => s ?? 'expired'), ms)
+    return () => clearTimeout(id)
+  }, [status, expiresAt])
+
+  // Polling effect — re-runs whenever status/stalled changes so early-return cleans up.
   // Cache-bust query param: dev/SSR caches occasionally serve stale 'pending'
   // even with `cache: 'no-store'`; a varying URL guarantees a fresh response.
   useEffect(() => {
-    if (TERMINAL_STATUSES.has(status)) return
+    if (TERMINAL_STATUSES.has(status) || stalled) return
 
     const id = setInterval(() => {
       void (async () => {
@@ -54,17 +72,24 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
             `/api/player/bookings/${bookingId}/status?t=${Date.now()}`,
             { cache: 'no-store' },
           )
-          if (!res.ok) return
+          if (!res.ok) {
+            failuresRef.current += 1
+            if (failuresRef.current >= 5) setStalled((s) => s ?? 'error')
+            return
+          }
+          failuresRef.current = 0
           const json = (await res.json()) as StatusResponse
           setStatus(json.data.status)
         } catch {
-          // transient network error — keep polling
+          // error de red: tras varios intentos seguidos cortamos el spinner (#46)
+          failuresRef.current += 1
+          if (failuresRef.current >= 5) setStalled((s) => s ?? 'error')
         }
       })()
     }, 3000)
 
     return () => clearInterval(id)
-  }, [bookingId, status])
+  }, [bookingId, status, stalled])
 
   if (status === 'confirmed') {
     return (
@@ -111,6 +136,31 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
           <XCircle className="h-8 w-8 text-red-500" aria-hidden />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Reserva cancelada</h1>
+        <Link
+          href="/mis-reservas"
+          className="mt-8 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+        >
+          Ver mis reservas
+        </Link>
+      </div>
+    )
+  }
+
+  // Tiempo agotado o polling caído: cortamos el spinner y damos una salida (#45/#46/#48)
+  if (stalled) {
+    return (
+      <div className="flex flex-col items-center text-center" aria-live="polite" role="status">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 ring-8 ring-slate-50">
+          <XCircle className="h-8 w-8 text-slate-500" aria-hidden />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          {stalled === 'error' ? 'No pudimos verificar tu pago' : 'Se acabó el tiempo'}
+        </h1>
+        <p className="mt-3 text-sm text-slate-600">
+          {stalled === 'error'
+            ? 'Tuvimos problemas para verificar el estado de tu pago. Si lo completaste, te confirmamos por email apenas se acredite.'
+            : 'No recibimos la confirmación a tiempo. Si pagaste, te avisamos por email apenas se acredite; si no, el turno quedó liberado.'}
+        </p>
         <Link
           href="/mis-reservas"
           className="mt-8 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"

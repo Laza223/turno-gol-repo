@@ -49,6 +49,21 @@ export function PinGate({ children, pinRequired = true }: PinGateProps) {
     checkPinSessionAction().then(setVerified, () => setVerified(false))
   }, [pinRequired])
 
+  // Re-check cookie on tab focus so an expired PIN session (TTL 30 min)
+  // forces the gate to re-display instead of staying silently verified.
+  useEffect(() => {
+    if (!pinRequired || verified !== true) return
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        checkPinSessionAction().then((active) => {
+          if (!active) setVerified(false)
+        }, () => {})
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [pinRequired, verified])
+
   // Countdown interval: starts when locked, stops when countdown reaches 0.
   useEffect(() => {
     if (lockedUntilMs > Date.now()) {

@@ -146,32 +146,34 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
             description="No hay movimientos registrados para este día."
           />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-left">
-                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Tipo</th>
-                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Categoría</th>
-                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Método</th>
-                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Descripción</th>
-                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide text-right">Monto</th>
-                <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Hora</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {cashFlows.map((cf) => (
-                <tr key={cf.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-3 text-slate-900">{TYPE_LABELS[cf.type] ?? cf.type}</td>
-                  <td className="p-3 text-slate-700">{CATEGORY_LABELS[cf.category] ?? cf.category}</td>
-                  <td className="p-3 text-slate-700">{METHOD_LABELS[cf.method] ?? cf.method}</td>
-                  <td className="p-3 max-w-xs truncate text-slate-700">{cf.description}</td>
-                  <td className="p-3 text-right font-medium tabular-nums text-slate-900">{formatARS(cf.amount)}</td>
-                  <td className="p-3 tabular-nums text-slate-500">
-                    {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left">
+                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Tipo</th>
+                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Categoría</th>
+                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Método</th>
+                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Descripción</th>
+                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide text-right">Monto</th>
+                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Hora</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {cashFlows.map((cf) => (
+                  <tr key={cf.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-3 text-slate-900">{TYPE_LABELS[cf.type] ?? cf.type}</td>
+                    <td className="p-3 text-slate-700">{CATEGORY_LABELS[cf.category] ?? cf.category}</td>
+                    <td className="p-3 text-slate-700">{METHOD_LABELS[cf.method] ?? cf.method}</td>
+                    <td className="p-3 max-w-xs truncate text-slate-700">{cf.description}</td>
+                    <td className="p-3 text-right font-medium tabular-nums text-slate-900">{formatARS(cf.amount)}</td>
+                    <td className="p-3 tabular-nums text-slate-500">
+                      {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

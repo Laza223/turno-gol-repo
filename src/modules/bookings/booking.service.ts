@@ -20,6 +20,7 @@ import {
   enqueueTenantOwnerNotification,
 } from '@/modules/notifications/notification.service'
 import {
+  BookingDateOutOfRangeError,
   BookingNotInConfirmedError,
   BookingNotYetEndedError,
   BookingNotYetStartedError,
@@ -28,6 +29,8 @@ import {
   PriceUnavailableError,
   SlotTakenError,
 } from './booking.errors'
+import { addDays, artTodayStr } from '@/shared/dates/art'
+import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rowToBookingRow } from './booking.mappers'
 import { assertTransition } from './booking.state-machine'
 import { transitionFromPendingPayment } from './booking.concurrency'
@@ -230,6 +233,24 @@ async function createOnlineBookingImpl(
   input: CreateOnlineBookingInput,
   tx: DbTx,
 ): Promise<BookingRow> {
+  // Date window validation (pure, before any DB call).
+  if (!isValidCalendarDate(input.date)) {
+    throw new BookingDateOutOfRangeError('past_date')
+  }
+  const todayStr = artTodayStr()
+  if (input.date < todayStr) {
+    throw new BookingDateOutOfRangeError('past_date')
+  }
+  if (input.date === todayStr) {
+    const slotStartMs = artDateAt(input.date, input.timeStart).getTime()
+    if (slotStartMs <= Date.now()) {
+      throw new BookingDateOutOfRangeError('past_slot')
+    }
+  }
+  if (input.maxAdvanceDays !== undefined && input.date > addDays(todayStr, input.maxAdvanceDays)) {
+    throw new BookingDateOutOfRangeError('advance_exceeded')
+  }
+
   track.booking('booking.online.create.start', {
     tenantId,
     courtId: input.courtId,

@@ -43,10 +43,14 @@ export function RegisterMovementModal({
   const [method, setMethod] = useState('cash')
   const [amountPesos, setAmountPesos] = useState('')
   const [description, setDescription] = useState('')
+  // Fix #55: UUID generado una sola vez por apertura del modal.
+  // El server hace ON CONFLICT DO NOTHING con esta clave para ignorar reenvíos.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   function reset() {
     setType('income'); setCategory('booking'); setMethod('cash')
     setAmountPesos(''); setDescription(''); setError(null)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -65,6 +69,7 @@ export function RegisterMovementModal({
           amount,
           description: description.trim(),
           occurredAt: occurredAtForDate(date),
+          clientIdempotencyKey: idempotencyKey,
         })
         if (res.success) {
           toast({ title: 'Movimiento registrado', variant: 'success' })

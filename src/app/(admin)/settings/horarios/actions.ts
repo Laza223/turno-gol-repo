@@ -3,29 +3,17 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
-import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
+import { horariosSchema } from '@/modules/tenants/opening-hours.schema'
 
 export type HorariosActionResult =
   | { success: true }
   | { success: false; error: string }
-
-const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/
-
-const daySchema = z.object({
-  open: z.string().regex(timeRegex, 'Formato HH:MM'),
-  close: z.string().regex(timeRegex, 'Formato HH:MM'),
-})
-
-const horariosSchema = z.object({
-  mon: daySchema, tue: daySchema, wed: daySchema, thu: daySchema,
-  fri: daySchema, sat: daySchema, sun: daySchema,
-})
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 

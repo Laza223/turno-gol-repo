@@ -14,6 +14,7 @@ import {
   BookingDateOutOfRangeError,
   CourtOfflineError,
   PlayerBannedError,
+  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
@@ -125,6 +126,12 @@ export const POST = withPlayer(async (req, user, tx) => {
         code: 'PLAYER_BANNED',
         details: { reason: err.reason ?? 'PLAYER_BANNED', global: err.bannedGlobal },
       })
+    }
+    if (err instanceof PlayerHasOutstandingBalanceError) {
+      return businessRule(
+        'Tenés un saldo pendiente con este complejo. Regularizá tu deuda para volver a reservar online.',
+        { code: 'PLAYER_HAS_DEBT' },
+      )
     }
     if (err instanceof SlotTakenError) {
       const alternatives = await getAlternatives(

@@ -17,6 +17,7 @@ import {
   BookingDateOutOfRangeError,
   CourtOfflineError,
   PlayerBannedError,
+  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
@@ -152,6 +153,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     if (err instanceof BookingDateOutOfRangeError) redirect(`${backTo}&error=date_out_of_range`)
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
     if (err instanceof PlayerBannedError) redirect(`${backTo}&error=banned`)
+    if (err instanceof PlayerHasOutstandingBalanceError) redirect(`${backTo}&error=debt`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError) redirect(`${backTo}&error=unavailable`)
     throw err
   }

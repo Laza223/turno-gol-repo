@@ -140,7 +140,11 @@ export function BookingGrid({
           RECOVERABLE degraded state (realtime dropped → polling fallback). ErrorState's red
           palette implies a fatal error; that would misrepresent the severity here. */}
       {status === 'OFFLINE' && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800"
+        >
           Sin conexión. Los datos pueden no estar actualizados.
         </div>
       )}

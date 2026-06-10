@@ -130,6 +130,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
   const [date, setDate] = useState(initialDate)
   const [availability, setAvailability] = useState(initialAvailability)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
 
   const today = getArtToday()
   const maxDate = addDays(today, tenant.bookingAdvanceDays)
@@ -137,16 +138,20 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
   async function loadDate(newDate: string) {
     if (newDate < today || newDate > maxDate) return
     setLoading(true)
-    setDate(newDate)
+    setError(false)
     try {
       const res = await fetch(
         `/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${newDate}`,
       )
       if (!res.ok) throw new Error('fetch failed')
       const data = (await res.json()) as AvailabilityResponse
+      // Solo avanzamos la fecha cuando el fetch tuvo exito: asi la etiqueta de
+      // fecha y los slots visibles siempre corresponden al mismo dia. Si el
+      // fetch falla, `date` no cambia y la grilla sigue sincronizada (#39).
       setAvailability(data)
+      setDate(newDate)
     } catch {
-      // keep stale data on error
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -190,6 +195,17 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
 
       {/* Loading skeleton */}
       {loading && <Skeleton className="h-48 rounded-lg" />}
+
+      {/* Error al cambiar de dia: la grilla sigue mostrando el dia previo */}
+      {!loading && error && (
+        <p
+          role="alert"
+          className="text-sm text-red-600 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2"
+        >
+          No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e
+          intentá de nuevo.
+        </p>
+      )}
 
       {/* No courts */}
       {!loading && noCourts && (

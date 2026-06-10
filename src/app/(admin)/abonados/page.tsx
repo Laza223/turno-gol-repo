@@ -1,19 +1,37 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
+import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 import { AbonadosList } from './AbonadosList'
 
-export default async function AbonadosPage() {
+const VALID_STATUSES: AbonadoStatus[] = ['active', 'paused', 'canceled']
+
+const STATUS_LABELS: Record<AbonadoStatus, string> = {
+  active: 'Activos',
+  paused: 'Pausados',
+  canceled: 'Cancelados',
+}
+
+export default async function AbonadosPage({
+  searchParams,
+}: {
+  searchParams: { status?: string }
+}) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
+  const statusFilter = VALID_STATUSES.includes(searchParams.status as AbonadoStatus)
+    ? (searchParams.status as AbonadoStatus)
+    : undefined
+
   const abonados = await withTenantContext(tenant.id, (tx) =>
-    getAbonados(tenant.id, {}, tx),
+    getAbonados(tenant.id, { status: statusFilter }, tx),
   )
 
   return (
@@ -26,6 +44,32 @@ export default async function AbonadosPage() {
         >
           + Nuevo Abonado
         </a>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Link
+          href="/abonados"
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            !statusFilter
+              ? 'bg-slate-900 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          Todos
+        </Link>
+        {VALID_STATUSES.map((s) => (
+          <Link
+            key={s}
+            href={`/abonados?status=${s}`}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              statusFilter === s
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {STATUS_LABELS[s]}
+          </Link>
+        ))}
       </div>
 
       <AbonadosList abonados={abonados} />

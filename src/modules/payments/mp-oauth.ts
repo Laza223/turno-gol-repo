@@ -3,6 +3,7 @@ import { tenants } from '@/shared/db/schema'
 import { getDb } from '@/shared/db/client'
 import { decrypt, encrypt } from '@/lib/crypto/encrypt'
 import { MercadoPagoGateway } from './mp-gateway.implementation'
+import { withCircuitBreaker } from './mp-breaker.gateway'
 import { MpGatewayError, TenantMpNotConnectedError } from './payment.errors'
 import type { PaymentGateway } from './mp-gateway'
 import { MP_MOCK_ENABLED, LocalMockGateway } from './mock-mp'
@@ -112,7 +113,10 @@ export function resolveTenantGateway(
   encryptedAccessToken: string,
 ): PaymentGateway {
   if (MP_MOCK_ENABLED) return new LocalMockGateway()
-  return new MercadoPagoGateway(encryptedAccessToken, {
-    onUnauthorized: () => refreshTenantMpToken(tenantId),
-  })
+  return withCircuitBreaker(
+    new MercadoPagoGateway(encryptedAccessToken, {
+      onUnauthorized: () => refreshTenantMpToken(tenantId),
+    }),
+    `tenant:${tenantId}`,
+  )
 }

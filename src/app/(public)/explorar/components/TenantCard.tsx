@@ -13,7 +13,13 @@ import FavoriteButton from '@/components/public/FavoriteButton'
  * el <Link> del título cubre toda la card con ::after, así el botón de
  * favorito (hermano, z-10) queda fuera del <a> y el HTML es válido.
  */
-export default function TenantCard({ tenant }: { tenant: PublicTenantCard }) {
+export default function TenantCard({
+  tenant,
+  initialFavorited = false,
+}: {
+  tenant: PublicTenantCard
+  initialFavorited?: boolean
+}) {
   const fromPrice = formatFromPrice(tenant.fromPriceCents)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
   const formats = tenant.courtFormats.slice(0, 3)
@@ -48,7 +54,7 @@ export default function TenantCard({ tenant }: { tenant: PublicTenantCard }) {
         )}
 
         {/* Fuera del stretched-link (z-10) para que el HTML sea válido */}
-        <FavoriteButton tenantId={tenant.id} className="absolute right-3 top-3 z-10" />
+        <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-3 top-3 z-10" />
 
         {fromPrice && (
           <span className="absolute bottom-3 left-3 inline-flex items-baseline rounded-lg bg-white px-2.5 py-1 text-sm font-bold text-slate-900 shadow-sm tabular-nums">

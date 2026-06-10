@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { Users } from 'lucide-react'
 import Link from 'next/link'
@@ -264,28 +265,26 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
         </td>
       </tr>
 
-      {state.dialog !== null && (
-        <tr>
-          <td colSpan={6} className="p-0">
-            <AbonadoDialogs
-              abonadoId={a.id}
-              dialog={state.dialog}
-              cancelFromDate={state.cancelFromDate}
-              onCancelFromDateChange={(date) =>
-                setState((prev) => ({ ...prev, cancelFromDate: date }))
-              }
-              reactivatePreviewLoading={state.reactivatePreviewLoading}
-              reactivatePreviewDates={state.reactivatePreviewDates}
-              reactivatePreviewConflicts={state.reactivatePreviewConflicts}
-              reactivatePreviewError={state.reactivatePreviewError}
-              onClose={closeDialog}
-              onConfirmPause={onConfirmPause}
-              onConfirmReactivate={onConfirmReactivate}
-              onConfirmCancel={onConfirmCancel}
-            />
-          </td>
-        </tr>
-      )}
+      {state.dialog !== null &&
+        createPortal(
+          <AbonadoDialogs
+            abonadoId={a.id}
+            dialog={state.dialog}
+            cancelFromDate={state.cancelFromDate}
+            onCancelFromDateChange={(date) =>
+              setState((prev) => ({ ...prev, cancelFromDate: date }))
+            }
+            reactivatePreviewLoading={state.reactivatePreviewLoading}
+            reactivatePreviewDates={state.reactivatePreviewDates}
+            reactivatePreviewConflicts={state.reactivatePreviewConflicts}
+            reactivatePreviewError={state.reactivatePreviewError}
+            onClose={closeDialog}
+            onConfirmPause={onConfirmPause}
+            onConfirmReactivate={onConfirmReactivate}
+            onConfirmCancel={onConfirmCancel}
+          />,
+          document.body,
+        )}
     </>
   )
 }

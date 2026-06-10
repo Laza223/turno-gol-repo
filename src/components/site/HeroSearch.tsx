@@ -32,7 +32,12 @@ export default function HeroSearch({ cities }: Props) {
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const params = new URLSearchParams()
-    if (city) params.set('city', city)
+    if (city) {
+      // value is "{city}||{province}" to disambiguate homonyms; split for the URL.
+      const [cityPart, provincePart] = city.split('||')
+      if (cityPart) params.set('city', cityPart)
+      if (provincePart) params.set('province', provincePart)
+    }
     if (date && date !== today) params.set('date', date)
     if (time) params.set('time', time)
     const qs = params.toString()
@@ -64,7 +69,10 @@ export default function HeroSearch({ cities }: Props) {
             >
               <option value="">Todas las ciudades</option>
               {cities.map((c) => (
-                <option key={`${c.city}-${c.province}`} value={c.city}>
+                <option
+                  key={`${c.city}-${c.province}`}
+                  value={c.province ? `${c.city}||${c.province}` : c.city}
+                >
                   {c.city}
                   {c.province ? `, ${c.province}` : ''}
                 </option>

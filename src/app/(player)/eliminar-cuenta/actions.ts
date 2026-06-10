@@ -22,7 +22,13 @@ export async function requestDeleteAccountAction(): Promise<DeleteAccountResult>
     await anonymizePlayer(user.playerId)
   } catch (err) {
     if (err instanceof PlayerAlreadyAnonymizedError) {
-      // Already anonymized — treat as success (idempotent).
+      // Account was already anonymized (e.g. double-tab). Sign out and redirect
+      // with the same deleted=1 param so the login page shows the farewell message.
+      if (process.env.NEXT_PUBLIC_E2E !== '1') {
+        const supabase = createClient()
+        await supabase.auth.signOut()
+      }
+      redirect('/login?deleted=1')
     } else if (err instanceof PlayerNotFoundError) {
       return {
         success: false,

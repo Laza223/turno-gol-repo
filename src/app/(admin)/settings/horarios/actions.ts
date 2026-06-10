@@ -73,6 +73,11 @@ export async function addClosedDateAction(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { success: false, error: 'Fecha inválida.' }
   }
+  // Validate that the date is a real calendar date (e.g. reject 2025-02-30).
+  const parsed = new Date(date + 'T12:00:00')
+  if (isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    return { success: false, error: 'Fecha inválida.' }
+  }
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }

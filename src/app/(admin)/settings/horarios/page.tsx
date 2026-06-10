@@ -58,9 +58,9 @@ export default async function HorariosPage() {
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-base font-semibold text-slate-900">Días cerrados</h2>
 
-          {closedDates.length > 0 ? (
+          {closedDates.filter((d) => d >= minDate).length > 0 ? (
             <ul className="mb-4 space-y-2">
-              {[...closedDates].sort().map((date) => (
+              {[...closedDates].filter((d) => d >= minDate).sort().map((date) => (
                 <li
                   key={date}
                   className="flex items-center justify-between rounded-md border border-slate-100 px-4 py-2"

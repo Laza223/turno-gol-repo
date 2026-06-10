@@ -35,7 +35,9 @@ export default async function ConfiguracionPage() {
   return (
     <div className="px-4 py-5 space-y-6 max-w-lg mx-auto">
       <h1 className="text-xl font-semibold text-slate-900">Mi cuenta</h1>
-      <p className="text-sm text-slate-500">Hola {firstName}, gestioná tu perfil y tus datos.</p>
+      <p className="text-sm text-slate-500">
+        {firstName ? `Hola ${firstName}, gestioná` : 'Gestioná'} tu perfil y tus datos.
+      </p>
 
       {/* Card 0: Mi perfil */}
       <Link

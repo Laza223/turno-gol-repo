@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { getDb } from '@/shared/db/client'
@@ -5,6 +6,10 @@ import { uuid } from '@/shared/validation/primitives'
 import { mockPay, mockReject, mockCancel } from './actions'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 type SearchParams = { booking?: string; pref?: string }
 

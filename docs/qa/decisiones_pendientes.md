@@ -81,3 +81,50 @@ cubierto a nivel unit (`booking-balance-guard.test.ts`).
 > Nota de entorno: `tests/unit/db-client-role-guard.test.ts` falla en entornos sin
 > Postgres local (`ECONNREFUSED 127.0.0.1:54322`); es pre-existente y ajeno a estos
 > fixes (no se tocó `src/shared/db/client`).
+
+---
+
+## #72 — /mis-reservas: ¿mostrar historial a jugador baneado? (`🟢 LOW`)
+
+**Archivo objetivo:** `src/app/(player)/mis-reservas/page.tsx`
+
+**Hallazgo:** la vista no filtra por `player_status ('banned'/'anonymized')` ni por
+`tenant_player_bans`. Un jugador baneado ve su historial de reservas normalmente.
+
+**Por qué se difiere (decisión de producto):**
+
+El propio triage lo marca como "puede ser intencional". El aislamiento RLS
+(`player_own_bookings_select`) garantiza que un jugador sólo ve sus propias
+reservas; no hay fuga de datos entre jugadores. La pregunta es de UX/negocio:
+¿un jugador baneado debería seguir accediendo a su historial o se le debe
+bloquear el acceso?
+
+**Recomendación:** decidir explícitamente la política:
+- Opción A (status quo): el baneado puede ver su historial → no hay cambio de código.
+- Opción B: mostrar banner de cuenta bloqueada en `/mis-reservas` y ocultar las reservas de ese complejo (requiere pasar `tenantId` al componente, lo cual actualmente no está modelado en el player context).
+
+**Quedó sin tocar en este lote** (decisión de producto pendiente, no se marca ✅).
+
+---
+
+## #74 — bookingStatus failMode='open' (`🟢 LOW`)
+
+**Archivo objetivo:** `src/shared/rate-limit/policies.ts`
+
+**Hallazgo:** la policy `bookingStatus` usa `failMode='open'`, lo que significa que
+si Upstash/Redis cae, el endpoint de polling queda sin rate limit.
+
+**Por qué se difiere (tradeoff de disponibilidad explícito):**
+
+El propio triage lo marca como "tradeoff aceptable para un endpoint de solo lectura".
+Cambiar a `failMode='closed'` bloquearía el polling de estado de pago para TODOS los
+jugadores durante cualquier outage de Redis, dejando la pantalla "Confirmando tu pago"
+congelada sin que el usuario pueda saber si su reserva se procesó. El impacto de un
+outage de rate-limit en un endpoint read-only (solo consulta estado, no muta) es mucho
+menor que el impacto de bloquearlo completamente.
+
+**Recomendación:** dejar `failMode='open'` en producción. Si en el futuro se agrega
+autenticación de jugador al endpoint (actualmente el token de jugador ya existe en la
+sesión), se puede limitar además por `playerId` para contener el blast radius.
+
+**Quedó sin tocar en este lote** (tradeoff de disponibilidad aceptado, no se marca ✅).

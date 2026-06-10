@@ -55,3 +55,27 @@ bloquear el acceso?
 - Opción B: mostrar banner de cuenta bloqueada en `/mis-reservas` y ocultar las reservas de ese complejo (requiere pasar `tenantId` al componente, lo cual actualmente no está modelado en el player context).
 
 **Quedó sin tocar en este lote** (decisión de producto pendiente, no se marca ✅).
+
+---
+
+## #74 — bookingStatus failMode='open' (`🟢 LOW`)
+
+**Archivo objetivo:** `src/shared/rate-limit/policies.ts`
+
+**Hallazgo:** la policy `bookingStatus` usa `failMode='open'`, lo que significa que
+si Upstash/Redis cae, el endpoint de polling queda sin rate limit.
+
+**Por qué se difiere (tradeoff de disponibilidad explícito):**
+
+El propio triage lo marca como "tradeoff aceptable para un endpoint de solo lectura".
+Cambiar a `failMode='closed'` bloquearía el polling de estado de pago para TODOS los
+jugadores durante cualquier outage de Redis, dejando la pantalla "Confirmando tu pago"
+congelada sin que el usuario pueda saber si su reserva se procesó. El impacto de un
+outage de rate-limit en un endpoint read-only (solo consulta estado, no muta) es mucho
+menor que el impacto de bloquearlo completamente.
+
+**Recomendación:** dejar `failMode='open'` en producción. Si en el futuro se agrega
+autenticación de jugador al endpoint (actualmente el token de jugador ya existe en la
+sesión), se puede limitar además por `playerId` para contener el blast radius.
+
+**Quedó sin tocar en este lote** (tradeoff de disponibilidad aceptado, no se marca ✅).

@@ -12,6 +12,8 @@ import {
   COOKIE_TTL_MS,
 } from '@/modules/auth/pin'
 import { enforce } from '@/shared/rate-limit'
+import { withTenantContext } from '@/shared/db/client'
+import { insertAuditLog } from '@/shared/db/audit'
 
 export async function checkPinSessionAction(): Promise<boolean> {
   const jar = cookies()
@@ -52,6 +54,16 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
   if (!ok) {
     // rl.remaining is always number per RateLimitOutcome; expose it so the UI
     // can show "Te quedan N intentos" when N <= 2.
+    withTenantContext(tenant.id, (tx) =>
+      insertAuditLog(tx, {
+        tenantId: tenant.id,
+        actorId: user.staffUserId!,
+        actorType: 'staff',
+        action: 'pin.verify_failed',
+        resourceType: 'tenant',
+        resourceId: tenant.id,
+      }),
+    ).catch(() => {})
     return {
       ok: false,
       error: 'PIN incorrecto.',
@@ -70,6 +82,17 @@ export async function verifyPinAction(pin: string): Promise<VerifyPinResult> {
     maxAge: Math.floor(COOKIE_TTL_MS / 1000),
     path: '/',
   })
+
+  withTenantContext(tenant.id, (tx) =>
+    insertAuditLog(tx, {
+      tenantId: tenant.id,
+      actorId: user.staffUserId!,
+      actorType: 'staff',
+      action: 'pin.verify_success',
+      resourceType: 'tenant',
+      resourceId: tenant.id,
+    }),
+  ).catch(() => {})
 
   return { ok: true }
 }

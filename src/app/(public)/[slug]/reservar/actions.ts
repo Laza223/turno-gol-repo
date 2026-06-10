@@ -20,10 +20,9 @@ import {
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-const TERMS_VERSION = 'v1'
 
 const gateSchema = z.object({
   email: z.string().trim().toLowerCase().email({ message: 'Ingresá un email válido' }),
@@ -65,7 +64,7 @@ export async function sendPlayerMagicLink(_prev: GateState, formData: FormData):
     firstName: parsed.data.firstName,
     lastName: parsed.data.lastName,
     agreedTerms: true,
-    termsVersion: TERMS_VERSION,
+    termsVersion: CURRENT_TERMS_VERSION,
   })
   if (!result.ok) return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.' }
   return { status: 'sent', email: parsed.data.email }

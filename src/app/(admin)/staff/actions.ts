@@ -9,8 +9,33 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
+
+type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
+
+/**
+ * Busca un auth user por email. supabase-js no expone lookup por email, así que
+ * paginamos listUsers de forma acotada. Best-effort: si no se ubica, el callback
+ * de login sincroniza staff_user_id igual (#47).
+ */
+async function findAuthUserByEmail(
+  adminClient: SupabaseClient,
+  email: string,
+): Promise<AuthUserLite | null> {
+  const PER_PAGE = 1000
+  const MAX_PAGES = 10
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage: PER_PAGE })
+    const users = data?.users ?? []
+    if (error || users.length === 0) return null
+    const found = users.find((u) => u.email?.toLowerCase() === email)
+    if (found) return found as AuthUserLite
+    if (users.length < PER_PAGE) return null
+  }
+  return null
+}
 
 export type StaffActionResult =
   | { success: true }
@@ -139,6 +164,7 @@ export async function inviteStaffAction(
     }
 
     if (inviteData?.user?.id) {
+      // Usuario nuevo en auth: solo pertenece a este complejo, claim completo.
       await adminClient.auth.admin.updateUserById(inviteData.user.id, {
         app_metadata: {
           staff_user_id: staffUser.id,
@@ -146,6 +172,17 @@ export async function inviteStaffAction(
           role: 'admin',
         },
       })
+    } else if (inviteError) {
+      // 'already been registered': el usuario ya existe en auth (p. ej. admin de
+      // otro complejo). inviteUserByEmail no devuelve su id, así que lo buscamos y
+      // sincronizamos SOLO staff_user_id, preservando su tenant_id/role actuales
+      // para no pisar la sesión de otros complejos (#47).
+      const existingAuth = await findAuthUserByEmail(adminClient, email.toLowerCase())
+      if (existingAuth) {
+        await adminClient.auth.admin.updateUserById(existingAuth.id, {
+          app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
+        })
+      }
     }
 
     return { success: true as const }

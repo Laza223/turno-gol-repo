@@ -7,6 +7,8 @@ import {
   calcAvailableMinutes,
   calcOccupancyPct,
   toCsv,
+  aggregateByMethod,
+  isReportEmpty,
 } from '@/modules/reports/report.utils'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 
@@ -152,5 +154,48 @@ describe('toCsv', () => {
     const csv = toCsv([{ a: null, b: undefined }])
     const dataLine = csv.split('\r\n')[1]
     expect(dataLine).toBe(',')
+  })
+})
+
+describe('aggregateByMethod (#43)', () => {
+  it('suma solo income por método e ignora los adjustment', () => {
+    const result = aggregateByMethod([
+      { type: 'income', method: 'cash', total: 1000 },
+      { type: 'income', method: 'transfer', total: 500 },
+      { type: 'adjustment', method: 'cash', total: 9999 },
+    ])
+    const byMethod = Object.fromEntries(result.map((m) => [m.method, m.total]))
+    expect(byMethod).toEqual({ cash: 1000, transfer: 500 })
+    // el adjustment NO infló el total de cash
+    expect(byMethod.cash).toBe(1000)
+  })
+
+  it('devuelve vacío cuando solo hay adjustments', () => {
+    expect(
+      aggregateByMethod([{ type: 'adjustment', method: 'cash', total: 5000 }]),
+    ).toEqual([])
+  })
+
+  it('normaliza totales string (BIGINT de Postgres) y descarta <= 0', () => {
+    const result = aggregateByMethod([
+      { type: 'income', method: 'mercadopago', total: '2500' },
+      { type: 'income', method: 'other', total: 0 },
+    ])
+    expect(result).toEqual([{ method: 'mercadopago', total: 2500 }])
+  })
+})
+
+describe('isReportEmpty (#42)', () => {
+  it('es true solo sin ingresos, ni ajustes, ni reservas', () => {
+    expect(isReportEmpty({ income: 0, adjustment: 0, bookingCount: 0 })).toBe(true)
+  })
+
+  it('es false si hay solo ajustes (caso del bug #42)', () => {
+    expect(isReportEmpty({ income: 0, adjustment: 15000, bookingCount: 0 })).toBe(false)
+  })
+
+  it('es false si hay ingresos o reservas', () => {
+    expect(isReportEmpty({ income: 1000, adjustment: 0, bookingCount: 0 })).toBe(false)
+    expect(isReportEmpty({ income: 0, adjustment: 0, bookingCount: 3 })).toBe(false)
   })
 })

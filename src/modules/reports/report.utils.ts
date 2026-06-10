@@ -1,4 +1,5 @@
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import type { MethodReport } from './report.types'
 import { capitalizeFirst } from '@/lib/format'
 
 // Matches getUTCDay() — 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -26,6 +27,38 @@ export function nextMonthStr(month: string): string {
   const [year, mon] = month.split('-').map(Number)
   const d = new Date(Date.UTC(year, mon, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/** Una fila agregada de cash_flows por (type, method). `total` puede llegar como
+ * string (BIGINT de Postgres), por eso se normaliza con Number(). */
+export type CashflowTypeMethodRow = { type: string; method: string; total: number | string }
+
+/**
+ * Agrega el total por método de pago considerando SOLO los movimientos de tipo
+ * `income`. Los `adjustment` no representan ingresos por método y no deben
+ * inflar la tabla "Por método de pago" (#43). Descarta métodos con total <= 0.
+ */
+export function aggregateByMethod(rows: CashflowTypeMethodRow[]): MethodReport[] {
+  const methodMap = new Map<string, number>()
+  for (const r of rows) {
+    if (r.type !== 'income') continue
+    methodMap.set(r.method, (methodMap.get(r.method) ?? 0) + Number(r.total))
+  }
+  return Array.from(methodMap.entries())
+    .filter(([, total]) => total > 0)
+    .map(([method, total]) => ({ method: method as MethodReport['method'], total }))
+}
+
+/**
+ * Un reporte está vacío solo si no hay ingresos, ni ajustes, ni reservas. Antes
+ * se ignoraba `adjustment`, ocultando períodos con solo ajustes de caja (#42).
+ */
+export function isReportEmpty(r: {
+  income: number
+  adjustment: number
+  bookingCount: number
+}): boolean {
+  return r.income === 0 && r.adjustment === 0 && r.bookingCount === 0
 }
 
 /** Returns a Spanish locale label like "mayo 2026". */

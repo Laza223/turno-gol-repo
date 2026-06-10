@@ -32,3 +32,26 @@ no inventar el modelo).
 **Recomendación:** resolver primero BLOCKER #2 (definir y migrar el modelo de
 deuda) y recién después agregar el chequeo en `createOnlineBooking`, junto al
 `checkPlayerBanned` existente. **Quedó sin tocar en este lote** (no se marca ✅).
+
+---
+
+## #72 — /mis-reservas: ¿mostrar historial a jugador baneado? (`🟢 LOW`)
+
+**Archivo objetivo:** `src/app/(player)/mis-reservas/page.tsx`
+
+**Hallazgo:** la vista no filtra por `player_status ('banned'/'anonymized')` ni por
+`tenant_player_bans`. Un jugador baneado ve su historial de reservas normalmente.
+
+**Por qué se difiere (decisión de producto):**
+
+El propio triage lo marca como "puede ser intencional". El aislamiento RLS
+(`player_own_bookings_select`) garantiza que un jugador sólo ve sus propias
+reservas; no hay fuga de datos entre jugadores. La pregunta es de UX/negocio:
+¿un jugador baneado debería seguir accediendo a su historial o se le debe
+bloquear el acceso?
+
+**Recomendación:** decidir explícitamente la política:
+- Opción A (status quo): el baneado puede ver su historial → no hay cambio de código.
+- Opción B: mostrar banner de cuenta bloqueada en `/mis-reservas` y ocultar las reservas de ese complejo (requiere pasar `tenantId` al componente, lo cual actualmente no está modelado en el player context).
+
+**Quedó sin tocar en este lote** (decisión de producto pendiente, no se marca ✅).

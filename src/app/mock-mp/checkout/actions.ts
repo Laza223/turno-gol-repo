@@ -16,8 +16,10 @@ function parseBookingId(formData: FormData): string {
 }
 
 // Defense-in-depth: actions are test-only and must 404 in production.
+// NODE_ENV guard ensures mock endpoints are unreachable even if MP_MOCK_MODE
+// leaks into a prod deployment (IDOR risk mitigated).
 function guardMockMode(): void {
-  if (process.env.MP_MOCK_MODE !== '1') {
+  if (process.env.NODE_ENV === 'production' || process.env.MP_MOCK_MODE !== '1') {
     notFound()
   }
 }

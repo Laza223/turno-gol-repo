@@ -175,6 +175,10 @@ export async function cancelBookingAction(
   reason: string,
   shouldRefund: boolean,
 ): Promise<BookingActionResult> {
+  if (!reason || reason.trim().length < 3) {
+    return { success: false, error: 'El motivo debe tener al menos 3 caracteres.' }
+  }
+
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado' }
 

@@ -15,7 +15,7 @@ type Props = {
 }
 
 function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(centavos / 100)
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(centavos / 100)
 }
 
 export default function BookingActions({ bookingId, status, depositStatus, depositAmount, paymentMethod }: Props) {

@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { courts, tenantSubscriptions, plans } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -25,16 +25,25 @@ function rowToCourtRow(row: typeof courts.$inferSelect): CourtRow {
   }
 }
 
-export async function listCourts(tx: DbTx): Promise<CourtRow[]> {
+export async function listCourts(tenantId: string, tx: DbTx): Promise<CourtRow[]> {
   const rows = await tx
     .select()
     .from(courts)
+    .where(eq(courts.tenantId, tenantId))
     .orderBy(courts.createdAt)
   return rows.map(rowToCourtRow)
 }
 
-export async function getCourtById(courtId: string, tx: DbTx): Promise<CourtRow | null> {
-  const rows = await tx.select().from(courts).where(eq(courts.id, courtId)).limit(1)
+export async function getCourtById(
+  courtId: string,
+  tenantId: string,
+  tx: DbTx,
+): Promise<CourtRow | null> {
+  const rows = await tx
+    .select()
+    .from(courts)
+    .where(and(eq(courts.id, courtId), eq(courts.tenantId, tenantId)))
+    .limit(1)
   return rows[0] ? rowToCourtRow(rows[0]) : null
 }
 
@@ -59,6 +68,7 @@ export async function createCourt(
 
 export async function updateCourt(
   courtId: string,
+  tenantId: string,
   data: UpdateCourtInput,
   tx: DbTx,
 ): Promise<CourtRow | null> {
@@ -72,20 +82,21 @@ export async function updateCourt(
   const rows = await tx
     .update(courts)
     .set(patch)
-    .where(eq(courts.id, courtId))
+    .where(and(eq(courts.id, courtId), eq(courts.tenantId, tenantId)))
     .returning()
   return rows[0] ? rowToCourtRow(rows[0]) : null
 }
 
 export async function toggleStatus(
   courtId: string,
+  tenantId: string,
   status: 'online' | 'offline',
   tx: DbTx,
 ): Promise<CourtRow | null> {
   const rows = await tx
     .update(courts)
     .set({ status, updatedAt: new Date() })
-    .where(eq(courts.id, courtId))
+    .where(and(eq(courts.id, courtId), eq(courts.tenantId, tenantId)))
     .returning()
   return rows[0] ? rowToCourtRow(rows[0]) : null
 }

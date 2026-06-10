@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { createCashFlowAction } from '../actions'
 import { toast } from '@/hooks/use-toast'
@@ -42,10 +43,14 @@ export function RegisterMovementModal({
   const [method, setMethod] = useState('cash')
   const [amountPesos, setAmountPesos] = useState('')
   const [description, setDescription] = useState('')
+  // Fix #55: UUID generado una sola vez por apertura del modal.
+  // El server hace ON CONFLICT DO NOTHING con esta clave para ignorar reenvíos.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   function reset() {
     setType('income'); setCategory('booking'); setMethod('cash')
     setAmountPesos(''); setDescription(''); setError(null)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -56,18 +61,27 @@ export function RegisterMovementModal({
     if (description.trim().length < 1) { setError('Ingresá una descripción.'); return }
     const amount = Math.round(pesos * 100)
     startTransition(async () => {
-      const res = await createCashFlowAction({
-        type,
-        category: category as 'booking' | 'product_sale' | 'other' | 'no_show_correction',
-        method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
-        amount,
-        description: description.trim(),
-        occurredAt: occurredAtForDate(date),
-      })
-      if (res.success) {
-        toast({ title: 'Movimiento registrado', variant: 'success' })
-        reset(); router.refresh(); onClose()
-      } else setError(res.error)
+      try {
+        const res = await createCashFlowAction({
+          type,
+          category: category as 'booking' | 'product_sale' | 'other' | 'no_show_correction',
+          method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
+          amount,
+          description: description.trim(),
+          occurredAt: occurredAtForDate(date),
+          clientIdempotencyKey: idempotencyKey,
+        })
+        if (res.success) {
+          toast({ title: 'Movimiento registrado', variant: 'success' })
+          reset(); router.refresh(); onClose()
+        } else setError(res.error)
+      } catch (err) {
+        // A thrown action must not leave the modal stuck on "Guardando…" — which
+        // also locks the close button (handleOpenChange bails while isPending).
+        // Report it (a silent catch would hide a real server failure) and recover.
+        Sentry.captureException(err)
+        setError('No pudimos registrar el movimiento. Revisá tu conexión e intentá de nuevo.')
+      }
     })
   }
 

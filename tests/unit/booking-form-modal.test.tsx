@@ -1,0 +1,84 @@
+// @vitest-environment happy-dom
+/**
+ * Regression tests for BookingFormModal's loading-state recovery.
+ *
+ * The bug: the submit handler runs `await createBookingAction()` inside a
+ * transition with no try/catch. If the action *throws* (network drop, server
+ * crash) instead of returning `{ success: false }`, the button stays stuck on
+ * "Guardando…". These tests pin that a thrown action recovers the button and
+ * surfaces a readable error.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+
+const createBookingAction = vi.fn()
+vi.mock('@/app/(admin)/reservas/actions', () => ({
+  createBookingAction: (...args: unknown[]) => createBookingAction(...args),
+}))
+vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
+
+import { BookingFormModal } from '@/components/booking/BookingFormModal'
+
+const slot = {
+  courtId: 'court-1',
+  courtName: 'Cancha 1',
+  date: '2026-06-10',
+  timeStart: '18:00',
+  durationMins: 60 as const,
+}
+
+function renderModal(overrides: Partial<React.ComponentProps<typeof BookingFormModal>> = {}) {
+  const onClose = vi.fn()
+  const onSuccess = vi.fn()
+  render(<BookingFormModal slot={slot} open onClose={onClose} onSuccess={onSuccess} {...overrides} />)
+  return { onClose, onSuccess }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('BookingFormModal — loading recovery', () => {
+  it('a thrown action does not leave the button stuck on "Guardando…"', async () => {
+    createBookingAction.mockRejectedValueOnce(new Error('network down'))
+    const { onSuccess } = renderModal()
+
+    const submit = screen.getByRole('button', { name: 'Confirmar' })
+    fireEvent.click(submit)
+
+    // Button recovers to its idle label instead of hanging on "Guardando…".
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Confirmar' })).toBeTruthy()
+    })
+    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(false)
+
+    // A recoverable error is shown to the user.
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toMatch(/no pudimos crear la reserva/i)
+    expect(onSuccess).not.toHaveBeenCalled()
+  })
+
+  it('an action returning { success:false } shows the server error', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: false, error: 'Horario ocupado' })
+    renderModal()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Horario ocupado')
+    })
+    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('a successful action calls onSuccess with the booking', async () => {
+    const booking = { id: 'b-1' }
+    createBookingAction.mockResolvedValueOnce({ success: true, booking })
+    const { onSuccess } = renderModal()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith(booking)
+    })
+  })
+})

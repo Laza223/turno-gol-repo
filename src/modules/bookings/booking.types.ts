@@ -58,6 +58,8 @@ export type CreateOnlineBookingInput = {
   requiresDeposit: boolean
   depositPercentage: number
   notesPlayer?: string
+  /** When set, rejects dates beyond today+maxAdvanceDays (ART). Omit in e2e/seed routes. */
+  maxAdvanceDays?: number
 }
 
 export type CreateManualBookingInput = {

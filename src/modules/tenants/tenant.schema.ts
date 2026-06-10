@@ -35,7 +35,7 @@ export const updateTenantSchema = z.object({
   province: z.string().min(2).max(100).optional(),
   phone: z.string().min(8).max(25).optional(),
   whatsapp: z.string().min(8).max(25).nullable().optional(),
-  email: z.string().email().optional(),
+  email: z.string().email({ message: 'Ingresá un email válido' }).optional(),
   openingHours: openingHoursSchema.optional(),
   closedDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD')).optional(),
 })

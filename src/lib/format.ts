@@ -33,10 +33,15 @@ const dateShortFormatter = new Intl.DateTimeFormat('es-AR', {
   month: 'short',
 })
 
-/** Date | "YYYY-MM-DD" → "lunes, 2 de junio". */
+/** Capitaliza solo la primera letra (no cada palabra, como hace `text-transform: capitalize`). */
+export function capitalizeFirst(value: string): string {
+  return value.length === 0 ? value : value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+/** Date | "YYYY-MM-DD" → "Lunes, 2 de junio". */
 export function formatDateLong(value: Date | string): string {
   const d = typeof value === 'string' ? parseDateOnly(value) : value
-  return dateFormatter.format(d)
+  return capitalizeFirst(dateFormatter.format(d))
 }
 
 /** Date | "YYYY-MM-DD" → "2 jun". */
@@ -54,4 +59,9 @@ export function parseDateOnly(value: string): Date {
 /** "HH:MM:SS" | "HH:MM" → "HH:MM". */
 export function formatTime(value: string): string {
   return value.slice(0, 5)
+}
+
+/** Iniciales de un nombre para avatares. Ej: ("Tomás", "Pérez") → "TP". */
+export function initials(firstName: string, lastName: string): string {
+  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
 }

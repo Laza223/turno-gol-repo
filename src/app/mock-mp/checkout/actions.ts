@@ -49,33 +49,46 @@ export async function mockPay(formData: FormData): Promise<void> {
     data: { id: buildMockPaymentId('approved', bookingId) },
   })
 
-  try {
-    const res = await fetch(
-      `${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-webhook-secret': secret,
+  // Fix #60: si el webhook falla (red o non-2xx), redirigir a /error en lugar de
+  // a /exito. Así el booking no queda atrapado en pending_payment con la UI
+  // mostrando éxito. Reintenta hasta 2 veces antes de rendirse.
+  let webhookOk = false
+  for (let attempt = 0; attempt < 3 && !webhookOk; attempt++) {
+    try {
+      const res = await fetch(
+        `${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-webhook-secret': secret,
+          },
+          body,
         },
-        body,
-      },
-    )
-    if (!res.ok) {
-      logger.warn('mock webhook POST returned non-2xx', {
+      )
+      if (res.ok) {
+        webhookOk = true
+      } else {
+        logger.warn('mock webhook POST returned non-2xx', {
+          module: 'mock-mp',
+          status: res.status,
+          bookingId,
+          attempt,
+        })
+      }
+    } catch (err) {
+      logger.warn('mock webhook POST failed', {
         module: 'mock-mp',
-        status: res.status,
+        error: err instanceof Error ? err.message : String(err),
         bookingId,
+        attempt,
       })
     }
-  } catch (err) {
-    logger.warn('mock webhook POST failed', {
-      module: 'mock-mp',
-      error: err instanceof Error ? err.message : String(err),
-      bookingId,
-    })
   }
 
+  if (!webhookOk) {
+    redirect(`/reserva/${bookingId}/error`)
+  }
   redirect(`/reserva/${bookingId}/exito`)
 }
 

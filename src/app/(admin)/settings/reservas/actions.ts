@@ -26,6 +26,7 @@ const reservasPolicySchema = z.object({
 })
 
 export async function updateReservasPolicyAction(
+  _prevState: PolicyActionResult,
   formData: FormData,
 ): Promise<PolicyActionResult> {
   const user = await extractAuthUser()

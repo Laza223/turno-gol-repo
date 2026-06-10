@@ -28,14 +28,30 @@ export default async function ReservaErrorPage({ params }: Props) {
 
   const booking = await loadBooking(params.bookingId, user.playerId)
 
+  // Sin reserva (inexistente, purgada por RGPD, o de otro jugador via RLS): no
+  // afirmamos "el pago no se procesó"; mostramos un estado neutro como la página
+  // hermana de éxito (#44).
+  if (!booking) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+        <p className="text-sm text-slate-600">No encontramos tu reserva.</p>
+        <Link
+          href="/mis-reservas"
+          className="mt-8 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+        >
+          Ver mis reservas
+        </Link>
+      </div>
+    )
+  }
+
   const now = Date.now()
   const withinWindow =
-    booking !== null &&
     booking.status === 'pending_payment' &&
     new Date(booking.createdAt).getTime() + 15 * 60 * 1000 > now
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 ring-8 ring-red-50">
         <XCircle className="h-8 w-8 text-red-600" aria-hidden />
       </div>
@@ -56,7 +72,7 @@ export default async function ReservaErrorPage({ params }: Props) {
         </form>
       ) : (
         <Link
-          href={booking?.tenantSlug ? `/${booking.tenantSlug}` : '/'}
+          href={booking.tenantSlug ? `/${booking.tenantSlug}` : '/'}
           className="mt-8 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
         >
           Reservar de nuevo

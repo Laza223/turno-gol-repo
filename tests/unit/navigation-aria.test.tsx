@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { PlayerBottomNav } from '@/app/(player)/_components/PlayerBottomNav'
+import { PlayerBottomNav } from '@/components/site/PlayerBottomNav'
 import { AdminSidebar } from '@/components/layout/admin-sidebar'
 
 afterEach(cleanup)
@@ -25,7 +25,7 @@ describe('PlayerBottomNav a11y', () => {
     render(<PlayerBottomNav />)
     const active = screen.getByRole('link', { name: /reservas/i })
     expect(active.getAttribute('aria-current')).toBe('page')
-    const inactive = screen.getByRole('link', { name: /perfil/i })
+    const inactive = screen.getByRole('link', { name: /explorar/i })
     expect(inactive.getAttribute('aria-current')).toBeNull()
   })
 })

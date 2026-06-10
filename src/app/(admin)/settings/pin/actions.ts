@@ -37,12 +37,12 @@ const setPinSchema = z
     path: ['confirmPin'],
   })
 
-export async function setPinAction(formData: FormData): Promise<PinConfigResult> {
+export async function setPinAction(
+  _prevState: PinConfigResult,
+  formData: FormData,
+): Promise<PinConfigResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const pinOk = await checkPinSessionAction()
-  if (!pinOk) return { success: false, error: 'PIN requerido.' }
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
@@ -53,6 +53,12 @@ export async function setPinAction(formData: FormData): Promise<PinConfigResult>
   const hasExistingPin = !!tenant.settings.staff_pin_hash
 
   if (hasExistingPin) {
+    // Cambiar un PIN existente requiere sesión PIN válida (haber pasado el gate).
+    // Crear el PRIMER PIN no la exige (evita el catch-22 del lockout): basta con
+    // ser staff autenticado del tenant.
+    const pinOk = await checkPinSessionAction()
+    if (!pinOk) return { success: false, error: 'PIN requerido.' }
+
     const parsed = changePinSchema.safeParse({
       currentPin: formData.get('currentPin'),
       newPin: formData.get('newPin'),

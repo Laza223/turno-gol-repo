@@ -287,4 +287,50 @@ describe('AbonadosList — Reactivate action', () => {
       expect(vi.mocked(reactivateAbonadoAction)).toHaveBeenCalledWith(PAUSED_ABONADO.id)
     })
   })
+
+  it('pasa el endsOn del abonado (YYYY-MM-DD) al preview (#15)', async () => {
+    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+      success: true,
+      dates: ['2026-06-01', '2026-06-08'],
+      conflicts: [],
+    })
+
+    const withEnd = makeAbonado({
+      id: 'aaaaaaaa-0000-0000-0000-000000000099',
+      status: 'paused',
+      // medianoche UTC, igual a como lo persiste createAbonado
+      endsOn: new Date('2026-06-30T00:00:00Z'),
+    })
+
+    render(<AbonadosList abonados={[withEnd]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
+
+    await waitFor(() => {
+      expect(vi.mocked(previewAbonadoSlotsAction)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          courtId: withEnd.courtId,
+          startsOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          endsOn: '2026-06-30',
+        }),
+      )
+    })
+  })
+
+  it('pasa endsOn: undefined cuando el abonado no tiene fecha de fin (#15)', async () => {
+    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+      success: true,
+      dates: ['2026-06-01'],
+      conflicts: [],
+    })
+
+    // PAUSED_ABONADO tiene endsOn: null (default de makeAbonado)
+    render(<AbonadosList abonados={[PAUSED_ABONADO]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
+
+    await waitFor(() => {
+      expect(vi.mocked(previewAbonadoSlotsAction)).toHaveBeenCalledTimes(1)
+    })
+    const [arg] = vi.mocked(previewAbonadoSlotsAction).mock.calls[0]!
+    expect(arg.endsOn).toBeUndefined()
+  })
 })

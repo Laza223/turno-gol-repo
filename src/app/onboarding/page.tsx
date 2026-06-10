@@ -7,6 +7,7 @@ import { StepCourts } from './components/StepCourts'
 import { StepSchedule } from './components/StepSchedule'
 import { StepPayments } from './components/StepPayments'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import { Logo } from '@/components/ui/logo'
 
 export default async function OnboardingPage() {
   const user = await extractAuthUser()
@@ -31,11 +32,8 @@ export default async function OnboardingPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo header */}
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-emerald-500 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/30">
-            TG
-          </span>
-          <span className="text-lg font-semibold tracking-tight text-slate-900">TurnoGol</span>
+        <div className="mb-6 flex items-center justify-center">
+          <Logo variant="horizontal" textClassName="text-slate-900" iconClassName="bg-white border-slate-200 shadow-sm" />
         </div>
 
         <div className="rounded-2xl bg-white shadow-md shadow-slate-200/60 border border-slate-200 p-8">

@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: SITE_NAME,
   },
+  // <meta name="mobile-web-app-capable"> moderno: Chrome marca el apple-* como
+  // deprecado y pide este. iOS sigue usando appleWebApp (arriba).
+  other: { 'mobile-web-app-capable': 'yes' },
 }
 
 export const viewport: Viewport = {

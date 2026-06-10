@@ -24,6 +24,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
+  // Billing-driven hard lock: tenants in these terminal/restricted states cannot
+  // access the admin panel regardless of the kill-switch flag (#64).
+  if (['blocked', 'churned', 'canceled', 'deleted'].includes(tenant.status)) {
+    redirect('/suspended')
+  }
+
   // Kill switch: an ops-flipped `suspended` flag locks the tenant out of the
   // panel instantly (no redeploy). Distinct from tenant_status — see kill-switch.ts.
   await redirectIfTenantSuspended(tenant.id)

@@ -51,7 +51,7 @@ pnpm dev            # http://localhost:3000
    pnpm lint
    pnpm test
    pnpm test:integration   # requiere DATABASE_URL + migraciones aplicadas
-   pnpm test:isolation     # tests de aislamiento RLS — BLOQUEANTES (docs/doc16)
+   pnpm test:isolation     # tests de aislamiento RLS — BLOQUEANTES (docs/spec/doc16)
    ```
 4. Abrí el PR contra `main`. Los workflows corren automáticamente (ver §4).
 5. **Merge solo con CI en verde** y al menos 1 review aprobada. Preferir *squash merge*.
@@ -184,7 +184,7 @@ el dashboard de Vercel. Ver `README.md`.
 - Las migraciones son append-only. Para revertir un cambio de schema, creá una **migración reversa** (nueva
   `.sql` que deshaga el cambio) y deployala por el flujo normal.
 - Para incidente mayor / corrupción de datos: restaurar desde backup PITR de Supabase a un proyecto temporal,
-  verificar, exportar selectivamente. Ver `README.md` §Restoring a backup y `docs/doc19`.
+  verificar, exportar selectivamente. Ver `README.md` §Restoring a backup y `docs/spec/doc19`.
 - **Importante:** un rollback de código a una versión anterior **no revierte** las migraciones ya aplicadas.
   Diseñá migraciones *backward-compatible* (expand/contract) siempre que puedas.
 

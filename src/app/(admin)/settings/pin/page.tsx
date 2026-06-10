@@ -3,10 +3,7 @@ import { Shield } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { PinGate } from '@/components/pin-gate'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { setPinAction } from './actions'
+import { PinForm } from './PinForm'
 
 const SETTINGS_TABS = [
   { href: '/settings/reservas', label: 'Reservas' },
@@ -25,7 +22,7 @@ export default async function PinSettingsPage() {
   const hasPin = !!tenant.settings.staff_pin_hash
 
   return (
-    <PinGate>
+    <PinGate pinRequired={hasPin}>
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
 
@@ -66,56 +63,7 @@ export default async function PinSettingsPage() {
             </div>
           </div>
 
-          <form
-            action={setPinAction as unknown as (f: FormData) => Promise<void>}
-            className="space-y-4"
-          >
-            {hasPin && (
-              <div className="space-y-1.5">
-                <Label htmlFor="currentPin">PIN actual</Label>
-                <Input
-                  id="currentPin"
-                  name="currentPin"
-                  type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]{4,8}"
-                  autoComplete="current-password"
-                  className="h-10"
-                  placeholder="••••"
-                />
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="newPin">Nuevo PIN</Label>
-              <Input
-                id="newPin"
-                name="newPin"
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]{4,8}"
-                autoComplete="new-password"
-                className="h-10"
-                placeholder="••••"
-              />
-              <p className="text-xs text-slate-500">4 a 8 dígitos numéricos.</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="confirmPin">Confirmar nuevo PIN</Label>
-              <Input
-                id="confirmPin"
-                name="confirmPin"
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]{4,8}"
-                autoComplete="new-password"
-                className="h-10"
-                placeholder="••••"
-              />
-            </div>
-            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500">
-              {hasPin ? 'Cambiar PIN' : 'Configurar PIN'}
-            </Button>
-          </form>
+          <PinForm hasPin={hasPin} />
 
           {!hasPin && (
             <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">

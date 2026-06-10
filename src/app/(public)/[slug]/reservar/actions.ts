@@ -14,19 +14,21 @@ import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import {
+  BookingDateOutOfRangeError,
   CourtOfflineError,
   PlayerBannedError,
+  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import { isValidCalendarDate } from '@/shared/validation/calendar-date'
+import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const TERMS_VERSION = 'v1'
-
 const gateSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().email({ message: 'Ingresá un email válido' }),
   firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80),
   lastName: z.string().trim().max(80).optional().default(''),
   terms: z.literal('on', { errorMap: () => ({ message: 'Tenés que aceptar los términos.' }) }),
@@ -65,7 +67,7 @@ export async function sendPlayerMagicLink(_prev: GateState, formData: FormData):
     firstName: parsed.data.firstName,
     lastName: parsed.data.lastName,
     agreedTerms: true,
-    termsVersion: TERMS_VERSION,
+    termsVersion: CURRENT_TERMS_VERSION,
   })
   if (!result.ok) return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.' }
   return { status: 'sent', email: parsed.data.email }
@@ -86,6 +88,10 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   const time = String(formData.get('time') ?? '')
   const dur = Number(formData.get('dur') ?? '60') as 60 | 120
   const backTo = `/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`
+
+  // Basic format guard: the form should always send a valid date, but protect
+  // against direct FormData manipulation before reaching the service validation.
+  if (!isValidCalendarDate(date)) redirect(`${backTo}&error=invalid_date`)
 
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect(`/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`)
@@ -123,6 +129,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
           durationMins: dur,
           requiresDeposit: settings.requires_deposit,
           depositPercentage: settings.deposit_percentage,
+          maxAdvanceDays: settings.booking_advance_days ?? 6,
         },
         tx,
       )
@@ -143,8 +150,10 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       }
     }
   } catch (err) {
+    if (err instanceof BookingDateOutOfRangeError) redirect(`${backTo}&error=date_out_of_range`)
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
     if (err instanceof PlayerBannedError) redirect(`${backTo}&error=banned`)
+    if (err instanceof PlayerHasOutstandingBalanceError) redirect(`${backTo}&error=debt`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError) redirect(`${backTo}&error=unavailable`)
     throw err
   }

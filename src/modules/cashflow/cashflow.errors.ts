@@ -25,3 +25,10 @@ export class DayAlreadyCloseExistsError extends Error {
     this.name = 'DayAlreadyCloseExistsError'
   }
 }
+
+export class CloseDateInFutureError extends Error {
+  constructor(date: string) {
+    super(`Cannot close a future date: ${date}. Only today or past dates can be closed.`)
+    this.name = 'CloseDateInFutureError'
+  }
+}

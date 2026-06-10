@@ -1,4 +1,5 @@
 import { getSql } from '@/shared/db/client'
+import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 export type GetOrCreatePlayerOpts = {
   agreedToTerms?: boolean
@@ -20,7 +21,7 @@ export async function getOrCreatePlayer(
   const sql = getSql()
   const lower = email.toLowerCase()
   const agreed = opts.agreedToTerms === true
-  const termsVersion = opts.termsVersion ?? 'v1'
+  const termsVersion = opts.termsVersion ?? CURRENT_TERMS_VERSION
 
   const existing = await sql<{ id: string; agreed_to_terms_at: Date | null }[]>`
     SELECT id, agreed_to_terms_at FROM players WHERE email = ${lower} LIMIT 1

@@ -252,7 +252,7 @@ export async function getPublicCourtCards(tenant: PublicTenant): Promise<PublicC
         pricing: courts.pricing,
       })
       .from(courts)
-      .where(eq(courts.status, 'online')),
+      .where(and(eq(courts.tenantId, tenant.id), eq(courts.status, 'online'))),
   )
   return rows.map((c) => ({
     id: c.id,
@@ -304,7 +304,7 @@ async function getPublicAvailabilityImpl(
           pricing: courts.pricing,
         })
         .from(courts)
-        .where(eq(courts.status, 'online'))
+        .where(and(eq(courts.tenantId, tenant.id), eq(courts.status, 'online')))
 
       const bookingsData = await tx
         .select({
@@ -315,6 +315,7 @@ async function getPublicAvailabilityImpl(
         .from(bookings)
         .where(
           and(
+            eq(bookings.tenantId, tenant.id),
             sql`${bookings.date} = ${dateStr}::date`,
             notInArray(bookings.status, ['canceled_refunded', 'canceled_no_refund']),
           ),
@@ -389,13 +390,14 @@ export async function getPublicWeeklyAvailability(
         pricing: courts.pricing,
       })
       .from(courts)
-      .where(eq(courts.status, 'online'))
+      .where(and(eq(courts.tenantId, tenant.id), eq(courts.status, 'online')))
 
     const rows = (await tx.execute(sql`
       SELECT court_id AS "courtId", date::text AS "date",
              time_start::text AS "timeStart", time_end::text AS "timeEnd"
       FROM bookings
-      WHERE date >= ${startDateStr}::date AND date <= ${endDateStr}::date
+      WHERE tenant_id = ${tenant.id}::uuid
+        AND date >= ${startDateStr}::date AND date <= ${endDateStr}::date
         AND status NOT IN ('canceled_refunded', 'canceled_no_refund')
     `)) as unknown as Array<{ courtId: string; date: string; timeStart: string; timeEnd: string }>
 

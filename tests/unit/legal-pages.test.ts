@@ -3,7 +3,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react'
 
 import PrivacyPage, { metadata as privacyMetadata } from '@/app/(public)/privacy/page'
 import TermsPage, { metadata as termsMetadata } from '@/app/(public)/terms/page'
-import { LegalFooter } from '@/components/site/legal-footer'
+import SiteFooter from '@/components/site/SiteFooter'
 
 /**
  * The vitest environment is `node` (see vitest.config.ts) and the project does not
@@ -64,8 +64,8 @@ function collectText(root: ReactElement): string {
 
 describe('privacy page', () => {
   it('exports metadata with the expected title and description', () => {
-    expect(privacyMetadata.title).toMatch(/Política de Privacidad/i)
-    expect(privacyMetadata.title).toMatch(/TurnoGol/)
+    // El título es solo la parte específica; el template del root layout añade " · TurnoGol".
+    expect(privacyMetadata.title).toBe('Política de Privacidad')
     expect(privacyMetadata.description).toMatch(/Ley 25\.326/)
   })
 
@@ -91,8 +91,7 @@ describe('privacy page', () => {
 
 describe('terms page', () => {
   it('exports metadata with the expected title and description', () => {
-    expect(termsMetadata.title).toMatch(/Términos y Condiciones/i)
-    expect(termsMetadata.title).toMatch(/TurnoGol/)
+    expect(termsMetadata.title).toBe('Términos y Condiciones')
     expect(termsMetadata.description).toMatch(/TurnoGol/)
   })
 
@@ -111,9 +110,9 @@ describe('terms page', () => {
   })
 })
 
-describe('LegalFooter', () => {
+describe('SiteFooter (legal links)', () => {
   it('renders links to /privacy and /terms', () => {
-    const tree = LegalFooter()
+    const tree = SiteFooter()
     expect(isValidElement(tree)).toBe(true)
     const hrefs = collectHrefs(tree)
     expect(hrefs).toContain('/privacy')
@@ -121,9 +120,9 @@ describe('LegalFooter', () => {
   })
 
   it('renders the expected anchor labels', () => {
-    const text = collectText(LegalFooter())
-    expect(text).toMatch(/Política de Privacidad/)
-    expect(text).toMatch(/Términos y Condiciones/)
+    const text = collectText(SiteFooter())
+    expect(text).toMatch(/Privacidad/)
+    expect(text).toMatch(/Términos/)
     expect(text).toMatch(/TurnoGol/)
   })
 })

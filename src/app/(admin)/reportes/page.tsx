@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { Download } from 'lucide-react'
+import { PinGate } from '@/components/pin-gate'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getRevenueReport } from '@/modules/reports/report.service'
@@ -8,6 +9,7 @@ import {
   prevMonthStr,
   nextMonthStr,
   formatMonthLabel,
+  isReportEmpty,
 } from '@/modules/reports/report.utils'
 
 function formatARS(cents: number): string {
@@ -61,7 +63,7 @@ export default async function ReportesPage({
     tenant.closedDates,
   )
 
-  const isEmpty = report.income === 0 && report.bookingCount === 0
+  const isEmpty = isReportEmpty(report)
 
   // CSV covers [from, last day of month] inclusive
   const csvFrom = from.toISOString().split('T')[0]
@@ -82,7 +84,9 @@ export default async function ReportesPage({
     { label: 'Reservas', value: String(report.bookingCount), change: null },
   ]
 
-  return (
+  const hasPin = !!tenant.settings.staff_pin_hash
+
+  const content = (
     <div className="space-y-6">
       {/* Header + month navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -100,7 +104,7 @@ export default async function ReportesPage({
             </button>
           </form>
 
-          <span className="min-w-[11rem] text-center text-sm font-medium capitalize text-slate-700">
+          <span className="min-w-[11rem] text-center text-sm font-medium text-slate-700">
             {formatMonthLabel(month)}
           </span>
 
@@ -223,4 +227,6 @@ export default async function ReportesPage({
       </div>
     </div>
   )
+
+  return <PinGate pinRequired={hasPin}>{content}</PinGate>
 }

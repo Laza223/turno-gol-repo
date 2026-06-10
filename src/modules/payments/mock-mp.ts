@@ -9,7 +9,19 @@ import type {
   RefundResult,
 } from './payment.types'
 
-export const MP_MOCK_ENABLED = process.env.MP_MOCK_MODE === '1'
+/**
+ * Whether the env-mock MercadoPago gateway is active.
+ *
+ * BLOCKER fix: the mock gateway processes every webhook inline with a fake
+ * gateway and no pg-boss, bypassing the real payment flow entirely. It must be
+ * impossible to enable in production even if `MP_MOCK_MODE=1` leaks into a prod
+ * deploy — so the flag is hard-gated behind `NODE_ENV !== 'production'`.
+ */
+export function computeMpMockEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.MP_MOCK_MODE === '1' && env.NODE_ENV !== 'production'
+}
+
+export const MP_MOCK_ENABLED = computeMpMockEnabled()
 
 export type MockOutcome = 'approved' | 'rejected'
 

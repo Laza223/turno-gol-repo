@@ -9,7 +9,7 @@ import type {
   PeriodTotals,
   CashFlowExportRow,
 } from './report.types'
-import { calcAvailableMinutes, calcOccupancyPct } from './report.utils'
+import { aggregateByMethod, calcAvailableMinutes, calcOccupancyPct } from './report.utils'
 
 const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as Array<
   'confirmed' | 'completed' | 'no_show'
@@ -45,7 +45,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
             total: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
           })
           .from(cashFlows)
-          .where(and(gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
+          .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
           .groupBy(cashFlows.type, cashFlows.method),
 
         // Q2a: income + booking count per court (from cash_flows linked to bookings)
@@ -61,6 +61,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
           .innerJoin(courts, eq(bookings.courtId, courts.id))
           .where(
             and(
+              eq(cashFlows.tenantId, tenantId),
               gte(cashFlows.occurredAt, from),
               lt(cashFlows.occurredAt, to),
               isNotNull(cashFlows.bookingId),
@@ -81,6 +82,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
           .from(bookings)
           .where(
             and(
+              eq(bookings.tenantId, tenantId),
               sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${toStr}::date`,
               inArray(bookings.status, ACTIVE_STATUSES),
             ),
@@ -93,6 +95,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
           .from(bookings)
           .where(
             and(
+              eq(bookings.tenantId, tenantId),
               sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${toStr}::date`,
               inArray(bookings.status, ACTIVE_STATUSES),
             ),
@@ -102,7 +105,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
         tx
           .select({ count: sql<number>`CAST(COUNT(*) AS BIGINT)` })
           .from(courts)
-          .where(eq(courts.status, 'online')),
+          .where(and(eq(courts.tenantId, tenantId), eq(courts.status, 'online'))),
       ])
 
     const income = typeRows
@@ -113,13 +116,8 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
       .filter((r) => r.type === 'adjustment')
       .reduce((acc, r) => acc + Number(r.total), 0)
 
-    const methodMap = new Map<string, number>()
-    for (const r of typeRows) {
-      methodMap.set(r.method, (methodMap.get(r.method) ?? 0) + Number(r.total))
-    }
-    const byMethod: MethodReport[] = Array.from(methodMap.entries())
-      .filter(([, total]) => total > 0)
-      .map(([method, total]) => ({ method: method as MethodReport['method'], total }))
+    // Solo income por método: los adjustment no inflan la tabla por método (#43).
+    const byMethod = aggregateByMethod(typeRows)
 
     const minutesByCourtId = new Map(
       courtMinuteRows.map((r) => [r.courtId, Number(r.bookedMinutes)]),
@@ -213,7 +211,7 @@ export async function getCashFlowsForExport(
       .from(cashFlows)
       .leftJoin(bookings, eq(cashFlows.bookingId, bookings.id))
       .leftJoin(courts, eq(bookings.courtId, courts.id))
-      .where(and(gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
+      .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
       .orderBy(cashFlows.occurredAt)
 
     return rows.map((r) => ({

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +11,14 @@ import { checkPinSessionAction, verifyPinAction } from '@/app/(admin)/actions/pi
 
 interface PinGateProps {
   children: ReactNode
+  /**
+   * Si el tenant no tiene PIN configurado, pasar `false` (derivado de
+   * `!!tenant.settings.staff_pin_hash`): el gate se vuelve un no-op y se
+   * renderizan los children directamente. Default `true` (gate estricto).
+   * Unifica el enforcement: si hay PIN se exige en todas las zonas sensibles;
+   * si no hay, no se exige en ninguna (evita el lockout de Configuración).
+   */
+  pinRequired?: boolean
 }
 
 /** Format ms remaining as M:SS or "0:00". */
@@ -20,7 +29,7 @@ function formatCountdown(ms: number): string {
   return `${min}:${String(sec).padStart(2, '0')}`
 }
 
-export function PinGate({ children }: PinGateProps) {
+export function PinGate({ children, pinRequired = true }: PinGateProps) {
   const [verified, setVerified] = useState<boolean | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -31,10 +40,14 @@ export function PinGate({ children }: PinGateProps) {
   const [now, setNow] = useState(() => Date.now())
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [, startTransition] = useTransition()
+  const router = useRouter()
 
   useEffect(() => {
-    checkPinSessionAction().then(setVerified)
-  }, [])
+    if (!pinRequired) return
+    // On rejection, fall back to "not verified" so the gate shows the PIN prompt
+    // instead of hanging on the null/loading state forever.
+    checkPinSessionAction().then(setVerified, () => setVerified(false))
+  }, [pinRequired])
 
   // Countdown interval: starts when locked, stops when countdown reaches 0.
   useEffect(() => {
@@ -59,6 +72,9 @@ export function PinGate({ children }: PinGateProps) {
       }
     }
   }, [lockedUntilMs])
+
+  // Sin PIN configurado para este tenant → gate deshabilitado.
+  if (!pinRequired) return <>{children}</>
 
   if (verified === null) {
     return (
@@ -86,6 +102,11 @@ export function PinGate({ children }: PinGateProps) {
       const result = await verifyPinAction(pin)
       if (result.ok) {
         setVerified(true)
+        // #9: re-renderizar el Server Component ahora que la cookie de sesion
+        // PIN existe, para que las paginas que difieren el fetch de datos
+        // sensibles hasta tener PIN valido (ej. facturacion) los traigan recien
+        // ahora y nunca antes en el payload RSC.
+        router.refresh()
       } else if (result.locked) {
         setLockedUntilMs(result.retryAtMs)
         setNow(Date.now())

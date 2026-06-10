@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Logo } from '@/components/ui/logo'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -57,19 +58,16 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-5 border-b border-slate-200/70">
+      <div className="flex items-center justify-between px-4 py-5 border-b border-slate-700/60">
         <div className="min-w-0">
-          <span className="inline-flex items-center gap-2 text-base font-semibold text-slate-900">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-xs font-bold text-white shadow-sm shadow-emerald-600/30">
-              TG
-            </span>
-            TurnoGol
-          </span>
+          <Link href="/dashboard" className="block outline-none rounded-sm">
+            <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95" />
+          </Link>
           <div className="mt-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
               Complejo
             </p>
-            <p className="text-sm font-medium text-slate-900 truncate">{tenantName}</p>
+            <p className="text-sm font-medium text-slate-200 truncate">{tenantName}</p>
           </div>
         </div>
         {isMobile && (
@@ -77,7 +75,7 @@ function SidebarContent({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="ml-2"
+            className="ml-2 text-slate-400 hover:text-white hover:bg-slate-800"
             aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />
@@ -101,8 +99,8 @@ function SidebarContent({
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-emerald-600/20 text-emerald-400 shadow-sm shadow-emerald-900/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
               )}
             >
               {isActive && (
@@ -111,13 +109,13 @@ function SidebarContent({
               <Icon
                 className={cn(
                   'h-4 w-4 shrink-0 transition-colors',
-                  isActive ? 'text-emerald-600' : 'text-slate-500 group-hover:text-slate-700',
+                  isActive ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-300',
                 )}
               />
               <span className="flex-1 truncate">{label}</span>
               {pin && (
                 <Lock
-                  className="h-3.5 w-3.5 shrink-0 text-slate-400"
+                  className="h-3.5 w-3.5 shrink-0 text-slate-600"
                   aria-hidden="true"
                 />
               )}
@@ -135,15 +133,15 @@ export function AdminSidebar({ tenantName, mobileOpen, onClose }: SidebarProps) 
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-slate-200 bg-white shadow-sm shadow-slate-200/40">
+      {/* Desktop sidebar — dark shell */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-slate-700/60 bg-slate-900 shadow-xl shadow-black/20">
         <SidebarContent tenantName={tenantName} pathname={pathname} />
       </aside>
 
-      {/* Mobile sidebar */}
+      {/* Mobile sidebar — dark shell */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-30 w-60 flex flex-col border-r border-slate-200 bg-white shadow-xl shadow-slate-900/10 transition-transform duration-200 lg:hidden',
+          'fixed inset-y-0 left-0 z-30 w-60 flex flex-col border-r border-slate-700/60 bg-slate-900 shadow-xl shadow-black/30 transition-transform duration-200 lg:hidden',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
         aria-hidden={!mobileOpen}

@@ -1,0 +1,31 @@
+# Dockerfile para el servicio de WORKERS (pg-boss), no para la web.
+# La web (Next.js) se deploya en Vercel; este contenedor corre el proceso
+# Node 24/7 que procesa los background jobs (`pnpm jobs:start`).
+#
+# Pensado para Railway / Render / Fly.io. Los workers corren con tsx
+# (sin build): se ejecuta TypeScript directo, igual que en local.
+#
+# Ver docs/infraestructura.md.
+
+FROM node:20-slim
+
+# pnpm vía corepack, pinneado a la versión del repo (packageManager).
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+WORKDIR /app
+
+# Instalar dependencias primero (capa cacheable). Se instalan TODAS las deps
+# —incluida tsx (devDependency)— porque el worker se ejecuta con tsx.
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Código fuente (tsx resuelve los alias `@/` desde tsconfig.json).
+COPY . .
+
+# Se setea NODE_ENV recién acá: antes haría que pnpm omita devDependencies.
+ENV NODE_ENV=production
+
+# Entrypoint: arranca pg-boss + registra los 14 workers.
+# Recordatorio: en este servicio, DATABASE_URL debe ser la conexión DIRECTA
+# a Postgres (:5432), no el pooler (:6543). Ver docs/infraestructura.md §4.
+CMD ["pnpm", "jobs:start"]

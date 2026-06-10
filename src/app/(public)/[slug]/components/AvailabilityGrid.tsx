@@ -9,6 +9,7 @@ import type {
   Slot,
 } from '@/modules/tenants/public.service'
 import { Skeleton } from '@/components/ui/skeleton'
+import { capitalizeFirst } from '@/lib/format'
 
 type Props = {
   tenant: PublicTenant
@@ -18,12 +19,14 @@ type Props = {
 
 function formatDateES(dateStr: string): string {
   const dt = new Date(dateStr + 'T12:00:00Z')
-  return new Intl.DateTimeFormat('es-AR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'UTC',
-  }).format(dt)
+  return capitalizeFirst(
+    new Intl.DateTimeFormat('es-AR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    }).format(dt),
+  )
 }
 
 function addDays(dateStr: string, n: number): string {
@@ -127,6 +130,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
   const [date, setDate] = useState(initialDate)
   const [availability, setAvailability] = useState(initialAvailability)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
 
   const today = getArtToday()
   const maxDate = addDays(today, tenant.bookingAdvanceDays)
@@ -134,16 +138,20 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
   async function loadDate(newDate: string) {
     if (newDate < today || newDate > maxDate) return
     setLoading(true)
-    setDate(newDate)
+    setError(false)
     try {
       const res = await fetch(
         `/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${newDate}`,
       )
       if (!res.ok) throw new Error('fetch failed')
       const data = (await res.json()) as AvailabilityResponse
+      // Solo avanzamos la fecha cuando el fetch tuvo exito: asi la etiqueta de
+      // fecha y los slots visibles siempre corresponden al mismo dia. Si el
+      // fetch falla, `date` no cambia y la grilla sigue sincronizada (#39).
       setAvailability(data)
+      setDate(newDate)
     } catch {
-      // keep stale data on error
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -170,7 +178,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
-          <span className="text-sm font-medium text-foreground min-w-[180px] text-center capitalize tabular-nums">
+          <span className="text-sm font-medium text-foreground min-w-[180px] text-center tabular-nums">
             {formatDateES(date)}
           </span>
           <button
@@ -187,6 +195,17 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
 
       {/* Loading skeleton */}
       {loading && <Skeleton className="h-48 rounded-lg" />}
+
+      {/* Error al cambiar de dia: la grilla sigue mostrando el dia previo */}
+      {!loading && error && (
+        <p
+          role="alert"
+          className="text-sm text-red-600 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2"
+        >
+          No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e
+          intentá de nuevo.
+        </p>
+      )}
 
       {/* No courts */}
       {!loading && noCourts && (

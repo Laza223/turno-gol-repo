@@ -8,6 +8,15 @@ const scriptSrc = process.env.NODE_ENV === 'production'
   ? "script-src 'self' 'unsafe-inline'"
   : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
 
+// Supabase Realtime en dev apunta a ws://127.0.0.1:<port> (Supabase local), que
+// el CSP de prod (*.supabase.co) bloquea — la grilla queda "Sin conexión".
+// Relajamos connect-src SOLO en dev para permitir el WebSocket local; en
+// producción Realtime usa wss://<proj>.supabase.co (ya cubierto) y el header
+// queda estricto.
+const connectSrc = process.env.NODE_ENV === 'production'
+  ? "connect-src 'self' *.supabase.co *.mercadopago.com"
+  : "connect-src 'self' *.supabase.co *.mercadopago.com ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*"
+
 // CSP violation reports are POSTed to /api/csp-report. We emit both the legacy
 // `report-uri` (Firefox/Safari + older Chrome) and the modern `report-to`
 // (Chrome, paired with the Reporting-Endpoints header below) so coverage spans
@@ -24,7 +33,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' *.supabase.co images.unsplash.com *.tile.openstreetmap.org data: blob:",
       "font-src 'self'",
-      "connect-src 'self' *.supabase.co *.mercadopago.com",
+      connectSrc,
       "frame-src *.mercadopago.com",
       "worker-src 'self'",
       `report-uri ${CSP_REPORT_PATH}`,

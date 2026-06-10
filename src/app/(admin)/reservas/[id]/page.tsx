@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { capitalizeFirst } from '@/lib/format'
 import { getBookingDetail } from '../queries'
 import BookingActions from './BookingActions'
 
@@ -17,7 +18,9 @@ function formatARS(cents: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(cents / 100)
 }
 function formatDate(dateStr: string): string {
-  return new Date(`${dateStr}T12:00:00Z`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+  return capitalizeFirst(
+    new Date(`${dateStr}T12:00:00Z`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }),
+  )
 }
 
 type Props = { params: { id: string } }
@@ -54,7 +57,7 @@ export default async function ReservaDetailPage({ params }: Props) {
           {rows.map(([label, value]) => (
             <div key={label}>
               <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-              <dd className="text-sm font-medium text-slate-900 capitalize">{value}</dd>
+              <dd className="text-sm font-medium text-slate-900">{value}</dd>
             </div>
           ))}
         </dl>

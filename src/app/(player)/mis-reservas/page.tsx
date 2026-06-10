@@ -78,6 +78,7 @@ export default async function MisReservasPage({
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.player_id = ${user.playerId}
       ORDER BY b.date DESC, b.time_start DESC
       LIMIT 200
     `),

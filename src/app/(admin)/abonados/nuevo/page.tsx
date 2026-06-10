@@ -13,7 +13,7 @@ export default async function NuevoAbonadoPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const courts = await withTenantContext(tenant.id, (tx) => listCourts(tx))
+  const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
   const courtOptions = courts.map((c) => ({ id: c.id, name: c.name }))
 
   return (

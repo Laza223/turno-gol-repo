@@ -85,6 +85,21 @@ export default async function ReservarPage({ params, searchParams }: Props) {
           No podés reservar en este complejo actualmente.
         </p>
       )}
+      {searchParams.error === 'debt' && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-600/20">
+          Tenés un saldo pendiente con este complejo. Regularizá tu deuda con el complejo para volver a reservar online.
+        </p>
+      )}
+      {searchParams.error === 'rate_limited' && (
+        <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20">
+          Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.
+        </p>
+      )}
+      {searchParams.error === 'unavailable' && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-600/20">
+          No pudimos procesar la reserva: la cancha no está disponible o no tiene precio configurado para ese horario.
+        </p>
+      )}
 
       <BookingSummary
         data={{

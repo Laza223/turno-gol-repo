@@ -11,6 +11,7 @@ import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { logger } from '@/shared/lib/logger'
 import { track, withSpan } from '@/shared/observability'
+import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -54,7 +55,7 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     const firstName = firstNameMeta || email.split('@')[0] || 'Jugador'
     const lastName = lastNameMeta ?? ''
     const agreedTerms = userMeta.agreed_terms === true || meta.agreed_terms === true
-    const termsVersion = typeof userMeta.terms_version === 'string' ? userMeta.terms_version : 'v1'
+    const termsVersion = typeof userMeta.terms_version === 'string' ? userMeta.terms_version : CURRENT_TERMS_VERSION
 
     const player = await getOrCreatePlayer(email, firstName, lastName, {
       agreedToTerms: agreedTerms,
@@ -108,7 +109,8 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // N tenants → user picks at /select-tenant (out of scope here).
+  // N tenants → user picks one at /select-tenant (page + selectTenantAction set
+  // the tenant_id claim and refresh the session before entering /dashboard).
   track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: tenants.length })
   return NextResponse.redirect(new URL('/select-tenant', req.url))
 }

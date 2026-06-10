@@ -4,6 +4,7 @@ import { withPlayer } from '@/shared/middleware/with-player'
 import { notFound } from '@/shared/api-error'
 import { getSql } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'
+import { captureMessage } from '@/lib/sentry'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +23,9 @@ export const dynamic = 'force-dynamic'
  *   - bans: any tenant_player_bans rows
  *   - consents: terms_version + agreed_at + +18 flag
  *
- * Logs the access in audit_logs (action='player.data_exported') for
- * compliance traceability — Art. 22 right of inspection by AAIP.
+ * Compliance traceability (ARCO Art. 22): audit_logs requires tenant_id NOT
+ * NULL so cross-tenant exports are tracked via Sentry instead. A dedicated
+ * player_data_exports table is planned for v1.5 if AAIP inspection requires it.
  */
 export const GET = withPlayer(async (_req, user, tx) => {
   const profileRows = await tx
@@ -114,12 +116,12 @@ export const GET = withPlayer(async (_req, user, tx) => {
     bans,
   }
 
-  // NOTE: compliance audit trail for ARCO access is intentionally not written
-  // here. audit_logs is per-tenant + RLS-guarded; the player has cross-tenant
-  // scope so a single export touches N tenants. Logging would require service-
-  // role escalation. Track exports via Vercel/Sentry request logs (tenant-
-  // agnostic) and add a global `player_data_exports` table in v1.5 if AAIP
-  // inspection requires it. (Doc18 §5 currently accepts request-log evidence.)
+  // audit_logs.tenant_id is NOT NULL so we can't insert a tenant-less row.
+  // Emit a Sentry message instead — captured in server logs for AAIP inspection.
+  captureMessage('arco.data_exported', {
+    level: 'info',
+    extra: { player_id: user.playerId },
+  })
 
   return NextResponse.json({ data: bundle })
 })

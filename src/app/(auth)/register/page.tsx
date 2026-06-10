@@ -93,6 +93,8 @@ function FormPane({
 
         {state.status === 'sent' ? (
           <SentState email={state.email} />
+        ) : state.status === 'existing' ? (
+          <ExistingState email={state.email} />
         ) : (
           <FormCard state={state} formAction={formAction} />
         )}
@@ -188,6 +190,29 @@ function SentState({ email }: { email: string }) {
       <p className="mt-3 text-sm text-slate-600">
         Te enviamos un enlace a <strong className="text-slate-900">{email}</strong>. Hacé click para activar tu cuenta.
       </p>
+    </div>
+  )
+}
+
+function ExistingState({ email }: { email: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
+      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
+        <CheckCircle2 className="h-6 w-6 text-emerald-700" aria-hidden />
+      </div>
+      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+        Ya tenés una cuenta
+      </h1>
+      <p className="mt-3 text-sm text-slate-600">
+        Ya existe una cuenta con <strong className="text-slate-900">{email}</strong>.
+        ¿Querés agregar otro complejo? Iniciá sesión y sumalo desde tu panel.
+      </p>
+      <Link
+        href="/login"
+        className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+      >
+        Iniciar sesión
+      </Link>
     </div>
   )
 }

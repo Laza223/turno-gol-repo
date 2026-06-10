@@ -1,8 +1,11 @@
 'use server'
 
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { getDb } from '@/shared/db/client'
+import { staffUsers } from '@/shared/db/schema'
 
 // AR mobile: optional + 54, optional 9, then 10 digits split however the user types.
 const phoneRegex = /^\+?54\s?9?\s?\d{2,4}\s?\d{4}-?\d{4}$/
@@ -22,6 +25,7 @@ type FieldKey = 'email' | 'firstName' | 'lastName' | 'phone' | '_form'
 export type RegisterState =
   | { status: 'idle' }
   | { status: 'sent'; email: string }
+  | { status: 'existing'; email: string }
   | { status: 'error'; fieldErrors: Partial<Record<FieldKey, string>> }
 
 export async function registerAction(
@@ -41,6 +45,23 @@ export async function registerAction(
       if (k && !errs[k]) errs[k] = issue.message
     }
     return { status: 'error', fieldErrors: errs }
+  }
+
+  // Si ya existe una cuenta con ese email no enviamos un magic link de registro:
+  // lo informamos para que inicie sesión y agregue otro complejo desde el panel
+  // (US-ONB-001 / Flujo 1). staff_users es global (sin RLS), consulta directa.
+  // Resiliente: si la verificación falla no bloqueamos el alta y seguimos al OTP.
+  try {
+    const existing = await getDb()
+      .select({ id: staffUsers.id })
+      .from(staffUsers)
+      .where(eq(staffUsers.email, parsed.data.email))
+      .limit(1)
+    if (existing[0]) {
+      return { status: 'existing', email: parsed.data.email }
+    }
+  } catch {
+    // continúa con el envío del OTP
   }
 
   const origin =

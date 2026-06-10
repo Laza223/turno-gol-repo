@@ -62,33 +62,55 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
   // Polling effect — re-runs whenever status/stalled changes so early-return cleans up.
   // Cache-bust query param: dev/SSR caches occasionally serve stale 'pending'
   // even with `cache: 'no-store'`; a varying URL guarantees a fresh response.
+  // Uses recursive setTimeout with exponential backoff (3s → 6s → 12s, cap 30s)
+  // so transient 5xx bursts don't hammer the server (#63).
   useEffect(() => {
     if (TERMINAL_STATUSES.has(status) || stalled) return
 
-    const id = setInterval(() => {
-      void (async () => {
-        try {
-          const res = await fetch(
-            `/api/player/bookings/${bookingId}/status?t=${Date.now()}`,
-            { cache: 'no-store' },
-          )
-          if (!res.ok) {
-            failuresRef.current += 1
-            if (failuresRef.current >= 5) setStalled((s) => s ?? 'error')
-            return
-          }
-          failuresRef.current = 0
-          const json = (await res.json()) as StatusResponse
-          setStatus(json.data.status)
-        } catch {
-          // error de red: tras varios intentos seguidos cortamos el spinner (#46)
-          failuresRef.current += 1
-          if (failuresRef.current >= 5) setStalled((s) => s ?? 'error')
-        }
-      })()
-    }, 3000)
+    let cancelled = false
+    const BASE_MS = 3000
+    const MAX_MS = 30_000
 
-    return () => clearInterval(id)
+    const scheduleNext = (delayMs: number) => {
+      const id = setTimeout(() => {
+        if (cancelled) return
+        void (async () => {
+          try {
+            const res = await fetch(
+              `/api/player/bookings/${bookingId}/status?t=${Date.now()}`,
+              { cache: 'no-store' },
+            )
+            if (!res.ok) {
+              failuresRef.current += 1
+              if (failuresRef.current >= 5) {
+                setStalled((s) => s ?? 'error')
+                return
+              }
+              scheduleNext(Math.min(delayMs * 2, MAX_MS))
+              return
+            }
+            failuresRef.current = 0
+            const json = (await res.json()) as StatusResponse
+            setStatus(json.data.status)
+            if (!cancelled) scheduleNext(BASE_MS)
+          } catch {
+            // error de red: backoff exponencial y corte tras 5 fallos (#46, #63)
+            failuresRef.current += 1
+            if (failuresRef.current >= 5) {
+              setStalled((s) => s ?? 'error')
+              return
+            }
+            scheduleNext(Math.min(delayMs * 2, MAX_MS))
+          }
+        })()
+      }, delayMs)
+      return id
+    }
+
+    scheduleNext(BASE_MS)
+    return () => {
+      cancelled = true
+    }
   }, [bookingId, status, stalled])
 
   if (status === 'confirmed') {

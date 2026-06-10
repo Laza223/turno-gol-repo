@@ -8,10 +8,7 @@ import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CajaActions } from './components/CajaActions'
-
-function artDateOf(ts: Date): string {
-  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
-}
+import { artDateOf } from '@/shared/time/art-date'
 
 function formatARS(centavos: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(

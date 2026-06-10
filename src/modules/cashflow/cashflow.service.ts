@@ -6,6 +6,7 @@ import {
   InvalidCashFlowCategoryError,
   DayAlreadyClosedError,
 } from './cashflow.errors'
+import { artDateOf } from '@/shared/time/art-date'
 import type {
   CashFlowType,
   CashFlowCategory,
@@ -27,10 +28,6 @@ export function validateCashFlowCombo(type: string, category: string): void {
   if (!allowed.includes(category as CashFlowCategory)) {
     throw new InvalidCashFlowCategoryError(type, category)
   }
-}
-
-function artDateOf(ts: Date): string {
-  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
 }
 
 function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {

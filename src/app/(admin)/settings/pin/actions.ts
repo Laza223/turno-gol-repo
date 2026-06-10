@@ -37,7 +37,10 @@ const setPinSchema = z
     path: ['confirmPin'],
   })
 
-export async function setPinAction(formData: FormData): Promise<PinConfigResult> {
+export async function setPinAction(
+  _prevState: PinConfigResult,
+  formData: FormData,
+): Promise<PinConfigResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

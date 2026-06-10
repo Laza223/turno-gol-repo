@@ -20,6 +20,7 @@ import {
 } from './payment.errors'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { track } from '@/shared/observability'
+import { captureMessage } from '@/lib/sentry'
 
 const TERMINAL_BOOKING_STATUSES = [
   'expired',
@@ -277,10 +278,22 @@ async function handleApproved(
     date: string
   }>)[0]
   const notificationIds: string[] = []
-  if (
-    row &&
-    (TERMINAL_BOOKING_STATUSES as ReadonlyArray<string>).includes(row.status)
-  ) {
+
+  // Booking not found: money received but cannot be credited — alert ops (#66).
+  if (!row) {
+    captureMessage('late_payment: booking not found', {
+      level: 'error',
+      extra: {
+        bookingId: info.externalReference,
+        mpPaymentId: info.mpPaymentId,
+        amount: info.amount,
+        tenantId,
+      },
+    })
+    return { won: false, notificationIds }
+  }
+
+  if ((TERMINAL_BOOKING_STATUSES as ReadonlyArray<string>).includes(row.status)) {
     await insertSystemAuditLog(tx, {
       tenantId,
       action: 'booking.late_payment_attempt',

@@ -1,8 +1,12 @@
 import { redirect } from 'next/navigation'
 import { isFeatureEnabled } from '@/shared/feature-flags'
+import { logger } from '@/shared/lib/logger'
 
 /** Feature-flag key for the per-tenant kill switch. */
 export const TENANT_SUSPENDED_FLAG = 'suspended'
+
+/** Timeout (ms) para la consulta del kill switch. Fail-open: si la DB tarda, no se suspende. */
+const KILL_SWITCH_TIMEOUT_MS = 2_000
 
 /**
  * Kill switch (Fase 6 #5): if the tenant carries the `suspended` feature flag,
@@ -17,9 +21,29 @@ export const TENANT_SUSPENDED_FLAG = 'suspended'
  *
  * `redirect()` throws Next's NEXT_REDIRECT control-flow signal, so this function
  * does not return when the tenant is suspended.
+ *
+ * Fix #56: la llamada a isFeatureEnabled tiene un timeout de 2 s. Si la DB tarda
+ * más (cold path, reinicio de proceso), se hace fail-open (no se suspende) para
+ * no bloquear al admin layout indefinidamente.
  */
 export async function redirectIfTenantSuspended(tenantId: string): Promise<void> {
-  if (await isFeatureEnabled(TENANT_SUSPENDED_FLAG, tenantId)) {
+  let isSuspended: boolean
+  try {
+    isSuspended = await Promise.race([
+      isFeatureEnabled(TENANT_SUSPENDED_FLAG, tenantId),
+      new Promise<false>((resolve) =>
+        setTimeout(() => resolve(false), KILL_SWITCH_TIMEOUT_MS),
+      ),
+    ])
+  } catch (err) {
+    logger.warn('kill_switch.check_failed', {
+      tenantId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return
+  }
+
+  if (isSuspended) {
     redirect('/suspended')
   }
 }

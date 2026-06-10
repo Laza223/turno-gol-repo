@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
-import { Download, Trash2 } from 'lucide-react'
+import { ChevronRight, Download, Trash2, User } from 'lucide-react'
 import type { Metadata } from 'next'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
@@ -35,7 +35,22 @@ export default async function ConfiguracionPage() {
   return (
     <div className="px-4 py-5 space-y-6 max-w-lg mx-auto">
       <h1 className="text-xl font-semibold text-slate-900">Mi cuenta</h1>
-      <p className="text-sm text-slate-500">Hola {firstName}, gestioná tus datos.</p>
+      <p className="text-sm text-slate-500">Hola {firstName}, gestioná tu perfil y tus datos.</p>
+
+      {/* Card 0: Mi perfil */}
+      <Link
+        href="/perfil"
+        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-2">
+          <User className="h-5 w-5 shrink-0 text-slate-600" aria-hidden />
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Mi perfil</h2>
+            <p className="text-sm text-slate-600">Editá tu nombre, teléfono y zona preferida.</p>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+      </Link>
 
       {/* Card 1: Tus datos */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm p-4 space-y-3">

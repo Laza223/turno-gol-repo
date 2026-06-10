@@ -27,7 +27,7 @@ export default async function ReservaPendientePage({ params }: Props) {
 
   if (!booking) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
         <p className="text-sm text-slate-600">No encontramos tu reserva. Revisá tus reservas en el panel.</p>
       </div>
     )
@@ -36,7 +36,7 @@ export default async function ReservaPendientePage({ params }: Props) {
   const expiresAt = new Date(new Date(booking.createdAt).getTime() + 15 * 60 * 1000).toISOString()
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
       <span className="sr-only">Reserva {params.bookingId}</span>
       <PaymentStatusWatcher
         bookingId={params.bookingId}

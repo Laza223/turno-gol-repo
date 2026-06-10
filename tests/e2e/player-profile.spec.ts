@@ -64,8 +64,10 @@ test.describe('Player profile', () => {
       expect(row?.first_name).toBe('NombreNuevo')
 
       // Reload to verify the page re-renders with the new DB value.
+      // Use getByRole('textbox') to avoid ambiguity: the AccountMenu button
+      // has aria-label="Cuenta de NombreNuevo" which also contains "Nombre".
       await page.reload()
-      await expect(page.getByLabel('Nombre')).toHaveValue('NombreNuevo')
+      await expect(page.getByRole('textbox', { name: 'Nombre' })).toHaveValue('NombreNuevo')
     } finally {
       await ctx.close()
     }

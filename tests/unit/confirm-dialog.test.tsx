@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+
+vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
+
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import * as Sentry from '@sentry/nextjs'
 
 describe('ConfirmDialog', () => {
   it('type-to-confirm gates the confirm button', async () => {
@@ -79,6 +83,29 @@ describe('ConfirmDialog', () => {
     await waitFor(() => {
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
+  })
+
+  it('onConfirm que lanza mantiene el dialog abierto, muestra error y reporta a Sentry (#17)', async () => {
+    const onConfirm = vi.fn().mockRejectedValue(new Error('db down'))
+    const onOpenChange = vi.fn()
+
+    render(
+      <ConfirmDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        title="Acción"
+        confirmLabel="Confirmar"
+        onConfirm={onConfirm}
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('No se pudo completar')
+    })
+    expect(vi.mocked(Sentry.captureException)).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
   })
 
   it('cancel closes the dialog', async () => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import * as Sentry from '@sentry/nextjs'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { closeDayAction } from '../actions'
 import { toast } from '@/hooks/use-toast'
@@ -27,12 +28,20 @@ export function CloseDayButton({ date, balance }: { date: string; balance: numbe
     if (noteRequired && note.trim().length < 1) {
       return { success: false, error: 'Hay diferencia: la nota es obligatoria.' }
     }
-    const res = await closeDayAction(date, declaredCents, note.trim() || undefined)
-    if (res.success) {
-      toast({ title: 'Caja cerrada', description: date, variant: 'success' })
-      router.refresh()
+    try {
+      const res = await closeDayAction(date, declaredCents, note.trim() || undefined)
+      if (res.success) {
+        toast({ title: 'Caja cerrada', description: date, variant: 'success' })
+        router.refresh()
+      }
+      return res
+    } catch (err) {
+      // Error inesperado (DB/red) en el cierre: lo contenemos acá para mostrar un
+      // mensaje contextual y permitir reintentar, sin disparar el error boundary
+      // ni quedar colgado en "Procesando…" (#49). Mismo patrón que RegisterMovementModal.
+      Sentry.captureException(err)
+      return { success: false, error: 'No pudimos cerrar la caja. Revisá tu conexión e intentá de nuevo.' }
     }
-    return res
   }
 
   return (

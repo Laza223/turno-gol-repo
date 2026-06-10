@@ -8,38 +8,56 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
-import { getAbonadoSlotConflicts } from '@/modules/abonados/abonado.service'
+import {
+  checkAbonadoSlotConflict,
+  getAbonadoSlotConflicts,
+} from '@/modules/abonados/abonado.service'
 import type { CreateAbonadoInput } from '@/modules/abonados/abonado.types'
 
-const schema = z.object({
-  courtId: z.string().uuid('Elegí una cancha'),
-  contactName: z.string().trim().min(1, 'Nombre requerido'),
-  contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
-  dayOfWeek: z.coerce.number().int().min(0).max(6),
-  // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
-  // reactivate dialog, which renders the abonado row's stored time directly).
-  timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  pricePerSession: z.coerce.number().positive('El precio por sesión es requerido'),
-  monthlyPrice: z.coerce.number().positive('El precio mensual es requerido'),
-  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
-  paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
-  notes: z.string().trim().max(1000).optional(),
-})
+// #33: comparamos timeEnd > timeStart en segundos del dia. Acepta HH:MM y
+// HH:MM:SS (la comparacion lexicografica fallaria al mezclar ambos formatos).
+function timeToSeconds(t: string): number {
+  const [h, m, s] = t.split(':').map(Number)
+  return h * 3600 + m * 60 + (s ?? 0)
+}
 
-const previewSchema = z.object({
-  courtId: z.string().uuid('Elegí una cancha'),
-  dayOfWeek: z.coerce.number().int().min(0).max(6),
-  // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
-  // reactivate dialog, which renders the abonado row's stored time directly).
-  timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
-  endsOn: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
-    .optional(),
-})
+const TIME_RANGE_MSG = 'El horario de fin debe ser posterior al de inicio.'
+const endAfterStart = (d: { timeStart: string; timeEnd: string }): boolean =>
+  timeToSeconds(d.timeEnd) > timeToSeconds(d.timeStart)
+
+const schema = z
+  .object({
+    courtId: z.string().uuid('Elegí una cancha'),
+    contactName: z.string().trim().min(1, 'Nombre requerido'),
+    contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
+    dayOfWeek: z.coerce.number().int().min(0).max(6),
+    // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
+    // reactivate dialog, which renders the abonado row's stored time directly).
+    timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    pricePerSession: z.coerce.number().positive('El precio por sesión es requerido'),
+    monthlyPrice: z.coerce.number().positive('El precio mensual es requerido'),
+    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
+    notes: z.string().trim().max(1000).optional(),
+  })
+  .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
+
+const previewSchema = z
+  .object({
+    courtId: z.string().uuid('Elegí una cancha'),
+    dayOfWeek: z.coerce.number().int().min(0).max(6),
+    // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
+    // reactivate dialog, which renders the abonado row's stored time directly).
+    timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
+    endsOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
+      .optional(),
+  })
+  .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
 
 export type PreviewAbonadoSlotsInput = z.infer<typeof previewSchema>
 
@@ -76,11 +94,38 @@ export async function previewAbonadoSlotsAction(
     closedDates,
   })
 
-  const conflicts = await withTenantContext(tenant.id, (tx) =>
-    getAbonadoSlotConflicts(tenant.id, courtId, timeStart, timeEnd, dates, tx),
-  )
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    // #34: el preview tambien debe detectar un abonado ACTIVO en el mismo
+    // court/dia/horario (getAbonadoSlotConflicts solo mira bookings). Sin esto
+    // el choque recien explotaba al confirmar (createAbonado lanza
+    // AbonadoConflictError) en vez de avisarse en la vista previa.
+    const abonadoConflict = await checkAbonadoSlotConflict(
+      courtId,
+      dayOfWeek,
+      timeStart,
+      timeEnd,
+      tenant.id,
+      null,
+      tx,
+    )
+    if (abonadoConflict) return { abonadoConflict: true as const }
+    const conflicts = await getAbonadoSlotConflicts(
+      tenant.id,
+      courtId,
+      timeStart,
+      timeEnd,
+      dates,
+      tx,
+    )
+    return { abonadoConflict: false as const, conflicts }
+  })
 
-  return { success: true, dates, conflicts }
+  if (result.abonadoConflict) {
+    // Mismo mensaje que AbonadoConflictError (la barrera del create path).
+    return { success: false, error: 'Ya existe un turno fijo activo en ese horario.' }
+  }
+
+  return { success: true, dates, conflicts: result.conflicts }
 }
 
 export type NewAbonadoState = { status: 'idle' } | { status: 'error'; message: string }

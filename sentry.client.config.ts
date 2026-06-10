@@ -1,4 +1,5 @@
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
+import { scrubObject, scrubQueryString } from '@/lib/sentry-pii-scrub'
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
 
@@ -48,6 +49,31 @@ function initSentry(): void {
       beforeSend(event, hint) {
         if (isDroppableDomainError(hint)) return null
         if (process.env.NODE_ENV !== 'production') return null
+
+        // PII scrub (#11 / Ley 25.326 / B9) — paridad con sentry.server.config.ts.
+        // El config del browser tambien puede arrastrar email, phone, tokens MP o
+        // headers de auth en extra/contexts/request/user; nunca deben llegar a Sentry.
+        if (event.request) {
+          delete event.request.data
+          if (event.request.headers) {
+            const h = event.request.headers as Record<string, string>
+            delete h.cookie
+            delete h.Cookie
+            delete h.authorization
+            delete h.Authorization
+          }
+          if (typeof event.request.query_string === 'string') {
+            event.request.query_string = scrubQueryString(event.request.query_string)
+          }
+        }
+        if (event.extra) event.extra = scrubObject(event.extra) as typeof event.extra
+        if (event.contexts) {
+          event.contexts = scrubObject(event.contexts) as typeof event.contexts
+        }
+        if (event.user) {
+          // Conservar id para trazabilidad, descartar email/username/ip_address.
+          event.user = { id: event.user.id }
+        }
         return event
       },
       beforeBreadcrumb(breadcrumb) {

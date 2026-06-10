@@ -4,7 +4,7 @@ SaaS B2B de gestión para complejos de fútbol en Argentina. Competidor vertical
 
 ## Documentación
 
-La carpeta `docs/` contiene 19 documentos vigentes (doc9 deprecado) que son la fuente de verdad del proyecto. Están numerados del 1 al 20 y cubren todas las capas:
+La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son la fuente de verdad del proyecto. Están numerados del 1 al 20 y cubren todas las capas. El resto de `docs/` está organizado en subcarpetas (ver `docs/README.md` para el mapa completo): `business/` (planes originales de negocio/sistema/HU), `decisions/`, `operations/`, `qa/`, `audit/`, `planning/`, `superpowers/`, `archive/`.
 
 ### Capa de Negocio
 - `doc1` — Problema y mercado objetivo (complejos de fútbol, Argentina)

@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    /* TurnoGol Design System — Light Mode */
-    --background: 210 40% 98%;        /* slate-50  #F8FAFC */
+    /* TurnoGol Design System — Slate Surface (no more harsh white) */
+    --background: 214 25% 91%;        /* slate-200ish #DDE3EC — base surface, cards float above */
     --foreground: 224 71% 4%;         /* slate-950 #020617 */
 
-    --card: 0 0% 100%;                /* white */
+    --card: 0 0% 100%;                /* white — cards pop against the slate bg */
     --card-foreground: 224 71% 4%;
 
     --popover: 0 0% 100%;
@@ -17,21 +17,21 @@
     --primary: 161 94% 30%;           /* emerald-600 #059669 — CTA / action color */
     --primary-foreground: 0 0% 100%;  /* white */
 
-    --secondary: 210 40% 96%;         /* slate-100 #F1F5F9 */
+    --secondary: 214 32% 85%;         /* slate-300ish — nested surfaces */
     --secondary-foreground: 222 47% 11%; /* slate-900 */
 
-    --muted: 210 40% 96%;             /* slate-100 */
-    --muted-foreground: 215 16% 47%;  /* slate-500 #64748B */
+    --muted: 214 32% 85%;             /* slate-300ish */
+    --muted-foreground: 215 20% 40%;  /* slate-600 — better contrast on new bg */
 
-    --accent: 210 40% 96%;            /* slate-100 — hover bg */
+    --accent: 214 32% 85%;            /* hover bg */
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 72% 51%;         /* red-600 #DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;            /* slate-200 #E2E8F0 */
-    --input: 214 32% 91%;
-    --ring: 160 84% 39%;              /* emerald-500 #10B981 — matches MASTER §1 + literal ring-emerald-500 in JSX */
+    --border: 214 32% 83%;            /* slate-300 — slightly more visible on slate bg */
+    --input: 214 32% 83%;
+    --ring: 160 84% 39%;              /* emerald-500 #10B981 */
 
     --radius: 0.5rem;
 
@@ -40,6 +40,10 @@
     --success-foreground: 0 0% 100%;
     --warning: 32 95% 44%;            /* amber-600 #D97706 */
     --warning-foreground: 0 0% 100%;
+
+    /* Layout shell — field texture overlay */
+    --shell-bg: 221 32% 14%;          /* slate-900 #1E2535 — dark shell bg */
+    --shell-overlay: rgba(30, 37, 53, 0.82); /* overlay sobre la textura */
 
     /* Nav sidebar width */
     --sidebar-width: 240px;
@@ -58,6 +62,26 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* Field texture shell — layout wrapper con fondo texturizado */
+.shell-bg {
+  background-color: hsl(var(--shell-bg));
+  background-image: url('/bg-field-texture.png');
+  background-size: 480px auto;
+  background-repeat: repeat;
+  background-blend-mode: overlay;
+  position: relative;
+}
+
+/* Subtle gradient para el área de contenido — evita un bloque plano */
+.content-area-gradient {
+  background: linear-gradient(
+    160deg,
+    hsl(214 25% 88%) 0%,
+    hsl(214 25% 93%) 50%,
+    hsl(214 25% 90%) 100%
+  );
 }
 
 /* Skeleton shimmer */

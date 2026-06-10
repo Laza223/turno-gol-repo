@@ -48,7 +48,7 @@ async function getClosedDates(tenantId: string, tx: DbTx): Promise<string[]> {
   return (rows[0]?.closedDates ?? []) as string[]
 }
 
-async function checkAbonadoSlotConflict(
+export async function checkAbonadoSlotConflict(
   courtId: string,
   dayOfWeek: number,
   timeStart: string,

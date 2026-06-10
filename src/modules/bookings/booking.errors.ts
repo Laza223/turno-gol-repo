@@ -103,3 +103,10 @@ export class BookingNotYetStartedError extends Error {
     this.name = 'BookingNotYetStartedError'
   }
 }
+
+export class BookingDateOutOfRangeError extends Error {
+  constructor(public readonly reason: 'past_date' | 'past_slot' | 'advance_exceeded') {
+    super(`Booking date is out of range: ${reason}`)
+    this.name = 'BookingDateOutOfRangeError'
+  }
+}

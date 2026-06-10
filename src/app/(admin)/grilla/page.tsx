@@ -4,6 +4,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
+import { safeDateParam } from '@/shared/validation/calendar-date'
 import { bookings, players } from '@/shared/db/schema'
 import { BookingGrid, type GridBooking } from '@/components/booking/BookingGrid'
 import type { BookingStatus, BookingType } from '@/modules/bookings/booking.types'
@@ -21,7 +22,9 @@ export default async function GrillaPage({
   if (!tenant) redirect('/onboarding')
 
   const todayArt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const dateStr = searchParams.date ?? todayArt
+  // #28: un ?date con formato/calendario invalido (2024-13-32) reventaba el cast
+  // SQL ${dateStr}::date -> 500/error.tsx. Degradar a hoy (ART) en su lugar.
+  const dateStr = safeDateParam(searchParams.date, todayArt)
 
   const [courts, rawBookings] = await withTenantContext(tenant.id, async (tx) => {
     const courtList = await listCourts(tenant.id, tx)

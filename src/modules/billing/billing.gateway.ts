@@ -1,4 +1,5 @@
 import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation'
+import { withCircuitBreaker } from '@/modules/payments/mp-breaker.gateway'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 /**
@@ -17,5 +18,5 @@ export function setBillingGateway(gw: PaymentGateway | null): void {
 export function getBillingGateway(): PaymentGateway {
   if (_override) return _override
   const token = process.env.MP_TURNOGOL_ACCESS_TOKEN ?? ''
-  return new MercadoPagoGateway(token)
+  return withCircuitBreaker(new MercadoPagoGateway(token), 'saas-master')
 }

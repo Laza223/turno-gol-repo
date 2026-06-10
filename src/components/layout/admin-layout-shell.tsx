@@ -35,7 +35,7 @@ export function AdminLayoutShell({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen shell-bg">
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
@@ -69,8 +69,11 @@ export function AdminLayoutShell({
             periodEnd={periodEnd}
           />
 
-          {/* Page content */}
-          <main id="main-content" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          {/* Page content — slate gradient suave sobre el shell oscuro */}
+          <main
+            id="main-content"
+            className="content-area-gradient mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100vh-4rem)]"
+          >
             {children}
           </main>
         </div>

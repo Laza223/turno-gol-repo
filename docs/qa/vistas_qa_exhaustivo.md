@@ -17,6 +17,25 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 
 ---
 
+## Convenciones de testing transversal
+
+Los siguientes comportamientos se testean **una sola vez** en las secciones transversales al final del documento (🧪 Tests Generales Extras) y **no se repiten en cada vista individual**, salvo que la vista tenga un comportamiento único:
+
+| Comportamiento | Sección transversal | Aplica a |
+|---|---|---|
+| Acceso sin sesión → redirect `/login` | [Autenticación y sesiones](#autenticacion-y-sesiones) | Todas las vistas autenticadas |
+| Sesión expirada → redirect `/login` | [Autenticación y sesiones](#autenticacion-y-sesiones) | Todas las vistas autenticadas |
+| Tipo de usuario incorrecto (player→admin, admin→player) | [Autenticación y sesiones](#autenticacion-y-sesiones) | Todas las vistas autenticadas |
+| Cross-tenant RLS (admin A no ve datos de tenant B) | [Autenticación y sesiones](#autenticacion-y-sesiones) | Todas las vistas admin |
+| PinGate en zonas sensibles | [Autenticación y sesiones](#autenticacion-y-sesiones) | canchas, reportes, staff, settings/*, abonados |
+| Contraste WCAG AA genérico | [Accesibilidad global](#accesibilidad-global) | Todas las vistas |
+| Focus-visible ring genérico | [Accesibilidad global](#accesibilidad-global) | Todas las vistas |
+| Navegación por teclado genérica (Tab/Enter/Esc) | [Accesibilidad global](#accesibilidad-global) | Todas las vistas |
+
+En cada vista, solo se documentan tests de auth/permisos/a11y **específicos y únicos** de esa vista (ej: "staff sin tenant → redirect `/onboarding`", "booking de otro player → 404 por RLS").
+
+---
+
 ## 🔴 P0 — Criticas (8 vistas)
 
 ### 1. Grilla de canchas
@@ -58,12 +77,9 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Error 500]** Server Action lanza excepción no controlada (ej. DB error): caught por catch en handleSubmit, Sentry.captureException(err) reporta, toast muestra 'No pudimos crear la reserva. Revisá tu conexión e intentá de nuevo.'
 - [ ] **[Red/Timeout]** Fetch falla (OFFLINE realtime, no hay polling): hook fallback a 30s polling; grilla sigue mostrando ultimo estado conocido hasta siguiente reconcile.
 - [ ] **[Red/Timeout]** Servidor no responde al submit: setTimeout en startTransition catch, error genérico, boton no queda colgado.
-- [ ] **[Permisos]** Usuario player intenta acceder /grilla: extractAuthUser() !== staff, redirect('/login').
-- [ ] **[Permisos]** Usuario anónimo (sin sesión): extractAuthUser() === null, redirect('/login').
-- [ ] **[Permisos]** Usuario staff sin tenant (staff_user_id válido pero no vinculado): getStaffTenant() === null, redirect('/onboarding').
-- [ ] **[Permisos]** Otro admin de otro tenant intenta ver /grilla?tenantId=OTRO: withTenantContext y JWT tenant_id + RLS bloquean, datos de otro tenant no se exponen.
-- [ ] **[Sesion]** Auth token expira durante form submit: extractAuthUser next call redirecciona, Server Action redirige a /login, modal cierra.
-- [ ] **[Sesion]** Sesion expirada al cambiar fecha: next navigation redirige a /login antes de renderizar grilla.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Además, tests únicos de esta vista:
+- [ ] **[Permisos]** Staff sin tenant (staff_user_id válido pero no vinculado): getStaffTenant() === null, redirect('/onboarding').
+- [ ] **[Sesion]** Auth token expira durante form submit: Server Action redirige a /login, modal cierra (específico por el estado del modal).
 - [ ] **[Doble submit]** Click rápido dos veces el botón 'Confirmar': isPending pasa a true en primer click, button.disabled=true, segundo click no ejecuta.
 - [ ] **[Doble submit]** Click en la celda del mismo slot dos veces antes de cargar modal: selectedSlot state solo guardamuestra un slot a la vez, modal una sola instancia dinamica.
 - [ ] **[Concurrencia]** En pestana A abrir modal para slot 09:00, en pestana B abrir el mismo slot, confirmar en B primero: B abre modal de confirmación MP; A luego confirma pero recibe error slot_taken, no redirige a MP.
@@ -76,7 +92,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Responsive]** Cambiar orientacion mobile: grilla mantiene sticky header + scroll, modal reflow adapta a max-w-md.
 - [ ] **[A11y]** Botones navigation y duración: tabindex navegable, Enter/Space activan (onKeyDown handler en BookingCard para slots).
 - [ ] **[A11y]** Slot clickeable: role='button', tabIndex=0, aria-label='Reservar turno HH:MM', keyboard Enter/Space abre modal.
-- [ ] **[A11y]** Focus visible: focus-visible:ring-2 ring-emerald-500 en slots y buttons.
+- [ ] **[A11y]** Focus visible en slots y botones de navegación (ver también [Accesibilidad global](#accesibilidad-global) para tests genéricos de focus).
 - [ ] **[A11y]** Error phoneError: role='alert' en <p>, announce a screen readers cuando falta teléfono.
 - [ ] **[A11y]** Input labels: <label htmlFor='guestName'> linked, required indicators visibles ('(opcional)' o '(requerido si hay nombre)').
 - [ ] **[A11y]** Form contrast: texto rojo-600 en alertas, fondo rojo-50, meets 4.5:1 o mejor.
@@ -159,8 +175,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Navegación atras]** Jugador en la página de confirmación, navega atrás con el botón del navegador: vuelve a disponibilidad sin crear booking.
 - [ ] **[Navegación adelante]** Jugador cancela reserva, navega adelante: el navegador puede intentar reenviar el form pero la acción es idempotente (crea otro booking), o el servidor bloquea con rate limit.
 - [ ] **[Persistencia - Reload]** Jugador completa la acción, antes de redireccionarse hace reload de la página: la acción ya ocurrió (server side), redirige normalmente tras reload.
-- [ ] **[Sesión expirada]** Magic link enviado, jugador abre el enlace pero su sesión Supabase expiró o el JWT es inválido: redirige a /login o vuelve a pedir email.
-- [ ] **[Auth - Super admin]** Super admin intenta acceder como jugador a la página (sin ser jugador): se redirige a LoginGate o muestra error de permisos.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Test único de esta vista:
 - [ ] **[Auth - Otro tenant]** Jugador autenticado intenta acceder a URL de otro tenant (cambio slug en URL): se valida que el court_id pertenezca a ese tenant, si no redirige a InvalidState.
 - [ ] **[Responsive - Mobile]** En viewport 375x667 (iPhone SE): resumen y botón se muestran en una columna, máximo ancho ~100%, padding adecuado.
 - [ ] **[Responsive - Tablet]** En viewport 768x1024 (iPad): resumen en max-w-md (~28rem), centrado, boton 100% ancho, legible sin zoom.
@@ -228,19 +243,13 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Carga]** Countdowner en pending_payment decrementa segundo a segundo desde expiresAt hacia 0:00.
 - [ ] **[Carga]** Nota de 'Tarda? Te avisamos' aparece después de 30 segundos de estar en pending_payment sin transición a terminal.
 - [ ] **[Carga]** BookingMiniMap renderiza con ssr=false: skeleton placeholder visible primero (h-44 bg-slate-100 animate-pulse).
-- [ ] **[Error 404]** GET sin autenticación: redirigir a /login, no renderizar reserva.
-- [ ] **[Error 404]** GET con auth de tipo staff/admin en lugar de player: redirigir a /login.
-- [ ] **[Error 404]** GET con auth de super-admin: redirigir a /login (super-admin no es type='player').
-- [ ] **[Sesion]** Auth token expirado mientras se carga la página: redirigir a /login antes de renderizar.
-- [ ] **[Sesion]** Sesión válida al cargar pero usuario logout en el navegador: llamada a loadBooking falla (usuario null), redirigir a /login.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones).
 - [ ] **[Doble submit]** Hacer click en botón 'Ver mis reservas' dos veces rápido: navegar una sola vez, no duplicar navegaciones.
 - [ ] **[Doble submit]** Botones de Compartir/Calendario/Cómo llegar pueden clickearse múltiples veces sin error.
 - [ ] **[Concurrencia]** Webhook llega durante polling: PaymentStatusWatcher detecta cambio en siguiente poll (3s) y renderiza confirmed.
 - [ ] **[Concurrencia]** Webhook llega ANTES de que el jugador vea pending_payment: cargar /exito directo con confirmed.
 - [ ] **[Concurrencia]** Dos jugadores cargan /exito del mismo booking: ambos ven su propia pantalla de error 404 gracias a RLS.
-- [ ] **[Responsive]** En mobile (viewport 375x667): layout flex-col centra contenido, h1 y p legibles, botones ocupan todo el ancho disponible.
-- [ ] **[Responsive]** En tablet (768x1024): contenido centrado con max-w-md, botones en grid-cols-1 o sm:grid-cols-3 según pantalla.
-- [ ] **[Responsive]** En desktop (1920x1080): contenido centrado mx-auto max-w-md, no overflow, espacios proporcionales.
+- [ ] **[Responsive]** En mobile (375px) botones full-width, en tablet/desktop contenido centrado max-w-md. BookingSuccessExtras grid adapta de 1 col (mobile) a 3 cols (desktop).
 - [ ] **[A11y]** CheckCircle2 icon tiene aria-hidden=true (no lee el icono).
 - [ ] **[A11y]** PaymentStatusWatcher renderea aria-live=polite para anunciar cambios de estado a lectors de pantalla.
 - [ ] **[A11y]** Spinner Loader2 tiene aria-hidden=true.
@@ -278,8 +287,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 ### 4. Reserva pendiente (ventana de 15 min)
 **URL:** `/reserva/[bookingId]/pendiente` · **Archivo:** `src/app/reserva/[bookingId]/pendiente/page.tsx` · **Por que P0:** Ventana critica donde el jugador espera confirmacion de pago.
 
-- [ ] **[Render]** Cargar el page como usuario guest (sin autenticación): debe redirigir a /login y NO mostrar el componente.
-- [ ] **[Render]** Cargar el page como usuario staff (tipo staff, no player): debe redirigir a /login y NO mostrar el componente.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Render]** Cargar el page como player válido sin bookingId en URL: debe renderizar error genérico 'No encontramos tu reserva'.
 - [ ] **[Render]** Cargar el page como player válido con bookingId UUID válido pero que pertenece a OTRO jugador: debe mostrar 'No encontramos tu reserva' (RLS las oculta).
 - [ ] **[Render]** Cargar el page con bookingId inválido (no UUID): debe renderizar error 'No encontramos tu reserva' (loadBooking retorna null).
@@ -300,7 +308,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Validacion]** El timestamp createdAt se parsea del DB; si malformado (null, inválido), el date math falla → error al calcular expiresAt. Verificar que loadBooking siempre retorna Date válida o null.
 - [ ] **[Vacio]** Cargar page para booking inexistente (borrado, cancelado, no belong to player): renderiza div con texto 'No encontramos tu reserva. Revisá tus reservas en el panel.' sin spinner ni countdown.
 - [ ] **[Vacio]** Verificar que el div vacío usa same layout (mx-auto, flex, min-h-dvh) para centering consistente en mobile/desktop.
-- [ ] **[Error 401]** Si user session expira mientras el page está abierto: extractAuthUser() en el siguiente reload retorna null → redirect('/login'). Verificar que el user es redirigido antes de cualquier query.
+
 - [ ] **[Error 401]** GET /api/player/bookings/[id]/status sin auth header: withPlayer retorna 401 'Autenticación requerida.' (code: AUTH_REQUIRED).
 - [ ] **[Error 403]** GET /api/player/bookings/[id]/status como staff (no player): withPlayer retorna 403 'Se requiere una cuenta de jugador.' (code: PLAYER_REQUIRED).
 - [ ] **[Error 404]** GET /api/player/bookings/[bookingId]/status para booking inexistente o de OTRO player (RLS oculta): retorna 404 'La reserva no existe.'.
@@ -314,8 +322,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Concurrencia]** Dos webhooks para el MISMO bookingId llegan en rápida sucesión (idempotencia via processed_webhooks): el segundo webhook es ignorado; polling ve status=confirmed una sola vez.
 - [ ] **[Concurrencia]** User hace polling mientras admin en otra sesión cancela el booking (pending_payment→canceled_refunded): la siguiente poll (/api/.../status) retorna canceled_refunded; UI muestra XCircle + 'Reserva cancelada'.
 - [ ] **[Permisos]** Player A intenta acceder a /reserva/[bookingId-de-PlayerB]/pendiente: extractAuthUser retorna player A; loadBooking via withPlayerContext(...playerA.id) + RLS NO ve booking de player B → null → error page.
-- [ ] **[Permisos]** Super admin intenta acceder a /reserva/[bookingId]/pendiente: extractAuthUser retorna system_admin (type !== 'player') → redirect('/login').
-- [ ] **[Sesion]** User autenticado pero JWT cookie expirada: extractAuthUser retorna null → redirect('/login') antes de cualquier DB query.
+
 - [ ] **[Sesion]** User abre dos tabs del mismo booking; en tab A cambia su password/logout; session invalida → tab B intenta polling y obtiene 401 → continúa intentando cada 3s (no retira la UI).
 - [ ] **[Doble submit]** User hace click en 'Ver mis reservas' en estado confirmed; antes de que la navegación se complete, hace click otra vez: Link es <a> nativo, evita doble-submit a nivel HTTP.
 - [ ] **[Doble submit]** Verificar que PaymentStatusWatcher no tiene botón de submit/acción (solo Links); no hay form que se pueda double-submit.
@@ -384,9 +391,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Render]** Verificar loading skeleton mientras se carga la página: debe mostrar Skeleton h-16 w-16 rounded-full, tres skeleton de texto con h-7 w-48, h-4 w-56, h-4 w-40 antes de renderizar contenido real.
 - [ ] **[Happy path]** Usuario con bookingId válido dentro de ventana de 15 min hace clic en botón "Reintentar pago": la acción retryDepositPaymentAction se ejecuta, validando el bookingId (UUID válido), que el jugador actual es el dueño del booking, que el status es pending_payment; si todo es válido redirige a MercadoPago checkout.
 - [ ] **[Happy path]** Después de hacer clic "Reintentar pago" dentro de ventana, jugador es redirigido a /mock-mp/checkout?booking=<bookingId> o a URL real de MP: booking mantiene status pending_payment en DB, un nuevo registro de pago se crea, y bookings.payment_id se actualiza al nuevo payment_id.
-- [ ] **[Validacion]** Acceder a /reserva/[bookingId]/error sin sesión (no autenticado): redirige a /login inmediatamente sin renderizar página.
-- [ ] **[Validacion]** Acceder a /reserva/[bookingId]/error como usuario staff (no jugador): redirige a /login inmediatamente sin renderizar página.
-- [ ] **[Validacion]** Acceder a /reserva/[bookingId]/error como super-admin (system_admin): redirige a /login inmediatamente sin renderizar página.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos:
 - [ ] **[Validacion]** bookingId no es UUID válido (ej: "invalid-id" o "123"): retryDepositPaymentAction redirige a '/' sin procesar.
 - [ ] **[Validacion]** bookingId es UUID válido pero booking no existe en DB: retryDepositPaymentAction redirige a '/', sin error página blanca.
 - [ ] **[Validacion]** bookingId existe pero pertenece a otro jugador (IDOR): retryDepositPaymentAction redirige a '/' sin revelar existencia del booking, sin mutar DB.
@@ -602,15 +607,11 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Error 500]** closeDailyRegister throws algo no esperado: closeDayAction no captura, propaga a error.tsx.
 - [ ] **[Red/Timeout]** RegisterMovementModal submit lanza exception no esperada: catch Sentry.captureException, error set a "No pudimos registrar el movimiento...", isPending vuelve a false (avoid stuck), usuario puede reintentar.
 - [ ] **[Red/Timeout]** Navegación ?date=YYYY-MM-DD falla (DB down): page.tsx error.tsx captura con Sentry, ErrorState mostrado.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Permisos - Admin]** User.type=staff, staffUserId válido, tenant válido: acceso total a /caja, botones visibles (si no cerrada), CajaActions funcional.
-- [ ] **[Permisos - Empleado PIN]** Même usuario staff pero con PIN configurado en tenant.settings.staff_pin_hash: caja con PinGate si es zona sensible (CLAUDE.md: caja en lista sensibles). Dependería de si caja layout tiene PinGate wrapper.
-- [ ] **[Permisos - Player]** User.type=player: page.tsx line 48 checks user.type !== 'staff', redirect('/login').
-- [ ] **[Permisos - Super admin]** User.type=system_admin: page.tsx checks user.type !== 'staff', redirect('/login'), no acceso a /caja (ej. via super-admin/*).
-- [ ] **[Permisos - Anonimo]** Sin sesión válida: extractAuthUser() retorna null, redirect('/login').
-- [ ] **[Permisos - Otro tenant]** Staff de tenant A intenta alcanzar caja de tenant B: withTenantContext(tenant.id) usa RLS SET LOCAL, queries filtradas por tenant_id, datos no filtrados en getcashflows vs otro tenant aislados por DB.
-- [ ] **[Sesion - Expirada]** Token JWT expire durante submit de agregarMovimiento: Server Action detecta no auth (Supabase session gone), createCashFlowAction requireStaffTenant() redirect('/login').
-- [ ] **[Sesion - Expirada durante cierre]** closeDayAction requireStaffTenant redirect('/login') si sesion expirada mid-flight.
-- [ ] **[Sesion - Refresh en navegacion fecha]** Cambiar ?date mientras sesion expirada: Link href no valida, click lleva a /caja?date=X, page.tsx requireStaffTenant redirect('/login').
+- [ ] **[Permisos - Empleado PIN]** Staff con PIN configurado: caja con PinGate si es zona sensible.
+- [ ] **[Permisos - Otro tenant]** Staff de tenant A intenta alcanzar caja de tenant B: withTenantContext(tenant.id) usa RLS SET LOCAL, datos aislados por DB.
+- [ ] **[Sesion]** Token JWT expira durante submit de agregarMovimiento: Server Action detecta no auth, createCashFlowAction requireStaffTenant() redirect('/login') (específico por el modal abierto).
 - [ ] **[Doble submit]** Formulario agregar movimiento: submit una vez, handleSubmit setea isPending=true, handleSubmit novamente: startTransition va a cola, esperado (normal para React 19 transitions).
 - [ ] **[Doble submit]** Button disabled={isPending} previene click mientras guardando.
 - [ ] **[Doble submit]** Cerrar caja: ConfirmDialog onConfirm await, si done=true antes, close abre de nuevo: setOpen(true) solo si isPending=false, previene reabrir.
@@ -674,9 +675,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 ### 9. Onboarding (wizard 4 pasos)
 **URL:** `/onboarding` · **Archivo:** `src/app/onboarding/page.tsx`
 
-- [ ] **[Render]** Página /onboarding sin autenticación redirige a /login inmediatamente sin renderizar contenido del wizard.
-- [ ] **[Render]** Usuario autenticado como jugador accediendo a /onboarding redirige a /login (solo staff puede onboardear).
-- [ ] **[Render]** Staff sin staffUserId en sesión redirige a /login (auth middleware rechaza).
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Render]** Paso 1 renderiza: campo nombre requerido, dirección requerida, ciudad requerida, provincia dropdown requerida, teléfono requerido, email requerida, botón 'Continuar →', indicador 'Paso 1 de 4' y barra progreso al 25%.
 - [ ] **[Render]** Logo TurnoGol (TG badge verde + 'TurnoGol' texto) aparece centrado en el header del wizard.
 - [ ] **[Render]** Paso 2 renderiza: heading 'Tus Canchas', mensaje de info en box emerald, botón 'Continuar →', indicador 'Paso 2 de 4' y barra progreso al 50%.
@@ -733,10 +732,6 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Red/Timeout]** Paso 1: submit inicia, conexión se corta antes de response → página podría quedar en estado 'Creando...' indefinidamente (no hay timeout visual).
 - [ ] **[Red/Timeout]** Paso 3: submit y conexión se pierde → estado local mantenido en cliente; al reconectar, usuario puede reintentarr.
 - [ ] **[Red/Timeout]** Paso 4: 'Conectar MercadoPago' link redirige a /api/mp/oauth-start pero conexión falla → usuario se queda sin feedback o en página de error MP.
-- [ ] **[Permisos]** Staff type=staff con tenantId válido → puede acceder a /onboarding si onboarding_completed=false.
-- [ ] **[Permisos]** Staff type=player → redirige a /login (no es staff).
-- [ ] **[Permisos]** Staff type=system_admin → redirige a /login (no es staff, es super-admin).
-- [ ] **[Permisos]** Staff anónimo (sin user) → redirige a /login.
 - [ ] **[Permisos]** Staff con tenantId=null pero staffUserId válido → puede acceder Paso 1 (createTenantAction crea tenant); luego tenantId se setea vía JWT claim.
 - [ ] **[Sesion]** Paso 1 en progreso, JWT refresca en background → no afecta Paso 1 (local form state persiste).
 - [ ] **[Sesion]** Paso 1 submit + JWT expira durante request → Server Action detecta extractAuthUser()=null, redirige a /login; formulario no guardado.
@@ -839,15 +834,9 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Happy path]** Checklist: cuando publicLinkShared=true y firstBookingReceived=false, se muestra texto 'Compartí tu link para recibir reservas.' junto al item 'Primera reserva online recibida'.
 - [ ] **[Carga]** KPIs: Promise.all() de getDashboardMetrics + getChecklistState debe completar en < 500ms (p95); si tarda, verificá que no hay N+1 queries.
 - [ ] **[Carga]** La query getDashboardMetrics usa withTenantContext (RLS isolation) y filtra solo por tenantId del admin, confirmá SUM() retorna número válido incluso si 0.
-- [ ] **[Error 401]** Si extractAuthUser() retorna null: redirect a /login (no se renderiza dashboard).
-- [ ] **[Error 401]** Si user.type !== 'staff': redirect a /login.
-- [ ] **[Error 401]** Si user.staffUserId es null: redirect a /login.
-- [ ] **[Error 401]** Si getStaffTenant(user.staffUserId) retorna null (staff sin tenant): redirect a /login.
-- [ ] **[Permisos]** Admin con otro tenant_id intenta acceder a /dashboard: withTenantContext aísla las queries, ve solo sus propias métricas, no ve datos del otro tenant.
-- [ ] **[Permisos]** Jugador (player_id) intenta acceder a /dashboard: extractAuthUser retorna user.type='player', redirect a /login.
-- [ ] **[Permisos]** Super admin intenta acceder a /dashboard sin tenantId en JWT: redirectIfTenantSuspended falla o layout redirige si no hay tenant.
-- [ ] **[Permisos]** Empleado accede a /dashboard: debe mostrarse normalmente si tiene access; si required PinGate para canchas/reportes/settings, el dashboard no pide PIN (sin pin protection).
-- [ ] **[Sesion]** Con sesion expirada, entrar a /dashboard: Supabase auth rechaza, redirect a /login, no renderiza datos privados.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
+- [ ] **[Permisos]** Admin con otro tenant_id: withTenantContext aísla queries, ve solo sus métricas (cross-tenant RLS).
+- [ ] **[Permisos]** Empleado accede a /dashboard: se muestra normalmente, no pide PIN (dashboard no es zona sensible).
 - [ ] **[Sesion]** Durante carga de KPIs si la sesion expira: Promise.all() rechaza o DB query falla, página renderiza error o reinicia login (verificar error.tsx si existe).
 - [ ] **[Doble submit]** Hacé clic 2 veces rápido en 'Copiar link': la segunda llamada a markPublicLinkSharedAction() debe ser silenciosa (idempotente, no duplica error) debido a rate limiting adminRateLimited().
 - [ ] **[Doble submit]** Rate limit adminRateLimited() se activa: markPublicLinkSharedAction() retorna void sin actualizar settings, UI muestra 'Copiado!' pero los datos no persisten; refresh muestra rollback.
@@ -956,10 +945,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Carga]** Page.tsx renderiza skeleton/suspense si query getBookingDetail es lenta (si aplica loading.tsx).
 - [ ] **[Error 404]** URL con booking ID inexistente: notFound() dispara error boundary, muestra 404 Not Found.
 - [ ] **[Error 404]** Booking pertenece a OTRO tenant (tenant_id diferente): query retorna null, notFound() dispara 404.
-- [ ] **[Error 401]** Usuario NO logueado (extractAuthUser retorna null): redirect a /login.
-- [ ] **[Error 401]** Usuario tiene tipo 'player' (no staff): redirect a /login.
-- [ ] **[Error 401]** Usuario no tiene staffUserId valido: redirect a /login.
-- [ ] **[Error 403]** getStaffTenant retorna null (staff no pertenece a ningun tenant activo): redirect a /login.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Error 400]** completeBookingAction: reserva en estado != confirmed, retorna error 'La reserva no está en estado confirmado'.
 - [ ] **[Error 400]** completeBookingAction: turno todavia no termino (tiempo actual < timeEnd): retorna error 'El turno todavía no terminó. Podés marcarla completada recién después del horario de fin.'.
 - [ ] **[Error 400]** markNoShowAction: reserva no en confirmed, retorna error 'La reserva no está en estado confirmado'.
@@ -973,13 +959,9 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Red/Timeout]** markNoShowAction: timeout, spinner muestra 'Procesando…', retry logic si configura.
 - [ ] **[Red/Timeout]** cancelBookingAction con shouldRefund=true: falla MP gateway (conexion perdida), error 'No se pudo procesar el reembolso' pero booking ya cancelado en DB (idempotente).
 - [ ] **[Red/Timeout]** Si router.refresh() falla despues del exito (Revalidate path error), toast aun muestra success pero pagina puede estar stale.
-- [ ] **[Permisos]** Admin de tenant A accede /reservas/[id] de booking de tenant B: query retorna null, 404.
-- [ ] **[Permisos]** Super-admin: no tiene acceso a esta pagina (ruta en (admin), solo staff).
-- [ ] **[Permisos]** Empleado con PIN en zona sensible (si esta ruta requiere PIN): debe pasar PinGate antes de llegar aqui (middleware en layout superior).
-- [ ] **[Permisos]** Player autenticado intenta acceder /reservas/[id]: extractAuthUser retorna type=player, redirect a /login.
-- [ ] **[Permisos]** Usuario anonimo accede /reservas/[id]: no hay sesion, redirect a /login.
-- [ ] **[Sesion]** Admin con sesion expirada durante la pagina: extractAuthUser retorna null, page.tsx redirige a /login.
-- [ ] **[Sesion]** Admin con sesion expirada durante dialog Cancelar: startTransition llama cancelBookingAction, que llama requireStaffTenant, que llama redirect('/login').
+- [ ] **[Permisos]** Admin de tenant A accede /reservas/[id] de booking de tenant B: query retorna null, 404 (cross-tenant RLS).
+- [ ] **[Permisos]** Empleado con PIN en zona sensible: debe pasar PinGate antes (si esta ruta requiere PIN en layout superior).
+- [ ] **[Sesion]** Admin con sesión expirada durante dialog Cancelar: cancelBookingAction llama requireStaffTenant que redirect('/login') (específico por el dialog abierto).
 - [ ] **[Sesion]** JWT refresh en medio de completeBookingAction: server renueva JWT si aplica, mutation procede normalmente.
 - [ ] **[Doble submit]** Usuario clickea Marcar completada 2 veces rapidamente: pending=true desactiva segundo click, solo una mutation se envía.
 - [ ] **[Doble submit]** Usuario abre dialog Cancelar, ingresa razon, hace doble click en 'Cancelar reserva': isPending=true en ConfirmDialog desactiva, solo una mutation.
@@ -1233,8 +1215,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Validacion]** Reseña comentario > 500 chars: contador muestra "501/500" visualmente pero submit sin validar lado cliente → cae a 500 en DB (schema max 500).
 - [ ] **[Carga]** Durante submit de cancelación: botón 'Sí, cancelar' deshabilitado, muestra 'Procesando…', no se puede volver a clickear.
 - [ ] **[Carga]** Durante fetch de reseña: botón 'Publicar reseña' deshabilitado (pending=true), muestra 'Enviando…', textarea readonly implícitamente (no interactúa).
-- [ ] **[Error HTTP 401]** Cargar /mis-reservas sin auth (cookie de sesión expirada, no autenticado): redirect('/login') en server, usuario ve /login, no /mis-reservas.
-- [ ] **[Error HTTP 403]** Cargar /mis-reservas con JWT de staff (type='staff'): redirect('/login') en server (guards solo allow type='player'), usuario no ve datos.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Error HTTP 404]** ID de booking inexistente en cancelación: Backend retorna error 'Reserva no encontrada.', dialog mantiene abierto, toast o error inline 'Reserva no encontrada.' (verificar donde se muestra error en ConfirmDialog).
 - [ ] **[Error HTTP 409]** Enviar reseña en booking ya con review: API retorna 409 conflict, handleConfirm en LeaveReviewButton ve res.status === 409, toast 'Ya dejaste una reseña para esta reserva.', dialog cierra, refresh.
 - [ ] **[Error HTTP 422]** Intentar cancelar reserva en status != 'confirmed': Backend tiende BookingNotInConfirmedError → 'La reserva no está en estado confirmado.', error mantenido en dialog (si está implementado el error display).
@@ -1313,9 +1294,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Carga]** Al hacer click Guardar con valores válidos, el botón debe mostrar estado disabled/disabled-like mientras se procesa (isPending vía useTransition).
 - [ ] **[Carga]** Spinner o indicador visual durante el submit: si hay implementación, debe mostrarse. Si no hay, debe haber cambio visual del botón.
 - [ ] **[Error 400]** Schema rechaza datos inválidos (ej. porcentaje string): retorna { success: false, error: 'Datos inválidos.' }, no deshabilita formulario, usuario puede reintentar.
-- [ ] **[Error 401]** Usuario anónimo o sesión expirada: extractAuthUser retorna null, redirect('/login'), nunca llega a renderear el formulario.
-- [ ] **[Error 403]** Usuario es jugador (type='player'), no admin: la página redirige en el server component, no accede a updateReservasPolicyAction.
-- [ ] **[Error 404]** Tenant no existe en getStaffTenant: retorna null, page.tsx redirige a /login, formulario no se renderea.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Error 403]** PinGate requiere PIN pero usuario no lo verifica: verifyPinAction retorna locked=true con retryAtMs, UI muestra countdown, formulario inaccesible hasta desbloqueo.
 - [ ] **[Error 500]** DB connection falla durante updateReservasPolicyAction: withTenantContext throws, server action captura error, retorna { success: false, error: ... }, UI muestra error.
 - [ ] **[Red/Timeout]** FormData no se envía (network error): servidor no procesa, client-side puede reintentar; debe haber feedback visual de error.
@@ -1391,8 +1370,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Error 500]** DB falla (withTenantContext lanza): la Server Action falla, error propagado, cliente recibe error boundary genérico (no typed result).
 - [ ] **[Red/Timeout]** Si la red se corta DURANTE updateHorariosAction: Server Action timeout (default 30s), cliente obtiene error genérico o 500. Sin retry automático. Usuario no sabe si se guardó.
 - [ ] **[Red/Timeout]** Si la red se corta al enviar addClosedDateAction: timeout, error genérico. Usuario intenta click nuevamente (duplicación posible si acción fue half-success).
-- [ ] **[Permisos]** Visitante anónimo intenta acceder /settings/horarios: extractAuthUser() retorna null, redirige a /login. PinGate nunca se renderiza.
-- [ ] **[Permisos]** Jugador (user.type === 'player') intenta acceder /settings/horarios: extractAuthUser() retorna user con type='player', condición user.type !== 'staff' es true, redirige a /login.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Permisos]** Admin SIN PIN configurado en tenant intenta guardar: checkPinSessionAction() retorna true (PIN no requerido), acción procede sin bloqueo.
 - [ ] **[Permisos]** Empleado del MISMO complejo intenta acceder: tiene user.staffUserId vinculado al tenant via tenantStaffMembers, getStaffTenant() retorna tenant, acceso permitido (pueden cambiar horarios si pasan PIN).
 - [ ] **[Permisos]** Admin del COMPLEJO_A intenta modificar horarios mientras está logeado en COMPLEJO_B: extractAuthUser() retorna correctamente staff del complejo B, getStaffTenant(staffUserId) retorna tenant B, modifica tenant B (no hay cross-tenant tampering en el código).
@@ -1443,12 +1421,8 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Happy path - MP OAuth flujo completo]** Click en 'Conectar MercadoPago' → redirige a /api/mp/oauth-start → crea state HMAC con tenantId + ts → redirige a https://auth.mercadopago.com/authorization con client_id, response_type=code, platform_id=mp, state, redirect_uri → callback almacena tokens encriptados en DB → redirige a /dashboard.
 - [ ] **[PinGate]** Con PIN configurado, al entrar a /settings/facturacion si pinRequired=true y no hay cookie tg_pin_session válida: muestra modal PIN. Al ingresar PIN incorrecto tras 5 intentos en 5 min: bloquea entrada durante lockout, muestra 'Demasiados intentos fallidos. Volvé a intentar en X min.', cuenta regresiva M:SS.
 - [ ] **[PinGate - Locked state]** Cuando está bloqueado (lockedUntilMs > now), campo PIN deshabilitado, botón Confirmar deshabilitado, texto rojo de bloqueo, el intervalo actualiza el countdown cada 1s, al expirar lockout se limpia error y se habilita campo.
-- [ ] **[Permisos - Staff sin tenant]** Staff sin tenant asignado accede a /settings/facturacion: redirect('/login').
-- [ ] **[Permisos - No staff]** Usuario jugador (player type) accede a /settings/facturacion: redirect('/login') porque user.type !== 'staff'.
-- [ ] **[Permisos - No logged in]** Usuario sin sesión accede a /settings/facturacion: redirect('/login') porque extractAuthUser() retorna null.
-- [ ] **[Permisos - Super admin]** Super admin intenta acceder a /settings/facturacion de admin: no tiene staffUserId, redirect('/login').
-- [ ] **[Permisos - Otro tenant]** Staff del Tenant A accede a /settings/facturacion: ve solo datos del Tenant A (RLS via withTenantContext). Si intenta acceder URL de otro tenant, getStaffTenant retorna null → redirect('/login').
-- [ ] **[Sesión expirada]** Durante render de página con auth válido, sesión Supabase expira: extractAuthUser() retorna null → redirect('/login'), nunca renderiza contenido.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
+- [ ] **[Permisos - Otro tenant]** Staff del Tenant A accede a /settings/facturacion: ve solo datos del Tenant A (RLS via withTenantContext).
 - [ ] **[Error carga suscripción - try-catch]** getSubscriptionState lanza SubscriptionNotFoundError: try-catch en línea 38-42 captura, asigna sub=null, sección Suscripción muestra texto de 'sin suscripción' (no crash, no error screen).
 - [ ] **[Error carga suscripción - tenant eliminado]** Tenant borrado de DB, getSubscriptionState lanza error: catch asigna sub=null, page renderiza normalmente sin sección de plan (graceful fallback).
 - [ ] **[Validación PIN - Min length]** Campo PIN con pattern [0-9]{4,8}, ingresar '123': no cumple min 4 dígitos, botón Confirmar deshabilitado, no se ejecuta verifyPinAction.
@@ -1549,9 +1523,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Error 500]** Si el servidor devuelve un error 500 durante la creación: debe mostrar el error en la zona de alerta roja y volver al formulario (no redirigir).
 - [ ] **[Red/Timeout]** Desconexión de red durante preview: debe mostrar el error en la zona de alerta o permitir reintentar.
 - [ ] **[Red/Timeout]** Timeout durante la generación de preview: debe mostrar mensaje informativo 'Cargando slots disponibles…'.
-- [ ] **[Permisos]** Con JWT inválido o expirado: debe redirigir a /login.
-- [ ] **[Permisos]** Como usuario de tipo 'player' (no staff): debe redirigir a /login en el page.tsx.
-- [ ] **[Permisos]** Como usuario anónimo sin JWT: debe redirigir a /login.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos:
 - [ ] **[Permisos]** Como staff de un tenant diferente al mostrado: no debe poder visualizar las canchas del tenant actual (RLS bloquea).
 - [ ] **[Sesion]** Si la sesión expira mientras está en la página de preview: debe intentar enviar y luego redirigir a /login (el Server Action chequea auth).
 - [ ] **[Sesion]** Refrescar la página en mitad del flujo (form -> preview): debe volver al formulario limpio (state se pierde).
@@ -1835,8 +1807,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Permisos - Admin]** Staff con rol 'admin': acceso total a crear, editar, toggle status, ver impact.
 - [ ] **[Permisos - Empleado]** Staff sin PIN requerido (tenant.settings.staff_pin_hash = null): acceso directo (PinGate renderiza children sin prompt).
 - [ ] **[Permisos - Empleado con PIN]** Staff con PIN requerido: antes de llegar a CourtList, PinGate bloquea con prompt numérico.
-- [ ] **[Permisos - Jugador]** JWT player: redirect a /login (extractAuthUser valida type='staff').
-- [ ] **[Permisos - Super-admin]** Super-admin sin staff_user_id: redirect a /login (no es staff).
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[PinGate - Verificado]** Llamar checkPinSessionAction() al montar PinGate: si cookie PIN válida, mostrar children sin prompt.
 - [ ] **[PinGate - No verificado]** Sin PIN cookie válida: mostrar formulario PinGate (Lock icon, título 'Zona protegida', input PIN, botón 'Confirmar').
 - [ ] **[PinGate - Carga inicial]** Al abrir /canchas con PIN requerido: spinner centrado mientras se verifica sesión; luego formulario o children.
@@ -1946,11 +1917,9 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Error - Red/Reactivate Preview]** Si previewAbonadoSlotsAction retorna {success: false, error: 'Tenant no encontrado.'}: mostrar 'No se pudo cargar la vista previa: Tenant no encontrado.' en rojo.
 - [ ] **[Error - Rate limit]** Si action retorna {success: false, error: 'Demasiadas operaciones en poco tiempo. Esperá unos segundos e intentá de nuevo.'}: mostrar en toast.
 - [ ] **[Error 422 - Reactivate]** Si fromDate de cancel no es YYYY-MM-DD valido: cancelAbonadoAction rechaza con 'Datos inválidos.' sin revalidar.
-- [ ] **[Permisos - Auth]** Si usuario NO staff (ej: player): page.tsx redirige a /login antes de renderizar.
-- [ ] **[Permisos - Auth]** Si usuario sin staffUserId: page.tsx redirige a /login.
-- [ ] **[Permisos - Tenant]** Si getStaffTenant(staffUserId) retorna null: page.tsx redirige a /login, no muestra abonados de otro tenant.
-- [ ] **[Permisos - Tenant isolation]** Abonados listados filtrados por tenant_id en SQL (query: WHERE tenant_id = ?). RLS no visible en UI pero enforced en DB.
-- [ ] **[Permisos - Super admin]** Super admin NO puede ver abonados de otros tenants via /abonados (necesita /super-admin/*). Redirige a /login si intenta directo.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
+- [ ] **[Permisos - Tenant isolation]** Abonados listados filtrados por tenant_id en SQL. RLS enforced en DB.
+- [ ] **[Permisos - Super admin]** Super admin NO puede ver abonados de otros tenants via /abonados (necesita /super-admin/*).
 - [ ] **[Sesion - Expirada]** Si JWT expira durante dialog abierto y se confirma acción: server action redirige a /login, modal queda pendiente.
 - [ ] **[Sesion - Refresh]** Tras revalidatePath('/abonados'): los datos en AbonadosList se refetchen, no persistent en browser state.
 - [ ] **[Doble click]** Doble clic en botón 'Pausar': isPending bloquea segundo clic (disabled={isPending}).
@@ -2060,9 +2029,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Carga]** Al cargar la página sin PIN configurado (tenant.settings.staff_pin_hash = falsy): PinGate pasa pinRequired=false, no muestra overlay de PIN, renderiza contenido directo.
 - [ ] **[Carga]** Al cargar con PIN configurado: PinGate muestra spinner mientras verifica session (verified=null), luego input de PIN si no verificado.
 - [ ] **[Carga]** CSV descargado desde enlace /api/reports/revenue?from=YYYY-MM-DD&to=YYYY-MM-DD&format=csv : status 200, Content-Type text/csv, Content-Disposition attachment.
-- [ ] **[Error 401]** Usuario no autenticado accede /reportes: extractAuthUser retorna null, redirige a /login.
-- [ ] **[Error 401]** Usuario tipo 'player' accede /reportes: user.type !== 'staff', redirige a /login.
-- [ ] **[Error 401]** Usuario staff sin staffUserId accede /reportes: !user.staffUserId, redirige a /login.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Error 401]** Endpoint CSV sin auth válida: retorna unauthorized() (401), no descarga archivo.
 - [ ] **[Error 403]** Usuario staff de otro tenant accede CSV: getStaffTenant(staffUserId) retorna tenant diferente, queries usan tenant.id para RLS, datos ocultos (RLS policy), CSV vacío.
 - [ ] **[Error 429]** Descarga CSV mientras rate limit alcanzado (adminCrud bucket): rateLimit429() retorna 429 Too Many Requests.
@@ -2074,7 +2041,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Navegación]** Desde ?month=2025-12, click next: URL /reportes?month=2026-01 (year boundary, diciembre → enero siguiente).
 - [ ] **[Deep link]** Acceder directo a /reportes?month=2000-01 (enero 2000): renderiza sin errores, "Sin movimientos" si vacío.
 - [ ] **[Deep link]** Acceder a /reportes?month=2099-12 (futura): renderiza sin errores; botón siguiente disabled porque next=2100-01 > currentMonthStr.
-- [ ] **[Permisos]** Usuario super_admin intenta acceder /reportes: user.type='system_admin' !== 'staff', redirige a /login.
+
 - [ ] **[Permisos]** Empleado con PIN requiere ingresarlo: PinGate muestra formulario, tras 5 intentos fallidos en 5 min bloqueado, cuenta atrás visible.
 - [ ] **[Permisos]** PIN correcto (staff con PIN): setVerified(true) via verifyPinAction, renderiza contenido, cookie PIN_SESSION set por COOKIE_TTL_MS.
 - [ ] **[Sesión]** PinGate checkPinSessionAction verifica cookie: si válida retorna true → verified=true, no pide PIN nuevamente en sesión.
@@ -2151,11 +2118,10 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Error 429 - Rate limit invite]** Invitar 5+ admins en 1 minuto (threshold adminCrud): devuelve error "Demasiadas operaciones en poco tiempo. Esperá unos segundos e intentá de nuevo.", modal muestra error sin cerrar.
 - [ ] **[Error 429 - Rate limit desactivar]** Desactivar 5+ miembros en 1 minuto: devuelve error rate-limit, dialog muestra error en alert, permanece abierto.
 - [ ] **[Error - Única admin activa]** Con 1 admin activo (el usuario actual), clickear dropdown de ese usuario: no hay opciones (el else en StaffActions valida que el miembro sea distinto del usuario). Con 1 admin activo y otro inactivo, clickear ⋮ en el inactivo: mostrar "Reenviar invitación", no "Desactivar". Con 2+ activos, clickear ⋮ en activo: "Desactivar" habilitado, clickearlo abre dialog destructivo.
-- [ ] **[Permisos - Admin logueado]** Cargar /staff como staff_user con tenantId válido e isActive=true: acceso permitido, ve tabla, puede invitar/desactivar.
-- [ ] **[Permisos - Admin desactivado]** Si el staff_user actual está marcado isActive=false: getStaffTenant no lo devuelve (WHERE isActive=true), redirige a /login.
-- [ ] **[Permisos - Jugador logueado]** Intentar acceder a /staff como jugador (type='player'): page.tsx redirige a /login (user.type !== 'staff').
-- [ ] **[Permisos - Sin auth]** Acceder a /staff sin sesión: extractAuthUser devuelve null, redirige a /login.
-- [ ] **[Permisos - Otro tenant]** Si el usuario es admin del Tenant A e intenta acceder a /staff (que está protegida por el layout del Tenant A), solo ve miembros del Tenant A. Si Tenant B intenta acceder a /staff del Tenant A: redirige a /login (getStaffTenant solo devuelve el tenant del usuario).
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
+- [ ] **[Permisos - Admin logueado]** Cargar /staff como staff_user con tenantId válido e isActive=true: acceso permitido.
+- [ ] **[Permisos - Admin desactivado]** staff_user actual isActive=false: getStaffTenant no lo devuelve (WHERE isActive=true), redirige a /login.
+- [ ] **[Permisos - Otro tenant]** Admin del Tenant A solo ve miembros del Tenant A (getStaffTenant filtra por usuario).
 - [ ] **[Permisos - PinGate sin PIN]** Tenant sin PIN configurado (staff_pin_hash NULL): PinGate { pinRequired={false} }, se salta la gate, ve tabla directamente.
 - [ ] **[Permisos - PinGate con PIN]** Tenant con PIN configurado: PinGate { pinRequired={true} }, muestra modal "Zona protegida", requiere PIN válido (4-8 dígitos). Tras verificar, sesión válida 30 min (COOKIE_TTL_MS), puede invitar/desactivar sin re-entrar PIN. Al expirar la sesión, vuelve a pedir PIN si vuelve a /staff.
 - [ ] **[Sesion - PIN expirado]** Verificar PIN, esperar 30 min + 1 seg en /staff: al intentar invitar, ¿verifica PIN nuevamente? Si la acción usa verifyPinAction, checkPinSessionAction devuelve false, y el componente re-renderiza con el gate bloqueado. Si no lo verifica, invitación funciona sin re-autenticar (riesgo de seguridad).
@@ -2208,10 +2174,7 @@ Cada caso de prueba esta prefijado con una etiqueta **[Categoria]** para facilit
 - [ ] **[Error 422]** newPin coincide exactamente con currentPin (no cambia) → backend no lo rechaza explícitamente, pero la UX debe permitir guardar el mismo PIN (no hay validación de "diferente al anterior").
 - [ ] **[Error 429]** Exceder rate limit adminCrud → adminRateLimited retorna mensaje 'Demasiadas operaciones en poco tiempo. Esperá unos segundos e intentá de nuevo.' pero la UI no lo muestra (falta UI error handling).
 - [ ] **[Error 500]** withTenantContext o tx.update en _savePinHash falla → setPinAction devuelve excepción (no capturada), el servidor error; UI no muestra nada útil.
-- [ ] **[Permisos]** Usuario NO autenticado accede a /settings/pin → extractAuthUser devuelve null/redirect a /login antes de renderizar la página.
-- [ ] **[Permisos]** Usuario es 'player' type (no 'staff') → extractAuthUser.type !== 'staff' → redirect a /login antes de renderizar.
-- [ ] **[Permisos]** Usuario es staff pero sin staffUserId → redirect a /login.
-- [ ] **[Permisos]** getStaffTenant retorna null (staff de otro tenant o datos inconsistentes) → redirect a /login.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones).
 - [ ] **[PinGate]** Con PIN previo, acceder a /settings/pin → PinGate({ pinRequired: true }) se activa. Si no hay PIN session cookie válido → mostrar modal 'Zona protegida' pidiendo PIN antes de poder acceder al formulario de cambio.
 - [ ] **[PinGate]** Ingresar PIN incorrecto 5 veces → brute-force defense activa (enforce('pinAttempts')), en el 6to intento aparece 'Demasiados intentos. Volvé a intentar en X min.' y el input se deshabilita con countdown visible.
 - [ ] **[PinGate]** Ingresar PIN correcto en el PinGate → buildPinCookie() crea cookie con HMAC, TTL 30min, la página se debloquea y muestra el formulario de cambio.
@@ -2279,11 +2242,8 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Error 500]** DB conectividad perdida durante submit: catch aquí ocurre en server, pero ProfileForm.tsx NO tiene try-catch alrededor useFormState, exception propaga, uncaught server error (POTENCIAL BUG: sin manejo).
 - [ ] **[Red/Timeout]** Latencia alta de DB (>5s): button permanece disabled, user ve 'Guardando…', eventualmente server timeout; sin reintentos automáticos (DIFERENCIA vs MercadoPago: no hay retry loop).
 - [ ] **[Red/Reconexion]** Después de error de red, re-submit form: Zod reprocesa, action reintenta UPDATE, puede ejecutarse (sin idempotencia garantizada salvo contraint PK).
-- [ ] **[Permisos]** Jugador con player_status='banned': extractAuthUser aun devuelve data, puede cargar /perfil, puede editar perfil (NO hay guard sobre banned status en esta vista, diferencia vs booking).
+- [ ] **[Permisos]** Jugador con player_status='banned': puede cargar /perfil y editar (NO hay guard sobre banned en esta vista).
 - [ ] **[Permisos]** Jugador con player_status='anonymized': NO debería existir sesión válida, redirect login.
-- [ ] **[Permisos]** Staff/Admin intentando acceder /perfil: extractAuthUser devuelve type='staff', redirect('/login').
-- [ ] **[Permisos]** Super-admin intentando acceder /perfil: type='system_admin', redirect('/login').
-- [ ] **[Permisos]** Anonimo (sin session): extractAuthUser devuelve null, redirect('/login').
 - [ ] **[Sesion]** Sesión expira durante typing: user puede seguir escribiendo, submit intenta updateProfileAction, extractAuthUser devuelve null, redirect('/login') ocurre, form submission interceptada por redirect.
 - [ ] **[Sesion]** Token refresh en Supabase (automático): si Supabase backend regenera token antes de submit, extractAuthUser obtiene user válido, action procede, UPDATE exitoso (transparent to form).
 - [ ] **[Sesion]** Logout en otra pestaña mientras user edita: form sigue reactive, submit dispara action, extractAuthUser devuelve null (sesión no compartida cross-tab), redirect('/login').
@@ -2478,10 +2438,8 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Happy path - Eliminar cuenta]** Usuario hace clic en 'Iniciar eliminación' → Link dirige a /eliminar-cuenta sin errores de navegación; página destino carga exitosamente con ConfirmDialog preconfigurado (título, descripción, email de confirmación, botones Eliminar/No volver).
 - [ ] **[Render - Skeleton]** Durante carga inicial de /configuracion (antes de que se resuelva extractAuthUser + query de players): loading.tsx muestra Skeleton h-7 w-32, h-4 w-48, dos h-32 w-full, layout idéntico al final, sin parpadeo ni FOUC.
 - [ ] **[Render - Dark mode]** Página soporta dark mode vía Tailwind (bg-white, text-slate-900 convierten a valores oscuros); botones mantienen contraste accesible (>= WCAG AA 4.5:1).
-- [ ] **[Validacion - Sesion]** Usuario NO autenticado accede a /configuracion: server-side redirects a /login sin mensaje de error expuesto (redirect no permite render).
-- [ ] **[Validacion - Rol]** Usuario autenticado como admin (type='staff') accede a /configuracion: extractAuthUser retorna staff, redirect a /login; verificar que layout (player) rechaza rol no-player.
-- [ ] **[Validacion - Rol]** Usuario autenticado como super-admin (type='system_admin') accede a /configuracion: redirect a /login; super-admin no tiene panel player.
-- [ ] **[Validacion - Player borrado]** withPlayerContext retorna rows vacío (player no existe): page.tsx retorna redirect('/login'); no muestra contenido a usuarios cuya cuenta fue eliminada en otro lugar.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos:
+- [ ] **[Validacion - Player borrado]** withPlayerContext retorna rows vacío (player no existe): page.tsx retorna redirect('/login').
 - [ ] **[DataExportButton - Carga]** Durante fetch a /api/player/data-export: botón muestra 'Generando...' con opacity-60 y disabled=true; múltiples clics no generan múltiples fetches (handlers pueden ser llamados pero respuesta anterior espera).
 - [ ] **[DataExportButton - Error 401]** Fetch a /api/player/data-export retorna 401 (no autenticado / JWT expirado): DataExportButton recibe res.ok=false, setStatus('error'), muestra mensaje 'No se pudo generar la exportación. Intentá de nuevo en unos minutos.' en párrafo role='alert' (accesible).
 - [ ] **[DataExportButton - Error 403]** Fetch retorna 403 (JWT válido pero permiso denegado por withPlayer middleware): res.ok=false, mismo comportamiento que 401 (mensaje genérico de error).
@@ -2554,9 +2512,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Validacion]** Input type-to-confirm con email parcial (ej 'juan@' si email es 'juan@example.com'): botón permanece disabled.
 - [ ] **[Validacion]** Input type-to-confirm: copiar-pegar el email exacto debe habilitar el botón instantáneamente.
 - [ ] **[Validacion]** Input type-to-confirm: borrar 1 carácter del email correcto debe deshabilitar el botón.
-- [ ] **[Error 404]** Acceder a /eliminar-cuenta sin ser jugador (como staff/admin): redirect a /login.
-- [ ] **[Error 404]** Acceder a /eliminar-cuenta sin autenticación (sesión expirada): redirect a /login.
-- [ ] **[Error 401]** Jugador autenticado pero su row en `players` fue eliminado: redirect a /login (validación en page.tsx).
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones).
 - [ ] **[Error 409]** Anonimizar jugador que ya está anonymized (ej 2 tabs simultáneos): requestDeleteAccountAction devuelve { success: false, error: '...' }, dialog muestra error en p[role=alert], botón se habilita de nuevo.
 - [ ] **[Error 400]** Si anonymizePlayer falla por validación DB (constraint, type mismatch): throw err sin catch → 500 server error, jugador redirigido a error boundary.
 - [ ] **[Error 500]** Si Supabase signOut falla (network): error no es capturado (opcional en E2E por design), pero player fue anonimizado. Jugador sigue siendo redirigido a /login?deleted=1.
@@ -3135,15 +3091,9 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Happy path]** Usuario staff autenticado accede a /settings y es redirigido automáticamente a /settings/reservas sin demora perceptible.
 - [ ] **[Happy path]** Verificar que la URL en la barra del navegador cambia de /settings a /settings/reservas después del redirect.
 - [ ] **[Happy path]** El contenido de /settings/reservas se renderiza completo (formulario de políticas de reserva, pestañas, PinGate si aplica) tras el redirect.
-- [ ] **[Permisos]** Usuario player intenta acceder a /settings y es redirigido a /login (no a /settings/reservas).
-- [ ] **[Permisos]** Usuario system_admin intenta acceder a /settings y es redirigido a /login (no debe acceder a zona admin).
-- [ ] **[Permisos]** Usuario staff de tenant A no puede acceder a /settings si sale del contexto: redirect a /login.
-- [ ] **[Permisos]** Token JWT expirado antes de ejecutar el redirect: layout detecta falta de sesión y redirige a /login.
-- [ ] **[Permisos]** Usuario staff sin staffUserId (null) es redirigido a /login en el layout, antes de llegar a settings/page.tsx.
+- **[Auth/Permisos]** → Ver sección transversal [Autenticación y sesiones](#autenticacion-y-sesiones). Tests únicos de esta vista:
 - [ ] **[Permisos]** Usuario staff con tenant_id faltante redirige a /onboarding en lugar de a /settings.
-- [ ] **[Sesion]** Cierre de sesión (signOut) mientras se navega a /settings redirige a /login.
 - [ ] **[Sesion]** Refresh de página en /settings redirige correctamente a /settings/reservas (sin loop).
-- [ ] **[Sesion]** Sesión expirada detectada en middleware: verifyPinAction dentro de reservas redirige a /login.
 - [ ] **[Tenant]** Tenant en estado 'suspended' (kill switch): acceso a /settings redirige a /suspended (no a /settings/reservas).
 - [ ] **[Tenant]** Tenant en estado 'blocked': layout detecta y redirige a /suspended.
 - [ ] **[Tenant]** Tenant en estado 'canceled': layout detecta y redirige a /suspended.

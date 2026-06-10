@@ -15,13 +15,10 @@ import {
   InvalidCashFlowCategoryError,
   DayAlreadyClosedError,
 } from '@/modules/cashflow/cashflow.errors'
+import { artDateOf } from '@/shared/time/art-date'
 import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
-
-function artDateOf(ts: Date): string {
-  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
-}
 
 const createCashFlowSchema = z.object({
   type: z.enum(['income', 'adjustment']),

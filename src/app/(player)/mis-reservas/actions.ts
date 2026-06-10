@@ -14,6 +14,7 @@ import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
+  TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
@@ -82,6 +83,12 @@ export async function cancelMyBookingAction(
       }
       if (err instanceof BookingNotInConfirmedError) {
         return { success: false as const, error: 'La reserva no está en estado confirmado.' }
+      }
+      // #31: el complejo en estado blocked/deleted hace que cancelByPlayer lance
+      // TenantInactiveError. Sin este catch se propagaba como error no controlado
+      // de la Server Action, dejando el dialog colgado sin feedback inline.
+      if (err instanceof TenantInactiveError) {
+        return { success: false as const, error: 'El complejo no está disponible para cancelar online.' }
       }
       throw err
     }

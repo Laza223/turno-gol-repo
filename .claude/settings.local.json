@@ -70,7 +70,16 @@
       "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=_pw.json pnpm exec playwright test --project chromium abonados-crud pin-lockout player-bookings player-delete-account push --reporter=list,json)",
       "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=_pw.json pnpm exec playwright test --project=chromium abonados-crud pin-lockout player-bookings player-delete-account push --reporter=list,json)",
       "Bash(netstat -ano)",
-      "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=_pw-push.json pnpm exec playwright test --project=chromium push --reporter=list,json)"
+      "Bash(PLAYWRIGHT_JSON_OUTPUT_NAME=_pw-push.json pnpm exec playwright test --project=chromium push --reporter=list,json)",
+      "Bash(claude mcp *)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(npm --version)",
+      "Bash(claude --version)",
+      "Bash(npm install *)",
+      "Bash(agent-browser --version)",
+      "Bash(npx skills *)",
+      "Bash(agent-browser install *)"
     ]
   }
 }

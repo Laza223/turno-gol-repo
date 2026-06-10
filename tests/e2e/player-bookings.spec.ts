@@ -24,6 +24,11 @@ import {
 } from './_helpers/player-seed'
 
 test.describe('Player bookings', () => {
+  // Serial: tests share the same player session + bookings table. Running in
+  // parallel causes both tests to click the same ".first()" cancel button,
+  // racing to cancel the same booking and leaving one with an error dialog.
+  test.describe.configure({ mode: 'serial' })
+
   test.beforeEach(async () => {
     const supabase = makeServiceClient()
     await resetPlayer(supabase)

@@ -114,7 +114,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-lg shadow-xl p-6 focus:outline-none">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white rounded-lg shadow-xl p-6 focus:outline-none">
           <Dialog.Title className="text-base font-semibold text-foreground mb-1">
             Nueva reserva
           </Dialog.Title>
@@ -124,12 +124,13 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Duración</label>
-              <div className="flex gap-2">
+              <label id="duration-label" className="block text-sm font-medium text-foreground mb-1">Duración</label>
+              <div role="group" aria-labelledby="duration-label" className="flex gap-2">
                 {([60, 120] as const).map((d) => (
                   <button
                     key={d}
                     type="button"
+                    aria-pressed={duration === d}
                     onClick={() => setDuration(d)}
                     className={`flex-1 py-1.5 min-h-11 md:min-h-9 rounded border text-sm font-medium transition-colors duration-100 ${
                       duration === d

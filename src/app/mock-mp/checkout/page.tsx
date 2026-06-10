@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { getDb } from '@/shared/db/client'
+import { uuid } from '@/shared/validation/primitives'
 import { mockPay, mockReject, mockCancel } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -52,7 +53,9 @@ export default async function MockMpCheckoutPage({
   if (process.env.MP_MOCK_MODE !== '1') notFound()
 
   const bookingId = searchParams.booking
-  if (!bookingId) notFound()
+  // #32: un ?booking= no-UUID llegaba al WHERE b.id = $1 (columna uuid) y Postgres
+  // rechazaba el cast -> 500. Validar el formato primero para devolver 404.
+  if (!bookingId || !uuid.safeParse(bookingId).success) notFound()
 
   const booking = await loadBookingSummary(bookingId)
   if (!booking) notFound()

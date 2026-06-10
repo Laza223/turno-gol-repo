@@ -7,6 +7,9 @@ import {
   getPublicCourtCards,
 } from '@/modules/tenants/public.service'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { withPlayerContext } from '@/shared/db/client'
+import { isFavorite } from '@/modules/favorites/favorite.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 import TenantHeader from './components/TenantHeader'
@@ -40,6 +43,17 @@ function addDaysStr(dateStr: string, n: number): string {
   return dt.toISOString().slice(0, 10)
 }
 
+// Estado de favorito del jugador logueado (si lo hay) para que el corazón
+// arranque en "Guardado" tras un refresh. Resiliente: anónimo / staff / error → false (#40).
+async function getInitialFavorited(tenantId: string): Promise<boolean> {
+  const authUser = await extractAuthUser()
+  if (authUser?.type !== 'player') return false
+  const playerId = authUser.playerId
+  return withPlayerContext(playerId, (tx) => isFavorite(playerId, tenantId, tx)).catch(
+    () => false,
+  )
+}
+
 async function GridSection({ tenant, initialDate }: { tenant: PublicTenant; initialDate: string }) {
   const initialAvailability = await getPublicAvailability(tenant, initialDate)
   return (
@@ -70,10 +84,11 @@ export default async function PublicComplexPage(props: Props) {
 
   // Datos complementarios (rating, canchas, reseñas). Resilientes: si fallan, la
   // página igual renderiza con la grilla y el header.
-  const [summary, courtCards, reviewsPage] = await Promise.all([
+  const [summary, courtCards, reviewsPage, initialFavorited] = await Promise.all([
     getAverageRating(tenant.id).catch(() => ({ average: 0, count: 0 })),
     getPublicCourtCards(tenant).catch(() => []),
     getReviewsByTenant(tenant.id, 10, 0).catch(() => ({ reviews: [], total: 0 })),
+    getInitialFavorited(tenant.id),
   ])
 
   const galleryPhotos = Array.from(
@@ -103,7 +118,12 @@ export default async function PublicComplexPage(props: Props) {
 
       {galleryPhotos.length > 0 && <TenantGallery photos={galleryPhotos} name={tenant.name} />}
 
-      <TenantHeader tenant={tenant} avgRating={summary.average} reviewCount={summary.count} />
+      <TenantHeader
+        tenant={tenant}
+        avgRating={summary.average}
+        reviewCount={summary.count}
+        initialFavorited={initialFavorited}
+      />
 
       {courtCards.length > 0 && (
         <section aria-label="Canchas" className="space-y-3">

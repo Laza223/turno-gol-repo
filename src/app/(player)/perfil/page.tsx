@@ -5,6 +5,7 @@ import { User } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'
+import { initials } from '@/lib/format'
 import { ProfileForm } from './ProfileForm'
 
 function formatDate(d: Date | null | undefined): string {
@@ -15,10 +16,6 @@ function formatDate(d: Date | null | undefined): string {
     year: 'numeric',
     timeZone: 'America/Argentina/Buenos_Aires',
   })
-}
-
-function initials(firstName: string, lastName: string): string {
-  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
 }
 
 export default async function PerfilPage() {

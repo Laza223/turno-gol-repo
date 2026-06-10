@@ -9,7 +9,7 @@ import type {
   PeriodTotals,
   CashFlowExportRow,
 } from './report.types'
-import { calcAvailableMinutes, calcOccupancyPct } from './report.utils'
+import { aggregateByMethod, calcAvailableMinutes, calcOccupancyPct } from './report.utils'
 
 const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as Array<
   'confirmed' | 'completed' | 'no_show'
@@ -116,13 +116,8 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
       .filter((r) => r.type === 'adjustment')
       .reduce((acc, r) => acc + Number(r.total), 0)
 
-    const methodMap = new Map<string, number>()
-    for (const r of typeRows) {
-      methodMap.set(r.method, (methodMap.get(r.method) ?? 0) + Number(r.total))
-    }
-    const byMethod: MethodReport[] = Array.from(methodMap.entries())
-      .filter(([, total]) => total > 0)
-      .map(([method, total]) => ({ method: method as MethodReport['method'], total }))
+    // Solo income por método: los adjustment no inflan la tabla por método (#43).
+    const byMethod = aggregateByMethod(typeRows)
 
     const minutesByCourtId = new Map(
       courtMinuteRows.map((r) => [r.courtId, Number(r.bookedMinutes)]),

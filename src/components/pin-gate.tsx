@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ export function PinGate({ children, pinRequired = true }: PinGateProps) {
   const [now, setNow] = useState(() => Date.now())
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [, startTransition] = useTransition()
+  const router = useRouter()
 
   useEffect(() => {
     if (!pinRequired) return
@@ -100,6 +102,11 @@ export function PinGate({ children, pinRequired = true }: PinGateProps) {
       const result = await verifyPinAction(pin)
       if (result.ok) {
         setVerified(true)
+        // #9: re-renderizar el Server Component ahora que la cookie de sesion
+        // PIN existe, para que las paginas que difieren el fetch de datos
+        // sensibles hasta tener PIN valido (ej. facturacion) los traigan recien
+        // ahora y nunca antes en el payload RSC.
+        router.refresh()
       } else if (result.locked) {
         setLockedUntilMs(result.retryAtMs)
         setNow(Date.now())

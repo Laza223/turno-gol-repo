@@ -1,0 +1,21 @@
+# Contexto de build del Dockerfile.worker — mantener la imagen liviana.
+node_modules
+.next
+.git
+.github
+tests
+playwright-report
+test-results
+coverage
+*.log
+.env*
+!.env.example
+design-system
+docs
+TODO
+_archive
+TurnoGol-audit-f02
+*.md
+!README.md
+screenshots
+public/hero-bg.png

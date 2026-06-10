@@ -9,6 +9,7 @@ import {
   prevMonthStr,
   nextMonthStr,
   formatMonthLabel,
+  isReportEmpty,
 } from '@/modules/reports/report.utils'
 
 function formatARS(cents: number): string {
@@ -62,7 +63,7 @@ export default async function ReportesPage({
     tenant.closedDates,
   )
 
-  const isEmpty = report.income === 0 && report.bookingCount === 0
+  const isEmpty = isReportEmpty(report)
 
   // CSV covers [from, last day of month] inclusive
   const csvFrom = from.toISOString().split('T')[0]

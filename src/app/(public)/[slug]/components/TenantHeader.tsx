@@ -8,7 +8,12 @@ import RatingStars from '@/components/public/RatingStars'
 import FavoriteButton from '@/components/public/FavoriteButton'
 import ShareButton from '@/components/public/ShareButton'
 
-type Props = { tenant: PublicTenant; avgRating: number; reviewCount: number }
+type Props = {
+  tenant: PublicTenant
+  avgRating: number
+  reviewCount: number
+  initialFavorited?: boolean
+}
 
 const DAY_LABELS: Record<string, string> = {
   mon: 'Lunes',
@@ -22,7 +27,12 @@ const DAY_LABELS: Record<string, string> = {
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
-export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) {
+export default function TenantHeader({
+  tenant,
+  avgRating,
+  reviewCount,
+  initialFavorited = false,
+}: Props) {
   const whatsappUrl = buildWhatsappUrl(
     tenant.whatsapp,
     `Hola, quiero consultar disponibilidad en ${tenant.name}.`,
@@ -64,7 +74,11 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
         {/* Acciones: compartir + favorito */}
         <div className="flex flex-wrap gap-2">
           <ShareButton message={`Reservá tu cancha en ${tenant.name}`} />
-          <FavoriteButton tenantId={tenant.id} variant="inline" />
+          <FavoriteButton
+            tenantId={tenant.id}
+            variant="inline"
+            initialFavorited={initialFavorited}
+          />
         </div>
       </div>
 

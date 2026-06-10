@@ -60,6 +60,19 @@ export class PlayerBannedError extends Error {
   }
 }
 
+export class PlayerHasOutstandingBalanceError extends Error {
+  constructor(
+    public readonly playerId: string,
+    public readonly tenantId: string,
+    public readonly balance: number,
+  ) {
+    super(
+      `Player ${playerId} has an outstanding balance in tenant ${tenantId}; online booking blocked`,
+    )
+    this.name = 'PlayerHasOutstandingBalanceError'
+  }
+}
+
 export class BookingNotOwnedByPlayerError extends Error {
   constructor(bookingId: string, playerId: string) {
     super(`Booking ${bookingId} does not belong to player ${playerId}`)
@@ -88,5 +101,12 @@ export class BookingNotYetStartedError extends Error {
   constructor(bookingId: string) {
     super(`Booking ${bookingId} cannot be marked no-show: time_start has not yet passed`)
     this.name = 'BookingNotYetStartedError'
+  }
+}
+
+export class BookingDateOutOfRangeError extends Error {
+  constructor(public readonly reason: 'past_date' | 'past_slot' | 'advance_exceeded') {
+    super(`Booking date is out of range: ${reason}`)
+    this.name = 'BookingDateOutOfRangeError'
   }
 }

@@ -11,8 +11,10 @@ import {
   getAvailableSlots,
 } from '@/modules/bookings/booking.service'
 import {
+  BookingDateOutOfRangeError,
   CourtOfflineError,
   PlayerBannedError,
+  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
@@ -106,17 +108,30 @@ export const POST = withPlayer(async (req, user, tx) => {
         requiresDeposit: settings.requires_deposit,
         depositPercentage: settings.deposit_percentage,
         notesPlayer: parsed.data.notes_player,
+        maxAdvanceDays: settings.booking_advance_days ?? 6,
       },
       tx,
     )
 
     return NextResponse.json({ data: { booking } }, { status: 201 })
   } catch (err) {
+    if (err instanceof BookingDateOutOfRangeError) {
+      return businessRule('La fecha seleccionada no es válida para reservar.', {
+        code: 'DATE_OUT_OF_RANGE',
+        details: { reason: err.reason },
+      })
+    }
     if (err instanceof PlayerBannedError) {
       return forbidden('No podés reservar en este complejo actualmente.', {
         code: 'PLAYER_BANNED',
         details: { reason: err.reason ?? 'PLAYER_BANNED', global: err.bannedGlobal },
       })
+    }
+    if (err instanceof PlayerHasOutstandingBalanceError) {
+      return businessRule(
+        'Tenés un saldo pendiente con este complejo. Regularizá tu deuda para volver a reservar online.',
+        { code: 'PLAYER_HAS_DEBT' },
+      )
     }
     if (err instanceof SlotTakenError) {
       const alternatives = await getAlternatives(

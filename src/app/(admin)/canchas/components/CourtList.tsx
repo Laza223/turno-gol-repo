@@ -155,11 +155,17 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
     setLoadingImpact(true)
     const res = await getCourtDeactivationImpactAction(court.id)
     setLoadingImpact(false)
-    setImpact(
-      res.success
-        ? { futureBookings: res.futureBookings, activeAbonados: res.activeAbonados }
-        : { futureBookings: 0, activeAbonados: 0 },
-    )
+    if (!res.success) {
+      // Fix #58: no abrir el dialog con datos falsos (0/0) — el admin podría
+      // desactivar creyendo que no hay impacto cuando en realidad no se pudo verificar.
+      toast({
+        title: 'No se pudo verificar el impacto',
+        description: res.error ?? 'Reintentá en unos segundos.',
+        variant: 'destructive',
+      })
+      return
+    }
+    setImpact({ futureBookings: res.futureBookings, activeAbonados: res.activeAbonados })
     setConfirmOpen(true)
   }
 

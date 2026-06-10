@@ -1,24 +1,46 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState } from 'react-dom'
+import { useFormState, useFormStatus } from 'react-dom'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { SubmitButton } from '@/components/ui/submit-button'
 import { setPinAction, type PinConfigResult } from './actions'
 
-const INITIAL: PinConfigResult = { success: true }
+type Props = {
+  hasPin: boolean
+}
 
-export function PinForm({ hasPin }: { hasPin: boolean }) {
-  const [state, formAction] = useFormState(setPinAction, INITIAL)
-  const [didSubmit, setDidSubmit] = useState(false)
+const INITIAL_STATE: PinConfigResult = { success: false, error: '' }
+
+function SubmitButton({ hasPin }: { hasPin: boolean }) {
+  const { pending } = useFormStatus()
+  return (
+    <Button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="w-full bg-emerald-600 hover:bg-emerald-500"
+    >
+      {pending
+        ? hasPin
+          ? 'Cambiando…'
+          : 'Configurando…'
+        : hasPin
+          ? 'Cambiar PIN'
+          : 'Configurar PIN'}
+    </Button>
+  )
+}
+
+export function PinForm({ hasPin }: Props) {
+  const [state, formAction] = useFormState(setPinAction, INITIAL_STATE)
+
+  // El error vacío inicial (INITIAL_STATE) no debe pintarse como error real:
+  // solo mostramos el alert cuando hay un mensaje no vacío.
+  const errorMessage = !state.success && state.error ? state.error : null
 
   return (
-    <form
-      action={formAction}
-      onSubmit={() => setDidSubmit(true)}
-      className="space-y-4"
-    >
+    <form action={formAction} className="space-y-4">
       {hasPin && (
         <div className="space-y-1.5">
           <Label htmlFor="currentPin">PIN actual</Label>
@@ -61,18 +83,19 @@ export function PinForm({ hasPin }: { hasPin: boolean }) {
           placeholder="••••"
         />
       </div>
-      <SubmitButton pendingLabel="Procesando…" className="w-full bg-emerald-600 hover:bg-emerald-500">
-        {hasPin ? 'Cambiar PIN' : 'Configurar PIN'}
-      </SubmitButton>
 
-      <div aria-live="polite" className="min-h-[1.25rem]">
-        {!state.success && (
-          <p role="alert" className="text-sm text-red-600">{state.error}</p>
-        )}
-        {didSubmit && state.success && (
-          <p role="status" className="text-sm text-emerald-700">PIN guardado correctamente.</p>
-        )}
-      </div>
+      <SubmitButton hasPin={hasPin} />
+
+      {errorMessage && (
+        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-inset ring-red-600/20">
+          {errorMessage}
+        </p>
+      )}
+      {state.success && (
+        <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+          PIN actualizado correctamente.
+        </p>
+      )}
     </form>
   )
 }

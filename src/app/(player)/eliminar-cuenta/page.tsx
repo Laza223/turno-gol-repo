@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { eq } from 'drizzle-orm'
-import { AlertTriangle, Info } from 'lucide-react'
+import { eq, and, gte, sql } from 'drizzle-orm'
+import { AlertTriangle, Info, CalendarClock } from 'lucide-react'
 import type { Metadata } from 'next'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
-import { players } from '@/shared/db/schema'
+import { players, bookings } from '@/shared/db/schema'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { DeleteAccountForm } from './DeleteAccountForm'
 
@@ -22,12 +22,27 @@ export default async function EliminarCuentaPage() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/login')
 
-  const rows = await withPlayerContext(user.playerId, (tx) =>
-    tx.select().from(players).where(eq(players.id, user.playerId)).limit(1),
-  )
+  const [playerRows, futureBookingRows] = await withPlayerContext(user.playerId, async (tx) => {
+    const todayDate = new Date(new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10) + 'T00:00:00Z')
+    return Promise.all([
+      tx.select().from(players).where(eq(players.id, user.playerId)).limit(1),
+      tx
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.playerId, user.playerId),
+            eq(bookings.status, 'confirmed'),
+            gte(bookings.date, todayDate),
+          ),
+        ),
+    ])
+  })
 
-  const player = rows[0]
+  const player = playerRows[0]
   if (!player) redirect('/login')
+
+  const futureConfirmedCount = futureBookingRows[0]?.count ?? 0
 
   return (
     <div className="px-4 py-5 space-y-5 max-w-lg mx-auto">
@@ -68,6 +83,26 @@ export default async function EliminarCuentaPage() {
           </ul>
         </div>
       </div>
+
+      {/* Fix #57: advertencia sobre reservas futuras confirmadas */}
+      {futureConfirmedCount > 0 && (
+        <div className="rounded-lg border border-orange-300 bg-orange-50 p-4 flex gap-2 items-start">
+          <CalendarClock className="h-5 w-5 text-orange-700 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-orange-800">
+              Tenés {futureConfirmedCount}{' '}
+              {futureConfirmedCount === 1 ? 'reserva confirmada' : 'reservas confirmadas'} futuras
+            </p>
+            <p className="text-sm text-orange-800">
+              Si eliminás tu cuenta, esas reservas quedan sin titular. Te recomendamos cancelarlas
+              primero para que el complejo pueda gestionar el turno.{' '}
+              <Link href="/mis-reservas" className="font-semibold underline">
+                Ver mis reservas
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Reminder card */}
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-2 items-start">

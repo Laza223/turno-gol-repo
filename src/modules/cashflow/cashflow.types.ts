@@ -51,4 +51,6 @@ export type CreateCashFlowInput = {
   bookingId?: string
   productId?: string
   occurredAt?: Date
+  /** UUID v4 generado por el cliente al abrir el formulario. Previene duplicados por doble-submit. */
+  clientIdempotencyKey?: string
 }

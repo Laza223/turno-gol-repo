@@ -220,13 +220,41 @@ export async function dispatchPaymentInfo(
  * Returned `won` flag is exposed via `WebhookOutcome.result` (the payment row
  * is upserted regardless to preserve audit trail; only the booking transition
  * gates side effects).
+ *
+ * Fix #52: compara info.amount con booking.deposit_amount antes de confirmar.
+ * Si el monto recibido es menor al esperado, se registra en audit_logs para
+ * seguimiento manual del admin. La reserva se confirma igual (MP aprobó el pago).
  */
 async function handleApproved(
   info: GatewayPaymentInfo,
   tenantId: string,
   tx: DbTx,
 ): Promise<{ won: boolean; row?: BookingRow; notificationIds: string[] }> {
+  // Fetch expected deposit before upserting so we can compare amounts.
+  const depRows = await tx.execute(sql`
+    SELECT deposit_amount AS "depositAmount"
+    FROM bookings
+    WHERE id = ${info.externalReference}
+    LIMIT 1
+  `)
+  const depositAmount = (depRows as unknown as Array<{ depositAmount: number }>)[0]?.depositAmount ?? info.amount
+
   await upsertPaymentRow(info, tenantId, 'approved', tx)
+
+  if (info.amount < depositAmount) {
+    await insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'payment.amount_discrepancy',
+      resourceType: 'booking',
+      resourceId: info.externalReference,
+      metadata: {
+        expectedCents: depositAmount,
+        receivedCents: info.amount,
+        mpPaymentId: info.mpPaymentId,
+      },
+    })
+  }
+
   const result = await transitionFromPendingPayment(
     info.externalReference,
     'confirmed',
@@ -415,13 +443,15 @@ export async function createRefund(
   // B3 audit fix: prevent over-refund and double-refund. Sum existing refunds
   // (any status that consumes the original) and require that
   // sumRefunded + requested <= original.amount.
+  // Fix #53: usar igualdad exacta en lugar de LIKE para evitar falsos positivos
+  // por UUIDs con prefijo compartido o cambios en el formato del description.
   const priorRows = await tx.execute(sql`
     SELECT COALESCE(SUM(amount), 0)::bigint AS total
     FROM payments
     WHERE booking_id = ${original.bookingId}
       AND type = 'refund'
       AND status IN ('approved', 'pending')
-      AND description LIKE ${'%' + original.id + '%'}
+      AND description = ${'Refund of ' + original.id}
   `)
   const priorTotal = Number(
     (priorRows as unknown as Array<{ total: string | number }>)[0]?.total ?? 0,

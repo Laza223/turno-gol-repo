@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { buildMetadata } from '@/lib/seo/metadata'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildOrganization, buildWebSite } from '@/lib/seo/structured-data'
@@ -41,10 +42,12 @@ export const revalidate = 300
 
 // Cargas resilientes: si la DB falla o está vacía, la sección no se rompe ni
 // tira abajo el build (prerender ISR). Devuelven vacío y la sección se oculta.
+// Fix #59: capturar en Sentry para que fallos intermitentes de DB sean visibles.
 async function loadCities(): Promise<CityCount[]> {
   try {
     return await listPublicCities()
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err, { tags: { section: 'landing.cities' } })
     return []
   }
 }
@@ -53,7 +56,8 @@ async function loadFeatured(): Promise<PublicTenantCard[]> {
   try {
     const { results } = await searchPublicTenants({ sort: 'rating', limit: 6 })
     return results
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err, { tags: { section: 'landing.featured' } })
     return []
   }
 }
@@ -62,7 +66,8 @@ async function loadOpenMatches(): Promise<OpenMatch[]> {
   try {
     const { matches } = await getOpenMatches({ status: 'open', limit: 6 })
     return matches
-  } catch {
+  } catch (err) {
+    Sentry.captureException(err, { tags: { section: 'landing.openMatches' } })
     return []
   }
 }

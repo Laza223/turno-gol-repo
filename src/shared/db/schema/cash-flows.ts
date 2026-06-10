@@ -45,6 +45,10 @@ export const cashFlows = pgTable(
       mode: 'date',
     }).notNull(),
 
+    // Fix #55: clave de idempotencia generada por el cliente (UUID v4).
+    // Evita que un doble-submit o reintento de red cree movimientos duplicados.
+    clientIdempotencyKey: text('client_idempotency_key'),
+
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),
@@ -71,6 +75,9 @@ export const cashFlows = pgTable(
     tenantCategoryIdx: index('idx_cash_flows_tenant_category').on(
       table.tenantId,
       table.category,
+    ),
+    idempotencyKeyIdx: index('idx_cash_flows_idempotency_key').on(
+      table.clientIdempotencyKey,
     ),
   }),
 )

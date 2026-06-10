@@ -65,6 +65,35 @@ export async function createCashFlow(
     throw new DayAlreadyClosedError(artDate)
   }
 
+  // Fix #55: si el cliente envía una idempotency key, usar ON CONFLICT DO NOTHING
+  // para ignorar el segundo insert en caso de doble-submit o reintento de red.
+  if (input.clientIdempotencyKey) {
+    const result = await tx.execute(sql`
+      INSERT INTO cash_flows (
+        tenant_id, type, category, amount, method, description,
+        booking_id, product_id, registered_by, occurred_at, client_idempotency_key
+      ) VALUES (
+        ${tenantId}, ${input.type}::cashflow_type, ${input.category}::cashflow_category,
+        ${input.amount}, ${input.method}::payment_method, ${input.description},
+        ${input.bookingId ?? null}, ${input.productId ?? null},
+        ${staffUserId}, ${occurredAt.toISOString()},
+        ${input.clientIdempotencyKey}
+      )
+      ON CONFLICT (client_idempotency_key) DO NOTHING
+      RETURNING *
+    `)
+    const inserted = (result as unknown as Array<typeof cashFlows.$inferSelect>)[0]
+    if (inserted) return rowToCashFlowRow(inserted)
+
+    // Row already existed — fetch it to return a consistent result.
+    const existing = await tx.execute(sql`
+      SELECT * FROM cash_flows
+      WHERE client_idempotency_key = ${input.clientIdempotencyKey}
+      LIMIT 1
+    `)
+    return rowToCashFlowRow((existing as unknown as Array<typeof cashFlows.$inferSelect>)[0]!)
+  }
+
   const rows = await tx
     .insert(cashFlows)
     .values({

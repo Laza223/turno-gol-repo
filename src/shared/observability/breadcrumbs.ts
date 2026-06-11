@@ -67,7 +67,7 @@ type AvailabilityCtx = {
   courts?: number
 }
 
-type SearchEvent = 'search.public.query'
+type SearchEvent = 'search.public.query' | 'search.availability.query'
 
 type SearchCtx = {
   hasQuery?: boolean // never the raw query text — PII-safe (Ley 25.326)
@@ -75,6 +75,11 @@ type SearchCtx = {
   province?: string
   onlineOnly?: boolean
   results?: number
+  // search.availability.query (sin PII: fecha/hora buscadas + conteos)
+  date?: string
+  time?: string
+  formats?: string
+  candidates?: number
 }
 
 type NotificationEvent =

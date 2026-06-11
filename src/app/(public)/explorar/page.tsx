@@ -5,6 +5,10 @@ import {
   searchPublicTenants,
   type SortOption,
 } from '@/modules/tenants/search.service'
+import {
+  findAvailableTenantIds,
+  parseAvailabilitySearchParams,
+} from '@/modules/tenants/availability-search.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
@@ -73,6 +77,22 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
   const playerId = authUser?.type === 'player' ? authUser.playerId : null
   const favoriteIds = playerId ? await getPlayerFavoriteIds(playerId) : new Set<string>()
 
+  const formats = csv(searchParams.formats).map(Number).filter((n) => Number.isFinite(n))
+
+  // Disponibilidad real: con fecha+hora válidas en la URL, la búsqueda queda
+  // restringida a complejos con al menos una cancha libre a esa hora (cacheado
+  // 30s en Upstash). Sin el par completo, el comportamiento es el histórico.
+  const avail = parseAvailabilitySearchParams({
+    date: searchParams.date,
+    time: searchParams.time,
+  })
+  const tenantIds = avail
+    ? await findAvailableTenantIds({
+        ...avail,
+        ...(formats.length ? { formats } : {}),
+      })
+    : undefined
+
   const [{ results, total }, cities] = await Promise.all([
     searchPublicTenants({
       q: searchParams.q,
@@ -80,7 +100,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       province: searchParams.province,
       onlineOnly: searchParams.online === '1',
       surfaces: csv(searchParams.surfaces),
-      formats: csv(searchParams.formats).map(Number).filter((n) => Number.isFinite(n)),
+      formats,
       amenities: csv(searchParams.amenities),
       minPriceCents: num(searchParams.minPrice),
       maxPriceCents: num(searchParams.maxPrice),
@@ -89,6 +109,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       lng: num(searchParams.lng),
       limit,
       offset,
+      ...(tenantIds !== undefined ? { tenantIds } : {}),
     }),
     listPublicCities(),
   ])
@@ -128,7 +149,11 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
           ) : results.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-20 text-slate-400">
               <SearchX className="h-10 w-10" aria-hidden />
-              <p className="text-sm">No encontramos complejos con esos filtros.</p>
+              <p className="text-sm">
+                {avail
+                  ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}.`
+                  : 'No encontramos complejos con esos filtros.'}
+              </p>
               <Link href="/explorar" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">
                 Limpiar búsqueda
               </Link>

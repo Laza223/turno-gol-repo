@@ -40,6 +40,21 @@ class FakeStore implements SlotsCacheStore {
     }
     return n
   }
+  // SET-tracking surface used only by the availability-search cache (behaviour
+  // covered in avail-search-cache.test.ts); here they just satisfy the interface.
+  private sets = new Map<string, Set<string>>()
+  async sadd(key: string, ...members: string[]): Promise<number> {
+    const set = this.sets.get(key) ?? new Set<string>()
+    for (const m of members) set.add(m)
+    this.sets.set(key, set)
+    return members.length
+  }
+  async smembers(key: string): Promise<string[]> {
+    return Array.from(this.sets.get(key) ?? [])
+  }
+  async expire(): Promise<number> {
+    return 1
+  }
 }
 
 const COURT = '11111111-1111-1111-1111-111111111111'
@@ -104,9 +119,11 @@ describe('invalidateCourtDateSlots', () => {
 
     expect(await getCachedSlots(COURT, DATE, 60)).toBeNull()
     expect(await getCachedSlots(COURT, DATE, 120)).toBeNull()
-    expect(store.deleted).toEqual(
-      SLOT_DURATIONS.map((d) => `slots:${COURT}:2026-06-01:${d}`),
-    )
+    // Also clears the availability-search tracking set for the date (funnel).
+    expect(store.deleted).toEqual([
+      ...SLOT_DURATIONS.map((d) => `slots:${COURT}:2026-06-01:${d}`),
+      'avail-search:keys:2026-06-01',
+    ])
   })
 
   it('accepts a Date and normalizes it', async () => {

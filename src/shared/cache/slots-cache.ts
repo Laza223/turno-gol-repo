@@ -22,11 +22,16 @@ export const SLOTS_CACHE_TTL_SECONDS = 30
 export const SLOT_DURATIONS = [60, 120] as const
 
 // Minimal surface we need from Upstash Redis — keeps the module testable with a
-// plain in-memory double and decoupled from the full client type.
+// plain in-memory double and decoupled from the full client type. The SET ops
+// (sadd/smembers/expire) back the per-date key tracking of the availability
+// search cache.
 export interface SlotsCacheStore {
   get(key: string): Promise<unknown>
   set(key: string, value: unknown, opts: { ex: number }): Promise<unknown>
   del(...keys: string[]): Promise<unknown>
+  sadd(key: string, ...members: string[]): Promise<unknown>
+  smembers(key: string): Promise<string[]>
+  expire(key: string, seconds: number): Promise<unknown>
 }
 
 let _store: SlotsCacheStore | null = null
@@ -113,6 +118,97 @@ export async function invalidateCourtDateSlots(
   try {
     const keys = SLOT_DURATIONS.map((d) => slotsCacheKey(courtId, date, d))
     await store.del(...keys)
+  } catch {
+    // fail-open: bounded by the 30s TTL anyway
+  }
+  // A booking change on this date also stales the cross-tenant availability
+  // search for it. Same funnel, same best-effort contract.
+  await invalidateAvailSearch(date)
+}
+
+// ─── Cross-tenant availability search cache ─────────────────────────
+//
+// Key pattern: `avail-search:{date}:{time}:{formats|all}` → string[] of tenant
+// ids (TTL 30s). Because a booking mutation only knows its court+date (not
+// which searches it affects), every written key is tracked in a per-date Redis
+// SET (`avail-search:keys:{date}`) so invalidateAvailSearch can enumerate and
+// delete them. The tracking set carries its own TTL as garbage collection.
+
+export const AVAIL_SEARCH_TTL_SECONDS = SLOTS_CACHE_TTL_SECONDS
+
+// Tracking set must outlive the entries it tracks; 120s ≫ 30s with margin.
+const AVAIL_SEARCH_TRACKING_TTL_SECONDS = 120
+
+export function availSearchKey(
+  date: string | Date,
+  time: string,
+  formats?: number[],
+): string {
+  const formatsKey = formats?.length
+    ? [...formats].sort((a, b) => a - b).join('-')
+    : 'all'
+  return `avail-search:${normalizeDate(date)}:${time}:${formatsKey}`
+}
+
+export function availSearchTrackingKey(date: string | Date): string {
+  return `avail-search:keys:${normalizeDate(date)}`
+}
+
+async function getCachedAvailSearch(key: string): Promise<string[] | null> {
+  const store = getSlotsCacheStore()
+  if (!store) return null
+  try {
+    const raw = await store.get(key)
+    if (raw == null) return null
+    return typeof raw === 'string' ? (JSON.parse(raw) as string[]) : (raw as string[])
+  } catch {
+    return null // fail-open
+  }
+}
+
+async function setCachedAvailSearch(
+  date: string | Date,
+  key: string,
+  tenantIds: string[],
+): Promise<void> {
+  const store = getSlotsCacheStore()
+  if (!store) return
+  try {
+    await store.set(key, JSON.stringify(tenantIds), { ex: AVAIL_SEARCH_TTL_SECONDS })
+    const tracking = availSearchTrackingKey(date)
+    await store.sadd(tracking, key)
+    await store.expire(tracking, AVAIL_SEARCH_TRACKING_TTL_SECONDS)
+  } catch {
+    // fail-open: an untracked entry self-heals via its 30s TTL
+  }
+}
+
+/**
+ * Read-through cache for the cross-tenant availability search. Same contract
+ * as readThroughSlots: always fails open to the loader.
+ */
+export async function readThroughAvailSearch(
+  date: string | Date,
+  time: string,
+  formats: number[] | undefined,
+  loader: () => Promise<string[]>,
+): Promise<{ tenantIds: string[]; hit: boolean }> {
+  const key = availSearchKey(date, time, formats)
+  const cached = await getCachedAvailSearch(key)
+  if (cached) return { tenantIds: cached, hit: true }
+  const tenantIds = await loader()
+  await setCachedAvailSearch(date, key, tenantIds)
+  return { tenantIds, hit: false }
+}
+
+/** Deletes every cached availability search for a date (plus the tracking set). */
+export async function invalidateAvailSearch(date: string | Date): Promise<void> {
+  const store = getSlotsCacheStore()
+  if (!store) return
+  try {
+    const tracking = availSearchTrackingKey(date)
+    const keys = await store.smembers(tracking)
+    await store.del(...keys, tracking)
   } catch {
     // fail-open: bounded by the 30s TTL anyway
   }

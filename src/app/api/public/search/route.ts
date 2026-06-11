@@ -1,8 +1,9 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { boundedText } from '@/shared/validation/primitives'
+import { boundedText, dateStr, hhmm } from '@/shared/validation/primitives'
 import { searchPublicTenants } from '@/modules/tenants/search.service'
+import { findAvailableTenantIds } from '@/modules/tenants/availability-search.service'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +51,38 @@ const querySchema = z.object({
   lng: z.coerce.number().min(-180).max(180).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
+  // Filtro de disponibilidad real: solo se activa cuando llegan AMBOS.
+  date: dateStr.optional(),
+  time: hhmm.optional(),
+})
+
+// Contrato de salida (doc15): la respuesta se valida antes de serializar para
+// que un cambio accidental del shape interno no se filtre a la API pública.
+const publicTenantCardSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  address: z.string(),
+  city: z.string(),
+  province: z.string(),
+  logoUrl: z.string().nullable(),
+  coverUrl: z.string().nullable(),
+  allowOnlineBooking: z.boolean(),
+  fromPriceCents: z.number().int().nullable(),
+  amenities: z.record(z.boolean()),
+  avgRating: z.number(),
+  reviewCount: z.number().int(),
+  distanceKm: z.number().nullable(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  courtSurfaces: z.array(z.string()),
+  courtFormats: z.array(z.number().int()),
+})
+
+// No exportado: Next.js restringe los exports de route.ts a los handlers.
+const searchResponseSchema = z.object({
+  results: z.array(publicTenantCardSchema),
+  total: z.number().int().nonnegative(),
 })
 
 export async function GET(req: NextRequest) {
@@ -69,11 +102,22 @@ export async function GET(req: NextRequest) {
     lng: sp.get('lng') ?? undefined,
     limit: sp.get('limit') ?? undefined,
     offset: sp.get('offset') ?? undefined,
+    date: sp.get('date') ?? undefined,
+    time: sp.get('time') ?? undefined,
   })
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
   }
   const p = parsed.data
+
+  // Disponibilidad real: con fecha+hora, la búsqueda queda restringida a los
+  // complejos con al menos una cancha libre a esa hora (cacheado 30s). Con uno
+  // solo de los dos params el comportamiento es idéntico al histórico.
+  const availabilityActive = p.date !== undefined && p.time !== undefined
+  const tenantIds = availabilityActive
+    ? await findAvailableTenantIds({ date: p.date!, time: p.time!, formats: p.formats })
+    : undefined
+
   // 'distance' sin coordenadas no tiene sentido → cae a orden por nombre en el service.
   const result = await searchPublicTenants({
     q: p.q,
@@ -90,9 +134,15 @@ export async function GET(req: NextRequest) {
     lng: p.lng,
     limit: p.limit,
     offset: p.offset,
+    ...(tenantIds !== undefined ? { tenantIds } : {}),
   })
 
-  return NextResponse.json(result, {
-    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+  // Con el filtro activo los datos caducan con el TTL del cache (30s, mismo
+  // contrato que /api/public/availability); sin él, CDN cache histórico de 60s.
+  // Literales inline a propósito: public-cache-headers.test.ts los pinea.
+  return NextResponse.json(searchResponseSchema.parse(result), {
+    headers: availabilityActive
+      ? { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      : { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
   })
 }

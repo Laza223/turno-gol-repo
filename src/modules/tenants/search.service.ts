@@ -47,23 +47,35 @@ export type SearchParams = {
   lng?: number
   limit?: number
   offset?: number
+  // Restricción a un conjunto de tenants (filtro de disponibilidad horaria).
+  // undefined = sin restricción; [] = nadie disponible → resultado vacío.
+  tenantIds?: string[]
 }
 
 export type SearchResult = { results: PublicTenantCard[]; total: number }
 export type CityCount = { city: string; province: string; count: number }
 
-const VISIBLE = ['active', 'trialing']
+// Estados de tenant visibles en superficies públicas (search + availability).
+export const VISIBLE_TENANT_STATUSES = ['active', 'trialing'] as const
+const VISIBLE = VISIBLE_TENANT_STATUSES
 
 export async function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
   return withSpan('search.public', 'db.query.search', () => searchPublicTenantsImpl(params))
 }
 
 async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResult> {
+  // Lista vacía = el filtro de disponibilidad no dejó candidatos: cortar acá
+  // (inArray con [] no es válido y la respuesta es trivialmente vacía).
+  if (params.tenantIds && params.tenantIds.length === 0) {
+    return { results: [], total: 0 }
+  }
+
   const db = getDb()
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 50)
   const offset = Math.max(params.offset ?? 0, 0)
 
   const conds: SQL[] = [inArray(tenants.status, VISIBLE as never)]
+  if (params.tenantIds) conds.push(inArray(tenants.id, params.tenantIds))
   const q = params.q?.trim()
   if (q) conds.push(ilike(tenants.name, `%${q}%`))
   if (params.city) conds.push(eq(tenants.city, params.city))

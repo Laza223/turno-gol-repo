@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { boundedText, dateStr, hhmm } from '@/shared/validation/primitives'
+import { captureMessage } from '@/lib/sentry'
 import { searchPublicTenants } from '@/modules/tenants/search.service'
 import { findAvailableTenantIds } from '@/modules/tenants/availability-search.service'
 
@@ -23,16 +24,19 @@ const AMENITIES = [
 // CSV → lista de valores, descartando los que no estén en el set permitido
 // (una chip obsoleta/desconocida no debe romper toda la búsqueda con 400).
 // allowed: como string para comparar (los formatos numéricos se comparan por texto).
+// Dedupe: "5,5,5,..." repetido no debe inflar cache keys ni params SQL.
 const csvAllowed = (
   raw: string | null,
   allowed: readonly (string | number)[],
 ): string[] | undefined => {
   if (!raw) return undefined
   const allowedSet = new Set(allowed.map(String))
-  const vals = raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter((v) => v && allowedSet.has(v))
+  const vals = Array.from(new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter((v) => v && allowedSet.has(v)),
+  ))
   return vals.length ? vals : undefined
 }
 
@@ -137,10 +141,21 @@ export async function GET(req: NextRequest) {
     ...(tenantIds !== undefined ? { tenantIds } : {}),
   })
 
+  // Validación del contrato de salida en fail-open: un drift de shape (datos
+  // sucios en jsonb, campo nuevo mal tipado) se reporta pero NUNCA tumba el
+  // endpoint público — se sirve la respuesta cruda como hasta ahora.
+  const validated = searchResponseSchema.safeParse(result)
+  if (!validated.success) {
+    captureMessage('public search: respuesta fuera de contrato', {
+      level: 'warning',
+      extra: { issues: validated.error.issues.slice(0, 5) },
+    })
+  }
+
   // Con el filtro activo los datos caducan con el TTL del cache (30s, mismo
   // contrato que /api/public/availability); sin él, CDN cache histórico de 60s.
   // Literales inline a propósito: public-cache-headers.test.ts los pinea.
-  return NextResponse.json(searchResponseSchema.parse(result), {
+  return NextResponse.json(validated.success ? validated.data : result, {
     headers: availabilityActive
       ? { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
       : { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },

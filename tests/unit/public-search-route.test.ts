@@ -97,6 +97,15 @@ describe('GET /api/public/search — con fecha+hora', () => {
     })
   })
 
+  it('dedupes repeated formats (cache-key y SQL params acotados)', async () => {
+    await GET(req(`?date=2026-06-12&time=20:00&formats=${'5,'.repeat(500)}7`))
+    expect(availMock).toHaveBeenCalledWith({
+      date: '2026-06-12',
+      time: '20:00',
+      formats: [5, 7],
+    })
+  })
+
   it('returns the search result built from the restricted set', async () => {
     availMock.mockResolvedValue([])
     searchMock.mockResolvedValue({ results: [], total: 0 })
@@ -131,5 +140,17 @@ describe('GET /api/public/search — contrato de salida', () => {
     expect(body.total).toBe(1)
     expect(body.results).toHaveLength(1)
     expect(body.results[0]).toMatchObject({ id: TENANT_A, slug: 'club-a' })
+  })
+
+  it('does not 500 on contract drift: dirty data still serves (fail-open)', async () => {
+    // amenities con valores no-boolean (jsonb sucio) rompe el schema de salida;
+    // el endpoint público debe degradar a la respuesta cruda, nunca caerse.
+    const dirty = { ...CARD, amenities: { wifi: 'yes' } }
+    searchMock.mockResolvedValue({ results: [dirty], total: 1 })
+    const res = await GET(req('?q=club'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.total).toBe(1)
+    expect(body.results[0].id).toBe(TENANT_A)
   })
 })

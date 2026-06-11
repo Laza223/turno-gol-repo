@@ -1,8 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, Clock, MapPin, Search } from 'lucide-react'
+import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
+import { useNearestCity } from '@/hooks/use-nearest-city'
 import type { CityCount } from '@/modules/tenants/search.service'
 
 type Props = { cities: CityCount[] }
@@ -16,18 +18,52 @@ function todayLocal(): string {
 
 const HOURS = Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`)
 
+/** value compuesto "{city}||{province}" para desambiguar homónimos al armar la URL. */
+function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
+  return cities.map((c) => ({
+    value: c.province ? `${c.city}||${c.province}` : c.city,
+    label: c.province ? `${c.city}, ${c.province}` : c.city,
+  }))
+}
+
 /**
  * Buscador protagonista del hero (estilo ATC). Recolecta Localidad + Fecha +
  * Hora y redirige a /explorar con los filtros como query params. Solo fútbol por
  * ahora, así que no hay selector de deporte. La fecha/hora se reenvían para el
  * filtrado por disponibilidad (en /explorar).
+ *
+ * La localidad se pre-llena con geolocalización (ciudad del complejo más cercano,
+ * datos propios — sin geocoding externo) solo mientras el usuario no toque el campo.
  */
 export default function HeroSearch({ cities }: Props) {
   const router = useRouter()
   const today = useMemo(todayLocal, [])
   const [city, setCity] = useState('')
+  const [cityTouched, setCityTouched] = useState(false)
+  const [prefilled, setPrefilled] = useState(false)
   const [date, setDate] = useState(today)
   const [time, setTime] = useState('')
+
+  const nearest = useNearestCity()
+  const cityOptions = useMemo(() => cityOptionsFrom(cities), [cities])
+
+  // Aplicar la ciudad detectada solo si el usuario todavía no eligió nada.
+  useEffect(() => {
+    if (nearest.status !== 'found' || cityTouched || city) return
+    // Foco pre-hidratación: si el usuario ya está parado en el campo (el focus
+    // ocurrió antes de que React montara, onFocusCapture no se enteró), no pisarlo.
+    if (typeof document !== 'undefined' && document.activeElement?.id === 'hero-city') {
+      setCityTouched(true)
+      return
+    }
+    const match =
+      cityOptions.find((o) => o.value === `${nearest.city}||${nearest.province}`) ??
+      cityOptions.find((o) => o.value === nearest.city || o.value.startsWith(`${nearest.city}||`))
+    if (match) {
+      setCity(match.value)
+      setPrefilled(true)
+    }
+  }, [nearest, cityTouched, city, cityOptions])
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -44,6 +80,13 @@ export default function HeroSearch({ cities }: Props) {
     router.push(qs ? `/explorar?${qs}` : '/explorar')
   }
 
+  const geoMessage =
+    nearest.status === 'denied'
+      ? 'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'
+      : prefilled && !cityTouched
+        ? 'Localidad sugerida según tu ubicación.'
+        : ''
+
   const fieldClass =
     'h-14 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-base text-slate-900 shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
@@ -54,31 +97,33 @@ export default function HeroSearch({ cities }: Props) {
       className="rounded-2xl border border-white/10 bg-white/95 p-5 shadow-2xl shadow-emerald-950/30 backdrop-blur-md sm:p-6"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-        {/* Localidad */}
-        <div className="lg:col-span-4">
+        {/* Localidad. onFocusCapture: si el usuario ya está en el campo, la
+            detección tardía no debe pisarle nada. */}
+        <div className="lg:col-span-4" onFocusCapture={() => setCityTouched(true)}>
           <label htmlFor="hero-city" className="mb-1.5 block text-xs font-semibold text-slate-700">
             Localidad
           </label>
-          <div className="relative">
-            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
-            <select
-              id="hero-city"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className={`${fieldClass} appearance-none pr-8`}
-            >
-              <option value="">Todas las ciudades</option>
-              {cities.map((c) => (
-                <option
-                  key={`${c.city}-${c.province}`}
-                  value={c.province ? `${c.city}||${c.province}` : c.city}
-                >
-                  {c.city}
-                  {c.province ? `, ${c.province}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Combobox
+            id="hero-city"
+            options={cityOptions}
+            value={city}
+            onChange={(v) => {
+              setCity(v)
+              setCityTouched(true)
+            }}
+            placeholder="Todas las ciudades"
+            emptyMessage="No encontramos esa localidad"
+            listboxLabel="Localidades"
+            clearOptionLabel="Todas las ciudades"
+            inputClassName={fieldClass}
+            aria-describedby="hero-city-status"
+            leadingIcon={
+              <MapPin
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+            }
+          />
         </div>
 
         {/* Fecha */}
@@ -131,6 +176,11 @@ export default function HeroSearch({ cities }: Props) {
           Buscar canchas
         </button>
       </div>
+
+      {/* Estado de geolocalización: sutil, nunca bloqueante. Altura reservada para no mover el hero. */}
+      <p id="hero-city-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-slate-500">
+        {geoMessage}
+      </p>
     </form>
   )
 }

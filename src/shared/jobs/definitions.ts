@@ -16,6 +16,7 @@ export const QUEUE_EXPIRE_PENDING_BOOKING = 'expire-pending-booking'
 export const QUEUE_EXPIRE_PENDING_BOOKING_SWEEP = 'expire-pending-booking-sweep'
 export const QUEUE_REFRESH_MP_TOKENS = 'refresh-mp-tokens'
 export const QUEUE_RECONCILE_PENDING_PAYMENTS = 'reconcile-pending-payments'
+export const QUEUE_HEALTH_PING = 'health-ping'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 

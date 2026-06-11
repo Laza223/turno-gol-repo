@@ -26,10 +26,23 @@ let _sql: Sql | null = null
 
 // Dev-only: persist the pool across Next.js module reloads (HMR / lazy route
 // compilation). Without this, each recompile re-evaluates this module, resets
-// `_sql`, and leaks a fresh `max:10` pool — exhausting Postgres connection
-// slots under E2E load. In production modules evaluate once, so the global is
-// never written and behavior is identical to the bare module singleton.
+// `_sql`, and leaks a fresh pool — exhausting Postgres connection slots under
+// E2E load. In production modules evaluate once, so the global is never written
+// and behavior is identical to the bare module singleton.
 const globalForDb = globalThis as unknown as { __turnogolSql?: Sql }
+
+// Connection-pool size. Default 3 to stay serverless-safe: on Vercel each
+// concurrent function instance opens its OWN pool, so a high `max` × many
+// instances exhausts Postgres' connection slots. The long-lived worker process
+// (`pnpm jobs:start`) and integration tests can raise it via DATABASE_POOL_MAX.
+const DEFAULT_POOL_MAX = 3
+
+function resolvePoolMax(): number {
+  const raw = process.env.DATABASE_POOL_MAX
+  if (!raw) return DEFAULT_POOL_MAX
+  const n = Number(raw)
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_POOL_MAX
+}
 
 export function getSql(): Sql {
   if (_sql) return _sql
@@ -39,7 +52,7 @@ export function getSql(): Sql {
   }
   const url = process.env.DATABASE_URL ?? DEFAULT_URL
   _sql = postgres(url, {
-    max: 10,
+    max: resolvePoolMax(),
     prepare: false,
     onnotice: () => {},
   })

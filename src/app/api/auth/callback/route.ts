@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import type { EmailOtpType, User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
@@ -29,19 +30,42 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
-  const parsedCode = codeSchema.safeParse(new URL(req.url).searchParams.get('code'))
-  if (!parsedCode.success) return redirectVerifyError(req, 'invalid')
-  const code = parsedCode.data
-
+  const params = new URL(req.url).searchParams
   const supabase = createClient()
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error || !data?.user) {
-    logger.error('Supabase auth exchange error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
-    track.auth('auth.exchange_failed', {})
-    return redirectVerifyError(req, 'exchange_failed')
+
+  // Preferred flow: token_hash + verifyOtp. It needs NO PKCE code_verifier
+  // cookie, so it's robust to the two ways the code flow below breaks the first
+  // magic link: (1) requesting a second link overwrites the verifier cookie, so
+  // the first link's code no longer matches; (2) an email scanner prefetches the
+  // link and consumes the one-time code before the user clicks. verifyOtp sidesteps
+  // both. Requires the email template to point here with token_hash (see route doc).
+  const tokenHash = params.get('token_hash')
+  const code = params.get('code')
+
+  let user: User
+  if (tokenHash) {
+    const otpType = (params.get('type') ?? 'email') as EmailOtpType
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType })
+    if (error || !data?.user) {
+      logger.error('Supabase verifyOtp error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
+      track.auth('auth.exchange_failed', {})
+      return redirectVerifyError(req, 'exchange_failed')
+    }
+    user = data.user
+  } else if (code) {
+    const parsedCode = codeSchema.safeParse(code)
+    if (!parsedCode.success) return redirectVerifyError(req, 'invalid')
+    const { data, error } = await supabase.auth.exchangeCodeForSession(parsedCode.data)
+    if (error || !data?.user) {
+      logger.error('Supabase auth exchange error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
+      track.auth('auth.exchange_failed', {})
+      return redirectVerifyError(req, 'exchange_failed')
+    }
+    user = data.user
+  } else {
+    return redirectVerifyError(req, 'invalid')
   }
 
-  const user = data.user
   const meta: Record<string, unknown> = user.app_metadata ?? {}
   const userMeta: Record<string, unknown> = user.user_metadata ?? {}
   const isPlayer = meta.is_player === true || userMeta.is_player === true

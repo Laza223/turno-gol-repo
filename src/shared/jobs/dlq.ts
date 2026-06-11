@@ -24,6 +24,7 @@ export const ALL_QUEUES: readonly string[] = [
   'refresh-mp-tokens',
   'reconcile-pending-payments',
   'push-send',
+  'health-ping',
 ] as const
 
 /**

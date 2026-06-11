@@ -41,11 +41,19 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
 
   // Persist the "link shared" checklist step. The action can fail silently
   // (e.g. rate limit) so we surface its result instead of assuming success.
+  // A *thrown* action (network drop, redirect, transient server error) must NOT
+  // bubble out of the transition: unhandled it crashed the checklist and bounced
+  // the admin back to the start. Catch it and degrade to a soft notice — the
+  // link was already copied regardless of whether the step persisted.
   function persistShared() {
     if (state.publicLinkShared) return
     startTransition(async () => {
-      const res = await markPublicLinkSharedAction()
-      setShareError(res.success ? null : res.error)
+      try {
+        const res = await markPublicLinkSharedAction()
+        setShareError(res.success ? null : res.error)
+      } catch {
+        setShareError('No pudimos guardar el paso, pero el link ya se copió.')
+      }
     })
   }
 

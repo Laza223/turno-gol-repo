@@ -49,7 +49,7 @@
 - [x] ✅ Testimonios de complejos reales
 - [x] ✅ Footer institucional
 - [x] ✅ Buscador inteligente embebido en el hero (Localidad + Fecha + Hora + Deporte)
-- [ ] ❌ Detección automática de ubicación del usuario (geolocalización) para pre-llenar la ciudad
+- [x] ✅ Detección automática de ubicación del usuario (geolocalización) para pre-llenar la ciudad
 - [x] ✅ Sección "Complejos destacados cerca tuyo" — cards de complejos populares en la landing
 - [x] ✅ Sección "Partidos abiertos" / "Falta uno" en la landing — vitrina social
 - [ ] ❌ App download banners (links a App Store / Google Play cuando tengas PWA/App)
@@ -63,8 +63,8 @@
 - [x] ✅ Buscador estructurado estilo ATC: Localidad + Fecha + Hora + Texto en una sola barra
 - [x] ✅ Selector de fecha (datepicker) integrado en la barra de búsqueda
 - [x] ✅ Selector de hora preferida integrado en la barra de búsqueda
-- [ ] ❌ Búsqueda por disponibilidad real (cruzar agendas de todos los complejos y mostrar solo los que tengan turnos libres a esa hora)
-- [ ] ❌ Autocompletado predictivo de localidad/complejo
+- [x] ✅ Búsqueda por disponibilidad real (cruzar agendas de todos los complejos y mostrar solo los que tengan turnos libres a esa hora)
+- [x] ✅ Autocompletado predictivo de localidad/complejo
 - [x] ✅ Geolocalización para ordenar por cercanía (con permisos de ubicación)
 
 #### 2.2 Filtros avanzados (barra secundaria)
@@ -235,7 +235,7 @@
 - [x] Implementar estrategia de migrations con SQL versionado
 - [x] Documentar rollback procedure
 - [ ] Configurar Supavisor (Requiere plan Supabase Pro)
-- [ ] Reducir `max` del pool a 3 para serverless (Configuración de prod)
+- [x] Reducir `max` del pool a 3 para serverless (Configuración de prod)
 - [ ] Resolver dónde correr pg-boss workers (Pendiente decisión)
 - [ ] Crear proyecto de Supabase staging separado (Requiere plan/creación)
 
@@ -253,10 +253,10 @@
 
 ## Fase 3 — Resiliencia (P1)
 
-- [ ] Cablear circuit breaker (Existe módulo, no cableado en gateway de MP - Diferido post-launch)
+- [x] Cablear circuit breaker (Existe módulo, no cableado en gateway de MP - Diferido post-launch)
 - [x] Agregar timeout explícito en `gateway.getPaymentStatus()`
 - [x] Agregar advisory lock en `autoCompleteOverdueBookings`
-- [ ] Implementar health ping periódico a MP, Supabase, Resend
+- [x] Implementar health ping periódico a MP, Supabase, Resend
 - [x] Alertar vía Sentry cuando rate limiter entra en `unavailable: true` (Upstash caído)
 
 ---
@@ -346,6 +346,45 @@
 - [ ] API versioning (`/api/v1/`) — cuando tengas consumidores externos o app mobile
 - [ ] App mobile nativa iOS/Android — cuando las métricas demuestren que los usuarios la necesitan
 - [ ] Evaluar filmación de partidos + control de acceso físico (si el mercado lo pide)
+
+---
+
+## Post-Producción — UX, UI y Fixes de Usabilidad (P3)
+
+> Mejoras visuales, fixes de experiencia de usuario y bugs reportados por QA interno.
+> Prioridad baja respecto a los blockers de infraestructura y producción, ideal para pulir antes o después del primer release.
+
+### Vista Inicio (Onboarding / Auth)
+- [ ] **Feature**: Mejorar "Progreso de configuración" agregando el paso de "Configurar PIN de seguridad".
+- [x] **Bug**: Arreglar crasheo al presionar "Copiar link" que te devuelve al inicio del onboarding.
+- [x] **Bug**: Error al iniciar sesión/registrarse: el primer Magic Link suele dar error de link expirado/inválido, pero al solicitar un segundo link funciona correctamente.
+
+### Vista Grilla
+- [ ] **UX/UI**: Rediseñar la vista de la grilla para que sea más moderna, cómoda y amigable para el uso diario (evitar aspecto de tabla de Excel).
+
+### Vista Reservas
+- [ ] **UX/UI**: Replantear el diseño de la vista entendiendo que manejarán un buen volumen de reservas por día. Hacerla más funcional y ágil.
+
+### Vista Abonados
+- [ ] **UX/UI**: En "Nuevo abonado" aprovechar mejor el ancho de la pantalla.
+- [ ] **Copy/UX**: Aclarar la funcionalidad del "Precio mensual" al crear un abonado (actualmente poco intuitivo).
+- [ ] **UX general**: Hacer el flujo de creación más amigable para usuarios no técnicos (simplificar palabras y formatos tediosos).
+
+### Vista Caja
+- [ ] **UX/UI**: Rediseñar completamente para darle un propósito más claro y útil (ej. que sea un buen módulo para manejo de cantina/bar y productos del complejo).
+- [x] **Bug**: Solucionar error al agregar movimiento (Error en terminal: `column "client_idempotency_key" of relation "cash_flows" does not exist`).
+
+### Vista Reportes
+- [ ] **UX**: Agregar "Empty states" (estados vacíos) informativos que expliquen qué se va a ver ahí cuando haya información (actualmente se ve completamente vacío).
+
+### Vista Equipo
+- [ ] **Feature**: Ampliar el modal "Invitar nuevo admin" con selección de roles/permisos.
+- [x] **Bug**: Solucionar que el botón "Enviar invitación" no hace nada ni muestra error al completar los campos.
+
+### Vista Configuración y Copys Generales
+- [x] **Bug Lógico**: Corregir que "Requerir seña" aparece tildado por defecto cuando el complejo fue recién creado (sin MP) y debería reflejar "Terminar sin seña".
+- [ ] **Copy/UX**: Aclarar qué función cumple el toggle de "Reservar online" habilitado o deshabilitado.
+- [ ] **Copy General**: Auditar y cambiar términos técnicos en toda la app ("Ban", "admin", "no-show") por un lenguaje familiar y de fácil entendimiento para el dueño de un complejo deportivo.
 
 ---
 

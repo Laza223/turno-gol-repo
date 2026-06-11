@@ -48,6 +48,7 @@ Los bugs de lógica y datos no se ven leyendo. Antes y durante la auditoría:
 2. Corré la suite: `pnpm test` (unit), `pnpm test:integration` (DB real), `pnpm test:isolation` (aislamiento de tenants — BLOQUEANTE). Reportá fallos, flakes y, sobre todo, lo que los tests NO cubren.
 3. Para CADA hipótesis de bug de lógica, escribí un test nuevo que lo demuestre (rojo), después proponé el fix. Un bug sin test que lo reproduzca es una opinión, no un hallazgo.
 4. Si algo necesita DB, usá Supabase local (`pnpm supabase:start`, seed E2E). Si no podés levantar algo, decílo explícito — no inventes el resultado.
+5. Utilizá la skill de `superpowers` y sus sub-skills asociadas para potenciar tu capacidad de análisis, búsqueda y resolución durante toda la auditoría.
 
 # Foco de la auditoría (cubrí TODO esto, agregá lo que encuentres)
 

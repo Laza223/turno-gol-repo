@@ -43,6 +43,7 @@ Leer el código NO alcanza para bugs de estado. Setup (igual que en `TODO/_INDIC
 3. Corré los E2E existentes: `pnpm test:e2e` (mirá specs en `tests/`). Reportá fallos/flakes y, sobre todo, lo que NO cubren.
 4. Para CADA bug de comportamiento, registrá: vista, pasos exactos, qué dato esperabas, qué pasó, y el `archivo:línea` de la causa raíz. Un bug de front sin pasos para reproducir no es un hallazgo.
 5. Mirá la CONSOLA del browser y la pestaña Network en cada vista: warnings de React (keys, hydration), errores, requests duplicados, waterfalls.
+6. Utilizá la skill de `superpowers` y sus sub-skills asociadas para potenciar tu capacidad de análisis, búsqueda y resolución durante toda la auditoría.
 
 # Foco de la auditoría (cubrí TODO esto)
 

@@ -42,6 +42,7 @@ Modelo de identidad y aislamiento (clave para entender los ataques):
 2. Corré `pnpm test:isolation` (aislamiento de tenants — BLOQUEANTE) y `pnpm test:integration`. Si pasan, ESCRIBÍ tests nuevos que intenten romper el aislamiento (Tenant A leyendo/mutando datos de Tenant B; Player X accediendo a reservas de Player Y).
 3. Levantá la app (`pnpm dev` con Supabase local seedeado) y ejecutá PoCs reales con curl/fetch contra los endpoints (IDOR, CSRF, rate-limit, webhook forjado). Un hallazgo de seguridad sin PoC que lo demuestre es una hipótesis, no un hallazgo.
 4. Si no podés probar algo, decílo explícito y marcalo como "no verificado".
+5. Utilizá la skill de `superpowers` y sus sub-skills asociadas para potenciar tu capacidad de análisis, búsqueda y resolución durante toda la auditoría.
 
 # Foco de la auditoría (cubrí TODO, ordenado por criticidad para este negocio)
 

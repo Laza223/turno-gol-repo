@@ -79,7 +79,10 @@
       "Bash(npm install *)",
       "Bash(agent-browser --version)",
       "Bash(npx skills *)",
-      "Bash(agent-browser install *)"
+      "Bash(agent-browser install *)",
+      "WebFetch(domain:www.mercadopago.com.ar)",
+      "mcp__mercadopago__search_documentation",
+      "Bash(claude plugin *)"
     ]
   }
 }

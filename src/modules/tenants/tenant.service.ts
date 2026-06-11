@@ -30,7 +30,11 @@ export async function generateUniqueSlug(name: string): Promise<string> {
 }
 
 const DEFAULT_SETTINGS: TenantSettings = {
-  requires_deposit: true,
+  // Un complejo recién creado todavía no conectó MercadoPago, así que no puede cobrar
+  // seña: arranca en "Sin seña". El admin la habilita en Settings → Reservas una vez
+  // que conecta MP. (Fix: antes defaulteaba a true y mostraba "Requerir seña" tildado
+  // sin forma de cobrarla.)
+  requires_deposit: false,
   deposit_percentage: 30,
   cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
   no_show_penalty: { type: 'ban_days', days: 7 },

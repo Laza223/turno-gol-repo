@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+import { useFormState, useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,11 +11,30 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toast } from '@/hooks/use-toast'
+import type { StaffActionResult } from './actions'
 
-// The invite server action resolves to a result object; the form only cares
-// about the side effect, so its return value is dropped at the <form action>.
-type InviteAction = (formData: FormData) => Promise<unknown>
-type FormAction = (formData: FormData) => void | Promise<void>
+// inviteStaffAction tiene firma (formData) => Promise<StaffActionResult>.
+type InviteAction = (formData: FormData) => Promise<StaffActionResult>
+
+// useFormState arranca en null (sin resultado todavía) y pasa a un StaffActionResult
+// después del primer submit.
+type FormState = StaffActionResult | null
+const INITIAL_STATE: FormState = null
+
+function SubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <Button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="w-full bg-emerald-600 hover:bg-emerald-500"
+    >
+      {pending ? 'Enviando…' : 'Enviar invitación'}
+    </Button>
+  )
+}
 
 /**
  * Controlled "Invitar nuevo admin" dialog. Mounts already-open and reports
@@ -25,6 +46,8 @@ type FormAction = (formData: FormData) => void | Promise<void>
  * primitive out of the initial Staff chunk entirely.
  *
  * `inviteAction` is the server action, kept on the server while the UI is client.
+ * Se cablea con useFormState para mostrar errores, estado de carga y, en éxito,
+ * un toast + cierre del modal (la action ya hace revalidatePath('/staff')).
  */
 export function InviteStaffDialog({
   inviteAction,
@@ -33,13 +56,34 @@ export function InviteStaffDialog({
   inviteAction: InviteAction
   onClose: () => void
 }) {
+  const [state, formAction] = useFormState<FormState, FormData>(
+    (_prev, formData) => inviteAction(formData),
+    INITIAL_STATE,
+  )
+
+  // En éxito: avisamos con toast y cerramos. El ref evita re-disparar el cierre
+  // si el efecto corre de nuevo antes de desmontar.
+  const handledRef = useRef(false)
+  useEffect(() => {
+    if (state?.success && !handledRef.current) {
+      handledRef.current = true
+      toast({
+        title: 'Invitación enviada',
+        description: 'Recibirán un email para activar su cuenta.',
+      })
+      onClose()
+    }
+  }, [state, onClose])
+
+  const errorMessage = state && !state.success ? state.error : null
+
   return (
     <Dialog defaultOpen onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Invitar nuevo admin</DialogTitle>
         </DialogHeader>
-        <form action={inviteAction as unknown as FormAction} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">Nombre</Label>
@@ -64,9 +108,17 @@ export function InviteStaffDialog({
               Recibirán un email para activar su cuenta.
             </p>
           </div>
-          <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500">
-            Enviar invitación
-          </Button>
+
+          {errorMessage && (
+            <p
+              role="alert"
+              className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-inset ring-red-600/20"
+            >
+              {errorMessage}
+            </p>
+          )}
+
+          <SubmitButton />
         </form>
       </DialogContent>
     </Dialog>

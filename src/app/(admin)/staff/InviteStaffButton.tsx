@@ -4,8 +4,9 @@ import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { StaffActionResult } from './actions'
 
-type InviteAction = (formData: FormData) => Promise<unknown>
+type InviteAction = (formData: FormData) => Promise<StaffActionResult>
 
 // The Radix Dialog only loads once the admin actually opens the invite form.
 // Mounted conditionally (not in the initial tree) so its chunk is not preloaded

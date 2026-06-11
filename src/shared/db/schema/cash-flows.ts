@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
@@ -76,8 +77,10 @@ export const cashFlows = pgTable(
       table.tenantId,
       table.category,
     ),
-    idempotencyKeyIdx: index('idx_cash_flows_idempotency_key').on(
-      table.clientIdempotencyKey,
-    ),
+    // Fix #55: índice UNIQUE parcial que respalda el ON CONFLICT (client_idempotency_key)
+    // en createCashFlow(). Debe coincidir con la migración 023_cashflow_idempotency_key.sql.
+    idempotencyKeyIdx: uniqueIndex('idx_cash_flows_idempotency_key')
+      .on(table.clientIdempotencyKey)
+      .where(sql`${table.clientIdempotencyKey} IS NOT NULL`),
   }),
 )

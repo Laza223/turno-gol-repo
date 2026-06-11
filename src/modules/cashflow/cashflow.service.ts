@@ -79,7 +79,7 @@ export async function createCashFlow(
         ${staffUserId}, ${occurredAt.toISOString()},
         ${input.clientIdempotencyKey}
       )
-      ON CONFLICT (client_idempotency_key) DO NOTHING
+      ON CONFLICT (client_idempotency_key) WHERE client_idempotency_key IS NOT NULL DO NOTHING
       RETURNING *
     `)
     const inserted = (result as unknown as Array<typeof cashFlows.$inferSelect>)[0]

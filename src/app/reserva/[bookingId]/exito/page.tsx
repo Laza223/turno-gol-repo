@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { sql } from 'drizzle-orm'
 import { CheckCircle2 } from 'lucide-react'
@@ -6,6 +7,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
+import BookingQR from '@/components/booking/BookingQR'
 
 type Props = { params: { bookingId: string } }
 
@@ -95,6 +97,13 @@ export default async function ReservaExitoPage({ params }: Props) {
 
   const remainingAmount = booking.priceSnapshot - booking.depositAmount
 
+  // URL pública de verificación que codifica el QR: el complejo la escanea y
+  // ve el estado real del turno (sin datos del jugador). Base desde env con
+  // fallback al host del request (dev / previews).
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? `https://${headers().get('host') ?? 'turnogol.app'}`
+  const verifyUrl = `${appUrl}/reserva/${params.bookingId}/verificar`
+
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
@@ -115,6 +124,18 @@ export default async function ReservaExitoPage({ params }: Props) {
           <p>Resta abonar en el complejo: ${fmtArs(remainingAmount)}</p>
         </div>
       )}
+      <section
+        aria-label="Comprobante para mostrar en el complejo"
+        className="mt-6 w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
+        <div className="flex justify-center rounded-lg bg-white">
+          <BookingQR value={verifyUrl} label="Código QR de verificación de la reserva" />
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Mostrá este código al llegar: el complejo lo escanea y verifica tu reserva al instante.
+        </p>
+      </section>
+
       <BookingSuccessExtras
         tenantName={booking.tenantName}
         courtName={booking.courtName}

@@ -29,6 +29,10 @@ const createCashFlowSchema = z.object({
   productId: uuid.optional(),
   // coerce: a Server Action may deliver this as a Date or an ISO string across the boundary.
   occurredAt: z.coerce.date().optional(),
+  // Cruce #10: sin esta clave en el schema, z.object() la strippeaba en
+  // safeParse y el ON CONFLICT (client_idempotency_key) DO NOTHING del
+  // service nunca corría → doble-tap = venta duplicada en la caja.
+  clientIdempotencyKey: uuid.optional(),
 })
 
 const closeDaySchema = z.object({

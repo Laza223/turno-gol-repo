@@ -134,6 +134,58 @@ describe('cashflow service', () => {
     expect(cf.amount).toBe(200000)
   })
 
+  it('creates an expense cashflow (operating_expense)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    const cf = await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(tenant.id, staff.id, {
+        type: 'expense',
+        category: 'operating_expense',
+        amount: 350000,
+        method: 'cash',
+        description: 'Compra de pelotas',
+      }, tx),
+    )
+
+    expect(cf.type).toBe('expense')
+    expect(cf.category).toBe('operating_expense')
+    expect(cf.amount).toBe(350000)
+  })
+
+  it('day summary and close compute ingresos - egresos = saldo', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    await sql`
+      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
+      VALUES
+        (${tenant.id}, 'income', 'booking', ${500000}, 'cash', ${'Turno'}, ${staff.id}, NOW()),
+        (${tenant.id}, 'income', 'product_sale', ${150000}, 'cash', ${'Gatorade'}, ${staff.id}, NOW()),
+        (${tenant.id}, 'expense', 'operating_expense', ${200000}, 'cash', ${'Hielo y carbón'}, ${staff.id}, NOW())
+    `
+
+    const summary = await withTenantContext(tenant.id, (tx) =>
+      getDaySummary(tenant.id, TODAY, tx),
+    )
+    expect(summary.totalIncome).toBe(650000)
+    expect(summary.totalExpense).toBe(200000)
+    expect(summary.balance).toBe(450000)
+    // byMethod es neto por método (arqueo): 650000 entran - 200000 salen, todo en cash.
+    expect(summary.byMethod.cash).toBe(450000)
+
+    const close = await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(tenant.id, TODAY, staff.id, {}, tx),
+    )
+    expect(close.totalIncome).toBe(650000)
+    expect(close.totalExpense).toBe(200000)
+    expect(close.balance).toBe(450000)
+  })
+
   it('closes the day and aggregates totals correctly', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)

@@ -19,7 +19,7 @@ async function aggregateTotals(
   tenantId: string,
   date: string,
   tx: DbTx,
-): Promise<{ totalIncome: number; totalAdjustments: number }> {
+): Promise<{ totalIncome: number; totalAdjustments: number; totalExpense: number }> {
   const rows = await tx.execute(
     sql`SELECT type, SUM(amount)::int AS total
         FROM cash_flows
@@ -30,11 +30,13 @@ async function aggregateTotals(
 
   let totalIncome = 0
   let totalAdjustments = 0
+  let totalExpense = 0
   for (const row of (rows as unknown as Array<{ type: string; total: number }>)) {
     if (row.type === ('income' as CashFlowType)) totalIncome = row.total ?? 0
     if (row.type === ('adjustment' as CashFlowType)) totalAdjustments = row.total ?? 0
+    if (row.type === ('expense' as CashFlowType)) totalExpense = row.total ?? 0
   }
-  return { totalIncome, totalAdjustments }
+  return { totalIncome, totalAdjustments, totalExpense }
 }
 
 export async function closeDailyRegister(
@@ -55,8 +57,8 @@ export async function closeDailyRegister(
     throw new DayAlreadyCloseExistsError(date)
   }
 
-  const { totalIncome, totalAdjustments } = await aggregateTotals(tenantId, date, tx)
-  const balance = totalIncome + totalAdjustments
+  const { totalIncome, totalAdjustments, totalExpense } = await aggregateTotals(tenantId, date, tx)
+  const balance = totalIncome + totalAdjustments - totalExpense
   const declaredCash = opts.declaredCash ?? 0
   const diffAmount = balance - declaredCash
 
@@ -69,6 +71,7 @@ export async function closeDailyRegister(
         date: new Date(date),
         totalIncome,
         totalAdjustments,
+        totalExpense,
         balance,
         declaredCash,
         diffAmount,
@@ -98,6 +101,7 @@ export async function closeDailyRegister(
     date: closeRow.date,
     totalIncome: closeRow.totalIncome,
     totalAdjustments: closeRow.totalAdjustments,
+    totalExpense: closeRow.totalExpense,
     balance: closeRow.balance,
     declaredCash: closeRow.declaredCash,
     diffAmount: closeRow.diffAmount,
@@ -121,6 +125,7 @@ export async function getDailyClose(
     date: Date
     total_income: number
     total_adjustments: number
+    total_expense: number
     balance: number
     declared_cash: number
     diff_amount: number
@@ -135,6 +140,7 @@ export async function getDailyClose(
     date: new Date(r.date),
     totalIncome: r.total_income,
     totalAdjustments: r.total_adjustments,
+    totalExpense: r.total_expense,
     balance: r.balance,
     declaredCash: r.declared_cash,
     diffAmount: r.diff_amount,

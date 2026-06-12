@@ -18,10 +18,11 @@ import type {
 const VALID_COMBOS: Record<CashFlowType, CashFlowCategory[]> = {
   income: ['booking', 'product_sale', 'other'],
   adjustment: ['other', 'no_show_correction'],
+  expense: ['operating_expense'],
 }
 
 export function validateCashFlowCombo(type: string, category: string): void {
-  if (type !== 'income' && type !== 'adjustment') {
+  if (type !== 'income' && type !== 'adjustment' && type !== 'expense') {
     throw new InvalidCashFlowTypeError()
   }
   const allowed = VALID_COMBOS[type as CashFlowType]
@@ -168,6 +169,7 @@ export async function getDaySummary(
 
   let totalIncome = 0
   let totalAdjustments = 0
+  let totalExpense = 0
   const byCategory: Partial<Record<CashFlowCategory, number>> = {}
   const byMethod: Partial<Record<'cash' | 'transfer' | 'mercadopago' | 'other', number>> = {}
 
@@ -175,12 +177,16 @@ export async function getDaySummary(
     const total = row.total ?? 0
     if (row.type === 'income') totalIncome += total
     else if (row.type === 'adjustment') totalAdjustments += total
+    else if (row.type === 'expense') totalExpense += total
 
     const cat = row.category as CashFlowCategory
     byCategory[cat] = (byCategory[cat] ?? 0) + total
 
+    // byMethod es neto: el admin lo usa para arqueo (cuánto quedó en efectivo /
+    // MP / transferencia), así que un gasto resta de su método.
+    const signed = row.type === 'expense' ? -total : total
     const meth = row.method as 'cash' | 'transfer' | 'mercadopago' | 'other'
-    byMethod[meth] = (byMethod[meth] ?? 0) + total
+    byMethod[meth] = (byMethod[meth] ?? 0) + signed
   }
 
   const closeRows = await tx.execute(
@@ -193,6 +199,7 @@ export async function getDaySummary(
     date: Date
     total_income: number
     total_adjustments: number
+    total_expense: number
     balance: number
     declared_cash: number
     diff_amount: number
@@ -208,6 +215,7 @@ export async function getDaySummary(
         date: new Date(closeRaw.date),
         totalIncome: closeRaw.total_income,
         totalAdjustments: closeRaw.total_adjustments,
+        totalExpense: closeRaw.total_expense,
         balance: closeRaw.balance,
         declaredCash: closeRaw.declared_cash,
         diffAmount: closeRaw.diff_amount,
@@ -221,7 +229,8 @@ export async function getDaySummary(
     date,
     totalIncome,
     totalAdjustments,
-    balance: totalIncome + totalAdjustments,
+    totalExpense,
+    balance: totalIncome + totalAdjustments - totalExpense,
     byCategory,
     byMethod,
     isClosed: close !== null,

@@ -13,7 +13,7 @@ import {
 import { tenants } from './tenants'
 import { staffUsers } from './staff-users'
 
-// Fix #8 F2: total_adjustments (NO total_expense — TurnoGol no tiene gastos).
+// total_expense agregado en migración 025 (rediseño de Caja); supersede Fix #8.
 // Inmutable post-cierre (REVOKE UPDATE/DELETE en 008).
 export const dailyCashCloses = pgTable(
   'daily_cash_closes',
@@ -27,6 +27,7 @@ export const dailyCashCloses = pgTable(
 
     totalIncome: integer('total_income').notNull().default(0),
     totalAdjustments: integer('total_adjustments').notNull().default(0),
+    totalExpense: integer('total_expense').notNull().default(0),
     balance: integer('balance').notNull().default(0),
 
     declaredCash: integer('declared_cash').notNull().default(0),
@@ -52,6 +53,10 @@ export const dailyCashCloses = pgTable(
     adjustmentsNonNegative: check(
       'chk_adjustments_non_negative',
       sql`${table.totalAdjustments} >= 0`,
+    ),
+    expenseNonNegative: check(
+      'chk_expense_non_negative',
+      sql`${table.totalExpense} >= 0`,
     ),
     tenantIdx: index('idx_daily_closes_tenant').on(table.tenantId),
     tenantDateIdx: index('idx_daily_closes_tenant_date').on(

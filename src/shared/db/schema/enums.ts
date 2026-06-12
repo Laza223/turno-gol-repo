@@ -114,14 +114,15 @@ export const paymentStatusEnum = pgEnum('payment_status', [
 ])
 
 // ─── Cash flow ──────────────────────────────────────────────────
-// Fix #7 F2: sin 'expense'.
-export const cashflowTypeEnum = pgEnum('cashflow_type', ['income', 'adjustment'])
+// 'expense' agregado en migración 025 (rediseño de Caja); supersede Fix #7.
+export const cashflowTypeEnum = pgEnum('cashflow_type', ['income', 'adjustment', 'expense'])
 
 export const cashflowCategoryEnum = pgEnum('cashflow_category', [
   'booking',
   'product_sale',
   'other',
   'no_show_correction',
+  'operating_expense',
 ])
 
 // ─── Notification ───────────────────────────────────────────────

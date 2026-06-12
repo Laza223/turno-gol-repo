@@ -1,5 +1,10 @@
-export type CashFlowType = 'income' | 'adjustment'
-export type CashFlowCategory = 'booking' | 'product_sale' | 'other' | 'no_show_correction'
+export type CashFlowType = 'income' | 'adjustment' | 'expense'
+export type CashFlowCategory =
+  | 'booking'
+  | 'product_sale'
+  | 'other'
+  | 'no_show_correction'
+  | 'operating_expense'
 export type CashPaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
 
 export type CashFlowRow = {
@@ -23,6 +28,7 @@ export type DailyCashCloseRow = {
   date: Date
   totalIncome: number
   totalAdjustments: number
+  totalExpense: number
   balance: number
   declaredCash: number
   diffAmount: number
@@ -35,6 +41,8 @@ export type DaySummary = {
   date: string
   totalIncome: number
   totalAdjustments: number
+  totalExpense: number
+  /** Saldo neto del día: ingresos + ajustes - egresos. */
   balance: number
   byCategory: Partial<Record<CashFlowCategory, number>>
   byMethod: Partial<Record<CashPaymentMethod, number>>

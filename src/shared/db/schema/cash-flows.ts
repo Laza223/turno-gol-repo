@@ -19,7 +19,7 @@ import {
   paymentMethodEnum,
 } from './enums'
 
-// Fix #7 F2: chk_cashflow_type_category — combinaciones válidas, sin 'expense'.
+// chk_cashflow_type_category — combinaciones válidas; 'expense' desde migración 025.
 export const cashFlows = pgTable(
   'cash_flows',
   {
@@ -62,7 +62,8 @@ export const cashFlows = pgTable(
     typeCategoryValid: check(
       'chk_cashflow_type_category',
       sql`(${table.type} = 'income' AND ${table.category} IN ('booking', 'product_sale', 'other'))
-        OR (${table.type} = 'adjustment' AND ${table.category} IN ('other', 'no_show_correction'))`,
+        OR (${table.type} = 'adjustment' AND ${table.category} IN ('other', 'no_show_correction'))
+        OR (${table.type} = 'expense' AND ${table.category} = 'operating_expense')`,
     ),
     tenantIdx: index('idx_cash_flows_tenant').on(table.tenantId),
     tenantDateIdx: index('idx_cash_flows_tenant_date').on(

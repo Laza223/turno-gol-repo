@@ -21,8 +21,8 @@ import type { NextRequest } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 const createCashFlowSchema = z.object({
-  type: z.enum(['income', 'adjustment']),
-  category: z.enum(['booking', 'product_sale', 'other', 'no_show_correction']),
+  type: z.enum(['income', 'adjustment', 'expense']),
+  category: z.enum(['booking', 'product_sale', 'other', 'no_show_correction', 'operating_expense']),
   amount: z.number().int().positive(),
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
   description: z.string().min(1).max(500),

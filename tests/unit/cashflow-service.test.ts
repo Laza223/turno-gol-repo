@@ -6,8 +6,21 @@ import {
 } from '@/modules/cashflow/cashflow.errors'
 
 describe('validateCashFlowCombo', () => {
-  it('rejects type expense', () => {
-    expect(() => validateCashFlowCombo('expense', 'other')).toThrow(InvalidCashFlowTypeError)
+  // 'expense' es válido desde la migración 025 (rediseño de Caja), pero solo
+  // con la categoría operating_expense.
+  it('rejects expense with non-operating category', () => {
+    expect(() => validateCashFlowCombo('expense', 'other')).toThrow(InvalidCashFlowCategoryError)
+    expect(() => validateCashFlowCombo('expense', 'booking')).toThrow(InvalidCashFlowCategoryError)
+  })
+
+  it('accepts expense + operating_expense', () => {
+    expect(() => validateCashFlowCombo('expense', 'operating_expense')).not.toThrow()
+  })
+
+  it('rejects income with operating_expense', () => {
+    expect(() => validateCashFlowCombo('income', 'operating_expense')).toThrow(
+      InvalidCashFlowCategoryError,
+    )
   })
 
   it('rejects unknown type', () => {

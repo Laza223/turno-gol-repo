@@ -20,8 +20,8 @@ import {
 import type { CashFlowRow, DailyCashCloseRow, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
 const createCashFlowSchema = z.object({
-  type: z.enum(['income', 'adjustment']),
-  category: z.enum(['booking', 'product_sale', 'other', 'no_show_correction']),
+  type: z.enum(['income', 'adjustment', 'expense']),
+  category: z.enum(['booking', 'product_sale', 'other', 'no_show_correction', 'operating_expense']),
   amount: moneyCents,
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
   description: boundedText(500),

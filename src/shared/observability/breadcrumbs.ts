@@ -67,7 +67,10 @@ type AvailabilityCtx = {
   courts?: number
 }
 
-type SearchEvent = 'search.public.query' | 'search.availability.query'
+type SearchEvent =
+  | 'search.public.query'
+  | 'search.availability.query'
+  | 'search.availability.pills'
 
 type SearchCtx = {
   hasQuery?: boolean // never the raw query text — PII-safe (Ley 25.326)
@@ -80,6 +83,9 @@ type SearchCtx = {
   time?: string
   formats?: string
   candidates?: number
+  // search.availability.pills (conteos por página de /explorar)
+  tenants?: number
+  withPills?: number
 }
 
 type NotificationEvent =

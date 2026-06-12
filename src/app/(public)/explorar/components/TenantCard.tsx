@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { MapPin, Navigation, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
+import type { SlotPill } from '@/modules/tenants/availability-search.service'
 import { formatFromPrice } from '@/lib/format'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import { formatLabel, surfaceLabel } from '@/components/public/courtFacets'
@@ -19,11 +20,14 @@ export default function TenantCard({
   tenant,
   initialFavorited = false,
   photos = [],
+  slotPills,
 }: {
   tenant: PublicTenantCard
   initialFavorited?: boolean
   /** Fotos de canchas del complejo (además del cover), para el carrusel. */
   photos?: string[]
+  /** Turnos libres del día buscado (solo cuando hay búsqueda con fecha+hora). */
+  slotPills?: { date: string; slots: SlotPill[] }
 }) {
   const fromPrice = formatFromPrice(tenant.fromPriceCents)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
@@ -93,6 +97,27 @@ export default function TenantCard({
             <span className="tabular-nums">· a {tenant.distanceKm} km</span>
           )}
         </p>
+
+        {/* Píldoras de turnos libres: link directo a la reserva con court+fecha+hora.
+            z-10 sobre el stretched-link, como el botón de favorito. */}
+        {tenant.allowOnlineBooking && slotPills && slotPills.slots.length > 0 && (
+          <div
+            role="group"
+            aria-label={`Turnos libres el ${slotPills.date.split('-').reverse().join('/')}`}
+            className="relative z-10 flex flex-wrap gap-1.5 pt-0.5"
+          >
+            {slotPills.slots.map((s) => (
+              <Link
+                key={s.time}
+                href={`/${tenant.slug}/reservar?court=${s.courtId}&date=${slotPills.date}&time=${s.time}&dur=${s.durationMins}`}
+                aria-label={`Reservar a las ${s.time}`}
+                className="inline-flex items-center rounded-md bg-emerald-700 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 tabular-nums"
+              >
+                {s.time}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {(formats.length > 0 || surfaces.length > 0) && (
           <div className="flex flex-wrap gap-1.5 pt-0.5">

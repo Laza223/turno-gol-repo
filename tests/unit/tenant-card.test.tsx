@@ -114,3 +114,38 @@ describe('TenantCard — carrusel de fotos', () => {
     }
   })
 })
+
+describe('TenantCard — píldoras de turnos libres', () => {
+  const pills = {
+    date: '2026-06-15',
+    slots: [
+      { time: '18:00', courtId: 'c9', durationMins: 60 },
+      { time: '19:00', courtId: 'c9', durationMins: 60 },
+    ],
+  }
+
+  it('renderiza las píldoras como links directos a la reserva con court+fecha+hora+duración', () => {
+    render(<TenantCard tenant={baseTenant} slotPills={pills} />)
+    const link = screen.getByRole('link', { name: 'Reservar a las 18:00' })
+    expect(link.getAttribute('href')).toBe(
+      '/el-potrero/reservar?court=c9&date=2026-06-15&time=18:00&dur=60',
+    )
+    expect(screen.getByRole('link', { name: 'Reservar a las 19:00' })).toBeTruthy()
+    expect(
+      screen.getByRole('group', { name: 'Turnos libres el 15/06/2026' }),
+    ).toBeTruthy()
+  })
+
+  it('sin búsqueda temporal (sin slotPills) la card no muestra turnos', () => {
+    render(<TenantCard tenant={baseTenant} />)
+    expect(screen.queryByText('18:00')).toBeNull()
+    expect(screen.queryByRole('link', { name: /Reservar a las/ })).toBeNull()
+  })
+
+  it('si el complejo no acepta reserva online no muestra píldoras aunque lleguen', () => {
+    render(
+      <TenantCard tenant={{ ...baseTenant, allowOnlineBooking: false }} slotPills={pills} />,
+    )
+    expect(screen.queryByText('18:00')).toBeNull()
+  })
+})

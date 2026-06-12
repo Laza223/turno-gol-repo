@@ -8,7 +8,9 @@ import {
 } from '@/modules/tenants/search.service'
 import {
   findAvailableTenantIds,
+  findFreeSlotPillsByTenant,
   parseAvailabilitySearchParams,
+  type SlotPill,
 } from '@/modules/tenants/availability-search.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -117,12 +119,24 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
 
   const hasMore = view === 'list' && offset + PAGE_SIZE < total
 
-  // Fotos de canchas para el carrusel de cada card (solo la vista lista las
-  // renderiza). Fail-open: sin fotos la card cae al coverUrl como siempre.
-  const photosByTenant: Record<string, string[]> =
-    view === 'list' && results.length > 0
-      ? await getCourtPhotosByTenant(results.map((t) => t.id)).catch(() => ({}))
-      : {}
+  // Extras de las cards (solo la vista lista las renderiza), en paralelo y
+  // fail-open: sin fotos la card cae al coverUrl; sin pills no muestra turnos.
+  const wantCardExtras = view === 'list' && results.length > 0
+  const [photosByTenant, pillsByTenant] = await Promise.all([
+    wantCardExtras
+      ? getCourtPhotosByTenant(results.map((t) => t.id)).catch(
+          () => ({}) as Record<string, string[]>,
+        )
+      : ({} as Record<string, string[]>),
+    wantCardExtras && avail
+      ? findFreeSlotPillsByTenant({
+          tenantIds: results.filter((t) => t.allowOnlineBooking).map((t) => t.id),
+          date: avail.date,
+          time: avail.time,
+          ...(formats.length ? { formats } : {}),
+        }).catch(() => ({}) as Record<string, SlotPill[]>)
+      : ({} as Record<string, SlotPill[]>),
+  ])
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
@@ -169,14 +183,20 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
           ) : (
             <>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {results.map((t) => (
-                  <TenantCard
-                    key={t.id}
-                    tenant={t}
-                    initialFavorited={favoriteIds.has(t.id)}
-                    photos={photosByTenant[t.id] ?? []}
-                  />
-                ))}
+                {results.map((t) => {
+                  const pills = pillsByTenant[t.id]
+                  return (
+                    <TenantCard
+                      key={t.id}
+                      tenant={t}
+                      initialFavorited={favoriteIds.has(t.id)}
+                      photos={photosByTenant[t.id] ?? []}
+                      slotPills={
+                        avail && pills?.length ? { date: avail.date, slots: pills } : undefined
+                      }
+                    />
+                  )
+                })}
               </div>
               {hasMore && (
                 <div className="mt-10 flex justify-center">

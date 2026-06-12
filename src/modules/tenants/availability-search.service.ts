@@ -219,3 +219,188 @@ async function loadAvailableTenantIds({
   })
   return ids
 }
+
+// ─── Píldoras de turnos libres por tenant (cards de /explorar) ───────────────
+
+/** Turno libre listo para linkear a /[slug]/reservar (court+date+time+dur). */
+export type SlotPill = { time: string; courtId: string; durationMins: number }
+
+export type CourtOccupancy = {
+  courtId: string
+  busy: Array<{ startMins: number; endMins: number }>
+}
+
+const PILLS_PER_TENANT = 3
+
+/**
+ * Asigna a cada horario candidato la primera cancha sin solapamiento (puro).
+ * `courts` viene ordenado (created_at): la elección es determinística.
+ */
+export function pickFreeSlotPills(
+  candidateTimes: string[],
+  durationMins: number,
+  courts: CourtOccupancy[],
+  cap: number,
+): SlotPill[] {
+  const pills: SlotPill[] = []
+  for (const time of candidateTimes) {
+    if (pills.length >= cap) break
+    const start = timeToMins(time)
+    const end = start + durationMins
+    const free = courts.find(
+      (c) => !c.busy.some((b) => b.startMins < end && b.endMins > start),
+    )
+    if (free) pills.push({ time, courtId: free.courtId, durationMins })
+  }
+  return pills
+}
+
+/**
+ * Hasta 3 turnos libres por tenant a partir de la hora buscada (tenantId →
+ * pills), para mostrar como badges clickeables en las cards de /explorar.
+ * Mismas semánticas puras que la grilla del perfil (generateSlots) + una sola
+ * query cross-tenant de courts/bookings — mismo caveat RLS que
+ * loadAvailableTenantIds (fail-closed: sin filas no hay pills, no hay leak).
+ * Sin cache propio: corre solo sobre la página visible (≤12 tenants); puede
+ * divergir ~30s del filtro cacheado de findAvailableTenantIds, en cuyo caso
+ * la card simplemente no muestra pills.
+ */
+export async function findFreeSlotPillsByTenant(params: {
+  tenantIds: string[]
+  date: string // YYYY-MM-DD (validated upstream)
+  time: string // HH:MM (validated upstream)
+  formats?: number[]
+}): Promise<Record<string, SlotPill[]>> {
+  return withSpan('search.availability.pills', 'db.query.search', () =>
+    loadFreeSlotPillsByTenant(params),
+  )
+}
+
+async function loadFreeSlotPillsByTenant({
+  tenantIds,
+  date,
+  time,
+  formats,
+}: {
+  tenantIds: string[]
+  date: string
+  time: string
+  formats?: number[]
+}): Promise<Record<string, SlotPill[]>> {
+  if (tenantIds.length === 0) return {}
+  const db = getDb()
+  const rows = await db
+    .select({
+      id: tenants.id,
+      openingHours: tenants.openingHours,
+      closedDates: tenants.closedDates,
+      settings: tenants.settings,
+    })
+    .from(tenants)
+    .where(inArray(tenants.id, tenantIds))
+
+  // Current time in ART. Argentina = UTC-3, no DST.
+  const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  const now = {
+    nowDateStr: artNow.toISOString().slice(0, 10),
+    nowMins: artNow.getUTCHours() * 60 + artNow.getUTCMinutes(),
+  }
+
+  // Horarios candidatos por tenant (grilla pura, sin ocupación): libres por
+  // agenda y >= la hora buscada.
+  const candidates = new Map<string, { times: string[]; durationMins: number }>()
+  for (const row of rows) {
+    const s = row.settings as TenantSettings
+    const durationMins = s.booking_duration_minutes?.[0] ?? 60
+    if (date > addDays(now.nowDateStr, s.booking_advance_days ?? 6)) continue
+    const [y, mo, d] = date.split('-').map(Number)
+    const dayKey = DAY_KEYS[new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1)).getUTCDay()]!
+    const dayHours = (row.openingHours as OpeningHours)[dayKey as keyof OpeningHours]
+    const closedDay =
+      dayHours?.closed === true || ((row.closedDates ?? []) as string[]).includes(date)
+    const slots = generateSlots({
+      courtId: 'probe',
+      pricing: { rules: [] },
+      dayKey,
+      openHhmm: dayHours?.open ?? '08:00',
+      closeHhmm: dayHours?.close ?? '23:00',
+      closedDay,
+      courtBookings: [],
+      durationMins,
+      date,
+      nowDateStr: now.nowDateStr,
+      nowMins: now.nowMins,
+    })
+    const times = slots
+      .filter((sl) => sl.status === 'free' && sl.time >= time)
+      .map((sl) => sl.time)
+    if (times.length > 0) candidates.set(row.id, { times, durationMins })
+  }
+  if (candidates.size === 0) return {}
+
+  // Una sola pasada cross-tenant: canchas online + sus reservas del día.
+  const idList = sql.join(
+    Array.from(candidates.keys()).map((id) => sql`${id}::uuid`),
+    sql`, `,
+  )
+  const formatCond = formats?.length
+    ? sql` AND c.capacity IN (${sql.join(formats.map((f) => sql`${f}`), sql`, `)})`
+    : sql``
+  const result = await db.execute(sql`
+    SELECT c.tenant_id AS tenant_id, c.id AS court_id,
+           b.time_start::text AS time_start, b.time_end::text AS time_end
+    FROM courts c
+    LEFT JOIN bookings b
+      ON b.court_id = c.id
+     AND b.tenant_id = c.tenant_id
+     AND b.date = ${date}::date
+     AND b.status IN ('pending_payment', 'confirmed')
+    WHERE c.tenant_id IN (${idList})
+      AND c.status = 'online'${formatCond}
+    ORDER BY c.created_at
+  `)
+
+  const courtsByTenant = new Map<string, Map<string, CourtOccupancy>>()
+  for (const r of result as unknown as Array<{
+    tenant_id: string
+    court_id: string
+    time_start: string | null
+    time_end: string | null
+  }>) {
+    let courtMap = courtsByTenant.get(r.tenant_id)
+    if (!courtMap) {
+      courtMap = new Map()
+      courtsByTenant.set(r.tenant_id, courtMap)
+    }
+    let occ = courtMap.get(r.court_id)
+    if (!occ) {
+      occ = { courtId: r.court_id, busy: [] }
+      courtMap.set(r.court_id, occ)
+    }
+    if (r.time_start && r.time_end) {
+      const endMins = timeToMins(r.time_end.slice(0, 5))
+      occ.busy.push({
+        startMins: timeToMins(r.time_start.slice(0, 5)),
+        // legacy guard: un slot que termina a medianoche puede venir como 00:00
+        endMins: endMins === 0 ? 24 * 60 : endMins,
+      })
+    }
+  }
+
+  const out: Record<string, SlotPill[]> = {}
+  for (const [tenantId, { times, durationMins }] of Array.from(candidates.entries())) {
+    const courtMap = courtsByTenant.get(tenantId)
+    if (!courtMap) continue
+    const courtList = Array.from(courtMap.values())
+    const pills = pickFreeSlotPills(times, durationMins, courtList, PILLS_PER_TENANT)
+    if (pills.length > 0) out[tenantId] = pills
+  }
+
+  track.search('search.availability.pills', {
+    date,
+    time,
+    tenants: tenantIds.length,
+    withPills: Object.keys(out).length,
+  })
+  return out
+}

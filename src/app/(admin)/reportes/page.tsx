@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { Download } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 import { PinGate } from '@/components/pin-gate'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -33,6 +34,35 @@ function currentMonthStr(): string {
 
 function isValidMonth(s: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(s)
+}
+
+function EmptyReportIllustration() {
+  return (
+    <svg width="160" height="100" viewBox="0 0 160 100" fill="none" aria-hidden="true">
+      <rect x="8" y="8" width="144" height="84" rx="8" className="fill-slate-50" />
+      <line
+        x1="24"
+        y1="76"
+        x2="136"
+        y2="76"
+        className="stroke-slate-200"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <rect x="32" y="52" width="14" height="24" rx="2" className="fill-emerald-200" />
+      <rect x="56" y="40" width="14" height="36" rx="2" className="fill-emerald-300" />
+      <rect x="80" y="58" width="14" height="18" rx="2" className="fill-emerald-200" />
+      <rect x="104" y="30" width="14" height="46" rx="2" className="fill-emerald-400" />
+      <path
+        d="M32 46 C 56 28, 84 42, 126 20"
+        className="stroke-emerald-500"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray="4 5"
+        fill="none"
+      />
+    </svg>
+  )
 }
 
 export default async function ReportesPage({
@@ -123,7 +153,11 @@ export default async function ReportesPage({
       </div>
 
       {isEmpty ? (
-        <p className="text-sm text-slate-500">Sin movimientos en este período.</p>
+        <EmptyState
+          illustration={<EmptyReportIllustration />}
+          title="Sin movimientos en este período"
+          description="Cuando tu complejo registre reservas y cobros, acá vas a ver los ingresos del mes, el balance, la ocupación de cada cancha y los métodos de pago más usados."
+        />
       ) : (
         <>
           {/* KPI cards */}
@@ -215,16 +249,18 @@ export default async function ReportesPage({
         </>
       )}
 
-      {/* CSV export */}
-      <div className="flex justify-end">
-        <a
-          href={`/api/reports/revenue?from=${csvFrom}&to=${csvTo}&format=csv`}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          Exportar CSV
-        </a>
-      </div>
+      {/* CSV export — pointless on an empty month, so hidden with the empty state */}
+      {!isEmpty && (
+        <div className="flex justify-end">
+          <a
+            href={`/api/reports/revenue?from=${csvFrom}&to=${csvTo}&format=csv`}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            Exportar CSV
+          </a>
+        </div>
+      )}
     </div>
   )
 

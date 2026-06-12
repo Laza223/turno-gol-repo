@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 
 export interface EmptyStateProps {
   icon?: LucideIcon
+  illustration?: React.ReactNode  // decorative inline SVG; takes precedence over icon
   title: string
   description?: string
   action?: React.ReactNode  // typically <Link> or <Button>
@@ -11,6 +12,7 @@ export interface EmptyStateProps {
 
 export function EmptyState({
   icon: Icon,
+  illustration,
   title,
   description,
   action,
@@ -23,7 +25,11 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon ? (
+      {illustration ? (
+        <div className="mb-4" aria-hidden="true">
+          {illustration}
+        </div>
+      ) : Icon ? (
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 ring-1 ring-inset ring-slate-200">
           <Icon className="h-6 w-6 text-slate-400" aria-hidden="true" />
         </div>

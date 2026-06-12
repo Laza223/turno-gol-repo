@@ -185,6 +185,60 @@ describe('AvailabilityGrid (#39)', () => {
     expect(screen.getByText('18:00')).toBeTruthy()
   })
 
+  it('muestra el precio en cada slot futuro, incluso ocupado o turno fijo', () => {
+    const today = artToday()
+    const availability: AvailabilityResponse = {
+      date: today,
+      courts: [
+        {
+          id: 'c1',
+          name: 'Cancha 1',
+          surfaceType: 'futbol5',
+          slots: [
+            { time: '18:00', duration: 60, status: 'free', price: 1500000 },
+            { time: '19:00', duration: 60, status: 'occupied', price: 1500000 },
+            { time: '20:00', duration: 60, status: 'fixed', price: 1800000 },
+          ],
+        },
+      ],
+    }
+
+    render(
+      <AvailabilityGrid tenant={tenant} initialDate={today} initialAvailability={availability} />,
+    )
+
+    expect(screen.getAllByText(/15\.000/)).toHaveLength(2) // libre + ocupado
+    expect(screen.getAllByText(/18\.000/)).toHaveLength(1) // turno fijo
+  })
+
+  it('sin reserva online el slot libre ofrece Contactar con precio visible', () => {
+    const today = artToday()
+    const offlineTenant = { ...tenant, allowOnlineBooking: false } as PublicTenant
+    const availability: AvailabilityResponse = {
+      date: today,
+      courts: [
+        {
+          id: 'c1',
+          name: 'Cancha 1',
+          surfaceType: 'futbol5',
+          slots: [{ time: '18:00', duration: 60, status: 'free', price: 1200000 }],
+        },
+      ],
+    }
+
+    render(
+      <AvailabilityGrid
+        tenant={offlineTenant}
+        initialDate={today}
+        initialAvailability={availability}
+      />,
+    )
+
+    expect(screen.getByText('Contactar')).toBeTruthy()
+    expect(screen.getByText(/12\.000/)).toBeTruthy()
+    expect(screen.queryByText('Reservar')).toBeNull()
+  })
+
   it('renderiza etiquetas semánticas por estado: ocupado, turno fijo y bloqueado', () => {
     const today = artToday()
     const availability: AvailabilityResponse = {

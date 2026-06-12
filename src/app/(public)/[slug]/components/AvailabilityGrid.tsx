@@ -84,32 +84,6 @@ function SlotCell({
     )
   }
 
-  // Colores semánticos con contraste AA: texto 700 sobre fondo 50/100 (≥4.5:1),
-  // ring 500/600 sólido como indicador no-textual (≥3:1 vs blanco).
-  if (slot.status === 'occupied') {
-    return (
-      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500">
-        Ocupado
-      </span>
-    )
-  }
-
-  if (slot.status === 'fixed') {
-    return (
-      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600">
-        Turno fijo
-      </span>
-    )
-  }
-
-  if (slot.status === 'blocked') {
-    return (
-      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-inset ring-red-600">
-        Bloqueado
-      </span>
-    )
-  }
-
   const priceFormatted = slot.price
     ? new Intl.NumberFormat('es-AR', {
         style: 'currency',
@@ -118,15 +92,53 @@ function SlotCell({
       }).format(slot.price / 100)
     : null
 
+  // Precio visible en todo slot futuro: el jugador ve la estructura de
+  // precios del día aunque el turno esté tomado.
+  const priceLine = priceFormatted && (
+    <span className="tabular-nums text-[10px]">{priceFormatted}</span>
+  )
+
+  // Colores semánticos con contraste AA: texto 700 sobre fondo 50/100 (≥4.5:1),
+  // ring 500/600 sólido como indicador no-textual (≥3:1 vs blanco).
+  if (slot.status === 'occupied') {
+    return (
+      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500">
+        <span>Ocupado</span>
+        {priceLine}
+      </span>
+    )
+  }
+
+  if (slot.status === 'fixed') {
+    return (
+      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600">
+        <span>Turno fijo</span>
+        {priceLine}
+      </span>
+    )
+  }
+
+  if (slot.status === 'blocked') {
+    return (
+      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-inset ring-red-600">
+        <span>Bloqueado</span>
+        {priceLine}
+      </span>
+    )
+  }
+
   if (!allowOnlineBooking) {
     return (
       <a
         href={`tel:${phone}`}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600 hover:bg-green-100 transition-colors duration-150"
+        className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600 hover:bg-green-100 transition-colors duration-150"
       >
-        <Phone className="h-3 w-3" aria-hidden />
-        Contactar
+        <span className="flex items-center gap-1">
+          <Phone className="h-3 w-3" aria-hidden />
+          Contactar
+        </span>
+        {priceLine}
       </a>
     )
   }
@@ -137,9 +149,7 @@ function SlotCell({
       className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600 hover:bg-green-100 active:scale-[0.98] transition-colors duration-150"
     >
       <span>Reservar</span>
-      {priceFormatted && (
-        <span className="tabular-nums text-[10px] text-green-700">{priceFormatted}</span>
-      )}
+      {priceLine}
     </Link>
   )
 }
@@ -224,7 +234,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
               disabled={loading}
               aria-label="Elegir fecha"
               onChange={(e) => {
-                if (e.target.value) loadDate(e.target.value)
+                if (e.target.value) void loadDate(e.target.value)
               }}
               onClick={(e) => {
                 try {

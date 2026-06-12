@@ -193,7 +193,13 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
         <label className={labelCls}><span className={labelSpan}>Nombre de contacto</span><input name="contactName" required className={field} /></label>
         <label className={labelCls}><span className={labelSpan}>Teléfono</span><input name="contactPhone" required className={field} /></label>
         <label className={labelCls}><span className={labelSpan}>Precio por turno (ARS)</span><input name="pricePerSession" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} /></label>
-        <label className={labelCls}><span className={labelSpan}>Precio mensual (ARS)</span><input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} /></label>
+        <label className={labelCls}>
+          <span className={labelSpan}>Precio mensual (ARS)</span>
+          <input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} />
+          <span className="block text-xs font-normal text-slate-500">
+            La cuota que el abonado paga por mes por su turno fijo. Es el monto que vas a cobrarle cada mes.
+          </span>
+        </label>
         <label className={labelCls}><span className={labelSpan}>Desde</span><input name="startsOn" type="date" required className={field} /></label>
         <label className={labelCls}>
           <span className={labelSpan}>Método de pago</span>

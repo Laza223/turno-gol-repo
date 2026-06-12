@@ -67,3 +67,53 @@ export async function updateProfileAction(
   revalidatePath('/perfil')
   return { success: true }
 }
+
+const prefSchema = z.object({
+  pref: z.enum(['email', 'push']),
+  enabled: z.boolean(),
+})
+
+export type UpdatePrefResult = { success: true } | { success: false; error: string }
+
+/**
+ * Persiste un toggle de notificación del jugador (players.notify_email /
+ * notify_push). Server Action directa — sin endpoint — llamada desde los
+ * switches de /perfil?tab=notificaciones.
+ */
+export async function updateNotificationPrefAction(
+  pref: 'email' | 'push',
+  enabled: boolean,
+): Promise<UpdatePrefResult> {
+  const user = await extractAuthUser()
+  if (!user || user.type !== 'player') redirect('/login')
+
+  const parsed = prefSchema.safeParse({ pref, enabled })
+  if (!parsed.success) {
+    return { success: false, error: 'Preferencia inválida.' }
+  }
+
+  let updated: { id: string }[]
+  try {
+    updated = await withPlayerContext(user.playerId, (tx) =>
+      tx
+        .update(players)
+        .set(
+          parsed.data.pref === 'email'
+            ? { notifyEmail: parsed.data.enabled }
+            : { notifyPush: parsed.data.enabled },
+        )
+        .where(eq(players.id, user.playerId))
+        .returning({ id: players.id }),
+    )
+  } catch (err) {
+    captureException(err)
+    return { success: false, error: 'No pudimos guardar tu preferencia. Intentá de nuevo.' }
+  }
+
+  if (updated.length === 0) {
+    return { success: false, error: 'No encontramos tu perfil.' }
+  }
+
+  revalidatePath('/perfil')
+  return { success: true }
+}

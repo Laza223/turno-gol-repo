@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   pgTable,
   text,
@@ -19,6 +20,12 @@ export const players = pgTable(
     lastName: text('last_name').notNull(),
     avatarUrl: text('avatar_url'),
     preferredArea: text('preferred_area'),
+
+    // Preferencias de notificación (toggles en /perfil). notify_email solo
+    // gobierna emails opcionales (recordatorios); los transaccionales se
+    // envían siempre. notify_push: pipeline de push al jugador pendiente.
+    notifyEmail: boolean('notify_email').notNull().default(true),
+    notifyPush: boolean('notify_push').notNull().default(true),
 
     status: playerStatusEnum('status').notNull().default('active'),
     banReason: text('ban_reason'),

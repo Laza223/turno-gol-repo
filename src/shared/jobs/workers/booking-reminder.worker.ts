@@ -21,6 +21,7 @@ export async function processBookingReminderJob(
     tenant_name: string
     tenant_address: string
     player_first_name: string
+    notify_email: boolean
     tenant_id: string
   }[]>`
     SELECT
@@ -31,6 +32,7 @@ export async function processBookingReminderJob(
       t.name   AS tenant_name,
       t.address AS tenant_address,
       p.first_name AS player_first_name,
+      p.notify_email AS notify_email,
       b.tenant_id AS tenant_id
     FROM bookings b
     JOIN courts  c ON c.id = b.court_id
@@ -45,6 +47,13 @@ export async function processBookingReminderJob(
   const row = rows[0]
   if (!row) {
     // Booking canceled or not found — skip silently
+    return
+  }
+
+  // El recordatorio es el único email opcional al jugador: respeta su toggle
+  // de /perfil (players.notify_email). Confirmación/cancelación se envían
+  // siempre (transaccionales), por eso el chequeo vive acá y no en send-email.
+  if (!row.notify_email) {
     return
   }
 

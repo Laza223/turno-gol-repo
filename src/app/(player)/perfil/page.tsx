@@ -20,11 +20,13 @@ import {
 import { ProfileForm } from './ProfileForm'
 import FavoritesList from './FavoritesList'
 import ActivityStats from './ActivityStats'
+import NotificationPrefs from './NotificationPrefs'
 
 const TABS = [
   { key: 'datos', label: 'Datos' },
   { key: 'favoritos', label: 'Favoritos' },
   { key: 'actividad', label: 'Actividad' },
+  { key: 'notificaciones', label: 'Avisos' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -174,6 +176,10 @@ export default async function PerfilPage({
           venues={activity.venues}
           streakWeeks={computeStreakWeeks(activity.weeksWithGames, isoMondayOf(artToday))}
         />
+      )}
+
+      {tab === 'notificaciones' && (
+        <NotificationPrefs initialEmail={player.notifyEmail} initialPush={player.notifyPush} />
       )}
     </div>
   )

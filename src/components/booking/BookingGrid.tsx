@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { LayoutGrid, MoonStar } from 'lucide-react'
@@ -27,6 +27,16 @@ const BookingFormModal = dynamic(
   () => import('./BookingFormModal').then((m) => m.BookingFormModal),
   { ssr: false },
 )
+
+// Mismos tokens que las celdas de BookingCard (slotVisual) — si cambia uno,
+// cambiar el otro.
+const GRID_LEGEND = [
+  { label: 'Libre', swatch: 'bg-emerald-100 dark:bg-emerald-900' },
+  { label: 'Reservado', swatch: 'bg-blue-100 ring-1 ring-inset ring-blue-600 dark:bg-blue-900' },
+  { label: 'Abonado', swatch: 'bg-violet-100 ring-1 ring-inset ring-violet-600 dark:bg-violet-900' },
+  { label: 'Seña pendiente', swatch: 'bg-amber-100 ring-1 ring-inset ring-amber-500 dark:bg-amber-900' },
+  { label: 'Bloqueado', swatch: 'bg-slate-200 ring-1 ring-inset ring-slate-400 dark:bg-slate-700' },
+] as const
 
 type SelectedSlot = {
   courtId: string
@@ -104,6 +114,39 @@ export function BookingGrid({
       })
     },
     [courts, date],
+  )
+
+  // Navegación con flechas entre slots: cada botón lleva data-col/data-row;
+  // el while salta filas cubiertas por reservas de 120 min y slots no
+  // interactivos (pasados, cancha offline) hasta encontrar el siguiente foco.
+  const handleGridKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      const dCol = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
+      const dRow = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
+      if (dCol === 0 && dRow === 0) return
+
+      const target = e.target as HTMLElement
+      const col = Number(target.dataset['col'])
+      const row = Number(target.dataset['row'])
+      if (Number.isNaN(col) || Number.isNaN(row)) return
+
+      e.preventDefault()
+      let c = col + dCol
+      let r = row + dRow
+      while (c >= 0 && c < courts.length && r >= 0 && r < slots.length) {
+        const next = e.currentTarget.querySelector<HTMLElement>(
+          `[data-col="${c}"][data-row="${r}"]`,
+        )
+        if (next) {
+          next.focus()
+          next.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+          return
+        }
+        c += dCol
+        r += dRow
+      }
+    },
+    [courts.length, slots.length],
   )
 
   const handleBookingSuccess = useCallback((_booking: BookingRow) => {
@@ -202,72 +245,105 @@ export function BookingGrid({
       )}
 
       {courts.length > 0 && !closedToday && (
-        <div className="overflow-x-auto touch-pan-x rounded-lg border border-slate-200 shadow-sm">
-          <table className="border-collapse bg-white text-sm" style={{ tableLayout: 'fixed', minWidth: `${80 + courts.length * 160}px` }}>
-            <colgroup>
-              <col style={{ width: '80px' }} />
-              {courts.map((c) => (
-                <col key={c.id} style={{ width: '160px' }} />
+        <>
+          <div
+            data-testid="booking-grid"
+            className="overflow-auto overscroll-x-contain snap-x snap-proximity max-h-[70dvh] rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div
+              role="application"
+              aria-label={`Grilla de turnos del ${LABEL_DAYS[dayKey]} ${dateLabel}`}
+              className="grid"
+              style={{
+                gridTemplateColumns: `3.5rem repeat(${courts.length}, minmax(8.5rem, 1fr))`,
+                gridTemplateRows: `2.75rem repeat(${slots.length}, 3.5rem)`,
+                minWidth: `${56 + courts.length * 136}px`,
+              }}
+              onKeyDown={handleGridKeyDown}
+            >
+              {/* Esquina: tapa el cruce de los dos ejes sticky. */}
+              <div
+                aria-hidden
+                style={{ gridColumn: 1, gridRow: 1 }}
+                className="sticky left-0 top-0 z-30 border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900"
+              />
+
+              {/* Header sticky de canchas. */}
+              {courts.map((court, ci) => (
+                <div
+                  key={court.id}
+                  style={{ gridColumn: ci + 2, gridRow: 1 }}
+                  className="sticky top-0 z-20 snap-start scroll-ml-14 flex items-center justify-center gap-1 truncate border-b border-slate-100 bg-white/95 px-2 text-xs font-semibold text-foreground backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-100"
+                >
+                  <span className="truncate">{court.name}</span>
+                  {court.status === 'offline' && (
+                    <span className="shrink-0 font-normal text-slate-400">(offline)</span>
+                  )}
+                </div>
               ))}
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="border border-slate-200 bg-slate-50 px-2 py-2 text-left text-xs font-medium text-muted-foreground sticky left-0 z-10">
-                  Hora
-                </th>
-                {courts.map((court) => (
-                  <th
-                    key={court.id}
-                    className="border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-medium text-foreground"
-                  >
-                    {court.name}
-                    {court.status === 'offline' && (
-                      <span className="ml-1 text-slate-400">(offline)</span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {slots.map((slotTime) => (
-                <tr key={slotTime}>
-                  <td className="border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-muted-foreground font-mono sticky left-0 z-10 whitespace-nowrap">
-                    {slotTime}
-                  </td>
-                  {courts.map((court) => {
-                    const key = `${court.id}:${slotTime}`
-                    const cell = cells.get(key)
 
-                    if (!cell || cell.kind === 'skip') return null
+              {/* Columna de horas sticky. */}
+              {slots.map((slotTime, ri) => (
+                <div
+                  key={slotTime}
+                  style={{ gridColumn: 1, gridRow: ri + 2 }}
+                  className="sticky left-0 z-10 flex items-start justify-end bg-white pr-2 pt-1.5 text-[11px] font-medium tabular-nums text-slate-400 dark:bg-slate-900 dark:text-slate-500"
+                >
+                  {slotTime}
+                </div>
+              ))}
 
-                    if (cell.kind === 'booking') {
-                      return (
-                        <BookingCard
-                          key={court.id}
-                          booking={cell.booking}
-                          timeStart={slotTime}
-                          isPast={isSlotPast(slotTime)}
-                          rowSpan={cell.rowSpan}
-                        />
-                      )
-                    }
+              {/* Celdas: posición explícita (col, fila, span) para que las
+                  reservas de 120 min ocupen dos filas sin agujeros. */}
+              {courts.map((court, ci) =>
+                slots.map((slotTime, ri) => {
+                  const cell = cells.get(`${court.id}:${slotTime}`)
+                  if (!cell || cell.kind === 'skip') return null
 
+                  if (cell.kind === 'booking') {
                     return (
                       <BookingCard
-                        key={court.id}
-                        booking={null}
+                        key={`${court.id}:${slotTime}`}
+                        booking={cell.booking}
                         timeStart={slotTime}
                         isPast={isSlotPast(slotTime)}
-                        courtId={court.status === 'online' && !isSlotPast(slotTime) ? court.id : undefined}
-                        onSlotClick={court.status === 'online' && !isSlotPast(slotTime) ? handleSlotClick : undefined}
+                        col={ci}
+                        row={ri}
+                        span={cell.rowSpan}
+                        courtName={court.name}
                       />
                     )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  }
+
+                  const clickable = court.status === 'online' && !isSlotPast(slotTime)
+                  return (
+                    <BookingCard
+                      key={`${court.id}:${slotTime}`}
+                      booking={null}
+                      timeStart={slotTime}
+                      isPast={isSlotPast(slotTime)}
+                      col={ci}
+                      row={ri}
+                      courtId={clickable ? court.id : undefined}
+                      courtName={court.name}
+                      onSlotClick={clickable ? handleSlotClick : undefined}
+                    />
+                  )
+                }),
+              )}
+            </div>
+          </div>
+
+          {/* Leyenda de estados. */}
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {GRID_LEGEND.map((item) => (
+              <li key={item.label} className="flex items-center gap-1.5">
+                <span aria-hidden className={`inline-block h-3 w-3 rounded-sm ${item.swatch}`} />
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {selectedSlot && (

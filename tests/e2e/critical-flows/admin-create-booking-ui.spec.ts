@@ -42,7 +42,7 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         await page.goto(`/grilla?date=${tomorrow}`)
 
         // Wait for the grid table to render.
-        await expect(page.locator('table')).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
 
         // Click a free slot at 16:00 in the seeded court.
         // BookingCard renders free cells with aria-label `Reservar turno ${timeStart}`.

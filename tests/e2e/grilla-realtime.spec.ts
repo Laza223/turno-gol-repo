@@ -140,7 +140,7 @@ test.describe('grilla realtime — multi-browser <2s', () => {
         // is NOT visible — subscription readiness assumed when offline banner is
         // gone (or never appeared). Timeout 10s is sufficient for the Realtime
         // WebSocket SUBSCRIBED state to be established.
-        await expect(pageB.locator('table')).toBeVisible({ timeout: 15_000 })
+        await expect(pageB.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
         await expect(
           pageB.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
         ).not.toBeVisible({ timeout: 10_000 })
@@ -199,7 +199,7 @@ test.describe('grilla realtime — catch-up after disconnect', () => {
         const page = await context.newPage()
 
         await page.goto(`/grilla?date=${TARGET_DATE}`)
-        await expect(page.locator('table')).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
         // Subscription readiness assumed when offline banner is gone (or never appeared).
         await expect(
           page.getByText('Sin conexión. Los datos pueden no estar actualizados.'),

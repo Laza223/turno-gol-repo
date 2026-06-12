@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { Ban, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { GridBooking } from './BookingGrid'
 
@@ -8,94 +9,170 @@ type BookingCardProps = {
   booking: GridBooking | null
   timeStart: string
   isPast: boolean
-  rowSpan?: number
+  /** Índice 0-based de la cancha (columna) y del slot horario (fila). */
+  col: number
+  row: number
+  span?: number
   courtId?: string
+  courtName: string
   onSlotClick?: (courtId: string, slotTime: string) => void
 }
 
-function BookingCardComponent({ booking, timeStart, isPast, rowSpan = 1, courtId, onSlotClick }: BookingCardProps) {
+/** Posición explícita en la grilla CSS: +2 deja lugar a la columna de horas y a la fila de headers. */
+function placement(col: number, row: number, span: number): React.CSSProperties {
+  return { gridColumn: col + 2, gridRow: `${row + 2} / span ${span}` }
+}
+
+type SlotVisual = {
+  cell: string
+  accent: string
+  label: string
+}
+
+/**
+ * Colores semánticos (design-system §1, patrón AA de la grilla pública):
+ * texto 700/800 sobre fondo 50 (≥4.5:1) + barra de acento 500/600 como señal
+ * no-cromática. Estados excepcionales (seña pendiente, no-show) pisan al tipo;
+ * para confirmadas el color comunica el origen: azul = reserva, púrpura = abonado.
+ */
+function slotVisual(booking: GridBooking): SlotVisual {
+  if (booking.type === 'block') {
+    return {
+      cell: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+      accent: 'bg-slate-400 dark:bg-slate-500',
+      label: 'Bloqueado',
+    }
+  }
+  if (booking.status === 'pending_payment') {
+    return {
+      cell: 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+      accent: 'bg-amber-500 dark:bg-amber-400',
+      label: 'Seña pendiente',
+    }
+  }
+  if (booking.status === 'no_show') {
+    return {
+      cell: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
+      accent: 'bg-red-500 dark:bg-red-400',
+      label: 'No vino',
+    }
+  }
+  if (booking.status === 'completed') {
+    return {
+      cell: 'bg-slate-50 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400',
+      accent: 'bg-slate-300 dark:bg-slate-600',
+      label: 'Completada',
+    }
+  }
+  if (booking.type === 'fixed') {
+    return {
+      cell: 'bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
+      accent: 'bg-violet-600 dark:bg-violet-400',
+      label: 'Abonado',
+    }
+  }
+  return {
+    cell: 'bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+    accent: 'bg-blue-600 dark:bg-blue-400',
+    label: 'Reservado',
+  }
+}
+
+export function bookingDisplayName(booking: GridBooking): string | null {
+  if (booking.guestName) return booking.guestName.slice(0, 24)
+  if (booking.playerFirstName) {
+    return `${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim().slice(0, 24)
+  }
+  return null
+}
+
+function BookingCardComponent({
+  booking,
+  timeStart,
+  isPast,
+  col,
+  row,
+  span = 1,
+  courtId,
+  courtName,
+  onSlotClick,
+}: BookingCardProps) {
   if (!booking) {
     const interactive = !isPast && !!onSlotClick && !!courtId
+
+    if (!interactive) {
+      // Pasado: transparente, apenas la hora como referencia. Cancha offline:
+      // gris neutro no clickeable.
+      return (
+        <div
+          style={placement(col, row, span)}
+          className={cn(
+            'm-0.5 rounded-md flex items-start p-1.5',
+            isPast ? 'bg-transparent' : 'bg-slate-50 dark:bg-slate-800/40',
+          )}
+        >
+          <span className="text-[11px] tabular-nums text-slate-300 dark:text-slate-600">
+            {timeStart}
+          </span>
+        </div>
+      )
+    }
+
     return (
-      <td
-        {...(interactive
-          ? {
-              role: 'button',
-              tabIndex: 0,
-              onClick: () => onSlotClick?.(courtId!, timeStart),
-              onKeyDown: (e: React.KeyboardEvent<HTMLTableCellElement>) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onSlotClick?.(courtId!, timeStart)
-                }
-              },
-              'aria-label': `Reservar turno ${timeStart}`,
-            }
-          : {})}
+      <button
+        type="button"
+        style={placement(col, row, span)}
+        data-col={col}
+        data-row={row}
+        onClick={() => onSlotClick?.(courtId!, timeStart)}
+        aria-label={`Reservar turno ${timeStart} en ${courtName}`}
         className={cn(
-          'border border-slate-100 p-1 align-top transition-colors duration-100',
-          isPast
-            ? 'bg-slate-50 opacity-60'
-            : interactive
-              ? 'cursor-pointer bg-white hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500'
-              : 'bg-slate-50',
+          'group m-0.5 rounded-md flex items-start justify-between p-1.5 cursor-pointer',
+          'bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60',
+          'transition-colors duration-150',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500',
         )}
-        style={{ height: `${rowSpan * 56}px` }}
       >
-        <span className="text-xs text-slate-400">{timeStart}</span>
-      </td>
+        <span className="text-[11px] tabular-nums font-medium text-emerald-700 dark:text-emerald-300">
+          {timeStart}
+        </span>
+        <Plus
+          aria-hidden
+          className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-150"
+        />
+      </button>
     )
   }
 
+  const visual = slotVisual(booking)
+  const displayName = bookingDisplayName(booking)
   const isBlock = booking.type === 'block'
-  const isPending = booking.status === 'pending_payment'
-  const isNoShow = booking.status === 'no_show'
-  const isCompleted = booking.status === 'completed'
-
-  // Semantic status colors (design-system §1): green = confirmed, amber = pending,
-  // red = no-show, slate = block/completed. A left border accent doubles the cue
-  // so status isn't conveyed by fill color alone (a11y: color-not-only).
-  let cellClass =
-    'border border-slate-100 border-l-2 p-1 align-top cursor-default transition-colors duration-100 '
-  let statusLabel: string | null = null
-
-  if (isBlock) {
-    cellClass += 'border-l-slate-400 bg-slate-100 text-slate-600'
-    statusLabel = 'Bloqueo'
-  } else if (isPending) {
-    cellClass += 'border-l-amber-500 bg-amber-50 text-amber-800'
-    statusLabel = 'Pendiente'
-  } else if (isNoShow) {
-    cellClass += 'border-l-red-500 bg-red-50 text-red-700 opacity-90'
-    statusLabel = 'No vino'
-  } else if (isCompleted) {
-    cellClass += 'border-l-slate-300 bg-slate-50 text-slate-500 opacity-80'
-    statusLabel = 'Completada'
-  } else {
-    // confirmed
-    cellClass += 'border-l-green-600 bg-green-50 text-green-800'
-  }
-
-  const displayName = booking.guestName
-    ? booking.guestName.slice(0, 20)
-    : booking.playerFirstName
-      ? `${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim().slice(0, 20)
-      : null
 
   return (
-    <td className={cellClass} rowSpan={rowSpan} style={{ height: `${rowSpan * 56}px` }}>
-      <div className="flex flex-col gap-0.5 overflow-hidden">
-        <span className="text-xs font-medium leading-tight tabular-nums">
+    <div
+      style={placement(col, row, span)}
+      className={cn(
+        'm-0.5 rounded-md overflow-hidden flex',
+        visual.cell,
+        isPast && 'opacity-60',
+      )}
+      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ?? visual.label}, ${visual.label}`}
+    >
+      {/* Acento lateral: señal de estado no dependiente del color de fondo. */}
+      <span aria-hidden className={cn('w-1 shrink-0 rounded-full my-1 ml-0.5', visual.accent)} />
+      <div className="flex min-w-0 flex-col gap-0.5 p-1.5">
+        <span className="text-[11px] font-semibold leading-tight tabular-nums">
           {timeStart}–{booking.timeEnd}
         </span>
         {displayName && (
-          <span className="truncate text-xs leading-tight">{displayName}</span>
+          <span className="truncate text-xs font-medium leading-tight">{displayName}</span>
         )}
-        {statusLabel && (
-          <span className="text-xs font-medium leading-tight">{statusLabel}</span>
-        )}
+        <span className="inline-flex items-center gap-1 text-[11px] leading-tight opacity-90">
+          {isBlock && <Ban aria-hidden className="h-3 w-3" />}
+          {visual.label}
+        </span>
       </div>
-    </td>
+    </div>
   )
 }
 

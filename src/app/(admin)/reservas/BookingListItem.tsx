@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Ban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs, formatTime } from '@/lib/format'
+import { QuickActions, hasQuickActions } from './QuickActions'
 import type { ReservaListRow } from './queries'
 
 type ItemVisual = { accent: string; badge: string; label: string }
@@ -99,11 +100,18 @@ export function BookingListItem({ booking }: Props) {
     .filter(Boolean)
     .join(', ')
 
+  const withActions = hasQuickActions(booking)
+
   return (
     <li>
       <article
         aria-label={ariaLabel}
-        className="relative flex gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300"
+        className={cn(
+          'relative flex gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300',
+          // En mobile el menú contextual vive arriba a la derecha (absoluto):
+          // reservamos lugar para que no pise el contenido.
+          withActions && 'pr-12 sm:pr-3',
+        )}
       >
         <span aria-hidden className={cn('w-1 shrink-0 self-stretch rounded-full', visual.accent)} />
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -142,6 +150,20 @@ export function BookingListItem({ booking }: Props) {
             <p className="shrink-0 text-sm font-semibold tabular-nums text-slate-900 sm:w-20 sm:text-right">
               {formatArs(booking.priceSnapshot)}
             </p>
+          )}
+
+          {withActions && (
+            <QuickActions
+              booking={{
+                id: booking.id,
+                status: booking.status,
+                type: booking.type,
+                depositStatus: booking.depositStatus,
+                depositAmount: booking.depositAmount,
+                paymentMethod: booking.paymentMethod,
+              }}
+              label={`${name} · ${timeRange}`}
+            />
           )}
         </div>
       </article>

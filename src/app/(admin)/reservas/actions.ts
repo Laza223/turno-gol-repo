@@ -12,6 +12,7 @@ import {
   createManualBooking,
   completeBooking,
 } from '@/modules/bookings/booking.service'
+import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import {
   cancelByAdmin,
   handleNoShow,
@@ -101,9 +102,42 @@ export async function createBookingAction(
 // revalidatePath('/reservas') alone only invalidates the list page — the
 // dynamic detail route keeps its cached server data and router.refresh()
 // re-renders the same stale booking. Use a helper to invalidate BOTH.
+// La grilla también: una cancelación libera el slot y un cambio de estado
+// cambia el color de la celda; sin esto quedaría mostrando datos viejos.
 function revalidateBooking(bookingId: string): void {
   revalidatePath('/reservas')
   revalidatePath(`/reservas/${bookingId}`)
+  revalidatePath('/grilla')
+}
+
+/**
+ * Confirmación manual del pago de la seña (el jugador pagó en efectivo o por
+ * transferencia fuera de MP). Usa la primitiva race-safe compartida con el
+ * webhook de MP: si este perdió la carrera contra el webhook o el cron de
+ * expiración, won=false y no se pisa nada.
+ */
+export async function confirmDepositPaymentAction(
+  bookingId: string,
+): Promise<BookingActionResult> {
+  const { tenant } = await requireStaffTenant()
+  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    const r = await transitionFromPendingPayment(bookingId, 'confirmed', tx)
+    if (!r.won) {
+      return {
+        success: false as const,
+        error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
+      }
+    }
+    return { success: true as const, booking: r.row }
+  })
+
+  if (result.success) revalidateBooking(bookingId)
+  return result
 }
 
 export async function completeBookingAction(

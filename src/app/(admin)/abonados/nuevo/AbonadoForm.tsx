@@ -51,7 +51,7 @@ export function PreviewSlotsView({
 
   return (
     <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-base font-semibold text-slate-900">Vista previa de slots</h2>
+      <h2 className="text-base font-semibold text-slate-900">Fechas del turno fijo</h2>
       <ul className="divide-y divide-slate-100">
         {dates.map((d) => {
           const isConflict = conflictSet.has(d)
@@ -59,19 +59,23 @@ export function PreviewSlotsView({
             <li key={d} className="flex items-center justify-between py-2">
               <span className="text-sm text-slate-700">{d}</span>
               {isConflict
-                ? <Badge variant="warning">Conflicto</Badge>
-                : <Badge variant="success">OK</Badge>
+                ? <Badge variant="warning">Ocupado</Badge>
+                : <Badge variant="success">Libre</Badge>
               }
             </li>
           )
         })}
       </ul>
       <p className="text-sm text-slate-600">
-        Se crearán {goodCount} slot{goodCount !== 1 ? 's' : ''}. {conflicts.length} fecha(s) con conflicto se saltarán.
+        Se crearán {goodCount} turno{goodCount !== 1 ? 's' : ''}.
+        {conflicts.length > 0 &&
+          (conflicts.length === 1
+            ? ' 1 fecha ya está ocupada y se va a saltar.'
+            : ` ${conflicts.length} fechas ya están ocupadas y se van a saltar.`)}
       </p>
       {noSlots && (
         <p role="alert" className="text-xs text-amber-700">
-          No se generarán slots — revisá horario o cancelá abonados existentes.
+          No se va a crear ningún turno: todas las fechas están ocupadas. Revisá el día y el horario elegidos.
         </p>
       )}
       <div className="flex gap-3 flex-wrap">
@@ -88,7 +92,7 @@ export function PreviewSlotsView({
           disabled={noSlots || isConfirming}
           className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
         >
-          {isConfirming ? 'Guardando…' : 'Confirmar creación'}
+          {isConfirming ? 'Guardando…' : 'Crear abonado'}
         </button>
       </div>
     </div>
@@ -191,9 +195,9 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
                 {DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
             </label>
-            <label className={labelCls}><span className={labelSpan}>Desde</span><input name="startsOn" type="date" required className={field} /></label>
-            <label className={labelCls}><span className={labelSpan}>Hora inicio</span><input name="timeStart" type="time" required className={field} /></label>
-            <label className={labelCls}><span className={labelSpan}>Hora fin</span><input name="timeEnd" type="time" required className={field} /></label>
+            <label className={labelCls}><span className={labelSpan}>Empieza el</span><input name="startsOn" type="date" required className={field} /></label>
+            <label className={labelCls}><span className={labelSpan}>Hora de inicio</span><input name="timeStart" type="time" required className={field} /></label>
+            <label className={labelCls}><span className={labelSpan}>Hora de fin</span><input name="timeEnd" type="time" required className={field} /></label>
           </div>
         </fieldset>
 
@@ -201,7 +205,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
           <fieldset className="space-y-4">
             <legend className="text-sm font-semibold text-slate-900">Cliente</legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className={labelCls}><span className={labelSpan}>Nombre de contacto</span><input name="contactName" required className={field} /></label>
+              <label className={labelCls}><span className={labelSpan}>Nombre y apellido</span><input name="contactName" required className={field} /></label>
               <label className={labelCls}><span className={labelSpan}>Teléfono</span><input name="contactPhone" required className={field} /></label>
             </div>
           </fieldset>
@@ -209,7 +213,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
           <fieldset className="space-y-4">
             <legend className="text-sm font-semibold text-slate-900">Precio y pago</legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className={labelCls}><span className={labelSpan}>Precio por turno (ARS)</span><input name="pricePerSession" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} /></label>
+              <label className={labelCls}><span className={labelSpan}>Precio por turno (en pesos)</span><input name="pricePerSession" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required placeholder="Ej: 25000" className={field} /></label>
               <label className={labelCls}>
                 <span className={labelSpan}>Método de pago</span>
                 <select name="paymentMethod" className={field} defaultValue="cash">
@@ -219,8 +223,8 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
               </label>
             </div>
             <label className={labelCls}>
-              <span className={labelSpan}>Precio mensual (ARS)</span>
-              <input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} />
+              <span className={labelSpan}>Precio mensual (en pesos)</span>
+              <input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required placeholder="Ej: 100000" className={field} />
               <span className="block text-xs font-normal text-slate-500">
                 La cuota que el abonado paga por mes por su turno fijo. Es el monto que vas a cobrarle cada mes.
               </span>
@@ -237,7 +241,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
         disabled={isPreviewing}
         className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
       >
-        {isPreviewing ? 'Cargando…' : 'Vista previa de slots'}
+        {isPreviewing ? 'Cargando…' : 'Ver fechas del turno'}
       </button>
     </form>
   )

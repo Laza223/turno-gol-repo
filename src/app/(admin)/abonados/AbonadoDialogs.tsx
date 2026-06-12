@@ -132,7 +132,7 @@ function ReactivatePreview({
   error: string | null
 }) {
   if (loading) {
-    return <p className="text-sm text-slate-500">Cargando slots disponibles…</p>
+    return <p className="text-sm text-slate-500">Cargando fechas disponibles…</p>
   }
   if (error) {
     return (
@@ -142,7 +142,7 @@ function ReactivatePreview({
     )
   }
   if (dates.length === 0) {
-    return <p className="text-sm text-slate-500">No se encontraron slots futuros para generar.</p>
+    return <p className="text-sm text-slate-500">No se encontraron fechas futuras para generar.</p>
   }
 
   const available = dates.filter((d) => !conflicts.includes(d))
@@ -151,10 +151,14 @@ function ReactivatePreview({
   return (
     <div className="space-y-2">
       <p className="text-sm">
-        Se generarán <strong>{available.length}</strong> slot{available.length !== 1 ? 's' : ''} futuros
+        Se generarán <strong>{available.length}</strong> turno{available.length !== 1 ? 's' : ''}{' '}
+        futuro{available.length !== 1 ? 's' : ''}
         {conflicts.length > 0 && (
           <span className="text-amber-700">
-            {' '}({conflicts.length} con conflicto, se saltarán)
+            {' '}
+            ({conflicts.length === 1
+              ? '1 fecha ya ocupada se va a saltar'
+              : `${conflicts.length} fechas ya ocupadas se van a saltar`})
           </span>
         )}
         .
@@ -165,11 +169,11 @@ function ReactivatePreview({
             <span>{d}</span>
             {conflictSet.has(d) ? (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                Conflicto
+                Ocupado
               </span>
             ) : (
               <span className="rounded-full bg-green-50 px-2 py-0.5 text-green-700 ring-1 ring-inset ring-green-600/20">
-                OK
+                Libre
               </span>
             )}
           </li>

@@ -107,7 +107,7 @@ export function AbonadosList({ abonados }: Props) {
           <tr className="border-b text-left text-muted-foreground">
             <th className="p-3">Día / Horario</th>
             <th className="p-3">Contacto</th>
-            <th className="p-3">Precio sesión</th>
+            <th className="p-3">Precio por turno</th>
             <th className="p-3">Precio mensual</th>
             <th className="p-3">Estado</th>
             <th className="p-3">Acciones</th>
@@ -185,7 +185,7 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
     }
     const n = res.slotsGenerated ?? 0
     toast({
-      title: `Reactivado. Se generaron ${n} slot${n !== 1 ? 's' : ''} futuros.`,
+      title: `Reactivado. Se generaron ${n} turno${n !== 1 ? 's' : ''} futuro${n !== 1 ? 's' : ''}.`,
       variant: 'success',
     })
     return { success: true }

@@ -2,12 +2,12 @@
  * E2E — Abonados CRUD (audit T6, fase F5)
  *
  * Happy path + 3 edge cases for the admin abonados UI (T1+T2):
- *   #1  Happy — create with preview: /abonados/nuevo → fill form → "Vista previa de slots"
- *              → 8 dates listed with badges → "Confirmar creación" → redirect to /abonados,
+ *   #1  Happy — create with preview: /abonados/nuevo → fill form → "Ver fechas del turno"
+ *              → 8 dates listed with "Libre" badges → "Crear abonado" → redirect to /abonados,
  *              row visible with "Activo" badge.
  *   #2  Edge — preview with conflict: service-role pre-inserts an overlapping confirmed
- *              booking on one of the candidate dates → preview shows "Conflicto" badge for
- *              that date + summary "Se crearán 7 slots. 1 fecha(s) con conflicto se saltarán."
+ *              booking on one of the candidate dates → preview shows "Ocupado" badge for
+ *              that date + summary "Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar."
  *   #3  Edge — cancel with future date: pre-create active abonado via service-role → in UI
  *              click "Cancelar" → type "CANCELAR" → pick today+14d as cancel-from date →
  *              confirm → assert bookings >= cancel-from are gone, earlier ones remain.
@@ -154,17 +154,17 @@ test.describe('Abonados CRUD', () => {
       await page.fill('input[name="monthlyPrice"]', '20000')
       await page.fill('input[name="startsOn"]', startsOn)
 
-      await page.getByRole('button', { name: /Vista previa de slots/i }).click()
+      await page.getByRole('button', { name: /Ver fechas del turno/i }).click()
 
       // Phase 2: preview heading + 8 OK badges + summary
-      await expect(page.getByRole('heading', { name: /Vista previa de slots/i })).toBeVisible()
-      const okBadges = page.getByText('OK', { exact: true })
+      await expect(page.getByRole('heading', { name: /Fechas del turno fijo/i })).toBeVisible()
+      const okBadges = page.getByText('Libre', { exact: true })
       await expect(okBadges).toHaveCount(8)
       await expect(
-        page.getByText('Se crearán 8 slots. 0 fecha(s) con conflicto se saltarán.'),
+        page.getByText('Se crearán 8 turnos.'),
       ).toBeVisible()
 
-      await page.getByRole('button', { name: 'Confirmar creación' }).click()
+      await page.getByRole('button', { name: 'Crear abonado' }).click()
       await page.waitForURL('**/abonados')
 
       // Row visible with Activo badge
@@ -209,14 +209,14 @@ test.describe('Abonados CRUD', () => {
       await page.fill('input[name="monthlyPrice"]', '20000')
       await page.fill('input[name="startsOn"]', startsOn)
 
-      await page.getByRole('button', { name: /Vista previa de slots/i }).click()
+      await page.getByRole('button', { name: /Ver fechas del turno/i }).click()
 
-      await expect(page.getByRole('heading', { name: /Vista previa de slots/i })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /Fechas del turno fijo/i })).toBeVisible()
       // 7 OK + 1 Conflicto + summary
-      await expect(page.getByText('OK', { exact: true })).toHaveCount(7)
-      await expect(page.getByText('Conflicto', { exact: true })).toHaveCount(1)
+      await expect(page.getByText('Libre', { exact: true })).toHaveCount(7)
+      await expect(page.getByText('Ocupado', { exact: true })).toHaveCount(1)
       await expect(
-        page.getByText('Se crearán 7 slots. 1 fecha(s) con conflicto se saltarán.'),
+        page.getByText('Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar.'),
       ).toBeVisible()
     } finally {
       if (conflictBookingId) {

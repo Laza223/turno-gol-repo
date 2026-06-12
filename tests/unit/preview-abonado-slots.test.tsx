@@ -81,7 +81,7 @@ describe('AbonadoForm — preview phase', () => {
 
     // Wait for phase 2 heading
     await waitFor(() => {
-      expect(screen.getByText('Vista previa de slots')).toBeTruthy()
+      expect(screen.getByText('Fechas del turno fijo')).toBeTruthy()
     })
 
     // Assert all 8 dates are rendered
@@ -90,19 +90,19 @@ describe('AbonadoForm — preview phase', () => {
     }
 
     // 7 OK badges, 1 Conflicto badge
-    const allOKBadges = screen.getAllByText('OK')
+    const allOKBadges = screen.getAllByText('Libre')
     expect(allOKBadges).toHaveLength(MOCK_DATES.length - MOCK_CONFLICTS.length)
 
-    const conflictBadges = screen.getAllByText('Conflicto')
+    const conflictBadges = screen.getAllByText('Ocupado')
     expect(conflictBadges).toHaveLength(MOCK_CONFLICTS.length)
 
     // Summary text
     expect(
-      screen.getByText('Se crearán 7 slots. 1 fecha(s) con conflicto se saltarán.'),
+      screen.getByText('Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar.'),
     ).toBeTruthy()
 
     // Confirm button enabled
-    const confirmBtn = screen.getByRole('button', { name: 'Confirmar creación' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Crear abonado' }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(false)
 
     // Back button present
@@ -126,7 +126,7 @@ describe('AbonadoForm — preview phase', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Volver a editar' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Vista previa de slots' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Ver fechas del turno' })).toBeTruthy()
     })
   })
 
@@ -144,9 +144,9 @@ describe('AbonadoForm — preview phase', () => {
       expect(screen.getByRole('alert')).toBeTruthy()
     })
 
-    expect(screen.getByText(/No se generarán slots/)).toBeTruthy()
+    expect(screen.getByText(/No se va a crear ningún turno/)).toBeTruthy()
 
-    const confirmBtn = screen.getByRole('button', { name: 'Confirmar creación' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Crear abonado' }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(true)
   })
 
@@ -165,10 +165,10 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     // Should remain on form phase
-    expect(screen.getByRole('button', { name: /Vista previa/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Ver fechas/i })).toBeTruthy()
   })
 
-  it('calls submitNewAbonado with reconstructed FormData when "Confirmar creación" clicked', async () => {
+  it('calls submitNewAbonado with reconstructed FormData when "Crear abonado" clicked', async () => {
     vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
       success: true,
       dates: MOCK_DATES,
@@ -181,10 +181,10 @@ describe('AbonadoForm — preview phase', () => {
     fillFormAndSubmit()
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar creación' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Crear abonado' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar creación' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear abonado' }))
 
     await waitFor(() => {
       expect(vi.mocked(submitNewAbonado)).toHaveBeenCalledTimes(1)
@@ -219,10 +219,10 @@ describe('AbonadoForm — preview phase', () => {
     fillFormAndSubmit()
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar creación' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Crear abonado' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar creación' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear abonado' }))
 
     await waitFor(() => {
       const alert = screen.getByRole('alert')
@@ -230,7 +230,7 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     // Should be back on form phase
-    expect(screen.getByRole('button', { name: /Vista previa/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Ver fechas/i })).toBeTruthy()
   })
 })
 
@@ -247,10 +247,10 @@ describe('PreviewSlotsView — isolated', () => {
       />,
     )
 
-    expect(screen.getAllByText('OK')).toHaveLength(7)
-    expect(screen.getAllByText('Conflicto')).toHaveLength(1)
+    expect(screen.getAllByText('Libre')).toHaveLength(7)
+    expect(screen.getAllByText('Ocupado')).toHaveLength(1)
     expect(
-      screen.getByText('Se crearán 7 slots. 1 fecha(s) con conflicto se saltarán.'),
+      screen.getByText('Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar.'),
     ).toBeTruthy()
   })
 })

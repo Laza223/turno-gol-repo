@@ -67,6 +67,10 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
 
       <div className="space-y-1.5">
         <Label>Reservas online</Label>
+        <p className="text-xs text-slate-500">
+          Permite que los jugadores reserven solos desde la página pública de tu complejo. Si las
+          deshabilitás, solo vos podés cargar reservas desde el panel.
+        </p>
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
             <input

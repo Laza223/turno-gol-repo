@@ -51,21 +51,39 @@ function DeltaLine({
 
 // Labels en español para los ENUMs de cash_flows (evita mostrar los valores
 // crudos "income"/"booking"/"cash" en la UI). Mismo criterio que RegisterMovementModal.
-const TYPE_LABELS: Record<string, string> = {
-  income: 'Ingreso',
-  adjustment: 'Ajuste',
-}
-const CATEGORY_LABELS: Record<string, string> = {
-  booking: 'Reserva',
-  product_sale: 'Venta de producto',
-  other: 'Otro',
-  no_show_correction: 'Corrección por ausencia',
-}
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo',
   transfer: 'Transferencia',
   mercadopago: 'MercadoPago',
   other: 'Otro',
+}
+
+// 'other' es ambiguo sin el tipo: como ingreso es "Otro ingreso", como ajuste es "Ajuste".
+function categoryLabel(type: string, category: string): string {
+  if (category === 'booking') return 'Reserva'
+  if (category === 'product_sale') return 'Cantina/Bar'
+  if (category === 'operating_expense') return 'Gasto operativo'
+  if (category === 'no_show_correction') return 'Corrección por ausencia'
+  if (category === 'other') return type === 'adjustment' ? 'Ajuste' : 'Otro ingreso'
+  return category
+}
+
+const CATEGORY_BADGE: Record<string, string> = {
+  booking: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  product_sale: 'bg-sky-50 text-sky-700 ring-sky-600/20',
+  operating_expense: 'bg-red-50 text-red-700 ring-red-600/20',
+  no_show_correction: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  other: 'bg-slate-100 text-slate-700 ring-slate-500/20',
+}
+
+function CategoryBadge({ type, category }: { type: string; category: string }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${CATEGORY_BADGE[category] ?? CATEGORY_BADGE.other}`}
+    >
+      {categoryLabel(type, category)}
+    </span>
+  )
 }
 
 export default async function CajaPage({ searchParams }: { searchParams: { date?: string } }) {
@@ -206,34 +224,63 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
             description="No hay movimientos registrados para este día."
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-left">
-                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Tipo</th>
-                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Categoría</th>
-                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Método</th>
-                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Descripción</th>
-                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide text-right">Monto</th>
-                  <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Hora</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {cashFlows.map((cf) => (
-                  <tr key={cf.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3 text-slate-900">{TYPE_LABELS[cf.type] ?? cf.type}</td>
-                    <td className="p-3 text-slate-700">{CATEGORY_LABELS[cf.category] ?? cf.category}</td>
-                    <td className="p-3 text-slate-700">{METHOD_LABELS[cf.method] ?? cf.method}</td>
-                    <td className="p-3 max-w-xs truncate text-slate-700">{cf.description}</td>
-                    <td className="p-3 text-right font-medium tabular-nums text-slate-900">{formatARS(cf.amount)}</td>
-                    <td className="p-3 tabular-nums text-slate-500">
+          <>
+            {/* Mobile: cards apiladas (el admin mira la caja desde el celular en la barra) */}
+            <ul className="divide-y divide-slate-100 sm:hidden">
+              {cashFlows.map((cf) => (
+                <li key={cf.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <CategoryBadge type={cf.type} category={cf.category} />
+                    <p className="mt-1 truncate text-sm text-slate-700">{cf.description}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {METHOD_LABELS[cf.method] ?? cf.method} ·{' '}
                       {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                    </td>
+                    </p>
+                  </div>
+                  <p
+                    className={`shrink-0 text-sm font-semibold tabular-nums ${cf.type === 'expense' ? 'text-red-700' : 'text-slate-900'}`}
+                  >
+                    {cf.type === 'expense' ? '−' : ''}
+                    {formatARS(cf.amount)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            {/* Desktop: tabla */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left">
+                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Categoría</th>
+                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Método</th>
+                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Descripción</th>
+                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide text-right">Monto</th>
+                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Hora</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {cashFlows.map((cf) => (
+                    <tr key={cf.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3">
+                        <CategoryBadge type={cf.type} category={cf.category} />
+                      </td>
+                      <td className="p-3 text-slate-700">{METHOD_LABELS[cf.method] ?? cf.method}</td>
+                      <td className="p-3 max-w-xs truncate text-slate-700">{cf.description}</td>
+                      <td
+                        className={`p-3 text-right font-medium tabular-nums ${cf.type === 'expense' ? 'text-red-700' : 'text-slate-900'}`}
+                      >
+                        {cf.type === 'expense' ? '−' : ''}
+                        {formatARS(cf.amount)}
+                      </td>
+                      <td className="p-3 tabular-nums text-slate-500">
+                        {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

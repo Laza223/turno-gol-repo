@@ -7,12 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { createCashFlowAction } from '../actions'
 import { toast } from '@/hooks/use-toast'
 
-type CfType = 'income' | 'adjustment'
+type CfType = 'income' | 'adjustment' | 'expense'
 const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
   income: [
     { value: 'booking', label: 'Reserva' },
-    { value: 'other', label: 'Otro' },
+    { value: 'product_sale', label: 'Cantina/Bar' },
+    { value: 'other', label: 'Otro ingreso' },
   ],
+  expense: [{ value: 'operating_expense', label: 'Gasto operativo' }],
   adjustment: [
     { value: 'no_show_correction', label: 'Corrección por ausencia' },
     { value: 'other', label: 'Otro' },
@@ -64,7 +66,12 @@ export function RegisterMovementModal({
       try {
         const res = await createCashFlowAction({
           type,
-          category: category as 'booking' | 'product_sale' | 'other' | 'no_show_correction',
+          category: category as
+            | 'booking'
+            | 'product_sale'
+            | 'other'
+            | 'no_show_correction'
+            | 'operating_expense',
           method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
           amount,
           description: description.trim(),
@@ -102,6 +109,7 @@ export function RegisterMovementModal({
                 onChange={(e) => { const t = e.target.value as CfType; setType(t); setCategory(CATEGORIES[t][0].value) }}
                 className="h-11 md:h-10 w-full rounded-md border border-slate-200 px-2 text-sm">
                 <option value="income">Ingreso</option>
+                <option value="expense">Gasto</option>
                 <option value="adjustment">Ajuste</option>
               </select>
             </div>

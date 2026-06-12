@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { sql } from 'drizzle-orm'
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react'
 import { getDb } from '@/shared/db/client'
+import { isTenantPubliclyVisible } from '@/modules/tenants/tenant-status'
 
 // Página PÚBLICA de verificación: la abre el complejo al escanear el QR del
 // comprobante del jugador. Sin auth — el UUID de la reserva actúa como
@@ -24,6 +25,7 @@ type VerifyRow = {
   courtName: string
   tenantName: string
   city: string
+  tenantStatus: string
 }
 
 // Lectura cross-tenant sin SET LOCAL (caveat BK-01, mismo patrón documentado
@@ -39,14 +41,23 @@ async function loadVerification(bookingId: string): Promise<VerifyRow | null> {
            b.time_end::text AS "timeEnd",
            c.name AS "courtName",
            t.name AS "tenantName",
-           t.city AS "city"
+           t.city AS "city",
+           t.status AS "tenantStatus"
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
     JOIN tenants t ON t.id = b.tenant_id
     WHERE b.id = ${bookingId}
     LIMIT 1
   `)) as unknown as VerifyRow[]
-  return rows[0] ?? null
+
+  const row = rows[0]
+  if (!row) return null
+  // Cruce #4 (auditoría junio): un tenant suspendido/bloqueado/dado de baja
+  // está oculto de TODA superficie pública (tenant-status.ts) — esta página
+  // no es la excepción. Fail-closed con el mismo mensaje genérico que un
+  // código inexistente, sin filtrar el motivo ni el estado del complejo.
+  if (!isTenantPubliclyVisible(row.tenantStatus)) return null
+  return row
 }
 
 type Verdict = {

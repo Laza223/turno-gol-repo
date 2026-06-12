@@ -61,6 +61,12 @@ export function addDays(dateStr: string, n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Lunes ISO de la semana que contiene a `dateStr` (la semana arranca lunes). */
+export function mondayOf(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00Z`)
+  return addDays(dateStr, -((d.getUTCDay() + 6) % 7))
+}
+
 export function generateTimeSlots(openHhmm: string, closeHhmm: string): string[] {
   const openMins = timeToMins(openHhmm)
   let closeMins = timeToMins(closeHhmm)

@@ -1,15 +1,16 @@
 'use client'
 
-import { useCallback, useMemo, useState, type KeyboardEvent } from 'react'
+import { useCallback, useMemo, useState, useTransition, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { LayoutGrid, MoonStar } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useArtNow } from '@/hooks/use-art-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { BookingCard } from './BookingCard'
+import { WeekStrip } from './WeekStrip'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
-  addDays,
   buildBookingsIndex,
   computeCells,
   DAY_KEYS,
@@ -70,6 +71,16 @@ export function BookingGrid({
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
   const artNow = useArtNow()
+  // Navegación entre días sin reload: la transición mantiene la grilla vieja
+  // visible (atenuada) hasta que llega el server component del día nuevo.
+  const [isNavPending, startNavTransition] = useTransition()
+
+  const navigateToDate = useCallback(
+    (d: string) => {
+      startNavTransition(() => router.push(`/grilla?date=${d}`))
+    },
+    [router],
+  )
 
   const { bookings, status, refetch } = useBookingRealtime({ tenantId, date, initialBookings })
 
@@ -194,40 +205,29 @@ export function BookingGrid({
         </div>
       )}
 
-      {/* Date navigation */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Grilla</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {LABEL_DAYS[dayKey]} {dateLabel}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => router.push(`/grilla?date=${addDays(date, -1)}`)}
-            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
-          >
-            ← Anterior
-          </button>
+      {/* Header sticky: título + tira semanal siempre a mano mientras la
+          grilla scrollea. Fondo sólido para tapar el contenido que pasa
+          por debajo (el admin header fijo mide 4rem). */}
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 -mx-4 space-y-3 bg-slate-50/95 px-4 py-2 backdrop-blur dark:bg-slate-950/95">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Grilla</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {LABEL_DAYS[dayKey]} {dateLabel}
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => {
               const today = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
-              router.push(`/grilla?date=${today}`)
+              navigateToDate(today)
             }}
-            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
+            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm font-medium border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-150 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Hoy
           </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/grilla?date=${addDays(date, 1)}`)}
-            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-100"
-          >
-            Siguiente →
-          </button>
         </div>
+        <WeekStrip date={date} todayArt={artNow.date} onNavigate={navigateToDate} />
       </div>
 
       {courts.length === 0 && (
@@ -250,7 +250,12 @@ export function BookingGrid({
         <>
           <div
             data-testid="booking-grid"
-            className="overflow-auto overscroll-x-contain snap-x snap-proximity max-h-[70dvh] rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+            aria-busy={isNavPending}
+            className={cn(
+              'overflow-auto overscroll-x-contain snap-x snap-proximity max-h-[70dvh] rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900',
+              'transition-opacity duration-150 motion-reduce:transition-none',
+              isNavPending && 'opacity-60',
+            )}
           >
             <div
               role="application"

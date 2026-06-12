@@ -206,6 +206,61 @@ describe('updateStaffRoleAction', () => {
   })
 })
 
+describe('staff actions — solo un admin gestiona el equipo (roles 026)', () => {
+  it('inviteStaffAction rechaza a un actor Encargado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const manager = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
+    asStaff(tenant.id, manager.id)
+
+    const fd = new FormData()
+    fd.set('email', 'colado@staff.local')
+    fd.set('firstName', 'Co')
+    fd.set('lastName', 'Lado')
+
+    const res = await inviteStaffAction(fd)
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('Solo un administrador')
+    expect(inviteUserByEmail).not.toHaveBeenCalled()
+  })
+
+  it('updateStaffRoleAction rechaza a un actor Encargado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const manager = await createTestStaffUser(sql)
+    const adminMemberId = await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
+    asStaff(tenant.id, manager.id)
+
+    const res = await updateStaffRoleAction(adminMemberId, 'read_only')
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('Solo un administrador')
+
+    const rows = await sql<{ role: string }[]>`
+      SELECT role FROM tenant_staff_members WHERE id = ${adminMemberId}
+    `
+    expect(rows[0]?.role).toBe('admin')
+  })
+
+  it('deactivateStaffAction rechaza a un actor Solo lectura', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const viewer = await createTestStaffUser(sql)
+    const adminMemberId = await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    await linkStaffToTenant(sql, tenant.id, viewer.id, 'read_only')
+    asStaff(tenant.id, viewer.id)
+
+    const res = await deactivateStaffAction(adminMemberId)
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('Solo un administrador')
+  })
+})
+
 describe('inviteStaffAction', () => {
   it('returns error if the email is already an active member', async () => {
     const sql = getSql()

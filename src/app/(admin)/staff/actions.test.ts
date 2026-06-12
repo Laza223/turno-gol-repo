@@ -112,7 +112,7 @@ describe('staff actions — estado del tenant / kill-switch (#14)', () => {
 
 describe('resendInviteAction — verificacion de membership (#12)', () => {
   it('rechaza un email que no es miembro activo del tenant', async () => {
-    vi.mocked(withTenantContext).mockResolvedValue([])
+    vi.mocked(withTenantContext).mockResolvedValue({ members: [] })
     const res = await resendInviteAction('ajeno@otro.local')
     expect(res).toEqual({
       success: false,
@@ -129,7 +129,7 @@ describe('resendInviteAction — verificacion de membership (#12)', () => {
   })
 
   it('reenvia a un miembro activo, normalizando el email a minuscula', async () => {
-    vi.mocked(withTenantContext).mockResolvedValue([{ id: 'member-1' }])
+    vi.mocked(withTenantContext).mockResolvedValue({ members: [{ id: 'member-1' }] })
     const res = await resendInviteAction('Miembro@Test.Local')
     expect(res).toEqual({ success: true })
     expect(inviteUserByEmail).toHaveBeenCalledWith('miembro@test.local', expect.any(Object))

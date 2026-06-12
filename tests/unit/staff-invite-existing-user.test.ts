@@ -2,10 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const h = vi.hoisted(() => {
   const txLimit = vi.fn(async () => [] as unknown[])
+  // assertActorIsAdmin (roles 026) consulta select().from().where().limit()
+  // sin innerJoin; por default el actor es admin para que el invite avance.
+  const actorLimit = vi.fn(async () => [{ role: 'admin' }] as unknown[])
   const insert = vi.fn()
   const tx = {
     select: () => ({
-      from: () => ({ innerJoin: () => ({ where: () => ({ limit: txLimit }) }) }),
+      from: () => ({
+        innerJoin: () => ({ where: () => ({ limit: txLimit }) }),
+        where: () => ({ limit: actorLimit }),
+      }),
     }),
     insert,
   }
@@ -18,6 +24,7 @@ const h = vi.hoisted(() => {
     updateUserById: vi.fn(),
     listUsers: vi.fn(),
     txLimit,
+    actorLimit,
     insert,
     tx,
   }
@@ -75,6 +82,7 @@ beforeEach(() => {
   h.adminRateLimited.mockResolvedValue(null)
   h.checkPinSessionAction.mockResolvedValue(true)
   h.txLimit.mockResolvedValue([])
+  h.actorLimit.mockResolvedValue([{ role: 'admin' }])
   h.updateUserById.mockResolvedValue({ data: {}, error: null })
   h.insert
     .mockReturnValueOnce({

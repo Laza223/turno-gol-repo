@@ -6,7 +6,7 @@ import { and, count, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { withTenantContext } from '@/shared/db/client'
+import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
@@ -90,7 +90,38 @@ async function requireStaffTenant() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
   const tenant = await getStaffTenant(user.staffUserId)
-  return { user, tenant }
+  // Spread para fijar staffUserId como string: el narrowing del if se pierde
+  // dentro de los callbacks de withTenantContext.
+  return { user: { ...user, staffUserId: user.staffUserId }, tenant }
+}
+
+const ADMIN_ONLY_ERROR = 'Solo un administrador puede gestionar el equipo.'
+
+/**
+ * Gestionar el equipo es zona de configuración: solo 'admin' (roles 026).
+ * Se lee de la DB dentro de la misma transacción de la mutación — el claim
+ * `role` del JWT queda viejo si el rol cambió después del login.
+ * Devuelve un StaffActionResult de error, o null si el actor puede mutar.
+ */
+async function assertActorIsAdmin(
+  tx: DbTx,
+  tenantId: string,
+  actorStaffUserId: string,
+): Promise<{ success: false; error: string } | null> {
+  const [actor] = await tx
+    .select({ role: tenantStaffMembers.role })
+    .from(tenantStaffMembers)
+    .where(
+      and(
+        eq(tenantStaffMembers.tenantId, tenantId),
+        eq(tenantStaffMembers.staffUserId, actorStaffUserId),
+        eq(tenantStaffMembers.isActive, true),
+      ),
+    )
+    .limit(1)
+
+  if (actor?.role !== 'admin') return { success: false, error: ADMIN_ONLY_ERROR }
+  return null
 }
 
 export async function inviteStaffAction(
@@ -120,6 +151,9 @@ export async function inviteStaffAction(
   const { email, firstName, lastName, role } = parsed.data
 
   const result = await withTenantContext(tenant.id, async (tx) => {
+    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
+    if (denied) return denied
+
     const existing = await tx
       .select({ id: staffUsers.id })
       .from(staffUsers)
@@ -205,7 +239,7 @@ export async function inviteStaffAction(
 export async function deactivateStaffAction(
   staffMemberId: string,
 ): Promise<StaffActionResult> {
-  const { tenant } = await requireStaffTenant()
+  const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
   const guard = await guardStaffMutation(tenant)
@@ -215,6 +249,9 @@ export async function deactivateStaffAction(
   if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
+    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
+    if (denied) return denied
+
     const [target] = await tx
       .select({ role: tenantStaffMembers.role })
       .from(tenantStaffMembers)
@@ -294,6 +331,9 @@ export async function updateStaffRoleAction(
   const newRole = parsedRole.data
 
   const result = await withTenantContext(tenant.id, async (tx) => {
+    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
+    if (denied) return denied
+
     const [target] = await tx
       .select({ staffUserId: tenantStaffMembers.staffUserId })
       .from(tenantStaffMembers)
@@ -331,7 +371,7 @@ export async function updateStaffRoleAction(
 }
 
 export async function resendInviteAction(email: string): Promise<StaffActionResult> {
-  const { tenant } = await requireStaffTenant()
+  const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
   const guard = await guardStaffMutation(tenant)
@@ -346,8 +386,11 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   if (!parsedEmail.success) return { success: false, error: 'Email inválido.' }
   const normalizedEmail = parsedEmail.data.toLowerCase()
 
-  const member = await withTenantContext(tenant.id, async (tx) =>
-    tx
+  const lookup = await withTenantContext(tenant.id, async (tx) => {
+    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
+    if (denied) return denied
+
+    const members = await tx
       .select({ id: tenantStaffMembers.id })
       .from(tenantStaffMembers)
       .innerJoin(staffUsers, eq(staffUsers.id, tenantStaffMembers.staffUserId))
@@ -358,10 +401,13 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
           eq(tenantStaffMembers.isActive, true),
         ),
       )
-      .limit(1),
-  )
+      .limit(1)
+    return { members }
+  })
 
-  if (member.length === 0) {
+  if ('success' in lookup) return lookup
+
+  if (lookup.members.length === 0) {
     return { success: false, error: 'Este email no es un miembro activo del complejo.' }
   }
 

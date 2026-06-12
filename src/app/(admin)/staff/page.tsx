@@ -1,8 +1,6 @@
-import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 import { Mail } from 'lucide-react'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { PinGate } from '@/components/pin-gate'
@@ -51,12 +49,9 @@ async function getStaffMembers(tenantId: string): Promise<StaffMember[]> {
 }
 
 export default async function StaffPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+  // Vista Equipo solo-admin (roles 026): Encargado/Solo lectura → /dashboard.
+  const { user, tenant } = await requireAdminStaff()
   const staffUserId: string = user.staffUserId
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
 
   const members = await getStaffMembers(tenant.id)
   const activeCount = members.filter((m) => m.isActive).length

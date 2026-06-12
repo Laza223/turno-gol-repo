@@ -86,7 +86,9 @@ export const playerStatusEnum = pgEnum('player_status', [
 
 export const staffStatusEnum = pgEnum('staff_status', ['active', 'inactive'])
 
-export const staffRoleEnum = pgEnum('staff_role', ['admin'])
+// Migración 026: 3 niveles fijos. 'admin' (Administrador, acceso total),
+// 'manager' (Encargado: grilla + reservas + caja), 'read_only' (Solo lectura).
+export const staffRoleEnum = pgEnum('staff_role', ['admin', 'manager', 'read_only'])
 
 // ─── Payment ────────────────────────────────────────────────────
 export const paymentTypeEnum = pgEnum('payment_type', [

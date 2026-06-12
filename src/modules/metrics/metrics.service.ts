@@ -187,6 +187,9 @@ export async function getTenantMetrics(tenantId: string, tx: DbTx): Promise<Tena
 
   // 3) Income by category. amount is centavos (>0); sum as bigint to dodge int
   //    overflow on high-volume tenants, then parse to a JS number.
+  //    Los bordes usan el mismo corrimiento ART (medianoche ART = 03:00 UTC)
+  //    que revenueDailyRows para que el total y la serie diaria compartan
+  //    exactamente la misma ventana.
   const revenueRows = await tx
     .select({
       category: cashFlows.category,
@@ -197,8 +200,8 @@ export async function getTenantMetrics(tenantId: string, tx: DbTx): Promise<Tena
       and(
         eq(cashFlows.tenantId, tenantId),
         eq(cashFlows.type, 'income'),
-        gte(cashFlows.occurredAt, sql`${from}::date`),
-        sql`${cashFlows.occurredAt} < (${to}::date + interval '1 day')`,
+        gte(cashFlows.occurredAt, sql`(${from}::date + interval '3 hours') at time zone 'UTC'`),
+        sql`${cashFlows.occurredAt} < ((${to}::date + interval '1 day 3 hours') at time zone 'UTC')`,
       ),
     )
     .groupBy(cashFlows.category)

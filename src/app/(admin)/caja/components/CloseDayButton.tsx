@@ -11,7 +11,17 @@ function formatARS(c: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(c / 100)
 }
 
-export function CloseDayButton({ date, balance }: { date: string; balance: number }) {
+export function CloseDayButton({
+  date,
+  totalIncome,
+  totalExpense,
+  balance,
+}: {
+  date: string
+  totalIncome: number
+  totalExpense: number
+  balance: number
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [declaredPesos, setDeclaredPesos] = useState('')
@@ -47,7 +57,7 @@ export function CloseDayButton({ date, balance }: { date: string; balance: numbe
   return (
     <>
       <button type="button" onClick={() => { setDeclaredPesos(''); setNote(''); setOpen(true) }}
-        className="h-10 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
+        className="h-11 md:h-10 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
         Cerrar caja
       </button>
       <ConfirmDialog
@@ -62,9 +72,19 @@ export function CloseDayButton({ date, balance }: { date: string; balance: numbe
         onConfirm={onConfirm}
       >
         <div className="space-y-3">
-          <div className="rounded-md bg-slate-50 px-3 py-2 text-sm">
-            <span className="text-slate-500">Balance calculado: </span>
-            <span className="font-semibold tabular-nums text-slate-900">{formatARS(balance)}</span>
+          <div className="space-y-1 rounded-md bg-slate-50 px-3 py-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Ingresos</span>
+              <span className="font-medium tabular-nums text-emerald-700">{formatARS(totalIncome)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Egresos</span>
+              <span className="font-medium tabular-nums text-red-700">−{formatARS(totalExpense)}</span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 pt-1">
+              <span className="text-slate-600">Saldo neto del día</span>
+              <span className="font-semibold tabular-nums text-slate-900">{formatARS(balance)}</span>
+            </div>
           </div>
           <div className="space-y-1">
             <label htmlFor="declared" className="text-xs font-medium text-slate-700">Efectivo contado (opcional, pesos)</label>

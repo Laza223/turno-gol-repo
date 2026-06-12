@@ -118,7 +118,7 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
           <h1 className="text-2xl font-semibold">Caja — {date}</h1>
           {summary.isClosed && (
             <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-500/20">
-              Cerrada por {summary.close?.closedBy}
+              Caja cerrada
             </span>
           )}
         </div>
@@ -143,7 +143,13 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
               Siguiente →
             </Link>
           </div>
-          <CajaActions date={date} balance={summary.balance} isClosed={summary.isClosed} />
+          <CajaActions
+            date={date}
+            totalIncome={summary.totalIncome + summary.totalAdjustments}
+            totalExpense={summary.totalExpense}
+            balance={summary.balance}
+            isClosed={summary.isClosed}
+          />
         </div>
       </div>
 
@@ -197,6 +203,53 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
           </div>
         </div>
       </div>
+
+      {/* Cierre guardado: el registro inmutable que generó "Cerrar caja" */}
+      {summary.isClosed && summary.close && (
+        <div className="rounded-lg border border-slate-300 bg-slate-50 p-4 shadow-sm">
+          <h2 className="text-sm font-medium text-slate-900">
+            Cierre del día —{' '}
+            {summary.close.closedAt.toLocaleTimeString('es-AR', {
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'America/Argentina/Buenos_Aires',
+            })}{' '}
+            hs
+          </h2>
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+            <div>
+              <dt className="text-slate-500">Ingresos</dt>
+              <dd className="font-medium tabular-nums text-emerald-700">
+                {formatARS(summary.close.totalIncome + summary.close.totalAdjustments)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Egresos</dt>
+              <dd className="font-medium tabular-nums text-red-700">−{formatARS(summary.close.totalExpense)}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Saldo neto</dt>
+              <dd className="font-semibold tabular-nums text-slate-900">{formatARS(summary.close.balance)}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Efectivo contado</dt>
+              <dd className="font-medium tabular-nums text-slate-900">
+                {formatARS(summary.close.declaredCash)}
+                {summary.close.diffAmount !== 0 && (
+                  <span className="ml-1 text-xs font-medium text-amber-700">
+                    (dif. {formatARS(summary.close.diffAmount)})
+                  </span>
+                )}
+              </dd>
+            </div>
+          </dl>
+          {summary.close.note && (
+            <p className="mt-2 text-sm text-slate-600">
+              <span className="text-slate-500">Nota:</span> {summary.close.note}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Cantina/Bar: venta rápida de productos pre-cargados (oculta con caja cerrada) */}
       {!summary.isClosed && (

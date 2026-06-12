@@ -30,7 +30,7 @@ describe('CloseDayButton onConfirm (#49)', () => {
   it('si closeDayAction lanza, muestra error contextual y reporta a Sentry sin romper', async () => {
     vi.mocked(closeDayAction).mockRejectedValue(new Error('db down'))
 
-    render(<CloseDayButton date="2026-06-10" balance={10000} />)
+    render(<CloseDayButton date="2026-06-10" totalIncome={12000} totalExpense={2000} balance={10000} />)
     const dialog = await openAndConfirm()
 
     await waitFor(() => {
@@ -42,7 +42,7 @@ describe('CloseDayButton onConfirm (#49)', () => {
   it('cierre exitoso llama a closeDayAction y no muestra error', async () => {
     vi.mocked(closeDayAction).mockResolvedValue({ success: true } as never)
 
-    render(<CloseDayButton date="2026-06-10" balance={10000} />)
+    render(<CloseDayButton date="2026-06-10" totalIncome={12000} totalExpense={2000} balance={10000} />)
     await openAndConfirm()
 
     await waitFor(() => {

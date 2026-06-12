@@ -149,6 +149,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
   const [availability, setAvailability] = useState(initialAvailability)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
+  const [courtFilter, setCourtFilter] = useState<string>('all')
 
   const today = getArtToday()
   const maxDate = addDays(today, tenant.bookingAdvanceDays)
@@ -180,7 +181,17 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
     }
   }
 
-  const timeRows = buildTimeRows(availability.courts)
+  // Si el filtro apunta a una cancha que ya no vino en la respuesta, cae a "todas".
+  const effectiveFilter =
+    courtFilter === 'all' || availability.courts.some((c) => c.id === courtFilter)
+      ? courtFilter
+      : 'all'
+  const visibleCourts =
+    effectiveFilter === 'all'
+      ? availability.courts
+      : availability.courts.filter((c) => c.id === effectiveFilter)
+
+  const timeRows = buildTimeRows(visibleCourts)
   const noCourts = availability.courts.length === 0
 
   return (
@@ -262,8 +273,52 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
         </p>
       )}
 
+      {/* Filtro por cancha */}
+      {!loading && availability.courts.length > 1 && (
+        <div
+          role="group"
+          aria-label="Filtrar por cancha"
+          className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
+        >
+          <button
+            type="button"
+            onClick={() => setCourtFilter('all')}
+            aria-pressed={effectiveFilter === 'all'}
+            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
+              effectiveFilter === 'all'
+                ? 'border-emerald-700 bg-emerald-700 text-white'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Todas
+          </button>
+          {availability.courts.map((court) => (
+            <button
+              key={court.id}
+              type="button"
+              onClick={() => setCourtFilter(court.id)}
+              aria-pressed={effectiveFilter === court.id}
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
+                effectiveFilter === court.id
+                  ? 'border-emerald-700 bg-emerald-700 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {court.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Día sin turnos (cerrado o sin slots para la selección) */}
+      {!loading && !noCourts && timeRows.length === 0 && (
+        <p className="text-sm text-muted-foreground py-10 text-center">
+          Sin turnos para esta fecha.
+        </p>
+      )}
+
       {/* Grid */}
-      {!loading && !noCourts && (
+      {!loading && !noCourts && timeRows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -274,7 +329,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
                 >
                   Hora
                 </th>
-                {availability.courts.map((court) => (
+                {visibleCourts.map((court) => (
                   <th
                     key={court.id}
                     scope="col"

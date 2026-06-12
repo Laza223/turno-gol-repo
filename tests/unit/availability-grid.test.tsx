@@ -146,6 +146,45 @@ describe('AvailabilityGrid (#39)', () => {
     replaceState.mockRestore()
   })
 
+  it('el filtro por cancha muestra solo la columna elegida y "Todas" la restaura', () => {
+    const today = artToday()
+    const availability: AvailabilityResponse = {
+      date: today,
+      courts: [
+        {
+          id: 'c1',
+          name: 'Cancha 1',
+          surfaceType: 'futbol5',
+          slots: [{ time: '18:00', duration: 60, status: 'free', price: null }],
+        },
+        {
+          id: 'c2',
+          name: 'Cancha 2',
+          surfaceType: 'futbol5',
+          slots: [{ time: '19:00', duration: 60, status: 'free', price: null }],
+        },
+      ],
+    }
+
+    render(
+      <AvailabilityGrid tenant={tenant} initialDate={today} initialAvailability={availability} />,
+    )
+
+    // Sin filtro: ambas columnas.
+    expect(screen.getByRole('columnheader', { name: 'Cancha 1' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Cancha 2' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancha 2' }))
+    expect(screen.queryByRole('columnheader', { name: 'Cancha 1' })).toBeNull()
+    expect(screen.getByRole('columnheader', { name: 'Cancha 2' })).toBeTruthy()
+    // El horario de la cancha filtrada desaparece de la grilla.
+    expect(screen.queryByText('18:00')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Todas' }))
+    expect(screen.getByRole('columnheader', { name: 'Cancha 1' })).toBeTruthy()
+    expect(screen.getByText('18:00')).toBeTruthy()
+  })
+
   it('renderiza etiquetas semánticas por estado: ocupado, turno fijo y bloqueado', () => {
     const today = artToday()
     const availability: AvailabilityResponse = {

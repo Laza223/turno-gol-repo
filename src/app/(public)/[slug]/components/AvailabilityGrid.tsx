@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Calendar, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
 import type {
   AvailabilityResponse,
@@ -13,8 +14,6 @@ import { capitalizeFirst } from '@/lib/format'
 
 type Props = {
   tenant: PublicTenant
-  initialDate: string
-  initialAvailability: AvailabilityResponse
 }
 
 function formatDateES(dateStr: string): string {
@@ -154,17 +153,61 @@ function SlotCell({
   )
 }
 
-export default function AvailabilityGrid({ tenant, initialDate, initialAvailability }: Props) {
-  const [date, setDate] = useState(initialDate)
-  const [availability, setAvailability] = useState(initialAvailability)
-  const [loading, setLoading] = useState(false)
+export default function AvailabilityGrid({ tenant }: Props) {
+  const searchParams = useSearchParams()
+  // "Hoy" y la fecha activa se resuelven recién en el cliente: la página del
+  // perfil es ISR, así que el HTML prerenderado no conoce ni la fecha del
+  // visitante (ART) ni sus query params. El server siempre renderiza el
+  // skeleton (date=null) y el primer fetch trae la grilla real.
+  const [today, setToday] = useState<string | null>(null)
+  const [date, setDate] = useState<string | null>(null)
+  const [availability, setAvailability] = useState<AvailabilityResponse | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [courtFilter, setCourtFilter] = useState<string>('all')
 
-  const today = getArtToday()
-  const maxDate = addDays(today, tenant.bookingAdvanceDays)
+  const maxDate = today ? addDays(today, tenant.bookingAdvanceDays) : null
+
+  useEffect(() => {
+    const todayStr = getArtToday()
+    const max = addDays(todayStr, tenant.bookingAdvanceDays)
+    // ?date= compartible, clampeado al rango reservable [hoy, hoy + anticipación].
+    const requested = searchParams.get('date')
+    const initialDate =
+      requested &&
+      /^\d{4}-\d{2}-\d{2}$/.test(requested) &&
+      requested >= todayStr &&
+      requested <= max
+        ? requested
+        : todayStr
+
+    setToday(todayStr)
+    setDate(initialDate)
+
+    let active = true
+    setLoading(true)
+    setError(false)
+    fetch(`/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${initialDate}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error('fetch failed')
+        return (await res.json()) as AvailabilityResponse
+      })
+      .then((data) => {
+        if (active) setAvailability(data)
+      })
+      .catch(() => {
+        if (active) setError(true)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [searchParams, tenant.slug, tenant.bookingAdvanceDays])
 
   async function loadDate(newDate: string) {
+    if (!today || !maxDate) return
     if (newDate < today || newDate > maxDate) return
     setLoading(true)
     setError(false)
@@ -193,16 +236,17 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
 
   // Si el filtro apunta a una cancha que ya no vino en la respuesta, cae a "todas".
   const effectiveFilter =
-    courtFilter === 'all' || availability.courts.some((c) => c.id === courtFilter)
+    courtFilter === 'all' || (availability?.courts.some((c) => c.id === courtFilter) ?? false)
       ? courtFilter
       : 'all'
-  const visibleCourts =
-    effectiveFilter === 'all'
+  const visibleCourts = !availability
+    ? []
+    : effectiveFilter === 'all'
       ? availability.courts
       : availability.courts.filter((c) => c.id === effectiveFilter)
 
   const timeRows = buildTimeRows(visibleCourts)
-  const noCourts = availability.courts.length === 0
+  const noCourts = availability !== null && availability.courts.length === 0
 
   return (
     <section
@@ -215,8 +259,8 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => loadDate(addDays(date, -1))}
-            disabled={date <= today || loading}
+            onClick={() => date && loadDate(addDays(date, -1))}
+            disabled={!date || !today || date <= today || loading}
             aria-label="Día anterior"
             className="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
           >
@@ -228,10 +272,10 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
                 en el label visible (el input es opacity-0). */}
             <input
               type="date"
-              value={date}
-              min={today}
-              max={maxDate}
-              disabled={loading}
+              value={date ?? ''}
+              min={today ?? undefined}
+              max={maxDate ?? undefined}
+              disabled={loading || !date}
               aria-label="Elegir fecha"
               onChange={(e) => {
                 if (e.target.value) void loadDate(e.target.value)
@@ -247,13 +291,13 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
             />
             <span className="flex h-8 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-slate-200 px-2 text-sm font-medium text-foreground tabular-nums peer-hover:bg-slate-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 transition-colors duration-150">
               <Calendar className="h-3.5 w-3.5 text-slate-500" aria-hidden />
-              {formatDateES(date)}
+              {date ? formatDateES(date) : ' '}
             </span>
           </div>
           <button
             type="button"
-            onClick={() => loadDate(addDays(date, 1))}
-            disabled={date >= maxDate || loading}
+            onClick={() => date && loadDate(addDays(date, 1))}
+            disabled={!date || !maxDate || date >= maxDate || loading}
             aria-label="Día siguiente"
             className="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
           >
@@ -262,10 +306,10 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
         </div>
       </div>
 
-      {/* Loading skeleton */}
+      {/* Loading skeleton (carga inicial y cambios de día) */}
       {loading && <Skeleton className="h-48 rounded-lg" />}
 
-      {/* Error al cambiar de dia: la grilla sigue mostrando el dia previo */}
+      {/* Error al cargar: si era un cambio de dia, la grilla sigue mostrando el dia previo */}
       {!loading && error && (
         <p
           role="alert"
@@ -284,7 +328,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
       )}
 
       {/* Filtro por cancha */}
-      {!loading && availability.courts.length > 1 && (
+      {!loading && availability !== null && availability.courts.length > 1 && (
         <div
           role="group"
           aria-label="Filtrar por cancha"
@@ -321,14 +365,14 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
       )}
 
       {/* Día sin turnos (cerrado o sin slots para la selección) */}
-      {!loading && !noCourts && timeRows.length === 0 && (
+      {!loading && availability && !noCourts && timeRows.length === 0 && (
         <p className="text-sm text-muted-foreground py-10 text-center">
           Sin turnos para esta fecha.
         </p>
       )}
 
       {/* Grid */}
-      {!loading && !noCourts && timeRows.length > 0 && (
+      {!loading && availability && !noCourts && date && timeRows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -380,7 +424,7 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
       )}
 
       {/* Legend */}
-      {!loading && !noCourts && (
+      {!loading && availability && !noCourts && (
         <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="inline-block w-3 h-3 rounded-sm bg-green-50 ring-1 ring-inset ring-green-600" />

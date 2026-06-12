@@ -8,7 +8,19 @@ import type {
   SlotStatus,
 } from '@/modules/tenants/public.service'
 
-afterEach(() => cleanup())
+// La grilla es 100% client-side (la página del perfil es ISR): lee ?date= con
+// useSearchParams y hace el fetch inicial en mount. Acá controlamos los params.
+const { searchParamsRef } = vi.hoisted(() => ({
+  searchParamsRef: { current: new URLSearchParams() },
+}))
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => searchParamsRef.current,
+}))
+
+afterEach(() => {
+  cleanup()
+  searchParamsRef.current = new URLSearchParams()
+})
 
 // Réplica de los helpers internos del componente para construir aserciones exactas.
 function addDays(dateStr: string, n: number): string {
@@ -56,31 +68,84 @@ function availabilityFor(
   }
 }
 
-function mockFetchOnce(body: unknown, ok: boolean) {
-  global.fetch = vi.fn(
-    async () =>
-      new Response(JSON.stringify(body), {
-        status: ok ? 200 : 500,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-  ) as unknown as typeof global.fetch
+// Respuestas en secuencia: la primera llamada es el fetch inicial de mount.
+function mockFetchSequence(responses: Array<{ body: unknown; ok: boolean }>) {
+  let call = 0
+  const fn = vi.fn(async () => {
+    const r = responses[Math.min(call, responses.length - 1)]!
+    call += 1
+    return new Response(JSON.stringify(r.body), {
+      status: r.ok ? 200 : 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+  global.fetch = fn as unknown as typeof global.fetch
+  return fn
 }
+
+describe('AvailabilityGrid (ISR: fetch inicial client-side)', () => {
+  it('en mount pide la disponibilidad de hoy (ART) y la renderiza', async () => {
+    const today = artToday()
+    const fetchMock = mockFetchSequence([{ body: availabilityFor(today, '18:00'), ok: true }])
+
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(formatDateES(today))).toBeTruthy()
+    })
+    expect(screen.getByText('18:00')).toBeTruthy()
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${today}`,
+    )
+  })
+
+  it('?date= válido dentro del rango se usa como fecha inicial', async () => {
+    const today = artToday()
+    const tomorrow = addDays(today, 1)
+    searchParamsRef.current = new URLSearchParams({ date: tomorrow })
+    const fetchMock = mockFetchSequence([{ body: availabilityFor(tomorrow, '19:00'), ok: true }])
+
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(formatDateES(tomorrow))).toBeTruthy()
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${tomorrow}`,
+    )
+  })
+
+  it('?date= fuera del rango reservable se clampea a hoy', async () => {
+    const today = artToday()
+    // bookingAdvanceDays=6 → +30 días queda afuera del rango.
+    searchParamsRef.current = new URLSearchParams({ date: addDays(today, 30) })
+    const fetchMock = mockFetchSequence([{ body: availabilityFor(today, '18:00'), ok: true }])
+
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(formatDateES(today))).toBeTruthy()
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${today}`,
+    )
+  })
+})
 
 describe('AvailabilityGrid (#39)', () => {
   it('al fallar el fetch del día siguiente NO avanza la fecha y muestra un alerta', async () => {
     const today = artToday()
-    mockFetchOnce({ error: 'boom' }, false)
+    mockFetchSequence([
+      { body: availabilityFor(today, '18:00'), ok: true },
+      { body: { error: 'boom' }, ok: false },
+    ])
 
-    render(
-      <AvailabilityGrid
-        tenant={tenant}
-        initialDate={today}
-        initialAvailability={availabilityFor(today, '18:00')}
-      />,
-    )
+    render(<AvailabilityGrid tenant={tenant} />)
 
-    // Estado inicial: etiqueta y slot del día de hoy.
-    expect(screen.getByText(formatDateES(today))).toBeTruthy()
+    // Estado inicial (tras el fetch de mount): etiqueta y slot del día de hoy.
+    await waitFor(() => {
+      expect(screen.getByText(formatDateES(today))).toBeTruthy()
+    })
     expect(screen.getByText('18:00')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Día siguiente' }))
@@ -99,15 +164,16 @@ describe('AvailabilityGrid (#39)', () => {
   it('cuando el fetch tiene éxito avanza la fecha y actualiza los slots, sin alerta', async () => {
     const today = artToday()
     const tomorrow = addDays(today, 1)
-    mockFetchOnce(availabilityFor(tomorrow, '19:00'), true)
+    mockFetchSequence([
+      { body: availabilityFor(today, '18:00'), ok: true },
+      { body: availabilityFor(tomorrow, '19:00'), ok: true },
+    ])
 
-    render(
-      <AvailabilityGrid
-        tenant={tenant}
-        initialDate={today}
-        initialAvailability={availabilityFor(today, '18:00')}
-      />,
-    )
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(formatDateES(today))).toBeTruthy()
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Día siguiente' }))
 
@@ -122,19 +188,20 @@ describe('AvailabilityGrid (#39)', () => {
   it('el datepicker carga la fecha elegida y actualiza ?date= en la URL', async () => {
     const today = artToday()
     const target = addDays(today, 3)
-    mockFetchOnce(availabilityFor(target, '20:00'), true)
+    mockFetchSequence([
+      { body: availabilityFor(today, '18:00'), ok: true },
+      { body: availabilityFor(target, '20:00'), ok: true },
+    ])
     // happy-dom no propaga replaceState a location.search: espiamos la llamada.
     const replaceState = vi
       .spyOn(window.history, 'replaceState')
       .mockImplementation(() => undefined)
 
-    render(
-      <AvailabilityGrid
-        tenant={tenant}
-        initialDate={today}
-        initialAvailability={availabilityFor(today, '18:00')}
-      />,
-    )
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(formatDateES(today))).toBeTruthy()
+    })
 
     fireEvent.change(screen.getByLabelText('Elegir fecha'), { target: { value: target } })
 
@@ -146,7 +213,7 @@ describe('AvailabilityGrid (#39)', () => {
     replaceState.mockRestore()
   })
 
-  it('el filtro por cancha muestra solo la columna elegida y "Todas" la restaura', () => {
+  it('el filtro por cancha muestra solo la columna elegida y "Todas" la restaura', async () => {
     const today = artToday()
     const availability: AvailabilityResponse = {
       date: today,
@@ -165,13 +232,14 @@ describe('AvailabilityGrid (#39)', () => {
         },
       ],
     }
+    mockFetchSequence([{ body: availability, ok: true }])
 
-    render(
-      <AvailabilityGrid tenant={tenant} initialDate={today} initialAvailability={availability} />,
-    )
+    render(<AvailabilityGrid tenant={tenant} />)
 
-    // Sin filtro: ambas columnas.
-    expect(screen.getByRole('columnheader', { name: 'Cancha 1' })).toBeTruthy()
+    // Sin filtro: ambas columnas (tras el fetch de mount).
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: 'Cancha 1' })).toBeTruthy()
+    })
     expect(screen.getByRole('columnheader', { name: 'Cancha 2' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancha 2' }))
@@ -185,7 +253,7 @@ describe('AvailabilityGrid (#39)', () => {
     expect(screen.getByText('18:00')).toBeTruthy()
   })
 
-  it('muestra el precio en cada slot futuro, incluso ocupado o turno fijo', () => {
+  it('muestra el precio en cada slot futuro, incluso ocupado o turno fijo', async () => {
     const today = artToday()
     const availability: AvailabilityResponse = {
       date: today,
@@ -202,16 +270,17 @@ describe('AvailabilityGrid (#39)', () => {
         },
       ],
     }
+    mockFetchSequence([{ body: availability, ok: true }])
 
-    render(
-      <AvailabilityGrid tenant={tenant} initialDate={today} initialAvailability={availability} />,
-    )
+    render(<AvailabilityGrid tenant={tenant} />)
 
-    expect(screen.getAllByText(/15\.000/)).toHaveLength(2) // libre + ocupado
+    await waitFor(() => {
+      expect(screen.getAllByText(/15\.000/)).toHaveLength(2) // libre + ocupado
+    })
     expect(screen.getAllByText(/18\.000/)).toHaveLength(1) // turno fijo
   })
 
-  it('sin reserva online el slot libre ofrece Contactar con precio visible', () => {
+  it('sin reserva online el slot libre ofrece Contactar con precio visible', async () => {
     const today = artToday()
     const offlineTenant = { ...tenant, allowOnlineBooking: false } as PublicTenant
     const availability: AvailabilityResponse = {
@@ -225,21 +294,18 @@ describe('AvailabilityGrid (#39)', () => {
         },
       ],
     }
+    mockFetchSequence([{ body: availability, ok: true }])
 
-    render(
-      <AvailabilityGrid
-        tenant={offlineTenant}
-        initialDate={today}
-        initialAvailability={availability}
-      />,
-    )
+    render(<AvailabilityGrid tenant={offlineTenant} />)
 
-    expect(screen.getByText('Contactar')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByText('Contactar')).toBeTruthy()
+    })
     expect(screen.getByText(/12\.000/)).toBeTruthy()
     expect(screen.queryByText('Reservar')).toBeNull()
   })
 
-  it('renderiza etiquetas semánticas por estado: ocupado, turno fijo y bloqueado', () => {
+  it('renderiza etiquetas semánticas por estado: ocupado, turno fijo y bloqueado', async () => {
     const today = artToday()
     const availability: AvailabilityResponse = {
       date: today,
@@ -257,12 +323,14 @@ describe('AvailabilityGrid (#39)', () => {
         },
       ],
     }
+    mockFetchSequence([{ body: availability, ok: true }])
 
-    render(
-      <AvailabilityGrid tenant={tenant} initialDate={today} initialAvailability={availability} />,
-    )
+    render(<AvailabilityGrid tenant={tenant} />)
 
     // Scope a la tabla: la leyenda repite los mismos textos fuera de ella.
+    await waitFor(() => {
+      expect(screen.getByRole('table')).toBeTruthy()
+    })
     const table = within(screen.getByRole('table'))
     expect(table.getByText('Ocupado')).toBeTruthy()
     expect(table.getByText('Turno fijo')).toBeTruthy()

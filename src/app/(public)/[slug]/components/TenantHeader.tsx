@@ -12,7 +12,6 @@ type Props = {
   tenant: PublicTenant
   avgRating: number
   reviewCount: number
-  initialFavorited?: boolean
 }
 
 const DAY_LABELS: Record<string, string> = {
@@ -27,12 +26,7 @@ const DAY_LABELS: Record<string, string> = {
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
-export default function TenantHeader({
-  tenant,
-  avgRating,
-  reviewCount,
-  initialFavorited = false,
-}: Props) {
+export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) {
   const whatsappUrl = buildWhatsappUrl(
     tenant.whatsapp,
     `Hola, quiero consultar disponibilidad en ${tenant.name}.`,
@@ -71,14 +65,11 @@ export default function TenantHeader({
           </div>
         </div>
 
-        {/* Acciones: compartir + favorito */}
+        {/* Acciones: compartir + favorito. El estado del corazón hidrata
+            client-side desde la sesión del portal (la página es ISR). */}
         <div className="flex flex-wrap gap-2">
           <ShareButton message={`Reservá tu cancha en ${tenant.name}`} />
-          <FavoriteButton
-            tenantId={tenant.id}
-            variant="inline"
-            initialFavorited={initialFavorited}
-          />
+          <FavoriteButton tenantId={tenant.id} variant="inline" />
         </div>
       </div>
 

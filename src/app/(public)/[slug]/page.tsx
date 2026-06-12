@@ -3,15 +3,11 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import {
   getPublicTenant,
-  getPublicAvailability,
   getPublicCourtCards,
+  listTopPublicTenantSlugs,
 } from '@/modules/tenants/public.service'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { withPlayerContext } from '@/shared/db/client'
-import { isFavorite } from '@/modules/favorites/favorite.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
-import type { PublicTenant } from '@/modules/tenants/public.service'
 import TenantHeader from './components/TenantHeader'
 import TenantGallery from './components/TenantGallery'
 import CourtCard from './components/CourtCard'
@@ -21,7 +17,22 @@ import { Skeleton } from '@/components/ui/skeleton'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildLocalBusiness, buildBreadcrumbList } from '@/lib/seo/structured-data'
 
-type Props = { params: { slug: string }; searchParams: { date?: string } }
+type Props = { params: { slug: string } }
+
+// ISR: el perfil del complejo se regenera cada 5 min. Todo lo estático (nombre,
+// fotos, canchas, reseñas, metadata y JSON-LD) sale del HTML cacheado; lo que
+// depende del visitante (disponibilidad, ?date=, favorito, sesión) se hidrata
+// client-side. Nada en este árbol puede leer cookies()/headers()/searchParams,
+// si no la ruta vuelve a ser dynamic.
+export const revalidate = 300
+
+// Pre-genera en build los perfiles de los complejos más activos; el resto se
+// genera on-demand en el primer hit (dynamicParams queda en su default true).
+// Fail-open: si el build corre sin DB, devuelve [] y no se pre-genera ninguno.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const slugs = await listTopPublicTenantSlugs(50).catch(() => [])
+  return slugs.map((slug) => ({ slug }))
+}
 
 const UNAVAILABLE_STATUSES = new Set([
   'suspended',
@@ -31,44 +42,12 @@ const UNAVAILABLE_STATUSES = new Set([
   'deleted',
 ])
 
-function getArtToday(): string {
-  const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
-  return artNow.toISOString().slice(0, 10)
-}
-
-function addDaysStr(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const dt = new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1))
-  dt.setUTCDate(dt.getUTCDate() + n)
-  return dt.toISOString().slice(0, 10)
-}
-
-// Estado de favorito del jugador logueado (si lo hay) para que el corazón
-// arranque en "Guardado" tras un refresh. Resiliente: anónimo / staff / error → false (#40).
-async function getInitialFavorited(tenantId: string): Promise<boolean> {
-  const authUser = await extractAuthUser()
-  if (authUser?.type !== 'player') return false
-  const playerId = authUser.playerId
-  return withPlayerContext(playerId, (tx) => isFavorite(playerId, tenantId, tx)).catch(
-    () => false,
-  )
-}
-
-async function GridSection({ tenant, initialDate }: { tenant: PublicTenant; initialDate: string }) {
-  const initialAvailability = await getPublicAvailability(tenant, initialDate)
-  return (
-    <AvailabilityGrid
-      tenant={tenant}
-      initialDate={initialDate}
-      initialAvailability={initialAvailability}
-    />
-  )
-}
-
 export default async function PublicComplexPage(props: Props) {
   const tenant = await getPublicTenant(props.params.slug)
   if (!tenant) notFound()
 
+  // Gate server-side: un complejo suspendido/dado de baja no expone su perfil.
+  // Con ISR puede servirse stale hasta 300s tras el cambio de estado (aceptable).
   if (UNAVAILABLE_STATUSES.has(tenant.status)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
@@ -84,24 +63,15 @@ export default async function PublicComplexPage(props: Props) {
 
   // Datos complementarios (rating, canchas, reseñas). Resilientes: si fallan, la
   // página igual renderiza con la grilla y el header.
-  const [summary, courtCards, reviewsPage, initialFavorited] = await Promise.all([
+  const [summary, courtCards, reviewsPage] = await Promise.all([
     getAverageRating(tenant.id).catch(() => ({ average: 0, count: 0 })),
     getPublicCourtCards(tenant).catch(() => []),
     getReviewsByTenant(tenant.id, 10, 0).catch(() => ({ reviews: [], total: 0 })),
-    getInitialFavorited(tenant.id),
   ])
 
   const galleryPhotos = Array.from(
     new Set([tenant.coverUrl, ...courtCards.flatMap((c) => c.photos)].filter(Boolean)),
   ) as string[]
-
-  const todayStr = getArtToday()
-  const maxStr = addDaysStr(todayStr, tenant.bookingAdvanceDays)
-  const reqDate = props.searchParams.date
-  const initialDate =
-    reqDate && /^\d{4}-\d{2}-\d{2}$/.test(reqDate) && reqDate >= todayStr && reqDate <= maxStr
-      ? reqDate
-      : todayStr
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -118,12 +88,7 @@ export default async function PublicComplexPage(props: Props) {
 
       {galleryPhotos.length > 0 && <TenantGallery photos={galleryPhotos} name={tenant.name} />}
 
-      <TenantHeader
-        tenant={tenant}
-        avgRating={summary.average}
-        reviewCount={summary.count}
-        initialFavorited={initialFavorited}
-      />
+      <TenantHeader tenant={tenant} avgRating={summary.average} reviewCount={summary.count} />
 
       {courtCards.length > 0 && (
         <section aria-label="Canchas" className="space-y-3">
@@ -138,8 +103,11 @@ export default async function PublicComplexPage(props: Props) {
         </section>
       )}
 
+      {/* La grilla es 100% client-side (fetch a /api/public/availability): el
+          Suspense es obligatorio porque AvailabilityGrid usa useSearchParams()
+          dentro de una ruta prerenderada estáticamente. */}
       <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
-        <GridSection tenant={tenant} initialDate={initialDate} />
+        <AvailabilityGrid tenant={tenant} />
       </Suspense>
 
       <ReviewsSection

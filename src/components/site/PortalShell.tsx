@@ -1,31 +1,21 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
 import PortalHeader from './PortalHeader'
 import SiteFooter from './SiteFooter'
-import { PlayerBottomNav } from './PlayerBottomNav'
-import { getPortalSession } from './portal-session'
+import PortalFrame from './PortalFrame'
+import { PortalSessionProvider } from './PortalSessionProvider'
 
 /**
  * Cascarón único del portal del jugador (público + logueado + post-reserva).
  * Misma cabecera, footer y —cuando hay sesión de jugador— el bottom-nav mobile.
- * Esto unifica los antes-divergentes layouts en una sola experiencia.
+ * La sesión se hidrata client-side (PortalSessionProvider): el shell no lee
+ * cookies, así las rutas públicas pueden ser ISR/estáticas.
  */
-export default async function PortalShell({ children }: { children: ReactNode }) {
-  const session = await getPortalSession()
-
+export default function PortalShell({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={cn(
-        'flex min-h-dvh flex-col bg-background',
-        session && 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0',
-      )}
-    >
-      <PortalHeader variant="solid" />
-      <main id="main-content" className="flex-1">
+    <PortalSessionProvider>
+      <PortalFrame header={<PortalHeader variant="solid" />} footer={<SiteFooter />}>
         {children}
-      </main>
-      <SiteFooter />
-      {session && <PlayerBottomNav />}
-    </div>
+      </PortalFrame>
+    </PortalSessionProvider>
   )
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { unstable_cache } from 'next/cache'
 import { SearchX } from 'lucide-react'
 import {
   getCourtPhotosByTenant,
@@ -25,7 +26,11 @@ import ExplorarMapLoader from './components/ExplorarMapLoader'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 
-export const dynamic = 'force-dynamic'
+// Limitación de Next 14: una página que lee `searchParams` es SIEMPRE dynamic;
+// no existe ISR condicional por searchParams (PPR es experimental y no se usa).
+// Además los favoritos del jugador leen cookies. El cacheo acá es de DATOS: la
+// carga inicial sin filtros y el listado de ciudades salen de unstable_cache
+// (5 min) en vez de pegarle a la DB de búsqueda en cada visita.
 export const metadata = buildMetadata({
   title: 'Explorá complejos de fútbol',
   description: 'Encontrá canchas de fútbol y reservá online en tu ciudad. Filtrá por superficie, formato, servicios y precio.',
@@ -34,6 +39,23 @@ export const metadata = buildMetadata({
 
 const PAGE_SIZE = 12
 const SORTS: SortOption[] = ['name', 'price', 'rating', 'distance']
+
+// Camino caliente de /explorar: la primera carga sin ningún filtro es idéntica
+// para todos los visitantes → cacheada 5 min en el Data Cache. OJO: nada que
+// lea cookies()/headers() puede ejecutarse ADENTRO de unstable_cache (los
+// favoritos del jugador quedan afuera, en el render de la página).
+const getDefaultSearchCached = unstable_cache(
+  () => searchPublicTenants({ limit: PAGE_SIZE, offset: 0 }),
+  ['explorar-default-search'],
+  { revalidate: 300 },
+)
+
+// El listado de ciudades no depende de filtros ni de sesión: cacheado siempre.
+const listPublicCitiesCached = unstable_cache(
+  () => listPublicCities(),
+  ['explorar-cities'],
+  { revalidate: 300 },
+)
 
 type SP = Record<string, string | undefined>
 
@@ -96,25 +118,46 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       })
     : undefined
 
+  // Búsqueda default = vista lista, primera página y CERO filtros/orden/geo/
+  // disponibilidad: es el grueso del tráfico y es idéntica para todos.
+  const isDefaultSearch =
+    view === 'list' &&
+    offset === 0 &&
+    !sort &&
+    !avail &&
+    formats.length === 0 &&
+    !searchParams.q &&
+    !searchParams.city &&
+    !searchParams.province &&
+    searchParams.online !== '1' &&
+    !searchParams.surfaces &&
+    !searchParams.amenities &&
+    num(searchParams.minPrice) === undefined &&
+    num(searchParams.maxPrice) === undefined &&
+    num(searchParams.lat) === undefined &&
+    num(searchParams.lng) === undefined
+
   const [{ results, total }, cities] = await Promise.all([
-    searchPublicTenants({
-      q: searchParams.q,
-      city: searchParams.city,
-      province: searchParams.province,
-      onlineOnly: searchParams.online === '1',
-      surfaces: csv(searchParams.surfaces),
-      formats,
-      amenities: csv(searchParams.amenities),
-      minPriceCents: num(searchParams.minPrice),
-      maxPriceCents: num(searchParams.maxPrice),
-      sort,
-      lat: num(searchParams.lat),
-      lng: num(searchParams.lng),
-      limit,
-      offset,
-      ...(tenantIds !== undefined ? { tenantIds } : {}),
-    }),
-    listPublicCities(),
+    isDefaultSearch
+      ? getDefaultSearchCached()
+      : searchPublicTenants({
+          q: searchParams.q,
+          city: searchParams.city,
+          province: searchParams.province,
+          onlineOnly: searchParams.online === '1',
+          surfaces: csv(searchParams.surfaces),
+          formats,
+          amenities: csv(searchParams.amenities),
+          minPriceCents: num(searchParams.minPrice),
+          maxPriceCents: num(searchParams.maxPrice),
+          sort,
+          lat: num(searchParams.lat),
+          lng: num(searchParams.lng),
+          limit,
+          offset,
+          ...(tenantIds !== undefined ? { tenantIds } : {}),
+        }),
+    listPublicCitiesCached(),
   ])
 
   const hasMore = view === 'list' && offset + PAGE_SIZE < total

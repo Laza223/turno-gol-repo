@@ -176,6 +176,35 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
 
 // ─── DB queries ───────────────────────────────────────────────────────────────
 
+/**
+ * Slugs de los complejos públicos más activos (reservas creadas en los últimos
+ * 60 días) para pre-generar sus perfiles en build (ISR de /[slug]). LEFT JOIN:
+ * un complejo visible sin reservas recientes igual califica si sobran lugares.
+ * Si bookings está vedada por RLS para el rol del build, los counts dan 0 y el
+ * orden degrada a alfabético — sigue siendo un proxy válido de "visibles".
+ * Fail-open: cualquier error (p. ej. build sin DB) devuelve [] y los perfiles
+ * se generan on-demand.
+ */
+export async function listTopPublicTenantSlugs(limit = 50): Promise<string[]> {
+  try {
+    const db = getDb()
+    const rows = await db.execute(sql`
+      SELECT t.slug
+      FROM tenants t
+      LEFT JOIN bookings b
+        ON b.tenant_id = t.id
+       AND b.created_at >= now() - interval '60 days'
+      WHERE t.status IN ('active', 'trialing')
+      GROUP BY t.id
+      ORDER BY count(b.id) DESC, t.name ASC
+      LIMIT ${limit}
+    `)
+    return (rows as unknown as { slug: string }[]).map((r) => r.slug)
+  } catch {
+    return []
+  }
+}
+
 // tenants is a global table (no RLS) — no context needed (doc12 §9.3)
 export async function getPublicTenant(slug: string): Promise<PublicTenant | null> {
   const db = getDb()

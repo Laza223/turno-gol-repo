@@ -4,6 +4,7 @@ import { useState, type MouseEvent } from 'react'
 import { Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { usePortalSession } from '@/components/site/PortalSessionProvider'
 
 type Props = {
   tenantId: string
@@ -25,16 +26,22 @@ export default function FavoriteButton({
   className,
 }: Props) {
   const { toast } = useToast()
-  const [fav, setFav] = useState(initialFavorited)
+  const { favoriteTenantIds } = usePortalSession()
+  // Prioridad: interacción del usuario > prop del server (rutas dynamic como
+  // /explorar) > hidratación client-side de la sesión (rutas ISR como /[slug],
+  // donde el server render no puede leer cookies y arranca no-favorito).
+  const [override, setOverride] = useState<boolean | null>(null)
   const [pending, setPending] = useState(false)
+  const fav = override ?? (initialFavorited || favoriteTenantIds.has(tenantId))
 
   async function toggle(e: MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
     if (pending) return
     setPending(true)
+    const prev = fav
     const next = !fav
-    setFav(next)
+    setOverride(next)
     try {
       const res = await fetch('/api/player/favorites/toggle', {
         method: 'POST',
@@ -48,9 +55,9 @@ export default function FavoriteButton({
       }
       if (!res.ok) throw new Error('toggle failed')
       const json = (await res.json()) as { data?: { favorited?: boolean } }
-      setFav(json.data?.favorited ?? next)
+      setOverride(json.data?.favorited ?? next)
     } catch {
-      setFav(!next)
+      setOverride(prev)
       toast({ title: 'No pudimos actualizar tus favoritos.', variant: 'destructive' })
     } finally {
       setPending(false)

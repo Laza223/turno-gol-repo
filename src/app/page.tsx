@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react'
 import SiteNav from '@/components/site/SiteNav'
+import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 import SiteFooter from '@/components/site/SiteFooter'
 import HeroSearch from '@/components/site/HeroSearch'
 import FeaturedComplexCard from '@/components/site/FeaturedComplexCard'
@@ -116,7 +117,11 @@ export default async function HomePage() {
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
       <JsonLd data={[buildOrganization(), buildWebSite()]} />
-      <SiteNav variant="overlay" />
+      {/* La nav es session-aware vía hidratación client-side (la landing es ISR
+          y no puede leer cookies en el server render). */}
+      <PortalSessionProvider>
+        <SiteNav variant="overlay" />
+      </PortalSessionProvider>
       <Hero cities={cities} />
       {featured.length > 0 && <FeaturedComplexes complexes={featured} />}
       {openMatches.length > 0 && <OpenMatchesShowcase matches={openMatches} />}

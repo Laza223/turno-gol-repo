@@ -1,7 +1,9 @@
+'use client'
+
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 import { AccountMenu } from './AccountMenu'
-import { getPortalSession } from './portal-session'
+import { usePortalSession } from './PortalSessionProvider'
 
 type Props = { variant?: 'overlay' | 'solid' }
 
@@ -9,10 +11,13 @@ type Props = { variant?: 'overlay' | 'solid' }
  * Cabecera única del portal, session-aware. Reemplaza al antiguo `SiteNav`.
  * - Deslogueado: "Iniciar sesión" / "Comenzar" (igual que antes).
  * - Jugador logueado: chip de avatar + nombre con menú de cuenta.
+ * La sesión llega del PortalSessionProvider (hidratación client-side): el HTML
+ * server-rendered es siempre el estado anónimo (habilita ISR) y el chip del
+ * jugador aparece tras montar, ocupando el mismo slot derecho de la nav.
  * `variant="overlay"` se usa sobre el hero de la landing (markup preservado).
  */
-export default async function PortalHeader({ variant = 'solid' }: Props) {
-  const session = await getPortalSession()
+export default function PortalHeader({ variant = 'solid' }: Props) {
+  const { session } = usePortalSession()
 
   if (variant === 'overlay') {
     return (

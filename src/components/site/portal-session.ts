@@ -14,6 +14,8 @@ export type PortalSession = {
  * Sesión del jugador para el shell del portal (cabecera + bottom-nav).
  * Devuelve `null` si no hay jugador logueado (anónimo, staff o admin).
  * Cacheado por request para no repetir la lectura de auth ni la query.
+ * Server-only (lee cookies): hoy lo consume GET /api/player/session, que es
+ * lo que hidrata el shell client-side sin volver dynamic a las rutas ISR.
  */
 export const getPortalSession = cache(async (): Promise<PortalSession | null> => {
   const user = await extractAuthUser()

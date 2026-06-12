@@ -32,6 +32,8 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/health/route.ts',
   // ARCO data export (B9): GET, no body/params/query. Player id from session.
   'src/app/api/player/data-export/route.ts',
+  // Sesión del portal (ISR): GET, no body/params/query. Player id from cookie.
+  'src/app/api/player/session/route.ts',
   // Queue-depth monitor (B10): GET, no input. Super-admin id from session.
   'src/app/api/admin/jobs/route.ts',
   // Business metrics (Fase 5): GET, no input. tenant_id from session via withTenant.

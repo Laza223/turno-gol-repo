@@ -7,8 +7,14 @@ import { withTenantContext } from '@/shared/db/client'
 import { artTodayStr } from '@/shared/dates/art'
 import { formatDateLong } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { listTenantBookings, type ReservaListRow, type ReservaScope } from './queries'
+import {
+  countTenantBookingsByStatus,
+  listTenantBookings,
+  type ReservaListRow,
+  type ReservaScope,
+} from './queries'
 import { BookingListItem } from './BookingListItem'
+import { ReservasToolbar } from './ReservasToolbar'
 import { EmptyState } from '@/components/ui/empty-state'
 
 const SCOPES: Array<{ value: ReservaScope; label: string }> = [
@@ -33,12 +39,26 @@ const FILTERS = [
 const ALLOWED_STATUS = new Set(FILTERS.map((f) => f.value).filter(Boolean))
 
 /** Arma /reservas?… omitiendo defaults para URLs limpias y compartibles. */
-function buildHref(params: { dia: ReservaScope; status: string }): string {
+function buildHref(params: { dia: ReservaScope; status: string; q: string }): string {
   const search = new URLSearchParams()
   if (params.dia !== 'hoy') search.set('dia', params.dia)
   if (params.status) search.set('status', params.status)
+  if (params.q) search.set('q', params.q)
   const qs = search.toString()
   return qs ? `/reservas?${qs}` : '/reservas'
+}
+
+/**
+ * Contador para una píldora: '' suma todo, 'canceladas' agrupa ambos enums.
+ * Los counts vienen sin filtro de estado para que cada píldora muestre su
+ * número aunque otra esté activa.
+ */
+function countFor(counts: Record<string, number>, filterValue: string): number {
+  if (!filterValue) return Object.values(counts).reduce((acc, n) => acc + n, 0)
+  if (filterValue === 'canceladas') {
+    return (counts.canceled_refunded ?? 0) + (counts.canceled_no_refund ?? 0)
+  }
+  return counts[filterValue] ?? 0
 }
 
 /** Agrupa preservando el orden de llegada (la query ya ordena). */
@@ -53,7 +73,7 @@ function groupBy(rows: ReservaListRow[], key: (r: ReservaListRow) => string): Ar
   return Array.from(groups.entries())
 }
 
-type Props = { searchParams: { dia?: string; status?: string } }
+type Props = { searchParams: { dia?: string; status?: string; q?: string } }
 
 export default async function ReservasPage({ searchParams }: Props) {
   const user = await extractAuthUser()
@@ -66,10 +86,22 @@ export default async function ReservasPage({ searchParams }: Props) {
   const scope: ReservaScope = ALLOWED_SCOPES.has(requestedScope) ? (requestedScope as ReservaScope) : 'hoy'
   const requestedStatus = searchParams.status ?? ''
   const status = ALLOWED_STATUS.has(requestedStatus) ? requestedStatus : ''
+  const q = (searchParams.q ?? '').trim().slice(0, 80)
 
-  const rows = await withTenantContext(tenant.id, (tx) =>
-    listTenantBookings(tenant.id, { scope, today, ...(status ? { status } : {}) }, tx),
-  )
+  // Mismo tx (una conexión): secuencial, no Promise.all.
+  const { rows, counts } = await withTenantContext(tenant.id, async (tx) => {
+    const list = await listTenantBookings(
+      tenant.id,
+      { scope, today, ...(status ? { status } : {}), ...(q ? { q } : {}) },
+      tx,
+    )
+    const byStatus = await countTenantBookingsByStatus(
+      tenant.id,
+      { scope, today, ...(q ? { q } : {}) },
+      tx,
+    )
+    return { rows: list, counts: byStatus }
+  })
 
   // Hoy: secciones por cancha (la query ordena cancha, hora). Próximas e
   // historial: secciones por fecha para que el día sea escaneable.
@@ -85,7 +117,8 @@ export default async function ReservasPage({ searchParams }: Props) {
           <h1 className="text-2xl font-semibold text-slate-900">Reservas</h1>
           {scope === 'hoy' && (
             <p className="text-sm text-slate-500">
-              {formatDateLong(today)} · {rows.length === 1 ? '1 reserva' : `${rows.length} reservas`}
+              {formatDateLong(today)} ·{' '}
+              {countFor(counts, '') === 1 ? '1 reserva' : `${countFor(counts, '')} reservas`}
             </p>
           )}
         </div>
@@ -97,41 +130,53 @@ export default async function ReservasPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-slate-100 p-1">
-        {SCOPES.map((s) => {
-          const active = scope === s.value
-          return (
-            <Link
-              key={s.value}
-              href={buildHref({ dia: s.value, status })}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
-                active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900',
-              )}
-            >
-              {s.label}
-            </Link>
-          )
-        })}
-      </nav>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-slate-100 p-1">
+          {SCOPES.map((s) => {
+            const active = scope === s.value
+            return (
+              <Link
+                key={s.value}
+                href={buildHref({ dia: s.value, status, q })}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+                  active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900',
+                )}
+              >
+                {s.label}
+              </Link>
+            )
+          })}
+        </nav>
+        <ReservasToolbar />
+      </div>
 
       <nav aria-label="Filtro por estado" className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = status === f.value
+          const count = countFor(counts, f.value)
           return (
             <Link
               key={f.label}
-              href={buildHref({ dia: scope, status: f.value })}
+              href={buildHref({ dia: scope, status: f.value, q })}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                 active
                   ? 'bg-emerald-600 text-white'
                   : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50',
               )}
             >
               {f.label}
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-px text-[11px] font-semibold tabular-nums',
+                  active ? 'bg-emerald-700 text-emerald-50' : 'bg-slate-100 text-slate-500',
+                )}
+              >
+                {count}
+              </span>
             </Link>
           )
         })}
@@ -142,9 +187,11 @@ export default async function ReservasPage({ searchParams }: Props) {
           icon={CalendarX}
           title="Sin reservas"
           description={
-            scope === 'hoy'
-              ? 'No hay reservas para hoy con los filtros seleccionados.'
-              : 'No hay reservas para los filtros seleccionados.'
+            q
+              ? `No hay resultados para “${q}” con los filtros seleccionados.`
+              : scope === 'hoy'
+                ? 'No hay reservas para hoy con los filtros seleccionados.'
+                : 'No hay reservas para los filtros seleccionados.'
           }
         />
       ) : (

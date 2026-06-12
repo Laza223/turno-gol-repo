@@ -15,6 +15,7 @@ vi.mock('@/shared/db/client', () => ({
 }))
 vi.mock('@/app/(admin)/reservas/queries', () => ({
   listTenantBookings: vi.fn(async () => []),
+  countTenantBookingsByStatus: vi.fn(async () => ({})),
 }))
 vi.mock('@/shared/dates/art', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/shared/dates/art')>()),

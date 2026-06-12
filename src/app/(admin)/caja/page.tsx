@@ -4,7 +4,7 @@ import { Receipt } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
-import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
+import { getDaySummary, getCashFlows, getDayComparisons } from '@/modules/cashflow/cashflow.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CajaActions } from './components/CajaActions'
@@ -20,6 +20,33 @@ function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T00:00:00Z')
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
+}
+
+// "vs ayer +$1.500" / "vs prom. semanal −$800". Para egresos (invert) subir es malo.
+function DeltaLine({
+  label,
+  current,
+  reference,
+  invert = false,
+}: {
+  label: string
+  current: number
+  reference: number
+  invert?: boolean
+}) {
+  const delta = current - reference
+  const color =
+    delta === 0 ? 'text-slate-400' : (delta > 0) !== invert ? 'text-emerald-600' : 'text-red-600'
+  const sign = delta > 0 ? '+' : delta < 0 ? '−' : ''
+  return (
+    <p className="text-xs text-slate-500">
+      {label}{' '}
+      <span className={`font-medium tabular-nums ${color}`}>
+        {sign}
+        {formatARS(Math.abs(delta))}
+      </span>
+    </p>
+  )
 }
 
 // Labels en español para los ENUMs de cash_flows (evita mostrar los valores
@@ -53,12 +80,13 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
   // reventaba el cast SQL ::date y addDays(); degradar a hoy (ART) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
-  const { summary, cashFlows } = await withTenantContext(tenant.id, async (tx) => {
-    const [s, cf] = await Promise.all([
+  const { summary, cashFlows, comparisons } = await withTenantContext(tenant.id, async (tx) => {
+    const [s, cf, comp] = await Promise.all([
       getDaySummary(tenant.id, date, tx),
       getCashFlows(tenant.id, date, tx),
+      getDayComparisons(tenant.id, date, tx),
     ])
-    return { summary: s, cashFlows: cf }
+    return { summary: s, cashFlows: cf, comparisons: comp }
   })
 
   const prevDay = addDays(date, -1)
@@ -100,19 +128,54 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Total ingresos</p>
-          <p className="text-2xl font-bold tabular-nums text-green-700">{formatARS(summary.totalIncome)}</p>
+      {/* Resumen del día: saldo neto destacado (primero en mobile), ingresos y egresos
+          con comparativa vs ayer y vs promedio diario de la última semana. */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <div className="col-span-2 order-first lg:order-last lg:col-span-1 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm">
+          <p className="text-sm text-slate-600">Saldo neto del día</p>
+          <p className={`text-3xl font-bold tabular-nums ${summary.balance < 0 ? 'text-red-700' : 'text-emerald-800'}`}>
+            {formatARS(summary.balance)}
+          </p>
+          <div className="mt-2 space-y-0.5">
+            <DeltaLine label="vs ayer" current={summary.balance} reference={comparisons.yesterday.balance} />
+            <DeltaLine label="vs prom. semanal" current={summary.balance} reference={comparisons.weekAvg.balance} />
+          </div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Total ajustes</p>
-          <p className="text-2xl font-bold tabular-nums text-emerald-700">{formatARS(summary.totalAdjustments)}</p>
+          <p className="text-sm text-slate-500">Ingresos</p>
+          <p className="text-2xl font-bold tabular-nums text-emerald-700">
+            {formatARS(summary.totalIncome + summary.totalAdjustments)}
+          </p>
+          <div className="mt-2 space-y-0.5">
+            <DeltaLine
+              label="vs ayer"
+              current={summary.totalIncome + summary.totalAdjustments}
+              reference={comparisons.yesterday.totalIncome}
+            />
+            <DeltaLine
+              label="vs prom. semanal"
+              current={summary.totalIncome + summary.totalAdjustments}
+              reference={comparisons.weekAvg.totalIncome}
+            />
+          </div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Balance del día</p>
-          <p className="text-2xl font-bold tabular-nums text-slate-900">{formatARS(summary.balance)}</p>
+          <p className="text-sm text-slate-500">Egresos</p>
+          <p className="text-2xl font-bold tabular-nums text-red-700">{formatARS(summary.totalExpense)}</p>
+          <div className="mt-2 space-y-0.5">
+            <DeltaLine
+              label="vs ayer"
+              current={summary.totalExpense}
+              reference={comparisons.yesterday.totalExpense}
+              invert
+            />
+            <DeltaLine
+              label="vs prom. semanal"
+              current={summary.totalExpense}
+              reference={comparisons.weekAvg.totalExpense}
+              invert
+            />
+          </div>
         </div>
       </div>
 

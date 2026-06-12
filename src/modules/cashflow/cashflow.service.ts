@@ -12,6 +12,8 @@ import type {
   CashFlowCategory,
   CashFlowRow,
   DaySummary,
+  DayComparisons,
+  DayTotals,
   CreateCashFlowInput,
 } from './cashflow.types'
 
@@ -152,6 +154,58 @@ export async function getCashFlows(
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),
   }))
+}
+
+/**
+ * Comparativas para el resumen de caja: totales de ayer y promedio diario de
+ * los 7 días anteriores a `date`. Una sola query agregada por día y tipo;
+ * los ajustes suman dentro de totalIncome (mismo criterio que el saldo).
+ */
+export async function getDayComparisons(
+  tenantId: string,
+  date: string,
+  tx: DbTx,
+): Promise<DayComparisons> {
+  const rows = await tx.execute(
+    sql`SELECT (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS day,
+               type, SUM(amount)::int AS total
+        FROM cash_flows
+        WHERE tenant_id = ${tenantId}
+          AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
+              BETWEEN (${date}::date - 7) AND (${date}::date - 1)
+        GROUP BY 1, 2`,
+  )
+
+  const yesterdayStr = (() => {
+    const d = new Date(date + 'T00:00:00Z')
+    d.setUTCDate(d.getUTCDate() - 1)
+    return d.toISOString().slice(0, 10)
+  })()
+
+  const yesterday: DayTotals = { totalIncome: 0, totalExpense: 0, balance: 0 }
+  let weekIncome = 0
+  let weekExpense = 0
+
+  for (const row of (rows as unknown as Array<{ day: string; type: string; total: number }>)) {
+    const total = row.total ?? 0
+    const income = row.type === 'expense' ? 0 : total
+    const expense = row.type === 'expense' ? total : 0
+    weekIncome += income
+    weekExpense += expense
+    if (row.day === yesterdayStr) {
+      yesterday.totalIncome += income
+      yesterday.totalExpense += expense
+    }
+  }
+  yesterday.balance = yesterday.totalIncome - yesterday.totalExpense
+
+  const weekAvg: DayTotals = {
+    totalIncome: Math.round(weekIncome / 7),
+    totalExpense: Math.round(weekExpense / 7),
+    balance: Math.round((weekIncome - weekExpense) / 7),
+  }
+
+  return { yesterday, weekAvg }
 }
 
 export async function getDaySummary(

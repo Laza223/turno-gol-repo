@@ -26,7 +26,7 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
   }
 })
 
-import { createCashFlow, getDaySummary } from '@/modules/cashflow/cashflow.service'
+import { createCashFlow, getDaySummary, getDayComparisons } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import {
   DayAlreadyClosedError,
@@ -184,6 +184,33 @@ describe('cashflow service', () => {
     expect(close.totalIncome).toBe(650000)
     expect(close.totalExpense).toBe(200000)
     expect(close.balance).toBe(450000)
+  })
+
+  it('getDayComparisons aggregates yesterday and weekly daily average', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    await sql`
+      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
+      VALUES
+        (${tenant.id}, 'income', 'booking', ${700000}, 'cash', ${'Turno ayer'}, ${staff.id}, NOW() - interval '1 day'),
+        (${tenant.id}, 'expense', 'operating_expense', ${100000}, 'cash', ${'Gasto ayer'}, ${staff.id}, NOW() - interval '1 day'),
+        (${tenant.id}, 'income', 'booking', ${1400000}, 'cash', ${'Turno hace 3 días'}, ${staff.id}, NOW() - interval '3 days'),
+        (${tenant.id}, 'income', 'booking', ${999999}, 'cash', ${'Fuera de ventana'}, ${staff.id}, NOW() - interval '9 days'),
+        (${tenant.id}, 'income', 'booking', ${555555}, 'cash', ${'Hoy no cuenta'}, ${staff.id}, NOW())
+    `
+
+    const comp = await withTenantContext(tenant.id, (tx) =>
+      getDayComparisons(tenant.id, TODAY, tx),
+    )
+
+    expect(comp.yesterday).toEqual({ totalIncome: 700000, totalExpense: 100000, balance: 600000 })
+    // Semana = 7 días anteriores a hoy: 700000 + 1400000 ingresos, 100000 egresos.
+    expect(comp.weekAvg.totalIncome).toBe(Math.round(2100000 / 7))
+    expect(comp.weekAvg.totalExpense).toBe(Math.round(100000 / 7))
+    expect(comp.weekAvg.balance).toBe(Math.round(2000000 / 7))
   })
 
   it('closes the day and aggregates totals correctly', async () => {

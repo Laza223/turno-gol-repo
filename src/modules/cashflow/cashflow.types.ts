@@ -50,6 +50,20 @@ export type DaySummary = {
   close: DailyCashCloseRow | null
 }
 
+/** Totales de un día para comparativas. Ingresos incluye ajustes (todo lo que suma). */
+export type DayTotals = {
+  totalIncome: number
+  totalExpense: number
+  balance: number
+}
+
+export type DayComparisons = {
+  /** Totales del día anterior (0s si no hubo movimientos). */
+  yesterday: DayTotals
+  /** Promedio diario de los 7 días anteriores; días sin movimientos cuentan como 0. */
+  weekAvg: DayTotals
+}
+
 export type CreateCashFlowInput = {
   type: CashFlowType
   category: CashFlowCategory

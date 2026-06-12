@@ -4,47 +4,56 @@ import { CalendarX } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
-import { listTenantBookings } from './queries'
+import { artTodayStr } from '@/shared/dates/art'
+import { formatDateLong } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import { listTenantBookings, type ReservaListRow, type ReservaScope } from './queries'
+import { BookingListItem } from './BookingListItem'
 import { EmptyState } from '@/components/ui/empty-state'
 
-const STATUS_LABELS: Record<string, string> = {
-  pending_payment: 'Pago pendiente',
-  confirmed: 'Confirmada',
-  completed: 'Completada',
-  no_show: 'Ausente',
-  canceled_refunded: 'Cancelada',
-  canceled_no_refund: 'Cancelada',
-  expired: 'Expirada',
-}
-const STATUS_CLASSES: Record<string, string> = {
-  pending_payment: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  completed: 'bg-slate-100 text-slate-600 ring-slate-500/20',
-  no_show: 'bg-red-50 text-red-700 ring-red-600/20',
-  canceled_refunded: 'bg-slate-100 text-slate-500 ring-slate-500/20',
-  canceled_no_refund: 'bg-slate-100 text-slate-500 ring-slate-500/20',
-  expired: 'bg-slate-100 text-slate-500 ring-slate-500/20',
-}
+const SCOPES: Array<{ value: ReservaScope; label: string }> = [
+  { value: 'hoy', label: 'Hoy' },
+  { value: 'proximas', label: 'Próximas' },
+  { value: 'historial', label: 'Historial' },
+]
+const ALLOWED_SCOPES = new Set<string>(SCOPES.map((s) => s.value))
+
 const FILTERS = [
   { value: '', label: 'Todas' },
   { value: 'confirmed', label: 'Confirmadas' },
-  { value: 'pending_payment', label: 'Pago pendiente' },
+  { value: 'pending_payment', label: 'Pendientes' },
   { value: 'completed', label: 'Completadas' },
   { value: 'no_show', label: 'Ausentes' },
+  { value: 'canceladas', label: 'Canceladas' },
 ]
 // #30: allowlist de estados filtrables. Un ?status fuera de este set (texto
 // basura o un enum no listado) reventaba el cast `${status}::booking_status`
 // en la query -> 500/error.tsx. Lo degradamos a "sin filtro" (Todas).
+// 'canceladas' es un valor virtual que la query expande a ambos enums canceled_*.
 const ALLOWED_STATUS = new Set(FILTERS.map((f) => f.value).filter(Boolean))
 
-function formatARS(cents: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(cents / 100)
-}
-function formatDate(dateStr: string): string {
-  return new Date(`${dateStr}T12:00:00Z`).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+/** Arma /reservas?… omitiendo defaults para URLs limpias y compartibles. */
+function buildHref(params: { dia: ReservaScope; status: string }): string {
+  const search = new URLSearchParams()
+  if (params.dia !== 'hoy') search.set('dia', params.dia)
+  if (params.status) search.set('status', params.status)
+  const qs = search.toString()
+  return qs ? `/reservas?${qs}` : '/reservas'
 }
 
-type Props = { searchParams: { status?: string } }
+/** Agrupa preservando el orden de llegada (la query ya ordena). */
+function groupBy(rows: ReservaListRow[], key: (r: ReservaListRow) => string): Array<[string, ReservaListRow[]]> {
+  const groups = new Map<string, ReservaListRow[]>()
+  for (const row of rows) {
+    const k = key(row)
+    const bucket = groups.get(k)
+    if (bucket) bucket.push(row)
+    else groups.set(k, [row])
+  }
+  return Array.from(groups.entries())
+}
+
+type Props = { searchParams: { dia?: string; status?: string } }
 
 export default async function ReservasPage({ searchParams }: Props) {
   const user = await extractAuthUser()
@@ -52,29 +61,76 @@ export default async function ReservasPage({ searchParams }: Props) {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const requested = searchParams.status ?? ''
-  const status = ALLOWED_STATUS.has(requested) ? requested : ''
+  const today = artTodayStr()
+  const requestedScope = searchParams.dia ?? ''
+  const scope: ReservaScope = ALLOWED_SCOPES.has(requestedScope) ? (requestedScope as ReservaScope) : 'hoy'
+  const requestedStatus = searchParams.status ?? ''
+  const status = ALLOWED_STATUS.has(requestedStatus) ? requestedStatus : ''
+
   const rows = await withTenantContext(tenant.id, (tx) =>
-    listTenantBookings(tenant.id, status ? { status } : {}, tx),
+    listTenantBookings(tenant.id, { scope, today, ...(status ? { status } : {}) }, tx),
   )
 
+  // Hoy: secciones por cancha (la query ordena cancha, hora). Próximas e
+  // historial: secciones por fecha para que el día sea escaneable.
+  const groups =
+    scope === 'hoy'
+      ? groupBy(rows, (r) => r.courtName)
+      : groupBy(rows, (r) => r.date)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Reservas</h1>
-        <Link href="/grilla" className="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Reservas</h1>
+          {scope === 'hoy' && (
+            <p className="text-sm text-slate-500">
+              {formatDateLong(today)} · {rows.length === 1 ? '1 reserva' : `${rows.length} reservas`}
+            </p>
+          )}
+        </div>
+        <Link
+          href="/grilla"
+          className="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+        >
           Ir a la grilla
         </Link>
       </div>
 
-      <nav className="flex flex-wrap gap-2">
+      <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-slate-100 p-1">
+        {SCOPES.map((s) => {
+          const active = scope === s.value
+          return (
+            <Link
+              key={s.value}
+              href={buildHref({ dia: s.value, status })}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+                active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900',
+              )}
+            >
+              {s.label}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <nav aria-label="Filtro por estado" className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = status === f.value
-          const href = f.value ? `/reservas?status=${f.value}` : '/reservas'
           return (
-            <Link key={f.label} href={href}
-              className={'rounded-full px-3 py-1.5 text-xs font-medium transition-colors ' +
-                (active ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50')}>
+            <Link
+              key={f.label}
+              href={buildHref({ dia: scope, status: f.value })}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                active
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50',
+              )}
+            >
               {f.label}
             </Link>
           )
@@ -82,39 +138,29 @@ export default async function ReservasPage({ searchParams }: Props) {
       </nav>
 
       {rows.length === 0 ? (
-        <EmptyState icon={CalendarX} title="Sin reservas" description="No hay reservas para los filtros seleccionados." />
+        <EmptyState
+          icon={CalendarX}
+          title="Sin reservas"
+          description={
+            scope === 'hoy'
+              ? 'No hay reservas para hoy con los filtros seleccionados.'
+              : 'No hay reservas para los filtros seleccionados.'
+          }
+        />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3">Fecha</th>
-                <th className="px-4 py-3">Cancha</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3 text-right">Precio</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <Link href={`/reservas/${r.id}`} className="font-medium text-emerald-700 hover:underline tabular-nums">
-                      {formatDate(r.date)} · {r.timeStart.slice(0, 5)}–{r.timeEnd.slice(0, 5)}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">{r.courtName}</td>
-                  <td className="px-4 py-3 text-slate-700">{r.playerName ?? r.guestName ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ' + (STATUS_CLASSES[r.status] ?? STATUS_CLASSES.completed)}>
-                      {STATUS_LABELS[r.status] ?? r.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">{formatARS(r.priceSnapshot)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-6">
+          {groups.map(([groupKey, groupRows]) => (
+            <section key={groupKey} aria-label={scope === 'hoy' ? groupKey : formatDateLong(groupKey)}>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                {scope === 'hoy' ? groupKey : formatDateLong(groupKey)}
+              </h2>
+              <ul className="space-y-2">
+                {groupRows.map((r) => (
+                  <BookingListItem key={r.id} booking={r} />
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
       )}
     </div>

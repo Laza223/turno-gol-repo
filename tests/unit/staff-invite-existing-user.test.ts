@@ -113,8 +113,9 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
 
     expect(res.success).toBe(true)
     expect(h.listUsers).not.toHaveBeenCalled()
+    // El form de makeForm no manda rol → default Encargado (manager).
     expect(h.updateUserById).toHaveBeenCalledWith('auth-new', {
-      app_metadata: { staff_user_id: 'staff-new', tenant_id: 'tenant-1', role: 'admin' },
+      app_metadata: { staff_user_id: 'staff-new', tenant_id: 'tenant-1', role: 'manager' },
     })
   })
 

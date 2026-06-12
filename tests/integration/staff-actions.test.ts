@@ -112,6 +112,82 @@ describe('inviteStaffAction', () => {
     if (!res.success) expect(res.error).toContain('ya es miembro')
   })
 
+  it('guarda el rol seleccionado en la DB y en el claim del auth user', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const owner = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, owner.id)
+    asStaff(tenant.id, owner.id)
+
+    const fd = new FormData()
+    fd.set('email', 'lectura@staff.local')
+    fd.set('firstName', 'Solo')
+    fd.set('lastName', 'Lectura')
+    fd.set('role', 'read_only')
+
+    const res = await inviteStaffAction(fd)
+    expect(res.success).toBe(true)
+
+    const rows = await sql<{ role: string }[]>`
+      SELECT tsm.role FROM tenant_staff_members tsm
+      JOIN staff_users su ON su.id = tsm.staff_user_id
+      WHERE su.email = 'lectura@staff.local' AND tsm.tenant_id = ${tenant.id}
+    `
+    expect(rows[0]?.role).toBe('read_only')
+    expect(updateUserById).toHaveBeenCalledWith(
+      'new-auth-id',
+      expect.objectContaining({
+        app_metadata: expect.objectContaining({ role: 'read_only' }),
+      }),
+    )
+  })
+
+  it('defaultea a Encargado (manager) si el form no manda rol', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const owner = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, owner.id)
+    asStaff(tenant.id, owner.id)
+
+    const fd = new FormData()
+    fd.set('email', 'encargado@staff.local')
+    fd.set('firstName', 'En')
+    fd.set('lastName', 'Cargado')
+
+    const res = await inviteStaffAction(fd)
+    expect(res.success).toBe(true)
+
+    const rows = await sql<{ role: string }[]>`
+      SELECT tsm.role FROM tenant_staff_members tsm
+      JOIN staff_users su ON su.id = tsm.staff_user_id
+      WHERE su.email = 'encargado@staff.local' AND tsm.tenant_id = ${tenant.id}
+    `
+    expect(rows[0]?.role).toBe('manager')
+  })
+
+  it('rechaza un rol fuera del enum sin tocar la DB', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const owner = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, owner.id)
+    asStaff(tenant.id, owner.id)
+
+    const fd = new FormData()
+    fd.set('email', 'intruso@staff.local')
+    fd.set('firstName', 'In')
+    fd.set('lastName', 'Truso')
+    fd.set('role', 'superadmin')
+
+    const res = await inviteStaffAction(fd)
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('Rol inválido')
+
+    const su = await sql<{ id: string }[]>`
+      SELECT id FROM staff_users WHERE email = 'intruso@staff.local'
+    `
+    expect(su).toHaveLength(0)
+  })
+
   it('creates staff_users + tenant_staff_members and sends the invite', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)

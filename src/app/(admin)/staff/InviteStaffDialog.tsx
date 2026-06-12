@@ -12,6 +12,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
+import {
+  DEFAULT_INVITE_ROLE,
+  STAFF_ROLES,
+  STAFF_ROLE_DESCRIPTIONS,
+  STAFF_ROLE_LABELS,
+} from '@/modules/staff/roles'
 import type { StaffActionResult } from './actions'
 
 // inviteStaffAction tiene firma (formData) => Promise<StaffActionResult>.
@@ -108,6 +114,32 @@ export function InviteStaffDialog({
               Recibirán un email para activar su cuenta.
             </p>
           </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium leading-none">Rol</legend>
+            {STAFF_ROLES.map((role) => (
+              <label
+                key={role}
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 px-3 py-2 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50"
+              >
+                <input
+                  type="radio"
+                  name="role"
+                  value={role}
+                  defaultChecked={role === DEFAULT_INVITE_ROLE}
+                  className="mt-0.5 h-4 w-4 accent-emerald-600"
+                />
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium text-slate-900">
+                    {STAFF_ROLE_LABELS[role]}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {STAFF_ROLE_DESCRIPTIONS[role]}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
           {errorMessage && (
             <p

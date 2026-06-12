@@ -9,6 +9,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
+import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
@@ -78,6 +79,11 @@ const inviteSchema = z.object({
   email: z.string().email('Email inválido'),
   firstName: z.string().min(1, 'Nombre requerido').max(100),
   lastName: z.string().min(1, 'Apellido requerido').max(100),
+  // El default Encargado se aplica acá (capa de aplicación); el DEFAULT de la
+  // columna sigue siendo 'admin' por retrocompatibilidad (migración 026).
+  role: z
+    .enum(STAFF_ROLES, { errorMap: () => ({ message: 'Rol inválido' }) })
+    .default(DEFAULT_INVITE_ROLE),
 })
 
 async function requireStaffTenant() {
@@ -103,12 +109,15 @@ export async function inviteStaffAction(
     email: formData.get('email'),
     firstName: formData.get('firstName'),
     lastName: formData.get('lastName'),
+    // FormData.get devuelve null si falta el campo; el default de zod solo
+    // aplica sobre undefined.
+    role: formData.get('role') ?? undefined,
   })
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
 
-  const { email, firstName, lastName } = parsed.data
+  const { email, firstName, lastName, role } = parsed.data
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     const existing = await tx
@@ -144,13 +153,14 @@ export async function inviteStaffAction(
       .values({
         tenantId: tenant.id,
         staffUserId: staffUser.id,
-        role: 'admin',
+        role,
         addedBy: user.staffUserId,
         isActive: true,
       })
       .onConflictDoUpdate({
         target: [tenantStaffMembers.tenantId, tenantStaffMembers.staffUserId],
-        set: { isActive: true, addedBy: user.staffUserId },
+        // Re-invitar a un miembro inactivo lo reactiva con el rol recién elegido.
+        set: { isActive: true, role, addedBy: user.staffUserId },
       })
 
     const adminClient = createAdminClient()
@@ -169,7 +179,7 @@ export async function inviteStaffAction(
         app_metadata: {
           staff_user_id: staffUser.id,
           tenant_id: tenant.id,
-          role: 'admin',
+          role,
         },
       })
     } else if (inviteError) {

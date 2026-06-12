@@ -3,6 +3,7 @@
 import React from 'react'
 import { Ban, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BookingPopover } from './BookingPopover'
 import type { GridBooking } from './BookingGrid'
 
 type BookingCardProps = {
@@ -16,6 +17,11 @@ type BookingCardProps = {
   courtId?: string
   courtName: string
   onSlotClick?: (courtId: string, slotTime: string) => void
+  /** Popover de detalle (solo slots ocupados): estado y dónde abrirlo. */
+  detailOpen?: boolean
+  onDetailChange?: (bookingId: string | null) => void
+  popoverSide?: 'top' | 'bottom'
+  popoverAlign?: 'left' | 'right'
 }
 
 /** Posición explícita en la grilla CSS: +2 deja lugar a la columna de horas y a la fila de headers. */
@@ -96,6 +102,10 @@ function BookingCardComponent({
   courtId,
   courtName,
   onSlotClick,
+  detailOpen = false,
+  onDetailChange,
+  popoverSide = 'bottom',
+  popoverAlign = 'left',
 }: BookingCardProps) {
   if (!booking) {
     const interactive = !isPast && !!onSlotClick && !!courtId
@@ -147,31 +157,64 @@ function BookingCardComponent({
   const visual = slotVisual(booking)
   const displayName = bookingDisplayName(booking)
   const isBlock = booking.type === 'block'
+  const popoverId = `booking-popover-${booking.id}`
 
+  // El popover abre por hover (wrapper: entrar al popover no lo cierra) y por
+  // focus (tab o tap en mobile dispara focus). Escape lo cierra sin perder
+  // el lugar en la grilla.
   return (
     <div
       style={placement(col, row, span)}
-      className={cn(
-        'm-0.5 rounded-md overflow-hidden flex',
-        visual.cell,
-        isPast && 'opacity-60',
-      )}
-      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ?? visual.label}, ${visual.label}`}
+      className="relative m-0.5"
+      onMouseEnter={onDetailChange ? () => onDetailChange(booking.id) : undefined}
+      onMouseLeave={onDetailChange ? () => onDetailChange(null) : undefined}
     >
-      {/* Acento lateral: señal de estado no dependiente del color de fondo. */}
-      <span aria-hidden className={cn('w-1 shrink-0 rounded-full my-1 ml-0.5', visual.accent)} />
-      <div className="flex min-w-0 flex-col gap-0.5 p-1.5">
-        <span className="text-[11px] font-semibold leading-tight tabular-nums">
-          {timeStart}–{booking.timeEnd}
-        </span>
-        {displayName && (
-          <span className="truncate text-xs font-medium leading-tight">{displayName}</span>
+      <button
+        type="button"
+        data-col={col}
+        data-row={row}
+        aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ?? visual.label}, ${visual.label}`}
+        aria-expanded={detailOpen}
+        aria-controls={detailOpen ? popoverId : undefined}
+        onFocus={onDetailChange ? () => onDetailChange(booking.id) : undefined}
+        onBlur={onDetailChange ? () => onDetailChange(null) : undefined}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && detailOpen) {
+            e.stopPropagation()
+            onDetailChange?.(null)
+          }
+        }}
+        className={cn(
+          'flex h-full w-full cursor-default overflow-hidden rounded-md text-left',
+          visual.cell,
+          isPast && 'opacity-60',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500',
         )}
-        <span className="inline-flex items-center gap-1 text-[11px] leading-tight opacity-90">
-          {isBlock && <Ban aria-hidden className="h-3 w-3" />}
-          {visual.label}
+      >
+        {/* Acento lateral: señal de estado no dependiente del color de fondo. */}
+        <span aria-hidden className={cn('w-1 shrink-0 rounded-full my-1 ml-0.5', visual.accent)} />
+        <span className="flex min-w-0 flex-col gap-0.5 p-1.5">
+          <span className="text-[11px] font-semibold leading-tight tabular-nums">
+            {timeStart}–{booking.timeEnd}
+          </span>
+          {displayName && (
+            <span className="truncate text-xs font-medium leading-tight">{displayName}</span>
+          )}
+          <span className="inline-flex items-center gap-1 text-[11px] leading-tight opacity-90">
+            {isBlock && <Ban aria-hidden className="h-3 w-3" />}
+            {visual.label}
+          </span>
         </span>
-      </div>
+      </button>
+      {detailOpen && (
+        <BookingPopover
+          booking={booking}
+          courtName={courtName}
+          id={popoverId}
+          side={popoverSide}
+          align={popoverAlign}
+        />
+      )}
     </div>
   )
 }

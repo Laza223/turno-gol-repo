@@ -65,6 +65,8 @@ export function BookingGrid({
 }: Props) {
   const router = useRouter()
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
+  // Reserva con popover de detalle abierto (hover/focus). Una sola a la vez.
+  const [detailBookingId, setDetailBookingId] = useState<string | null>(null)
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
   const artNow = useArtNow()
@@ -311,6 +313,12 @@ export function BookingGrid({
                         row={ri}
                         span={cell.rowSpan}
                         courtName={court.name}
+                        detailOpen={detailBookingId === cell.booking.id}
+                        onDetailChange={setDetailBookingId}
+                        popoverSide={ri + cell.rowSpan >= slots.length - 1 ? 'top' : 'bottom'}
+                        popoverAlign={
+                          courts.length > 1 && ci === courts.length - 1 ? 'right' : 'left'
+                        }
                       />
                     )
                   }

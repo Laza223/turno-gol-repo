@@ -7,7 +7,12 @@ import { listCourts } from '@/modules/courts/court.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { bookings, players } from '@/shared/db/schema'
 import { BookingGrid, type GridBooking } from '@/components/booking/BookingGrid'
-import type { BookingStatus, BookingType } from '@/modules/bookings/booking.types'
+import type {
+  BookingStatus,
+  BookingType,
+  DepositStatus,
+  PaymentMethodValue,
+} from '@/modules/bookings/booking.types'
 
 
 export default async function GrillaPage({
@@ -39,6 +44,9 @@ export default async function GrillaPage({
         type: bookings.type,
         guestName: bookings.guestName,
         priceSnapshot: bookings.priceSnapshot,
+        paymentMethod: bookings.paymentMethod,
+        depositStatus: bookings.depositStatus,
+        depositAmount: bookings.depositAmount,
         playerFirstName: players.firstName,
         playerLastName: players.lastName,
       })
@@ -66,6 +74,9 @@ export default async function GrillaPage({
     playerFirstName: r.playerFirstName ?? null,
     playerLastName: r.playerLastName ?? null,
     priceSnapshot: r.priceSnapshot,
+    paymentMethod: r.paymentMethod as PaymentMethodValue | null,
+    depositStatus: r.depositStatus as DepositStatus,
+    depositAmount: r.depositAmount,
   }))
 
   return (

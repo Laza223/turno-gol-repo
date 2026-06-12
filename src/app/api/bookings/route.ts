@@ -116,6 +116,7 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
     price_snapshot: r.booking.priceSnapshot,
     deposit_amount: r.booking.depositAmount,
     deposit_status: r.booking.depositStatus,
+    payment_method: r.booking.paymentMethod,
     notes_internal: r.booking.notesInternal,
     created_by_staff: r.booking.createdByStaff,
     created_at: r.booking.createdAt,

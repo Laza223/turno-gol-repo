@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { GridBooking } from '@/components/booking/BookingGrid'
-import type { BookingStatus, BookingType } from '@/modules/bookings/booking.types'
+import type {
+  BookingStatus,
+  BookingType,
+  DepositStatus,
+  PaymentMethodValue,
+} from '@/modules/bookings/booking.types'
 
 export type RealtimeStatus = 'CONNECTING' | 'SUBSCRIBED' | 'OFFLINE'
 
@@ -21,6 +26,9 @@ type ApiResponse = {
     guest_name: string | null
     player: { first_name: string; last_name: string } | null
     price_snapshot: number
+    payment_method: PaymentMethodValue | null
+    deposit_status: DepositStatus
+    deposit_amount: number
   }>
 }
 
@@ -39,6 +47,9 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
     playerFirstName: null,
     playerLastName: null,
     priceSnapshot: row['price_snapshot'] as number,
+    paymentMethod: (row['payment_method'] as PaymentMethodValue | null) ?? null,
+    depositStatus: (row['deposit_status'] as DepositStatus | null) ?? null,
+    depositAmount: (row['deposit_amount'] as number | null) ?? null,
   }
 }
 
@@ -62,6 +73,9 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
     playerFirstName: row.player?.first_name ?? null,
     playerLastName: row.player?.last_name ?? null,
     priceSnapshot: row.price_snapshot,
+    paymentMethod: row.payment_method ?? null,
+    depositStatus: row.deposit_status ?? null,
+    depositAmount: row.deposit_amount ?? null,
   }
 }
 

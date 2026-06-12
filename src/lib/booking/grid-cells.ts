@@ -1,4 +1,9 @@
-import type { BookingStatus, BookingType } from '@/modules/bookings/booking.types'
+import type {
+  BookingStatus,
+  BookingType,
+  DepositStatus,
+  PaymentMethodValue,
+} from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
 
 // ---------------------------------------------------------------------------
@@ -17,6 +22,11 @@ export type GridBooking = {
   playerFirstName: string | null
   playerLastName: string | null
   priceSnapshot: number
+  // Detalle de pago para el popover de la grilla. Opcionales: el payload
+  // Realtime y fixtures viejas pueden no traerlos; el popover degrada a "—".
+  paymentMethod?: PaymentMethodValue | null
+  depositStatus?: DepositStatus | null
+  depositAmount?: number | null
 }
 
 export type CellState =

@@ -6,6 +6,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import BookingSummary from './components/BookingSummary'
 import LoginGate from './components/LoginGate'
 import ConfirmBookingButton from './components/ConfirmBookingButton'
+import type { PayMethod } from './components/PaymentMethodSelector'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,6 +68,16 @@ export default async function ReservarPage({ params, searchParams }: Props) {
     : 0
   const timeEnd = addMinsToHHMM(time, durNum)
 
+  // Con seña la única vía es MercadoPago (regla de negocio: la seña online es
+  // obligatoria). Sin seña, métodos presenciales según config del complejo.
+  const payMethods: PayMethod[] =
+    depositAmount > 0
+      ? ['mercadopago']
+      : [
+          ...(tenant.acceptsCash ? (['cash'] as const) : []),
+          ...(tenant.acceptsTransfer ? (['transfer'] as const) : []),
+        ]
+
   const user = await extractAuthUser()
   const isPlayer = user?.type === 'player'
   const nextUrl = `/${params.slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${durNum}`
@@ -122,6 +133,7 @@ export default async function ReservarPage({ params, searchParams }: Props) {
           time={time}
           dur={durNum}
           depositAmount={depositAmount}
+          payMethods={payMethods}
         />
       ) : (
         <LoginGate next={nextUrl} />

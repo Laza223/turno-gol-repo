@@ -25,6 +25,9 @@ export type PublicTenant = {
   allowOnlineBooking: boolean
   requiresDeposit: boolean
   depositPercentage: number
+  // Métodos de pago presencial que el complejo declara aceptar (settings).
+  acceptsCash: boolean
+  acceptsTransfer: boolean
   bookingDurationMinutes: number[]
   bookingAdvanceDays: number
   // Interfaz pública estilo ATC: amenities + coordenadas (ya en la fila tenants).
@@ -224,6 +227,8 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
     allowOnlineBooking: s.allow_online_booking ?? true,
     requiresDeposit: s.requires_deposit ?? false,
     depositPercentage: s.deposit_percentage ?? 30,
+    acceptsCash: s.accepts_cash ?? true,
+    acceptsTransfer: s.accepts_transfer ?? true,
     bookingDurationMinutes: s.booking_duration_minutes ?? [60],
     bookingAdvanceDays: s.booking_advance_days ?? 6,
     amenities: (row.amenities ?? {}) as Record<string, boolean>,

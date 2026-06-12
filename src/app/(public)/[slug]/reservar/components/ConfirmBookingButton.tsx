@@ -3,6 +3,7 @@
 import { useFormStatus } from 'react-dom'
 import { Loader2, ShieldCheck } from 'lucide-react'
 import { createBookingAndCheckout } from '../actions'
+import PaymentMethodSelector, { type PayMethod } from './PaymentMethodSelector'
 
 function Inner({ depositAmount }: { depositAmount: number }) {
   const { pending } = useFormStatus()
@@ -22,14 +23,16 @@ export default function ConfirmBookingButton(props: {
   time: string
   dur: number
   depositAmount: number
+  payMethods: PayMethod[]
 }) {
   return (
-    <form action={createBookingAndCheckout} className="space-y-3">
+    <form action={createBookingAndCheckout} className="space-y-4">
       <input type="hidden" name="slug" value={props.slug} />
       <input type="hidden" name="court" value={props.court} />
       <input type="hidden" name="date" value={props.date} />
       <input type="hidden" name="time" value={props.time} />
       <input type="hidden" name="dur" value={props.dur} />
+      <PaymentMethodSelector methods={props.payMethods} />
       <Inner depositAmount={props.depositAmount} />
       <p className="text-center text-xs text-slate-500">
         {props.depositAmount > 0 ? 'Te llevamos a MercadoPago para pagar la seña.' : 'Tu turno queda confirmado al instante.'}

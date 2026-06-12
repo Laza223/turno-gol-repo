@@ -60,6 +60,13 @@ export type CreateOnlineBookingInput = {
   notesPlayer?: string
   /** When set, rejects dates beyond today+maxAdvanceDays (ART). Omit in e2e/seed routes. */
   maxAdvanceDays?: number
+  /**
+   * Método presencial elegido por el jugador (selector de /reservar). Solo se
+   * persiste en reservas sin seña: con seña queda null hasta que el webhook
+   * P10 setea 'mercadopago' (chk_booking_payment_consistency exige payment_id
+   * para mercadopago; cash/transfer exigen payment_id NULL).
+   */
+  paymentMethod?: 'cash' | 'transfer'
 }
 
 export type CreateManualBookingInput = {

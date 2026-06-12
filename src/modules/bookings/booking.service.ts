@@ -332,7 +332,7 @@ async function createOnlineBookingImpl(
         priceSnapshot,
         depositAmount,
         depositStatus: withDeposit ? 'pending' : 'not_required',
-        paymentMethod: null,
+        paymentMethod: withDeposit ? null : (input.paymentMethod ?? null),
         notesPlayer: input.notesPlayer ?? null,
       })
       .returning()

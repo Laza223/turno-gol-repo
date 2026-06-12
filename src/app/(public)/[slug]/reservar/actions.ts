@@ -114,6 +114,20 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   const settings = tenant!.settings as TenantSettings
   const timeEnd = addMins(time, dur)
 
+  // Método de pago presencial elegido por el jugador. Solo aplica sin seña
+  // (con seña el flujo MP setea payment_method='mercadopago' vía webhook P10)
+  // y solo si el complejo lo acepta — re-validamos server-side: el form puede
+  // venir manipulado.
+  const withDeposit = settings.requires_deposit && settings.deposit_percentage > 0
+  const payRaw = String(formData.get('pay') ?? '')
+  const paymentMethod: 'cash' | 'transfer' | undefined = withDeposit
+    ? undefined
+    : payRaw === 'cash' && (settings.accepts_cash ?? true)
+      ? 'cash'
+      : payRaw === 'transfer' && (settings.accepts_transfer ?? true)
+        ? 'transfer'
+        : undefined
+
   let redirectTo: string
   try {
     const booking = await withPlayerContext(user!.playerId, async (tx) => {
@@ -130,6 +144,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
           requiresDeposit: settings.requires_deposit,
           depositPercentage: settings.deposit_percentage,
           maxAdvanceDays: settings.booking_advance_days ?? 6,
+          ...(paymentMethod ? { paymentMethod } : {}),
         },
         tx,
       )

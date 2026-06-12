@@ -4,6 +4,8 @@ import {
   computeNoShowRate,
   fillDailySeries,
   metricsWindow,
+  previousWindow,
+  rankTopSlots,
   METRICS_WINDOW_DAYS,
 } from '@/modules/metrics/metrics.service'
 
@@ -75,5 +77,66 @@ describe('fillDailySeries', () => {
     )
     expect(series.find((d) => d.date === '2026-05-30')).toBeUndefined()
     expect(series.find((d) => d.date === '2026-06-02')?.count).toBe(2)
+  })
+})
+
+describe('previousWindow', () => {
+  it('returns the same-length window ending the day before from', () => {
+    expect(previousWindow({ from: '2026-05-03', to: '2026-06-01' }, 30)).toEqual({
+      from: '2026-04-03',
+      to: '2026-05-02',
+    })
+  })
+
+  it('chains with metricsWindow so windows are contiguous and non-overlapping', () => {
+    const current = metricsWindow('2026-06-01', METRICS_WINDOW_DAYS)
+    const prev = previousWindow(current, METRICS_WINDOW_DAYS)
+    expect(addDaysUtc(prev.to, 1)).toBe(current.from)
+    expect(fillDailySeries([], prev.from, prev.to)).toHaveLength(METRICS_WINDOW_DAYS)
+  })
+
+  it('crosses year boundaries', () => {
+    expect(previousWindow({ from: '2026-01-10', to: '2026-01-16' }, 7)).toEqual({
+      from: '2026-01-03',
+      to: '2026-01-09',
+    })
+  })
+})
+
+describe('rankTopSlots', () => {
+  it('sorts by count desc and keeps the top 5', () => {
+    const rows = [
+      { time: '18:00:00', count: 3 },
+      { time: '20:00:00', count: 9 },
+      { time: '21:00:00', count: 7 },
+      { time: '19:00:00', count: 5 },
+      { time: '17:00:00', count: 4 },
+      { time: '10:00:00', count: 1 },
+    ]
+    const top = rankTopSlots(rows)
+    expect(top).toHaveLength(5)
+    expect(top[0]).toEqual({ time: '20:00', count: 9 })
+    expect(top.map((s) => s.time)).not.toContain('10:00')
+  })
+
+  it('normalizes HH:MM:SS to HH:MM and breaks count-ties by earlier time', () => {
+    const top = rankTopSlots([
+      { time: '21:30:00', count: 2 },
+      { time: '09:00:00', count: 2 },
+    ])
+    expect(top).toEqual([
+      { time: '09:00', count: 2 },
+      { time: '21:30', count: 2 },
+    ])
+  })
+
+  it('returns an empty list for no rows and does not mutate the input', () => {
+    expect(rankTopSlots([])).toEqual([])
+    const rows = [
+      { time: '20:00:00', count: 1 },
+      { time: '19:00:00', count: 8 },
+    ]
+    rankTopSlots(rows)
+    expect(rows[0].time).toBe('20:00:00')
   })
 })

@@ -82,6 +82,7 @@
     "react": "^18.3",
     "react-dom": "^18.3",
     "react-leaflet": "4.2.1",
+    "recharts": "^3.8.1",
     "resend": "^3.2",
     "tailwind-merge": "^2.3",
     "uqr": "^0.1.3",

@@ -11,6 +11,7 @@ import {
   Trophy,
   Banknote,
   BarChart3,
+  ChartLine,
   UserCog,
   Settings,
   Lock,
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/canchas', icon: Trophy, label: 'Canchas', pin: true },
   { href: '/caja', icon: Banknote, label: 'Caja' },
   { href: '/reportes', icon: BarChart3, label: 'Reportes', pin: true },
+  { href: '/metricas', icon: ChartLine, label: 'Métricas', pin: true },
   { href: '/staff', icon: UserCog, label: 'Equipo', pin: true },
   { href: '/settings', icon: Settings, label: 'Configuración', pin: true },
 ]

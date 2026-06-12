@@ -14,6 +14,13 @@ export type OpeningHours = {
   sun: OpeningHoursDay
 }
 
+/** Producto pre-cargado de cantina para ventas rápidas en /caja. Precio en centavos ARS. */
+export type CanteenProduct = {
+  id: string
+  name: string
+  price: number
+}
+
 export type TenantSettings = {
   requires_deposit: boolean
   deposit_percentage: number
@@ -38,6 +45,7 @@ export type TenantSettings = {
   onboarding_step?: number
   onboarding_completed?: boolean
   public_link_shared?: boolean
+  canteen_products?: CanteenProduct[]
 }
 
 export type CreateTenantInput = {

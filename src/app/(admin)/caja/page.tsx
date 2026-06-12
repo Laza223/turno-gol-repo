@@ -8,6 +8,7 @@ import { getDaySummary, getCashFlows, getDayComparisons } from '@/modules/cashfl
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CajaActions } from './components/CajaActions'
+import { CanteenQuickSale } from './components/CanteenQuickSale'
 import { artDateOf } from '@/shared/time/art-date'
 
 function formatARS(centavos: number): string {
@@ -196,6 +197,11 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
           </div>
         </div>
       </div>
+
+      {/* Cantina/Bar: venta rápida de productos pre-cargados (oculta con caja cerrada) */}
+      {!summary.isClosed && (
+        <CanteenQuickSale date={date} products={tenant.settings.canteen_products ?? []} />
+      )}
 
       {/* By method */}
       {Object.keys(summary.byMethod).length > 0 && (

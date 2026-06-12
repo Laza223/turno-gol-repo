@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { createCashFlowAction } from '../actions'
+import { occurredAtForDate } from './occurred-at'
 import { toast } from '@/hooks/use-toast'
 
 type CfType = 'income' | 'adjustment' | 'expense'
@@ -19,13 +20,6 @@ const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
     { value: 'no_show_correction', label: 'Corrección por ausencia' },
     { value: 'other', label: 'Otro' },
   ],
-}
-
-// El movimiento se registra en el día que se está viendo (consistente con closeDayAction).
-// Hoy → hora real; otro día → mediodía ART, cuya fecha-ART es exactamente `date`.
-function occurredAtForDate(date: string): Date {
-  const todayArt = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
-  return date === todayArt ? new Date() : new Date(`${date}T12:00:00-03:00`)
 }
 
 export function RegisterMovementModal({

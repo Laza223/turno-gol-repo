@@ -26,7 +26,7 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
   }
 })
 
-import { createCashFlow, getDaySummary, getDayComparisons } from '@/modules/cashflow/cashflow.service'
+import { createCashFlow, getCashFlows, getDaySummary, getDayComparisons } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import {
   DayAlreadyClosedError,
@@ -184,6 +184,35 @@ describe('cashflow service', () => {
     expect(close.totalIncome).toBe(650000)
     expect(close.totalExpense).toBe(200000)
     expect(close.balance).toBe(450000)
+  })
+
+  it('a canteen quick sale appears in the day list with product_sale category', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    // Mismo payload que arma CanteenQuickSale: income/product_sale con el
+    // nombre del producto y la cantidad en la descripción.
+    await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(tenant.id, staff.id, {
+        type: 'income',
+        category: 'product_sale',
+        amount: 500000, // Gatorade $2.500 x2
+        method: 'cash',
+        description: 'Gatorade x2',
+        clientIdempotencyKey: crypto.randomUUID(),
+      }, tx),
+    )
+
+    const list = await withTenantContext(tenant.id, (tx) =>
+      getCashFlows(tenant.id, TODAY, tx),
+    )
+    const sale = list.find((cf) => cf.description === 'Gatorade x2')
+    expect(sale).toBeDefined()
+    expect(sale!.type).toBe('income')
+    expect(sale!.category).toBe('product_sale')
+    expect(sale!.amount).toBe(500000)
   })
 
   it('getDayComparisons aggregates yesterday and weekly daily average', async () => {

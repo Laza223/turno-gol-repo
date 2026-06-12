@@ -115,3 +115,38 @@
     animation: none;
   }
 }
+
+/* ─── Comprobante de reserva imprimible ───────────────────────────────────
+   "Descargar comprobante" usa window.print(): el comprobante (#booking-receipt)
+   vive oculto en la página de éxito y es lo ÚNICO visible al imprimir (el
+   destino "Guardar como PDF" del navegador genera el archivo, sin servicios
+   server-side). Truco estándar de visibility: display:none rompería la
+   impresión, por eso en pantalla se oculta con display y en print se muestra
+   solo el subárbol del comprobante. */
+@media screen {
+  #booking-receipt {
+    display: none;
+  }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #booking-receipt,
+  #booking-receipt * {
+    visibility: visible;
+  }
+
+  #booking-receipt {
+    display: block;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+}

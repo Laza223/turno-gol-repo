@@ -8,6 +8,8 @@ import { withPlayerContext } from '@/shared/db/client'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
 import BookingQR from '@/components/booking/BookingQR'
+import BookingReceipt from '@/components/booking/BookingReceipt'
+import DownloadReceiptButton from '@/components/booking/DownloadReceiptButton'
 
 type Props = { params: { bookingId: string } }
 
@@ -134,7 +136,25 @@ export default async function ReservaExitoPage({ params }: Props) {
         <p className="mt-2 text-xs text-slate-500">
           Mostrá este código al llegar: el complejo lo escanea y verifica tu reserva al instante.
         </p>
+        <DownloadReceiptButton
+          fileName={`comprobante-${booking.tenantSlug}-${booking.date}`}
+        />
       </section>
+
+      <BookingReceipt
+        bookingId={params.bookingId}
+        tenantName={booking.tenantName}
+        address={booking.address}
+        city={booking.city}
+        courtName={booking.courtName}
+        date={booking.date}
+        timeStart={booking.timeStart}
+        timeEnd={booking.timeEnd}
+        priceSnapshot={booking.priceSnapshot}
+        depositAmount={booking.depositAmount}
+        depositStatus={booking.depositStatus}
+        verifyUrl={verifyUrl}
+      />
 
       <BookingSuccessExtras
         tenantName={booking.tenantName}

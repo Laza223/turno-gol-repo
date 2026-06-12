@@ -112,12 +112,15 @@ export async function saveCanteenProductsAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
+  // El objeto va SIN JSON.stringify: el driver ya serializa una vez, y un
+  // string pre-serializado llega como escalar jsonb — `objeto || escalar`
+  // concatena como array y destruye los settings del tenant.
   const patch = { canteen_products: parsed.data }
   await withTenantContext(tenant.id, async (tx) => {
     await tx
       .update(tenants)
       .set({
-        settings: sql`settings || ${JSON.stringify(patch)}::jsonb`,
+        settings: sql`settings || ${patch}::jsonb`,
         updatedAt: new Date(),
       })
       .where(eq(tenants.id, tenant.id))

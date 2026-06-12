@@ -94,11 +94,13 @@ export async function setPinAction(
 }
 
 async function _savePinHash(tenantId: string, hash: string): Promise<void> {
+  // El objeto va SIN JSON.stringify: pre-serializado llega como escalar jsonb
+  // y `objeto || escalar` concatena como array, destruyendo los settings.
   await withTenantContext(tenantId, async (tx) => {
     await tx
       .update(tenants)
       .set({
-        settings: sql`settings || ${JSON.stringify({ staff_pin_hash: hash })}::jsonb`,
+        settings: sql`settings || ${{ staff_pin_hash: hash }}::jsonb`,
         updatedAt: new Date(),
       })
       .where(eq(tenants.id, tenantId))

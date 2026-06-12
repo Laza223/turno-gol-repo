@@ -78,11 +78,14 @@ export async function updateReservasPolicyAction(
     },
   }
 
+  // El objeto va SIN JSON.stringify: pre-serializado llega como escalar jsonb
+  // y `objeto || escalar` concatena como array, destruyendo los settings
+  // (el tenant cae al wizard de onboarding al perder onboarding_completed).
   await withTenantContext(tenant.id, async (tx) => {
     await tx
       .update(tenants)
       .set({
-        settings: sql`settings || ${JSON.stringify(patch)}::jsonb`,
+        settings: sql`settings || ${patch}::jsonb`,
         updatedAt: new Date(),
       })
       .where(eq(tenants.id, tenant.id))

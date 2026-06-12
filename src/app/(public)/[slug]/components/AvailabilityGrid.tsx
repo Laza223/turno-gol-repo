@@ -84,10 +84,28 @@ function SlotCell({
     )
   }
 
+  // Colores semánticos con contraste AA: texto 700 sobre fondo 50/100 (≥4.5:1),
+  // ring 500/600 sólido como indicador no-textual (≥3:1 vs blanco).
   if (slot.status === 'occupied') {
     return (
-      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-red-50 text-red-600 ring-1 ring-inset ring-red-600/20">
+      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500">
         Ocupado
+      </span>
+    )
+  }
+
+  if (slot.status === 'fixed') {
+    return (
+      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600">
+        Turno fijo
+      </span>
+    )
+  }
+
+  if (slot.status === 'blocked') {
+    return (
+      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-inset ring-red-600">
+        Bloqueado
       </span>
     )
   }
@@ -105,7 +123,7 @@ function SlotCell({
       <a
         href={`tel:${phone}`}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors duration-150"
+        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600 hover:bg-green-100 transition-colors duration-150"
       >
         <Phone className="h-3 w-3" aria-hidden />
         Contactar
@@ -116,11 +134,11 @@ function SlotCell({
   return (
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
-      className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 hover:bg-green-100 active:scale-[0.98] transition-colors duration-150"
+      className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600 hover:bg-green-100 active:scale-[0.98] transition-colors duration-150"
     >
       <span>Reservar</span>
       {priceFormatted && (
-        <span className="tabular-nums text-[10px] text-green-600">{priceFormatted}</span>
+        <span className="tabular-nums text-[10px] text-green-700">{priceFormatted}</span>
       )}
     </Link>
   )
@@ -270,12 +288,20 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
       {!loading && !noCourts && (
         <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-green-100 ring-1 ring-green-600/20" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-green-50 ring-1 ring-inset ring-green-600" />
             Libre
           </span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-red-50 ring-1 ring-red-600/20" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-slate-100 ring-1 ring-inset ring-slate-500" />
             Ocupado
+          </span>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="inline-block w-3 h-3 rounded-sm bg-blue-50 ring-1 ring-inset ring-blue-600" />
+            Turno fijo
+          </span>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="inline-block w-3 h-3 rounded-sm bg-red-50 ring-1 ring-inset ring-red-600" />
+            Bloqueado
           </span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="inline-block w-3 h-3 rounded-sm bg-slate-100" />

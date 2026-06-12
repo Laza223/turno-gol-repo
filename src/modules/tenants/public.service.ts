@@ -43,7 +43,10 @@ export type PublicCourtCard = {
   fromPriceCents: number | null
 }
 
-export type SlotStatus = 'free' | 'occupied' | 'past'
+// 'occupied' = reserva espontánea, 'fixed' = turno fijo/abonado, 'blocked' = bloqueado por el admin
+export type SlotStatus = 'free' | 'occupied' | 'fixed' | 'blocked' | 'past'
+
+export type PublicBookingType = 'spontaneous' | 'fixed' | 'block'
 
 export type Slot = {
   time: string
@@ -81,6 +84,7 @@ export type BookingRange = {
   courtId: string
   timeStartMins: number
   timeEndMins: number
+  type: PublicBookingType
 }
 
 export type GenerateSlotsParams = {
@@ -149,13 +153,16 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
     if (isPastDate || (isToday && start < p.nowMins)) {
       status = 'past'
     } else {
-      const occupied = p.courtBookings.some(
+      const overlapping = p.courtBookings.find(
         (b) =>
           b.courtId === p.courtId &&
           start < b.timeEndMins &&
           slotEnd > b.timeStartMins,
       )
-      status = occupied ? 'occupied' : 'free'
+      if (!overlapping) status = 'free'
+      else if (overlapping.type === 'block') status = 'blocked'
+      else if (overlapping.type === 'fixed') status = 'fixed'
+      else status = 'occupied'
     }
 
     const price = getPriceForSlot(p.pricing.rules, p.dayKey, timeStr, p.durationMins)
@@ -311,6 +318,7 @@ async function getPublicAvailabilityImpl(
           courtId: bookings.courtId,
           timeStart: bookings.timeStart,
           timeEnd: bookings.timeEnd,
+          type: bookings.type,
         })
         .from(bookings)
         .where(
@@ -331,6 +339,7 @@ async function getPublicAvailabilityImpl(
       courtId: b.courtId,
       timeStartMins: timeToMins(b.timeStart.slice(0, 5)),
       timeEndMins: endMins === 0 ? 24 * 60 : endMins,
+      type: b.type,
     }
   })
 
@@ -394,12 +403,19 @@ export async function getPublicWeeklyAvailability(
 
     const rows = (await tx.execute(sql`
       SELECT court_id AS "courtId", date::text AS "date",
-             time_start::text AS "timeStart", time_end::text AS "timeEnd"
+             time_start::text AS "timeStart", time_end::text AS "timeEnd",
+             type::text AS "type"
       FROM bookings
       WHERE tenant_id = ${tenant.id}::uuid
         AND date >= ${startDateStr}::date AND date <= ${endDateStr}::date
         AND status NOT IN ('canceled_refunded', 'canceled_no_refund')
-    `)) as unknown as Array<{ courtId: string; date: string; timeStart: string; timeEnd: string }>
+    `)) as unknown as Array<{
+      courtId: string
+      date: string
+      timeStart: string
+      timeEnd: string
+      type: PublicBookingType
+    }>
 
     const bookingsByDate = new Map<string, BookingRange[]>()
     for (const r of rows) {
@@ -408,6 +424,7 @@ export async function getPublicWeeklyAvailability(
         courtId: r.courtId,
         timeStartMins: timeToMins(r.timeStart.slice(0, 5)),
         timeEndMins: endMins === 0 ? 24 * 60 : endMins,
+        type: r.type,
       }
       const key = r.date.slice(0, 10)
       const list = bookingsByDate.get(key) ?? []

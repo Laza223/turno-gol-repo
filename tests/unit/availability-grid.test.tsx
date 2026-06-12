@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import AvailabilityGrid from '@/app/(public)/[slug]/components/AvailabilityGrid'
 import type {
   AvailabilityResponse,
@@ -38,7 +38,11 @@ const tenant = {
   bookingAdvanceDays: 6,
 } as unknown as PublicTenant
 
-function availabilityFor(date: string, time: string): AvailabilityResponse {
+function availabilityFor(
+  date: string,
+  time: string,
+  status: SlotStatus = 'occupied',
+): AvailabilityResponse {
   return {
     date,
     courts: [
@@ -46,7 +50,7 @@ function availabilityFor(date: string, time: string): AvailabilityResponse {
         id: 'c1',
         name: 'Cancha 1',
         surfaceType: 'futbol5',
-        slots: [{ time, duration: 60, status: 'occupied' as SlotStatus, price: null }],
+        slots: [{ time, duration: 60, status, price: null }],
       },
     ],
   }
@@ -113,5 +117,36 @@ describe('AvailabilityGrid (#39)', () => {
     expect(screen.getByText('19:00')).toBeTruthy()
     expect(screen.queryByText('18:00')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('renderiza etiquetas semánticas por estado: ocupado, turno fijo y bloqueado', () => {
+    const today = artToday()
+    const availability: AvailabilityResponse = {
+      date: today,
+      courts: [
+        {
+          id: 'c1',
+          name: 'Cancha 1',
+          surfaceType: 'futbol5',
+          slots: [
+            { time: '18:00', duration: 60, status: 'occupied', price: null },
+            { time: '19:00', duration: 60, status: 'fixed', price: null },
+            { time: '20:00', duration: 60, status: 'blocked', price: null },
+            { time: '21:00', duration: 60, status: 'free', price: 1500000 },
+          ],
+        },
+      ],
+    }
+
+    render(
+      <AvailabilityGrid tenant={tenant} initialDate={today} initialAvailability={availability} />,
+    )
+
+    // Scope a la tabla: la leyenda repite los mismos textos fuera de ella.
+    const table = within(screen.getByRole('table'))
+    expect(table.getByText('Ocupado')).toBeTruthy()
+    expect(table.getByText('Turno fijo')).toBeTruthy()
+    expect(table.getByText('Bloqueado')).toBeTruthy()
+    expect(table.getByText('Reservar')).toBeTruthy()
   })
 })

@@ -95,10 +95,32 @@ describe('generateSlots', () => {
       ...BASE_PARAMS,
       courtBookings: [
         // booking 08:00–10:00 covers both slots
-        { courtId: 'court-1', timeStartMins: 8 * 60, timeEndMins: 10 * 60 },
+        { courtId: 'court-1', timeStartMins: 8 * 60, timeEndMins: 10 * 60, type: 'spontaneous' },
       ],
     })
     expect(slots[0].status).toBe('occupied') // 08:00–09:00 overlaps
     expect(slots[1].status).toBe('occupied') // 09:00–10:00 overlaps
+  })
+
+  it('marks slot fixed when overlapping booking is a turno fijo (abonado)', () => {
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      courtBookings: [
+        { courtId: 'court-1', timeStartMins: 8 * 60, timeEndMins: 9 * 60, type: 'fixed' },
+      ],
+    })
+    expect(slots[0].status).toBe('fixed')
+    expect(slots[1].status).toBe('free')
+  })
+
+  it('marks slot blocked when overlapping booking is a block', () => {
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      courtBookings: [
+        { courtId: 'court-1', timeStartMins: 9 * 60, timeEndMins: 10 * 60, type: 'block' },
+      ],
+    })
+    expect(slots[0].status).toBe('free')
+    expect(slots[1].status).toBe('blocked')
   })
 })

@@ -5,7 +5,7 @@
  *   #1  Happy — register movement: /caja?date=TEST_DATE → "+ Agregar movimiento" → fill form → "Guardar"
  *              → row appears in table.
  *   #2  Edge — close day (type-to-confirm): "Cerrar caja" → confirm button disabled until typing "CERRAR" →
- *              type it → confirm → "Cerrada por" badge shown.
+ *              type it → confirm → "Caja cerrada" badge shown.
  *   #3  Edge — closed-day guard: a pre-closed day hides the write actions (CajaActions returns null
  *              when isClosed) so neither a movement nor a second close can be issued from the UI.
  *              The server-side idempotency guard ("ya fue cerrada") is covered by the integration
@@ -171,11 +171,11 @@ test.describe('caja — happy: register movement', () => {
         await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
 
         // The new row should appear in the movements table.
-        await expect(page.getByText('Pago E2E test movimiento')).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByRole('cell', { name: 'Pago E2E test movimiento' })).toBeVisible({ timeout: 10_000 })
 
         // Balance summary cards should show a non-zero total income.
         // We just verify the section rendered; exact amount depends on server formatting.
-        await expect(page.getByText('Total ingresos')).toBeVisible()
+        await expect(page.getByText('Ingresos', { exact: true })).toBeVisible()
       } finally {
         await context.close()
         // Clean up all cash_flows for this test date.
@@ -190,7 +190,7 @@ test.describe('caja — happy: register movement', () => {
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — edge: close day (type-to-confirm)', () => {
   test(
-    '"Cerrar caja" → confirm button disabled until typing CERRAR → type it → confirm → "Cerrada por" badge @critical',
+    '"Cerrar caja" → confirm button disabled until typing CERRAR → type it → confirm → "Caja cerrada" badge @critical',
     async ({ browser, adminStorageState }) => {
       const supabase = makeServiceClient()
       const seedId = randomUUID()
@@ -231,9 +231,9 @@ test.describe('caja — edge: close day (type-to-confirm)', () => {
         // Confirm.
         await confirmBtn.click()
 
-        // Dialog closes and the "Cerrada por" badge appears.
+        // Dialog closes and the "Caja cerrada" badge appears.
         await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText(/Cerrada por/i)).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible({ timeout: 10_000 })
       } finally {
         await context.close()
         await cleanupCajaDate(supabase, TEST_DATE_CLOSE)
@@ -247,7 +247,7 @@ test.describe('caja — edge: close day (type-to-confirm)', () => {
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — edge: closed-day guard (no writes on a closed day)', () => {
   test(
-    'pre-closed day → "Cerrada por" badge shown and write actions (movimiento / cerrar) are hidden',
+    'pre-closed day → "Caja cerrada" badge shown and write actions (movimiento / cerrar) are hidden',
     async ({ browser, adminStorageState }) => {
       // A closed day must not accept new movements or a second close. The UI enforces this by
       // hiding CajaActions entirely (it returns null when isClosed=true), so there is no button
@@ -266,8 +266,8 @@ test.describe('caja — edge: closed-day guard (no writes on a closed day)', () 
         await page.goto(`/caja?date=${TEST_DATE_CLOSED}`)
         await expect(page.getByRole('heading', { name: /Caja/i })).toBeVisible({ timeout: 15_000 })
 
-        // The "Cerrada por" badge must appear — CajaActions is hidden (isClosed=true).
-        await expect(page.getByText(/Cerrada por/i)).toBeVisible()
+        // The "Caja cerrada" badge must appear — CajaActions is hidden (isClosed=true).
+        await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible()
 
         // Write actions must NOT be present (CajaActions returns null when closed).
         await expect(page.getByRole('button', { name: '+ Agregar movimiento' })).not.toBeVisible()
@@ -332,7 +332,7 @@ test.describe('caja — edge: close with difference requires note', () => {
 
         // Success: dialog closes, badge appears.
         await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText(/Cerrada por/i)).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible({ timeout: 10_000 })
       } finally {
         await context.close()
         await cleanupCajaDate(supabase, TEST_DATE_DIFF)

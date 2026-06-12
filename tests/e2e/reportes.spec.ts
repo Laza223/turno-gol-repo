@@ -105,7 +105,7 @@ test.describe('Reportes', () => {
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
     await page.goto('/reportes?month=2019-01')
-    await expect(page.getByText('Sin movimientos en este período.')).toBeVisible()
+    await expect(page.getByText('Sin movimientos en este período')).toBeVisible()
   })
 
   test('#3 edge — month nav navigates and next button gates future months', async ({
@@ -130,13 +130,35 @@ test.describe('Reportes', () => {
   })
 
   test('#4 edge — CSV export triggers download', async ({ page, adminStorageState }) => {
-    await page.context().addCookies(JSON.parse(adminStorageState).cookies)
-    await page.goto('/reportes')
+    // El link de export se oculta en un mes vacío (UX batch), así que el test
+    // necesita al menos un movimiento propio en el mes actual.
+    const supabase = makeServiceClient()
+    const cashflowId = randomUUID()
+    const month = currentMonthStr()
 
-    const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: 10000 }),
-      page.getByRole('link', { name: /Exportar CSV/i }).click(),
-    ])
-    expect(download.suggestedFilename()).toMatch(/\.csv$/i)
+    await page.context().addCookies(JSON.parse(adminStorageState).cookies)
+    try {
+      await supabase.from('cash_flows').insert({
+        id: cashflowId,
+        tenant_id: TENANT_ID,
+        type: 'income',
+        category: 'other',
+        amount: 100000,
+        method: 'cash',
+        description: `E2E-CSV-${Date.now()}`,
+        registered_by: STAFF_USER_ID,
+        occurred_at: isoMidMonth(month),
+      })
+
+      await page.goto('/reportes')
+
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 10000 }),
+        page.getByRole('link', { name: /Exportar CSV/i }).click(),
+      ])
+      expect(download.suggestedFilename()).toMatch(/\.csv$/i)
+    } finally {
+      await supabase.from('cash_flows').delete().eq('id', cashflowId)
+    }
   })
 })

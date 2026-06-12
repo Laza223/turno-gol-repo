@@ -12,12 +12,19 @@ import {
   searchPublicTenants,
   type PublicTenantCard,
 } from '@/modules/tenants/search.service'
+import {
+  computeStreakWeeks,
+  getPlayerActivity,
+  isoMondayOf,
+} from '@/modules/players/activity.service'
 import { ProfileForm } from './ProfileForm'
 import FavoritesList from './FavoritesList'
+import ActivityStats from './ActivityStats'
 
 const TABS = [
   { key: 'datos', label: 'Datos' },
   { key: 'favoritos', label: 'Favoritos' },
+  { key: 'actividad', label: 'Actividad' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -76,6 +83,13 @@ export default async function PerfilPage({
   if (!player) redirect('/login')
 
   const favorites = tab === 'favoritos' ? await loadFavorites(user.playerId) : null
+
+  // Día actual en ART (UTC-3) para anclar la semana de la racha.
+  const activity =
+    tab === 'actividad'
+      ? await withPlayerContext(user.playerId, (tx) => getPlayerActivity(user.playerId, tx))
+      : null
+  const artToday = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
 
   return (
     <div className="px-4 py-5 space-y-6 max-w-lg mx-auto">
@@ -151,6 +165,14 @@ export default async function PerfilPage({
         <FavoritesList
           tenants={favorites.tenants}
           photosByTenant={favorites.photosByTenant}
+        />
+      )}
+
+      {tab === 'actividad' && activity && (
+        <ActivityStats
+          played={activity.played}
+          venues={activity.venues}
+          streakWeeks={computeStreakWeeks(activity.weeksWithGames, isoMondayOf(artToday))}
         />
       )}
     </div>

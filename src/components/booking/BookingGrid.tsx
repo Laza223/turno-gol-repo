@@ -251,15 +251,20 @@ export function BookingGrid({
           <div
             data-testid="booking-grid"
             aria-busy={isNavPending}
+            // tabIndex 0: un día sin slots interactivos (todos pasados) dejaría
+            // la región scrolleable inalcanzable por teclado (axe
+            // scrollable-region-focusable). Enfocada, scrollea con flechas.
+            tabIndex={0}
+            role="region"
+            aria-label={`Grilla de turnos del ${LABEL_DAYS[dayKey]} ${dateLabel}`}
             className={cn(
               'overflow-auto overscroll-x-contain snap-x snap-proximity max-h-[70dvh] rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900',
               'transition-opacity duration-150 motion-reduce:transition-none',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
               isNavPending && 'opacity-60',
             )}
           >
             <div
-              role="application"
-              aria-label={`Grilla de turnos del ${LABEL_DAYS[dayKey]} ${dateLabel}`}
               className="grid"
               style={{
                 gridTemplateColumns: `3.5rem repeat(${courts.length}, minmax(8.5rem, 1fr))`,

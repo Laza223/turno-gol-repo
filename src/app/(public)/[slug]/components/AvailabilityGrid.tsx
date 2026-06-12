@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Phone } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
 import type {
   AvailabilityResponse,
   PublicTenant,
@@ -168,6 +168,11 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
       // fetch falla, `date` no cambia y la grilla sigue sincronizada (#39).
       setAvailability(data)
       setDate(newDate)
+      // Refleja la fecha en ?date= para que el link sea compartible.
+      // replaceState (no push): navegar dias no debe llenar el historial.
+      const url = new URL(window.location.href)
+      url.searchParams.set('date', newDate)
+      window.history.replaceState(null, '', url.toString())
     } catch {
       setError(true)
     } finally {
@@ -196,9 +201,34 @@ export default function AvailabilityGrid({ tenant, initialDate, initialAvailabil
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
-          <span className="text-sm font-medium text-foreground min-w-[180px] text-center tabular-nums">
-            {formatDateES(date)}
-          </span>
+          <div className="relative">
+            {/* Input nativo invisible por encima del label: abre el picker del
+                browser sin libreria externa. `peer` para dibujar el focus ring
+                en el label visible (el input es opacity-0). */}
+            <input
+              type="date"
+              value={date}
+              min={today}
+              max={maxDate}
+              disabled={loading}
+              aria-label="Elegir fecha"
+              onChange={(e) => {
+                if (e.target.value) loadDate(e.target.value)
+              }}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.()
+                } catch {
+                  // showPicker exige gesto de usuario; el input nativo sigue funcionando
+                }
+              }}
+              className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+            />
+            <span className="flex h-8 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-slate-200 px-2 text-sm font-medium text-foreground tabular-nums peer-hover:bg-slate-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 transition-colors duration-150">
+              <Calendar className="h-3.5 w-3.5 text-slate-500" aria-hidden />
+              {formatDateES(date)}
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => loadDate(addDays(date, 1))}

@@ -119,6 +119,33 @@ describe('AvailabilityGrid (#39)', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  it('el datepicker carga la fecha elegida y actualiza ?date= en la URL', async () => {
+    const today = artToday()
+    const target = addDays(today, 3)
+    mockFetchOnce(availabilityFor(target, '20:00'), true)
+    // happy-dom no propaga replaceState a location.search: espiamos la llamada.
+    const replaceState = vi
+      .spyOn(window.history, 'replaceState')
+      .mockImplementation(() => undefined)
+
+    render(
+      <AvailabilityGrid
+        tenant={tenant}
+        initialDate={today}
+        initialAvailability={availabilityFor(today, '18:00')}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Elegir fecha'), { target: { value: target } })
+
+    await waitFor(() => {
+      expect(screen.getByText(formatDateES(target))).toBeTruthy()
+    })
+    expect(screen.getByText('20:00')).toBeTruthy()
+    expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain(`date=${target}`)
+    replaceState.mockRestore()
+  })
+
   it('renderiza etiquetas semánticas por estado: ocupado, turno fijo y bloqueado', () => {
     const today = artToday()
     const availability: AvailabilityResponse = {

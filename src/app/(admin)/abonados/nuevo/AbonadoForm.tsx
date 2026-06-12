@@ -173,41 +173,60 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
   }
 
   return (
-    <form onSubmit={handlePreviewSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className={labelCls}>
-          <span className={labelSpan}>Cancha</span>
-          <select name="courtId" required className={field} defaultValue="">
-            <option value="" disabled>Elegí una cancha</option>
-            {courts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
-        <label className={labelCls}>
-          <span className={labelSpan}>Día de la semana</span>
-          <select name="dayOfWeek" required className={field} defaultValue="1">
-            {DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </select>
-        </label>
-        <label className={labelCls}><span className={labelSpan}>Hora inicio</span><input name="timeStart" type="time" required className={field} /></label>
-        <label className={labelCls}><span className={labelSpan}>Hora fin</span><input name="timeEnd" type="time" required className={field} /></label>
-        <label className={labelCls}><span className={labelSpan}>Nombre de contacto</span><input name="contactName" required className={field} /></label>
-        <label className={labelCls}><span className={labelSpan}>Teléfono</span><input name="contactPhone" required className={field} /></label>
-        <label className={labelCls}><span className={labelSpan}>Precio por turno (ARS)</span><input name="pricePerSession" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} /></label>
-        <label className={labelCls}>
-          <span className={labelSpan}>Precio mensual (ARS)</span>
-          <input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} />
-          <span className="block text-xs font-normal text-slate-500">
-            La cuota que el abonado paga por mes por su turno fijo. Es el monto que vas a cobrarle cada mes.
-          </span>
-        </label>
-        <label className={labelCls}><span className={labelSpan}>Desde</span><input name="startsOn" type="date" required className={field} /></label>
-        <label className={labelCls}>
-          <span className={labelSpan}>Método de pago</span>
-          <select name="paymentMethod" className={field} defaultValue="cash">
-            <option value="cash">Efectivo</option>
-            <option value="transfer">Transferencia</option>
-          </select>
-        </label>
+    <form onSubmit={handlePreviewSubmit} className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <fieldset className="space-y-4">
+          <legend className="text-sm font-semibold text-slate-900">Turno fijo</legend>
+          <label className={labelCls}>
+            <span className={labelSpan}>Cancha</span>
+            <select name="courtId" required className={field} defaultValue="">
+              <option value="" disabled>Elegí una cancha</option>
+              {courts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className={labelCls}>
+              <span className={labelSpan}>Día de la semana</span>
+              <select name="dayOfWeek" required className={field} defaultValue="1">
+                {DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </label>
+            <label className={labelCls}><span className={labelSpan}>Desde</span><input name="startsOn" type="date" required className={field} /></label>
+            <label className={labelCls}><span className={labelSpan}>Hora inicio</span><input name="timeStart" type="time" required className={field} /></label>
+            <label className={labelCls}><span className={labelSpan}>Hora fin</span><input name="timeEnd" type="time" required className={field} /></label>
+          </div>
+        </fieldset>
+
+        <div className="space-y-6">
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-semibold text-slate-900">Cliente</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className={labelCls}><span className={labelSpan}>Nombre de contacto</span><input name="contactName" required className={field} /></label>
+              <label className={labelCls}><span className={labelSpan}>Teléfono</span><input name="contactPhone" required className={field} /></label>
+            </div>
+          </fieldset>
+
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-semibold text-slate-900">Precio y pago</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className={labelCls}><span className={labelSpan}>Precio por turno (ARS)</span><input name="pricePerSession" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} /></label>
+              <label className={labelCls}>
+                <span className={labelSpan}>Método de pago</span>
+                <select name="paymentMethod" className={field} defaultValue="cash">
+                  <option value="cash">Efectivo</option>
+                  <option value="transfer">Transferencia</option>
+                </select>
+              </label>
+            </div>
+            <label className={labelCls}>
+              <span className={labelSpan}>Precio mensual (ARS)</span>
+              <input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required className={field} />
+              <span className="block text-xs font-normal text-slate-500">
+                La cuota que el abonado paga por mes por su turno fijo. Es el monto que vas a cobrarle cada mes.
+              </span>
+            </label>
+          </fieldset>
+        </div>
       </div>
       <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
       {previewError && (

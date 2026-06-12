@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { sql, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, dateStr, moneyCents, boundedText } from '@/shared/validation/primitives'
-import { requireOperatorStaff } from '@/modules/staff/guards'
+import { requireAdminStaffAction, requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
@@ -99,7 +99,10 @@ export async function saveCanteenProductsAction(
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
-  const auth = await requireOperatorStaff()
+  // Cruce #3: los productos de cantina son configuración del tenant
+  // (tenants.settings.canteen_products) — solo admin, igual que /settings.
+  // manager es "Sin acceso a configuración" según roles.ts.
+  const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

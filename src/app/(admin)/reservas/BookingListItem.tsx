@@ -81,9 +81,11 @@ export function clientName(booking: Pick<ReservaListRow, 'playerName' | 'guestNa
 
 type Props = {
   booking: ReservaListRow
+  /** Vista compacta (?vista=compacta): una línea por reserva, sin seña. */
+  compact?: boolean
 }
 
-export function BookingListItem({ booking }: Props) {
+export function BookingListItem({ booking, compact = false }: Props) {
   const visual = itemVisual(booking)
   const name = clientName(booking)
   const isBlock = booking.type === 'block'
@@ -101,6 +103,63 @@ export function BookingListItem({ booking }: Props) {
     .join(', ')
 
   const withActions = hasQuickActions(booking)
+
+  const quickActions = withActions && (
+    <QuickActions
+      booking={{
+        id: booking.id,
+        status: booking.status,
+        type: booking.type,
+        depositStatus: booking.depositStatus,
+        depositAmount: booking.depositAmount,
+        paymentMethod: booking.paymentMethod,
+      }}
+      label={`${name} · ${timeRange}`}
+    />
+  )
+
+  if (compact) {
+    return (
+      <li>
+        <article
+          aria-label={ariaLabel}
+          className={cn(
+            'relative flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition-colors hover:border-slate-300',
+            withActions && 'pr-12 sm:pr-3',
+          )}
+        >
+          <span aria-hidden className={cn('h-6 w-1 shrink-0 rounded-full', visual.accent)} />
+          <Link
+            href={`/reservas/${booking.id}`}
+            className="shrink-0 text-xs font-semibold tabular-nums text-slate-900 hover:text-emerald-700 hover:underline sm:w-24"
+          >
+            {timeRange}
+          </Link>
+          <p className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm font-medium text-slate-900">
+            {isBlock && <Ban aria-hidden className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
+            {name}
+          </p>
+          <span className="hidden max-w-[9rem] truncate text-xs text-slate-500 md:block">
+            {booking.courtName}
+          </span>
+          <span
+            className={cn(
+              'hidden shrink-0 items-center rounded-full px-1.5 py-px text-[11px] font-medium ring-1 ring-inset sm:inline-flex',
+              visual.badge,
+            )}
+          >
+            {visual.label}
+          </span>
+          {!isBlock && (
+            <p className="hidden shrink-0 text-xs font-semibold tabular-nums text-slate-900 sm:block sm:w-20 sm:text-right">
+              {formatArs(booking.priceSnapshot)}
+            </p>
+          )}
+          {quickActions}
+        </article>
+      </li>
+    )
+  }
 
   return (
     <li>
@@ -152,19 +211,7 @@ export function BookingListItem({ booking }: Props) {
             </p>
           )}
 
-          {withActions && (
-            <QuickActions
-              booking={{
-                id: booking.id,
-                status: booking.status,
-                type: booking.type,
-                depositStatus: booking.depositStatus,
-                depositAmount: booking.depositAmount,
-                paymentMethod: booking.paymentMethod,
-              }}
-              label={`${name} · ${timeRange}`}
-            />
-          )}
+          {quickActions}
         </div>
       </article>
     </li>

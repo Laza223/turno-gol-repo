@@ -114,6 +114,22 @@ describe('ReservasPage — render', () => {
     expect(within(tabs).getByRole('link', { name: 'Hoy' }).getAttribute('href')).toBe('/reservas?q=juan')
   })
 
+  it('?vista=compacta renderiza filas de una línea preservando el aria-label', async () => {
+    listMock.mockResolvedValue([row({})])
+    render(await ReservasPage({ searchParams: { vista: 'compacta' } }))
+
+    const article = screen.getByRole('article', {
+      name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada',
+    })
+    // La variante compacta no muestra la línea de seña.
+    expect(article.textContent).not.toContain('Seña')
+    // Y los filtros preservan la vista en la URL.
+    const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
+    expect(within(filtros).getByRole('link', { name: /Confirmadas/ }).getAttribute('href')).toBe(
+      '/reservas?status=confirmed&vista=compacta',
+    )
+  })
+
   it('la búsqueda se pasa a la query junto al scope', async () => {
     render(await ReservasPage({ searchParams: { q: '  maría  ' } }))
     expect(listMock).toHaveBeenCalledWith(

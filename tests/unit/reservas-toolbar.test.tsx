@@ -68,3 +68,29 @@ describe('ReservasToolbar — búsqueda URL-based', () => {
     expect(replaceMock).toHaveBeenCalledWith('/reservas', { scroll: false })
   })
 })
+
+describe('ReservasToolbar — toggle compacta/detallada', () => {
+  it('activar compacta setea ?vista=compacta preservando el resto', () => {
+    searchParamsInit = 'dia=historial&q=ana'
+    render(<ReservasToolbar />)
+    expect(
+      screen.getByRole('button', { name: 'Vista detallada' }).getAttribute('aria-pressed'),
+    ).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vista compacta' }))
+    expect(replaceMock).toHaveBeenCalledWith('/reservas?dia=historial&q=ana&vista=compacta', {
+      scroll: false,
+    })
+  })
+
+  it('volver a detallada quita ?vista', () => {
+    searchParamsInit = 'vista=compacta'
+    render(<ReservasToolbar />)
+    expect(
+      screen.getByRole('button', { name: 'Vista compacta' }).getAttribute('aria-pressed'),
+    ).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vista detallada' }))
+    expect(replaceMock).toHaveBeenCalledWith('/reservas', { scroll: false })
+  })
+})

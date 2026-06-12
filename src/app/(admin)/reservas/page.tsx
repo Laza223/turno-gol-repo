@@ -39,11 +39,12 @@ const FILTERS = [
 const ALLOWED_STATUS = new Set(FILTERS.map((f) => f.value).filter(Boolean))
 
 /** Arma /reservas?… omitiendo defaults para URLs limpias y compartibles. */
-function buildHref(params: { dia: ReservaScope; status: string; q: string }): string {
+function buildHref(params: { dia: ReservaScope; status: string; q: string; compact: boolean }): string {
   const search = new URLSearchParams()
   if (params.dia !== 'hoy') search.set('dia', params.dia)
   if (params.status) search.set('status', params.status)
   if (params.q) search.set('q', params.q)
+  if (params.compact) search.set('vista', 'compacta')
   const qs = search.toString()
   return qs ? `/reservas?${qs}` : '/reservas'
 }
@@ -73,7 +74,7 @@ function groupBy(rows: ReservaListRow[], key: (r: ReservaListRow) => string): Ar
   return Array.from(groups.entries())
 }
 
-type Props = { searchParams: { dia?: string; status?: string; q?: string } }
+type Props = { searchParams: { dia?: string; status?: string; q?: string; vista?: string } }
 
 export default async function ReservasPage({ searchParams }: Props) {
   const user = await extractAuthUser()
@@ -87,6 +88,7 @@ export default async function ReservasPage({ searchParams }: Props) {
   const requestedStatus = searchParams.status ?? ''
   const status = ALLOWED_STATUS.has(requestedStatus) ? requestedStatus : ''
   const q = (searchParams.q ?? '').trim().slice(0, 80)
+  const compact = searchParams.vista === 'compacta'
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
   const { rows, counts } = await withTenantContext(tenant.id, async (tx) => {
@@ -137,7 +139,7 @@ export default async function ReservasPage({ searchParams }: Props) {
             return (
               <Link
                 key={s.value}
-                href={buildHref({ dia: s.value, status, q })}
+                href={buildHref({ dia: s.value, status, q, compact })}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
@@ -159,7 +161,7 @@ export default async function ReservasPage({ searchParams }: Props) {
           return (
             <Link
               key={f.label}
-              href={buildHref({ dia: scope, status: f.value, q })}
+              href={buildHref({ dia: scope, status: f.value, q, compact })}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
@@ -201,9 +203,9 @@ export default async function ReservasPage({ searchParams }: Props) {
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
                 {scope === 'hoy' ? groupKey : formatDateLong(groupKey)}
               </h2>
-              <ul className="space-y-2">
+              <ul className={compact ? 'space-y-1' : 'space-y-2'}>
                 {groupRows.map((r) => (
-                  <BookingListItem key={r.id} booking={r} />
+                  <BookingListItem key={r.id} booking={r} compact={compact} />
                 ))}
               </ul>
             </section>

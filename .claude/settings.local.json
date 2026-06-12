@@ -84,7 +84,8 @@
       "mcp__mercadopago__search_documentation",
       "Bash(claude plugin *)",
       "Bash(./node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to . src/components/booking/BookingQR.tsx \"src/app/reserva/[bookingId]/verificar/page.tsx\" \"src/app/reserva/[bookingId]/exito/page.tsx\" tests/unit/booking-qr.test.tsx)",
-      "Bash(./node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to . src/components/booking/BookingReceipt.tsx src/components/booking/DownloadReceiptButton.tsx \"src/app/reserva/[bookingId]/exito/page.tsx\" tests/unit/booking-receipt.test.tsx)"
+      "Bash(./node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to . src/components/booking/BookingReceipt.tsx src/components/booking/DownloadReceiptButton.tsx \"src/app/reserva/[bookingId]/exito/page.tsx\" tests/unit/booking-receipt.test.tsx)",
+      "Bash(./node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to . \"src/app/\\(player\\)/perfil/page.tsx\" \"src/app/\\(player\\)/perfil/FavoritesList.tsx\" tests/unit/profile-favorites.test.tsx)"
     ]
   }
 }

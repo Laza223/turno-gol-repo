@@ -14,7 +14,7 @@ const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
     { value: 'other', label: 'Otro' },
   ],
   adjustment: [
-    { value: 'no_show_correction', label: 'Corrección no-show' },
+    { value: 'no_show_correction', label: 'Corrección por ausencia' },
     { value: 'other', label: 'Otro' },
   ],
 }

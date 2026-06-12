@@ -218,7 +218,7 @@ export async function deactivateStaffAction(
     if (Number(activeCount?.value ?? 0) <= 1) {
       return {
         success: false as const,
-        error: 'El complejo debe tener al menos un admin activo.',
+        error: 'El complejo debe tener al menos un administrador activo.',
       }
     }
 

@@ -98,7 +98,7 @@ test.describe('Staff CRUD', () => {
     await addCookiesIncludingPin(page, adminStorageState)
     try {
       await page.goto('/staff')
-      await page.getByRole('button', { name: /Agregar admin/i }).click()
+      await page.getByRole('button', { name: /Agregar miembro del equipo/i }).click()
       await page.fill('input[name="firstName"]', 'Invitado')
       await page.fill('input[name="lastName"]', 'E2E')
       await page.fill('input[name="email"]', email)

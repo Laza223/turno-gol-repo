@@ -22,7 +22,7 @@ export function InviteStaffButton({ inviteAction }: { inviteAction: InviteAction
     <>
       <Button className="bg-emerald-600 hover:bg-emerald-500" onClick={() => setOpen(true)}>
         <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
-        Agregar admin
+        Agregar miembro del equipo
       </Button>
       {open && <InviteStaffDialog inviteAction={inviteAction} onClose={() => setOpen(false)} />}
     </>

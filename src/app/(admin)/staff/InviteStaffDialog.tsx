@@ -37,7 +37,7 @@ function SubmitButton() {
 }
 
 /**
- * Controlled "Invitar nuevo admin" dialog. Mounts already-open and reports
+ * Controlled "Invitar miembro del equipo" dialog. Mounts already-open and reports
  * close via `onClose`, so InviteStaffButton can mount it ONLY after a click.
  *
  * This is the key to the code-split paying off: a `dynamic(ssr:false)` component
@@ -81,7 +81,7 @@ export function InviteStaffDialog({
     <Dialog defaultOpen onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Invitar nuevo admin</DialogTitle>
+          <DialogTitle>Invitar miembro del equipo</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

@@ -58,7 +58,7 @@ export default async function StaffPage() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Equipo</h1>
             <p className="mt-1 text-sm text-slate-500">
-              {activeCount} admin{activeCount !== 1 ? 's' : ''} activo{activeCount !== 1 ? 's' : ''}
+              {activeCount} administrador{activeCount !== 1 ? 'es' : ''} activo{activeCount !== 1 ? 's' : ''}
             </p>
           </div>
 

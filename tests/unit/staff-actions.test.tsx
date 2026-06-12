@@ -139,7 +139,7 @@ describe('StaffActions — deactivate dialog', () => {
   it('server error keeps dialog open and surfaces error message', async () => {
     vi.mocked(deactivateStaffAction).mockResolvedValue({
       success: false,
-      error: 'El complejo debe tener al menos un admin activo.',
+      error: 'El complejo debe tener al menos un administrador activo.',
     })
 
     const body = await openDropdown(ACTIVE_MEMBER)
@@ -160,7 +160,7 @@ describe('StaffActions — deactivate dialog', () => {
 
     await waitFor(() => {
       const alert = screen.getByRole('alert')
-      expect(alert.textContent).toContain('El complejo debe tener al menos un admin activo.')
+      expect(alert.textContent).toContain('El complejo debe tener al menos un administrador activo.')
     })
 
     // Dialog stays open

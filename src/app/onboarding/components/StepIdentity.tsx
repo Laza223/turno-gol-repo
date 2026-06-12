@@ -153,7 +153,7 @@ export function StepIdentity() {
               name="email"
               type="email"
               autoComplete="email"
-              placeholder="admin@complejo.com"
+              placeholder="marcelo@tucomplejo.com"
               required
               className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500 hover:border-slate-300"
             />

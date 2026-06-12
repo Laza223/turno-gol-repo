@@ -111,7 +111,10 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
       </div>
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-slate-700">Penalidad por no-show</legend>
+        <legend className="text-sm font-medium text-slate-700">Penalidad por ausencia</legend>
+        <p className="text-xs text-slate-500">
+          Qué pasa cuando un jugador reserva y no se presenta al turno.
+        </p>
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
             <input
@@ -121,7 +124,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
               defaultChecked={(s.no_show_penalty?.type ?? 'ban_days') === 'ban_days'}
               className="accent-emerald-600"
             />
-            Ban temporal
+            Suspensión temporal
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
             <input
@@ -136,7 +139,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="noShowPenaltyThreshold">No-shows para aplicar ban</Label>
+            <Label htmlFor="noShowPenaltyThreshold">Ausencias para suspender</Label>
             <Input
               id="noShowPenaltyThreshold"
               name="noShowPenaltyThreshold"
@@ -149,7 +152,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="noShowPenaltyDays">Días de ban</Label>
+            <Label htmlFor="noShowPenaltyDays">Días de suspensión</Label>
             <Input
               id="noShowPenaltyDays"
               name="noShowPenaltyDays"

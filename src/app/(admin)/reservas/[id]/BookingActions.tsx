@@ -141,7 +141,7 @@ export default function BookingActions({ bookingId, status, depositStatus, depos
         open={noShowOpen}
         onOpenChange={setNoShowOpen}
         title="Marcar como ausente"
-        description="Se registrará un no-show. Si el complejo tiene penalidad activa, puede generar deuda o ban del jugador. Esta acción no se puede deshacer pasadas 24hs."
+        description="Se registrará que el jugador no se presentó. Si el complejo tiene penalidad activa, puede generar deuda o suspensión del jugador. Esta acción no se puede deshacer pasadas 24hs."
         variant="destructive"
         confirmLabel="Marcar ausente"
         cancelLabel="Volver"

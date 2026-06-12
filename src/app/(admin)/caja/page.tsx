@@ -32,7 +32,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   booking: 'Reserva',
   product_sale: 'Venta de producto',
   other: 'Otro',
-  no_show_correction: 'Corrección no-show',
+  no_show_correction: 'Corrección por ausencia',
 }
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo',

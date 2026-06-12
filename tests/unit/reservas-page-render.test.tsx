@@ -12,9 +12,9 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
 }))
-vi.mock('@/shared/dates/art', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/shared/dates/art')>()),
+vi.mock('@/shared/dates/art', () => ({
   artTodayStr: vi.fn(() => '2026-06-12'),
+  addDays: vi.fn((d: string) => d),
 }))
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => {

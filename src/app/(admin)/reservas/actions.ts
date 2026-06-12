@@ -1,10 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
@@ -34,18 +32,13 @@ export type BookingActionResult =
   | { success: true; booking: BookingRow }
   | { success: false; error: string }
 
-async function requireStaffTenant() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  return { user, tenant }
-}
-
 export async function createBookingAction(
   data: unknown,
 ): Promise<BookingActionResult> {
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  // Cruce #1: rol leído de DB — read_only (Solo lectura) no opera reservas.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -54,7 +47,7 @@ export async function createBookingAction(
   // (BookingFormModal has no way to know the admin's staff_user_id — that's
   // resolved server-side from the session). Merge it in before parsing so the
   // schema validates successfully instead of returning "Required".
-  const staffUserId = user.staffUserId!
+  const staffUserId = user.staffUserId
   const dataWithStaff =
     typeof data === 'object' && data !== null
       ? { ...(data as Record<string, unknown>), staffUserId }
@@ -119,8 +112,9 @@ function revalidateBooking(bookingId: string): void {
 export async function confirmDepositPaymentAction(
   bookingId: string,
 ): Promise<BookingActionResult> {
-  const { tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -143,8 +137,9 @@ export async function confirmDepositPaymentAction(
 export async function completeBookingAction(
   bookingId: string,
 ): Promise<BookingActionResult> {
-  const { tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -174,13 +169,14 @@ export async function completeBookingAction(
 export async function markNoShowAction(
   bookingId: string,
 ): Promise<BookingActionResult> {
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const staffUserId = user.staffUserId ?? ''
+  const staffUserId = user.staffUserId
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
@@ -213,13 +209,14 @@ export async function cancelBookingAction(
     return { success: false, error: 'El motivo debe tener al menos 3 caracteres.' }
   }
 
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const staffUserId = user.staffUserId ?? ''
+  const staffUserId = user.staffUserId
 
   let gateway: PaymentGateway | null = null
   if (shouldRefund) {

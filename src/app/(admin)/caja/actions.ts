@@ -1,12 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { sql, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, dateStr, moneyCents, boundedText } from '@/shared/validation/primitives'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
@@ -62,27 +60,22 @@ export type CloseDayActionResult =
   | { success: true; close: DailyCashCloseRow }
   | { success: false; error: string }
 
-async function requireStaffTenant() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  return { user, tenant }
-}
-
 export async function createCashFlowAction(
   input: CreateCashFlowInput,
 ): Promise<CashFlowActionResult> {
   const parsed = createCashFlowSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  // Cruce #2: rol leído de DB — read_only (Solo lectura) no opera la caja.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
-      const cashFlow = await createCashFlow(tenant.id, user.staffUserId!, parsed.data, tx)
+      const cashFlow = await createCashFlow(tenant.id, user.staffUserId, parsed.data, tx)
       return { success: true as const, cashFlow }
     } catch (err) {
       if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
@@ -106,8 +99,9 @@ export async function saveCanteenProductsAction(
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
-  const { tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -137,8 +131,10 @@ export async function closeDayAction(
 ): Promise<CloseDayActionResult> {
   const parsed = closeDaySchema.safeParse({ date, declaredCash, note })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  // Cruce #2: el cierre de caja es inmutable — read_only no puede ejecutarlo.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -148,7 +144,7 @@ export async function closeDayAction(
       const close = await closeDailyRegister(
         tenant.id,
         parsed.data.date,
-        user.staffUserId!,
+        user.staffUserId,
         { declaredCash: parsed.data.declaredCash, note: parsed.data.note },
         tx,
       )

@@ -215,20 +215,39 @@ export async function deactivateStaffAction(
   if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
-    const [activeCount] = await tx
-      .select({ value: count() })
+    const [target] = await tx
+      .select({ role: tenantStaffMembers.role })
       .from(tenantStaffMembers)
       .where(
         and(
+          eq(tenantStaffMembers.id, staffMemberId),
           eq(tenantStaffMembers.tenantId, tenant.id),
-          eq(tenantStaffMembers.isActive, true),
         ),
       )
+      .limit(1)
 
-    if (Number(activeCount?.value ?? 0) <= 1) {
-      return {
-        success: false as const,
-        error: 'El complejo debe tener al menos un administrador activo.',
+    if (!target) return { success: false as const, error: 'Miembro no encontrado.' }
+
+    // Lockout (roles 026): con roles, lo que no puede quedar en cero son los
+    // ADMINS activos, no los miembros. Un complejo solo con encargados no
+    // tendría quién entre a configuración.
+    if (target.role === 'admin') {
+      const [activeAdmins] = await tx
+        .select({ value: count() })
+        .from(tenantStaffMembers)
+        .where(
+          and(
+            eq(tenantStaffMembers.tenantId, tenant.id),
+            eq(tenantStaffMembers.isActive, true),
+            eq(tenantStaffMembers.role, 'admin'),
+          ),
+        )
+
+      if (Number(activeAdmins?.value ?? 0) <= 1) {
+        return {
+          success: false as const,
+          error: 'El complejo debe tener al menos un administrador activo.',
+        }
       }
     }
 
@@ -244,6 +263,66 @@ export async function deactivateStaffAction(
       .returning({ id: tenantStaffMembers.id })
 
     if (!updated) return { success: false as const, error: 'Miembro no encontrado.' }
+    return { success: true as const }
+  })
+
+  if (result.success) revalidatePath('/staff')
+  return result
+}
+
+const updateRoleSchema = z.enum(STAFF_ROLES, {
+  errorMap: () => ({ message: 'Rol inválido' }),
+})
+
+export async function updateStaffRoleAction(
+  staffMemberId: string,
+  role: string,
+): Promise<StaffActionResult> {
+  const { user, tenant } = await requireStaffTenant()
+  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const guard = await guardStaffMutation(tenant)
+  if (guard) return guard
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsedRole = updateRoleSchema.safeParse(role)
+  if (!parsedRole.success) {
+    return { success: false, error: parsedRole.error.issues[0]?.message ?? 'Rol inválido' }
+  }
+  const newRole = parsedRole.data
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    const [target] = await tx
+      .select({ staffUserId: tenantStaffMembers.staffUserId })
+      .from(tenantStaffMembers)
+      .where(
+        and(
+          eq(tenantStaffMembers.id, staffMemberId),
+          eq(tenantStaffMembers.tenantId, tenant.id),
+        ),
+      )
+      .limit(1)
+
+    if (!target) return { success: false as const, error: 'Miembro no encontrado.' }
+
+    // Protección lockout: nadie se cambia su propio rol. Degradarse a sí mismo
+    // podría dejar al complejo sin ningún admin con acceso a configuración.
+    if (target.staffUserId === user.staffUserId) {
+      return { success: false as const, error: 'No podés cambiar tu propio rol.' }
+    }
+
+    await tx
+      .update(tenantStaffMembers)
+      .set({ role: newRole })
+      .where(
+        and(
+          eq(tenantStaffMembers.id, staffMemberId),
+          eq(tenantStaffMembers.tenantId, tenant.id),
+        ),
+      )
+
     return { success: true as const }
   })
 

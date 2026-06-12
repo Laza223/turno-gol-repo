@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from '@/hooks/use-toast'
-import { deactivateStaffAction, resendInviteAction } from './actions'
+import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole } from '@/modules/staff/roles'
+import { deactivateStaffAction, resendInviteAction, updateStaffRoleAction } from './actions'
 
 // The deactivate confirmation pulls in the Radix AlertDialog (~13KB). It is only
 // needed once an admin opens it, so lazy-load and mount it on demand instead of
@@ -28,14 +29,30 @@ interface StaffActionsProps {
     firstName: string
     lastName: string
     isActive: boolean
+    role: StaffRole
   }
   currentUserStaffId: string
-  activeCount: number
+  activeAdminCount: number
 }
 
-export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, activeCount }: StaffActionsProps) {
+export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, activeAdminCount }: StaffActionsProps) {
   const [deactivateOpen, setDeactivateOpen] = useState(false)
-  const isSoleAdmin = activeCount <= 1
+  // Lockout: el último admin activo no se puede desactivar (misma regla que
+  // valida el server en deactivateStaffAction).
+  const isLastActiveAdmin = member.role === 'admin' && activeAdminCount <= 1
+  const otherRoles = STAFF_ROLES.filter((role) => role !== member.role)
+
+  async function handleChangeRole(role: StaffRole) {
+    const res = await updateStaffRoleAction(member.memberId, role)
+    if (res.success) {
+      toast({
+        title: `${member.firstName} ${member.lastName} ahora es ${STAFF_ROLE_LABELS[role]}.`,
+        variant: 'success',
+      })
+    } else {
+      toast({ title: res.error ?? 'No se pudo cambiar el rol.', variant: 'destructive' })
+    }
+  }
 
   async function onConfirmDeactivate(): Promise<{ success: boolean; error?: string }> {
     const res = await deactivateStaffAction(member.memberId)
@@ -65,16 +82,29 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {member.isActive ? (
-            <DropdownMenuItem
-              className="cursor-pointer text-red-600 focus:text-red-600"
-              disabled={isSoleAdmin}
-              onSelect={(e) => {
-                e.preventDefault()
-                setDeactivateOpen(true)
-              }}
-            >
-              Desactivar
-            </DropdownMenuItem>
+            <>
+              {otherRoles.map((role) => (
+                <DropdownMenuItem
+                  key={role}
+                  className="cursor-pointer"
+                  onSelect={() => {
+                    void handleChangeRole(role)
+                  }}
+                >
+                  Cambiar a {STAFF_ROLE_LABELS[role]}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                className="cursor-pointer text-red-600 focus:text-red-600"
+                disabled={isLastActiveAdmin}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setDeactivateOpen(true)
+                }}
+              >
+                Desactivar
+              </DropdownMenuItem>
+            </>
           ) : (
             <DropdownMenuItem
               className="cursor-pointer"

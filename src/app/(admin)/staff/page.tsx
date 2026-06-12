@@ -6,6 +6,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { PinGate } from '@/components/pin-gate'
+import { STAFF_ROLE_LABELS, type StaffRole } from '@/modules/staff/roles'
 import { InviteStaffButton } from './InviteStaffButton'
 import { StaffActions } from './StaffActions'
 import { inviteStaffAction } from './actions'
@@ -16,8 +17,17 @@ interface StaffMember {
   firstName: string
   lastName: string
   email: string
+  role: StaffRole
   isActive: boolean
   createdAt: Date
+}
+
+// Estilo del badge por rol: admin resalta (es el de acceso total), los demás
+// usan tonos neutros/fríos.
+const ROLE_BADGE_CLASSES: Record<StaffRole, string> = {
+  admin: 'bg-violet-50 text-violet-700 ring-violet-600/20',
+  manager: 'bg-sky-50 text-sky-700 ring-sky-600/20',
+  read_only: 'bg-slate-100 text-slate-600 ring-slate-500/20',
 }
 
 async function getStaffMembers(tenantId: string): Promise<StaffMember[]> {
@@ -29,6 +39,7 @@ async function getStaffMembers(tenantId: string): Promise<StaffMember[]> {
         firstName: staffUsers.firstName,
         lastName: staffUsers.lastName,
         email: staffUsers.email,
+        role: tenantStaffMembers.role,
         isActive: tenantStaffMembers.isActive,
         createdAt: tenantStaffMembers.createdAt,
       })
@@ -49,6 +60,7 @@ export default async function StaffPage() {
 
   const members = await getStaffMembers(tenant.id)
   const activeCount = members.filter((m) => m.isActive).length
+  const activeAdminCount = members.filter((m) => m.isActive && m.role === 'admin').length
   const hasPin = !!tenant.settings.staff_pin_hash
 
   return (
@@ -58,7 +70,7 @@ export default async function StaffPage() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Equipo</h1>
             <p className="mt-1 text-sm text-slate-500">
-              {activeCount} administrador{activeCount !== 1 ? 'es' : ''} activo{activeCount !== 1 ? 's' : ''}
+              {activeCount} miembro{activeCount !== 1 ? 's' : ''} del equipo activo{activeCount !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -76,6 +88,9 @@ export default async function StaffPage() {
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Rol
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   Estado
                 </th>
                 <th className="px-6 py-3" />
@@ -91,6 +106,13 @@ export default async function StaffPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600">{m.email}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${ROLE_BADGE_CLASSES[m.role]}`}
+                    >
+                      {STAFF_ROLE_LABELS[m.role]}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     {m.isActive ? (
                       <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
@@ -111,9 +133,10 @@ export default async function StaffPage() {
                           firstName: m.firstName,
                           lastName: m.lastName,
                           isActive: m.isActive,
+                          role: m.role,
                         }}
                         currentUserStaffId={staffUserId}
-                        activeCount={activeCount}
+                        activeAdminCount={activeAdminCount}
                       />
                     )}
                   </td>

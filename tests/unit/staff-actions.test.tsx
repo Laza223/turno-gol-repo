@@ -6,6 +6,7 @@ import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-li
 vi.mock('@/app/(admin)/staff/actions', () => ({
   deactivateStaffAction: vi.fn(),
   resendInviteAction: vi.fn(),
+  updateStaffRoleAction: vi.fn(),
 }))
 
 vi.mock('@/hooks/use-toast', () => ({
@@ -22,6 +23,7 @@ const ACTIVE_MEMBER = {
   firstName: 'José',
   lastName: 'Pérez',
   isActive: true,
+  role: 'admin' as const,
 }
 
 const INACTIVE_MEMBER = {
@@ -30,17 +32,20 @@ const INACTIVE_MEMBER = {
   firstName: 'Laura',
   lastName: 'Gómez',
   isActive: false,
+  role: 'manager' as const,
 }
 
 const CURRENT_USER_STAFF_ID = 'uuuuuuuu-0000-0000-0000-000000000001'
 
+type MemberProp = Parameters<typeof StaffActions>[0]['member']
+
 /** Open the dropdown for the given member and return the menu content node. */
-async function openDropdown(member: typeof ACTIVE_MEMBER) {
+async function openDropdown(member: MemberProp) {
   render(
     <StaffActions
       member={member}
       currentUserStaffId={CURRENT_USER_STAFF_ID}
-      activeCount={3}
+      activeAdminCount={3}
     />,
   )
   const trigger = screen.getByRole('button', { name: 'Opciones' })
@@ -68,7 +73,7 @@ describe('StaffActions — dropdown rendering', () => {
       <StaffActions
         member={ACTIVE_MEMBER}
         currentUserStaffId={CURRENT_USER_STAFF_ID}
-        activeCount={3}
+        activeAdminCount={3}
       />,
     )
     expect(screen.getByRole('button', { name: 'Opciones' })).toBeTruthy()

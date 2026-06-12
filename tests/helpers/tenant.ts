@@ -127,10 +127,11 @@ export async function linkStaffToTenant(
   sql: Sql,
   tenantId: string,
   staffUserId: string,
+  role: 'admin' | 'manager' | 'read_only' = 'admin',
 ): Promise<string> {
   const rows = await sql<{ id: string }[]>`
     INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role, is_active)
-    VALUES (${tenantId}, ${staffUserId}, 'admin', true)
+    VALUES (${tenantId}, ${staffUserId}, ${role}, true)
     RETURNING id
   `
   return rows[0].id

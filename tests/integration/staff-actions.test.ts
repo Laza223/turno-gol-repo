@@ -31,7 +31,11 @@ vi.mock('@/lib/supabase/admin', () => ({
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
-import { deactivateStaffAction, inviteStaffAction } from '@/app/(admin)/staff/actions'
+import {
+  deactivateStaffAction,
+  inviteStaffAction,
+  updateStaffRoleAction,
+} from '@/app/(admin)/staff/actions'
 
 function asStaff(tenantId: string, staffUserId: string) {
   vi.mocked(extractAuthUser).mockResolvedValue({
@@ -89,6 +93,116 @@ describe('deactivateStaffAction', () => {
       SELECT is_active FROM tenant_staff_members WHERE id = ${m2}
     `
     expect(rows[0]!.is_active).toBe(false)
+  })
+})
+
+describe('deactivateStaffAction — lockout de admins (roles 026)', () => {
+  it('bloquea desactivar al último admin activo aunque queden encargados', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const manager = await createTestStaffUser(sql)
+    const adminMemberId = await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
+    asStaff(tenant.id, admin.id)
+
+    const res = await deactivateStaffAction(adminMemberId)
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('al menos un admin')
+  })
+
+  it('permite desactivar un encargado aunque sea el único no-admin', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const manager = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    const managerMemberId = await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
+    asStaff(tenant.id, admin.id)
+
+    const res = await deactivateStaffAction(managerMemberId)
+    expect(res.success).toBe(true)
+  })
+
+  it('permite desactivar un admin si queda otro admin activo', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const a1 = await createTestStaffUser(sql)
+    const a2 = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, a1.id, 'admin')
+    const m2 = await linkStaffToTenant(sql, tenant.id, a2.id, 'admin')
+    asStaff(tenant.id, a1.id)
+
+    const res = await deactivateStaffAction(m2)
+    expect(res.success).toBe(true)
+  })
+})
+
+describe('updateStaffRoleAction', () => {
+  it('cambia el rol de otro miembro y queda en la DB', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const other = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    const otherMemberId = await linkStaffToTenant(sql, tenant.id, other.id, 'manager')
+    asStaff(tenant.id, admin.id)
+
+    const res = await updateStaffRoleAction(otherMemberId, 'read_only')
+    expect(res.success).toBe(true)
+
+    const rows = await sql<{ role: string }[]>`
+      SELECT role FROM tenant_staff_members WHERE id = ${otherMemberId}
+    `
+    expect(rows[0]?.role).toBe('read_only')
+  })
+
+  it('bloquea cambiarse el rol a sí mismo (protección lockout)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const other = await createTestStaffUser(sql)
+    const selfMemberId = await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    await linkStaffToTenant(sql, tenant.id, other.id, 'admin')
+    asStaff(tenant.id, admin.id)
+
+    const res = await updateStaffRoleAction(selfMemberId, 'read_only')
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('propio rol')
+
+    const rows = await sql<{ role: string }[]>`
+      SELECT role FROM tenant_staff_members WHERE id = ${selfMemberId}
+    `
+    expect(rows[0]?.role).toBe('admin')
+  })
+
+  it('rechaza un rol fuera del enum', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const other = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    const otherMemberId = await linkStaffToTenant(sql, tenant.id, other.id, 'manager')
+    asStaff(tenant.id, admin.id)
+
+    const res = await updateStaffRoleAction(otherMemberId, 'superadmin')
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('Rol inválido')
+  })
+
+  it('devuelve error para un miembro de otro tenant', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const otherTenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const foreign = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    const foreignMemberId = await linkStaffToTenant(sql, otherTenant.id, foreign.id, 'manager')
+    asStaff(tenant.id, admin.id)
+
+    const res = await updateStaffRoleAction(foreignMemberId, 'read_only')
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toContain('Miembro no encontrado')
   })
 })
 

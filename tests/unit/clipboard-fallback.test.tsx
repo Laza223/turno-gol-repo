@@ -9,16 +9,17 @@ vi.mock('@/app/(admin)/dashboard/actions', () => ({
 }))
 
 // Provide a baseline state where the copy button is rendered (not minimized).
-// 7 items total: accountCreated, complexData, hasCourts, hasSchedule, mpConnected,
-// publicLinkShared, firstBookingReceived.
+// 8 items total: accountCreated, complexData, hasCourts, hasSchedule, pinConfigured,
+// mpConnected, publicLinkShared, firstBookingReceived.
 // Set publicLinkShared=false so the "copy-link" action button is visible.
-// 5/7 completed → not minimized.
+// 6/8 completed → not minimized.
 const baseProps = {
   state: {
     accountCreated: true,
     complexData: true,
     hasCourts: true,
     hasSchedule: true,
+    pinConfigured: true,
     mpConnected: true,
     publicLinkShared: false,
     firstBookingReceived: false,

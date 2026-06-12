@@ -5,5 +5,5 @@ describe('getDashboardMetrics', () => {
 })
 
 describe('getChecklistState', () => {
-  it.todo('returns all 7 boolean checklist fields')
+  it.todo('returns all 8 boolean checklist fields')
 })

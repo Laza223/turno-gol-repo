@@ -25,6 +25,7 @@ vi.mock('@/modules/cashflow/daily-close.service', () => ({ closeDailyRegister: v
 import {
   closeDayAction,
   createCashFlowAction,
+  saveCanteenProductsAction,
 } from '@/app/(admin)/caja/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -105,6 +106,38 @@ describe('caja actions — manager (Encargado) opera la caja (cruce #2)', () => 
     const res = await closeDayAction('2026-06-11', 100000)
     expect(res.success).toBe(true)
     expect(vi.mocked(closeDailyRegister)).toHaveBeenCalled()
+  })
+})
+
+describe('saveCanteenProductsAction — configuración solo admin (cruce #3)', () => {
+  const VALID_PRODUCTS = [{ id: 'p1', name: 'Gaseosa', price: 125000 }]
+
+  it('manager NO puede reescribir los productos de cantina (Sin acceso a configuración)', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
+    const res = await saveCanteenProductsAction(VALID_PRODUCTS)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
+  })
+
+  it('read_only NO puede reescribir los productos de cantina', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('read_only')
+    const res = await saveCanteenProductsAction(VALID_PRODUCTS)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
+  })
+
+  it('admin sí puede configurar productos', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+    const update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    })
+    vi.mocked(withTenantContext).mockImplementation(
+      (async (_id: string, cb: (tx: never) => Promise<unknown>) =>
+        cb({ update } as never)) as never,
+    )
+    const res = await saveCanteenProductsAction(VALID_PRODUCTS)
+    expect(res).toEqual({ success: true })
+    expect(update).toHaveBeenCalled()
   })
 })
 

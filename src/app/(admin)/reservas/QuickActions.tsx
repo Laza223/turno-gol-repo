@@ -19,6 +19,7 @@ import {
   confirmDepositPaymentAction,
   markNoShowAction,
 } from './actions'
+import { hasQuickActions } from './quick-actions-helpers'
 
 export type QuickActionsBooking = {
   id: string
@@ -33,11 +34,6 @@ type Props = {
   booking: QuickActionsBooking
   /** Nombre + horario para que el menú mobile y los toasts tengan contexto. */
   label: string
-}
-
-export function hasQuickActions(booking: Pick<QuickActionsBooking, 'status' | 'type'>): boolean {
-  if (booking.type === 'block') return false
-  return booking.status === 'pending_payment' || booking.status === 'confirmed'
 }
 
 /**

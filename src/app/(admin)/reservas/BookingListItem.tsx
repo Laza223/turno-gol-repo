@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { Ban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs, formatTime } from '@/lib/format'
-import { QuickActions, hasQuickActions } from './QuickActions'
+import { QuickActions } from './QuickActions'
+import { hasQuickActions } from './quick-actions-helpers'
 import type { ReservaListRow } from './queries'
 
 type ItemVisual = { accent: string; badge: string; label: string }

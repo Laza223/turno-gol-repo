@@ -315,3 +315,71 @@ test.describe('reservas — edge: no-show', () => {
     },
   )
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// TEST 5 — Quick action: confirm deposit payment inline from the list
+// ════════════════════════════════════════════════════════════════════════════
+test.describe('reservas — quick action: confirmar pago inline', () => {
+  test(
+    'lista Hoy → "Confirmar pago" inline → badge Confirmada sin full reload',
+    async ({ browser, adminStorageState }) => {
+      const supabase = makeServiceClient()
+      const bookingId = randomUUID()
+
+      // Today in ART (UTC-3, same formula as src/shared/dates/art.ts) so the
+      // booking shows up in the default "Hoy" scope of /reservas.
+      const todayArt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+      const context = await browser.newContext()
+      try {
+        await context.addCookies(JSON.parse(adminStorageState).cookies)
+        const page = await context.newPage()
+
+        // 06:00 is far from other seeds (grilla-realtime uses tomorrow; CRUD
+        // tests use 2020/2099), avoiding the bookings exclusion constraint.
+        await insertBooking(supabase, {
+          id: bookingId,
+          date: todayArt,
+          timeStart: '06:00',
+          timeEnd: '07:00',
+          status: 'pending_payment',
+          depositStatus: 'pending',
+          depositAmount: 5000,
+        })
+
+        await page.goto('/reservas')
+        const article = page.getByRole('article', { name: /E2E Reservas Guest/ })
+        await expect(article).toBeVisible({ timeout: 15_000 })
+        await expect(article.getByText('Pago pendiente')).toBeVisible()
+
+        // Marker that survives RSC refreshes but dies on a full page load.
+        await page.evaluate(() => {
+          ;(window as unknown as Record<string, unknown>).__e2eNoReload = true
+        })
+
+        await article.getByRole('button', { name: 'Confirmar pago' }).click()
+
+        // After the server action + router.refresh() the same article re-renders
+        // with the new status — no navigation, no reload.
+        await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })
+        await expect(article.getByText('Pago pendiente')).not.toBeVisible()
+        const marker = await page.evaluate(
+          () => (window as unknown as Record<string, unknown>).__e2eNoReload,
+        )
+        expect(marker).toBe(true)
+
+        // The deposit transition must have hit the DB (race-safe primitive).
+        const { data } = await supabase
+          .from('bookings')
+          .select('status, deposit_status')
+          .eq('id', bookingId)
+          .single()
+        expect(data?.status).toBe('confirmed')
+        expect(data?.deposit_status).toBe('paid')
+      } finally {
+        await context.close()
+        await deleteBooking(supabase, bookingId)
+      }
+    },
+  )
+})

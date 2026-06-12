@@ -25,7 +25,8 @@ vi.mock('@/app/(admin)/reservas/actions', () => ({
   cancelBookingAction: (...args: unknown[]) => cancelMock(...(args as [])),
 }))
 
-import { QuickActions, hasQuickActions } from '@/app/(admin)/reservas/QuickActions'
+import { QuickActions } from '@/app/(admin)/reservas/QuickActions'
+import { hasQuickActions } from '@/app/(admin)/reservas/quick-actions-helpers'
 
 function booking(overrides: Partial<Parameters<typeof QuickActions>[0]['booking']> = {}) {
   return {

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
 import {
+  getCourtPhotosByTenant,
   listPublicCities,
   searchPublicTenants,
   type SortOption,
@@ -116,6 +117,13 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
 
   const hasMore = view === 'list' && offset + PAGE_SIZE < total
 
+  // Fotos de canchas para el carrusel de cada card (solo la vista lista las
+  // renderiza). Fail-open: sin fotos la card cae al coverUrl como siempre.
+  const photosByTenant: Record<string, string[]> =
+    view === 'list' && results.length > 0
+      ? await getCourtPhotosByTenant(results.map((t) => t.id)).catch(() => ({}))
+      : {}
+
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
       <JsonLd
@@ -162,7 +170,12 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
             <>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {results.map((t) => (
-                  <TenantCard key={t.id} tenant={t} initialFavorited={favoriteIds.has(t.id)} />
+                  <TenantCard
+                    key={t.id}
+                    tenant={t}
+                    initialFavorited={favoriteIds.has(t.id)}
+                    photos={photosByTenant[t.id] ?? []}
+                  />
                 ))}
               </div>
               {hasMore && (

@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { MapPin, Navigation, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
@@ -7,35 +6,39 @@ import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import { formatLabel, surfaceLabel } from '@/components/public/courtFacets'
 import RatingStars from '@/components/public/RatingStars'
 import FavoriteButton from '@/components/public/FavoriteButton'
+import TenantCardCarousel from './TenantCardCarousel'
 
 /**
  * Tarjeta de complejo para /explorar (tema claro). Patrón stretched-link:
  * el <Link> del título cubre toda la card con ::after, así el botón de
- * favorito (hermano, z-10) queda fuera del <a> y el HTML es válido.
+ * favorito y el carrusel (hermanos con z) quedan fuera del <a> y el HTML
+ * es válido. Los overlays de la imagen van en z-20, por encima del carrusel
+ * (z-10) y del gradiente (z-10, pointer-events-none).
  */
 export default function TenantCard({
   tenant,
   initialFavorited = false,
+  photos = [],
 }: {
   tenant: PublicTenantCard
   initialFavorited?: boolean
+  /** Fotos de canchas del complejo (además del cover), para el carrusel. */
+  photos?: string[]
 }) {
   const fromPrice = formatFromPrice(tenant.fromPriceCents)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
   const formats = tenant.courtFormats.slice(0, 3)
   const surfaces = tenant.courtSurfaces.slice(0, 2)
+  // Mismo criterio que la galería del perfil: cover primero, luego canchas, sin duplicados.
+  const allPhotos = Array.from(
+    new Set([tenant.coverUrl, ...photos].filter((p): p is string => Boolean(p))),
+  )
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0">
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
-        {tenant.coverUrl ? (
-          <Image
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            alt={`Cancha de ${tenant.name}`}
-            src={tenant.coverUrl}
-            className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
-          />
+        {allPhotos.length > 0 ? (
+          <TenantCardCarousel photos={allPhotos} name={tenant.name} href={`/${tenant.slug}`} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-3xl font-bold text-emerald-600/40">
             {tenant.name.slice(0, 2).toUpperCase()}
@@ -43,27 +46,27 @@ export default function TenantCard({
         )}
         <div
           aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent"
+          className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent"
         />
 
         {tenant.allowOnlineBooking && (
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+          <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
             <Zap className="h-3 w-3" aria-hidden />
             Reserva online
           </span>
         )}
 
-        {/* Fuera del stretched-link (z-10) para que el HTML sea válido */}
-        <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-3 top-3 z-10" />
+        {/* Fuera del stretched-link (z-20) para que el HTML sea válido */}
+        <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-3 top-3 z-20" />
 
         {fromPrice && (
-          <span className="absolute bottom-3 left-3 inline-flex items-baseline rounded-lg bg-white px-2.5 py-1 text-sm font-bold text-slate-900 shadow-sm tabular-nums">
+          <span className="absolute bottom-3 left-3 z-20 inline-flex items-baseline rounded-lg bg-white px-2.5 py-1 text-sm font-bold text-slate-900 shadow-sm tabular-nums">
             {fromPrice}
           </span>
         )}
 
         {tenant.reviewCount > 0 && (
-          <span className="absolute bottom-3 right-3 inline-flex items-center rounded-full bg-white/95 px-2 py-1 text-slate-900 shadow-sm">
+          <span className="absolute bottom-3 right-3 z-20 inline-flex items-center rounded-full bg-white/95 px-2 py-1 text-slate-900 shadow-sm">
             <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />
           </span>
         )}

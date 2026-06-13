@@ -22,6 +22,10 @@ function makeSchema(isProd: boolean) {
     VAPID_PRIVATE_KEY: isProd ? minLen(40, 'VAPID_PRIVATE_KEY') : minLen(40, 'VAPID_PRIVATE_KEY').optional(),
     VAPID_SUBJECT: isProd ? z.string().regex(/^mailto:.+@.+$/, 'VAPID_SUBJECT must be mailto:email') : z.string().regex(/^mailto:.+@.+$/).optional(),
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: isProd ? minLen(80, 'NEXT_PUBLIC_VAPID_PUBLIC_KEY') : minLen(80, 'NEXT_PUBLIC_VAPID_PUBLIC_KEY').optional(),
+    // Allowlist de emails del panel SuperAdmin (lista separada por comas).
+    // Opcional en ambos modos: el guard es fail-closed (sin la var, nadie pasa
+    // requireSystemAdmin) y su ausencia no debe romper el arranque de la app.
+    SYSTEM_ADMIN_EMAILS: z.string().optional(),
   })
 }
 

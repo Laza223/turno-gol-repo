@@ -25,6 +25,9 @@ export const POLICIES = {
   // prevent bulk scraping. Fail open: if Upstash is down, allow the request
   // (VAPID public key is intentionally public).
   vapidPublic:        { limit: 5,   window: '60 s', keyBy: 'ip',     failMode: 'open'   },
+  // Server Actions del panel SuperAdmin: un solo operador humano (el dueño del
+  // SaaS), 60 ops/min sobra. Fail open: si Upstash cae, no bloquear soporte.
+  superAdminAction:   { limit: 60,  window: '60 s', keyBy: 'email',  failMode: 'open'   },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

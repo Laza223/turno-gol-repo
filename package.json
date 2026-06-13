@@ -41,6 +41,7 @@
     "test:e2e:cross-browser": "playwright test --project webkit --project firefox --project mobile-safari",
     "test:e2e:flake-detect": "playwright test --project chromium --grep @critical --repeat-each=10 --retries=0 --workers=1",
     "e2e:seed": "tsx scripts/seed-e2e.ts",
+    "seed:system-admin": "tsx scripts/seed-system-admin.ts",
     "stress:bookings": "tsx scripts/stress-test.ts",
     "launch:check": "tsx scripts/launch-check.ts",
     "db:push": "drizzle-kit push:pg",

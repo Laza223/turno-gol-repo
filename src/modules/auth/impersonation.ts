@@ -1,0 +1,114 @@
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
+/**
+ * Cookie de impersonación del SuperAdmin (spec §6).
+ *
+ * Mismo patrón HMAC que la cookie de PIN (`src/modules/auth/pin.ts`): payload
+ * base64url + firma SHA-256, comparación en tiempo constante. La diferencia es
+ * que acá el payload es estructurado ({ tenantId, systemAdminId, exp }) en vez
+ * de un simple timestamp.
+ *
+ * SECRET — desviación deliberada del prompt: éste pedía `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+ * pero ese valor viaja al bundle del browser (prefijo NEXT_PUBLIC_), así que
+ * usarlo como secreto HMAC haría la cookie FORJEABLE por cualquiera. Se usa
+ * `PIN_COOKIE_SECRET` (server-only), que además es literalmente "el secreto de la
+ * cookie de PIN" que el prompt mencionaba entre paréntesis. La firma acá es
+ * defensa en profundidad: la barrera real sigue siendo el JWT de system_admin
+ * que el guard exige aparte (una cookie válida sin sesión system_admin no sirve).
+ *
+ * Este módulo es PURO (solo node:crypto): lo importan workers, audit.ts y tests
+ * sin arrastrar `next/headers`. La lectura de la cookie del request vive en
+ * `impersonation.server.ts`.
+ */
+
+export const IMPERSONATION_COOKIE_NAME = 'tg_sa_impersonate'
+
+/** TTL de la sesión impersonada: 1 hora (spec §6). */
+export const IMPERSONATION_TTL_MS = 60 * 60 * 1000
+
+export type ImpersonationPayload = {
+  tenantId: string
+  systemAdminId: string
+  /** Epoch en milisegundos en que la cookie deja de ser válida. */
+  exp: number
+}
+
+function getCookieSecret(): string {
+  const s = process.env.PIN_COOKIE_SECRET
+  if (!s || s.length < 16) {
+    throw new Error('PIN_COOKIE_SECRET missing or shorter than 16 chars')
+  }
+  return s
+}
+
+function sign(payload: string): string {
+  return createHmac('sha256', getCookieSecret()).update(payload).digest('base64url')
+}
+
+function isUuidLike(v: unknown): v is string {
+  return (
+    typeof v === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+  )
+}
+
+export type BuildImpersonationInput = {
+  tenantId: string
+  systemAdminId: string
+}
+
+/**
+ * Construye el valor de la cookie firmada. `nowMs` es inyectable para tests; en
+ * runtime usa Date.now() (la regla anti-Date.now() es solo de los scripts de
+ * Workflow, no del código de la app).
+ */
+export function buildImpersonationCookie(
+  input: BuildImpersonationInput,
+  nowMs: number = Date.now(),
+): string {
+  const body: ImpersonationPayload = {
+    tenantId: input.tenantId,
+    systemAdminId: input.systemAdminId,
+    exp: nowMs + IMPERSONATION_TTL_MS,
+  }
+  const payload = Buffer.from(JSON.stringify(body), 'utf8').toString('base64url')
+  return `${payload}.${sign(payload)}`
+}
+
+/**
+ * Verifica firma + expiración y devuelve el payload, o null si la cookie es
+ * inválida por cualquier motivo (firma alterada, payload corrupto, expirada,
+ * campos faltantes). Nunca lanza.
+ */
+export function verifyImpersonationCookie(
+  value: string,
+  nowMs: number = Date.now(),
+): ImpersonationPayload | null {
+  if (!value) return null
+  const dot = value.indexOf('.')
+  if (dot <= 0) return null
+
+  const payload = value.slice(0, dot)
+  const sig = value.slice(dot + 1)
+  const expected = sign(payload)
+
+  const a = Buffer.from(sig)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length) return null
+  if (!timingSafeEqual(a, b)) return null
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null
+
+  const { tenantId, systemAdminId, exp } = parsed as Record<string, unknown>
+  if (!isUuidLike(tenantId) || !isUuidLike(systemAdminId)) return null
+  if (typeof exp !== 'number' || !Number.isFinite(exp)) return null
+  if (exp <= nowMs) return null
+
+  return { tenantId, systemAdminId, exp }
+}

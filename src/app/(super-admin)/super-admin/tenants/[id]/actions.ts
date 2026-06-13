@@ -1,7 +1,18 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { uuid } from '@/shared/validation/primitives'
 import { requireSystemAdminAction } from '@/modules/auth/system-admin.guards'
+import {
+  buildImpersonationCookie,
+  IMPERSONATION_COOKIE_NAME,
+  IMPERSONATION_TTL_MS,
+} from '@/modules/auth/impersonation'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
+import { withTenantContext } from '@/shared/db/client'
+import { insertAuditLog } from '@/shared/db/audit'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import {
   DowngradeBlockedError,
@@ -242,4 +253,94 @@ export async function updateTenantSettingsAction(input: unknown): Promise<Suppor
   } catch (err) {
     return mapKnownError(err)
   }
+}
+
+// ─── Impersonación (spec §6) ─────────────────────────────────────────────────
+
+const IMPERSONATION_COOKIE_BASE = {
+  name: IMPERSONATION_COOKIE_NAME,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+}
+
+/**
+ * "Entrar como este complejo": emite la cookie firmada `tg_sa_impersonate` y
+ * redirige al panel del admin (/dashboard). El JWT real NO se toca — el bypass
+ * vive en los guards del admin, que leen esta cookie. Audita
+ * `support.impersonation.started` con actor_type='system'.
+ */
+export async function startImpersonationAction(
+  tenantId: string,
+): Promise<SupportActionResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+
+  const parsed = uuid.safeParse(tenantId)
+  if (!parsed.success) return { success: false, error: 'Tenant inválido.' }
+  const id = parsed.data
+
+  const summary = await getTenantSummary(id)
+  if (!summary) return { success: false, error: 'Complejo no encontrado.' }
+
+  try {
+    await withTenantContext(id, (tx) =>
+      insertAuditLog(tx, {
+        tenantId: id,
+        actorId: auth.admin.id,
+        actorType: 'system',
+        action: 'support.impersonation.started',
+        resourceType: 'tenant',
+        resourceId: id,
+        metadata: {
+          impersonated_tenant_id: id,
+          system_admin_email: auth.admin.email,
+        },
+      }),
+    )
+  } catch (err) {
+    return mapKnownError(err)
+  }
+
+  cookies().set({
+    ...IMPERSONATION_COOKIE_BASE,
+    value: buildImpersonationCookie({ tenantId: id, systemAdminId: auth.admin.id }),
+    maxAge: Math.floor(IMPERSONATION_TTL_MS / 1000),
+  })
+
+  // redirect() lanza NEXT_REDIRECT — debe quedar fuera del try.
+  redirect('/dashboard')
+}
+
+/**
+ * "Salir de impersonación": audita `support.impersonation.ended` (con la cookie
+ * todavía presente, para que el forzado de actor también la etiquete), borra la
+ * cookie y devuelve al detalle del tenant. No requiere requireSystemAdminAction:
+ * getImpersonationSession ya exige que el usuario sea el system_admin emisor.
+ */
+export async function stopImpersonationAction(): Promise<SupportActionResult> {
+  const session = await getImpersonationSession()
+
+  if (session) {
+    try {
+      await withTenantContext(session.tenantId, (tx) =>
+        insertAuditLog(tx, {
+          tenantId: session.tenantId,
+          actorId: session.systemAdminId,
+          actorType: 'system',
+          action: 'support.impersonation.ended',
+          resourceType: 'tenant',
+          resourceId: session.tenantId,
+          metadata: { impersonated_tenant_id: session.tenantId },
+        }),
+      )
+    } catch {
+      // Best-effort: un fallo de audit no debe atrapar al super admin dentro de
+      // la sesión impersonada. La cookie se borra igual.
+    }
+  }
+
+  cookies().delete(IMPERSONATION_COOKIE_NAME)
+  redirect(session ? `/super-admin/tenants/${session.tenantId}` : '/super-admin')
 }

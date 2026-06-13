@@ -91,11 +91,11 @@
 - [x] ✅ Hover con zoom y sombra
 - [x] ✅ Precio "Desde $X" superpuesto en la imagen
 - [x] ✅ Dirección completa (calle y altura)
-- [ ] ❌ Píldoras de turnos disponibles directamente en la card
+- [x] ✅ Píldoras de turnos disponibles directamente en la card
 - [x] ✅ Badges de formato (Fútbol 5 / 7 / 11)
 - [x] ✅ Badges de superficie (Sintético / Techado)
 - [x] ✅ Micro-íconos de servicios (duchas, estacionamiento, bar, wifi)
-- [ ] ❌ Carrusel de fotos en la card
+- [x] ✅ Carrusel de fotos en la card
 - [x] ✅ Calificación promedio (⭐ 4.8) y cantidad de reseñas
 - [x] ✅ Botón de favorito (❤️) para guardar complejos
 
@@ -126,10 +126,10 @@
 #### 3.3 Grilla de disponibilidad
 - [x] 🟡 Grilla de horarios por día (componente AvailabilityGrid)
 - [x] 🟡 Vista semanal completa (`/[slug]/disponibilidad`)
-- [ ] ❌ Selector de fecha con datepicker visual (no solo parámetro URL)
-- [ ] ❌ Vista por cancha individual (filtrar grilla por cancha)
-- [ ] ❌ Indicador de precio en cada slot de la grilla
-- [ ] ❌ Colores claros para distinguir: disponible / ocupado / turno fijo / bloqueado
+- [x] ✅ Selector de fecha con datepicker visual (no solo parámetro URL)
+- [x] ✅ Vista por cancha individual (filtrar grilla por cancha)
+- [x] ✅ Indicador de precio en cada slot de la grilla
+- [x] ✅ Colores claros para distinguir: disponible / ocupado / turno fijo / bloqueado
 
 #### 3.4 Reseñas y calificaciones
 - [x] ✅ Sistema de reseñas de jugadores (ReviewsSection.tsx)
@@ -147,11 +147,11 @@
 - [x] ✅ Página de pago pendiente (`/reserva/[bookingId]/pendiente`)
 - [x] ✅ Página de error de reserva (`/reserva/[bookingId]/error`)
 - [ ] ❌ Reserva exprés desde la tarjeta de `/explorar`
-- [ ] ❌ Selección de método de pago visual (iconos de MercadoPago, efectivo, transferencia)
+- [x] ✅ Selección de método de pago visual (iconos de MercadoPago, efectivo, transferencia)
 - [x] ✅ Compartir reserva por WhatsApp post-confirmación (BookingSuccessExtras.tsx)
 - [x] ✅ Agregar reserva al calendario (.ics download)
 - [x] ✅ Pantalla de éxito con mini-mapa (Leaflet)
-- [ ] ❌ Código QR de la reserva para mostrar en el club
+- [x] ✅ Código QR de la reserva para mostrar en el club
 
 ### 5. Área del Jugador (`/mis-reservas`, `/perfil`)
 
@@ -160,15 +160,15 @@
 - [x] 🟡 Botón de cancelar reserva
 - [ ] ❌ Detalle expandible de cada reserva
 - [x] ✅ Re-reservar turno pasado con un click ("Reservar de nuevo")
-- [ ] ❌ Descargar comprobante de reserva (PDF o imagen)
+- [x] ✅ Descargar comprobante de reserva (PDF o imagen)
 - [x] ✅ Dejar reseña post-partido (LeaveReviewButton.tsx)
 
 #### 5.2 Perfil del jugador
 - [x] ✅ Editar nombre, apellido, teléfono, zona preferida
 - [x] ✅ Avatar (con fallback de iniciales)
-- [ ] ❌ Historial de actividad (cantidad de partidos jugados, complejos visitados)
-- [ ] ❌ Lista de complejos favoritos (❤️)
-- [ ] ❌ Preferencias de notificación (email, push)
+- [x] ✅ Historial de actividad (cantidad de partidos jugados, complejos visitados)
+- [x] ✅ Lista de complejos favoritos (❤️)
+- [x] ✅ Preferencias de notificación (email, push)
 - [x] ✅ Eliminar cuenta (GDPR/Ley 25.326 compliance)
 
 ### 6. Social y Comunidad (Diferenciador vs ATC)
@@ -193,7 +193,7 @@
 - [x] ✅ Schema.org structured data (SportsActivityLocation)
 - [x] ✅ Open Graph tags dinámicos
 - [x] ✅ Twitter Card meta tags
-- [ ] 🟡 ISR en landing (revalidate=300), /explorar y /[slug] siguen dynamic
+- [x] ✅ ISR en landing (revalidate=300), /explorar (cache de carga inicial) y /[slug] (ISR revalidate=300)
 - [x] ✅ Usar next/image en imágenes públicas
 
 ### 7b. Dark Mode (diferido a V próxima) 🌙
@@ -267,7 +267,7 @@
 - [x] Reducir shared bundle: lazy-load Sentry SDK
 - [x] Implementar `React.lazy()` + Suspense en rutas admin pesadas
 - [x] Agregar `stale-while-revalidate` headers en endpoints públicos
-- [ ] 🟡 Implementar edge caching / ISR (Solo landing tiene ISR, /explorar y /[slug] siguen force-dynamic)
+- [x] ✅ Implementar edge caching / ISR (Landing ISR 300s, /[slug] ISR 300s, /explorar Data Cache 300s)
 
 ---
 
@@ -276,7 +276,7 @@
 - [x] Activar Sentry Performance (transactions) para medir latencia de API por endpoint
 - [x] Implementar métricas de negocio básicas: reservas/día, tasa de no-show, ingresos por tenant
 - [ ] Implementar alertas en Sentry.io (Requiere configuración en el dashboard de Sentry.io)
-- [ ] Crear dashboard (Endpoint JSON disponible, falta UI)
+- [x] Crear dashboard de observabilidad (UI con recharts, lazy-loaded, auto-refresh 60s)
 
 ---
 
@@ -355,36 +355,36 @@
 > Prioridad baja respecto a los blockers de infraestructura y producción, ideal para pulir antes o después del primer release.
 
 ### Vista Inicio (Onboarding / Auth)
-- [ ] **Feature**: Mejorar "Progreso de configuración" agregando el paso de "Configurar PIN de seguridad".
+- [x] **Feature**: Mejorar "Progreso de configuración" agregando el paso de "Configurar PIN de seguridad".
 - [x] **Bug**: Arreglar crasheo al presionar "Copiar link" que te devuelve al inicio del onboarding.
 - [x] **Bug**: Error al iniciar sesión/registrarse: el primer Magic Link suele dar error de link expirado/inválido, pero al solicitar un segundo link funciona correctamente.
 
 ### Vista Grilla
-- [ ] **UX/UI**: Rediseñar la vista de la grilla para que sea más moderna, cómoda y amigable para el uso diario (evitar aspecto de tabla de Excel).
+- [x] **UX/UI**: Rediseñar la vista de la grilla para que sea más moderna, cómoda y amigable para el uso diario (evitar aspecto de tabla de Excel).
 
 ### Vista Reservas
-- [ ] **UX/UI**: Replantear el diseño de la vista entendiendo que manejarán un buen volumen de reservas por día. Hacerla más funcional y ágil.
+- [x] **UX/UI**: Replantear el diseño de la vista entendiendo que manejarán un buen volumen de reservas por día. Hacerla más funcional y ágil.
 
 ### Vista Abonados
-- [ ] **UX/UI**: En "Nuevo abonado" aprovechar mejor el ancho de la pantalla.
-- [ ] **Copy/UX**: Aclarar la funcionalidad del "Precio mensual" al crear un abonado (actualmente poco intuitivo).
-- [ ] **UX general**: Hacer el flujo de creación más amigable para usuarios no técnicos (simplificar palabras y formatos tediosos).
+- [x] **UX/UI**: En "Nuevo abonado" aprovechar mejor el ancho de la pantalla.
+- [x] **Copy/UX**: Aclarar la funcionalidad del "Precio mensual" al crear un abonado (actualmente poco intuitivo).
+- [x] **UX general**: Hacer el flujo de creación más amigable para usuarios no técnicos (simplificar palabras y formatos tediosos).
 
 ### Vista Caja
-- [ ] **UX/UI**: Rediseñar completamente para darle un propósito más claro y útil (ej. que sea un buen módulo para manejo de cantina/bar y productos del complejo).
+- [x] **UX/UI**: Rediseñar completamente para darle un propósito más claro y útil (ej. que sea un buen módulo para manejo de cantina/bar y productos del complejo).
 - [x] **Bug**: Solucionar error al agregar movimiento (Error en terminal: `column "client_idempotency_key" of relation "cash_flows" does not exist`).
 
 ### Vista Reportes
-- [ ] **UX**: Agregar "Empty states" (estados vacíos) informativos que expliquen qué se va a ver ahí cuando haya información (actualmente se ve completamente vacío).
+- [x] **UX**: Agregar "Empty states" (estados vacíos) informativos que expliquen qué se va a ver ahí cuando haya información (actualmente se ve completamente vacío).
 
 ### Vista Equipo
-- [ ] **Feature**: Ampliar el modal "Invitar nuevo admin" con selección de roles/permisos.
+- [x] **Feature**: Ampliar el modal "Invitar nuevo admin" con selección de roles/permisos.
 - [x] **Bug**: Solucionar que el botón "Enviar invitación" no hace nada ni muestra error al completar los campos.
 
 ### Vista Configuración y Copys Generales
 - [x] **Bug Lógico**: Corregir que "Requerir seña" aparece tildado por defecto cuando el complejo fue recién creado (sin MP) y debería reflejar "Terminar sin seña".
-- [ ] **Copy/UX**: Aclarar qué función cumple el toggle de "Reservar online" habilitado o deshabilitado.
-- [ ] **Copy General**: Auditar y cambiar términos técnicos en toda la app ("Ban", "admin", "no-show") por un lenguaje familiar y de fácil entendimiento para el dueño de un complejo deportivo.
+- [x] **Copy/UX**: Aclarar qué función cumple el toggle de "Reservar online" habilitado o deshabilitado.
+- [x] **Copy General**: Auditar y cambiar términos técnicos en toda la app ("Ban", "admin", "no-show") por un lenguaje familiar y de fácil entendimiento para el dueño de un complejo deportivo.
 
 ---
 

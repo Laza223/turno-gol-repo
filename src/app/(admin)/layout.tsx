@@ -9,6 +9,7 @@ import { redirectIfTenantSuspended } from '@/shared/kill-switch'
 import { tenantSubscriptions } from '@/shared/db/schema'
 import dynamic from 'next/dynamic'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
+import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
 import { signOutAction } from '@/app/(admin)/actions/auth'
 
 const PushNotificationManager = dynamic(
@@ -39,6 +40,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         periodEnd={impSub?.currentPeriodEnd?.toISOString() ?? null}
         userEmail={imp.user.email}
         signOut={signOutAction}
+        impersonationBanner={<ImpersonationBanner tenantName={imp.tenant.name} />}
       >
         {children}
         <PushNotificationManager />

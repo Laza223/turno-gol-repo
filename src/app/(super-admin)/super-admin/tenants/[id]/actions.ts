@@ -327,8 +327,11 @@ export async function startImpersonationAction(
  * todavía presente, para que el forzado de actor también la etiquete), borra la
  * cookie y devuelve al detalle del tenant. No requiere requireSystemAdminAction:
  * getImpersonationSession ya exige que el usuario sea el system_admin emisor.
+ *
+ * Retorna void (siempre redirige): así se puede usar directo como `action` de un
+ * <form> en el banner, cuyo tipo exige `() => void | Promise<void>`.
  */
-export async function stopImpersonationAction(): Promise<SupportActionResult> {
+export async function stopImpersonationAction(): Promise<void> {
   const session = await getImpersonationSession()
 
   if (session) {

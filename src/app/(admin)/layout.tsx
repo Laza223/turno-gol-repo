@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 import type { ReactNode } from 'react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { redirectIfTenantSuspended } from '@/shared/kill-switch'
@@ -16,6 +17,35 @@ const PushNotificationManager = dynamic(
 )
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
+  // Impersonación (spec §6): el super admin entra a CUALQUIER tenant para dar
+  // soporte, salteando las puertas de billing/kill-switch/onboarding — puede
+  // necesitar entrar justamente a un tenant suspendido o a medio onboarding
+  // para arreglarlo. El banner rojo (commit de banner+audit) avisa el modo.
+  const imp = await resolveImpersonatedStaffContext()
+  if (imp) {
+    const impSub = await withTenantContext(imp.tenant.id, async (tx) =>
+      tx
+        .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
+        .from(tenantSubscriptions)
+        .where(eq(tenantSubscriptions.tenantId, imp.tenant.id))
+        .limit(1)
+        .then((r) => r[0] ?? null),
+    )
+    return (
+      <AdminLayoutShell
+        tenantName={imp.tenant.name}
+        tenantStatus={imp.tenant.status}
+        trialEndsAt={imp.tenant.trialEndsAt?.toISOString() ?? null}
+        periodEnd={impSub?.currentPeriodEnd?.toISOString() ?? null}
+        userEmail={imp.user.email}
+        signOut={signOutAction}
+      >
+        {children}
+        <PushNotificationManager />
+      </AdminLayoutShell>
+    )
+  }
+
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff') redirect('/login')
   if (!user.staffUserId) redirect('/login')

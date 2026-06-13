@@ -1,16 +1,18 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { tagSession } from '@/shared/middleware/observability'
+import { resolveImpersonatedStaffContextFor } from '@/modules/auth/impersonation.server'
 import type { AuthUser } from './types'
 
 /**
- * Read the Supabase session from cookies and map to AuthUser.
- * Returns null if no session (caller responsible for 401).
+ * Identidad REAL de la sesión (lo que dice el JWT de Supabase), sin aplicar
+ * impersonación. La usan el guard de SuperAdmin y el resolver de impersonación
+ * para no auto-engañarse con la cookie que ellos mismos manejan.
  *
  * Cacheado por request (React.cache): layout, shell y página comparten una
  * sola lectura de `supabase.auth.getUser()` en lugar de repetirla N veces.
  */
-export const extractAuthUser = cache(async (): Promise<AuthUser | null> => {
+export const extractRealAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = createClient()
   const { data, error } = await supabase.auth.getUser()
   if (error || !data?.user) return null
@@ -42,4 +44,25 @@ export const extractAuthUser = cache(async (): Promise<AuthUser | null> => {
     tenantId,
     role: 'admin',
   }
+})
+
+/**
+ * Identidad EFECTIVA de la request, con impersonación aplicada (spec §6).
+ *
+ * Punto único del bypass: si la sesión real es un system_admin con una cookie
+ * `tg_sa_impersonate` válida, devuelve el contexto staff sintético del tenant
+ * impersonado (rol 'admin', con el staff_user_id de un admin real del tenant
+ * como proxy para los FKs). Para cualquier otra sesión, devuelve la identidad
+ * real sin tocar nada.
+ *
+ * Así, los ~40 server actions, los guards (`requireAdminStaff`,
+ * `requireOperatorStaff`, los `requireStaffTenant` locales) y las páginas
+ * read-only del admin funcionan impersonadas sin modificarse: todas leen de acá.
+ * El guard de SuperAdmin usa `extractRealAuthUser` para ver la identidad real.
+ */
+export const extractAuthUser = cache(async (): Promise<AuthUser | null> => {
+  const real = await extractRealAuthUser()
+  if (!real || real.type !== 'system_admin') return real
+  const imp = await resolveImpersonatedStaffContextFor(real)
+  return imp ? imp.user : real
 })

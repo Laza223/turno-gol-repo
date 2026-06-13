@@ -10,6 +10,7 @@ const SYSTEM_ADMIN_ID = '22222222-2222-4222-8222-222222222222'
 const h = vi.hoisted(() => ({
   requireSystemAdminAction: vi.fn(),
   getTenantSummary: vi.fn(),
+  getFirstActiveAdminStaffUserId: vi.fn(),
   insertAuditLog: vi.fn(),
   withTenantContext: vi.fn(),
   getImpersonationSession: vi.fn(),
@@ -63,6 +64,9 @@ vi.mock('@/modules/super-admin/support.service', () => ({
 vi.mock('@/modules/super-admin/tenants.service', () => ({
   getTenantSummary: (id: string) => h.getTenantSummary(id),
 }))
+vi.mock('@/modules/staff/staff.service', () => ({
+  getFirstActiveAdminStaffUserId: (id: string) => h.getFirstActiveAdminStaffUserId(id),
+}))
 
 async function loadActions() {
   return import('@/app/(super-admin)/super-admin/tenants/[id]/actions')
@@ -70,6 +74,10 @@ async function loadActions() {
 
 beforeEach(() => {
   process.env.PIN_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+  // Por defecto el tenant tiene un admin para delegar (proxy de FKs).
+  h.getFirstActiveAdminStaffUserId.mockResolvedValue(
+    '44444444-4444-4444-8444-444444444444',
+  )
 })
 
 afterEach(() => {
@@ -131,6 +139,22 @@ describe('startImpersonationAction', () => {
     expect(await startImpersonationAction(TENANT_ID)).toEqual({
       success: false,
       error: 'Complejo no encontrado.',
+    })
+    expect(h.cookieSet).not.toHaveBeenCalled()
+  })
+
+  it('rechaza tenant sin admin activo para proxy — no setea cookie', async () => {
+    h.requireSystemAdminAction.mockResolvedValue({
+      ok: true,
+      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.com' },
+    })
+    h.getTenantSummary.mockResolvedValue({ name: 'Complejo X' })
+    h.getFirstActiveAdminStaffUserId.mockResolvedValue(null)
+    const { startImpersonationAction } = await loadActions()
+
+    expect(await startImpersonationAction(TENANT_ID)).toEqual({
+      success: false,
+      error: 'El complejo no tiene un administrador activo: no se puede impersonar.',
     })
     expect(h.cookieSet).not.toHaveBeenCalled()
   })

@@ -11,6 +11,7 @@ import {
   IMPERSONATION_TTL_MS,
 } from '@/modules/auth/impersonation'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
+import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
@@ -257,14 +258,6 @@ export async function updateTenantSettingsAction(input: unknown): Promise<Suppor
 
 // ─── Impersonación (spec §6) ─────────────────────────────────────────────────
 
-const IMPERSONATION_COOKIE_BASE = {
-  name: IMPERSONATION_COOKIE_NAME,
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
-}
-
 /**
  * "Entrar como este complejo": emite la cookie firmada `tg_sa_impersonate` y
  * redirige al panel del admin (/dashboard). El JWT real NO se toca — el bypass
@@ -283,6 +276,17 @@ export async function startImpersonationAction(
 
   const summary = await getTenantSummary(id)
   if (!summary) return { success: false, error: 'Complejo no encontrado.' }
+
+  // Pre-check: el tenant debe tener un admin activo para delegar los FKs a
+  // staff_users.id durante la impersonación. Falla limpio acá antes de emitir
+  // la cookie (si no, /dashboard tiraría NoActiveAdminToProxyError al renderizar).
+  const proxyAdmin = await getFirstActiveAdminStaffUserId(id)
+  if (!proxyAdmin) {
+    return {
+      success: false,
+      error: 'El complejo no tiene un administrador activo: no se puede impersonar.',
+    }
+  }
 
   try {
     await withTenantContext(id, (tx) =>
@@ -303,10 +307,15 @@ export async function startImpersonationAction(
     return mapKnownError(err)
   }
 
+  const cookieValue = buildImpersonationCookie({ tenantId: id, systemAdminId: auth.admin.id })
   cookies().set({
-    ...IMPERSONATION_COOKIE_BASE,
-    value: buildImpersonationCookie({ tenantId: id, systemAdminId: auth.admin.id }),
+    name: IMPERSONATION_COOKIE_NAME,
+    value: cookieValue,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: Math.floor(IMPERSONATION_TTL_MS / 1000),
+    path: '/',
   })
 
   // redirect() lanza NEXT_REDIRECT — debe quedar fuera del try.

@@ -20,6 +20,14 @@ vi.mock('@/modules/auth/auth.middleware', () => ({
     tenantId: 'tenant-1',
     email: 'test@test.com',
   })),
+  // checkPinSessionAction consulta la impersonación (getImpersonationSession →
+  // extractRealAuthUser): un staff no es system_admin → sin bypass, flujo normal.
+  extractRealAuthUser: vi.fn(() => ({
+    type: 'staff',
+    staffUserId: 'staff-1',
+    tenantId: 'tenant-1',
+    email: 'test@test.com',
+  })),
 }))
 vi.mock('@/modules/tenants/tenant.service', () => ({
   getStaffTenant: vi.fn(() => ({

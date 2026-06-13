@@ -89,12 +89,14 @@ describe('buildImpersonationCookie / verifyImpersonationCookie', () => {
 const cookieStore = { get: vi.fn() }
 vi.mock('next/headers', () => ({ cookies: () => cookieStore }))
 
-const extractAuthUser = vi.fn()
-vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: () => extractAuthUser() }))
+const extractRealAuthUser = vi.fn()
+vi.mock('@/modules/auth/auth.middleware', () => ({
+  extractRealAuthUser: () => extractRealAuthUser(),
+}))
 
 afterEach(() => {
   cookieStore.get.mockReset()
-  extractAuthUser.mockReset()
+  extractRealAuthUser.mockReset()
 })
 
 describe('getImpersonationSession (impersonation.server)', () => {
@@ -110,7 +112,7 @@ describe('getImpersonationSession (impersonation.server)', () => {
   }
 
   it('devuelve la sesión cuando el system_admin coincide y la cookie es válida', async () => {
-    extractAuthUser.mockResolvedValue({
+    extractRealAuthUser.mockResolvedValue({
       type: 'system_admin',
       id: 'auth-id',
       email: 'owner@turnogol.com',
@@ -126,7 +128,7 @@ describe('getImpersonationSession (impersonation.server)', () => {
   })
 
   it('null si el usuario no es system_admin (un staff no puede impersonar)', async () => {
-    extractAuthUser.mockResolvedValue({
+    extractRealAuthUser.mockResolvedValue({
       type: 'staff',
       id: 'x',
       email: 'staff@x.com',
@@ -141,7 +143,7 @@ describe('getImpersonationSession (impersonation.server)', () => {
   })
 
   it('null si la cookie pertenece a OTRO system_admin', async () => {
-    extractAuthUser.mockResolvedValue({
+    extractRealAuthUser.mockResolvedValue({
       type: 'system_admin',
       id: 'auth-id',
       email: 'owner@turnogol.com',
@@ -154,7 +156,7 @@ describe('getImpersonationSession (impersonation.server)', () => {
   })
 
   it('null si no hay cookie', async () => {
-    extractAuthUser.mockResolvedValue({
+    extractRealAuthUser.mockResolvedValue({
       type: 'system_admin',
       id: 'auth-id',
       email: 'owner@turnogol.com',

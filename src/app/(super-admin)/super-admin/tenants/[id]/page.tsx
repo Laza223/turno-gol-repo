@@ -21,6 +21,7 @@ import {
   SupportActionsPanel,
   type SupportPanelSettings,
 } from './_components/support-actions-panel'
+import { ImpersonateButton } from './_components/impersonate-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -145,6 +146,10 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
   const s = tenant.settings
   return (
     <div className="space-y-4">
+      <Card title="Soporte">
+        <ImpersonateButton tenantId={tenant.id} tenantName={tenant.name} />
+      </Card>
+
       <Card title="Datos del complejo">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Dt label="Dirección">

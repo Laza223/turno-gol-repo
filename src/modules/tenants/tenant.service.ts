@@ -121,6 +121,17 @@ export async function getStaffTenant(staffUserId: string): Promise<TenantRow | n
   return rowToTenantRow(rows[0].tenants)
 }
 
+/**
+ * Tenant por id, sin pasar por una membresía de staff. Lo usa el resolver de
+ * impersonación del SuperAdmin (entra a un tenant por id, no por su sesión).
+ */
+export async function getTenantById(tenantId: string): Promise<TenantRow | null> {
+  const db = getDb()
+  const rows = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1)
+  if (!rows.length) return null
+  return rowToTenantRow(rows[0])
+}
+
 export async function getTenantBySlug(slug: string): Promise<TenantRow | null> {
   const db = getDb()
   const rows = await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1)

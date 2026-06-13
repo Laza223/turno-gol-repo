@@ -26,3 +26,29 @@ export async function getStaffRole(
     .limit(1)
   return rows[0]?.role ?? null
 }
+
+/**
+ * staff_user_id del primer admin ACTIVO del tenant (orden por antigüedad). Lo usa
+ * la impersonación del SuperAdmin como "proxy" para los FKs a staff_users.id
+ * (cash_flows.registered_by, bookings.created_by_staff, daily_cash_closes.closed_by,
+ * etc.): la identidad real queda en el audit log, pero las filas necesitan un
+ * staff_user_id que exista en ese tenant. null si el tenant no tiene admin activo.
+ */
+export async function getFirstActiveAdminStaffUserId(
+  tenantId: string,
+): Promise<string | null> {
+  const db = getDb()
+  const rows = await db
+    .select({ staffUserId: tenantStaffMembers.staffUserId })
+    .from(tenantStaffMembers)
+    .where(
+      and(
+        eq(tenantStaffMembers.tenantId, tenantId),
+        eq(tenantStaffMembers.role, 'admin'),
+        eq(tenantStaffMembers.isActive, true),
+      ),
+    )
+    .orderBy(tenantStaffMembers.createdAt)
+    .limit(1)
+  return rows[0]?.staffUserId ?? null
+}

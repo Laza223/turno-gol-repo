@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { extractRealAuthUser } from '@/modules/auth/auth.middleware'
 import type { SystemAdminUser } from '@/modules/auth/types'
 import { withSystemAdminContext } from '@/shared/db/client'
 import { systemAdmins } from '@/shared/db/schema'
@@ -54,8 +54,11 @@ function parseAllowlist(raw: string | undefined): string[] {
  * falló; los callers NO diferencian el motivo (no filtrar que la ruta existe).
  */
 async function resolveSystemAdmin(): Promise<SystemAdminAuth | null> {
-  // 1) Claim JWT.
-  const user = await extractAuthUser()
+  // 1) Claim JWT. Identidad REAL: mientras se impersona, la cookie hace que
+  //    extractAuthUser devuelva un staff sintético; el guard de SuperAdmin debe
+  //    seguir viendo al system_admin para no auto-bloquearse (poder volver al
+  //    panel y cortar la impersonación).
+  const user = await extractRealAuthUser()
   if (!user || user.type !== 'system_admin') return null
 
   // 2) Fila DB activa (policy self-only via app.current_system_admin_id).

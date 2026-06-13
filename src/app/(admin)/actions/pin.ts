@@ -14,8 +14,12 @@ import {
 import { enforce } from '@/shared/rate-limit'
 import { withTenantContext } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 
 export async function checkPinSessionAction(): Promise<boolean> {
+  // Impersonación: el super admin ya pasó un guard más fuerte que el PIN del
+  // complejo, así que la sesión impersonada no lo pide (spec §6).
+  if (await getImpersonationSession()) return true
   const jar = cookies()
   const value = jar.get(COOKIE_NAME)?.value
   return value ? verifyPinCookie(value) : false

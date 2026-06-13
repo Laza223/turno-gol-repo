@@ -14,6 +14,8 @@ interface AdminLayoutShellProps {
   periodEnd: string | null
   userEmail: string
   signOut: () => Promise<never>
+  /** Banner rojo de impersonación (solo en sesiones del super admin). */
+  impersonationBanner?: ReactNode
 }
 
 export function AdminLayoutShell({
@@ -24,6 +26,7 @@ export function AdminLayoutShell({
   periodEnd,
   userEmail,
   signOut,
+  impersonationBanner,
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -62,6 +65,9 @@ export function AdminLayoutShell({
       {/* Main content */}
       <div className="lg:pl-60">
         <div className="pt-[calc(4rem+env(safe-area-inset-top))]">
+          {/* Banner de impersonación (super admin): pegado bajo el header */}
+          {impersonationBanner}
+
           {/* Status banner */}
           <StatusBanner
             tenantStatus={tenantStatus}

@@ -1,8 +1,36 @@
 import { auditLogs } from '@/shared/db/schema'
+import {
+  IMPERSONATION_COOKIE_NAME,
+  verifyImpersonationCookie,
+} from '@/modules/auth/impersonation'
 import type { DbTx } from './client'
 
 /** Sentinel UUID for system-originated audit rows (cron jobs, webhooks). */
 export const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
+
+/**
+ * Si la request está impersonando (cookie tg_sa_impersonate válida), toda
+ * escritura de audit se fuerza a nombre del super admin (spec §6): ninguna
+ * acción puede quedar atribuida al cliente real. Lee la cookie del request;
+ * en contextos sin request (workers pg-boss) `cookies()` lanza y devolvemos
+ * null vía el catch — el import es dinámico para no acoplar audit.ts a
+ * next/headers en el bundle del worker.
+ */
+async function resolveImpersonationOverride(): Promise<{
+  systemAdminId: string
+  tenantId: string
+} | null> {
+  try {
+    const { cookies } = await import('next/headers')
+    const raw = cookies().get(IMPERSONATION_COOKIE_NAME)?.value
+    if (!raw) return null
+    const payload = verifyImpersonationCookie(raw)
+    if (!payload) return null
+    return { systemAdminId: payload.systemAdminId, tenantId: payload.tenantId }
+  } catch {
+    return null
+  }
+}
 
 export type AuditEntry = {
   tenantId: string
@@ -19,14 +47,21 @@ export async function insertAuditLog(
   tx: DbTx,
   entry: AuditEntry,
 ): Promise<void> {
+  const override = await resolveImpersonationOverride()
+  const actorId = override ? override.systemAdminId : entry.actorId
+  const actorType: AuditEntry['actorType'] = override ? 'system' : entry.actorType
+  const metadata = override
+    ? { ...(entry.metadata ?? {}), impersonated_tenant_id: override.tenantId }
+    : (entry.metadata ?? null)
+
   await tx.insert(auditLogs).values({
     tenantId: entry.tenantId,
-    actorId: entry.actorId,
-    actorType: entry.actorType,
+    actorId,
+    actorType,
     action: entry.action,
     resourceType: entry.resourceType,
     resourceId: entry.resourceId,
-    metadata: entry.metadata ?? null,
+    metadata,
   })
 }
 

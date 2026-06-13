@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({
     throw new Error(`REDIRECT:${url}`)
   }),
 }))
-vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
+vi.mock('@/modules/auth/auth.middleware', () => ({ extractRealAuthUser: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withSystemAdminContext: vi.fn() }))
 vi.mock('@/shared/rate-limit/apply', () => ({ enforce: vi.fn() }))
 
@@ -33,7 +33,7 @@ import {
   requireSystemAdmin,
   requireSystemAdminAction,
 } from '@/modules/auth/system-admin.guards'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { extractRealAuthUser } from '@/modules/auth/auth.middleware'
 import { withSystemAdminContext } from '@/shared/db/client'
 import { enforce } from '@/shared/rate-limit/apply'
 
@@ -60,7 +60,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   h.state.dbRows = []
   process.env.SYSTEM_ADMIN_EMAILS = 'owner@turnogol.test'
-  vi.mocked(extractAuthUser).mockResolvedValue(SYSTEM_ADMIN_USER as never)
+  vi.mocked(extractRealAuthUser).mockResolvedValue(SYSTEM_ADMIN_USER as never)
   vi.mocked(withSystemAdminContext).mockImplementation(
     (async (_id: string, fn: (tx: never) => Promise<unknown>) => fn(h.tx as never)) as never,
   )
@@ -96,7 +96,7 @@ describe('requireSystemAdmin — rechazos (todo termina en /login, sin motivo)',
   })
 
   it('user staff → redirect sin tocar la DB de system_admins', async () => {
-    vi.mocked(extractAuthUser).mockResolvedValue({
+    vi.mocked(extractRealAuthUser).mockResolvedValue({
       type: 'staff',
       id: 'auth-staff',
       email: 'staff@x.com',
@@ -109,7 +109,7 @@ describe('requireSystemAdmin — rechazos (todo termina en /login, sin motivo)',
   })
 
   it('user player → redirect sin tocar la DB de system_admins', async () => {
-    vi.mocked(extractAuthUser).mockResolvedValue({
+    vi.mocked(extractRealAuthUser).mockResolvedValue({
       type: 'player',
       id: 'auth-player',
       playerId: 'player-1',
@@ -119,8 +119,8 @@ describe('requireSystemAdmin — rechazos (todo termina en /login, sin motivo)',
     expect(vi.mocked(withSystemAdminContext)).not.toHaveBeenCalled()
   })
 
-  it('sin sesión (extractAuthUser null) → redirect', async () => {
-    vi.mocked(extractAuthUser).mockResolvedValue(null)
+  it('sin sesión (extractRealAuthUser null) → redirect', async () => {
+    vi.mocked(extractRealAuthUser).mockResolvedValue(null)
     await expect(requireSystemAdmin()).rejects.toThrow('REDIRECT:/login')
   })
 })
@@ -145,7 +145,7 @@ describe('requireSystemAdmin — happy path', () => {
 
   it('allowlist matchea case-insensitive y con espacios, contra el email de la FILA', async () => {
     // El email del JWT NO participa: solo el de la fila DB decide.
-    vi.mocked(extractAuthUser).mockResolvedValue({
+    vi.mocked(extractRealAuthUser).mockResolvedValue({
       ...SYSTEM_ADMIN_USER,
       email: 'otro-email-en-jwt@x.com',
     } as never)
@@ -178,7 +178,7 @@ describe('requireSystemAdminAction', () => {
   })
 
   it('user staff → { ok: false, error: "No autorizado." } sin redirect ni enforce', async () => {
-    vi.mocked(extractAuthUser).mockResolvedValue({
+    vi.mocked(extractRealAuthUser).mockResolvedValue({
       type: 'staff',
       id: 'auth-staff',
       email: 'staff@x.com',

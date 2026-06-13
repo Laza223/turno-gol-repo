@@ -17,10 +17,14 @@ import { PlayerHasOutstandingBalanceError } from '@/modules/bookings/booking.err
 import { getPlayerBlockState } from '@/modules/relationships/ptr.service'
 import type { DbTx } from '@/shared/db/client'
 
+// Fecha dinámica (mañana): una fecha fija queda en el pasado con el tiempo y el
+// servicio tira BookingDateOutOfRangeError antes de llegar al guard de saldo.
+const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
 const INPUT = {
   playerId: 'pppppppp-0000-0000-0000-000000000001',
   courtId: 'cccccccc-0000-0000-0000-000000000001',
-  date: '2026-06-10',
+  date: tomorrow,
   timeStart: '10:00',
   timeEnd: '11:00',
   durationMins: 60 as const,

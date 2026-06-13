@@ -43,7 +43,13 @@ describe('verifyPinAction', () => {
     vi.mocked(verifyPin).mockResolvedValueOnce(false)
     const { verifyPinAction } = await import('@/app/(admin)/actions/pin')
     const result = await verifyPinAction('0000')
-    expect(result).toEqual({ ok: false, error: 'PIN incorrecto.' })
+    // El lockout de PIN agregó locked/attemptsLeft al contrato (rate limit de 5 intentos).
+    expect(result).toEqual({
+      ok: false,
+      error: 'PIN incorrecto.',
+      locked: false,
+      attemptsLeft: 5,
+    })
   })
 
   it('returns ok:true when PIN valid', async () => {

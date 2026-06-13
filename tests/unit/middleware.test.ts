@@ -9,6 +9,14 @@ vi.mock('next/headers', () => ({
   }),
 }))
 
+// React.cache existe en el runtime server de Next pero no en el build de react
+// que resuelve vitest (node): fallback identidad para poder importar
+// auth.middleware real (extractAuthUser está envuelto en cache()).
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return { ...actual, cache: actual.cache ?? (<T,>(fn: T): T => fn) }
+})
+
 // Mock Supabase server client to avoid env var requirement.
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),

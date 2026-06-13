@@ -40,9 +40,10 @@ describe('inputMode coverage (regression guard)', () => {
     expect(windowAround).toMatch(/inputMode="tel"/)
   })
 
-  it('settings/reservas page: all type="number" inputs have inputMode', () => {
+  it('settings/reservas form: all type="number" inputs have inputMode', () => {
+    // Los inputs numéricos viven en ReservasPolicyForm.tsx (la page los delega al form).
     const file = readFileSync(
-      path.join(projectRoot, 'src/app/(admin)/settings/reservas/page.tsx'),
+      path.join(projectRoot, 'src/app/(admin)/settings/reservas/ReservasPolicyForm.tsx'),
       'utf8',
     )
     // Capture each block starting at type="number"

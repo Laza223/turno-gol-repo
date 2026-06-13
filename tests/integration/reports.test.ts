@@ -99,7 +99,7 @@ describe('getRevenueReport — with data', () => {
     const report = await getRevenueReport(tenantId, MAY_FROM, MAY_TO, OPENING_HOURS, APR_FROM, APR_TO)
     const cash = report.byMethod.find((m) => m.method === 'cash')
     const transfer = report.byMethod.find((m) => m.method === 'transfer')
-    expect(cash?.total).toBe(65000)   // 60000 income + 5000 adjustment
+    expect(cash?.total).toBe(60000)   // solo income: adjustment no entra en byMethod (#43)
     expect(transfer?.total).toBe(40000)
   })
 

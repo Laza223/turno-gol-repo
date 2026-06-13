@@ -43,9 +43,9 @@ describe('PaymentStatusWatcher — no quedar colgado (#45/#46/#48)', () => {
     render(
       <PaymentStatusWatcher bookingId="b1" initialStatus="pending_payment" expiresAt={future} />,
     )
-    // 5 intentos × 3s = 15s
+    // Backoff exponencial (#63): fallos en t=3s, 9s, 21s, 45s, 75s → 5to fallo corta.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(16000)
+      await vi.advanceTimersByTimeAsync(80_000)
     })
 
     expect(screen.getByText('No pudimos verificar tu pago')).toBeTruthy()

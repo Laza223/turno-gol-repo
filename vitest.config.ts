@@ -7,7 +7,8 @@ export default defineConfig({
     globals: true,
     // No escanear worktrees anidados (.worktrees / .claude/worktrees): tienen
     // copias stale de los tests que rompen el run del árbol principal.
-    exclude: [...configDefaults.exclude, '**/.worktrees/**', '**/.claude/**'],
+    // tests/e2e son specs de Playwright: vitest no puede ni colectarlos.
+    exclude: [...configDefaults.exclude, '**/.worktrees/**', '**/.claude/**', 'tests/e2e/**'],
     testTimeout: 10_000,
     hookTimeout: 30_000,
     poolOptions: {

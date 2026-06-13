@@ -123,6 +123,20 @@ describe('SiteFooter (legal links)', () => {
     const text = collectText(SiteFooter())
     expect(text).toMatch(/Privacidad/)
     expect(text).toMatch(/Términos/)
-    expect(text).toMatch(/TurnoGol/)
+  })
+
+  it('renders the brand via the Logo component', () => {
+    // La marca pasó de texto plano a <Logo>; el walker no expande componentes
+    // función, así que verificamos la presencia del elemento Logo en el árbol.
+    let hasLogo = false
+    walkAll(
+      SiteFooter(),
+      (el) => {
+        const type = el.type as { name?: string }
+        if (typeof el.type === 'function' && type.name === 'Logo') hasLogo = true
+      },
+      () => {},
+    )
+    expect(hasLogo).toBe(true)
   })
 })

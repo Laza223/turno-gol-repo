@@ -33,7 +33,12 @@ import {
 } from '@/modules/bookings/booking.cancellation'
 import { TenantInactiveError } from '@/modules/bookings/booking.errors'
 
-const FUTURE_DATE = '2027-08-01'
+// Dinámica (hoy + 500 días): con fecha fija el test 4A se volvía out-of-policy
+// cuando la fecha quedaba a menos de 9999h. Con +500 días, la policy de 9999h
+// (~417 días) siempre da in-policy y la de 20000h (~833 días) siempre out-of-policy.
+const FUTURE_DATE = new Date(Date.now() + 500 * 24 * 60 * 60 * 1000)
+  .toISOString()
+  .slice(0, 10)
 
 async function insertCourt(tenantId: string): Promise<string> {
   const sql = getSql()

@@ -33,14 +33,16 @@ describe('SubmitButton (#20)', () => {
   })
 })
 
-describe('settings/pin/page usa SubmitButton (#20)', () => {
+describe('settings/pin usa submit con pending state (#20)', () => {
+  // La page se refactoreó a un client component (PinForm) con su propio
+  // SubmitButton basado en useFormStatus; el guard verifica ese archivo.
   const src = readFileSync(
-    join(process.cwd(), 'src/app/(admin)/settings/pin/page.tsx'),
+    join(process.cwd(), 'src/app/(admin)/settings/pin/PinForm.tsx'),
     'utf8',
   )
-  it('reemplaza el Button estatico por SubmitButton', () => {
-    expect(src).toContain("from '@/components/ui/submit-button'")
+  it('el submit usa useFormStatus y se deshabilita mientras corre la action', () => {
+    expect(src).toContain('useFormStatus')
     expect(src).toContain('<SubmitButton')
-    expect(src).not.toContain('<Button type="submit"')
+    expect(src).toContain('disabled={pending}')
   })
 })

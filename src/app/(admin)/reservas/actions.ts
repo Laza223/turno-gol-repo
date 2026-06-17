@@ -24,6 +24,7 @@ import {
   BookingNotInConfirmedError,
   BookingNotYetEndedError,
   BookingNotYetStartedError,
+  RefundUnavailableError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
@@ -239,6 +240,13 @@ export async function cancelBookingAction(
     } catch (err) {
       if (err instanceof BookingNotInConfirmedError) {
         return { success: false as const, error: 'La reserva no está en estado confirmado.' }
+      }
+      // Hallazgo 2: se pidió refund pero MP no está disponible para este complejo.
+      if (err instanceof RefundUnavailableError) {
+        return {
+          success: false as const,
+          error: 'No se pudo procesar el reembolso por MercadoPago. Cancelá sin reembolso o gestionalo manualmente.',
+        }
       }
       throw err
     }

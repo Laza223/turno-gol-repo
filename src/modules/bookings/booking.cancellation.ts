@@ -11,6 +11,7 @@ import { rowToBookingRow } from './booking.mappers'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
+  RefundUnavailableError,
   TenantInactiveError,
 } from './booking.errors'
 import type { BookingRow, DepositStatus } from './booking.types'
@@ -113,10 +114,21 @@ export async function cancelByPlayer(
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
 
   if (b.deposit_status === 'paid') {
-    if (inPolicy && b.payment_id && gateway) {
-      await createRefund(b.payment_id, b.deposit_amount, gateway, tx)
-      newDepositStatus = 'refunded'
-    } else if (!inPolicy) {
+    if (inPolicy) {
+      if (b.payment_id && gateway) {
+        // Seña MP: refund real vía gateway.
+        await createRefund(b.payment_id, b.deposit_amount, gateway, tx)
+        newDepositStatus = 'refunded'
+      } else if (b.payment_id) {
+        // Hallazgo 2: seña MP pero gateway no disponible → no se puede refundar.
+        // No marcamos canceled_refunded con deposit 'paid' (estado mentiroso).
+        throw new RefundUnavailableError(bookingId)
+      } else {
+        // Seña en efectivo/transferencia (sin payment_id MP): el reembolso se
+        // resuelve offline entre jugador y complejo. Marcamos la obligación.
+        newDepositStatus = 'refunded'
+      }
+    } else {
       newDepositStatus = 'captured'
     }
   }
@@ -161,16 +173,37 @@ export async function cancelByAdmin(
   if (!b) throw new BookingNotInConfirmedError(bookingId)
   if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
 
+  // Hallazgo 8 (paridad con cancelByPlayer): rechazar cancelación cuando el
+  // complejo está en estado terminal/inactivo. Sin este guard, el admin podría
+  // disparar un refund automático contra una cuenta MP eliminada o delinkeada.
+  const tenantRows = await tx
+    .select({ status: tenants.status })
+    .from(tenants)
+    .where(eq(tenants.id, b.tenant_id))
+    .limit(1)
+  const tenantStatus = tenantRows[0]?.status
+  if (!tenantStatus || tenantStatus === 'deleted' || tenantStatus === 'blocked') {
+    throw new TenantInactiveError(b.tenant_id, tenantStatus ?? 'unknown')
+  }
+
   track.booking('booking.cancel.by_admin', { bookingId, tenantId: b.tenant_id })
 
   const targetStatus = shouldRefund ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
 
   if (b.deposit_status === 'paid') {
-    if (shouldRefund && b.payment_id && gateway) {
-      await createRefund(b.payment_id, b.deposit_amount, gateway, tx)
-      newDepositStatus = 'refunded'
-    } else if (!shouldRefund) {
+    if (shouldRefund) {
+      if (b.payment_id && gateway) {
+        await createRefund(b.payment_id, b.deposit_amount, gateway, tx)
+        newDepositStatus = 'refunded'
+      } else if (b.payment_id) {
+        // Hallazgo 2: refund MP pedido pero gateway no disponible → no fingir.
+        throw new RefundUnavailableError(bookingId)
+      } else {
+        // Seña en efectivo/transferencia: reembolso offline, marcamos obligación.
+        newDepositStatus = 'refunded'
+      }
+    } else {
       newDepositStatus = 'captured'
     }
   }

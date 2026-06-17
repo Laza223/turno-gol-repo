@@ -16,6 +16,8 @@ import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurr
 import {
   BookingNotInConfirmedError,
   CourtOfflineError,
+  PlayerBannedError,
+  PlayerHasOutstandingBalanceError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
 import {
@@ -24,6 +26,7 @@ import {
   createTestStaffUser,
   createTestTenant,
   ensureRoles,
+  linkPlayerToTenant,
   linkStaffToTenant,
 } from '../helpers/tenant'
 import { sql as drizzleSql } from 'drizzle-orm'
@@ -82,8 +85,17 @@ async function insertPendingBooking(opts: {
 const FUTURE_DATE = '2027-04-26' // Monday, far in the future
 const PAST_DATE = '2020-04-27' // Monday, far in the past (used by completeBooking/markNoShow tests)
 
+// Capturing stub for the expiry-timer seam. The previous silent `() => {}`
+// no-op meant a regression that drops `scheduleBookingExpiry()` (Hallazgo 1 —
+// the pending_payment TTL) would never be caught: the deposit booking would
+// stay pending forever and lock the slot, yet the test stayed green. We now
+// record every armed timer so tests can assert the side effect.
+const armedExpiries: Array<{ bookingId: string; startAfter: number }> = []
+
 beforeAll(async () => {
-  setExpiryScheduler(async () => {})
+  setExpiryScheduler(async (bookingId, startAfter) => {
+    armedExpiries.push({ bookingId, startAfter })
+  })
   const sql = getSql()
   await ensureRoles(sql)
   await cleanupAll(sql)
@@ -231,6 +243,7 @@ describe('createOnlineBooking', () => {
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(tenant.id)
 
+    armedExpiries.length = 0
     const booking = await withTenantContext(tenant.id, (tx) =>
       createOnlineBooking(
         tenant.id,
@@ -251,6 +264,9 @@ describe('createOnlineBooking', () => {
     expect(booking.status).toBe('confirmed')
     expect(booking.depositStatus).toBe('not_required')
     expect(booking.priceSnapshot).toBe(800000)
+    // A confirmed booking is final: it must NOT arm an expiry timer, or the
+    // 15-min sweep would later expire an already-paid/no-deposit reservation.
+    expect(armedExpiries).toHaveLength(0)
   })
 
   it('requiresDeposit=true → pending_payment with deposit_amount calculated', async () => {
@@ -259,6 +275,7 @@ describe('createOnlineBooking', () => {
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(tenant.id)
 
+    armedExpiries.length = 0
     const booking = await withTenantContext(tenant.id, (tx) =>
       createOnlineBooking(
         tenant.id,
@@ -280,6 +297,63 @@ describe('createOnlineBooking', () => {
     expect(booking.depositStatus).toBe('pending')
     expect(booking.depositAmount).toBe(240000) // 800000 * 30%
     expect(booking.paymentMethod).toBeNull()
+    // Hallazgo 1: a pending_payment booking MUST arm the TTL expiry timer for
+    // exactly this booking, with a positive delay (otherwise the slot would be
+    // locked forever when the player abandons the MP checkout).
+    expect(armedExpiries).toEqual([
+      expect.objectContaining({ bookingId: booking.id }),
+    ])
+    expect(armedExpiries[0]!.startAfter).toBeGreaterThan(0)
+  })
+})
+
+describe('transitionFromPendingPayment → confirmed (doc7 Flujo 2 PASO 5)', () => {
+  it('confirma la reserva y marca la seña como pagada (deposit_status=paid)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    // Real pending_payment booking with a deposit (as the MP checkout flow leaves it).
+    const booking = await withTenantContext(tenant.id, (tx) =>
+      createOnlineBooking(
+        tenant.id,
+        {
+          playerId: player.id,
+          courtId,
+          date: FUTURE_DATE,
+          timeStart: '08:00',
+          timeEnd: '09:00',
+          durationMins: 60,
+          requiresDeposit: true,
+          depositPercentage: 30,
+        },
+        tx,
+      ),
+    )
+    expect(booking.status).toBe('pending_payment')
+    expect(booking.depositStatus).toBe('pending')
+    expect(booking.depositAmount).toBe(240000)
+
+    // Simulate the MP "approved" webhook winning the race.
+    const result = await withTenantContext(tenant.id, (tx) =>
+      transitionFromPendingPayment(booking.id, 'confirmed', tx),
+    )
+
+    expect(result.won).toBe(true)
+    if (result.won) {
+      expect(result.row.status).toBe('confirmed')
+      // The deposit must flip to 'paid' atomically with the confirmation;
+      // otherwise the seña stays 'pending' forever despite an approved payment.
+      expect(result.row.depositStatus).toBe('paid')
+      expect(result.row.depositAmount).toBe(240000)
+    }
+
+    // And the change is durable in the row, not just in the returned object.
+    const persisted = await sql<{ status: string; deposit_status: string }[]>`
+      SELECT status, deposit_status FROM bookings WHERE id = ${booking.id}
+    `
+    expect(persisted[0]).toEqual({ status: 'confirmed', deposit_status: 'paid' })
   })
 })
 
@@ -335,6 +409,13 @@ describe('price_snapshot inmutabilidad (trigger DB)', () => {
     await expect(
       sql`UPDATE bookings SET price_snapshot = 999 WHERE id = ${bookingId}`,
     ).rejects.toThrow(/price_snapshot/i)
+
+    // The trigger must have ROLLED BACK the write, not merely raised on something
+    // unrelated: the snapshot stays at its original captured value.
+    const after = await sql<{ price_snapshot: number }[]>`
+      SELECT price_snapshot FROM bookings WHERE id = ${bookingId}
+    `
+    expect(after[0]!.price_snapshot).toBe(800000)
   })
 })
 
@@ -397,6 +478,13 @@ describe('completeBooking', () => {
     )
 
     expect(updated.status).toBe('completed')
+
+    // 'completed' is terminal: completing it again must fail (the row is no
+    // longer in 'confirmed'), proving the transition really moved state rather
+    // than just echoing 'completed' back.
+    await expect(
+      withTenantContext(tenant.id, (tx) => completeBooking(created.id, 'admin', tx)),
+    ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
   })
 
   it('on pending_payment → BookingNotInConfirmedError', async () => {
@@ -450,6 +538,11 @@ describe('markNoShow', () => {
     )
 
     expect(updated.status).toBe('no_show')
+
+    // 'no_show' is terminal: re-marking must fail (row no longer 'confirmed').
+    await expect(
+      withTenantContext(tenant.id, (tx) => markNoShow(created.id, staff.id, tx)),
+    ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
   })
 })
 
@@ -540,5 +633,214 @@ describe('Race condition (Fix #9): only one worker wins', () => {
     const wins = [a, b].filter((r) => r.won === true).length
     expect(wins).toBe(1)
     expect(sideEffectCounter).toBe(1)
+  })
+})
+
+// ─── GAP: guard de saldo deudor contra DB real ──────────────────────────────
+// El único test previo (tests/unit/booking-balance-guard.test.ts) MOCKEA
+// getPlayerBlockState por completo, así que nunca toca la columna real
+// player_tenant_relationships.balance (migración 022). Si esa columna no
+// existiera o el SELECT se rompiera, el unit seguiría verde. Acá lo ejercemos
+// end-to-end contra la DB.
+describe('createOnlineBooking — guard de saldo deudor (DB real)', () => {
+  it('rechaza la reserva cuando el jugador tiene balance > 0 en el complejo', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
+    await sql`
+      UPDATE player_tenant_relationships
+      SET balance = ${250000}
+      WHERE tenant_id = ${tenant.id} AND player_id = ${player.id}
+    `
+
+    const err = await withTenantContext(tenant.id, (tx) =>
+      createOnlineBooking(
+        tenant.id,
+        {
+          playerId: player.id,
+          courtId,
+          date: FUTURE_DATE,
+          timeStart: '08:00',
+          timeEnd: '09:00',
+          durationMins: 60,
+          requiresDeposit: false,
+          depositPercentage: 0,
+        },
+        tx,
+      ),
+    ).catch((e: unknown) => e)
+
+    expect(err).toBeInstanceOf(PlayerHasOutstandingBalanceError)
+    expect((err as PlayerHasOutstandingBalanceError).balance).toBe(250000)
+
+    // Y no se creó ninguna reserva pese a la deuda.
+    const count = await sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM bookings WHERE court_id = ${courtId}
+    `
+    expect(count[0]!.n).toBe(0)
+  })
+
+  it('rechaza la reserva cuando la relación está marcada como blocked', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
+    await sql`
+      UPDATE player_tenant_relationships
+      SET status = 'blocked'
+      WHERE tenant_id = ${tenant.id} AND player_id = ${player.id}
+    `
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        createOnlineBooking(
+          tenant.id,
+          {
+            playerId: player.id,
+            courtId,
+            date: FUTURE_DATE,
+            timeStart: '09:00',
+            timeEnd: '10:00',
+            durationMins: 60,
+            requiresDeposit: false,
+            depositPercentage: 0,
+          },
+          tx,
+        ),
+      ),
+    ).rejects.toBeInstanceOf(PlayerHasOutstandingBalanceError)
+  })
+
+  it('permite reservar cuando el jugador está al día (balance=0, active)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await linkPlayerToTenant(sql, tenant.id, player.id) // balance=0, status='active' por default
+
+    const booking = await withTenantContext(tenant.id, (tx) =>
+      createOnlineBooking(
+        tenant.id,
+        {
+          playerId: player.id,
+          courtId,
+          date: FUTURE_DATE,
+          timeStart: '10:00',
+          timeEnd: '11:00',
+          durationMins: 60,
+          requiresDeposit: false,
+          depositPercentage: 0,
+        },
+        tx,
+      ),
+    )
+    expect(booking.status).toBe('confirmed')
+  })
+})
+
+// ─── GAP: guard de ban contra DB real ───────────────────────────────────────
+// checkPlayerBanned está mockeado en el unit; acá verificamos el cableado real:
+// un jugador con ban global (players.status='banned') no puede reservar online.
+describe('createOnlineBooking — guard de ban (DB real)', () => {
+  it('rechaza la reserva cuando el jugador tiene ban global', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await sql`UPDATE players SET status = 'banned' WHERE id = ${player.id}`
+
+    const err = await withTenantContext(tenant.id, (tx) =>
+      createOnlineBooking(
+        tenant.id,
+        {
+          playerId: player.id,
+          courtId,
+          date: FUTURE_DATE,
+          timeStart: '11:00',
+          timeEnd: '12:00',
+          durationMins: 60,
+          requiresDeposit: false,
+          depositPercentage: 0,
+        },
+        tx,
+      ),
+    ).catch((e: unknown) => e)
+
+    expect(err).toBeInstanceOf(PlayerBannedError)
+    expect((err as PlayerBannedError).bannedGlobal).toBe(true)
+  })
+})
+
+// ─── GAP: aislamiento de tenant en la cancha (defensa en profundidad / IDOR) ──
+// lockCourtOrThrow valida court.tenantId === tenantId además de RLS. Sin este
+// chequeo, un admin podría reservar contra una cancha de OTRO complejo.
+describe('aislamiento de tenant en la cancha', () => {
+  it('createManualBooking con cancha de otro tenant → CourtOfflineError', async () => {
+    const sql = getSql()
+    const tenantA = await createTestTenant(sql)
+    const tenantB = await createTestTenant(sql)
+    const staffA = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenantA.id, staffA.id)
+    const courtB = await insertCourt(tenantB.id) // cancha pertenece a B
+
+    await expect(
+      withTenantContext(tenantA.id, (tx) =>
+        createManualBooking(
+          tenantA.id,
+          {
+            courtId: courtB,
+            date: FUTURE_DATE,
+            timeStart: '12:00',
+            timeEnd: '13:00',
+            durationMins: 60,
+            type: 'spontaneous',
+            staffUserId: staffA.id,
+          },
+          tx,
+        ),
+      ),
+    ).rejects.toBeInstanceOf(CourtOfflineError)
+
+    // No se filtró ninguna reserva a la cancha del otro complejo.
+    const count = await sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM bookings WHERE court_id = ${courtB}
+    `
+    expect(count[0]!.n).toBe(0)
+  })
+})
+
+// ─── GAP: type='block' fuerza precio 0 ───────────────────────────────────────
+describe('createManualBooking — type=block', () => {
+  it('un bloqueo de cancha se confirma con price_snapshot=0 (sin cobro)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const booking = await withTenantContext(tenant.id, (tx) =>
+      createManualBooking(
+        tenant.id,
+        {
+          courtId,
+          date: FUTURE_DATE,
+          timeStart: '21:00',
+          timeEnd: '22:00',
+          durationMins: 60,
+          type: 'block',
+          staffUserId: staff.id,
+          notesInternal: 'Mantenimiento',
+        },
+        tx,
+      ),
+    )
+
+    // El pricing de la cancha cobraría 800000, pero un bloqueo nunca cobra.
+    expect(booking.priceSnapshot).toBe(0)
+    expect(booking.status).toBe('confirmed')
+    expect(booking.type).toBe('block')
   })
 })

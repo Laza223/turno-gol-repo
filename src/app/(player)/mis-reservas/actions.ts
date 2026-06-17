@@ -14,6 +14,7 @@ import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
+  RefundUnavailableError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
@@ -89,6 +90,14 @@ export async function cancelMyBookingAction(
       // de la Server Action, dejando el dialog colgado sin feedback inline.
       if (err instanceof TenantInactiveError) {
         return { success: false as const, error: 'El complejo no está disponible para cancelar online.' }
+      }
+      // Hallazgo 2: seña MP pero gateway no disponible (token delinkeado). No se
+      // puede procesar el reembolso automático; el jugador debe gestionarlo con el complejo.
+      if (err instanceof RefundUnavailableError) {
+        return {
+          success: false as const,
+          error: 'No se pudo procesar el reembolso automático. Contactá al complejo.',
+        }
       }
       throw err
     }

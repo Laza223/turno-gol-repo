@@ -90,6 +90,19 @@ export class TenantInactiveError extends Error {
   }
 }
 
+// Hallazgo 2: una cancelación in-policy con seña MP pagada (payment_id seteado)
+// no puede ejecutar el refund porque el gateway no está disponible. Lanzamos en
+// vez de marcar canceled_refunded con deposit_status='paid' (estado mentiroso:
+// la plata quedaría en MP sin devolverse y sin payment row de refund).
+export class RefundUnavailableError extends Error {
+  constructor(public readonly bookingId: string) {
+    super(
+      `Booking ${bookingId} cannot be refunded: payment gateway is unavailable`,
+    )
+    this.name = 'RefundUnavailableError'
+  }
+}
+
 export class BookingNotYetEndedError extends Error {
   constructor(bookingId: string) {
     super(`Booking ${bookingId} cannot be completed: time_end has not yet passed`)

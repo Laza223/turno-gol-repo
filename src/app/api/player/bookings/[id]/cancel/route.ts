@@ -11,6 +11,7 @@ import { bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
+  RefundUnavailableError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
@@ -82,6 +83,13 @@ export const POST = withPlayer(async (req, user, tx) => {
       return conflict(
         'Este complejo no está disponible. Contactá al complejo para gestionar la cancelación.',
         { code: 'TENANT_INACTIVE' },
+      )
+    }
+    // Hallazgo 2: seña MP sin gateway disponible → refund no procesable.
+    if (err instanceof RefundUnavailableError) {
+      return conflict(
+        'No se pudo procesar el reembolso automático. Contactá al complejo.',
+        { code: 'REFUND_UNAVAILABLE' },
       )
     }
     throw err

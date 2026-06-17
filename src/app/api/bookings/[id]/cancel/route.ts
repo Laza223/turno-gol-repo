@@ -9,7 +9,10 @@ import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { cancelByAdmin } from '@/modules/bookings/booking.cancellation'
 import { bookingResponseSchema } from '@/modules/bookings/booking.schema'
-import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
+import {
+  BookingNotInConfirmedError,
+  RefundUnavailableError,
+} from '@/modules/bookings/booking.errors'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 export const dynamic = 'force-dynamic'
@@ -67,6 +70,13 @@ export const POST = withTenant(async (req, user, tx) => {
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
       return conflict('La reserva no está en estado confirmado.', { code: 'CONFLICT' })
+    }
+    // Hallazgo 2: refund pedido pero MP no disponible para el complejo.
+    if (err instanceof RefundUnavailableError) {
+      return conflict(
+        'No se pudo procesar el reembolso por MercadoPago. Cancelá sin reembolso o gestionalo manualmente.',
+        { code: 'REFUND_UNAVAILABLE' },
+      )
     }
     throw err
   }

@@ -146,6 +146,20 @@ async function countCancelAudits(bookingId: string): Promise<number> {
   return Number(rows[0]!.c)
 }
 
+// Devuelve las filas de audit de cancelación. countCancelAudits solo prueba que
+// haya UNA; esto permite verificar además que el audit superviviente atribuye al
+// GANADOR real (acción + actor), no al perdedor de la carrera.
+async function getCancelAudits(
+  bookingId: string,
+): Promise<{ action: string; actor_id: string | null; actor_type: string }[]> {
+  const sql = getSql()
+  return sql<{ action: string; actor_id: string | null; actor_type: string }[]>`
+    SELECT action, actor_id, actor_type FROM audit_logs
+    WHERE resource_id = ${bookingId}
+      AND action IN ('booking.canceled', 'booking.canceled_by_admin')
+  `
+}
+
 let tenantId: string
 let playerId: string
 let staffId: string
@@ -245,11 +259,27 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
       // No duplicated side effects.
       expect(await countRefundRows(bookingId), `round ${i}: one refund row`).toBe(1)
-      expect(await countCancelAudits(bookingId), `round ${i}: one cancel audit`).toBe(1)
       const refundCallsForThisPayment = refundSpy.mock.calls.filter(
         (c) => c[0] === mpPaymentId,
       ).length
       expect(refundCallsForThisPayment, `round ${i}: gateway refunded once`).toBe(1)
+
+      // El audit superviviente debe atribuir al GANADOR real, no al perdedor:
+      // un solo audit, con la acción/actor del que efectivamente canceló. Contar
+      // filas no detecta una atribución cruzada bajo contención (p.ej. ganó el
+      // player pero quedó registrado como admin).
+      const audits = await getCancelAudits(bookingId)
+      expect(audits, `round ${i}: exactly one cancel audit`).toHaveLength(1)
+      const audit = audits[0]!
+      if (booking.canceled_by === 'admin') {
+        expect(audit.action, `round ${i}`).toBe('booking.canceled_by_admin')
+        expect(audit.actor_type).toBe('staff')
+        expect(audit.actor_id).toBe(staffId)
+      } else {
+        expect(audit.action, `round ${i}`).toBe('booking.canceled')
+        expect(audit.actor_type).toBe('player')
+        expect(audit.actor_id).toBe(playerId)
+      }
     }
   }, 60_000)
 
@@ -423,5 +453,62 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
       expect(refundRows, 'el cancel perdedor no debe dejar una fila de refund').toBe(0)
       expect(gatewayCalls, 'el cancel perdedor no debe llamar al gateway').toBe(0)
     }
+  }, 30_000)
+
+  it('doble-click del jugador (player vs player) colapsa en un solo efecto', async () => {
+    // Carrera más común en producción: el jugador toca "cancelar" dos veces y el
+    // browser dispara dos requests concurrentes sobre el MISMO booking confirmado.
+    // Los tests previos prueban admin-vs-player; este prueba contención del MISMO
+    // actor (mismo path cancelByPlayer dos veces). La serialización por FOR UPDATE
+    // debe colapsarlas: un refund, un audit (actor=player), gateway llamado 1 vez.
+    const bookingId = await insertBooking({
+      tenantId,
+      courtId,
+      playerId,
+      timeStart: '17:00',
+      timeEnd: '17:59',
+      status: 'confirmed',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-doubleclick-${bookingId.slice(0, 8)}`
+    await insertApprovedPaymentAndLink({
+      tenantId,
+      bookingId,
+      playerId,
+      amount: 240_000,
+      mpPaymentId,
+    })
+
+    const [click1, click2] = await Promise.allSettled([
+      withTenantContext(tenantId, (tx) =>
+        cancelByPlayer(bookingId, playerId, 'click 1', mockGateway, tx),
+      ),
+      withTenantContext(tenantId, (tx) =>
+        cancelByPlayer(bookingId, playerId, 'click 2', mockGateway, tx),
+      ),
+    ])
+
+    // Exactamente uno gana; el doble-click duplicado ve un booking no-confirmado.
+    const results = [click1, click2]
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    const loser = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
+    expect(loser.reason).toBeInstanceOf(BookingNotInConfirmedError)
+
+    // Un único estado terminal coherente, con un solo efecto colateral de cada tipo.
+    const booking = await getBooking(bookingId)
+    expect(booking.status).toBe('canceled_refunded')
+    expect(booking.deposit_status).toBe('refunded')
+    expect(booking.canceled_by).toBe('player')
+    expect(await countRefundRows(bookingId), 'un solo refund pese al doble-click').toBe(1)
+
+    const audits = await getCancelAudits(bookingId)
+    expect(audits, 'un solo audit pese al doble-click').toHaveLength(1)
+    expect(audits[0]!.action).toBe('booking.canceled')
+    expect(audits[0]!.actor_type).toBe('player')
+    expect(audits[0]!.actor_id).toBe(playerId)
+
+    const gatewayCalls = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
+    expect(gatewayCalls, 'el gateway MP se llama una sola vez').toBe(1)
   }, 30_000)
 })

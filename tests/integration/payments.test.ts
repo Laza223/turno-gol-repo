@@ -13,6 +13,10 @@ import {
   processWebhook,
 } from '@/modules/payments/payment.service'
 import {
+  BookingNotPendingPaymentError,
+  RefundInvalidStateError,
+} from '@/modules/payments/payment.errors'
+import {
   cleanupAll,
   createTestPlayer,
   createTestTenant,
@@ -109,6 +113,31 @@ async function getCashFlowCount(bookingId: string): Promise<number> {
     SELECT COUNT(*)::text AS c FROM cash_flows WHERE booking_id = ${bookingId}
   `
   return Number(rows[0]!.c)
+}
+
+async function getAuditActions(resourceId: string) {
+  const sql = getSql()
+  return sql<
+    Array<{
+      action: string
+      actor_type: string
+      metadata: Record<string, unknown> | string | null
+    }>
+  >`
+    SELECT action, actor_type, metadata
+    FROM audit_logs
+    WHERE resource_id = ${resourceId}
+    ORDER BY created_at
+  `
+}
+
+function parseMeta(
+  m: Record<string, unknown> | string | null,
+): Record<string, unknown> {
+  if (m == null) return {}
+  return typeof m === 'string'
+    ? (JSON.parse(m) as Record<string, unknown>)
+    : m
 }
 
 beforeAll(async () => {
@@ -297,13 +326,34 @@ describe('processWebhook — race against expiry (Pilar C)', () => {
       processWebhook(event, tenant.id, gateway, tx),
     )
 
-    // Returns 'confirmed' from the service POV, but transitionFromPendingPayment
-    // returned won=false — the booking stays expired (immutable per state machine).
+    // Service maps gateway 'approved' → result 'confirmed', but the booking
+    // transition lost the race (won=false): it stays 'expired' (terminal,
+    // immutable per state machine).
     expect(result.alreadyProcessed).toBe(false)
+    if (!result.alreadyProcessed) expect(result.result).toBe('confirmed')
     expect(await getBookingStatus(bookingId)).toBe('expired')
-    // Payment row recorded as approved for audit trail.
+
+    // Payment row recorded as approved for audit trail — exactly one, no dup.
     const rows = await getPaymentRows(bookingId)
-    expect(rows.some((p) => p.mp_payment_id === mpPaymentId && p.status === 'approved')).toBe(true)
+    const approvedForPayment = rows.filter(
+      (p) => p.mp_payment_id === mpPaymentId && p.status === 'approved',
+    )
+    expect(approvedForPayment).toHaveLength(1)
+
+    // CRITICAL won=false obligation (Hallazgo 3): a late payment on a terminal
+    // booking MUST leave an audit trail for the admin's manual refund decision.
+    // A regression that silently drops this row would strand the player's money
+    // with no operational trace — the original test never checked for it.
+    const audits = await getAuditActions(bookingId)
+    const late = audits.filter(
+      (a) => a.action === 'booking.late_payment_attempt',
+    )
+    expect(late).toHaveLength(1)
+    expect(late[0]!.actor_type).toBe('system')
+    expect(parseMeta(late[0]!.metadata)).toMatchObject({
+      mpPaymentId,
+      currentStatus: 'expired',
+    })
   })
 })
 
@@ -404,5 +454,252 @@ describe('createDepositPayment — booking-payment consistency (Fix #13)', () =>
     const pendingRow = rows.find((r) => r.status === 'pending' && r.mp_preference_id === pref.preferenceId)
     expect(pendingRow).toBeDefined()
     expect(pendingRow!.id).toBe(bookingRow[0]!.payment_id)
+  })
+})
+
+// ─── GAP: discrepancia de monto (Fix #52) ──────────────────────────────────
+// La seña recibida puede ser menor a la esperada (MP aprueba un monto parcial).
+// Regla: la reserva se confirma igual, pero el faltante queda auditado para el
+// admin. Sin test, una regresión que omita el audit pasa silenciosa en TODA la
+// suite (no había cobertura unit ni integration de este branch).
+describe('handleApproved — discrepancia de monto (Fix #52)', () => {
+  it('confirma la reserva pero audita cuando la seña recibida es menor a la esperada', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '13:00',
+      timeEnd: '14:00',
+      depositAmount: 240_000,
+    })
+
+    const mpPaymentId = `mp-pay-disc-${bookingId.slice(0, 8)}`
+    const gateway = new MockGateway()
+    // MP aprobó, pero sólo entraron 200_000 vs los 240_000 esperados.
+    gateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 200_000,
+      externalReference: bookingId,
+      paymentMethodId: 'account_money',
+    }
+
+    const result = await withTenantContext(tenant.id, (tx) =>
+      processWebhook(
+        {
+          mpEventId: `evt-disc-${bookingId.slice(0, 8)}`,
+          eventType: 'payment',
+          mpPaymentId,
+          rawPayload: { id: 'evt-disc', data: { id: mpPaymentId } },
+        },
+        tenant.id,
+        gateway,
+        tx,
+      ),
+    )
+
+    expect(result.alreadyProcessed).toBe(false)
+    if (!result.alreadyProcessed) expect(result.result).toBe('confirmed')
+    // MP aprobó → la reserva se confirma igual.
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+
+    // El faltante queda registrado para seguimiento manual del admin.
+    const disc = (await getAuditActions(bookingId)).filter(
+      (a) => a.action === 'payment.amount_discrepancy',
+    )
+    expect(disc).toHaveLength(1)
+    expect(parseMeta(disc[0]!.metadata)).toMatchObject({
+      expectedCents: 240_000,
+      receivedCents: 200_000,
+      mpPaymentId,
+    })
+
+    // El payment row guarda el monto realmente recibido, no el esperado.
+    const approved = (await getPaymentRows(bookingId)).find(
+      (r) => r.mp_payment_id === mpPaymentId,
+    )
+    expect(approved!.amount).toBe(200_000)
+  })
+
+  it('NO audita discrepancia cuando el monto coincide exactamente', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '14:00',
+      timeEnd: '15:00',
+      depositAmount: 240_000,
+    })
+
+    const mpPaymentId = `mp-pay-exact-${bookingId.slice(0, 8)}`
+    const gateway = new MockGateway()
+    gateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'account_money',
+    }
+
+    await withTenantContext(tenant.id, (tx) =>
+      processWebhook(
+        {
+          mpEventId: `evt-exact-${bookingId.slice(0, 8)}`,
+          eventType: 'payment',
+          mpPaymentId,
+          rawPayload: { id: 'evt-exact', data: { id: mpPaymentId } },
+        },
+        tenant.id,
+        gateway,
+        tx,
+      ),
+    )
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+    const disc = (await getAuditActions(bookingId)).filter(
+      (a) => a.action === 'payment.amount_discrepancy',
+    )
+    expect(disc).toHaveLength(0)
+  })
+})
+
+// ─── GAP: webhook con pago rechazado ───────────────────────────────────────
+// dispatchPaymentInfo ramifica por status; el branch 'rejected' no tenía
+// ninguna cobertura. Un rechazo NO debe confirmar ni matar la reserva.
+describe('processWebhook — pago rechazado', () => {
+  it('estado rejected: registra payment rechazado y la reserva sigue pending_payment', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '15:00',
+      timeEnd: '16:00',
+    })
+
+    const mpPaymentId = `mp-pay-rej-${bookingId.slice(0, 8)}`
+    const gateway = new MockGateway()
+    gateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'rejected',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'visa',
+    }
+
+    const result = await withTenantContext(tenant.id, (tx) =>
+      processWebhook(
+        {
+          mpEventId: `evt-rej-${bookingId.slice(0, 8)}`,
+          eventType: 'payment',
+          mpPaymentId,
+          rawPayload: { id: 'evt-rej', data: { id: mpPaymentId } },
+        },
+        tenant.id,
+        gateway,
+        tx,
+      ),
+    )
+
+    expect(result.alreadyProcessed).toBe(false)
+    if (!result.alreadyProcessed) expect(result.result).toBe('rejected')
+    // Un rechazo no confirma ni expira la reserva: sigue esperando pago.
+    expect(await getBookingStatus(bookingId)).toBe('pending_payment')
+
+    const rej = (await getPaymentRows(bookingId)).filter(
+      (r) => r.mp_payment_id === mpPaymentId,
+    )
+    expect(rej).toHaveLength(1)
+    expect(rej[0]!.status).toBe('rejected')
+  })
+})
+
+// ─── GAP: guards de createDepositPayment / createRefund ────────────────────
+// Error paths que el archivo nunca ejercitaba. Ambos deben fallar ANTES de
+// tocar MP (no se crea preferencia ni refund en el gateway).
+describe('createDepositPayment / createRefund — guards', () => {
+  it('createDepositPayment rechaza una reserva que no está en pending_payment, sin llamar a MP', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '16:00',
+      timeEnd: '17:00',
+    })
+    // Reserva ya confirmada: no se le puede generar otra seña.
+    await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
+
+    const gateway = new MockGateway()
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        createDepositPayment(bookingId, gateway, tx, 'https://app.test'),
+      ),
+    ).rejects.toBeInstanceOf(BookingNotPendingPaymentError)
+
+    // Sin efectos: ni preferencia en MP ni payment row.
+    expect(gateway.preferenceCalls).toHaveLength(0)
+    expect(await getPaymentRows(bookingId)).toHaveLength(0)
+  })
+
+  it('createRefund rechaza el refund de un pago no aprobado sin llamar a MP', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '17:00',
+      timeEnd: '18:00',
+    })
+
+    // Pago de seña en estado 'pending' (no aprobado) → no es refundeable.
+    const mpPaymentId = `mp-pay-guard-${bookingId.slice(0, 8)}`
+    const ins = await sql<{ id: string }[]>`
+      INSERT INTO payments (
+        tenant_id, booking_id, player_id, amount, type, method, status, mp_payment_id
+      ) VALUES (
+        ${tenant.id}, ${bookingId}, ${player.id}, ${240000},
+        'deposit', 'mercadopago', 'pending', ${mpPaymentId}
+      ) RETURNING id
+    `
+    const pendingPaymentId = ins[0]!.id
+
+    const gateway = new MockGateway()
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        createRefund(pendingPaymentId, undefined, gateway, tx),
+      ),
+    ).rejects.toBeInstanceOf(RefundInvalidStateError)
+
+    // No se tocó MP ni se creó payment row de refund.
+    expect(gateway.refundCalls).toHaveLength(0)
+    const refunds = (await getPaymentRows(bookingId)).filter(
+      (r) => r.type === 'refund',
+    )
+    expect(refunds).toHaveLength(0)
   })
 })

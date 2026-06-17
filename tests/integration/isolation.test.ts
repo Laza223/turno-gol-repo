@@ -157,9 +157,13 @@ const insertOps: Record<string, InsertFn> = {
   daily_cash_closes: async (tx, tid) =>
     tx`INSERT INTO daily_cash_closes (tenant_id, date, total_income, total_adjustments, balance, declared_cash, diff_amount, closed_by)
       VALUES (${tid}, ${faker.date.future().toISOString().slice(0, 10)}, 0, 0, 0, 0, 0, ${B.staffUserId})`,
+  // recipient_id debe ser VÁLIDO bajo el contexto que inserta (tenant A) para
+  // que el INSERT llegue a la WITH CHECK de tenant RLS en vez de morir en el
+  // trigger recipient-FK. Con B.playerId tiraba 23503 (recipient no existe) y
+  // la policy tenant_isolation_insert NUNCA se ejercitaba → falso verde.
   notifications: async (tx, tid) =>
     tx`INSERT INTO notifications (tenant_id, recipient_type, recipient_id, channel, trigger_event, content)
-      VALUES (${tid}, 'player', ${B.playerId}, 'email', 'spoof', ${tx.json({ subject: 'x' })})`,
+      VALUES (${tid}, 'player', ${A.playerId}, 'email', 'spoof', ${tx.json({ subject: 'x' })})`,
   audit_logs: async (tx, tid) =>
     tx`INSERT INTO audit_logs (tenant_id, actor_id, actor_type, action, resource_type, resource_id)
       VALUES (${tid}, ${B.staffUserId}, 'staff', 'spoof', 'booking', ${B.bookingId})`,
@@ -169,14 +173,12 @@ const insertOps: Record<string, InsertFn> = {
   bookings: async (tx, tid) =>
     tx`INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end, price_snapshot, deposit_amount, deposit_status, payment_method)
       VALUES (${tid}, ${B.courtId}, ${faker.date.future().toISOString().slice(0, 10)}, '10:00', '11:00', 100000, 0, 'not_required', NULL)`,
-  player_tenant_relationships: async (tx, tid) => {
-    const fresh = await tx<{ id: string }[]>`
-      INSERT INTO players (email, first_name, last_name)
-      VALUES (${faker.internet.email().toLowerCase()}, 'fresh', 'player')
-      RETURNING id
-    `
-    return tx`INSERT INTO player_tenant_relationships (tenant_id, player_id) VALUES (${tid}, ${fresh[0].id})`
-  },
+  // Usar un player EXISTENTE (el de A). La versión anterior insertaba un player
+  // fresco primero, que falla RLS en `players` (sin policy INSERT para
+  // authenticated) → el error era sobre la tabla "players", NO
+  // "player_tenant_relationships". La policy de INSERT de PTR nunca se probaba.
+  player_tenant_relationships: async (tx, tid) =>
+    tx`INSERT INTO player_tenant_relationships (tenant_id, player_id) VALUES (${tid}, ${A.playerId})`,
 }
 
 describe('C. cross-tenant INSERT bloqueado', () => {
@@ -184,11 +186,16 @@ describe('C. cross-tenant INSERT bloqueado', () => {
     it(`${t.name}: tenant A no inserta con tenant_id de B`, async () => {
       const op = insertOps[t.name]
       expect(op).toBeDefined()
+      // Fijar el rechazo a RLS SOBRE ESTA TABLA. El .toThrow() pelado pasaba por
+      // la razón equivocada en notifications (23503) y PTR (RLS en "players"),
+      // ocultando si la tenant_isolation_insert de cada tabla realmente dispara.
       await expect(
         withContextRollback({ role: 'authenticated', tenantId: tenantA.id }, (tx) =>
           op(tx, tenantB.id),
         ),
-      ).rejects.toThrow()
+      ).rejects.toThrow(
+        new RegExp(`row-level security policy for table "${t.name}"`, 'i'),
+      )
     })
   }
 })
@@ -441,7 +448,7 @@ describe('J. positive policies (cierre de gaps)', () => {
             )
           `,
       ),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/row-level security policy for table "bookings"/i)
   })
 
   it('player_self_ptr_insert: jugador fresco crea su propia relación con tenant B', async () => {
@@ -469,7 +476,9 @@ describe('J. positive policies (cierre de gaps)', () => {
             VALUES (${tenantB.id}, ${B.playerId})
           `,
       ),
-    ).rejects.toThrow()
+    ).rejects.toThrow(
+      /row-level security policy for table "player_tenant_relationships"/i,
+    )
   })
 
   it('system_admin_self: super admin ve SU PROPIA fila', async () => {
@@ -542,5 +551,67 @@ describe('J. positive policies (cierre de gaps)', () => {
         tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
     )
     expect(rows.length).toBe(0)
+  })
+})
+
+// ─── K. Positive relational reads (anti-regresión de policies estrictas) ───
+// La suite es fuerte en aislamiento (negativos) pero las policies POSITIVAS
+// relacionales no se verificaban. Si alguna se rompe o se vuelve demasiado
+// estricta, la app deja de mostrar datos legítimos (grilla realtime, PII de
+// clientes, reservas del jugador) y NINGÚN test rojo lo delata. Estos cierran
+// ese gap: cada uno aísla UNA policy positiva.
+describe('K. positive relational reads', () => {
+  it('player_own_bookings_select: jugador A ve su propia reserva', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', playerId: A.playerId },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+    )
+    expect(rows.length).toBe(1)
+    expect(rows[0].id).toBe(A.bookingId)
+  })
+
+  it('realtime_tenant_select: JWT con tenant_id propio ve la reserva (sin SET tenant)', async () => {
+    // Sólo el claim del JWT, sin app.current_tenant_id → aísla la policy
+    // realtime (contraparte positiva de I.2, que sólo cubre el cross-tenant).
+    const rows = await withContext(
+      { role: 'authenticated', jwtClaims: { app_metadata: { tenant_id: tenantA.id } } },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+    )
+    expect(rows.length).toBe(1)
+    expect(rows[0].id).toBe(A.bookingId)
+  })
+
+  it('staff_can_see_related_players: staff A ve PII de un player CON PTR-con-A', async () => {
+    // Contraparte positiva de I.4 (que sólo cubre el negativo, player sin PTR).
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM players WHERE id = ${A.playerId}`,
+    )
+    expect(rows.length).toBe(1)
+    expect(rows[0].id).toBe(A.playerId)
+  })
+
+  it('staff_see_same_tenant_staff: staff A ve a staff del MISMO tenant', async () => {
+    // Contraparte positiva de I.3 (que sólo cubre el negativo cross-tenant).
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM staff_users WHERE id = ${A.staffUserId}`,
+    )
+    expect(rows.length).toBe(1)
+    expect(rows[0].id).toBe(A.staffUserId)
+  })
+
+  it('player_own_relationships_select: jugador A ve su propia relación con el tenant', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', playerId: A.playerId },
+      (tx) =>
+        tx<{ id: string }[]>`SELECT id FROM player_tenant_relationships WHERE id = ${A.ptrId}`,
+    )
+    expect(rows.length).toBe(1)
+    expect(rows[0].id).toBe(A.ptrId)
   })
 })

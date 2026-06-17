@@ -31,6 +31,8 @@ import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import {
   DayAlreadyClosedError,
   DayAlreadyCloseExistsError,
+  CloseDateInFutureError,
+  InvalidCashFlowCategoryError,
 } from '@/modules/cashflow/cashflow.errors'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 
@@ -132,6 +134,10 @@ describe('cashflow service', () => {
     expect(cf.type).toBe('adjustment')
     expect(cf.category).toBe('no_show_correction')
     expect(cf.amount).toBe(200000)
+    expect(cf.method).toBe('other')
+    expect(cf.description).toBe('Ajuste por no-show')
+    expect(cf.registeredBy).toBe(staff.id)
+    expect(cf.tenantId).toBe(tenant.id)
   })
 
   it('creates an expense cashflow (operating_expense)', async () => {
@@ -153,6 +159,10 @@ describe('cashflow service', () => {
     expect(cf.type).toBe('expense')
     expect(cf.category).toBe('operating_expense')
     expect(cf.amount).toBe(350000)
+    expect(cf.method).toBe('cash')
+    expect(cf.description).toBe('Compra de pelotas')
+    expect(cf.registeredBy).toBe(staff.id)
+    expect(cf.tenantId).toBe(tenant.id)
   })
 
   it('day summary and close compute ingresos - egresos = saldo', async () => {
@@ -186,33 +196,37 @@ describe('cashflow service', () => {
     expect(close.balance).toBe(450000)
   })
 
-  it('a canteen quick sale appears in the day list with product_sale category', async () => {
+  // Antes: "a canteen quick sale appears in the day list". El nombre mentía —
+  // no ejercitaba ningún código de cantina, solo createCashFlow + getCashFlows,
+  // y traía un clientIdempotencyKey muerto (jamás verificaba el dedup). El dedup
+  // ahora vive en su propio test ("deduplicates ... idempotency key"). Este test
+  // queda honesto: un product_sale recién creado vuelve en el feed del día.
+  it('lists a freshly created product_sale movement in the day feed', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
-    // Mismo payload que arma CanteenQuickSale: income/product_sale con el
-    // nombre del producto y la cantidad en la descripción.
-    await withTenantContext(tenant.id, (tx) =>
+    const created = await withTenantContext(tenant.id, (tx) =>
       createCashFlow(tenant.id, staff.id, {
         type: 'income',
         category: 'product_sale',
         amount: 500000, // Gatorade $2.500 x2
         method: 'cash',
         description: 'Gatorade x2',
-        clientIdempotencyKey: crypto.randomUUID(),
       }, tx),
     )
 
     const list = await withTenantContext(tenant.id, (tx) =>
       getCashFlows(tenant.id, TODAY, tx),
     )
-    const sale = list.find((cf) => cf.description === 'Gatorade x2')
+    const sale = list.find((cf) => cf.id === created.id)
     expect(sale).toBeDefined()
     expect(sale!.type).toBe('income')
     expect(sale!.category).toBe('product_sale')
     expect(sale!.amount).toBe(500000)
+    expect(sale!.description).toBe('Gatorade x2')
+    expect(sale!.method).toBe('cash')
   })
 
   it('getDayComparisons aggregates yesterday and weekly daily average', async () => {
@@ -237,9 +251,11 @@ describe('cashflow service', () => {
 
     expect(comp.yesterday).toEqual({ totalIncome: 700000, totalExpense: 100000, balance: 600000 })
     // Semana = 7 días anteriores a hoy: 700000 + 1400000 ingresos, 100000 egresos.
-    expect(comp.weekAvg.totalIncome).toBe(Math.round(2100000 / 7))
-    expect(comp.weekAvg.totalExpense).toBe(Math.round(100000 / 7))
-    expect(comp.weekAvg.balance).toBe(Math.round(2000000 / 7))
+    // Literales precomputados a propósito: si la aserción reusa Math.round(.../7),
+    // espeja la implementación y no detecta que el divisor cambie.
+    expect(comp.weekAvg.totalIncome).toBe(300000) // 2_100_000 / 7
+    expect(comp.weekAvg.totalExpense).toBe(14286) // round(100_000 / 7)
+    expect(comp.weekAvg.balance).toBe(285714) // round(2_000_000 / 7)
   })
 
   it('closes the day and aggregates totals correctly', async () => {
@@ -371,5 +387,205 @@ describe('cashflow service', () => {
     // But no cashflow rows were created
     const afterCount = await countCashFlows(tenant.id)
     expect(afterCount).toBe(beforeCount)
+  })
+
+  // GAP G1 — Idempotencia (Fix #55). El unit caja-idempotency-key.test.ts solo
+  // verifica que la key sobrevive el schema de la action con createCashFlow
+  // MOCKEADO; nadie probaba el ON CONFLICT real en DB. Sin este test, romper el
+  // índice/cláusula ON CONFLICT duplica ventas de cantina por doble-tap.
+  it('deduplicates a repeated movement carrying the same idempotency key', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const key = crypto.randomUUID()
+
+    const payload = {
+      type: 'income' as const,
+      category: 'product_sale' as const,
+      amount: 125000,
+      method: 'cash' as const,
+      description: 'Gaseosa',
+      clientIdempotencyKey: key,
+    }
+
+    const first = await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(tenant.id, staff.id, payload, tx),
+    )
+    // Segundo submit con la MISMA key (doble-tap / reintento de red).
+    const second = await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(tenant.id, staff.id, payload, tx),
+    )
+
+    // Devuelve la fila original, no una nueva...
+    expect(second.id).toBe(first.id)
+    // ...y la caja sigue teniendo UNA sola fila (no se duplicó el cobro).
+    expect(await countCashFlows(tenant.id)).toBe(1)
+  })
+
+  // GAP G2 — Aislamiento multi-tenant. cash_flows es tabla aislada; getDaySummary
+  // y getCashFlows filtran por tenant_id en el WHERE (no dependen solo de RLS).
+  // Sin este test, borrar ese filtro filtraría la caja de un complejo vecino.
+  it('never mixes another tenant cashflows into summary or day feed', async () => {
+    const sql = getSql()
+    const tenantA = await createTestTenant(sql)
+    const tenantB = await createTestTenant(sql)
+    const staffA = await createTestStaffUser(sql)
+    const staffB = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenantA.id, staffA.id)
+    await linkStaffToTenant(sql, tenantB.id, staffB.id)
+
+    // El complejo vecino (B) carga una venta gorda el mismo día.
+    await sql`
+      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
+      VALUES (${tenantB.id}, 'income', 'booking', ${999000}, 'cash', ${'Caja vecino'}, ${staffB.id}, NOW())
+    `
+    // A carga un único ingreso.
+    await sql`
+      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
+      VALUES (${tenantA.id}, 'income', 'booking', ${100000}, 'cash', ${'Mi turno'}, ${staffA.id}, NOW())
+    `
+
+    const summary = await withTenantContext(tenantA.id, (tx) =>
+      getDaySummary(tenantA.id, TODAY, tx),
+    )
+    // A solo ve lo suyo: los 999000 de B no contaminan el saldo.
+    expect(summary.totalIncome).toBe(100000)
+    expect(summary.balance).toBe(100000)
+
+    const list = await withTenantContext(tenantA.id, (tx) =>
+      getCashFlows(tenantA.id, TODAY, tx),
+    )
+    expect(list).toHaveLength(1)
+    expect(list[0]!.description).toBe('Mi turno')
+    expect(list.some((cf) => cf.description === 'Caja vecino')).toBe(false)
+  })
+
+  // GAP G3 — Frontera de fecha ART. Las queries agrupan por
+  // (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date, no por UTC.
+  // Un cobro de las 23:00 ART entra como 02:00 UTC del día siguiente; debe contar
+  // en el día ART, no en el UTC. Time-bomb clásico si alguien usa ::date a secas.
+  it('buckets a late-night cashflow by ART date, not UTC date', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    // 2026-01-15 02:00 UTC == 2026-01-14 23:00 ART (UTC-3). Pertenece al 14.
+    await sql`
+      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
+      VALUES (${tenant.id}, 'income', 'booking', ${300000}, 'cash', ${'Cierre tarde'}, ${staff.id}, '2026-01-15T02:00:00Z')
+    `
+
+    const artDay = await withTenantContext(tenant.id, (tx) =>
+      getCashFlows(tenant.id, '2026-01-14', tx),
+    )
+    expect(artDay.map((cf) => cf.description)).toContain('Cierre tarde')
+
+    const utcDay = await withTenantContext(tenant.id, (tx) =>
+      getCashFlows(tenant.id, '2026-01-15', tx),
+    )
+    expect(utcDay.some((cf) => cf.description === 'Cierre tarde')).toBe(false)
+
+    const summary = await withTenantContext(tenant.id, (tx) =>
+      getDaySummary(tenant.id, '2026-01-14', tx),
+    )
+    expect(summary.totalIncome).toBe(300000)
+  })
+
+  // GAP G4 — No se puede cerrar una fecha futura (CloseDateInFutureError).
+  it('rejects closing a future date', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        closeDailyRegister(tenant.id, '2099-01-01', staff.id, {}, tx),
+      ),
+    ).rejects.toBeInstanceOf(CloseDateInFutureError)
+  })
+
+  // GAP G5 — createCashFlow valida el combo type/category ANTES de insertar.
+  // El unit cubre validateCashFlowCombo aislado; acá se verifica que el guard
+  // corta dentro del flujo real y NO deja fila huérfana.
+  it('rejects an invalid type/category combo and persists no row', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        createCashFlow(tenant.id, staff.id, {
+          type: 'income',
+          category: 'operating_expense', // combo inválido
+          amount: 100000,
+          method: 'cash',
+          description: 'Combo inválido',
+        }, tx),
+      ),
+    ).rejects.toBeInstanceOf(InvalidCashFlowCategoryError)
+
+    expect(await countCashFlows(tenant.id)).toBe(0)
+  })
+
+  // GAP G6 — Boundary: día sin movimientos. Debe devolver ceros, abierto y close null.
+  it('returns a zeroed, open summary for a day with no movements', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    const summary = await withTenantContext(tenant.id, (tx) =>
+      getDaySummary(tenant.id, TODAY, tx),
+    )
+    expect(summary.totalIncome).toBe(0)
+    expect(summary.totalExpense).toBe(0)
+    expect(summary.totalAdjustments).toBe(0)
+    expect(summary.balance).toBe(0)
+    expect(summary.isClosed).toBe(false)
+    expect(summary.close).toBeNull()
+    expect(summary.byCategory).toEqual({})
+    expect(summary.byMethod).toEqual({})
+  })
+
+  // GAP G7 — Efecto secundario: cerrar el día escribe un audit_log
+  // (action cashflow.daily_close) con actor y metadata correctos.
+  it('writes an audit log entry when the day is closed', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    await sql`
+      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
+      VALUES (${tenant.id}, 'income', 'booking', ${400000}, 'cash', ${'Turno'}, ${staff.id}, NOW())
+    `
+
+    const close = await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 400000 }, tx),
+    )
+
+    const audit = await sql<{
+      action: string
+      resource_id: string
+      actor_id: string
+      actor_type: string
+      // El driver postgres devuelve jsonb como string en este proyecto.
+      metadata: string
+    }[]>`
+      SELECT action, resource_id, actor_id, actor_type, metadata
+      FROM audit_logs
+      WHERE tenant_id = ${tenant.id} AND action = 'cashflow.daily_close'
+    `
+    expect(audit).toHaveLength(1)
+    expect(audit[0]!.resource_id).toBe(close.id)
+    expect(audit[0]!.actor_id).toBe(staff.id)
+    expect(audit[0]!.actor_type).toBe('staff')
+    const metadata = JSON.parse(audit[0]!.metadata) as { balance: number; declaredCash: number }
+    expect(metadata.balance).toBe(400000)
+    expect(metadata.declaredCash).toBe(400000)
   })
 })

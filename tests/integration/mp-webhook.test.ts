@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
+import { TenantMpNotConnectedError } from '@/modules/payments/payment.errors'
 import {
   cleanupAll,
   createTestPlayer,
@@ -135,6 +136,35 @@ async function getAuditLogs(bookingId: string) {
   `
 }
 
+async function getBookingDepositStatus(bookingId: string): Promise<string> {
+  const sql = getSql()
+  const rows = await sql<{ deposit_status: string }[]>`
+    SELECT deposit_status FROM bookings WHERE id = ${bookingId}
+  `
+  return rows[0]!.deposit_status
+}
+
+async function getPaymentRow(
+  bookingId: string,
+  mpPaymentId: string,
+): Promise<{ status: string; amount: number; type: string; method: string } | undefined> {
+  const sql = getSql()
+  const rows = await sql<
+    Array<{ status: string; amount: number; type: string; method: string }>
+  >`
+    SELECT status, amount::int AS amount, type, method
+    FROM payments
+    WHERE booking_id = ${bookingId} AND mp_payment_id = ${mpPaymentId}
+  `
+  return rows[0]
+}
+
+function metaOf(entry: { metadata: Record<string, unknown> | null }): Record<string, unknown> {
+  return typeof entry.metadata === 'string'
+    ? (JSON.parse(entry.metadata as unknown as string) as Record<string, unknown>)
+    : (entry.metadata as Record<string, unknown>)
+}
+
 beforeAll(async () => {
   const sql = getSql()
   await ensureRoles(sql)
@@ -193,6 +223,13 @@ describe('handleMpWebhookJob — idempotency across 3 deliveries', () => {
     expect(await countPaymentRows(bookingId)).toBe(1)
     // Gateway.getPaymentStatus consulted only on first call.
     expect(mockGateway.statusCalls.length - callsBefore).toBe(1)
+    // The single row is the APPROVED deposit — not a stale pending/duplicated
+    // row. Counting rows alone wouldn't catch a status corrupted across deliveries.
+    const payment = await getPaymentRow(bookingId, mpPaymentId)
+    expect(payment?.status).toBe('approved')
+    // deposit_status flips to 'paid' on confirmation (doc7 Flujo 2 PASO 5) and
+    // stays stable under repeated deliveries.
+    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
   })
 })
 
@@ -242,10 +279,7 @@ describe('handleMpWebhookJob — late payment attempt', () => {
     )
     expect(lateEntries).toHaveLength(1)
     expect(lateEntries[0]!.actor_type).toBe('system')
-    const meta =
-      typeof lateEntries[0]!.metadata === 'string'
-        ? (JSON.parse(lateEntries[0]!.metadata as unknown as string) as Record<string, unknown>)
-        : (lateEntries[0]!.metadata as Record<string, unknown>)
+    const meta = metaOf(lateEntries[0]!)
     expect(meta).toMatchObject({
       mpPaymentId,
       currentStatus: 'expired',
@@ -309,5 +343,297 @@ describe('handleMpWebhookJob — late payment attempt', () => {
     expect(notifs).toHaveLength(1)
     expect(notifs[0]!.recipient_type).toBe('tenant_owner')
     expect(notifs[0]!.recipient_id).toBe(staff.id)
+  })
+})
+
+describe('handleMpWebhookJob — approved deposit (happy path)', () => {
+  it('confirma la reserva, marca deposit_status=paid y registra el pago aprobado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '13:00',
+      timeEnd: '14:00',
+    })
+
+    const mpPaymentId = `mp-pay-ok-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-ok-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'account_money',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
+
+    const payment = await getPaymentRow(bookingId, mpPaymentId)
+    expect(payment).toMatchObject({
+      status: 'approved',
+      amount: 240_000,
+      type: 'deposit',
+      method: 'mercadopago',
+    })
+
+    // Happy path: no amount-discrepancy noise in the audit trail.
+    const audits = await getAuditLogs(bookingId)
+    expect(audits.some((a) => a.action === 'payment.amount_discrepancy')).toBe(false)
+  })
+})
+
+describe('handleMpWebhookJob — cross-tenant guard (IDOR)', () => {
+  it('rechaza un webhook cuyo tenant reclamado no coincide con el dueño del booking y no deja rastro', async () => {
+    const sql = getSql()
+    const tenantA = await createTestTenant(sql)
+    await setTenantMpToken(tenantA.id)
+    const tenantB = await createTestTenant(sql)
+    await setTenantMpToken(tenantB.id)
+    const player = await createTestPlayer(sql)
+    const courtA = await insertCourt(tenantA.id)
+    const bookingA = await insertPendingBooking({
+      tenantId: tenantA.id,
+      courtId: courtA,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '14:00',
+      timeEnd: '15:00',
+    })
+
+    const mpPaymentId = `mp-pay-idor-${bookingA.slice(0, 8)}`
+    const mpEventId = `mp-evt-idor-${bookingA.slice(0, 8)}`
+    // Gateway resolves the payment to a booking owned by tenant A...
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingA,
+      paymentMethodId: 'visa',
+    }
+
+    // ...but the job claims tenant B. Holder of MP_WEBHOOK_SECRET must NOT be
+    // able to confirm/touch another tenant's booking.
+    await expect(
+      handleMpWebhookJob({
+        tenantId: tenantB.id,
+        mpEventId,
+        eventType: 'payment',
+        mpPaymentId,
+        rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+      }),
+    ).rejects.toThrow(/tenant mismatch/)
+
+    // The throw rolls back the whole tx: idempotency lock undone (MP can retry
+    // legitimately), no payment row, and booking A untouched.
+    expect(await countProcessedWebhooks(mpEventId)).toBe(0)
+    expect(await countPaymentRows(bookingA)).toBe(0)
+    expect(await getBookingStatus(bookingA)).toBe('pending_payment')
+    expect(await getBookingDepositStatus(bookingA)).toBe('pending')
+  })
+})
+
+describe('handleMpWebhookJob — non-approved payment statuses', () => {
+  it('pago in_process deja la reserva en pending_payment y registra el pago in_process', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '15:00',
+      timeEnd: '16:00',
+    })
+
+    const mpPaymentId = `mp-pay-inproc-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-inproc-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'in_process',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'pagofacil',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    // Booking must NOT confirm: CBU/efectivo can take 24-48h. The expiry job
+    // keys off this in_process payment row to choose its cutoff.
+    expect(await getBookingStatus(bookingId)).toBe('pending_payment')
+    expect(await getBookingDepositStatus(bookingId)).toBe('pending')
+    const payment = await getPaymentRow(bookingId, mpPaymentId)
+    expect(payment?.status).toBe('in_process')
+  })
+
+  it('pago rejected deja la reserva en pending_payment y registra el pago rejected', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '16:00',
+      timeEnd: '17:00',
+    })
+
+    const mpPaymentId = `mp-pay-rej-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-rej-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'rejected',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'visa',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    expect(await getBookingStatus(bookingId)).toBe('pending_payment')
+    expect(await getBookingDepositStatus(bookingId)).toBe('pending')
+    const payment = await getPaymentRow(bookingId, mpPaymentId)
+    expect(payment?.status).toBe('rejected')
+  })
+})
+
+describe('handleMpWebhookJob — deposit amount discrepancy (Fix #52)', () => {
+  it('monto recibido menor al esperado confirma igual pero registra discrepancia en audit_logs', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    // insertPendingBooking sets deposit_amount = 240_000.
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '17:00',
+      timeEnd: '18:00',
+    })
+
+    const mpPaymentId = `mp-pay-disc-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-disc-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 200_000, // < 240_000 expected
+      externalReference: bookingId,
+      paymentMethodId: 'account_money',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    // MP approved → booking confirms regardless of the short amount.
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+
+    const audits = await getAuditLogs(bookingId)
+    const discrepancies = audits.filter((a) => a.action === 'payment.amount_discrepancy')
+    expect(discrepancies).toHaveLength(1)
+    expect(metaOf(discrepancies[0]!)).toMatchObject({
+      expectedCents: 240_000,
+      receivedCents: 200_000,
+      mpPaymentId,
+    })
+    // The recorded payment reflects what was actually received, not the expected.
+    const payment = await getPaymentRow(bookingId, mpPaymentId)
+    expect(payment?.amount).toBe(200_000)
+  })
+})
+
+describe('handleMpWebhookJob — tenant not connected to MP', () => {
+  it('lanza TenantMpNotConnectedError cuando el tenant no tiene mp_access_token', async () => {
+    const sql = getSql()
+    // Tenant created WITHOUT setTenantMpToken → mp_access_token is NULL.
+    const tenant = await createTestTenant(sql)
+    const mpEventId = `mp-evt-noconn-${tenant.id.slice(0, 8)}`
+    const mpPaymentId = `mp-pay-noconn-${tenant.id.slice(0, 8)}`
+
+    await expect(
+      handleMpWebhookJob({
+        tenantId: tenant.id,
+        mpEventId,
+        eventType: 'payment',
+        mpPaymentId,
+        rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+      }),
+    ).rejects.toThrow(TenantMpNotConnectedError)
+
+    // Failed before the idempotency lock → MP retry can still succeed later.
+    expect(await countProcessedWebhooks(mpEventId)).toBe(0)
+  })
+})
+
+describe('handleMpWebhookJob — unknown booking reference', () => {
+  it('no crea payment ni lanza cuando external_reference no corresponde a ningún booking', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+
+    const missingBookingId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    const mpPaymentId = `mp-pay-nobk-${tenant.id.slice(0, 8)}`
+    const mpEventId = `mp-evt-nobk-${tenant.id.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: missingBookingId,
+      paymentMethodId: 'visa',
+    }
+
+    // Must not throw: an orphan reference is a no-op, not a retryable error.
+    await expect(
+      handleMpWebhookJob({
+        tenantId: tenant.id,
+        mpEventId,
+        eventType: 'payment',
+        mpPaymentId,
+        rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(await countPaymentRows(missingBookingId)).toBe(0)
+    // Event is consumed (lock committed) so MP retries don't reprocess forever.
+    expect(await countProcessedWebhooks(mpEventId)).toBe(1)
   })
 })

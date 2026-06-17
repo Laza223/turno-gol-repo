@@ -32,6 +32,17 @@ import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
 
 const FUTURE_DATE = '2027-09-01'
 
+// El valor de la prueba depende de que las 3 transacciones corran en
+// conexiones SEPARADAS y choquen en el FOR UPDATE a nivel DB. Con un pool
+// chico (DATABASE_POOL_MAX=1) las 3 se serializan en la cola del pool ANTES
+// de tocar la DB: el test seguiría verde pero ya no ejercitaría la
+// serialización por lock. Espejo de resolvePoolMax() en src/shared/db/client.ts.
+const EFFECTIVE_POOL_MAX = (() => {
+  const raw = process.env.DATABASE_POOL_MAX
+  const n = raw ? Number(raw) : NaN
+  return Number.isInteger(n) && n > 0 ? n : 3
+})()
+
 async function insertCourt(tenantId: string): Promise<string> {
   const sql = getSql()
   const rows = await sql<{ id: string }[]>`
@@ -142,6 +153,16 @@ let courtId: string
 const refundSpy = vi.spyOn(mockGateway, 'createRefund')
 
 beforeAll(async () => {
+  // Falla RUIDOSAMENTE si el pool no permite las 3 transacciones simultáneas.
+  // Sin esto, un pool de 1 conexión convertiría el test en uno secuencial sin
+  // que nadie se entere (falsa seguridad).
+  if (EFFECTIVE_POOL_MAX < 3) {
+    throw new Error(
+      `concurrent-cancellation requiere DATABASE_POOL_MAX>=3 para ejercitar la ` +
+        `serialización por FOR UPDATE; valor efectivo=${EFFECTIVE_POOL_MAX}. ` +
+        `Con menos conexiones las transacciones se serializan en la cola del pool.`,
+    )
+  }
   const sql = getSql()
   await ensureRoles(sql)
   await cleanupAll(sql)
@@ -268,7 +289,139 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
     const booking = await getBooking(bookingId)
     expect(booking.status).toBe('expired')
+    // La expiración NO toca la seña: no captura ni reembolsa, queda 'pending'.
+    expect(booking.deposit_status).toBe('pending')
+    expect(booking.canceled_by).toBeNull()
     expect(await countRefundRows(bookingId)).toBe(0)
     expect(await countCancelAudits(bookingId)).toBe(0)
+  }, 30_000)
+
+  it('retry storm sobre booking ya cancelado: cero efectos secundarios duplicados', async () => {
+    // Escenario: job pg-boss reintenta + webhook duplicado + doble click del
+    // jugador, TODOS contra un booking que YA fue cancelado+reembolsado. El piso
+    // de idempotencia: ninguna seña se reembolsa dos veces, ningún audit se
+    // duplica, el gateway MP no se vuelve a llamar.
+    const bookingId = await insertBooking({
+      tenantId,
+      courtId,
+      playerId,
+      timeStart: '15:00',
+      timeEnd: '15:59',
+      status: 'confirmed',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-terminal-${bookingId.slice(0, 8)}`
+    await insertApprovedPaymentAndLink({
+      tenantId,
+      bookingId,
+      playerId,
+      amount: 240_000,
+      mpPaymentId,
+    })
+
+    // Cancelación inicial: lleva el booking al estado terminal canceled_refunded.
+    await withTenantContext(tenantId, (tx) =>
+      cancelByPlayer(bookingId, playerId, 'cancela primero', mockGateway, tx),
+    )
+    expect((await getBooking(bookingId)).status).toBe('canceled_refunded')
+    expect(await countRefundRows(bookingId)).toBe(1)
+    expect(await countCancelAudits(bookingId)).toBe(1)
+    const refundCallsBefore = refundSpy.mock.calls.filter(
+      (c) => c[0] === mpPaymentId,
+    ).length
+    expect(refundCallsBefore).toBe(1)
+
+    // Tormenta de reintentos sobre el booking ya terminal.
+    const [adminRes, playerRes, expiryRes] = await Promise.allSettled([
+      withTenantContext(tenantId, (tx) =>
+        cancelByAdmin(bookingId, staffId, 'reintento admin', true, mockGateway, tx),
+      ),
+      withTenantContext(tenantId, (tx) =>
+        cancelByPlayer(bookingId, playerId, 'reintento player', mockGateway, tx),
+      ),
+      withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
+    ])
+
+    // Ningún cancel puede actuar sobre un booking no-confirmado.
+    expect(adminRes.status).toBe('rejected')
+    expect(playerRes.status).toBe('rejected')
+    expect((adminRes as PromiseRejectedResult).reason).toBeInstanceOf(BookingNotInConfirmedError)
+    expect((playerRes as PromiseRejectedResult).reason).toBeInstanceOf(BookingNotInConfirmedError)
+    expect(expiryRes.status).toBe('fulfilled')
+    if (expiryRes.status === 'fulfilled') {
+      expect(expiryRes.value).toEqual({ won: false })
+    }
+
+    // El estado terminal y sus efectos quedan EXACTAMENTE como tras el 1er cancel.
+    const booking = await getBooking(bookingId)
+    expect(booking.status).toBe('canceled_refunded')
+    expect(booking.deposit_status).toBe('refunded')
+    expect(await countRefundRows(bookingId)).toBe(1)
+    expect(await countCancelAudits(bookingId)).toBe(1)
+    const refundCallsAfter = refundSpy.mock.calls.filter(
+      (c) => c[0] === mpPaymentId,
+    ).length
+    expect(refundCallsAfter, 'el gateway MP no se reembolsó de nuevo').toBe(1)
+  }, 30_000)
+
+  it('carrera refund (player) vs no-refund (admin): el ganador define la seña, el perdedor no filtra', async () => {
+    // admin cancela SIN refund (shouldRefund=false) y player cancela in-policy
+    // (CON refund) al mismo tiempo sobre el mismo booking confirmado. Gana uno.
+    // Invariante: deposit_status y filas de refund deben ser COHERENTES con el
+    // ganador; el perdedor no deja ningún efecto colateral a medias.
+    const bookingId = await insertBooking({
+      tenantId,
+      courtId,
+      playerId,
+      timeStart: '16:00',
+      timeEnd: '16:59',
+      status: 'confirmed',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-mixed-${bookingId.slice(0, 8)}`
+    await insertApprovedPaymentAndLink({
+      tenantId,
+      bookingId,
+      playerId,
+      amount: 240_000,
+      mpPaymentId,
+    })
+
+    const [adminRes, playerRes] = await Promise.allSettled([
+      withTenantContext(tenantId, (tx) =>
+        cancelByAdmin(bookingId, staffId, 'admin sin refund', false, mockGateway, tx),
+      ),
+      withTenantContext(tenantId, (tx) =>
+        cancelByPlayer(bookingId, playerId, 'player con refund', mockGateway, tx),
+      ),
+    ])
+
+    // Exactamente uno gana; el otro ve un booking no-confirmado.
+    const results = [adminRes, playerRes]
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    const loser = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
+    expect(loser.reason).toBeInstanceOf(BookingNotInConfirmedError)
+
+    const booking = await getBooking(bookingId)
+    const refundRows = await countRefundRows(bookingId)
+    const gatewayCalls = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
+    expect(await countCancelAudits(bookingId), 'un único audit, sin importar quién gane').toBe(1)
+
+    if (booking.canceled_by === 'player') {
+      // Ganó el refund: seña reembolsada, 1 fila de refund, gateway llamado 1 vez.
+      expect(booking.status).toBe('canceled_refunded')
+      expect(booking.deposit_status).toBe('refunded')
+      expect(refundRows).toBe(1)
+      expect(gatewayCalls).toBe(1)
+    } else {
+      // Ganó el no-refund: seña capturada, sin filas de refund, gateway intacto.
+      expect(booking.canceled_by).toBe('admin')
+      expect(booking.status).toBe('canceled_no_refund')
+      expect(booking.deposit_status).toBe('captured')
+      expect(refundRows, 'el cancel perdedor no debe dejar una fila de refund').toBe(0)
+      expect(gatewayCalls, 'el cancel perdedor no debe llamar al gateway').toBe(0)
+    }
   }, 30_000)
 })

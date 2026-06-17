@@ -38,7 +38,6 @@ import {
   ReactivateNotAllowedError,
 } from '@/modules/billing/billing.errors'
 import { runDunningSweep } from '@/shared/jobs/workers/dunning-retry.worker'
-import { runDataRetentionCleanup } from '@/shared/jobs/workers/data-retention-cleanup.worker'
 import {
   cleanupAll,
   createTestStaffUser,
@@ -191,18 +190,52 @@ describe('lifecycle FSM', () => {
     expect(await fetchTenantStatus(sql, tenant.id)).toBe('active')
   })
 
-  it('trialing → suspended (illegal) throws InvalidTransitionError', async () => {
+  // NOTE (audit): el test anterior se llamaba "trialing → suspended (illegal)"
+  // pero NO ejercitaba esa transición: hacía doble-cancel. Nombre mentiroso +
+  // sin verificar estado final. Reescrito en dos tests honestos abajo.
+  it('rechaza doble cancelación: la 2da transitionToCanceled lanza InvalidTransitionError y el estado queda en canceled', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     await seedSubscription(sql, tenant.id, 'trialing', 'predio')
 
+    // 1ra cancelación (legal: trialing → canceled), commiteada en su propia tx.
+    await withTenantContext(tenant.id, async (tx) => {
+      await transitionToCanceled(tenant.id, 'primera', tx)
+    })
+    expect(await fetchSubStatus(sql, tenant.id)).toBe('canceled')
+
+    // 2da cancelación sobre un sub ya canceled: 0 filas afectadas → error.
     await expect(
       withTenantContext(tenant.id, async (tx) => {
-        await transitionToCanceled(tenant.id, 'test', tx)
-        // valid above; now try double-cancel which is invalid
-        await transitionToCanceled(tenant.id, 'test', tx)
+        await transitionToCanceled(tenant.id, 'segunda', tx)
       }),
     ).rejects.toBeInstanceOf(InvalidTransitionError)
+
+    // Estado y razón quedan intactos de la PRIMERA cancelación (no sobrescritos).
+    const rows = await sql<{ status: string; cancellation_reason: string }[]>`
+      SELECT status, cancellation_reason FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(rows[0]!.status).toBe('canceled')
+    expect(rows[0]!.cancellation_reason).toBe('primera')
+  })
+
+  it('rechaza transición ilegal: activar un sub que no está en trialing lanza InvalidTransitionError', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql) // ya active, no trialing
+
+    await expect(
+      withTenantContext(tenantId, async (tx) => {
+        await transitionTrialingToActive(
+          tenantId,
+          new Date('2027-04-01T00:00:00Z'),
+          new Date('2027-05-01T00:00:00Z'),
+          tx,
+        )
+      }),
+    ).rejects.toBeInstanceOf(InvalidTransitionError)
+
+    // El sub sigue active, sin tocar (el guard de la FSM protege el estado).
+    expect(await fetchSubStatus(sql, tenantId)).toBe('active')
   })
 
   it('canceled → blocked sweep when period_end < NOW', async () => {
@@ -341,6 +374,13 @@ describe('Test C — voluntary cancel', () => {
 
     expect(mockGateway.cancelPreapprovalCalls).toHaveLength(1)
     expect(await fetchTenantStatus(sql, tenantId)).toBe('canceled')
+    expect(await fetchSubStatus(sql, tenantId)).toBe('canceled')
+
+    // Razón de cancelación persistida (efecto secundario observable).
+    const reasonRows = await sql<{ cancellation_reason: string }[]>`
+      SELECT cancellation_reason FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(reasonRows[0]!.cancellation_reason).toBe('Muy caro')
 
     // Period unchanged
     const rows = await sql<{ current_period_end: Date | string }[]>`
@@ -369,55 +409,12 @@ describe('Test C — voluntary cancel', () => {
   })
 })
 
-// ─── Test D: data retention sweep wipes child rows ─────────────────────────
-
-describe('Test D — data retention cleanup', () => {
-  it('churned with deletion_at past → child rows deleted, tenant anonymized', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'churned', 'predio', {
-      scheduledDeletionAt: new Date(Date.now() - 86_400_000),
-    })
-
-    const courtRows = await sql<{ id: string }[]>`
-      INSERT INTO courts (tenant_id, name, capacity)
-      VALUES (${tenant.id}, 'Cancha Test', 10)
-      RETURNING id
-    `
-    const courtId = courtRows[0]!.id
-    await sql`
-      INSERT INTO bookings (
-        tenant_id, court_id, date, time_start, time_end,
-        type, status, price_snapshot, deposit_amount, deposit_status, payment_method
-      ) VALUES (
-        ${tenant.id}, ${courtId}, '2027-05-01'::date, '10:00'::time, '11:00'::time,
-        'spontaneous', 'completed', 800000, 0, 'not_required', NULL
-      )
-    `
-    await sql`
-      INSERT INTO notifications (tenant_id, recipient_type, recipient_id, channel, trigger_event, status, content)
-      VALUES (${tenant.id}, 'tenant_owner', ${staff.id}, 'email', 'test', 'sent', '{}'::jsonb)
-    `
-
-    await runDataRetentionCleanup()
-
-    const courtsAfter = await sql<{ n: number }[]>`SELECT COUNT(*)::int AS n FROM courts WHERE tenant_id = ${tenant.id}`
-    expect(courtsAfter[0]!.n).toBe(0)
-    const bookingsAfter = await sql<{ n: number }[]>`SELECT COUNT(*)::int AS n FROM bookings WHERE tenant_id = ${tenant.id}`
-    expect(bookingsAfter[0]!.n).toBe(0)
-    const notifsAfter = await sql<{ n: number }[]>`SELECT COUNT(*)::int AS n FROM notifications WHERE tenant_id = ${tenant.id}`
-    expect(notifsAfter[0]!.n).toBe(0)
-
-    const tenantRows = await sql<{ status: string; name: string; mp_access_token: string | null }[]>`
-      SELECT status, name, mp_access_token FROM tenants WHERE id = ${tenant.id}
-    `
-    expect(tenantRows[0]!.status).toBe('deleted')
-    expect(tenantRows[0]!.name).toBe('[deleted]')
-    expect(tenantRows[0]!.mp_access_token).toBeNull()
-  })
-})
+// ─── Test D: ELIMINADO (audit) ─────────────────────────────────────────────
+// "data retention cleanup" era un SUBCONJUNTO estricto de
+// tests/integration/data-retention-cleanup.test.ts, que verifica las 12 tablas
+// hijas + caso negativo (sin scheduled_deletion_at) + idempotencia + email
+// anonimizado + preservación del player cross-tenant (Ley 25.326). Test D solo
+// chequeaba 3 tablas y no aportaba cobertura adicional. Cobertura migrada allá.
 
 // ─── Test E (service-level) — suspended blocks billing-mutating ops ────────
 
@@ -437,6 +434,15 @@ describe('Test E — suspended state rejects mutations', () => {
         await billingUpgrade(tenant.id, plans.complejo, mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+
+    // El rechazo es ANTES de tocar el gateway o la DB: sin preferencia creada,
+    // sin pending_plan_change, plan intacto.
+    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(0)
+    const rows = await sql<{ plan_id: string; pending_plan_change: string | null }[]>`
+      SELECT plan_id, pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(rows[0]!.plan_id).toBe(plans.predio)
+    expect(rows[0]!.pending_plan_change).toBeNull()
   })
 
   it('subscription state still readable on suspended', async () => {
@@ -474,6 +480,46 @@ describe('Test F — downgrade court-count gate', () => {
         await billingDowngrade(tenantId, plans.predio, tx)
       }),
     ).rejects.toBeInstanceOf(DowngradeBlockedError)
+
+    // El bloqueo NO debe dejar un downgrade pendiente: plan y pending intactos.
+    const rows = await sql<{ plan_id: string; pending_plan_change: string | null }[]>`
+      SELECT plan_id, pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(rows[0]!.plan_id).toBe(plans.complejo)
+    expect(rows[0]!.pending_plan_change).toBeNull()
+  })
+
+  it('downgrade programado se APLICA en el sweep cuando pending_change_at venció', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, 'complejo', {
+      currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
+    })
+    for (let i = 0; i < 3; i += 1) {
+      await sql`
+        INSERT INTO courts (tenant_id, name, capacity, status)
+        VALUES (${tenantId}, ${`Cancha ${i + 1}`}, 10, 'online')
+      `
+    }
+
+    await withTenantContext(tenantId, async (tx) => {
+      await billingDowngrade(tenantId, plans.predio, tx)
+    })
+
+    // Forzar el vencimiento de pending_change_at y correr el sweep.
+    await sql`
+      UPDATE tenant_subscriptions SET pending_change_at = NOW() - INTERVAL '1 hour'
+      WHERE tenant_id = ${tenantId}
+    `
+    await runDunningSweep()
+
+    const rows = await sql<{ plan_id: string; pending_plan_change: string | null; pending_change_at: Date | null }[]>`
+      SELECT plan_id, pending_plan_change, pending_change_at
+      FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(rows[0]!.plan_id).toBe(plans.predio) // plan efectivamente cambiado
+    expect(rows[0]!.pending_plan_change).toBeNull()
+    expect(rows[0]!.pending_change_at).toBeNull()
+    expect(await fetchSubStatus(sql, tenantId)).toBe('active') // sigue activo
   })
 
   it('Complejo with 3 courts → downgrade scheduled to predio at period_end', async () => {
@@ -566,6 +612,39 @@ describe('reactivate', () => {
     })
     expect(result.checkoutUrl).toContain('mp.test')
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
+    // Reactivar al plan complejo → preapproval por el monto mensual de complejo.
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(7_400_000)
+
+    // DB: plan y nuevo mp_subscription_id seteados; status SIGUE canceled
+    // (recién se activa con el primer onPaymentApproved, no acá).
+    const rows = await sql<{ plan_id: string; mp_subscription_id: string | null; status: string }[]>`
+      SELECT plan_id, mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(rows[0]!.plan_id).toBe(plans.complejo)
+    expect(rows[0]!.mp_subscription_id).toBe(result.preapprovalId)
+    expect(rows[0]!.mp_subscription_id).not.toBe('mp-old') // ya no es el viejo
+    expect(rows[0]!.status).toBe('canceled')
+  })
+
+  it('canceled con scheduled_deletion_at VENCIDO → reactivate lanza ReactivateNotAllowedError', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'canceled', 'predio', {
+      mpSubscriptionId: 'mp-old',
+      canceledAt: new Date(),
+      scheduledDeletionAt: new Date(Date.now() - 86_400_000), // ayer (vencido)
+    })
+
+    await expect(
+      withTenantContext(tenant.id, async (tx) => {
+        await billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
+      }),
+    ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+
+    // Sin preapproval creado: rechazo antes de tocar el gateway.
+    expect(mockGateway.preapprovalCalls).toHaveLength(0)
   })
 
   it('blocked → reactivate throws ReactivateNotAllowedError', async () => {
@@ -580,5 +659,136 @@ describe('reactivate', () => {
         await billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+  })
+})
+
+// ─── GAP (audit): recovery past_due → active vía pago aprobado ──────────────
+
+describe('dunning recovery — pago aprobado durante past_due', () => {
+  it('past_due → active: limpia dunning_started_at y extiende el período', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, 'predio', {
+      currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
+    })
+
+    // Rechazo lleva a past_due con dunning anclado.
+    await withTenantContext(tenantId, async (tx) => {
+      await onPaymentRejected(
+        tenantId,
+        'mp-evt-reject-recovery',
+        'subscription_authorized_payment',
+        { test: 1 },
+        new Date(),
+        tx,
+      )
+    })
+    expect(await fetchSubStatus(sql, tenantId)).toBe('past_due')
+
+    // Pago aprobado (evento distinto) recupera a active.
+    await withTenantContext(tenantId, async (tx) => {
+      await onPaymentApproved(
+        tenantId,
+        'mp-evt-approve-recovery',
+        'subscription_authorized_payment',
+        { test: 1 },
+        new Date('2027-04-20T00:00:00Z'),
+        tx,
+      )
+    })
+
+    expect(await fetchSubStatus(sql, tenantId)).toBe('active')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('active')
+    const rows = await sql<{ dunning_started_at: Date | null; current_period_end: Date | string }[]>`
+      SELECT dunning_started_at, current_period_end
+      FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(rows[0]!.dunning_started_at).toBeNull() // ancla de dunning limpiada
+    // Mensual: período extendido un mes desde el 2027-05-01 previo → 2027-06-01.
+    const periodEnd = new Date(rows[0]!.current_period_end as unknown as string)
+    expect(periodEnd.toISOString()).toBe('2027-06-01T00:00:00.000Z')
+  })
+})
+
+// ─── GAP (audit): ciclo de facturación ANUAL (todo el resto usa monthly) ────
+
+describe('billing cycle anual', () => {
+  it('subscribe anual usa price_annual y la activación extiende el período un año', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'trialing', 'predio', {
+      billingCycle: 'annual',
+      currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
+    })
+
+    const result = await withTenantContext(tenant.id, async (tx) => {
+      return billingSubscribe(tenant.id, plans.predio, 'annual', mockGateway, tx)
+    })
+    expect(result.checkoutUrl).toContain('mp.test')
+    // Predio anual = 3_760_000 centavos (NO el mensual 4_700_000).
+    expect(mockGateway.preapprovalCalls).toHaveLength(1)
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(3_760_000)
+    expect(mockGateway.preapprovalCalls[0]!.frequency).toBe('annual')
+
+    const cycleRows = await sql<{ billing_cycle: string }[]>`
+      SELECT billing_cycle FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(cycleRows[0]!.billing_cycle).toBe('annual')
+
+    // Primer pago aprobado activa y extiende UN AÑO (no un mes).
+    await withTenantContext(tenant.id, async (tx) => {
+      await onPaymentApproved(
+        tenant.id,
+        'mp-evt-annual-activate',
+        'subscription_authorized_payment',
+        { test: 1 },
+        new Date('2027-04-15T00:00:00Z'),
+        tx,
+      )
+    })
+    expect(await fetchSubStatus(sql, tenant.id)).toBe('active')
+    const rows = await sql<{ current_period_end: Date | string }[]>`
+      SELECT current_period_end FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    const periodEnd = new Date(rows[0]!.current_period_end as unknown as string)
+    expect(periodEnd.toISOString()).toBe('2028-05-01T00:00:00.000Z')
+  })
+})
+
+// ─── GAP (audit): subscribe sólo es legal desde trialing ───────────────────
+
+describe('subscribe guard de estado', () => {
+  it('subscribe sobre un sub active lanza ReactivateNotAllowedError y no crea preapproval', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql)
+
+    await expect(
+      withTenantContext(tenantId, async (tx) => {
+        await billingSubscribe(tenantId, plans.predio, 'monthly', mockGateway, tx)
+      }),
+    ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+    expect(mockGateway.preapprovalCalls).toHaveLength(0)
+  })
+})
+
+// ─── GAP (audit): handleUpgradeApproved es no-op ante evento stale ──────────
+
+describe('handleUpgradeApproved guard de idempotencia/stale', () => {
+  it('sin upgrade pendiente → no-op: no actualiza preapproval ni cambia el plan', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, 'predio')
+
+    // Llega un webhook de upgrade aprobado a complejo SIN que exista
+    // pending_plan_change (evento duplicado/stale tras un upgrade ya aplicado).
+    await withTenantContext(tenantId, async (tx) => {
+      await handleUpgradeApproved(tenantId, plans.complejo, mockGateway, tx)
+    })
+
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+    const rows = await sql<{ plan_id: string }[]>`
+      SELECT plan_id FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(rows[0]!.plan_id).toBe(plans.predio) // plan NO cambió
   })
 })

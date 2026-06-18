@@ -2,6 +2,7 @@ import { Payment, PaymentRefund, PreApproval, Preference } from 'mercadopago'
 import { mpClient } from '@/lib/mercadopago'
 import { MpGatewayError } from './payment.errors'
 import { withTokenRefresh } from './mp-token-refresh'
+import { centsToPesos, pesosToCents } from './money'
 import type { PaymentGateway } from './mp-gateway'
 import {
   buildSaasUpgradeRef,
@@ -40,15 +41,6 @@ const MP_ID_RE = /^\d{1,32}$/
  * must never stall the conversion path (doc5 NFR: p95 < 500ms).
  */
 export const MP_GET_TIMEOUT_MS = 8000
-
-function pesosToCents(amount: number | undefined | null): number {
-  if (typeof amount !== 'number' || !Number.isFinite(amount)) return 0
-  return Math.round(amount * 100)
-}
-
-function centsToPesos(cents: number): number {
-  return Math.round(cents) / 100
-}
 
 export class MercadoPagoGateway implements PaymentGateway {
   private config: ReturnType<typeof mpClient>

@@ -38,6 +38,7 @@ import {
 import { addDays, artTodayStr } from '@/shared/dates/art'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rowToBookingRow } from './booking.mappers'
+import { calcDepositCents } from './deposit'
 import { assertTransition } from './booking.state-machine'
 import { transitionFromPendingPayment } from './booking.concurrency'
 import { scheduleBookingExpiry } from '@/shared/jobs/schedule-expiry'
@@ -316,7 +317,7 @@ async function createOnlineBookingImpl(
 
   const withDeposit = input.requiresDeposit && input.depositPercentage > 0
   const depositAmount = withDeposit
-    ? Math.round(priceSnapshot * input.depositPercentage / 100)
+    ? calcDepositCents(priceSnapshot, input.depositPercentage)
     : 0
 
   try {

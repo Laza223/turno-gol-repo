@@ -656,9 +656,9 @@ Además del health check interno, un servicio **externo** verifica que la app es
 Servicio: UptimeRobot (plan gratuito: 50 monitores, check cada 5 min)
 
 Monitores:
-  1. https://turnogol.com.ar/api/health      → check cada 1 min (Pro plan: $7/mes)
-  2. https://turnogol.com.ar                  → check cada 5 min
-  3. https://turnogol.com.ar/api/auth/me      → check cada 5 min (verifica que auth funciona)
+  1. https://turnogol.app/api/health      → check cada 1 min (Pro plan: $7/mes)
+  2. https://turnogol.app                  → check cada 5 min
+  3. https://turnogol.app/api/auth/me      → check cada 5 min (verifica que auth funciona)
 
 Si falla 3 veces consecutivas:
   → Email al equipo (UptimeRobot)

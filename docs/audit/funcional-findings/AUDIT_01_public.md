@@ -234,7 +234,7 @@ Ninguno fallido (la fuga es a nivel de datos del SSR, no de red).
 # Cuenta suspendida — `/suspended`
 
 ## Resultado del test
-- ✅ "Tu cuenta está temporalmente suspendida — El acceso al panel está pausado… Tus datos están a salvo…" + "Contactar a soporte" (`mailto:soporte@turnogol.com.ar`) + "Volver al inicio".
+- ✅ "Tu cuenta está temporalmente suspendida — El acceso al panel está pausado… Tus datos están a salvo…" + "Contactar a soporte" (`mailto:soporte@turnogol.app`) + "Volver al inicio".
 
 ## Severidad
 🟢 Correcta.

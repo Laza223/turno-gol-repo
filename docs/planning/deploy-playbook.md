@@ -17,7 +17,7 @@ Validación central: `src/shared/env.ts:30-39` (`validateServerEnv`) corre al bo
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` | Vercel + Railway (Supabase → Settings → API) | Throw en boot (`env.ts:10`) y en uso (`src/lib/supabase/server.ts:9-11`) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | JWT `eyJ...` (≥20 chars) | Vercel (Supabase → Settings → API) | Throw (`env.ts:11`, `server.ts:9-11`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | JWT `eyJ...` — **nunca al browser** | Vercel + Railway (Supabase → Settings → API) | Throw (`env.ts:12`, `src/lib/supabase/admin.ts:15-17`) |
-| `NEXT_PUBLIC_APP_URL` | URL absoluta sin slash final, ej. `https://turnogol.com.ar` | Vercel + Railway | Throw en prod (`env.ts:9`). Usada en redirect OAuth MP (`src/app/api/mp/oauth-start/route.ts:32-36`), magic links (`src/app/(auth)/login/actions.ts:34`), invitaciones staff (`src/app/(admin)/staff/actions.ts:203`) |
+| `NEXT_PUBLIC_APP_URL` | URL absoluta sin slash final, ej. `https://turnogol.app` | Vercel + Railway | Throw en prod (`env.ts:9`). Usada en redirect OAuth MP (`src/app/api/mp/oauth-start/route.ts:32-36`), magic links (`src/app/(auth)/login/actions.ts:34`), invitaciones staff (`src/app/(admin)/staff/actions.ts:203`) |
 | `PIN_COOKIE_SECRET` | string ≥16 chars aleatorio | Vercel | Throw en boot (`env.ts:13`) y en uso (`src/modules/auth/pin.ts:40-44`) |
 | `ENCRYPTION_KEY` | **exactamente 64 hex chars (32 bytes)** — el zod del boot pide ≥32 (`env.ts:14`) pero el uso real exige 64 (`src/lib/crypto/encrypt.ts:4-8`) | Vercel + Railway (los workers desencriptan tokens MP, ej. `refresh-mp-tokens.worker`) | Throw en uso. Cifra los tokens OAuth MP de cada tenant (única barrera: `tenants` no tiene RLS) |
 | `MP_CLIENT_ID` / `MP_CLIENT_SECRET` | credenciales de la aplicación MercadoPago (panel Developers) | Vercel + Railway | Throw en boot (`env.ts:15-16`); `/api/status` los marca `down` si faltan (`src/app/api/status/route.ts:68`) |
@@ -59,7 +59,7 @@ Validación central: `src/shared/env.ts:30-39` (`validateServerEnv`) corre al bo
 
 ### 1.5 Discrepancias detectadas en `.env.example`
 
-- Lista `MP_ACCESS_TOKEN`, `MP_PUBLIC_KEY` y `EMAIL_FROM` que **no usa ningún archivo de `src/`** (grep `process.env` exhaustivo: 0 matches). El "from" de email está **hardcodeado**: `'TurnoGol <no-reply@turnogol.com.ar>'` (`src/modules/notifications/email.provider.ts:23`) → el dominio `turnogol.com.ar` debe estar verificado en Resend; cambiar el remitente requiere deploy.
+- Lista `MP_ACCESS_TOKEN`, `MP_PUBLIC_KEY` y `EMAIL_FROM` que **no usa ningún archivo de `src/`** (grep `process.env` exhaustivo: 0 matches). El "from" de email está **hardcodeado**: `'TurnoGol <no-reply@turnogol.app>'` (`src/modules/notifications/email.provider.ts:23`) → el dominio `turnogol.app` debe estar verificado en Resend; cambiar el remitente requiere deploy.
 - **Faltan** en `.env.example`: `ENCRYPTION_KEY`, `PIN_COOKIE_SECRET`, `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_TURNOGOL_ACCESS_TOKEN`, `APP_URL`, `NEXT_PUBLIC_SITE_URL`, `DATABASE_POOL_MAX`, `TERMS_VERSION`.
 
 ---
@@ -195,7 +195,7 @@ supabase migration list   # verifica qué quedó registrado en supabase_migratio
   ```
 - [ ] **Rol de servicio de los workers (BK-01 — riesgo abierto)**: los workers pg-boss acceden a la DB con `getSql()`/`getDb()` **sin `SET LOCAL` de tenant** (ej. `src/modules/bookings/booking.expiry.ts:38,105,172`, invocado por `src/shared/jobs/workers/expire-pending-booking.worker.ts:28`). Con FORCE RLS (021) y policies que exigen `app.current_tenant_id` (`006_rls_policies.sql:83-91`), un rol **sin** BYPASSRLS ve 0 filas → los sweeps no expiran nada, los webhooks no confirman reservas, y nada tira error visible. **Requisito exacto**: el `DATABASE_URL` de Railway debe autenticar con un rol que ignore RLS — el rol `postgres` de Supabase (que tiene `rolbypassrls=true` en Supabase gestionado) o un rol dedicado `CREATE ROLE turnogol_worker LOGIN BYPASSRLS ...` con GRANTs sobre `public` y `pgboss`. Es el opuesto deliberado del rol de la web (que `launch:check` obliga a NO bypassear). Hoy los tests pasan porque CI corre como `postgres` — verificar el rol real de Railway con la query (a) de arriba conectado con ESE URL, esperando `rolbypassrls = t`.
 - [ ] **`NEXT_PUBLIC_E2E` y `MP_MOCK_MODE` ausentes en Vercel prod**: `vercel env ls production | grep -E 'E2E|MOCK'` → vacío (guards en `mock-mp.ts:20-24` y `launch-check.ts:144-151`).
-- [ ] **Resend**: dominio `turnogol.com.ar` verificado (SPF+DKIM+DMARC) — el From está hardcodeado a `no-reply@turnogol.com.ar` (`src/modules/notifications/email.provider.ts:23`).
+- [ ] **Resend**: dominio `turnogol.app` verificado (SPF+DKIM+DMARC) — el From está hardcodeado a `no-reply@turnogol.app` (`src/modules/notifications/email.provider.ts:23`).
 - [ ] **Worker deployado en Railway**: servicio con `Dockerfile.worker`, `startCommand pnpm jobs:start` (`railway.toml:10`), env §1 cargado, `DATABASE_URL` **directa `:5432`** y con rol BYPASSRLS (ítem anterior).
 
 ---

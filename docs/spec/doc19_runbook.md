@@ -32,8 +32,8 @@
 | Canal | Propósito | Quién está |
 |---|---|---|
 | **Grupo Email "TurnoGol Emergencias"** | Alertas críticas, coordinación de incidentes | Todo el equipo |
-| **Email equipo@turnogol.com.ar** | Comunicaciones formales, post-mortem | Todo el equipo |
-| **Email soporte@turnogol.com.ar** | Tickets de clientes | Soporte + Devs |
+| **Email equipo@turnogol.app** | Comunicaciones formales, post-mortem | Todo el equipo |
+| **Email soporte@turnogol.app** | Tickets de clientes | Soporte + Devs |
 
 ### 1.3 Status pages de proveedores
 
@@ -95,8 +95,8 @@ DIAGNÓSTICO:
      → Si Supabase está OK → paso 4
 
   4. ¿Es un problema de DNS?
-     → Verificar: ping turnogol.com.ar
-     → Verificar: nslookup turnogol.com.ar
+     → Verificar: ping turnogol.app
+     → Verificar: nslookup turnogol.app
      → Si no resuelve → revisar registros DNS en el registrador del dominio
      → Si resuelve → paso 5
 
@@ -120,7 +120,7 @@ OPCIÓN A: Rollback desde Vercel Dashboard (< 2 minutos)
   3. Click en "..." → "Promote to Production"
   4. Confirmar
   5. Esperar ~30 segundos a que Vercel propague
-  6. Verificar: curl https://turnogol.com.ar/api/health
+  6. Verificar: curl https://turnogol.app/api/health
   7. Si responde 200 → rollback exitoso
   8. Notificar al equipo: "Rollback completo a [commit SHA]"
 
@@ -733,7 +733,7 @@ Impacto: [cuánto duró, qué se vio afectado]
 Acciones tomadas: [qué hicimos para que no vuelva a pasar]
 
 Lamentamos los inconvenientes. Si tenés algún problema residual,
-contactanos en soporte@turnogol.com.ar.
+contactanos en soporte@turnogol.app.
 
 — Equipo TurnoGol
 ```
@@ -826,7 +826,7 @@ no un regaño a una persona.
 INFRAESTRUCTURA:
   □ Vercel: dominio configurado, SSL activo, env vars de producción
   □ Supabase: proyecto Pro creado, region seleccionada, migrations aplicadas
-  □ DNS: turnogol.com.ar apuntando a Vercel
+  □ DNS: turnogol.app apuntando a Vercel
   □ Sentry: proyecto configurado, release tracking activado
   □ UptimeRobot: monitores configurados (health + homepage + auth)
   □ Resend: dominio verificado, API key en env vars
@@ -860,7 +860,7 @@ MONITOREO:
 
 ```
 □ Deploy completó exitosamente en Vercel
-□ Health check responde 200: curl https://turnogol.com.ar/api/health
+□ Health check responde 200: curl https://turnogol.app/api/health
 □ Sentry: no hay errores nuevos en los primeros 5 minutos
 □ Verificar manualmente la funcionalidad que cambió
 □ Si cambió algo de DB: verificar que las migrations se aplicaron
@@ -885,7 +885,7 @@ Resend requiere verificar el dominio de envío antes de poder enviar emails.
 PASOS:
 
   1. Ir a resend.com → Domains → Add Domain
-  2. Ingresar el dominio: turnogol.com.ar
+  2. Ingresar el dominio: turnogol.app
   3. Resend genera 3 registros DNS que hay que agregar en el registrador del dominio.
 ```
 
@@ -902,7 +902,7 @@ Agregar los siguientes registros en el panel DNS del registrador del dominio (ej
 │ Valor: v=spf1 include:amazonses.com ~all                                     │
 │                                                                              │
 │ Propósito: Autoriza los servidores de Resend (AWS SES) a enviar              │
-│            emails en nombre de turnogol.com.ar.                              │
+│            emails en nombre de turnogol.app.                              │
 │                                                                              │
 │ NOTA: Si ya hay un registro SPF existente, NO crear otro.                    │
 │       Agregar "include:amazonses.com" al registro existente.                 │
@@ -927,7 +927,7 @@ Agregar los siguientes registros en el panel DNS del registrador del dominio (ej
 │                                                                              │
 │ Tipo:  TXT                                                                   │
 │ Host:  _dmarc                                                                │
-│ Valor: v=DMARC1; p=none; rua=mailto:dmarc@turnogol.com.ar                   │
+│ Valor: v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app                   │
 │                                                                              │
 │ Propósito: Indica a los proveedores de email qué hacer con mensajes          │
 │            que no pasen SPF/DKIM. `p=none` es monitor-only al inicio.        │
@@ -950,14 +950,14 @@ CHECKLIST:
   2. Enviar un email de prueba desde Resend Dashboard → Emails → Send Test
 
   3. Verificar SPF/DKIM con herramientas online:
-     → https://mxtoolbox.com/spf.aspx  → buscar turnogol.com.ar
-     → https://mxtoolbox.com/dkim.aspx → buscar resend._domainkey.turnogol.com.ar
-     → https://mxtoolbox.com/dmarc.aspx → buscar turnogol.com.ar
+     → https://mxtoolbox.com/spf.aspx  → buscar turnogol.app
+     → https://mxtoolbox.com/dkim.aspx → buscar resend._domainkey.turnogol.app
+     → https://mxtoolbox.com/dmarc.aspx → buscar turnogol.app
 
   4. Verificar que el email de prueba NO cayó en spam
      → Si cae en spam y los registros DNS están bien:
        → Esperar 24-48h (propagación DNS)
-       → Verificar que el "From" address sea noreply@turnogol.com.ar
+       → Verificar que el "From" address sea noreply@turnogol.app
          (no un dominio genérico)
 ```
 
@@ -973,9 +973,9 @@ PROBLEMA: "Domain not verified" en Resend
 
 PROBLEMA: Emails llegan a spam
 
-  → Verificar SPF: dig TXT turnogol.com.ar (debe incluir amazonses.com)
-  → Verificar DKIM: dig CNAME resend._domainkey.turnogol.com.ar
-  → Verificar DMARC: dig TXT _dmarc.turnogol.com.ar
+  → Verificar SPF: dig TXT turnogol.app (debe incluir amazonses.com)
+  → Verificar DKIM: dig CNAME resend._domainkey.turnogol.app
+  → Verificar DMARC: dig TXT _dmarc.turnogol.app
   → Si todo está bien pero sigue cayendo en spam:
     → El dominio es nuevo y no tiene reputación
     → Enviar emails legítimos durante 2-4 semanas → la reputación sube sola

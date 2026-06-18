@@ -340,7 +340,7 @@ export default function PrivacyPage() {
   )
 }
 ```
-Contenido: condensado de `docs/doc18_privacy_compliance.md` — roles, finalidades, sub-procesadores (Supabase, Resend, MercadoPago, Sentry, Vercel, Upstash), derechos ARCO + endpoint `/api/player/data-export`, contacto privacidad@turnogol.com.ar (placeholder).
+Contenido: condensado de `docs/doc18_privacy_compliance.md` — roles, finalidades, sub-procesadores (Supabase, Resend, MercadoPago, Sentry, Vercel, Upstash), derechos ARCO + endpoint `/api/player/data-export`, contacto privacidad@turnogol.app (placeholder).
 
 - [ ] **Step 2**: `src/app/(public)/terms/page.tsx`:
 ```typescript

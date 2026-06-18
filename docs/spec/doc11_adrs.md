@@ -219,7 +219,7 @@ Refresh Token:
 1. Usuario ingresa email
 2. Sistema genera token criptográfico de un solo uso (256 bits)
 3. Token hasheado (SHA-256) se guarda en DB con expiración de 15 minutos
-4. Email enviado con link: turnogol.com.ar/auth/verify?token=abc123
+4. Email enviado con link: turnogol.app/auth/verify?token=abc123
 5. Al hacer click:
    a. Se busca el hash del token en DB
    b. Si existe y no expiró: se genera JWT + refresh token
@@ -361,7 +361,7 @@ Evento de negocio (booking.confirmed)
 
 **Negativas / Riesgos:**
 - Resend es una empresa más joven que SendGrid. **Mitigación**: encapsular TODA la interacción con Resend en un módulo `email-provider.ts` con interfaz abstracta. Si necesitamos migrar a SendGrid, solo cambiamos la implementación, no el código de negocio.
-- Los emails pueden ir a spam. **Mitigación**: configurar SPF, DKIM y DMARC correctamente. Usar dominio dedicado para envíos (notificaciones@turnogol.com.ar).
+- Los emails pueden ir a spam. **Mitigación**: configurar SPF, DKIM y DMARC correctamente. Usar dominio dedicado para envíos (notificaciones@turnogol.app).
 - La latencia de entrega de email es variable (1-30 segundos típico). **Mitigación**: para magic links, mostrar "Revisá tu casilla de email (también spam)".
 
 ### Revisión
@@ -437,7 +437,7 @@ Razones:
    {
      items: [{ title: "Seña - Cancha 3, 21hs", unit_price: 3600, quantity: 1 }],
      back_urls: { success, failure, pending },
-     notification_url: "https://api.turnogol.com.ar/webhooks/mercadopago",
+     notification_url: "https://api.turnogol.app/webhooks/mercadopago",
      external_reference: booking_uuid,
      expires: true,
      expiration_date_to: booking.created_at + 15 minutos
@@ -459,7 +459,7 @@ Razones:
        transaction_amount: 88000,
        currency_id: "ARS"
      },
-     back_url: "https://turnogol.com.ar/billing/success",
+     back_url: "https://app.turnogol.app/billing/success",
      payer_email: tenant.owner_email
    }
 3. Dueño es redirigido a MP → autoriza débito automático
@@ -938,7 +938,7 @@ Ambas interfaces comparten la misma API. El Doc 5 establece targets de performan
 
 Razones:
 1. **Fullstack monolito**: Next.js con API Routes permite tener frontend + backend en un solo repositorio y un solo deploy. Esto es consistente con ADR-007 (monolito modular).
-2. **SEO**: La página pública del complejo (`turnogol.com.ar/[slug]`) necesita SSR para que Google indexe "cancha de fútbol 5 en [ciudad]". Next.js SSR es la solución más directa.
+2. **SEO**: La página pública del complejo (`turnogol.app/[slug]`) necesita SSR para que Google indexe "cancha de fútbol 5 en [ciudad]". Next.js SSR es la solución más directa.
 3. **Vercel**: Next.js en Vercel es zero-config deployment con preview per PR, edge functions, image optimization, y analytics. Reducción masiva de trabajo DevOps.
 4. **Ecosistema**: La cantidad de componentes, UI libraries (shadcn/ui, Radix), y recursos para Next.js es incomparable. Acelera el desarrollo 2-3x.
 5. **AI-assisted development**: Claude, Copilot y Cursor generan código Next.js de calidad probada. Menos iteraciones de fix = desarrollo más rápido.

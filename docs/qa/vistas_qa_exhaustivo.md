@@ -705,7 +705,7 @@ En cada vista, solo se documentan tests de auth/permisos/a11y **específicos y �
 - [ ] **[Validacion]** Paso 1: nombre con emojis '🏟️ Complejo' + submit → slug generado sin emojis (normalize/regex strip); nombre se guarda con emoji si no hay validación de caracteres.
 - [ ] **[Validacion]** Paso 1: nombre con tildes 'Complejo Información' + submit → slug normalizado a 'complejo-informacion' (normalize NFD + regex).
 - [ ] **[Validacion]** Paso 1: teléfono con solo espacios '        ' + submit → error (required rechaza o trim vacía).
-- [ ] **[Validacion]** Paso 1: slug auto-generado mostrado bajo nombre (si nombre >= 2 chars) → URL preview 'turnogol.com.ar/{slug}' actualizado en real-time.
+- [ ] **[Validacion]** Paso 1: slug auto-generado mostrado bajo nombre (si nombre >= 2 chars) → URL preview 'turnogol.app/{slug}' actualizado en real-time.
 - [ ] **[Validacion]** Paso 1: slug único en DB → si slug existe, generator en backend agrega sufijo '-1', '-2', etc (uniqueness asegurado).
 - [ ] **[Validacion]** Paso 3: horario apertura en formato HH:MM válido ej '08:00' + submit → aceptado.
 - [ ] **[Validacion]** Paso 3: horario apertura formato inválido ej '8:30' (sin 0 al inicio) + submit → error 'Formato HH:MM requerido'.
@@ -776,7 +776,7 @@ En cada vista, solo se documentan tests de auth/permisos/a11y **específicos y �
 - [ ] **[Visual]** Focus rings: focus-visible:ring-2 focus-visible:ring-emerald-500; 2px ring verde para keyboard navigation.
 - [ ] **[Visual]** Placeholder Paso 1: text-slate-400, desaparece al escribir; ayuda visual inicialmente.
 - [ ] **[Visual]** Heading Paso 1 'Tu Complejo': text-2xl font-bold tracking-tight; subheading 'Datos básicos del complejo' en text-sm text-slate-600.
-- [ ] **[Visual]** Tooltip Paso 1: 'URL: turnogol.com.ar/{slug}' aparece si nombre >= 2 caracteres, text-xs text-slate-500, actualizado en real-time.
+- [ ] **[Visual]** Tooltip Paso 1: 'URL: turnogol.app/{slug}' aparece si nombre >= 2 caracteres, text-xs text-slate-500, actualizado en real-time.
 - [ ] **[Visual]** Paso 2 info box: bg-emerald-50 border border-emerald-200 text-emerald-900; mensaje contextual claro.
 - [ ] **[Visual]** Paso 3 tabla: borders subtle, text-sm, columnas alineadas; estado 'Abierto'/'Cerrado' en label pequeño.
 - [ ] **[Visual]** Paso 4: dos botones apilados vertically (space-y-3); textos alineados izquierda, no centrados.
@@ -829,7 +829,7 @@ En cada vista, solo se documentan tests de auth/permisos/a11y **específicos y �
 - [ ] **[Happy path]** Checklist: hacer clic en 'Al menos una cancha configurada' (hasCourts=false): navega a /canchas y vueltas atrás vuelve a /dashboard intacto.
 - [ ] **[Happy path]** Checklist: clic en 'Horarios definidos' (hasSchedule=false): navega a /settings/horarios.
 - [ ] **[Happy path]** Checklist: clic en 'MercadoPago conectado' (mpConnected=false): navega a /settings/facturacion.
-- [ ] **[Happy path]** Checklist: clic en botón 'Copiar link' cuando publicLinkShared=false: copia URL al portapapeles (ej: https://app.turnogol.com/c/mi-complejo), button cambia a 'Copiado!' por 2s, luego vuelve a 'Copiar link'.
+- [ ] **[Happy path]** Checklist: clic en botón 'Copiar link' cuando publicLinkShared=false: copia URL al portapapeles (ej: https://app.turnogol.app/c/mi-complejo), button cambia a 'Copiado!' por 2s, luego vuelve a 'Copiar link'.
 - [ ] **[Happy path]** Después de copiar link: markPublicLinkSharedAction() se ejecuta, settings.public_link_shared se pone true, y en reload del dashboard desaparece el checklist.
 - [ ] **[Happy path]** Checklist: cuando publicLinkShared=true y firstBookingReceived=false, se muestra texto 'Compartí tu link para recibir reservas.' junto al item 'Primera reserva online recibida'.
 - [ ] **[Carga]** KPIs: Promise.all() de getDashboardMetrics + getChecklistState debe completar en < 500ms (p95); si tarda, verificá que no hay N+1 queries.
@@ -2670,7 +2670,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Happy path]** Usuario anonimo accede a /suspended: carga sin error 200, HTML válido, no requiere auth.
 - [ ] **[Validacion - SEO]** Verificar metadata.robots.index = false y robots.follow = false en el <head> de la página (no debe ser indexada por buscadores).
 - [ ] **[Validacion - SEO]** Title de la pestaña debe ser 'Cuenta suspendida — TurnoGol'.
-- [ ] **[Validacion - Link]** Botón 'Contactar a soporte' es <a href='mailto:soporte@turnogol.com.ar'> → clic abre cliente de email con destinatario correcto.
+- [ ] **[Validacion - Link]** Botón 'Contactar a soporte' es <a href='mailto:soporte@turnogol.app'> → clic abre cliente de email con destinatario correcto.
 - [ ] **[Validacion - Link]** Link 'Volver al inicio' es <Link href='/'> (Next.js) → clic navega a raiz sin refetch de página.
 - [ ] **[Validacion - Clase CSS]** PauseCircle icon tiene aria-hidden='true' → no lee el ícono en screenreaders (solo el texto).
 - [ ] **[Visual - Iconografia]** PauseCircle renderizado con h-8 w-8, color text-amber-600, dentro de div h-16 w-16 rounded-full con bg-amber-100 y ring-8 ring-amber-50.
@@ -2721,7 +2721,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Edge - Emoji]** Verificar que ícono PauseCircle es SVG from lucide-react (no es emoji fallido, no necesita font-emoji).
 - [ ] **[Edge - Encoding]** URL /suspended se renderiza con UTF-8 (accent agudo en 'suspendida' es visible en h1).
 - [ ] **[Edge - Localizacion]** Todos los textos están en español (Argentina): 'Tu cuenta', 'suspendida', 'Contactar a soporte' (sin mezcla de idiomas).
-- [ ] **[Edge - Email]** mailto:soporte@turnogol.com.ar es una dirección de email válida (no hay typos, no es mail de testing).
+- [ ] **[Edge - Email]** mailto:soporte@turnogol.app es una dirección de email válida (no hay typos, no es mail de testing).
 - [ ] **[Sesion - Expirada]** Admin con sesión expirada intenta acceder a /admin/** → redirige a /login, luego si intenta /admin nuevamente → redirige a /login (NO a /suspended).
 - [ ] **[Sesion - Expirada]** Admin con sesión válida pero tenant pasó a estado suspended durante su sesión → si recarga /admin → recibe redirect a /suspended.
 - [ ] **[Doble click]** Clic doble en botón Contactar a soporte → abre cliente de email una sola vez (no envía dos emails, comportamiento estándar de <a href='mailto:'>).
@@ -2759,7 +2759,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Anclas]** Hacer click en el link de anclaje "#testimonios" desde cualquier parte: debe scrollear a la sección Testimonios (id="testimonios" existe en el código).
 - [ ] **[Footer]** Hacer click en "Explorar" en el pie debe redirigir a /explorar.
 - [ ] **[Footer]** Hacer click en "Iniciar sesión" en el pie debe redirigir a /login.
-- [ ] **[Footer]** Hacer click en "Contacto" (mailto:hola@turnogol.com.ar) debe abrir el cliente de email del usuario.
+- [ ] **[Footer]** Hacer click en "Contacto" (mailto:hola@turnogol.app) debe abrir el cliente de email del usuario.
 - [ ] **[Footer]** Hacer click en "Privacidad" en el pie debe redirigir a /privacy con status 200.
 - [ ] **[Footer]** Hacer click en "Términos" en el pie debe redirigir a /terms con status 200.
 - [ ] **[Visual]** Sección Hero: verificar que el gradient overlay (from-slate-950/95 via-slate-950/80 to-emerald-900/70) se aplica correctamente sobre la imagen de fondo sin bloquear el texto.
@@ -2796,7 +2796,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[A11y]** Usando screen reader: verificar que la sección Testimonios anuncia "Figure" para cada testimonio y el blockquote es interpretado como cita.
 - [ ] **[A11y]** Usando screen reader: verificar que los badges ("Sin tarjeta", "Configuración en menos de 2 minutos", "Soporte por email") son anunciados como lista (ul).
 - [ ] **[A11y]** Verificar que los iconos decorativos (lucide-react icons con aria-hidden=true) no son anunciados por screen readers.
-- [ ] **[A11y]** Verificar que el email link (mailto:hola@turnogol.com.ar) es un link válido y anunciado como link.
+- [ ] **[A11y]** Verificar que el email link (mailto:hola@turnogol.app) es un link válido y anunciado como link.
 - [ ] **[Vacio]** Verificar que la página no contiene elementos vacíos (divs sin contenido, listas vacías, etc).
 - [ ] **[Persistencia]** Cargar la página, esperar 5 segundos, refrescar (F5): verificar que el contenido se mantiene y no hay diferencias visuales.
 - [ ] **[Persistencia]** Abrir la página en una pestaña nueva en incógnito/privado: verificar que renderiza idénticamente sin dependencias de cookies/storage.
@@ -2857,11 +2857,11 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Responsive]** En pantalla mobile (320px), el h1 'Política de Privacidad' renderiza con clase 'text-3xl' (sin sm:text-4xl que aplica solo en sm+) y es legible sin overflow.
 - [ ] **[Responsive]** En pantalla tablet (768px), el max-w-3xl se aplica correctamente (768px max-width), el texto no cruza bordes laterales de viewport.
 - [ ] **[Responsive]** En pantalla desktop (1920px), el artículo centra dentro de max-w-3xl (768px), margins izquierda y derecha distribuyen el espacio blanco simétricamente.
-- [ ] **[Visual]** Los 6 links externos (privacidad@turnogol.com.ar por email, argentina.gob.ar/aaip, /privacy redirect interno, /terms redirect interno) tienen clase 'text-emerald-700 hover:underline' aplicada visualmente.
+- [ ] **[Visual]** Los 6 links externos (privacidad@turnogol.app por email, argentina.gob.ar/aaip, /privacy redirect interno, /terms redirect interno) tienen clase 'text-emerald-700 hover:underline' aplicada visualmente.
 - [ ] **[Happy path]** El usuario anónimo abre /privacy desde el footer (Link href='/privacy'), la página carga en < 2s, renderiza toda la política sin requiere scroll excesivo (max 5 scrolls en mobile para leer todo).
 - [ ] **[Happy path]** El usuario navega /privacy → lee sección 'Derechos (ARCO)' → encuentra el endpoint '/api/player/data-export' entre backticks con clase 'rounded bg-slate-100 px-1 py-0.5 text-sm', confirma que es formateado como código.
 - [ ] **[Link validation]** El link 'argentina.gob.ar/aaip' en sección 8 tiene target='_blank' y rel='noopener noreferrer' (verificable en DevTools), al hacer clic abre en pestaña nueva sin referer leak.
-- [ ] **[Link validation]** El link 'privacidad@turnogol.com.ar' abre el cliente de email predeterminado (href='mailto:...' sin protocolo custom), sin error 404 ni console warning.
+- [ ] **[Link validation]** El link 'privacidad@turnogol.app' abre el cliente de email predeterminado (href='mailto:...' sin protocolo custom), sin error 404 ni console warning.
 - [ ] **[Link validation]** El Link interno a /terms (Link href='/terms') funciona sin recargar página (navegación SPA Next.js), renderiza page.tsx de terms sin error.
 - [ ] **[Link validation]** El Link interno a /privacy (Link href='/privacy' en sección 9) no causa redirección circular: el usuario sigue en /privacy, no hay refresh de página.
 - [ ] **[A11y]** Cada h2 de sección tiene role implícito heading (landmark), navegación de teclado Tab pasa por todos los h1/h2 sin saltar ninguno (order correcto: h1 → h2[1] → h2[2] ... → h2[9]).
@@ -2885,7 +2885,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Render]** En sección 6 'Derechos ARCO', el endpoint code '/api/player/data-export' está presente, coincide con doc B09 audit fix P1.
 - [ ] **[Edge]** El metadata export tiene title 'Política de Privacidad' y description 'Cómo TurnoGol recolecta...Ley 25.326', descripción sin truncamiento en search results (< 160 chars verificable).
 - [ ] **[Edge]** Todas las mencionadas de 'Ley 25.326' en la página coinciden con exactitud (no variaciones tipo 'Ley 25.326 de Protección' vs 'Ley 25.326'), 8 menciones verificadas por count.
-- [ ] **[Edge]** El email 'privacidad@turnogol.com.ar' aparece 3 veces en el texto (sección 1, sección 6 twice), links de mailto funcionan todos igual.
+- [ ] **[Edge]** El email 'privacidad@turnogol.app' aparece 3 veces en el texto (sección 1, sección 6 twice), links de mailto funcionan todos igual.
 - [ ] **[Visual]** Los párrafos (<p>) tienen mt-10 entre secciones (space-y-4 en contenedor), el spacing visual entre secciones es consistente (~40px en desktop).
 - [ ] **[Visual]** Las listas de items (<ul>) usan pl-6 para padding-left (indent de bullets), lista en sección 2 y sección 4 alineadas correctamente.
 - [ ] **[Visual]** Strong emphasis (<strong>) text renderiza con font-weight 700 (bold), visualmente prominente vs texto normal en mismo párrafo (p.e., 'responsable del tratamiento').
@@ -2912,14 +2912,14 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Contenido]** Sección 4 (Pagos): verificar que menciona 'seña' que va a MP del complejo directamente, 'suscripción SaaS' recurrente, procedimiento de disputa.
 - [ ] **[Contenido]** Sección 5 (Cancelaciones): verificar que explica que el complejo define la política, ventana mínima de cancelación configurable, y que TurnoGol es herramienta técnica.
 - [ ] **[Contenido]** Sección 6 (SaaS B2B): verificar que lista 3 planes (Predio 1-3 canchas, Complejo 4-6, Estadio 7+), menciona cobro mensual, ciclo 'past_due' y 'suspended', retención 90 días en estado 'churned'.
-- [ ] **[Contenido]** Sección 7 (Suspensión/Baja): verificar que lista 4 casos de suspensión, menciona 'banned' global y bans específicos por complejo, email privacidad@turnogol.com.ar para apelación.
+- [ ] **[Contenido]** Sección 7 (Suspensión/Baja): verificar que lista 4 casos de suspensión, menciona 'banned' global y bans específicos por complejo, email privacidad@turnogol.app para apelación.
 - [ ] **[Contenido]** Sección 8 (Limitación de responsabilidad): verificar que limita responsabilidad sobre disputas, MercadoPago, SLA 0.5% mensual (doc5), daños indirectos.
 - [ ] **[Contenido]** Sección 9 (Ley aplicable): verificar que menciona 'República Argentina' y 'Ciudad Autónoma de Buenos Aires' como jurisdicción, Ley 24.240 de Defensa del Consumidor.
-- [ ] **[Contenido]** Sección 10 (Cambios): verificar que menciona notificación por email 30 días antes, próxima aceptación al ingresar, link a /terms y email privacidad@turnogol.com.ar.
+- [ ] **[Contenido]** Sección 10 (Cambios): verificar que menciona notificación por email 30 días antes, próxima aceptación al ingresar, link a /terms y email privacidad@turnogol.app.
 - [ ] **[Links internos]** Hacer click en link href='/terms' (en sección 10): debe mantener en la misma página /terms sin recarga visible.
 - [ ] **[Links internos]** Verificar que todas las instancias del link a /terms usan <Link> de Next.js (no <a href>) en el código fuente.
-- [ ] **[Links externos - Email]** Hacer click en mailto:privacidad@turnogol.com.ar (aparece 3 veces): debe abrir cliente de email con TO prefilled, sin errors en consola.
-- [ ] **[Links externos - Email]** Verificar que los 3 links mailto:privacidad@turnogol.com.ar (secciones 7, 10) usan <a> con href correcto y clase 'text-emerald-700 hover:underline'.
+- [ ] **[Links externos - Email]** Hacer click en mailto:privacidad@turnogol.app (aparece 3 veces): debe abrir cliente de email con TO prefilled, sin errors en consola.
+- [ ] **[Links externos - Email]** Verificar que los 3 links mailto:privacidad@turnogol.app (secciones 7, 10) usan <a> con href correcto y clase 'text-emerald-700 hover:underline'.
 - [ ] **[A11y - Teclado]** Navegar con Tab desde el inicio: order debe ser SiteNav > articulo content > footer, con foco visible en cada link (h1 no debe recibir foco, es decorativo).
 - [ ] **[A11y - Teclado]** Hacer Tab a cada link (internos y externos): Enter debe activarlos; Tab+Shift debe ir hacia atrás.
 - [ ] **[A11y - Lectores de pantalla]** Verificar que la página tiene rol <article> implícito, header con h1, 10 <section> con h2, estructura de heading jerárquica (h1 > h2, sin h3/h4).
@@ -2954,7 +2954,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Sesion - Con JWT jugador]** Acceder a /terms con JWT player_id válido en cookie: debe renderizar la página sin cambios, botón 'Ingresar' se mantiene (no cambia a 'Perfil' ni datos del jugador).
 - [ ] **[Sesion - Con JWT admin]** Acceder a /terms con JWT admin (tenant_id válido) en cookie: debe renderizar la página sin cambios, botón 'Ingresar' se mantiene, no hay redirect a /admin.
 - [ ] **[Sesion - Sesión expirada]** Acceder a /terms, esperar a que JWT expire (mock/fake expiry), refrescar: página debe seguir siendo accesible, no hay error de auth.
-- [ ] **[Deep link]** Enviar a otro usuario link completo https://turnogol.com.ar/terms: debe abrirse sin error, renderizar idéntico, sin requerimiento de autenticación.
+- [ ] **[Deep link]** Enviar a otro usuario link completo https://turnogol.app/terms: debe abrirse sin error, renderizar idéntico, sin requerimiento de autenticación.
 - [ ] **[Deep link - Fragmento]** Acceder a /terms#7 (hash a sección 7): debe hacer scroll a la sección 'Suspensión y baja de cuenta' (behavior: auto/smooth), URL mantiene el hash.
 - [ ] **[Persistencia]** Cargar /terms, refrescar F5: debe mantener toda la estructura y contenido, sin recarga visible (SSG static generation esperado).
 - [ ] **[Persistencia]** Cargar /terms, navegar a /privacy, volver a /terms con back: debe renderizar /terms sin estado adicional guardado en sessionStorage (stateless).
@@ -2963,10 +2963,10 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Multi-idioma]** Verificar que la página está íntegra en español (títulos, contenido, links). No hay selector de idioma ni fallback a inglés (es Argentina-only en v1).
 - [ ] **[Legal - Actualizacion]** Verificar que la fecha 'Última actualización: 25 de mayo de 2026' se muestra en el header y es consistente en ambas secciones que la mencionan.
 - [ ] **[Legal - Citaciones internas]** Verificar que menciones a 'ADR-011', 'ADR-012', 'doc4', 'doc5' son consistentes con la arquitectura: facturación out-of-scope, mayoría de edad, SLA 0.5%.
-- [ ] **[Legal - Email]** Verificar que privacidad@turnogol.com.ar aparece en secciones 7 y 10; el href es mailto:privacidad@turnogol.com.ar (sin espacios, sin typos).
+- [ ] **[Legal - Email]** Verificar que privacidad@turnogol.app aparece en secciones 7 y 10; el href es mailto:privacidad@turnogol.app (sin espacios, sin typos).
 - [ ] **[Legal - MercadoPago]** Verificar que MercadoPago aparece exactamente 3 veces: sección 1 (procesador), sección 4 (seña + suscripción), sección 8 (inconvenientes de API).
 - [ ] **[SEO]** Verificar que meta Open Graph (og:type='website', og:title, og:description) están presentes en el layout root y aplicables a /terms.
-- [ ] **[SEO]** Verificar que canonical URL no está explícito en /terms (Next.js auto-genera como <link rel='canonical' href='https://turnogol.com.ar/terms'>).
+- [ ] **[SEO]** Verificar que canonical URL no está explícito en /terms (Next.js auto-genera como <link rel='canonical' href='https://turnogol.app/terms'>).
 - [ ] **[Validacion - HTML]** Correr validador HTML (W3C) en la página estática: debe pasar sin errores (estructura semantic correcta, no tags inválidos).
 - [ ] **[Validacion - Lighthouse]** Correr Lighthouse en /terms: Accessibility >= 90, Performance >= 90 (SSG estático), SEO >= 90, Best Practices >= 90.
 - [ ] **[Validacion - TypeScript]** Verificar que src/app/(public)/terms/page.tsx compila sin errores de tipo: no uses 'any', imports resuelven bien.
@@ -2976,7 +2976,7 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[WCAG 2.1 AA - Color contrast]** Debugear links (text-emerald-700 = rgb(4,120,87)) sobre white: ratio 6.5:1, pasa AA strict.
 - [ ] **[WCAG 2.1 AA - Color contrast]** Debugear párrafos (text-slate-700 = rgb(55,65,81)) sobre white: ratio 7.5:1, pasa AA strict, legible en todos los viewports.
 - [ ] **[Link validation]** Hacer click en cada link <a> y <Link> y verificar que no hay 404, 5xx, ni broken hrefs: /explorar, /privacy, /terms, /login, /para-complejos, /.
-- [ ] **[Link validation]** Verificar que los links internos usan href relativo (/terms, /privacy) y no absoluto (turnogol.com.ar/terms), permitiendo dev/staging.
+- [ ] **[Link validation]** Verificar que los links internos usan href relativo (/terms, /privacy) y no absoluto (turnogol.app/terms), permitiendo dev/staging.
 - [ ] **[Performance - TTFB]** Medir Time-to-First-Byte para /terms en production Vercel: debe ser < 100ms (SSG pre-built).
 - [ ] **[Performance - Bundle]** Verificar que el bundle JS para /terms no incluye librerías innecesarias (ej. no hay Drizzle, no hay React Query, minimal icons desde lucide).
 - [ ] **[Performance - Image]** Verificar que no hay <Image> sin lazy loading (actual: no hay imágenes en /terms, pero heredar buena práctica).
@@ -2985,11 +2985,11 @@ Esta es una brecha arquitectónica mayor: todas las settings actions devuelven `
 - [ ] **[Layout - Article wrapper]** Verificar que <article> con mx-auto max-w-3xl py-12 crea margen superior/inferior, no se pega al header/footer.
 - [ ] **[Layout - Sticky header]** Verificar que header.sticky top-0 z-30 no cubre el contenido al hacer scroll, footer aparece cuando se scrollea al final sin overlaps.
 - [ ] **[Layout - Main landmark]** Verificar que <main id='main-content'> está correctamente anidado en layout: <html> > <body> > <header> > <main> > content > <footer>.
-- [ ] **[Email links - Mailto]** En mailto:privacidad@turnogol.com.ar, verificar que se abre cliente de email (Outlook, Gmail, etc.) sin leakage de datos a terceros.
+- [ ] **[Email links - Mailto]** En mailto:privacidad@turnogol.app, verificar que se abre cliente de email (Outlook, Gmail, etc.) sin leakage de datos a terceros.
 - [ ] **[External links]** Verificar que no hay <a> con rel='nofollow' en /terms (todos los links son internos o mailto, no hay SEO penalty esperado).
 - [ ] **[Tipografia - Readability]** Verificar que font-size base es 16px (Inter font), line-height es hereda normal (~1.5), spacing es legible para lectura sostenida.
 
-> ⚠️ **Riesgo detectado en codigo:** Riesgos detectados: (1) La página es completamente estática; no hay validación del lado del servidor a nivel de schema, pero el contenido está hardcoded. No hay riesgo de inyección SQL/XSS porque es SSG. (2) Los links mailto:privacidad@turnogol.com.ar pueden cambiar en el futuro (email rotativo?); no hay valor del env. (3) Fecha de actualización es hardcoded ('25 de mayo de 2026'); riesgo si se olvida actualizar en futuros cambios de T&C. (4) No hay versionado de T&C ni changelog; el documento no indica qué cambió desde la anterior versión. (5) ADR-011 y ADR-012 se mencionan como referencias pero no son links a docs (acceptable para legal, pero reduce discoverability). (6) La página NO tiene patrón de consentimiento de aceptación explícita en formulario; es informativa solamente (el consentimiento se captura en el signup del jugador, no en /terms). (7) No hay header de caching explícito; la CDN Vercel lo maneja automáticamente (revalidate en sitemap.ts = 3600s sugiere revalidation periodic).
+> ⚠️ **Riesgo detectado en codigo:** Riesgos detectados: (1) La página es completamente estática; no hay validación del lado del servidor a nivel de schema, pero el contenido está hardcoded. No hay riesgo de inyección SQL/XSS porque es SSG. (2) Los links mailto:privacidad@turnogol.app pueden cambiar en el futuro (email rotativo?); no hay valor del env. (3) Fecha de actualización es hardcoded ('25 de mayo de 2026'); riesgo si se olvida actualizar en futuros cambios de T&C. (4) No hay versionado de T&C ni changelog; el documento no indica qué cambió desde la anterior versión. (5) ADR-011 y ADR-012 se mencionan como referencias pero no son links a docs (acceptable para legal, pero reduce discoverability). (6) La página NO tiene patrón de consentimiento de aceptación explícita en formulario; es informativa solamente (el consentimiento se captura en el signup del jugador, no en /terms). (7) No hay header de caching explícito; la CDN Vercel lo maneja automáticamente (revalidate en sitemap.ts = 3600s sugiere revalidation periodic).
 
 ---
 

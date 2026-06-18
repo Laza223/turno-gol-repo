@@ -18,7 +18,7 @@ describe('validateServerEnv', () => {
     UPSTASH_REDIS_REST_TOKEN: 'a'.repeat(32),
     VAPID_PUBLIC_KEY: 'a'.repeat(80),
     VAPID_PRIVATE_KEY: 'a'.repeat(40),
-    VAPID_SUBJECT: 'mailto:contact@turnogol.com',
+    VAPID_SUBJECT: 'mailto:contact@turnogol.app',
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'a'.repeat(80),
   }
 

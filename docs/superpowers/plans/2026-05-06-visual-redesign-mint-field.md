@@ -948,7 +948,7 @@ Line 72-77, replace:
             <p className="text-xs text-gray-500 mt-1">
               URL:{' '}
               <span className="font-mono">
-                turnogol.com.ar/<strong>{slugPreview}</strong>
+                turnogol.app/<strong>{slugPreview}</strong>
               </span>
             </p>
 ```
@@ -957,7 +957,7 @@ with:
             <p className="text-xs text-slate-500 mt-1.5">
               URL:{' '}
               <span className="font-mono text-slate-700">
-                turnogol.com.ar/<strong className="text-emerald-700">{slugPreview}</strong>
+                turnogol.app/<strong className="text-emerald-700">{slugPreview}</strong>
               </span>
             </p>
 ```

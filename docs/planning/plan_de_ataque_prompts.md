@@ -394,7 +394,7 @@ Criterio de aceptación:
 
 ---
 
-### P5 — Ruta pública del complejo (`turnogol.com/[slug]`)
+### P5 — Ruta pública del complejo (`turnogol.app/[slug]`)
 
 > **Modelo**: Sonnet — Server Component + queries simples.
 > **Contexto**: `@docs/doc12_tenant_isolation.md` (§9.3) `@docs/doc8_user_stories.md` (solo US-ONB-005)

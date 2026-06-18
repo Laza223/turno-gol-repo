@@ -105,7 +105,7 @@ Acá está la magia. No es qué funcionalidades nuevas agregamos, sino **cómo h
 |---|---|---|
 | **Web app (panel admin)** | Dueños, admins y staff de complejos | MVP |
 | **Web pública (portal)** | Jugadores buscando canchas | MVP |
-| **Web propia del complejo (slug)** | Jugadores que llegan directo al complejo (turnogol.com.ar/[slug]) | MVP |
+| **Web propia del complejo (slug)** | Jugadores que llegan directo al complejo (turnogol.app/[slug]) | MVP |
 | **PWA / Web responsive** | Jugadores | MVP (no app nativa) |
 
 ### 3.2 Módulos del Panel Admin (para el complejo)
@@ -199,7 +199,7 @@ Acá está la magia. No es qué funcionalidades nuevas agregamos, sino **cómo h
 - Se puede revocar acceso en cualquier momento
 
 #### k) Web Propia del Complejo
-- URL: `turnogol.com.ar/nombre-del-complejo`
+- URL: `turnogol.app/nombre-del-complejo`
 - Se genera automáticamente con los datos del complejo
 - Muestra:
   - Nombre, logo, fotos
@@ -512,7 +512,7 @@ BOT responde:
    • 11:00 - $90.000
    • 15:00 - $90.000
 
-Reservá acá 👉 turnogol.com.ar/mi-complejo
+Reservá acá 👉 turnogol.app/mi-complejo
 
 ¿Necesitás otra cosa? Escribí 'hablar' para contactar al complejo."
 ```
@@ -636,7 +636,7 @@ TurnoGol es lo mismo:
 |---|---|
 | **Venta puerta a puerta** | 1-2 personas visitando complejos de fútbol con una tablet. Demo en vivo de 10 minutos. "Te lo dejo 30 días gratis, te lo configuro yo, si no te gusta no pagás nada." |
 | **Onboarding white-glove** | Nosotros les configuramos todo: canchas, precios, horarios, fotos. Le sacamos fotos al complejo si hace falta. Cero esfuerzo para el dueño. |
-| **WhatsApp del complejo como canal** | Le pedimos al complejo que empiece a mandar su link de TurnoGol a los clientes que le escriben. "Reservá acá: turnogol.com.ar/mi-complejo". Así los jugadores descubren la plataforma orgánicamente. |
+| **WhatsApp del complejo como canal** | Le pedimos al complejo que empiece a mandar su link de TurnoGol a los clientes que le escriben. "Reservá acá: turnogol.app/mi-complejo". Así los jugadores descubren la plataforma orgánicamente. |
 | **SEO desde día 1** | Cada web de complejo está optimizada para "cancha de fútbol 5 en [barrio]". Tráfico orgánico gratuito que le trae clientes nuevos al complejo. |
 
 ### Fase 2: "El Clausura" (Meses 5-12)

@@ -24,7 +24,7 @@ export default function SuspendedPage() {
       </p>
 
       <a
-        href="mailto:soporte@turnogol.com.ar"
+        href="mailto:soporte@turnogol.app"
         className="mt-8 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
       >
         Contactar a soporte

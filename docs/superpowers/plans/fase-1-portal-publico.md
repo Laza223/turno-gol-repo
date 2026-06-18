@@ -940,7 +940,7 @@ export default function SiteFooter() {
         <div className="flex gap-6 text-xs text-slate-400">
           <Link href="/explorar" className="hover:text-white transition-colors">Explorar</Link>
           <Link href="/login" className="hover:text-white transition-colors">Iniciar sesión</Link>
-          <a href="mailto:hola@turnogol.com.ar" className="hover:text-white transition-colors">Contacto</a>
+          <a href="mailto:hola@turnogol.app" className="hover:text-white transition-colors">Contacto</a>
         </div>
       </div>
     </footer>

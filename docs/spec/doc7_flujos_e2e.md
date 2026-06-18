@@ -41,7 +41,7 @@
 ## FLUJO 1: Onboarding de un Nuevo Complejo (Trial)
 
 ### Punto de entrada
-- **URL**: `turnogol.com.ar/registrar` (landing page pública)
+- **URL**: `turnogol.app/registrar` (landing page pública)
 - **Trigger**: El dueño de un complejo hace click en "Probá gratis 30 días"
 - **Origen probable**: Google Ads, referido de otro complejo, Instagram del complejo, visita directa
 
@@ -112,7 +112,7 @@ PASO 7 — Dashboard con checklist
   │     ⬜ Configurar seña y MercadoPago (si lo salteó)
   │     ⬜ Compartir tu link público
   │     ⬜ Recibir tu primera reserva online ← EL "AHA MOMENT"
-  └── Acción: el complejo ya está live en turnogol.com.ar/{slug}
+  └── Acción: el complejo ya está live en turnogol.app/{slug}
 ```
 
 ### Decisiones del negocio (if/else)
@@ -150,7 +150,7 @@ PASO 7 — Dashboard con checklist
 | Trial iniciado | ⏰ Cron job programado: notificación día 7, 21, 28, 30, 31 |
 | Primera cancha creada | 📊 AuditLog: `court.created` |
 | MP conectado | 📊 AuditLog: `tenant.mp_connected` |
-| Wizard completado | 📩 Email: "Tu complejo está listo. Compartí tu link: turnogol.com.ar/{slug}" |
+| Wizard completado | 📩 Email: "Tu complejo está listo. Compartí tu link: turnogol.app/{slug}" |
 
 ### Edge cases explícitos
 
@@ -174,7 +174,7 @@ PASO 7 — Dashboard con checklist
 ## FLUJO 2: Reserva Online por Jugador (Con y Sin Seña)
 
 ### Punto de entrada
-- **URL**: `turnogol.com.ar/{slug}` → página pública del complejo → seleccionar cancha y horario
+- **URL**: `turnogol.app/{slug}` → página pública del complejo → seleccionar cancha y horario
 - **Trigger**: Jugador encuentra un horario libre y hace click en "Reservar"
 - **Origen probable**: Link compartido por el complejo en su Instagram/redes, búsqueda en el marketplace de TurnoGol, link directo de un amigo
 

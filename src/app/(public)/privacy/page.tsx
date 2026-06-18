@@ -29,8 +29,8 @@ export default function PrivacyPage() {
         </p>
         <p>
           Para consultas sobre privacidad, ejercicio de derechos o reclamos, podés contactarnos en{' '}
-          <a className="text-emerald-700 hover:underline" href="mailto:privacidad@turnogol.com.ar">
-            privacidad@turnogol.com.ar
+          <a className="text-emerald-700 hover:underline" href="mailto:privacidad@turnogol.app">
+            privacidad@turnogol.app
           </a>
           . Respondemos en un plazo máximo de 10 días hábiles.
         </p>
@@ -183,7 +183,7 @@ export default function PrivacyPage() {
             <code className="rounded bg-slate-100 px-1 py-0.5 text-sm">
               /api/player/data-export
             </code>{' '}
-            (autenticado) o por mail a privacidad@turnogol.com.ar.
+            (autenticado) o por mail a privacidad@turnogol.app.
           </li>
           <li>
             <strong>Rectificación</strong>: podés corregir nombre, email y teléfono desde tu perfil
@@ -192,7 +192,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Cancelación</strong> (eliminación): podés solicitar el borrado de tu cuenta
-            enviando un mail a privacidad@turnogol.com.ar. Anonimizamos tus datos personales (no
+            enviando un mail a privacidad@turnogol.app. Anonimizamos tus datos personales (no
             podemos eliminar registros financieros por obligación contable de 5 años). Plazo: 10
             días hábiles.
           </li>
@@ -259,7 +259,7 @@ export default function PrivacyPage() {
           cambios sustanciales) y publicaremos la fecha de actualización al inicio de este documento.
           La versión vigente está siempre disponible en{' '}
           <Link className="text-emerald-700 hover:underline" href="/privacy">
-            turnogol.com.ar/privacy
+            turnogol.app/privacy
           </Link>
           .
         </p>

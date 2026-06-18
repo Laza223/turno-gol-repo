@@ -81,10 +81,10 @@ export function StatusBanner({
         <span>
           Tu cuenta está suspendida. Contactá a{' '}
           <a
-            href="mailto:soporte@turnogol.com"
+            href="mailto:soporte@turnogol.app"
             className="font-medium underline underline-offset-2 hover:text-red-900 transition-colors duration-150"
           >
-            soporte@turnogol.com
+            soporte@turnogol.app
           </a>
         </span>
       </div>

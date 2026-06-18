@@ -27,7 +27,7 @@ const TENANT = { id: TENANT_ID, name: 'Complejo El Potrero', status: 'active' } 
 const SYSTEM_ADMIN_USER = {
   type: 'system_admin' as const,
   id: REAL_AUTH_ID,
-  email: 'owner@turnogol.com',
+  email: 'owner@turnogol.app',
   systemAdminId: SYSTEM_ADMIN_ID,
 }
 
@@ -62,7 +62,7 @@ describe('resolveImpersonatedStaffContextFor (bypass core)', () => {
     expect(ctx!.user).toEqual({
       type: 'staff',
       id: REAL_AUTH_ID, // identidad real del super admin (verdad en audit)
-      email: 'owner@turnogol.com',
+      email: 'owner@turnogol.app',
       staffUserId: PROXY_STAFF_ID, // proxy: satisface los FK a staff_users.id
       tenantId: TENANT_ID,
       role: 'admin',

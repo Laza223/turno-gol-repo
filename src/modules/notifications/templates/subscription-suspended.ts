@@ -18,11 +18,11 @@ export function renderSubscriptionSuspended(
   <p>No pudimos cobrar la suscripción de <strong>${data.tenantName}</strong> después de varios reintentos. Pasamos tu cuenta a modo solo lectura.</p>
   <p>Los jugadores siguen viendo sus reservas, pero no podés gestionar el complejo hasta regularizar el pago.</p>
   <p style="text-align:center;margin:24px 0">
-    <a href="https://turnogol.com.ar/settings/facturacion" style="background:#d97706;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Regularizar pago →</a>
+    <a href="https://app.turnogol.app/settings/facturacion" style="background:#d97706;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Regularizar pago →</a>
   </p>
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Tu cuenta está suspendida\n\nHola ${data.ownerName},\n\nNo pudimos cobrar la suscripción de ${data.tenantName}. Tu cuenta está en modo solo lectura.\n\nRegularizá el pago en: https://turnogol.com.ar/settings/facturacion\n\n— El equipo de TurnoGol`
+  const text = `Tu cuenta está suspendida\n\nHola ${data.ownerName},\n\nNo pudimos cobrar la suscripción de ${data.tenantName}. Tu cuenta está en modo solo lectura.\n\nRegularizá el pago en: https://app.turnogol.app/settings/facturacion\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

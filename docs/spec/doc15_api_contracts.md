@@ -7,7 +7,7 @@
 
 > [!NOTE]
 > Convenciones globales:
-> - **Base URL**: `https://turnogol.com.ar/api`
+> - **Base URL**: `https://turnogol.app/api`
 > - **JSON** para todos los bodies (request y response).
 > - **Montos en centavos de ARS** (integer). Frontend convierte para display.
 > - **Timestamps en UTC** (ISO 8601). Frontend convierte a ART.

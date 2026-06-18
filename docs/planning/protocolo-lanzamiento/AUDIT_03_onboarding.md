@@ -11,7 +11,7 @@ Testeado autenticado como **admin sin complejo** `e2e-admin-fresh@turnogol.test`
 - Wizard de 4 pasos con barra de progreso. Aha Moment = primera reserva online. Al terminar, marca `onboarding_completed` y va a `/dashboard`.
 
 ## Resultado del test (flujo completo, 4 pasos)
-- ✅ **Paso 1/4 (25%) — "Tu Complejo"**: Nombre*, Dirección*, Ciudad*, Provincia* (select con las 24 jurisdicciones AR), Teléfono*, Email*. Auto-genera el **slug** en vivo ("turnogol.com.ar/complejo-audit-onboarding"). "Continuar →" → "Creando..." → crea el tenant.
+- ✅ **Paso 1/4 (25%) — "Tu Complejo"**: Nombre*, Dirección*, Ciudad*, Provincia* (select con las 24 jurisdicciones AR), Teléfono*, Email*. Auto-genera el **slug** en vivo ("turnogol.app/complejo-audit-onboarding"). "Continuar →" → "Creando..." → crea el tenant.
 - ✅ **Paso 2/4 (50%) — "Tus Canchas"**: pantalla informativa ("Podés agregar tus canchas desde el panel… Necesitás al menos 1 cancha online para aparecer en búsquedas"). No crea cancha en el wizard. "Continuar →".
 - ✅ **Paso 3/4 (75%) — "Horarios"**: tabla por día (Lun–Dom) con Apertura/Cierre/Estado (checkbox "Abierto"), pre-cargada (Lun–Jue cierre 00:00, Vie/Sáb 01:00, Dom 23:00). "Continuar →".
 - ✅ **Paso 4/4 (100%) — "¿Cobrás seña?"**: "Conectar MercadoPago" (→ `/api/mp/oauth-start`) o "Terminar sin seña". Elegí "Terminar sin seña" → `/dashboard`.

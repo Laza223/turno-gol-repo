@@ -253,7 +253,7 @@ CREATE INDEX idx_tenants_status ON tenants(status);
 CREATE INDEX idx_tenants_city ON tenants(city);
 
 COMMENT ON TABLE tenants IS 'Complejos deportivos. Entidad raíz del multi-tenancy.';
-COMMENT ON COLUMN tenants.slug IS 'URL amigable. turnogol.com.ar/{slug}';
+COMMENT ON COLUMN tenants.slug IS 'URL amigable. turnogol.app/{slug}';
 COMMENT ON COLUMN tenants.settings IS 'Configuraciones del complejo: seña, cancelación, medios de pago, etc.';
 ```
 

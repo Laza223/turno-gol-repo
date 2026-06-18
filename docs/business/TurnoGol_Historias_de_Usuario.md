@@ -472,7 +472,7 @@
 
 ### HU-13.1: Web autogenerada
 **CA:**
-- [ ] URL: `turnogol.com.ar/[slug]`
+- [ ] URL: `turnogol.app/[slug]`
 - [ ] Contenido: nombre, logo, fotos, canchas (tipo, superficie, techado), precios, servicios, horarios, mapa (Google Maps), teléfono, WhatsApp
 - [ ] Botón "Reservar" prominente
 - [ ] Responsive

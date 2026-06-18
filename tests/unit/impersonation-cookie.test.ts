@@ -115,7 +115,7 @@ describe('getImpersonationSession (impersonation.server)', () => {
     extractRealAuthUser.mockResolvedValue({
       type: 'system_admin',
       id: 'auth-id',
-      email: 'owner@turnogol.com',
+      email: 'owner@turnogol.app',
       systemAdminId: SYSTEM_ADMIN_ID,
     })
     cookieStore.get.mockReturnValue({ value: validCookie() })
@@ -146,7 +146,7 @@ describe('getImpersonationSession (impersonation.server)', () => {
     extractRealAuthUser.mockResolvedValue({
       type: 'system_admin',
       id: 'auth-id',
-      email: 'owner@turnogol.com',
+      email: 'owner@turnogol.app',
       systemAdminId: '33333333-3333-4333-8333-333333333333',
     })
     cookieStore.get.mockReturnValue({ value: validCookie() })
@@ -159,7 +159,7 @@ describe('getImpersonationSession (impersonation.server)', () => {
     extractRealAuthUser.mockResolvedValue({
       type: 'system_admin',
       id: 'auth-id',
-      email: 'owner@turnogol.com',
+      email: 'owner@turnogol.app',
       systemAdminId: SYSTEM_ADMIN_ID,
     })
     cookieStore.get.mockReturnValue(undefined)

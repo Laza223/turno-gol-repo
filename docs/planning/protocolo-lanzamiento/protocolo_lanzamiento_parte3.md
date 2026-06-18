@@ -137,7 +137,7 @@ Auditoría del sistema de notificaciones por email.
 
 2. PROVIDER — Revisá src/modules/notifications/email.provider.ts:
    - ¿Usa Resend como provider?
-   - ¿El from address es correcto? (ej: noreply@turnogol.com.ar)
+   - ¿El from address es correcto? (ej: noreply@turnogol.app)
    - ¿Maneja errores de Resend gracefully? (retry con backoff)
 
 3. WORKER — Revisá src/shared/jobs/workers/send-email.worker.ts:

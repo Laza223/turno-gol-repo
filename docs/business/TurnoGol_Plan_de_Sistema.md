@@ -115,7 +115,7 @@
 |---|---|---|
 | `id` | UUID PK | |
 | `name` | VARCHAR(255) NOT NULL | |
-| `slug` | VARCHAR(100) UNIQUE NOT NULL | Para URL: turnogol.com.ar/[slug] |
+| `slug` | VARCHAR(100) UNIQUE NOT NULL | Para URL: turnogol.app/[slug] |
 | `address` | TEXT NOT NULL | |
 | `city` | VARCHAR(100) | |
 | `province` | VARCHAR(100) | |
@@ -836,7 +836,7 @@ GET    /api/admin/stats/revenue?from=X&to=Y
    https://auth.mercadopago.com/authorization?
      client_id=APP_ID&
      response_type=code&
-     redirect_uri=turnogol.com.ar/api/mp/callback&
+     redirect_uri=turnogol.app/api/mp/callback&
      state={complex_id_encriptado}
 
 2. MP redirige a callback con ?code=AUTH_CODE&state=X

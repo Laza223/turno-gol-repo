@@ -17,12 +17,12 @@ export function renderTrialEnding(data: TrialEndingData): EmailContent {
   <p>Tu período de prueba de <strong>${data.tenantName}</strong> en TurnoGol vence en <strong>${data.daysLeft} día${data.daysLeft === 1 ? '' : 's'}</strong>.</p>
   <p>Para seguir usando TurnoGol sin interrupciones, activá tu suscripción desde el panel:</p>
   <p style="text-align:center;margin:24px 0">
-    <a href="https://turnogol.com.ar/settings/facturacion" style="background:#0369a1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Activar suscripción →</a>
+    <a href="https://app.turnogol.app/settings/facturacion" style="background:#0369a1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Activar suscripción →</a>
   </p>
   <p style="color:#64748b;font-size:14px">Si ya activaste tu suscripción, ignorá este mensaje.</p>
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Tu prueba gratuita está por vencer\n\nHola ${data.ownerName},\n\nTu período de prueba de ${data.tenantName} vence en ${data.daysLeft} día${data.daysLeft === 1 ? '' : 's'}.\n\nActivá tu suscripción en: https://turnogol.com.ar/settings/facturacion\n\n— El equipo de TurnoGol`
+  const text = `Tu prueba gratuita está por vencer\n\nHola ${data.ownerName},\n\nTu período de prueba de ${data.tenantName} vence en ${data.daysLeft} día${data.daysLeft === 1 ? '' : 's'}.\n\nActivá tu suscripción en: https://app.turnogol.app/settings/facturacion\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

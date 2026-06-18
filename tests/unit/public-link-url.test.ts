@@ -15,14 +15,14 @@ describe('buildPublicLinkUrl', () => {
   })
 
   it('falls back to the browser origin when appUrl is empty', () => {
-    expect(buildPublicLinkUrl('', 'https://app.turnogol.com', 'rincon')).toBe(
-      'https://app.turnogol.com/c/rincon',
+    expect(buildPublicLinkUrl('', 'https://app.turnogol.app', 'rincon')).toBe(
+      'https://app.turnogol.app/c/rincon',
     )
   })
 
   it('falls back to the browser origin when appUrl is relative (not absolute)', () => {
-    expect(buildPublicLinkUrl('/c', 'https://app.turnogol.com', 'rincon')).toBe(
-      'https://app.turnogol.com/c/rincon',
+    expect(buildPublicLinkUrl('/c', 'https://app.turnogol.app', 'rincon')).toBe(
+      'https://app.turnogol.app/c/rincon',
     )
   })
 

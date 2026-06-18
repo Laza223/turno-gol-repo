@@ -45,7 +45,7 @@ Dep nueva: **web-push** (server-side VAPID encryption). NO `@types/web-push` nec
 Env nuevas (4):
 - `VAPID_PUBLIC_KEY` (server, min 80 chars)
 - `VAPID_PRIVATE_KEY` (server, min 40 chars)
-- `VAPID_SUBJECT` (server, mailto:contact@turnogol.com)
+- `VAPID_SUBJECT` (server, mailto:contact@turnogol.app)
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (client, debe matchear VAPID_PUBLIC_KEY)
 
 ## Decisión consciente: scope F9

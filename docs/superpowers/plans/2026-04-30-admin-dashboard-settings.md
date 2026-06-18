@@ -308,8 +308,8 @@ export function StatusBanner({ tenantStatus, trialEndsAt, subStatus, periodEnd }
         <XCircle className="h-4 w-4 shrink-0 text-red-600" aria-hidden="true" />
         <p className="text-sm text-red-800">
           Tu cuenta está suspendida. Contactá a{' '}
-          <a href="mailto:soporte@turnogol.com" className="font-medium underline">
-            soporte@turnogol.com
+          <a href="mailto:soporte@turnogol.app" className="font-medium underline">
+            soporte@turnogol.app
           </a>
           .
         </p>

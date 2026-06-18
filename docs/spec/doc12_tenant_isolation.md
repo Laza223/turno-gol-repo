@@ -830,7 +830,7 @@ async function registerComplex(data: RegisterInput) {
 
 ### 9.3 Página pública del complejo (acceso anónimo)
 
-La página `turnogol.com.ar/[slug]` es pública — no requiere autenticación. Pero muestra datos de un tenant específico.
+La página `turnogol.app/[slug]` es pública — no requiere autenticación. Pero muestra datos de un tenant específico.
 
 ```typescript
 // Endpoint público: GET /api/public/complex/:slug

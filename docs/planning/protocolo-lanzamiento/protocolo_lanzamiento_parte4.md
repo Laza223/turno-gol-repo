@@ -173,9 +173,9 @@ Verificá la configuración de deliverability de email.
 
 1. ¿Qué dominio usa el FROM del email?
    Revisá src/modules/notifications/email.provider.ts.
-   ¿Es noreply@turnogol.com.ar? ¿O usa el dominio default de Resend?
+   ¿Es noreply@turnogol.app? ¿O usa el dominio default de Resend?
 
-2. Si usa turnogol.com.ar, verificá en el DNS del dominio:
+2. Si usa turnogol.app, verificá en el DNS del dominio:
    - SPF record: ¿incluye Resend como sender autorizado?
    - DKIM record: ¿está configurado con la key de Resend?
    - DMARC record: ¿existe? (mínimo p=none para monitorear)

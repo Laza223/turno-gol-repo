@@ -73,7 +73,7 @@ export function StepIdentity() {
             <p className="text-xs text-slate-500 mt-1.5">
               URL:{' '}
               <span className="font-mono text-slate-700">
-                turnogol.com.ar/<strong className="text-emerald-700">{slugPreview}</strong>
+                turnogol.app/<strong className="text-emerald-700">{slugPreview}</strong>
               </span>
             </p>
           )}

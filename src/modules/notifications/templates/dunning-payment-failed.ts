@@ -18,12 +18,12 @@ export function renderDunningPaymentFailed(data: DunningPaymentFailedData): Emai
   <p>Vamos a reintentar el cobro el <strong>${data.retryDate}</strong>. Si para esa fecha el pago sigue fallando, tu cuenta pasará a modo restringido.</p>
   <p>Para evitar interrupciones, actualizá tu método de pago en MercadoPago:</p>
   <p style="text-align:center;margin:24px 0">
-    <a href="https://turnogol.com.ar/settings/facturacion" style="background:#dc2626;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Actualizar método de pago →</a>
+    <a href="https://app.turnogol.app/settings/facturacion" style="background:#dc2626;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Actualizar método de pago →</a>
   </p>
   <p style="color:#64748b;font-size:14px">Si ya solucionaste el problema, ignorá este mensaje.</p>
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Problema con tu pago de TurnoGol\n\nHola ${data.ownerName},\n\nHubo un problema al cobrar la suscripción de ${data.tenantName}.\n\nVamos a reintentar el ${data.retryDate}. Actualizá tu método de pago en: https://turnogol.com.ar/settings/facturacion\n\n— El equipo de TurnoGol`
+  const text = `Problema con tu pago de TurnoGol\n\nHola ${data.ownerName},\n\nHubo un problema al cobrar la suscripción de ${data.tenantName}.\n\nVamos a reintentar el ${data.retryDate}. Actualizá tu método de pago en: https://app.turnogol.app/settings/facturacion\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

@@ -700,7 +700,7 @@ FLUJO DE DEPENDENCIAS (unidireccional):
 |---|---|---|---|---|
 | **Local** | Desarrollo | localhost:3000 | Supabase local (Docker) | `pnpm dev` |
 | **Preview** | Review de PRs | pr-123.turnogol.vercel.app | Supabase branch DB | Automático por PR |
-| **Production** | Producción | turnogol.com.ar | Supabase Pro | Manual o merge a `main` |
+| **Production** | Producción | turnogol.app | Supabase Pro | Manual o merge a `main` |
 
 ### 6.2 Variables de entorno
 
@@ -720,14 +720,14 @@ MP_WEBHOOK_SECRET=xxx
 
 # Email (Resend)
 RESEND_API_KEY=re_xxx
-EMAIL_FROM=noreply@turnogol.com.ar
+EMAIL_FROM=noreply@turnogol.app
 
 # Sentry
 SENTRY_DSN=https://xxx@sentry.io/xxx
 NEXT_PUBLIC_SENTRY_DSN=https://xxx@sentry.io/xxx
 
 # App
-NEXT_PUBLIC_APP_URL=https://turnogol.com.ar
+NEXT_PUBLIC_APP_URL=https://turnogol.app
 NODE_ENV=production
 ```
 

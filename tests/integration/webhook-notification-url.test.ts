@@ -37,7 +37,7 @@ const PRICING = {
   ],
 }
 const FUTURE = '2099-08-15'
-const APP_URL = 'https://app.turnogol.com'
+const APP_URL = 'https://turnogol.app'
 
 beforeAll(async () => {
   setExpiryScheduler(async () => {})

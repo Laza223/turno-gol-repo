@@ -54,12 +54,12 @@ const AUTH_FIXTURE = {
   user: {
     type: 'system_admin' as const,
     id: 'auth-user-1',
-    email: 'duenio@turnogol.com.ar',
+    email: 'duenio@turnogol.app',
     systemAdminId: 'sa-1',
   },
   admin: {
     id: 'sa-1',
-    email: 'duenio@turnogol.com.ar',
+    email: 'duenio@turnogol.app',
     firstName: 'Lázaro',
     lastName: 'Feijoo',
   },
@@ -87,7 +87,7 @@ describe('SuperAdminLayout (server component)', () => {
     expect(isValidElement(tree)).toBe(true)
     expect(tree.type).toBe(SuperAdminLayoutShell)
     const props = tree.props as { userEmail: string; adminName: string }
-    expect(props.userEmail).toBe('duenio@turnogol.com.ar')
+    expect(props.userEmail).toBe('duenio@turnogol.app')
     expect(props.adminName).toBe('Lázaro Feijoo')
   })
 
@@ -104,7 +104,7 @@ describe('SuperAdminLayoutShell', () => {
   it('renderiza los links a /super-admin y /super-admin/tenants', () => {
     render(
       <SuperAdminLayoutShell
-        userEmail="duenio@turnogol.com.ar"
+        userEmail="duenio@turnogol.app"
         adminName="Lázaro Feijoo"
         signOut={vi.fn() as unknown as () => Promise<never>}
       >
@@ -122,7 +122,7 @@ describe('SuperAdminLayoutShell', () => {
   it('muestra el título del panel y el email del admin', () => {
     render(
       <SuperAdminLayoutShell
-        userEmail="duenio@turnogol.com.ar"
+        userEmail="duenio@turnogol.app"
         adminName="Lázaro Feijoo"
         signOut={vi.fn() as unknown as () => Promise<never>}
       >
@@ -132,6 +132,6 @@ describe('SuperAdminLayoutShell', () => {
 
     // El título aparece en la sidebar desktop Y en la mobile (drawer).
     expect(screen.getAllByText('TurnoGol — SuperAdmin').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('duenio@turnogol.com.ar').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('duenio@turnogol.app').length).toBeGreaterThan(0)
   })
 })

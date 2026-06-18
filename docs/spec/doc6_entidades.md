@@ -29,7 +29,7 @@ En este contexto: un complejo de fútbol. Un Tenant tiene su propia configuraci�
 ### Atributos propios
 ```
 id                UUID          PK
-slug              string        Único. URL amigable: "complejo-san-martin" → turnogol.com.ar/complejo-san-martin
+slug              string        Único. URL amigable: "complejo-san-martin" → turnogol.app/complejo-san-martin
 name              string        Nombre del complejo
 description       text          Descripción pública
 logo_url          string?       URL de la foto del logo (en storage)

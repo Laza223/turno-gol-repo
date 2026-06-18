@@ -509,7 +509,7 @@ import { loginAsAdmin, seedTestData } from './helpers';
 test.describe('Admin: Reserva Manual', () => {
   test.beforeEach(async ({ page }) => {
     await seedTestData(); // Crear tenant + canchas + jugadores de test
-    await loginAsAdmin(page, 'admin-test@turnogol.com');
+    await loginAsAdmin(page, 'admin-test@turnogol.app');
   });
 
   test('crear reserva manual y verla en la grilla', async ({ page }) => {

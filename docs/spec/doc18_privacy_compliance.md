@@ -159,7 +159,7 @@ La Política de Privacidad debe informar:
 
 4. Derecho de acceso, rectificación y supresión
    → Cómo solicitar acceso, corrección o eliminación de datos.
-   → Email dedicado: privacidad@turnogol.com.ar
+   → Email dedicado: privacidad@turnogol.app
    → Plazo de respuesta: 10 días hábiles.
 
 5. Carácter obligatorio/facultativo de los datos
@@ -225,7 +225,7 @@ La Ley 25.326 establece derechos de Acceso, Rectificación, Cancelación y Oposi
 ```
 IMPLEMENTACIÓN:
 
-1. El jugador envía email a privacidad@turnogol.com.ar solicitando sus datos.
+1. El jugador envía email a privacidad@turnogol.app solicitando sus datos.
 
 2. Verificamos la identidad (enviando un magic link al email registrado).
 
@@ -265,7 +265,7 @@ IMPLEMENTACIÓN:
 ```
 IMPLEMENTACIÓN:
 
-1. El jugador solicita eliminación vía privacidad@turnogol.com.ar o UI.
+1. El jugador solicita eliminación vía privacidad@turnogol.app o UI.
 
 2. Se verifican restricciones legales:
    - Datos de transacciones financieras: se retienen 5 años (obligación contable AFIP).
@@ -306,7 +306,7 @@ WHERE player_id = $player_id;
 UPDATE players SET
   first_name = '[Eliminado]',
   last_name = '[Eliminado]',
-  email = encode(digest(email, 'sha256'), 'hex') || '@deleted.turnogol.com',
+  email = encode(digest(email, 'sha256'), 'hex') || '@deleted.turnogol.app',
   phone = NULL,
   avatar_url = NULL,
   status = 'anonymized',     -- Estado específico para eliminación ARCO (distinto de 'banned' operativo)
@@ -608,7 +608,7 @@ Implementación técnica:
   □ Credenciales de DB/API en env vars, no en código
 
 Operativo:
-  □ Email privacidad@turnogol.com.ar configurado y monitoreado
+  □ Email privacidad@turnogol.app configurado y monitoreado
   □ Proceso de respuesta a solicitudes ARCO documentado
   □ Protocolo de respuesta a incidentes de datos documentado
   □ Equipo informado sobre obligaciones de la Ley 25.326
@@ -656,7 +656,7 @@ Operativo:
 │                                                                │
 │  REGISTRO: AAIP (obligatorio antes de operar comercialmente)  │
 │  DOCUMENTOS: Política de Privacidad, TyC, DPA, Cookie Policy │
-│  CONTACTO: privacidad@turnogol.com.ar                         │
+│  CONTACTO: privacidad@turnogol.app                         │
 └────────────────────────────────────────────────────────────────┘
 ```
 

@@ -17,7 +17,7 @@ const mockCapture = vi.mocked(captureMessage)
 function legacyReport(overrides: Record<string, unknown> = {}): Request {
   const body = {
     'csp-report': {
-      'document-uri': 'https://app.turnogol.com/grilla',
+      'document-uri': 'https://app.turnogol.app/grilla',
       'violated-directive': 'script-src',
       'effective-directive': 'script-src',
       'blocked-uri': 'https://evil.example/x.js',
@@ -57,7 +57,7 @@ describe('handleCspReport', () => {
     const context = ctx as { level?: string; extra?: Record<string, unknown> }
     expect(context.level).toBe('warning')
     expect(context.extra?.blockedUri).toBe('https://evil.example/x.js')
-    expect(context.extra?.documentUri).toBe('https://app.turnogol.com/grilla')
+    expect(context.extra?.documentUri).toBe('https://app.turnogol.app/grilla')
     expect(context.extra?.violatedDirective).toBe('script-src')
   })
 
@@ -66,9 +66,9 @@ describe('handleCspReport', () => {
       modernReport([
         {
           type: 'csp-violation',
-          url: 'https://app.turnogol.com/caja',
+          url: 'https://app.turnogol.app/caja',
           body: {
-            documentURL: 'https://app.turnogol.com/caja',
+            documentURL: 'https://app.turnogol.app/caja',
             effectiveDirective: 'img-src',
             violatedDirective: 'img-src',
             blockedURL: 'https://tracker.example/p.gif',

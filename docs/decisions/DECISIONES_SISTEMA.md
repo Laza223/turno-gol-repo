@@ -49,7 +49,7 @@
 > - `turnogol.app/[slug]` → página pública de cada complejo (reserva del jugador).
 > - `app.turnogol.app` → panel de administración de los complejos (staff).
 >
-> Pendiente: propagar `.app` + esta estructura a docs, emails (`soporte@`, `privacidad@`, `notificaciones@`, `api.`) y código (hoy usan `turnogol.com.ar`).
+> ✅ **Propagado 2026-06-18:** `.app` + esta estructura aplicada a docs, emails (`soporte@`, `privacidad@`, `notificaciones@`, `no-reply@`), templates, código y tests. Apex `turnogol.app` para público/landing/reserva; `app.turnogol.app` para panel staff (settings/billing/grilla). Las direcciones de test siguen usando el TLD reservado `.test` (RFC 6761).
 
 ---
 
@@ -500,7 +500,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 
 ### P11.2 — ¿El jugador puede ver canchas de varios complejos?
 
-**Estado actual**: Sí. La página pública de cada complejo (`turnogol.com.ar/complejo-san-martin`) muestra disponibilidad. El jugador puede buscar en varios complejos.
+**Estado actual**: Sí. La página pública de cada complejo (`turnogol.app/complejo-san-martin`) muestra disponibilidad. El jugador puede buscar en varios complejos.
 **Pregunta**: ¿Querés un "buscador/marketplace" donde el jugador ponga su zona y vea todos los complejos cerca? ¿O cada complejo tiene su link independiente?
 
 **Tu respuesta**: Si, también estaría bueno un buscador/marketplace donde el jugador ponga su zona y vea todos los complejos cerca. Pienso implementar el portal de ese estilo y todo eso ahora.
@@ -737,7 +737,7 @@ También es importante aclarar que yo pensaba que yo dije que no se cargaban los
 
 ### P16.6 — ¿Soporte al cliente: cómo se maneja?
 
-**Estado actual**: Email (soporte@turnogol.com.ar). No hay chat, no hay ticket system.
+**Estado actual**: Email (soporte@turnogol.app). No hay chat, no hay ticket system.
 **Pregunta**: ¿Email alcanza para v1?
 
 **Tu respuesta**: El soporte voy a poner el mail por ahora, en la v1.5 voy a agregar un soporte mas complejo. Pero con el mail alcanza por ahora.

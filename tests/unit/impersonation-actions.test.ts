@@ -88,7 +88,7 @@ describe('startImpersonationAction', () => {
   it('setea la cookie firmada y redirige a /dashboard', async () => {
     h.requireSystemAdminAction.mockResolvedValue({
       ok: true,
-      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.com' },
+      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.app' },
     })
     h.getTenantSummary.mockResolvedValue({ name: 'Complejo X' })
     h.insertAuditLog.mockResolvedValue(undefined)
@@ -131,7 +131,7 @@ describe('startImpersonationAction', () => {
   it('rechaza tenant inexistente — no setea cookie', async () => {
     h.requireSystemAdminAction.mockResolvedValue({
       ok: true,
-      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.com' },
+      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.app' },
     })
     h.getTenantSummary.mockResolvedValue(null)
     const { startImpersonationAction } = await loadActions()
@@ -146,7 +146,7 @@ describe('startImpersonationAction', () => {
   it('rechaza tenant sin admin activo para proxy — no setea cookie', async () => {
     h.requireSystemAdminAction.mockResolvedValue({
       ok: true,
-      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.com' },
+      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.app' },
     })
     h.getTenantSummary.mockResolvedValue({ name: 'Complejo X' })
     h.getFirstActiveAdminStaffUserId.mockResolvedValue(null)
@@ -162,7 +162,7 @@ describe('startImpersonationAction', () => {
   it('rechaza tenantId no-UUID', async () => {
     h.requireSystemAdminAction.mockResolvedValue({
       ok: true,
-      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.com' },
+      admin: { id: SYSTEM_ADMIN_ID, email: 'owner@turnogol.app' },
     })
     const { startImpersonationAction } = await loadActions()
 

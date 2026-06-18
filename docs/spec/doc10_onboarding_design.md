@@ -72,7 +72,7 @@ Registro (1 min)
 - Autocompletado de dirección con Google Places API
 - Provincia: selector pre-cargado (24 provincias argentinas)
 - NO pedir: CUIT, teléfono del complejo, email del complejo, fotos (todo opcional, después)
-- El slug se genera automáticamente del nombre (visible como preview: "turnogol.com.ar/complejo-san-martin")
+- El slug se genera automáticamente del nombre (visible como preview: "turnogol.app/complejo-san-martin")
 
 ### Paso 2: Tus Canchas (5 minutos)
 
@@ -177,7 +177,7 @@ Registro (1 min)
 ┌──────────────────────────────────────────────────────────┐
 │  🎉 ¡Tu complejo está online!                           │
 │                                                          │
-│  Tu link público: turnogol.com.ar/complejo-san-martin    │
+│  Tu link público: turnogol.app/complejo-san-martin    │
 │  [📋 Copiar link]  [📤 Compartir por WhatsApp]           │
 │                                                          │
 │  ────────────────────────────────────────────────────     │
@@ -205,7 +205,7 @@ Registro (1 min)
 
 ```
 ¡Hola! Ya podés reservar tu turno en [Complejo San Martín] online:
-👉 turnogol.com.ar/complejo-san-martin
+👉 turnogol.app/complejo-san-martin
 Elegí día, hora y cancha. ¡Sin llamar!
 ```
 

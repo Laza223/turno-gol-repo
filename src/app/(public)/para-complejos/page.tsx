@@ -289,7 +289,7 @@ function ShowcaseStrip() {
               <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-              <span className="ml-auto font-mono">grilla.turnogol.com.ar</span>
+              <span className="ml-auto font-mono">app.turnogol.app/grilla</span>
             </div>
             <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
               {[...Array(20)].map((_, i) => {

@@ -77,7 +77,7 @@ para empezar a configurar mi complejo sin fricción.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en `turnogol.com.ar/registrar`, cuando ingreso email válido + nombre completo + celular con formato argentino y hago click en "Crear cuenta", entonces se crea un StaffUser y recibo un magic link en mi email.
+- [ ] Dado que estoy en `turnogol.app/registrar`, cuando ingreso email válido + nombre completo + celular con formato argentino y hago click en "Crear cuenta", entonces se crea un StaffUser y recibo un magic link en mi email.
 - [ ] Dado que recibí el magic link, cuando hago click dentro de los 15 minutos, entonces quedo autenticado y soy redirigido al wizard de onboarding.
 - [ ] Dado que completé el registro, cuando inicio sesión, entonces mi rol es `admin` automáticamente.
 
@@ -121,7 +121,7 @@ para tener mi complejo operativo en menos de 20 minutos.
 - [ ] **Paso 3 (Horarios)**: Dado que estoy en el paso 3, cuando veo los horarios pre-cargados (Lun-Dom 08:00-00:00), entonces puedo editarlos por día o dejar los default.
 - [ ] **Paso 4 (Seña)**: Dado que estoy en el paso 4, cuando elijo "Sí, cobrar seña", entonces soy redirigido al OAuth de MercadoPago para conectar mi cuenta.
 - [ ] **Paso 4 (Seña)**: Dado que elijo "No cobrar seña", entonces se guarda `settings.requires_deposit = false` y el wizard termina.
-- [ ] Dado que completé el wizard, cuando llego al dashboard, entonces veo un checklist de progreso y mi complejo ya está live en `turnogol.com.ar/{slug}`.
+- [ ] Dado que completé el wizard, cuando llego al dashboard, entonces veo un checklist de progreso y mi complejo ya está live en `turnogol.app/{slug}`.
 - [ ] El wizard guarda progreso automáticamente en DB (no en localStorage). Si cierro el browser y vuelvo, retomo donde quedé.
 
 ❌ Edge Cases
@@ -226,7 +226,7 @@ para que los pagos lleguen directamente a mi cuenta sin intermediarios.
 
 **Historia**:
 Como Tomás, que busca dónde jugar,
-cuando accedo a `turnogol.com.ar/{slug}`,
+cuando accedo a `turnogol.app/{slug}`,
 quiero ver la información del complejo y su disponibilidad de canchas en tiempo real,
 para decidir rápido si reservo ahí y en qué horario.
 
@@ -238,7 +238,7 @@ para decidir rápido si reservo ahí y en qué horario.
 - [ ] Dado que hago click en un slot libre, cuando el complejo acepta reservas online, entonces se abre un modal de confirmación con: cancha, fecha, hora, precio, y monto de seña (si aplica).
 - [ ] Dado que navego entre días, cuando cambio de fecha, entonces la grilla se actualiza en <500ms según la latencia definida en Doc 5.
 - [ ] La página es responsive: funciona en mobile (iPhone, Android) y desktop.
-- [ ] La URL es SEO-friendly: `turnogol.com.ar/complejo-san-martin` (no UUID).
+- [ ] La URL es SEO-friendly: `turnogol.app/complejo-san-martin` (no UUID).
 
 ❌ Edge Cases
 - [ ] Si el complejo tiene status `suspended` o `churned` → la página muestra: "Este complejo no está disponible temporalmente."
@@ -1302,7 +1302,7 @@ para encontrar dónde jugar sin llamar a cada complejo.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en `turnogol.com.ar/buscar`, cuando ingreso zona/ciudad + fecha + hora aproximada, entonces veo una lista de complejos con disponibilidad en ese horario.
+- [ ] Dado que estoy en `turnogol.app/buscar`, cuando ingreso zona/ciudad + fecha + hora aproximada, entonces veo una lista de complejos con disponibilidad en ese horario.
 - [ ] Dado que veo los resultados, entonces cada resultado muestra: nombre del complejo, dirección, precio, slots disponibles, y distancia (si compartí ubicación).
 - [ ] Dado que hago click en un complejo, cuando veo su página, entonces veo la grilla de disponibilidad y puedo reservar directamente.
 - [ ] Dado que filtro por precio, cuando muevo el slider, entonces los resultados se actualizan en tiempo real.

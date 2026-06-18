@@ -20,7 +20,7 @@ export function getEmailProvider(): EmailProvider {
   const provider: EmailProvider = {
     send: async ({ to, subject, html }) => {
       const { error } = await resend.emails.send({
-        from: 'TurnoGol <no-reply@turnogol.com.ar>',
+        from: 'TurnoGol <no-reply@turnogol.app>',
         to,
         subject,
         html,

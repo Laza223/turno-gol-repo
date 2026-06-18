@@ -7,10 +7,17 @@ import {
   changePlanForSupport,
   extendTrial,
   forceTenantStatus,
+  PlanAlreadyAssignedError,
   reactivateTenant,
+  TenantNotFoundError,
   TrialNotActiveError,
+  updateTenantSettingsForSupport,
 } from '@/modules/super-admin/support.service'
-import { InvalidTransitionError } from '@/modules/billing/billing.errors'
+import {
+  InvalidTransitionError,
+  PlanNotFoundError,
+  SubscriptionNotFoundError,
+} from '@/modules/billing/billing.errors'
 import {
   cleanupAll,
   createTestStaffUser,
@@ -198,6 +205,53 @@ describe('extendTrial', () => {
 
     const expected = Date.now() + 7 * 24 * 60 * 60 * 1000
     expect(Math.abs(result.trialEndsAt.getTime() - expected)).toBeLessThan(60_000)
+
+    // El valor persistido (no solo el return) debe usar NOW como base, no el
+    // fin vencido (que daría now-3d+7d = now+4d). Si el branch max(now, end)
+    // se rompiera, el stored caería fuera de la tolerancia y este assert falla.
+    const stored = await sql<{ trial_ends_at: Date | string }[]>`
+      SELECT trial_ends_at FROM tenants WHERE id = ${tenantId}
+    `
+    expect(
+      Math.abs(new Date(stored[0]!.trial_ends_at).getTime() - expected),
+    ).toBeLessThan(60_000)
+
+    const audits = await fetchSupportAudits(sql, tenantId)
+    expect(audits).toHaveLength(1)
+    expect(audits[0]!.action).toBe('support.tenant.trial_extended')
+    expect(audits[0]!.metadata).toMatchObject({ days: 7 })
+  })
+
+  it('extiende trial cuando trial_ends_at es NULL usando NOW como base', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    // createTestTenant no fija trial_ends_at → NULL. El branch `?? now` debe
+    // anclar en NOW, no romper con NaN ni dejar la columna en NULL.
+    await sql`UPDATE tenants SET trial_ends_at = NULL WHERE id = ${tenantId}`
+
+    const result = await extendTrial(tenantId, 14, systemAdminId)
+
+    const expected = Date.now() + 14 * 24 * 60 * 60 * 1000
+    expect(Math.abs(result.trialEndsAt.getTime() - expected)).toBeLessThan(60_000)
+
+    const stored = await sql<{ trial_ends_at: Date | string | null }[]>`
+      SELECT trial_ends_at FROM tenants WHERE id = ${tenantId}
+    `
+    expect(stored[0]!.trial_ends_at).not.toBeNull()
+    expect(
+      Math.abs(new Date(stored[0]!.trial_ends_at as Date | string).getTime() - expected),
+    ).toBeLessThan(60_000)
+  })
+
+  it('lanza TenantNotFoundError y no escribe audit para un tenant inexistente', async () => {
+    const sql = getSql()
+    const ghostTenant = '00000000-0000-0000-0000-0000000000aa'
+
+    await expect(extendTrial(ghostTenant, 10, systemAdminId)).rejects.toBeInstanceOf(
+      TenantNotFoundError,
+    )
+
+    expect(await fetchSupportAudits(sql, ghostTenant)).toHaveLength(0)
   })
 
   it('rechaza tenants que no están en trialing y NO escribe audit', async () => {
@@ -285,6 +339,43 @@ describe('forceTenantStatus', () => {
     expect(audits).toHaveLength(1)
     expect(audits[0]!.metadata).toMatchObject({ after: { status: 'active' } })
   })
+
+  it('past_due → suspended con dunning ≥ 7d SÍ pasa el gate y audita', async () => {
+    // Contraparte del gate-fail: prueba que el gate es CONDICIONAL, no un
+    // bloqueo absoluto. Si alguien convirtiera el gate en un hard-block, el
+    // fail-test seguiría verde pero este caería.
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'past_due', 'predio', {
+      dunningStartedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+    })
+
+    const result = await forceTenantStatus(tenantId, 'suspended', systemAdminId)
+    expect(result).toEqual({ from: 'past_due', to: 'suspended' })
+
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('suspended')
+    expect((await fetchSubRow(sql, tenantId)).status).toBe('suspended')
+
+    const audits = await fetchSupportAudits(sql, tenantId)
+    expect(audits).toHaveLength(1)
+    expect(audits[0]!.action).toBe('support.tenant.status_forced')
+    expect(audits[0]!.metadata).toMatchObject({
+      before: { status: 'past_due' },
+      after: { status: 'suspended' },
+    })
+  })
+
+  it('forzar → active sin subscription lanza SubscriptionNotFoundError sin tocar el tenant', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql) // trialing, sin tenant_subscriptions
+
+    await expect(
+      forceTenantStatus(tenantId, 'active', systemAdminId),
+    ).rejects.toBeInstanceOf(SubscriptionNotFoundError)
+
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('trialing')
+    expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
+  })
 })
 
 // ─── reactivateTenant ────────────────────────────────────────────────────────
@@ -307,7 +398,39 @@ describe('reactivateTenant', () => {
     expect(audits).toHaveLength(1)
     expect(audits[0]!.action).toBe('support.tenant.status_forced')
     expect(audits[0]!.actor_id).toBe(systemAdminId)
-    expect(audits[0]!.metadata).toMatchObject({ reason: 'reactivated_by_support' })
+    expect(audits[0]!.metadata).toMatchObject({
+      reason: 'reactivated_by_support',
+      before: { status: 'canceled' },
+      after: { status: 'active' },
+    })
+  })
+
+  it('churned → active capturando el estado origen real en el audit', async () => {
+    // El metadata.before.status debe reflejar el ORIGEN real, no un literal
+    // hardcodeado. Una regresión que fijara before='canceled' pasaría el test
+    // de arriba pero fallaría acá.
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'churned', 'predio')
+
+    const result = await reactivateTenant(tenantId, systemAdminId)
+    expect(result.from).toBe('churned')
+
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('active')
+    const audits = await fetchSupportAudits(sql, tenantId)
+    expect(audits).toHaveLength(1)
+    expect(audits[0]!.metadata).toMatchObject({ before: { status: 'churned' } })
+  })
+
+  it('reactivar sin subscription lanza SubscriptionNotFoundError', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql) // trialing, sin sub
+
+    await expect(reactivateTenant(tenantId, systemAdminId)).rejects.toBeInstanceOf(
+      SubscriptionNotFoundError,
+    )
+
+    expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
   })
 })
 
@@ -335,6 +458,13 @@ describe('changePlanForSupport', () => {
     expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(0)
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
     expect(mockGateway.updatePreapprovalCalls[0]!.preapprovalId).toBe('mp-preapp-test-1')
+    // El monto recurrente nuevo debe ser EXACTAMENTE el price_monthly del plan
+    // destino (centavos). Sin este assert, mandar el precio del plan viejo o el
+    // anual en vez del mensual pasaría inadvertido.
+    const [{ price_monthly: complejoMonthly }] = await sql<{ price_monthly: number }[]>`
+      SELECT price_monthly FROM plans WHERE id = ${plans.complejo}
+    `
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(complejoMonthly)
 
     const audits = await fetchSupportAudits(sql, tenantId)
     expect(audits).toHaveLength(1)
@@ -365,6 +495,85 @@ describe('changePlanForSupport', () => {
     ).rejects.toMatchObject({ code: 'DOWNGRADE_BLOCKED' })
 
     expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.estadio)
+    expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
+  })
+
+  it('cambia el plan sin preapproval MP: no llama al gateway y audita mpAmountUpdated=false', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'active', 'predio') // sin mpSubscriptionId
+
+    const result = await changePlanForSupport(
+      tenantId,
+      plans.complejo,
+      systemAdminId,
+      mockGateway,
+    )
+    expect(result).toEqual({ fromPlanId: plans.predio, toPlanId: plans.complejo })
+
+    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.complejo)
+    // Sin preapproval activo NO debe tocarse MP.
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+
+    const audits = await fetchSupportAudits(sql, tenantId)
+    expect(audits).toHaveLength(1)
+    expect(audits[0]!.action).toBe('support.tenant.plan_changed')
+    expect(audits[0]!.metadata).toMatchObject({ mpAmountUpdated: false })
+  })
+
+  it('si el update del preapproval MP falla, rollbackea el plan y NO deja audit', async () => {
+    // Invariante de atomicidad declarado en support.service: el UPDATE de
+    // plan_id corre ANTES de tocar MP, pero todo vive en la misma tx de
+    // withTenantContext. Si MP tira, la tx rollbackea → plan_id intacto y sin
+    // audit. Este test caería si alguien sacara el plan_id del withTenantContext
+    // o swallowara el error del gateway.
+    class FailingGateway extends MockGateway {
+      override async updatePreapprovalAmount(): Promise<void> {
+        throw new Error('MP 500 — preapproval update failed')
+      }
+    }
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'active', 'predio', {
+      mpSubscriptionId: 'mp-preapp-rollback-1',
+    })
+
+    await expect(
+      changePlanForSupport(tenantId, plans.complejo, systemAdminId, new FailingGateway()),
+    ).rejects.toThrow('MP 500')
+
+    // Rollback: el plan sigue siendo el original y no quedó audit huérfano.
+    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.predio)
+    expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
+  })
+
+  it('rechaza reasignar el mismo plan con PlanAlreadyAssignedError sin tocar MP ni audit', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'active', 'predio', {
+      mpSubscriptionId: 'mp-preapp-same-1',
+    })
+
+    await expect(
+      changePlanForSupport(tenantId, plans.predio, systemAdminId, mockGateway),
+    ).rejects.toBeInstanceOf(PlanAlreadyAssignedError)
+
+    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.predio)
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+    expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
+  })
+
+  it('rechaza un plan destino inexistente/inactivo con PlanNotFoundError', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'active', 'predio')
+    const ghostPlan = '00000000-0000-0000-0000-0000000000bb'
+
+    await expect(
+      changePlanForSupport(tenantId, ghostPlan, systemAdminId, mockGateway),
+    ).rejects.toBeInstanceOf(PlanNotFoundError)
+
+    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.predio)
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
   })
 })
@@ -398,5 +607,93 @@ describe('cancelSubscriptionForSupport', () => {
       reason: 'pedido del cliente por email',
       after: { status: 'canceled' },
     })
+  })
+
+  it('si la cancelación del preapproval MP falla, NO deja el tenant medio-cancelado', async () => {
+    // billing.cancel cancela el preapproval ANTES de transicionar a canceled.
+    // Si MP tira, la tx debe rollbackear entera: nada de tenant 'canceled' sin
+    // haber cortado el cobro recurrente (cobraríamos a alguien ya dado de baja).
+    class FailingCancelGateway extends MockGateway {
+      override async cancelPreapproval(): Promise<void> {
+        throw new Error('MP 500 — cancel preapproval failed')
+      }
+    }
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'active', 'predio', {
+      mpSubscriptionId: 'mp-preapp-cancel-fail-1',
+    })
+
+    await expect(
+      cancelSubscriptionForSupport(
+        tenantId,
+        'baja solicitada',
+        systemAdminId,
+        new FailingCancelGateway(),
+      ),
+    ).rejects.toThrow('MP 500')
+
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('active')
+    expect((await fetchSubRow(sql, tenantId)).status).toBe('active')
+    expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
+  })
+})
+
+// ─── updateTenantSettingsForSupport ──────────────────────────────────────────
+// GAP: el 6º servicio exportado no tenía NINGÚN test. Cubre el happy path
+// (merge + audit con before/after reales) y el error de tenant inexistente.
+
+describe('updateTenantSettingsForSupport', () => {
+  it('aplica el patch whitelisteado y audita before/after con los valores reales', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+
+    const before = await sql<{ requires_deposit: boolean; booking_advance_days: number }[]>`
+      SELECT (settings->>'requires_deposit')::boolean AS requires_deposit,
+             (settings->>'booking_advance_days')::int AS booking_advance_days
+      FROM tenants WHERE id = ${tenantId}
+    `
+    const prevRequiresDeposit = before[0]!.requires_deposit
+    const prevAdvanceDays = before[0]!.booking_advance_days
+    const nextRequiresDeposit = !prevRequiresDeposit
+    const nextAdvanceDays = prevAdvanceDays + 3
+
+    await updateTenantSettingsForSupport(
+      tenantId,
+      { requires_deposit: nextRequiresDeposit, booking_advance_days: nextAdvanceDays },
+      systemAdminId,
+    )
+
+    // Efecto observable: el settings persistido refleja el patch; las claves NO
+    // tocadas siguen presentes (merge, no overwrite).
+    const after = await sql<
+      { requires_deposit: boolean; booking_advance_days: number; accepts_cash: unknown }[]
+    >`
+      SELECT (settings->>'requires_deposit')::boolean AS requires_deposit,
+             (settings->>'booking_advance_days')::int AS booking_advance_days,
+             settings->'accepts_cash' AS accepts_cash
+      FROM tenants WHERE id = ${tenantId}
+    `
+    expect(after[0]!.requires_deposit).toBe(nextRequiresDeposit)
+    expect(after[0]!.booking_advance_days).toBe(nextAdvanceDays)
+    expect(after[0]!.accepts_cash).not.toBeNull() // clave intacta tras el merge
+
+    const audits = await fetchSupportAudits(sql, tenantId)
+    expect(audits).toHaveLength(1)
+    expect(audits[0]!.action).toBe('support.tenant.settings_updated')
+    expect(audits[0]!.actor_type).toBe('system')
+    expect(audits[0]!.actor_id).toBe(systemAdminId)
+    expect(audits[0]!.metadata).toMatchObject({
+      before: { requires_deposit: prevRequiresDeposit, booking_advance_days: prevAdvanceDays },
+      after: { requires_deposit: nextRequiresDeposit, booking_advance_days: nextAdvanceDays },
+    })
+  })
+
+  it('lanza TenantNotFoundError para un tenant inexistente', async () => {
+    const ghostTenant = '00000000-0000-0000-0000-0000000000cc'
+
+    await expect(
+      updateTenantSettingsForSupport(ghostTenant, { requires_deposit: true }, systemAdminId),
+    ).rejects.toBeInstanceOf(TenantNotFoundError)
   })
 })

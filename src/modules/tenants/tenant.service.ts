@@ -1,5 +1,5 @@
 import { and, eq, like, or } from 'drizzle-orm'
-import { getDb } from '@/shared/db/client'
+import { getDb, getSql } from '@/shared/db/client'
 import { tenants, tenantStaffMembers } from '@/shared/db/schema'
 import { generateSlug } from './tenant.utils'
 import type {
@@ -154,51 +154,61 @@ export async function updateTenantSettings(
   tenantId: string,
   patch: UpdateTenantSettingsInput,
 ): Promise<void> {
-  const db = getDb()
-  const existing = await db
-    .select({ settings: tenants.settings })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1)
-  if (!existing.length) throw new Error('Tenant not found')
-  const merged = { ...(existing[0].settings as object), ...patch }
-  await db
-    .update(tenants)
-    .set({ settings: merged as unknown as Record<string, unknown>, updatedAt: new Date() })
-    .where(eq(tenants.id, tenantId))
+  // BUG FIX (jsonb double-encode): escribir el objeto via drizzle `.set()` sobre
+  // una columna jsonb con este driver (postgres-js) lo guarda como un JSON STRING
+  // escalar (`"{...}"`), no como objeto. Tras el save, `settings->>'key'` y
+  // `tenant.settings.key` devuelven null/undefined → la config del complejo queda
+  // corrupta. Se escribe con el cliente porsager + `sql.json()` (single-encode).
+  // Las hermanas updateOnboardingStep/completeOnboarding tienen el MISMO bug.
+  const sql = getSql()
+  const rows = await sql<{ settings: TenantSettings }[]>`
+    SELECT settings FROM tenants WHERE id = ${tenantId} LIMIT 1
+  `
+  if (!rows.length) throw new Error('Tenant not found')
+  const merged = { ...rows[0]!.settings, ...patch }
+  await sql`
+    UPDATE tenants
+    SET settings = ${sql.json(merged as unknown as Parameters<typeof sql.json>[0])},
+        updated_at = NOW()
+    WHERE id = ${tenantId}
+  `
 }
 
 export async function updateOnboardingStep(
   tenantId: string,
   step: number,
 ): Promise<void> {
-  const db = getDb()
-  const existing = await db
-    .select({ settings: tenants.settings })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1)
-  if (!existing.length) throw new Error('Tenant not found')
-  const settings = { ...(existing[0].settings as object), onboarding_step: step }
-  await db
-    .update(tenants)
-    .set({ settings: settings as unknown as Record<string, unknown>, updatedAt: new Date() })
-    .where(eq(tenants.id, tenantId))
+  // Mismo bug de doble-encode jsonb que updateTenantSettings: el write via
+  // drizzle `.set({ settings })` guardaba la columna como JSON-string escalar.
+  // Se escribe con porsager + sql.json() (single-encode).
+  const sql = getSql()
+  const rows = await sql<{ settings: TenantSettings }[]>`
+    SELECT settings FROM tenants WHERE id = ${tenantId} LIMIT 1
+  `
+  if (!rows.length) throw new Error('Tenant not found')
+  const settings = { ...rows[0]!.settings, onboarding_step: step }
+  await sql`
+    UPDATE tenants
+    SET settings = ${sql.json(settings as unknown as Parameters<typeof sql.json>[0])},
+        updated_at = NOW()
+    WHERE id = ${tenantId}
+  `
 }
 
 export async function completeOnboarding(tenantId: string): Promise<void> {
-  const db = getDb()
-  const existing = await db
-    .select({ settings: tenants.settings })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1)
-  if (!existing.length) throw new Error('Tenant not found')
-  const settings = { ...(existing[0].settings as object), onboarding_completed: true }
-  await db
-    .update(tenants)
-    .set({ settings: settings as unknown as Record<string, unknown>, updatedAt: new Date() })
-    .where(eq(tenants.id, tenantId))
+  // Mismo bug de doble-encode jsonb: ver updateTenantSettings.
+  const sql = getSql()
+  const rows = await sql<{ settings: TenantSettings }[]>`
+    SELECT settings FROM tenants WHERE id = ${tenantId} LIMIT 1
+  `
+  if (!rows.length) throw new Error('Tenant not found')
+  const settings = { ...rows[0]!.settings, onboarding_completed: true }
+  await sql`
+    UPDATE tenants
+    SET settings = ${sql.json(settings as unknown as Parameters<typeof sql.json>[0])},
+        updated_at = NOW()
+    WHERE id = ${tenantId}
+  `
 }
 
 export async function connectMercadoPago(

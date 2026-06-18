@@ -17,6 +17,23 @@ export const GET = withPlayer(async (req, user, tx) => {
   }
   const bookingId = parsedId.data
 
+  // El jugador no tiene app.current_tenant_id, así que el JOIN a courts (RLS por
+  // tenant, FORCE RLS) quedaría vacío y la ruta devolvería 404 hasta para el
+  // dueño. Pre-leemos el tenant desde bookings: player_own_bookings_select solo
+  // expone la fila si la reserva es del jugador. Si no lo es, 0 filas → 404 sin
+  // setear contexto ajeno (preserva la protección IDOR). Recién con el tenant
+  // del propio booking seteado, el JOIN a courts resuelve.
+  const pre = await tx.execute(sql`
+    SELECT tenant_id FROM bookings WHERE id = ${bookingId} LIMIT 1
+  `)
+  const owned = (pre as unknown as Array<{ tenant_id: string }>)[0]
+  if (!owned) {
+    return notFound('La reserva no existe.')
+  }
+  await tx.execute(
+    sql`SELECT set_config('app.current_tenant_id', ${owned.tenant_id}, true)`,
+  )
+
   const rows = await tx.execute(sql`
     SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
            b.type, b.status, b.price_snapshot, b.deposit_status,

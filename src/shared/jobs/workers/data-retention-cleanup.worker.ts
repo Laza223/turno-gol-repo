@@ -51,6 +51,14 @@ export async function runDataRetentionCleanup(): Promise<void> {
         await tx.execute(drizzleSql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tenantId}`)
         await tx.execute(drizzleSql`DELETE FROM cash_flows WHERE tenant_id = ${tenantId}`)
         await tx.execute(drizzleSql`DELETE FROM payments WHERE tenant_id = ${tenantId}`)
+        // Tenant-scoped rows whose FK to tenants is ON DELETE CASCADE never
+        // fires here (we soft-anonymize the tenants row instead of deleting it)
+        // plus `reviews`, whose booking_id is a RESTRICT FK that the replica
+        // role would otherwise leave dangling. Delete reviews before bookings.
+        await tx.execute(drizzleSql`DELETE FROM reviews WHERE tenant_id = ${tenantId}`)
+        await tx.execute(drizzleSql`DELETE FROM push_subscriptions WHERE tenant_id = ${tenantId}`)
+        await tx.execute(drizzleSql`DELETE FROM player_favorites WHERE tenant_id = ${tenantId}`)
+        await tx.execute(drizzleSql`DELETE FROM feature_flags WHERE tenant_id = ${tenantId}`)
         await tx.execute(drizzleSql`DELETE FROM bookings WHERE tenant_id = ${tenantId}`)
         await tx.execute(drizzleSql`DELETE FROM abonados WHERE tenant_id = ${tenantId}`)
         await tx.execute(drizzleSql`DELETE FROM products WHERE tenant_id = ${tenantId}`)

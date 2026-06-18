@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { computeMpMockEnabled } from './mock-mp'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const uuid = z.string().regex(UUID_RE, 'UUID inválido')
@@ -31,7 +32,11 @@ export const webhookPayloadSchema = z.object({
       .refine(
         (v) =>
           MP_ID_RE.test(v) ||
-          (process.env.MP_MOCK_MODE === '1' && MOCK_MP_ID_RE.test(v)),
+          // Mock ids are accepted only when the env-mock gateway is active.
+          // Use the same hard gate as the rest of the system
+          // (`MP_MOCK_MODE=1` AND `NODE_ENV !== 'production'`) so a leaked
+          // `MP_MOCK_MODE=1` in prod can't make the schema accept MOCK-* ids.
+          (computeMpMockEnabled() && MOCK_MP_ID_RE.test(v)),
         'invalid mpPaymentId',
       ),
   }),

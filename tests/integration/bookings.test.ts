@@ -445,6 +445,81 @@ describe('terminal state inmutabilidad', () => {
       sql`UPDATE bookings SET notes_internal = 'foo' WHERE id = ${bookingId}`,
     ).rejects.toThrow(/terminal/i)
   })
+
+  it('UPDATE on completed booking is rejected by trigger (incl. status→no_show)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    // PAST_DATE so the booking can be legitimately completed (B1: time_end passed).
+    const created = await withTenantContext(tenant.id, (tx) =>
+      createManualBooking(
+        tenant.id,
+        {
+          courtId,
+          date: PAST_DATE,
+          timeStart: '08:00',
+          timeEnd: '09:00',
+          durationMins: 60,
+          type: 'spontaneous',
+          staffUserId: staff.id,
+        },
+        tx,
+      ),
+    )
+    const completed = await withTenantContext(tenant.id, (tx) =>
+      completeBooking(created.id, 'admin', tx),
+    )
+    expect(completed.status).toBe('completed')
+
+    // Any field UPDATE on a 'completed' row is rejected by the trigger.
+    await expect(
+      sql`UPDATE bookings SET notes_internal = 'foo' WHERE id = ${created.id}`,
+    ).rejects.toThrow(/terminal/i)
+
+    // doc6 §3 mentions a 24h completed → no_show correction. It is NOT implemented:
+    // enforce_booking_invariants_fn blocks it like any other post-terminal change.
+    // If P5 ever implements the 24h window, this assertion will fail on purpose,
+    // forcing a deliberate review instead of a silent behavior change.
+    await expect(
+      sql`UPDATE bookings SET status = 'no_show' WHERE id = ${created.id}`,
+    ).rejects.toThrow(/terminal/i)
+  })
+
+  it('UPDATE on no_show booking is rejected by trigger', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    // PAST_DATE so the slot is past-due for no-show marking (B1: time_start passed).
+    const created = await withTenantContext(tenant.id, (tx) =>
+      createManualBooking(
+        tenant.id,
+        {
+          courtId,
+          date: PAST_DATE,
+          timeStart: '08:00',
+          timeEnd: '09:00',
+          durationMins: 60,
+          type: 'spontaneous',
+          staffUserId: staff.id,
+        },
+        tx,
+      ),
+    )
+    const marked = await withTenantContext(tenant.id, (tx) =>
+      markNoShow(created.id, staff.id, tx),
+    )
+    expect(marked.status).toBe('no_show')
+
+    await expect(
+      sql`UPDATE bookings SET notes_internal = 'foo' WHERE id = ${created.id}`,
+    ).rejects.toThrow(/terminal/i)
+  })
 })
 
 describe('completeBooking', () => {

@@ -249,7 +249,7 @@ export type TenantDetail = {
     email: string
     firstName: string
     lastName: string
-    role: 'admin' | 'manager' | 'read_only'
+    role: 'admin' | 'manager'
     isActive: boolean
     lastLoginAt: Date | null
   }>

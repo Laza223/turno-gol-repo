@@ -25,7 +25,6 @@ interface StaffMember {
 const ROLE_BADGE_CLASSES: Record<StaffRole, string> = {
   admin: 'bg-violet-50 text-violet-700 ring-violet-600/20',
   manager: 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  read_only: 'bg-slate-100 text-slate-600 ring-slate-500/20',
 }
 
 async function getStaffMembers(tenantId: string): Promise<StaffMember[]> {

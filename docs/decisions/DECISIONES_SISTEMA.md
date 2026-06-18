@@ -44,6 +44,13 @@
 
 **Tu respuesta**: Esta definido, es Turnogol (.com)
 
+> **🔄 ACTUALIZACIÓN 2026-06-18:** El dominio definitivo es **turnogol.app** (NO .com.ar ni .com). Estructura de subdominios definida:
+> - `turnogol.app` → landing principal.
+> - `turnogol.app/[slug]` → página pública de cada complejo (reserva del jugador).
+> - `app.turnogol.app` → panel de administración de los complejos (staff).
+>
+> Pendiente: propagar `.app` + esta estructura a docs, emails (`soporte@`, `privacidad@`, `notificaciones@`, `api.`) y código (hoy usan `turnogol.com.ar`).
+
 ---
 
 ## 2. USUARIOS Y ROLES
@@ -61,6 +68,8 @@
 **Pregunta**: ¿Está bien así? ¿El `readonly` te sirve o lo sacamos? ¿Necesitás algún rol más, tipo un "super admin" tuyo para gestionar todos los complejos desde atrás?
 
 **Tu respuesta**: De que sirve el readonly? Me parece que no es necesario. Lo mismo con el receptionist. Creo que bastaria con que haya un solo rol que sea admin y en las secciones sensibles de la app usar un pin o clave para acceder. De esta forma, el empleado del complejo no puede tocar los precios, ni los horarios, ni nada. Solo puede hacer lo que deberia hacer un receptionista y si necesita alguna otra funcionalidad sensible, lo habla con el dueño. Es necesario que pensemos que serían esas "Zonas sensibles", pero creo que bastaría con que haya un solo rol y el rol mío "Super Admin".
+
+> **🔄 ACTUALIZACIÓN 2026-06-18:** Decisión final = **2 roles de staff**: `admin` (Dueño, acceso total) y `manager` (Encargado: grilla/reservas/caja, sin precios ni config). El rol `manager` es **opcional** por complejo. Se **elimina `read_only`** (no aporta). El código ya tiene `admin`/`manager`/`read_only` (migración 026) → pendiente quitar `read_only`. Más el "Super Admin" del sistema (`system_admins`).
 
 ---
 
@@ -92,6 +101,8 @@
 **Contexto**: Esto pasa cuando un dueño tiene 2 complejos, o cuando un empleado trabaja en dos lugares.
 
 **Tu respuesta**: No, no va a existir mas el rol "Recepcionist". Solo va a existir el rol "Admin" de cada complejo.
+
+> **🔄 ACTUALIZACIÓN 2026-06-18:** Ver P2.1 — además de `admin` existe `manager` (Encargado, opcional). Un mismo staff puede pertenecer a varios complejos vía `tenant_staff_members` con su rol por complejo.
 
 ---
 
@@ -193,6 +204,8 @@
 
 **Tu respuesta**: Esto me gustaría manejarlo como en ATC: "Seña parametrizada: Es una regla opcional configurada por el complejo. Puede ser obligatoria (pago inmediato), garantía (cobro solo ante inasistencia) o inexistente, dependiendo de la política de cada club en el panel de administración."
 
+> **🔄 ACTUALIZACIÓN 2026-06-18:** Para **v1** la seña es solo **obligatoria (on, %) o inexistente (off)**. El **modo "garantía" NO se implementa en v1** (se evalúa más adelante). Config en `tenants.settings` (`requires_deposit` + `deposit_percentage`).
+
 ---
 
 ### P4.2 — ¿El porcentaje de seña es igual para todos los horarios?
@@ -201,6 +214,8 @@
 **Pregunta**: ¿Debería poder ser distinto por franja? Ej: 50% viernes noche, 20% martes mañana.
 
 **Tu respuesta**: Seña por cancha: El porcentaje (o monto fijo) es único por cada cancha. Si se usa "Porcentaje", el valor de la seña variará según el precio del horario (Pico/Valle), pero la tasa aplicada es siempre la misma.
+
+> **🔄 ACTUALIZACIÓN 2026-06-18:** Para **v1** el `deposit_percentage` es **global por complejo** (un solo % en `tenants.settings`), NO por cancha. Seña por-cancha queda fuera de v1.
 
 ---
 
@@ -228,6 +243,8 @@
 **Pregunta**: ¿12 horas de default está bien? ¿Querés que el admin pueda hacer refunds manuales en cualquier momento?
 
 **Tu respuesta**: Reembolso de seña: Proceso condicionado a la "Ventana de Cancelación" del club. Se ejecuta automáticamente como saldo en la Billetera Virtual del usuario si se cancela a tiempo, o queda para el club si se excede el plazo configurado.
+
+> **🔄 ACTUALIZACIÓN 2026-06-18:** **NO hay billetera virtual del jugador en v1.** El reembolso es **directo por MercadoPago** (refund) si cancela dentro de la ventana; si cancela fuera, la seña queda para el complejo. No hay sistema de créditos/saldo a favor del jugador en v1.
 
 ---
 
@@ -446,6 +463,8 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 
 **Tu respuesta**: No, no quiero gestión de gastos. Solo ingresos y sin stock. No me gusta tocar lo que no sé. Para eso ya tengo otros sistemas. Este es solo para reservas.
 
+> **🔄 ACTUALIZACIÓN 2026-06-18:** Cambio de opinión → **SÍ se manejan gastos**. `cashflow_type` incluye `expense` con categoría `operating_expense` (migración 025, "rediseño de Caja"). Manejo de caja completo (ingresos + gastos + cierre diario).
+
 ---
 
 ### P10.2 — ¿Cierre de caja diario?
@@ -463,6 +482,8 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Pregunta**: ¿Querés gestión de stock en v1 o lo dejás para después?
 
 **Tu respuesta**: No, no quiero gestión de stock. Solo ingresos y sin stock. No me gusta tocar lo que no sé. Para eso ya tengo otros sistemas. Este es solo para reservas.
+
+> **🔄 ACTUALIZACIÓN 2026-06-18:** Cambio de opinión → **SÍ hay stock/cantina en v1**. Tabla `products` (precio, stock, alerta de stock bajo, categoría). Las ventas generan CashFlow categoría `product_sale`.
 
 ---
 
@@ -556,6 +577,8 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Pregunta**: ¿Confirmás que queda fuera de v1?
 
 **Tu respuesta**: Queda afuera para v1.
+
+> **🔄 ACTUALIZACIÓN 2026-06-18:** Sigue **fuera de v1** y además hay que **eliminar del código** todo rastro de esta feature: tablas `open_matches` + `open_match_players`, enum `open_match_status`, triggers/RLS y cualquier servicio/ruta. Se rediseñará desde cero más adelante.
 
 ---
 

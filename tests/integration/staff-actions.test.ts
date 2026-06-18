@@ -148,13 +148,13 @@ describe('updateStaffRoleAction', () => {
     const otherMemberId = await linkStaffToTenant(sql, tenant.id, other.id, 'manager')
     asStaff(tenant.id, admin.id)
 
-    const res = await updateStaffRoleAction(otherMemberId, 'read_only')
+    const res = await updateStaffRoleAction(otherMemberId, 'admin')
     expect(res.success).toBe(true)
 
     const rows = await sql<{ role: string }[]>`
       SELECT role FROM tenant_staff_members WHERE id = ${otherMemberId}
     `
-    expect(rows[0]?.role).toBe('read_only')
+    expect(rows[0]?.role).toBe('admin')
   })
 
   it('bloquea cambiarse el rol a sí mismo (protección lockout)', async () => {
@@ -166,7 +166,7 @@ describe('updateStaffRoleAction', () => {
     await linkStaffToTenant(sql, tenant.id, other.id, 'admin')
     asStaff(tenant.id, admin.id)
 
-    const res = await updateStaffRoleAction(selfMemberId, 'read_only')
+    const res = await updateStaffRoleAction(selfMemberId, 'manager')
     expect(res.success).toBe(false)
     if (!res.success) expect(res.error).toContain('propio rol')
 
@@ -200,7 +200,7 @@ describe('updateStaffRoleAction', () => {
     const foreignMemberId = await linkStaffToTenant(sql, otherTenant.id, foreign.id, 'manager')
     asStaff(tenant.id, admin.id)
 
-    const res = await updateStaffRoleAction(foreignMemberId, 'read_only')
+    const res = await updateStaffRoleAction(foreignMemberId, 'manager')
     expect(res.success).toBe(false)
     if (!res.success) expect(res.error).toContain('Miembro no encontrado')
   })
@@ -236,7 +236,7 @@ describe('staff actions — solo un admin gestiona el equipo (roles 026)', () =>
     await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
     asStaff(tenant.id, manager.id)
 
-    const res = await updateStaffRoleAction(adminMemberId, 'read_only')
+    const res = await updateStaffRoleAction(adminMemberId, 'manager')
     expect(res.success).toBe(false)
     if (!res.success) expect(res.error).toContain('Solo un administrador')
 
@@ -246,13 +246,13 @@ describe('staff actions — solo un admin gestiona el equipo (roles 026)', () =>
     expect(rows[0]?.role).toBe('admin')
   })
 
-  it('deactivateStaffAction rechaza a un actor Solo lectura', async () => {
+  it('deactivateStaffAction rechaza a un actor Encargado', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const admin = await createTestStaffUser(sql)
     const viewer = await createTestStaffUser(sql)
     const adminMemberId = await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
-    await linkStaffToTenant(sql, tenant.id, viewer.id, 'read_only')
+    await linkStaffToTenant(sql, tenant.id, viewer.id, 'manager')
     asStaff(tenant.id, viewer.id)
 
     const res = await deactivateStaffAction(adminMemberId)
@@ -289,10 +289,10 @@ describe('inviteStaffAction', () => {
     asStaff(tenant.id, owner.id)
 
     const fd = new FormData()
-    fd.set('email', 'lectura@staff.local')
-    fd.set('firstName', 'Solo')
-    fd.set('lastName', 'Lectura')
-    fd.set('role', 'read_only')
+    fd.set('email', 'segundo-admin@staff.local')
+    fd.set('firstName', 'Segundo')
+    fd.set('lastName', 'Admin')
+    fd.set('role', 'admin')
 
     const res = await inviteStaffAction(fd)
     expect(res.success).toBe(true)
@@ -300,13 +300,13 @@ describe('inviteStaffAction', () => {
     const rows = await sql<{ role: string }[]>`
       SELECT tsm.role FROM tenant_staff_members tsm
       JOIN staff_users su ON su.id = tsm.staff_user_id
-      WHERE su.email = 'lectura@staff.local' AND tsm.tenant_id = ${tenant.id}
+      WHERE su.email = 'segundo-admin@staff.local' AND tsm.tenant_id = ${tenant.id}
     `
-    expect(rows[0]?.role).toBe('read_only')
+    expect(rows[0]?.role).toBe('admin')
     expect(updateUserById).toHaveBeenCalledWith(
       'new-auth-id',
       expect.objectContaining({
-        app_metadata: expect.objectContaining({ role: 'read_only' }),
+        app_metadata: expect.objectContaining({ role: 'admin' }),
       }),
     )
   })

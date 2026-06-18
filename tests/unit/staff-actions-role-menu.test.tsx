@@ -18,7 +18,7 @@ afterEach(() => {
 
 function renderActions(
   overrides: Partial<{
-    role: 'admin' | 'manager' | 'read_only'
+    role: 'admin' | 'manager'
     isActive: boolean
     activeAdminCount: number
   }> = {},
@@ -48,16 +48,15 @@ async function openMenu() {
 }
 
 describe('StaffActions — cambio de rol', () => {
-  it('ofrece cambiar a los otros 2 roles, nunca al rol actual', async () => {
+  it('ofrece cambiar al otro rol, nunca al rol actual', async () => {
     renderActions({ role: 'manager' })
     await openMenu()
     expect(screen.getByRole('menuitem', { name: /Cambiar a Administrador/ })).toBeTruthy()
-    expect(screen.getByRole('menuitem', { name: /Cambiar a Solo lectura/ })).toBeTruthy()
     expect(screen.queryByRole('menuitem', { name: /Cambiar a Encargado/ })).toBeNull()
   })
 
   it('invoca updateStaffRoleAction con el memberId y el rol elegido', async () => {
-    renderActions({ role: 'read_only' })
+    renderActions({ role: 'admin' })
     await openMenu()
     fireEvent.click(screen.getByRole('menuitem', { name: /Cambiar a Encargado/ }))
     await waitFor(() => {

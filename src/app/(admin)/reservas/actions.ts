@@ -36,7 +36,7 @@ export type BookingActionResult =
 export async function createBookingAction(
   data: unknown,
 ): Promise<BookingActionResult> {
-  // Cruce #1: rol leído de DB — read_only (Solo lectura) no opera reservas.
+  // Cruce #1: rol leído de DB — solo admin/manager operan reservas.
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth

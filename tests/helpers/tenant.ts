@@ -127,7 +127,7 @@ export async function linkStaffToTenant(
   sql: Sql,
   tenantId: string,
   staffUserId: string,
-  role: 'admin' | 'manager' | 'read_only' = 'admin',
+  role: 'admin' | 'manager' = 'admin',
 ): Promise<string> {
   const rows = await sql<{ id: string }[]>`
     INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role, is_active)

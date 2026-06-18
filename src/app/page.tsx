@@ -18,7 +18,6 @@ import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 import SiteFooter from '@/components/site/SiteFooter'
 import HeroSearch from '@/components/site/HeroSearch'
 import FeaturedComplexCard from '@/components/site/FeaturedComplexCard'
-import OpenMatchCard from '@/components/site/OpenMatchCard'
 import Reveal from '@/components/site/Reveal'
 import {
   listPublicCities,
@@ -26,8 +25,6 @@ import {
   type CityCount,
   type PublicTenantCard,
 } from '@/modules/tenants/search.service'
-import { getOpenMatches } from '@/modules/open-matches/open-match.service'
-import type { OpenMatchCard as OpenMatch } from '@/modules/open-matches/open-match.types'
 
 export const metadata = buildMetadata({
   title: 'TurnoGol — Encontrá y reservá tu cancha de fútbol',
@@ -37,8 +34,8 @@ export const metadata = buildMetadata({
   titleAbsolute: true,
 })
 
-// ISR: la landing se regenera cada 5 min (destacados + partidos abiertos frescos
-// sin pegarle a la DB en cada visita). Mejor LCP/SEO que force-dynamic.
+// ISR: la landing se regenera cada 5 min (destacados frescos sin pegarle a la
+// DB en cada visita). Mejor LCP/SEO que force-dynamic.
 export const revalidate = 300
 
 // Cargas resilientes: si la DB falla o está vacía, la sección no se rompe ni
@@ -59,16 +56,6 @@ async function loadFeatured(): Promise<PublicTenantCard[]> {
     return results
   } catch (err) {
     Sentry.captureException(err, { tags: { section: 'landing.featured' } })
-    return []
-  }
-}
-
-async function loadOpenMatches(): Promise<OpenMatch[]> {
-  try {
-    const { matches } = await getOpenMatches({ status: 'open', limit: 6 })
-    return matches
-  } catch (err) {
-    Sentry.captureException(err, { tags: { section: 'landing.openMatches' } })
     return []
   }
 }
@@ -108,10 +95,9 @@ const playerStats = [
 ]
 
 export default async function HomePage() {
-  const [cities, featured, openMatches] = await Promise.all([
+  const [cities, featured] = await Promise.all([
     loadCities(),
     loadFeatured(),
-    loadOpenMatches(),
   ])
 
   return (
@@ -124,7 +110,6 @@ export default async function HomePage() {
       </PortalSessionProvider>
       <Hero cities={cities} />
       {featured.length > 0 && <FeaturedComplexes complexes={featured} />}
-      {openMatches.length > 0 && <OpenMatchesShowcase matches={openMatches} />}
       <HowItWorks />
       <StatsBar />
       <OwnerBanner />
@@ -239,36 +224,6 @@ function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[] }) {
           {complexes.map((t, i) => (
             <Reveal key={t.id} delay={i * 60} className="h-full">
               <FeaturedComplexCard tenant={t} />
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function OpenMatchesShowcase({ matches }: { matches: OpenMatch[] }) {
-  return (
-    <section className="border-y border-white/5 bg-slate-900/40 py-20 sm:py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Reveal>
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
-              Comunidad · Falta uno
-            </p>
-            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Partidos abiertos
-            </h2>
-            <p className="mt-3 text-base text-slate-400">
-              ¿Te falta gente o querés sumarte a un partido ya armado? Encontrá dónde jugar hoy.
-            </p>
-          </div>
-        </Reveal>
-
-        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {matches.map((m, i) => (
-            <Reveal key={m.id} delay={i * 60} className="h-full">
-              <OpenMatchCard match={m} />
             </Reveal>
           ))}
         </div>

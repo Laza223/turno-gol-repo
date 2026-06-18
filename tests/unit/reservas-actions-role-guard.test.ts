@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Cruce #1 (auditoría cruzada junio): ROLES × ACCIONES RÁPIDAS.
-// Las 5 Server Actions de reservas deben rechazar a un staff `read_only`
-// ("Solo lectura": ver reportes) ANTES de tocar la DB o el gateway de MP.
-// El rol se lee de la DB vía getStaffRole — el claim del JWT está hardcodeado
-// a 'admin' en extractAuthUser y NO sirve como protección.
+// Las 5 Server Actions de reservas deben rechazar a un staff SIN membresía
+// activa (rol null) ANTES de tocar la DB o el gateway de MP. admin y manager
+// (Encargado) operan con normalidad. El rol se lee de la DB vía getStaffRole —
+// el claim del JWT está hardcodeado a 'admin' en extractAuthUser y NO protege.
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({
@@ -67,31 +67,31 @@ beforeEach(() => {
   )
 })
 
-describe('reservas actions — staff read_only es rechazado (cruce #1)', () => {
+describe('reservas actions — staff sin membresía activa (rol null) es rechazado (cruce #1)', () => {
   beforeEach(() => {
-    vi.mocked(getStaffRole).mockResolvedValue('read_only')
+    vi.mocked(getStaffRole).mockResolvedValue(null)
   })
 
-  it('createBookingAction no crea reservas para read_only', async () => {
+  it('createBookingAction no crea reservas sin rol', async () => {
     const res = await createBookingAction({})
     expect(res.success).toBe(false)
     expect(vi.mocked(createManualBooking)).not.toHaveBeenCalled()
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 
-  it('confirmDepositPaymentAction no confirma señas para read_only', async () => {
+  it('confirmDepositPaymentAction no confirma señas sin rol', async () => {
     const res = await confirmDepositPaymentAction('b-1')
     expect(res.success).toBe(false)
     expect(vi.mocked(transitionFromPendingPayment)).not.toHaveBeenCalled()
   })
 
-  it('completeBookingAction no completa reservas para read_only', async () => {
+  it('completeBookingAction no completa reservas sin rol', async () => {
     const res = await completeBookingAction('b-1')
     expect(res.success).toBe(false)
     expect(vi.mocked(completeBooking)).not.toHaveBeenCalled()
   })
 
-  it('markNoShowAction no marca ausencias (deuda/ban) para read_only', async () => {
+  it('markNoShowAction no marca ausencias (deuda/ban) sin rol', async () => {
     const res = await markNoShowAction('b-1')
     expect(res.success).toBe(false)
     expect(vi.mocked(handleNoShow)).not.toHaveBeenCalled()
@@ -103,13 +103,6 @@ describe('reservas actions — staff read_only es rechazado (cruce #1)', () => {
     expect(vi.mocked(getDb)).not.toHaveBeenCalled()
     expect(vi.mocked(resolveTenantGateway)).not.toHaveBeenCalled()
     expect(vi.mocked(cancelByAdmin)).not.toHaveBeenCalled()
-  })
-
-  it('sin membresía activa (rol null) también rechaza', async () => {
-    vi.mocked(getStaffRole).mockResolvedValue(null)
-    const res = await completeBookingAction('b-1')
-    expect(res.success).toBe(false)
-    expect(vi.mocked(completeBooking)).not.toHaveBeenCalled()
   })
 })
 

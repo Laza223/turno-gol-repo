@@ -1,21 +1,21 @@
 import { afterAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 
-// Migración 026: el ENUM staff_role pasa de solo 'admin' a 3 niveles fijos.
-// 'admin' (Administrador), 'manager' (Encargado), 'read_only' (Solo lectura).
+// Migración 026 sumó 'manager'/'read_only'; la 029 quitó 'read_only'. El ENUM
+// staff_role queda en 2 niveles: 'admin' (Administrador) y 'manager' (Encargado).
 // El orden importa: 'admin' primero preserva el default de la columna.
 
 afterAll(async () => {
   await closeSql()
 })
 
-describe('staff_role enum (migración 026)', () => {
-  it('tiene exactamente admin, manager y read_only', async () => {
+describe('staff_role enum (migración 029)', () => {
+  it('tiene exactamente admin y manager', async () => {
     const sql = getSql()
     const rows = await sql<{ value: string }[]>`
       SELECT unnest(enum_range(NULL::staff_role))::text AS value
     `
-    expect(rows.map((r) => r.value)).toEqual(['admin', 'manager', 'read_only'])
+    expect(rows.map((r) => r.value)).toEqual(['admin', 'manager'])
   })
 
   it('mantiene admin como default de tenant_staff_members.role', async () => {

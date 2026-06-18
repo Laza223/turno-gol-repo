@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Cruces #2 y #3 (auditoría cruzada junio): ROLES × CANTINA/CAJA.
-// - read_only ("Solo lectura": ver reportes) no puede registrar ventas ni
-//   movimientos (createCashFlowAction) ni cerrar la caja (closeDayAction).
+// - admin y manager (Encargado) operan la caja; sin membresía activa (rol
+//   null) se rechaza createCashFlowAction y closeDayAction.
 // - La configuración de productos de cantina (saveCanteenProductsAction,
 //   tenants.settings.canteen_products) es SOLO admin: manager es "Sin acceso
 //   a configuración" según roles.ts.
@@ -58,29 +58,22 @@ beforeEach(() => {
   )
 })
 
-describe('caja actions — staff read_only es rechazado (cruce #2)', () => {
+describe('caja actions — staff sin membresía activa (rol null) es rechazado (cruce #2)', () => {
   beforeEach(() => {
-    vi.mocked(getStaffRole).mockResolvedValue('read_only')
+    vi.mocked(getStaffRole).mockResolvedValue(null)
   })
 
-  it('createCashFlowAction no registra ventas/movimientos para read_only', async () => {
+  it('createCashFlowAction no registra ventas/movimientos sin rol', async () => {
     const res = await createCashFlowAction(VALID_SALE)
     expect(res.success).toBe(false)
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 
-  it('closeDayAction no cierra la caja para read_only', async () => {
+  it('closeDayAction no cierra la caja sin rol', async () => {
     const res = await closeDayAction('2026-06-11', 100000)
     expect(res.success).toBe(false)
     expect(vi.mocked(closeDailyRegister)).not.toHaveBeenCalled()
-  })
-
-  it('sin membresía activa (rol null) también rechaza', async () => {
-    vi.mocked(getStaffRole).mockResolvedValue(null)
-    const res = await createCashFlowAction(VALID_SALE)
-    expect(res.success).toBe(false)
-    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
 })
 
@@ -114,13 +107,6 @@ describe('saveCanteenProductsAction — configuración solo admin (cruce #3)', (
 
   it('manager NO puede reescribir los productos de cantina (Sin acceso a configuración)', async () => {
     vi.mocked(getStaffRole).mockResolvedValue('manager')
-    const res = await saveCanteenProductsAction(VALID_PRODUCTS)
-    expect(res.success).toBe(false)
-    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
-  })
-
-  it('read_only NO puede reescribir los productos de cantina', async () => {
-    vi.mocked(getStaffRole).mockResolvedValue('read_only')
     const res = await saveCanteenProductsAction(VALID_PRODUCTS)
     expect(res.success).toBe(false)
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()

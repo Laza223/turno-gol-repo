@@ -84,16 +84,6 @@ describe('requireAdminStaff — Configuración solo para admins', () => {
     await expect(requireAdminStaff()).rejects.toThrow('REDIRECT:/dashboard')
   })
 
-  it('redirige a /dashboard a un Solo lectura (read_only)', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const viewer = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, viewer.id, 'read_only')
-    asStaff(tenant.id, viewer.id)
-
-    await expect(requireAdminStaff()).rejects.toThrow('REDIRECT:/dashboard')
-  })
-
   it('redirige a /login si no hay sesión staff', async () => {
     vi.mocked(extractAuthUser).mockResolvedValue(null)
     await expect(requireAdminStaff()).rejects.toThrow('REDIRECT:/login')

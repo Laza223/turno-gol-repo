@@ -30,11 +30,11 @@ function renderDialog() {
 }
 
 describe('InviteStaffDialog — selección de rol', () => {
-  it('ofrece los 3 roles fijos como radios', () => {
+  it('ofrece los 2 roles fijos como radios', () => {
     renderDialog()
     expect(screen.getByRole('radio', { name: /Administrador/ })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /Encargado/ })).toBeTruthy()
-    expect(screen.getByRole('radio', { name: /Solo lectura/ })).toBeTruthy()
+    expect(screen.queryByRole('radio', { name: /Solo lectura/ })).toBeNull()
   })
 
   it('arranca con Encargado seleccionado (default), no Administrador', () => {
@@ -52,7 +52,5 @@ describe('InviteStaffDialog — selección de rol', () => {
     expect(encargado.value).toBe('manager')
     const admin = screen.getByRole('radio', { name: /Administrador/ }) as HTMLInputElement
     expect(admin.value).toBe('admin')
-    const lectura = screen.getByRole('radio', { name: /Solo lectura/ }) as HTMLInputElement
-    expect(lectura.value).toBe('read_only')
   })
 })

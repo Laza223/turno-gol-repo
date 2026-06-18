@@ -69,7 +69,7 @@ export async function createCashFlowAction(
 ): Promise<CashFlowActionResult> {
   const parsed = createCashFlowSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
-  // Cruce #2: rol leído de DB — read_only (Solo lectura) no opera la caja.
+  // Cruce #2: rol leído de DB — solo admin/manager operan la caja.
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
@@ -138,7 +138,7 @@ export async function closeDayAction(
 ): Promise<CloseDayActionResult> {
   const parsed = closeDaySchema.safeParse({ date, declaredCash, note })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
-  // Cruce #2: el cierre de caja es inmutable — read_only no puede ejecutarlo.
+  // Cruce #2: el cierre de caja es inmutable — requiere admin/manager activo.
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth

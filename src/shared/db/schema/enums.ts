@@ -86,9 +86,9 @@ export const playerStatusEnum = pgEnum('player_status', [
 
 export const staffStatusEnum = pgEnum('staff_status', ['active', 'inactive'])
 
-// Migración 026: 3 niveles fijos. 'admin' (Administrador, acceso total),
-// 'manager' (Encargado: grilla + reservas + caja), 'read_only' (Solo lectura).
-export const staffRoleEnum = pgEnum('staff_role', ['admin', 'manager', 'read_only'])
+// 2 roles (migración 029 quitó 'read_only'). 'admin' (Administrador, acceso
+// total) y 'manager' (Encargado: grilla + reservas + caja, sin configuración).
+export const staffRoleEnum = pgEnum('staff_role', ['admin', 'manager'])
 
 // ─── Payment ────────────────────────────────────────────────────
 export const paymentTypeEnum = pgEnum('payment_type', [
@@ -149,15 +149,4 @@ export const auditActorTypeEnum = pgEnum('audit_actor_type', [
   'staff',
   'player',
   'system',
-])
-
-// ─── Open match ("Falta Uno") ───────────────────────────────────
-// 'canceled' (una L) por convención de schema. open → full cuando se
-// completan los cupos; canceled = cancelado por el creador; completed =
-// el partido ya se jugó.
-export const openMatchStatusEnum = pgEnum('open_match_status', [
-  'open',
-  'full',
-  'canceled',
-  'completed',
 ])

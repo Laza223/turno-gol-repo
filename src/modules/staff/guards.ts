@@ -46,7 +46,7 @@ async function requireStaffWithRole(
 
 /**
  * Guard para Server Actions operativas (reservas, caja): admin y manager
- * (Encargado) pasan; read_only (Solo lectura) rebota con error.
+ * (Encargado) pasan. Rebota con error si no hay membresía activa.
  */
 export async function requireOperatorStaff(): Promise<StaffActionAuth> {
   return requireStaffWithRole(
@@ -68,7 +68,7 @@ export async function requireAdminStaffAction(): Promise<StaffActionAuth> {
 
 /**
  * Guard server-side para zonas solo-admin (Configuración, Vista Equipo).
- * Encargado y Solo lectura rebotan a /dashboard. El rol se lee de la DB en
+ * El Encargado (manager) rebota a /dashboard. El rol se lee de la DB en
  * cada request — un cambio de rol aplica de inmediato, sin esperar a que el
  * JWT se refresque.
  */

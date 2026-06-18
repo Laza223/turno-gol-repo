@@ -289,6 +289,61 @@ Al crear una reserva manual en la grilla:
 - [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 3 (Reserva manual): actualizar paso de selección/creación de jugador.
 - [ ] `CLAUDE.md` — Eliminar mención de campos guest.
 
+### 11. 👤 Roles de staff: adoptar modelo ATC (manager permisivo, eliminar PIN)
+- **Antes**: 2 roles (`admin` y `manager`) donde el `manager` estaba muy restringido (solo grilla/reservas/caja). Además, un sistema de **PIN** protegía "zonas sensibles" (reportes, métricas, canchas, settings, staff, facturación) como segunda capa. El resultado: doble complejidad (roles + PIN) sin beneficio claro — si el manager tenía el PIN, los roles no servían; si no lo tenía, no podía funcionar solo.
+- **Ahora**: Adoptar el modelo probado de **ATC Sports** → **manager permisivo, sin PIN**.
+
+#### Cómo funciona (modelo ATC adaptado)
+
+**Rol `admin` (Dueño):**
+- Acceso total a todo el sistema
+- Únicas funciones exclusivas:
+  1. **Conexión de MercadoPago** (vincular/desvincular cuenta MP del complejo)
+  2. **Gestión de staff** (invitar, desactivar, cambiar rol de otros usuarios)
+  3. **Facturación SaaS** (plan, suscripción, datos de pago de TurnoGol)
+
+**Rol `manager` (Encargado):**
+- Ve y opera **todo lo demás**: grilla, reservas, caja, cierre de caja, reportes, métricas, canchas (ver precios), jugadores, abonados, stock/cantina, notificaciones, configuración general del complejo (horarios, seña, etc.)
+- **NO puede**: conectar MP, gestionar staff, ni tocar la facturación SaaS
+
+**¿Por qué?** ATC opera en cientos de complejos con exactamente este modelo. El Encargado en ATC tiene acceso a todo excepto la conexión de MercadoPago. La realidad del complejo es que el empleado está solo en el turno de noche y necesita poder contestar precios, ver reportes, y operar sin llamar al dueño.
+
+#### Qué se elimina: Sistema de PIN completo
+- `PinGate` component y todas sus instancias en páginas admin
+- `pin.ts` (hashPin, verifyPin, buildPinCookie, verifyPinCookie)
+- Cookie `tg_pin_session`
+- `staff_pin_hash` de tenant settings
+- `checkPinSessionAction` y todas las validaciones de PIN en Server Actions
+- Settings page `/settings/pin`
+- `PIN_COOKIE_SECRET` env variable (la usa impersonación también → migrar a su propio secret)
+- Tests de PIN
+
+#### Qué cambia en guards
+- `requireAdminStaff()` → sigue existiendo, protege: conexión MP, staff, facturación SaaS
+- `requireAdminStaffAction()` → sigue existiendo, mismo scope
+- `requireOperatorStaff()` → sigue existiendo, ahora cubre CASI TODO (incluyendo reportes, métricas, canchas, config general)
+- Las páginas que antes usaban `PinGate` ahora simplemente usan `requireOperatorStaff()` (sin PIN)
+
+#### Impacto en docs
+- [ ] `CLAUDE.md` — Eliminar toda mención de PIN, actualizar descripción de roles (manager = acceso a casi todo)
+- [ ] `docs/decisions/DECISIONES_SISTEMA.md` — P2.1: actualizar con modelo ATC, eliminar referencia a PIN
+- [ ] `docs/spec/doc6_entidades.md` — Tenant settings: eliminar `staff_pin_hash`
+- [ ] `docs/spec/doc12_tenant_isolation.md` — Si menciona PIN
+- [ ] `docs/decisions/security-decisions.md` — Eliminar/actualizar sección de PIN
+
+#### Impacto en código
+- [ ] Eliminar `src/modules/auth/pin.ts`
+- [ ] Eliminar `src/components/pin-gate.tsx` (y su barrel export)
+- [ ] Eliminar `src/app/(admin)/actions/pin.ts` (o equivalente)
+- [ ] Eliminar `/settings/pin` page
+- [ ] Remover `PinGate` de: `/reportes`, `/metricas`, `/canchas`, `/staff`, `/settings/reservas`, `/settings/horarios`, `/settings/facturacion`
+- [ ] Remover `checkPinSessionAction` de: staff actions, settings actions
+- [ ] Actualizar guards: las páginas de reportes/métricas/canchas/config usan `requireOperatorStaff` en vez de `requireAdminStaff` + PinGate
+- [ ] Mantener `requireAdminStaff` solo en: conexión MP (`/settings/facturacion` parcial), `/staff`, facturación SaaS
+- [ ] Migrar `PIN_COOKIE_SECRET` → renombrar a `COOKIE_SECRET` o crear `IMPERSONATION_COOKIE_SECRET` independiente para la cookie de impersonación del SuperAdmin
+- [ ] Eliminar `staff_pin_hash` del schema de tenant settings
+- [ ] Actualizar/eliminar tests de PIN
+
 ---
 
 ## Pendientes de Debate

@@ -344,6 +344,44 @@ Al crear una reserva manual en la grilla:
 - [ ] Eliminar `staff_pin_hash` del schema de tenant settings
 - [ ] Actualizar/eliminar tests de PIN
 
+### 12. 🎭 Super Admin: diferir impersonación (F2) a post-lanzamiento
+- **Antes**: La spec del Super Admin (`docs/superpowers/specs/2026-06-12-super-admin-design.md`) define 3 fases: F1 (Dashboard + Tenants), F2 (Impersonación), F3 (Jugadores + Jobs + Audit).
+- **Ahora**: **F2 (Impersonación) queda fuera de v1.** Solo se implementan F1 y F3.
+
+#### Justificación
+La impersonación ("Entrar como este complejo") tiene el peor ratio complejidad/uso del sistema:
+- Requiere cookie HMAC firmada con TTL, bypass de todos los guards de admin, usuario sintético para ~40+ server actions
+- Hack de FKs: `cash_flows.registered_by` no tiene un `staff_user` real → la spec propone usar el primer admin activo del tenant como proxy
+- Auditoría doble: `app.current_system_admin_id` + tenant context + forzar `actor_type='system'`
+- Semanas de trabajo para algo que se va a usar 2 veces por mes en la etapa inicial (5-10 complejos)
+
+**Con F1 + F3 el soporte ya cubre el 95% de los casos:**
+- Dashboard con MRR, tenants por estado, trials por vencer
+- Detalle de tenant con acciones: forzar estado, extender trial, cambiar plan, editar settings
+- Búsqueda global de jugadores con ban/desban/anonymize
+- Jobs con DLQ y retry manual
+- Audit logs globales con filtros
+
+#### Qué se difiere
+- Cookie `tg_sa_impersonate` y toda la lógica HMAC de impersonación
+- `resolveImpersonatedStaffContextFor()` en `impersonation.server.ts`
+- Rama de bypass en `extractAuthUser()` para system_admin con cookie
+- Banner rojo de impersonación en la UI
+- Tests e2e de impersonación
+
+#### Qué se mantiene para v1
+- F1: `/super-admin` dashboard, `/super-admin/tenants` lista+detalle con acciones de soporte
+- F3: `/super-admin/players` búsqueda global, `/super-admin/jobs` DLQ, `/super-admin/audit` logs
+
+#### Impacto en docs
+- [ ] `docs/superpowers/specs/2026-06-12-super-admin-design.md` — Marcar F2 como "deferida a post-lanzamiento"
+- [ ] `CLAUDE.md` — Actualizar sección Super Admin (sin impersonación en v1)
+
+#### Impacto en código
+- [ ] No implementar `impersonation.server.ts` más allá de lo que ya existe (o limpiarlo si no se usa)
+- [ ] `extractAuthUser()` en `auth.middleware.ts` — la rama de impersonación puede quedarse como dead code o limpiarse; NO hace falta testearla para v1
+- [ ] No crear el banner de impersonación ni los tests e2e de F2
+
 ---
 
 ## Pendientes de Debate

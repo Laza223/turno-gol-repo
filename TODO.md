@@ -188,6 +188,107 @@ Si el push suena a las 2am cada noche, Marcelo va a desactivar las notificacione
 - [ ] `docs/spec/doc8_user_stories.md` — Si hay story de push notifications
 - [ ] Código: lógica de envío de push con check de horario del tenant
 
+### 8. 💸 "Cobros de turno" para TODOS los bookings (no solo abonados)
+- **Antes**: El sistema trackea bien la seña (deposit), pero el pago del **resto del turno** cuando el jugador llega al complejo no tiene flujo explícito. El admin registra plata suelta en la caja sin vincularlo al booking.
+- **Ahora**: Cada booking (spontaneous y fixed) tiene una sección **"Cobros de turno"** donde el admin ve cuánto se pagó, cuánto falta, y puede registrar pagos parciales o totales.
+
+#### Cómo funciona (mismo patrón que cobros de abonado)
+
+**Vista en el detalle del booking:**
+```
+Precio del turno:        $55.000
+├── Seña (MP online):    $16.500  ✅ Pagado
+├── Resto pendiente:     $38.500  ⬜ Pendiente
+└── [+Agregar cobro]
+```
+
+**Flujo del admin:**
+1. Tomás llega al complejo, juega, y va al mostrador
+2. Marcelo abre el booking en la grilla → ve la sección "Cobros de turno"
+3. Ve que faltan $38.500
+4. Toca "+Agregar cobro" → ingresa $38.500 + medio de pago (efectivo/transferencia)
+5. Se genera CashFlow vinculado al booking (`booking_id`)
+6. El booking queda marcado como "pagado completo"
+
+**Cobros parciales:**
+- Si Tomás solo paga $20.000 hoy y dice "el resto la semana que viene"
+- El admin registra $20.000 → queda pendiente $18.500
+- La deuda queda visible en el booking y en la ficha del jugador
+
+**Conexión con el sistema de deuda (cambio #5):**
+- Si el booking es `no_show` y genera deuda → la deuda aparece en esta misma sección
+- Cuando el jugador paga la deuda → el admin usa "+Agregar cobro" en el booking con no_show
+- El pago reduce el `PlayerTenantRelationship.balance`
+
+#### Impacto en modelo de datos
+- No requiere entidades nuevas: usa `CashFlow` con `booking_id` (ya existe)
+- Agregar campo derivado o calculado: `booking.amount_paid` = SUM de payments/cashflows vinculados
+- Agregar campo derivado: `booking.amount_pending` = `price_snapshot - amount_paid`
+
+#### Impacto en docs
+- [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 2 y 3: agregar paso de cobro del resto al llegar
+- [ ] `docs/spec/doc6_entidades.md` — Booking: documentar atributos derivados de cobro
+- [ ] UI: sección "Cobros de turno" en el detalle de TODOS los bookings (misma UI que abonados)
+
+### 9. 👤 Nuevo módulo "Jugadores" en el panel admin
+- **Antes**: No existía un módulo para gestionar jugadores/clientes. El admin solo veía jugadores dentro de cada reserva o abonado, sin una vista centralizada.
+- **Ahora**: Módulo **"Jugadores"** en el panel admin con búsqueda, ficha de jugador, historial, deudas y abonados.
+
+#### Necesidad (consecuencia directa de cambios #4, #5 y #8)
+Sin este módulo, el admin no puede:
+- Ver y cobrar deudas de jugadores con no-show (cambio #5)
+- Consultar el saldo a favor de los abonados de un jugador (cambio #4)
+- Ver historial de cobros de un jugador (cambio #8)
+
+#### Funcionalidades del módulo
+1. **Búsqueda de jugadores** — por nombre, teléfono o email
+2. **Ficha del jugador** — datos de contacto, fecha de registro, stats (total reservas, no-shows, tasa)
+3. **Sección "Deudas"** — lista de deudas pendientes con botón "Registrar pago" en cada una
+4. **Sección "Abonados"** — abonados activos del jugador en este complejo con saldo visible
+5. **Sección "Historial de Reservas"** — últimas reservas con estado (completada, no-show, cancelada)
+6. **Acciones rápidas** — "Banear jugador" (ban manual), "Crear reserva para este jugador"
+
+#### Impacto en modelo de datos
+- No requiere entidades nuevas. Es una vista de consulta sobre datos existentes:
+  - `Player` + `PlayerTenantRelationship` (datos + deuda + ban)
+  - `Booking` WHERE `player_id` (historial)
+  - `Abonado` WHERE `player_id` (abonados activos)
+  - `CashFlow` WHERE `player_id` o vinculado a booking del jugador (cobros)
+
+#### Impacto en docs
+- [ ] `docs/business/TurnoGol_Plan_de_Negocio.md` — Sección 3.2: agregar módulo "Jugadores"
+- [ ] `docs/spec/doc8_user_stories.md` — Agregar stories de gestión de jugadores
+- [ ] `docs/spec/doc7_flujos_e2e.md` — Nuevo flujo: "Gestión de jugador y cobro de deuda"
+- [ ] UI: diseñar pantalla de búsqueda y ficha de jugador
+
+### 10. 👻 Eliminar reservas "fantasma": obligar creación de perfil de Jugador
+- **Antes**: En reservas manuales, el admin podía usar los campos sueltos `guest_name` y `guest_phone` sin vincular a un `Player`. Si el jugador faltaba, no se le podía generar deuda ni penalizar.
+- **Ahora**: Se eliminan `guest_name` y `guest_phone`. **Toda reserva debe tener un `player_id`**.
+
+#### Cómo funciona
+Al crear una reserva manual en la grilla:
+1. El admin **busca** al jugador por nombre o teléfono en la base del complejo
+2. Si **existe** → lo selecciona
+3. Si **no existe** → crea un perfil rápido (solo nombre + teléfono, sin email ni contraseña)
+4. Esto crea un registro real en la tabla `players` y vincula la reserva
+
+#### Justificación
+- Sin `player_id`, el sistema de deudas y penalizaciones por no-show (cambio #5) no funciona.
+- Permite que el jugador aparezca en el nuevo módulo "Jugadores" (cambio #9).
+- Permite trackear historial y tasa de asistencia de todos los clientes, no solo los digitales.
+- Si el jugador luego se registra online usando ese mismo número de teléfono/email, el sistema puede unificar su cuenta y mantener su historial intacto.
+
+#### Impacto en modelo de datos
+- Eliminar `guest_name` y `guest_phone` de la tabla `bookings`
+- Asegurar que `player_id` en `bookings` sea **obligatorio** (NOT NULL)
+- Modificar constraints de `players` si es necesario (ej. permitir email nulo si el login es por teléfono, o generar un pseudo-email, aunque el modelo password-based ya lo contempla). *Nota: a revisar junto con el refactor de Auth*.
+
+#### Impacto en docs
+- [ ] `docs/spec/doc6_entidades.md` — Bookings: remover `guest_name`/`guest_phone` y forzar `player_id`. Players: clarificar creación "lite" por admin.
+- [ ] `docs/decisions/DECISIONES_SISTEMA.md` — D16: revertir decisión (no más guest_name).
+- [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 3 (Reserva manual): actualizar paso de selección/creación de jugador.
+- [ ] `CLAUDE.md` — Eliminar mención de campos guest.
+
 ---
 
 ## Pendientes de Debate

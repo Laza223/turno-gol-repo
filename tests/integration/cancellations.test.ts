@@ -181,6 +181,43 @@ async function getAuditLogs(bookingId: string) {
   `
 }
 
+// Lee el metadata del audit log de cancelación tal como lo consume la app.
+// getAuditLogs solo trae action/actor, no el contenido del rastro.
+//
+// LATENTE (BUG #2): insertAuditLog escribe vía drizzle `.insert().values({metadata})`
+// y el valor queda DOBLE-CODIFICADO en la columna jsonb (jsonb_typeof = 'string',
+// p.ej. "{\"inPolicy\":true}"). Consecuencia: `metadata->>'inPolicy'` en SQL crudo
+// devuelve NULL — el rastro no es consultable por campo. La app lo tolera
+// parseando en lectura (parseAuditMetadata en super-admin/tenants.service.ts).
+// Acá replicamos ese contrato real de lectura (parse-si-string) para fijar el
+// CONTENIDO del rastro; la doble codificación se reporta como hallazgo aparte.
+async function getCancelAuditMetadata(
+  bookingId: string,
+  action: string,
+): Promise<Record<string, unknown> | undefined> {
+  const sql = getSql()
+  const rows = await sql<Array<{ metadata: unknown }>>`
+    SELECT metadata
+    FROM audit_logs
+    WHERE resource_id = ${bookingId} AND action = ${action}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+  const raw = rows[0]?.metadata
+  if (raw == null) return undefined
+  return typeof raw === 'string'
+    ? (JSON.parse(raw) as Record<string, unknown>)
+    : (raw as Record<string, unknown>)
+}
+
+async function getBookingCanceledAt(bookingId: string): Promise<string | null> {
+  const sql = getSql()
+  const rows = await sql<{ canceled_at: string | null }[]>`
+    SELECT canceled_at FROM bookings WHERE id = ${bookingId}
+  `
+  return rows[0]!.canceled_at
+}
+
 async function countActiveBans(tenantId: string, playerId: string): Promise<number> {
   const sql = getSql()
   const rows = await sql<{ c: string }[]>`
@@ -942,5 +979,66 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
     expect(await countCashFlows(bookingId)).toBe(0)
+  })
+})
+
+// ─── GAP (auditoría): contenido del metadata del audit log de cancelación ──
+// Los tests verificaban action/actor_type/actor_id del audit log, pero NUNCA el
+// jsonb `metadata` ({ reason, inPolicy, depositStatus }). Ese rastro es la
+// evidencia de compliance (Ley 25.326): un bug que registre inPolicy o
+// depositStatus equivocados —o pierda el reason— dejaría un audit trail
+// mentiroso sin romper ningún test. Acá fijamos el contenido exacto.
+describe('cancelByPlayer — audit trail metadata', () => {
+  it('cancelación in-policy con seña MP: metadata = { reason, inPolicy:true, depositStatus:refunded } y canceled_at seteado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999) // in-policy
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id, courtId, playerId: player.id,
+      date: FUTURE_DATE, timeStart: '02:00', timeEnd: '03:00',
+      depositStatus: 'paid', depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-pay-meta-${bookingId.slice(0, 8)}`
+    const paymentId = await insertApprovedPayment({
+      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+    })
+    await linkPaymentToBooking(bookingId, paymentId)
+
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, 'reembolso ok', mockGateway, tx),
+    )
+
+    const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
+    expect(meta).toMatchObject({ reason: 'reembolso ok', inPolicy: true, depositStatus: 'refunded' })
+    expect(await getBookingCanceledAt(bookingId)).not.toBeNull()
+  })
+
+  it('cancelación out-of-policy sin reason: metadata = { reason:null, inPolicy:false, depositStatus:captured }', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 20000) // out-of-policy
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id, courtId, playerId: player.id,
+      date: FUTURE_DATE, timeStart: '01:00', timeEnd: '02:00',
+      depositStatus: 'paid', depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-pay-meta-oop-${bookingId.slice(0, 8)}`
+    const paymentId = await insertApprovedPayment({
+      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+    })
+    await linkPaymentToBooking(bookingId, paymentId)
+
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, undefined, mockGateway, tx),
+    )
+
+    const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
+    expect(meta).toMatchObject({ reason: null, inPolicy: false, depositStatus: 'captured' })
   })
 })

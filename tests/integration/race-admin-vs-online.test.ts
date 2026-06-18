@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createManualBooking, createOnlineBooking } from '@/modules/bookings/booking.service'
+import { SlotTakenError } from '@/modules/bookings/booking.errors'
+import type { BookingRow } from '@/modules/bookings/booking.types'
+import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 import {
   cleanupAll,
   createTestPlayer,
@@ -8,13 +11,50 @@ import {
   ensureRoles,
   linkPlayerToTenant,
 } from '../helpers/tenant'
+import { insertCourt } from '../helpers/factories'
 import { seedIsolationData, type IsolationSeed } from '../helpers/seed'
+
+// ALCANCE: carrera admin (createManualBooking) × jugador (createOnlineBooking)
+// sobre el mismo recurso. La carrera manual×manual vive en
+// race-double-booking.test.ts. Lo ÚNICO que sólo este archivo puede ejercitar
+// es el path online completo: ban check + balance check + seña en
+// pending_payment ocupando el slot. Una reserva manual SIEMPRE queda
+// 'confirmed', así que el bloqueo por pending_payment sólo se ve aquí.
+
+// El valor de estas pruebas depende de que las transacciones corran en
+// conexiones SEPARADAS y choquen en el FOR UPDATE / la exclusion constraint a
+// nivel DB. Con un pool chico (DATABASE_POOL_MAX=1) se serializan en la cola del
+// pool ANTES de tocar la DB: el test seguiría verde pero ya no ejercitaría la
+// serialización por lock. Espejo de resolvePoolMax() en src/shared/db/client.ts.
+const EFFECTIVE_POOL_MAX = (() => {
+  const raw = process.env.DATABASE_POOL_MAX
+  const n = raw ? Number(raw) : NaN
+  return Number.isInteger(n) && n > 0 ? n : 3
+})()
 
 let tenant: { id: string }
 let seed: IsolationSeed
 let playerId: string
+let court2Id: string
 
 beforeAll(async () => {
+  // Seam del timer de expiración: una reserva online con seña queda en
+  // pending_payment y arma scheduleBookingExpiry(). Sin este stub se levantaría
+  // un pg-boss real que cuelga el teardown.
+  setExpiryScheduler(async () => {})
+
+  // Falla RUIDOSAMENTE si el pool no permite concurrencia real. Sin esto, un
+  // pool de 1 conexión convierte la carrera en ejecución secuencial sin que
+  // nadie se entere (falsa seguridad).
+  if (EFFECTIVE_POOL_MAX < 3) {
+    throw new Error(
+      `race-admin-vs-online requiere DATABASE_POOL_MAX>=3 para ejercitar la ` +
+        `serialización por FOR UPDATE entre el path manual y el online; valor ` +
+        `efectivo=${EFFECTIVE_POOL_MAX}. Con menos conexiones las transacciones ` +
+        `se serializan en la cola del pool.`,
+    )
+  }
+
   const sql = getSql()
   await ensureRoles(sql)
   await cleanupAll(sql)
@@ -23,144 +63,261 @@ beforeAll(async () => {
   const player = await createTestPlayer(sql)
   await linkPlayerToTenant(sql, tenant.id, player.id)
   playerId = player.id
+  // Segunda cancha del MISMO tenant para el control negativo de aislamiento
+  // por cancha (manual en una, online en la otra → ambas deben ganar).
+  court2Id = await insertCourt(sql, tenant.id)
 }, 30_000)
 
 afterAll(async () => {
+  setExpiryScheduler(null)
   await closeSql()
 })
 
+type Attempt =
+  | { outcome: 'won'; booking: BookingRow }
+  | { outcome: 'lost'; error: unknown }
+
+// Clave del refactor: NO tragamos el tipo de error (el `catch {}` original lo
+// descartaba). Lo devolvemos para poder EXIGIR que el rechazo sea SlotTakenError
+// y no un 500 cualquiera del path online (notificación, ban, balance, etc.).
+function attemptManual(args: {
+  courtId: string
+  date: string
+  timeStart: string
+  timeEnd: string
+  durationMins: 60 | 120
+}): Promise<Attempt> {
+  return withTenantContext(tenant.id, async (tx) => {
+    try {
+      const booking = await createManualBooking(
+        tenant.id,
+        {
+          courtId: args.courtId,
+          date: args.date,
+          timeStart: args.timeStart,
+          timeEnd: args.timeEnd,
+          durationMins: args.durationMins,
+          type: 'spontaneous',
+          staffUserId: seed.staffUserId,
+          playerId,
+        },
+        tx,
+      )
+      return { outcome: 'won', booking } as const
+    } catch (error) {
+      return { outcome: 'lost', error } as const
+    }
+  })
+}
+
+function attemptOnline(args: {
+  courtId: string
+  date: string
+  timeStart: string
+  timeEnd: string
+  durationMins: 60 | 120
+  requiresDeposit?: boolean
+  depositPercentage?: number
+}): Promise<Attempt> {
+  return withTenantContext(tenant.id, async (tx) => {
+    try {
+      const booking = await createOnlineBooking(
+        tenant.id,
+        {
+          playerId,
+          courtId: args.courtId,
+          date: args.date,
+          timeStart: args.timeStart,
+          timeEnd: args.timeEnd,
+          durationMins: args.durationMins,
+          requiresDeposit: args.requiresDeposit ?? false,
+          depositPercentage: args.depositPercentage ?? 0,
+        },
+        tx,
+      )
+      return { outcome: 'won', booking } as const
+    } catch (error) {
+      return { outcome: 'lost', error } as const
+    }
+  })
+}
+
+async function countActiveBookings(
+  courtId: string,
+  date: string,
+  timeStart: string,
+): Promise<number> {
+  const sql = getSql()
+  const rows = await sql<{ c: number }[]>`
+    SELECT COUNT(*)::int AS c
+    FROM bookings
+    WHERE court_id = ${courtId}
+      AND date = ${date}::date
+      AND time_start = ${timeStart}::time
+      AND status IN ('pending_payment', 'confirmed')
+  `
+  return rows[0].c
+}
+
 describe('race: admin manual booking vs player online booking (same court/slot)', () => {
-  it('admin createManualBooking + online createOnlineBooking concurrent → exactly 1 wins', async () => {
-    const date = '2026-07-15'
+  it('admin manual y jugador online concurrentes en el mismo slot: exactamente 1 gana y el perdedor recibe SlotTakenError', async () => {
+    const date = '2026-08-12'
     const timeStart = '20:00'
     const timeEnd = '21:00'
 
-    const adminAttempt = withTenantContext(tenant.id, async (tx) => {
-      try {
-        await createManualBooking(
-          tenant.id,
-          {
-            courtId: seed.courtId,
-            date,
-            timeStart,
-            timeEnd,
-            durationMins: 60,
-            type: 'spontaneous',
-            staffUserId: seed.staffUserId,
-            playerId,
-          },
-          tx,
-        )
-        return 'admin_won' as const
-      } catch {
-        return 'admin_lost' as const
-      }
+    const results = await Promise.all([
+      attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }),
+      attemptOnline({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }),
+    ])
+
+    const winners = results.filter((r) => r.outcome === 'won')
+    const losers = results.filter((r) => r.outcome === 'lost')
+
+    // Invariante central: exactamente un ganador.
+    expect(winners).toHaveLength(1)
+    expect(losers).toHaveLength(1)
+
+    // El ganador (sea admin o jugador) quedó en estado de negocio correcto, no a
+    // medias, y sobre la cancha pedida.
+    expect(winners[0].outcome === 'won' && winners[0].booking.status).toBe('confirmed')
+    expect(winners[0].outcome === 'won' && winners[0].booking.courtId).toBe(seed.courtId)
+
+    // FUERZA: el perdedor falló por "slot ocupado", NO por un error genérico. Sin
+    // esto, un bug que rompa el path online y tire un 500 dejaría a admin como
+    // único ganador, count===1, y el test pasaría en verde ocultando la regresión.
+    expect(losers[0].outcome === 'lost' && losers[0].error).toBeInstanceOf(SlotTakenError)
+
+    expect(await countActiveBookings(seed.courtId, date, timeStart)).toBe(1)
+  }, 30_000)
+
+  it('5 intentos manuales + 5 online concurrentes en el mismo slot: exactamente 1 gana y los 9 perdedores reciben SlotTakenError', async () => {
+    const date = '2026-08-13'
+    const timeStart = '20:00'
+    const timeEnd = '21:00'
+
+    const attempts: Promise<Attempt>[] = []
+    for (let i = 0; i < 5; i++) {
+      attempts.push(attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }))
+      attempts.push(attemptOnline({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }))
+    }
+    const results = await Promise.all(attempts)
+
+    const winners = results.filter((r) => r.outcome === 'won')
+    const losers = results.filter((r) => r.outcome === 'lost')
+
+    expect(winners).toHaveLength(1)
+    expect(losers).toHaveLength(9)
+    expect(winners[0].outcome === 'won' && winners[0].booking.status).toBe('confirmed')
+
+    // Cada uno de los 9 perdedores debe ser SlotTakenError, mezclando ambos
+    // paths: 9 de 9 fallaron porque el slot estaba tomado, no por crash.
+    for (const loser of losers) {
+      expect(loser.outcome === 'lost' && loser.error).toBeInstanceOf(SlotTakenError)
+    }
+
+    expect(await countActiveBookings(seed.courtId, date, timeStart)).toBe(1)
+  }, 30_000)
+
+  it('una reserva online con seña en pending_payment ocupa el slot y bloquea una reserva manual del admin', async () => {
+    const date = '2026-08-14'
+    const timeStart = '20:00'
+    const timeEnd = '21:00'
+
+    // Jugador reserva online con seña: queda en pending_payment (todavía sin
+    // pagar) pero YA ocupa el slot por su TTL. Este es el escenario que
+    // race-double-booking no puede cubrir: una reserva manual siempre es
+    // 'confirmed', nunca pending_payment.
+    const online = await attemptOnline({
+      courtId: seed.courtId,
+      date,
+      timeStart,
+      timeEnd,
+      durationMins: 60,
+      requiresDeposit: true,
+      depositPercentage: 50,
     })
+    expect(online.outcome).toBe('won')
+    if (online.outcome !== 'won') return
+    expect(online.booking.status).toBe('pending_payment')
+    expect(online.booking.depositStatus).toBe('pending')
+    // La seña se deriva del precio snapshot real (robusto a cambios de pricing).
+    expect(online.booking.depositAmount).toBe(Math.round((online.booking.priceSnapshot * 50) / 100))
 
-    const onlineAttempt = withTenantContext(tenant.id, async (tx) => {
-      try {
-        await createOnlineBooking(
-          tenant.id,
-          {
-            playerId,
-            courtId: seed.courtId,
-            date,
-            timeStart,
-            timeEnd,
-            durationMins: 60,
-            requiresDeposit: false,
-            depositPercentage: 0,
-          },
-          tx,
-        )
-        return 'online_won' as const
-      } catch {
-        return 'online_lost' as const
-      }
-    })
+    // El admin intenta el mismo slot mientras la online sigue impaga: debe perder
+    // porque checkOverlap y la exclusion constraint incluyen pending_payment.
+    const admin = await attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 })
+    expect(admin.outcome).toBe('lost')
+    expect(admin.outcome === 'lost' && admin.error).toBeInstanceOf(SlotTakenError)
 
-    const results = await Promise.all([adminAttempt, onlineAttempt])
-    const wins = results.filter((r) => r.endsWith('_won')).length
-    expect(wins).toBe(1)
-
+    // Sobrevive UNA sola fila activa y es la online pendiente de pago.
     const sql = getSql()
-    const rows = await sql<{ c: number }[]>`
-      SELECT COUNT(*)::int AS c
+    const rows = await sql<{ id: string; status: string }[]>`
+      SELECT id, status
       FROM bookings
       WHERE court_id = ${seed.courtId}
         AND date = ${date}::date
         AND time_start = ${timeStart}::time
         AND status IN ('pending_payment', 'confirmed')
     `
-    expect(rows[0].c).toBe(1)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].id).toBe(online.booking.id)
+    expect(rows[0].status).toBe('pending_payment')
   }, 30_000)
 
-  it('N=10 mix (5 admin + 5 online) concurrent on same slot → exactly 1 wins', async () => {
-    const date = '2026-07-16'
+  it('reserva manual del admin y online del jugador en CANCHAS distintas al mismo horario: ambas tienen éxito (aislamiento por cancha)', async () => {
+    const date = '2026-08-15'
     const timeStart = '20:00'
     const timeEnd = '21:00'
 
-    const attempts: Promise<'won' | 'lost'>[] = []
-    for (let i = 0; i < 5; i++) {
-      attempts.push(
-        withTenantContext(tenant.id, async (tx) => {
-          try {
-            await createManualBooking(
-              tenant.id,
-              {
-                courtId: seed.courtId,
-                date,
-                timeStart,
-                timeEnd,
-                durationMins: 60,
-                type: 'spontaneous',
-                staffUserId: seed.staffUserId,
-                playerId,
-              },
-              tx,
-            )
-            return 'won' as const
-          } catch {
-            return 'lost' as const
-          }
-        }),
-      )
-      attempts.push(
-        withTenantContext(tenant.id, async (tx) => {
-          try {
-            await createOnlineBooking(
-              tenant.id,
-              {
-                playerId,
-                courtId: seed.courtId,
-                date,
-                timeStart,
-                timeEnd,
-                durationMins: 60,
-                requiresDeposit: false,
-                depositPercentage: 0,
-              },
-              tx,
-            )
-            return 'won' as const
-          } catch {
-            return 'lost' as const
-          }
-        }),
-      )
-    }
-    const results = await Promise.all(attempts)
-    const winners = results.filter((r) => r === 'won').length
-    expect(winners).toBe(1)
+    const [admin, online] = await Promise.all([
+      attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }),
+      attemptOnline({ courtId: court2Id, date, timeStart, timeEnd, durationMins: 60 }),
+    ])
 
+    // El lock (FOR UPDATE) y la exclusion constraint son por cancha (court_id
+    // WITH =). Si una regresión los volviera globales o por tenant, una de estas
+    // dos —en el par mixto manual×online— sería rechazada por error.
+    expect(admin.outcome).toBe('won')
+    expect(online.outcome).toBe('won')
+    expect(await countActiveBookings(seed.courtId, date, timeStart)).toBe(1)
+    expect(await countActiveBookings(court2Id, date, timeStart)).toBe(1)
+  }, 30_000)
+
+  it('reserva manual de 120 min del admin vs online de 60 min con solape PARCIAL: exactamente 1 gana y la otra recibe SlotTakenError', async () => {
+    const date = '2026-08-16'
+
+    // Admin: 20:00–22:00 (120). Jugador online: 21:00–22:00 (60). Solapan en
+    // [21:00, 22:00). El archivo original sólo probaba slots idénticos; un check
+    // que comparara igualdad de time_start/time_end en vez de rango dejaría
+    // coexistir estas dos. El solape parcial cruzando manual↔online lo descarta.
+    const [admin, online] = await Promise.all([
+      attemptManual({ courtId: seed.courtId, date, timeStart: '20:00', timeEnd: '22:00', durationMins: 120 }),
+      attemptOnline({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', durationMins: 60 }),
+    ])
+
+    const results = [admin, online]
+    const winners = results.filter((r) => r.outcome === 'won')
+    const losers = results.filter((r) => r.outcome === 'lost')
+
+    expect(winners).toHaveLength(1)
+    expect(losers).toHaveLength(1)
+    expect(losers[0].outcome === 'lost' && losers[0].error).toBeInstanceOf(SlotTakenError)
+
+    // Una sola fila activa cubre la franja solapada [21:00, 22:00).
     const sql = getSql()
     const rows = await sql<{ c: number }[]>`
       SELECT COUNT(*)::int AS c
       FROM bookings
       WHERE court_id = ${seed.courtId}
         AND date = ${date}::date
-        AND time_start = ${timeStart}::time
         AND status IN ('pending_payment', 'confirmed')
+        AND tsrange(
+              ('2000-01-01'::date + time_start)::timestamp,
+              ('2000-01-01'::date + time_end)::timestamp
+            ) && tsrange(
+              ('2000-01-01'::date + '21:00'::time)::timestamp,
+              ('2000-01-01'::date + '22:00'::time)::timestamp
+            )
     `
     expect(rows[0].c).toBe(1)
   }, 30_000)

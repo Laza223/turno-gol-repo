@@ -80,7 +80,7 @@ describe('privacy page', () => {
     expect(text).toMatch(/AAIP/)
     expect(text).toMatch(/MercadoPago/)
     expect(text).toMatch(/Supabase/)
-    expect(text).toMatch(/privacidad@turnogol\.com\.ar/)
+    expect(text).toMatch(/privacidad@turnogol\.app/)
   })
 
   it('exposes the data-export endpoint', () => {

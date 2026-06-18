@@ -34,6 +34,7 @@ vi.mock('@/shared/middleware/with-player', () => ({
 import { GET as readPlayerBooking } from '@/app/api/player/bookings/[id]/route'
 import { POST as cancelPlayerBooking } from '@/app/api/player/bookings/[id]/cancel/route'
 import { GET as readBookingStatus } from '@/app/api/player/bookings/[id]/status/route'
+import { GET as listPlayerBookings } from '@/app/api/player/bookings/route'
 
 let tenant: { id: string }
 let seed: IsolationSeed
@@ -47,6 +48,14 @@ let completedBookingA: string
 function get(bookingId: string, asPlayer: string) {
   ;(globalThis as Record<string, unknown>).__AS_PLAYER__ = asPlayer
   return readPlayerBooking(new NextRequest(`http://localhost/api/player/bookings/${bookingId}`))
+}
+
+function list(asPlayer: string, tab?: string) {
+  ;(globalThis as Record<string, unknown>).__AS_PLAYER__ = asPlayer
+  const url = tab
+    ? `http://localhost/api/player/bookings?tab=${tab}`
+    : 'http://localhost/api/player/bookings'
+  return listPlayerBookings(new NextRequest(url))
 }
 
 function status(bookingId: string, asPlayer: string) {
@@ -128,6 +137,29 @@ describe('GET /api/player/bookings/[id]', () => {
   it('rechaza un id con formato inválido con 400 antes de tocar la DB', async () => {
     const res = await get('not-a-uuid', playerA.id)
     expect(res.status).toBe(400)
+  })
+})
+
+describe('GET /api/player/bookings (mis-reservas)', () => {
+  // Control crítico: bajo RLS de jugador, courts solo es legible vía la policy
+  // player_read_court (EXISTS sobre bookings propias). Sin ella el JOIN courts se
+  // vacía y la pantalla del jugador queda en blanco (bookings.length === 0).
+  it('un jugador ve sus reservas con el nombre de la cancha resuelto', async () => {
+    const res = await list(playerA.id)
+    expect(res.status).toBe(200)
+    const { data } = await res.json()
+    const ids = data.bookings.map((b: { id: string }) => b.id)
+    expect(ids).toContain(ownReadBookingA)
+    const own = data.bookings.find((b: { id: string }) => b.id === ownReadBookingA)
+    expect(own.court_name).toBeTruthy() // el JOIN a courts resolvió bajo RLS de jugador
+    expect(own.tenant_slug).toBeTruthy()
+  })
+
+  it('el listado de un jugador no incluye reservas de otro jugador', async () => {
+    const res = await list(playerA.id)
+    const { data } = await res.json()
+    const ids = data.bookings.map((b: { id: string }) => b.id)
+    expect(ids).not.toContain(bookingOfB)
   })
 })
 

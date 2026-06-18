@@ -2,12 +2,12 @@ import { sql } from 'drizzle-orm'
 import {
   index,
   integer,
-  jsonb,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { jsonb } from '../jsonb'
 import { tenants } from './tenants'
 import {
   notificationChannelEnum,

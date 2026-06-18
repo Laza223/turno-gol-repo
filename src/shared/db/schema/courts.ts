@@ -3,12 +3,12 @@ import {
   check,
   index,
   integer,
-  jsonb,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { jsonb } from '../jsonb'
 import { tenants } from './tenants'
 import { courtStatusEnum, surfaceTypeEnum } from './enums'
 

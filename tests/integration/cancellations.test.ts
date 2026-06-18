@@ -1014,6 +1014,26 @@ describe('cancelByPlayer — audit trail metadata', () => {
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
     expect(meta).toMatchObject({ reason: 'reembolso ok', inPolicy: true, depositStatus: 'refunded' })
     expect(await getBookingCanceledAt(bookingId)).not.toBeNull()
+
+    // Regresión BUG #2 (jsonb single-encode): el metadata debe quedar como
+    // OBJETO at-rest (jsonb_typeof='object'), consultable por campo en SQL —
+    // no un string escalar doble-codificado.
+    const sqlc = getSql()
+    const typeRows = await sqlc<{ t: string }[]>`
+      SELECT jsonb_typeof(metadata) AS t
+      FROM audit_logs
+      WHERE resource_id = ${bookingId} AND action = 'booking.canceled'
+      ORDER BY created_at DESC LIMIT 1
+    `
+    expect(typeRows[0]!.t).toBe('object')
+    // Y el acceso por campo via operador jsonb funciona (lo que el doble-encode rompía).
+    const fieldRows = await sqlc<{ in_policy: boolean }[]>`
+      SELECT (metadata->>'inPolicy')::boolean AS in_policy
+      FROM audit_logs
+      WHERE resource_id = ${bookingId} AND action = 'booking.canceled'
+      ORDER BY created_at DESC LIMIT 1
+    `
+    expect(fieldRows[0]!.in_policy).toBe(true)
   })
 
   it('cancelación out-of-policy sin reason: metadata = { reason:null, inPolicy:false, depositStatus:captured }', async () => {

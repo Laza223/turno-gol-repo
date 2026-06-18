@@ -2,12 +2,12 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   integer,
-  jsonb,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { jsonb } from '../jsonb'
 
 export const plans = pgTable('plans', {
   id: uuid('id').primaryKey().defaultRandom(),

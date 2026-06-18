@@ -1,11 +1,11 @@
 import {
-  jsonb,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { jsonb } from '../jsonb'
 
 export const processedWebhooks = pgTable(
   'processed_webhooks',

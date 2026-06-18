@@ -3,12 +3,12 @@ import {
   check,
   index,
   integer,
-  jsonb,
   pgTable,
   timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { jsonb } from '../jsonb'
 import { tenants } from './tenants'
 import { players } from './players'
 import { bookings } from './bookings'

@@ -3,13 +3,13 @@ import {
   date,
   index,
   integer,
-  jsonb,
   numeric,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { jsonb } from '../jsonb'
 import { tenantStatusEnum } from './enums'
 
 export const tenants = pgTable(

@@ -573,8 +573,9 @@ describe('cashflow service', () => {
       resource_id: string
       actor_id: string
       actor_type: string
-      // El driver postgres devuelve jsonb como string en este proyecto.
-      metadata: string
+      // BUG #2 fix: el metadata ahora se guarda single-encode → el driver
+      // postgres-js lo devuelve como OBJETO (antes era un string doble-codificado).
+      metadata: { balance: number; declaredCash: number }
     }[]>`
       SELECT action, resource_id, actor_id, actor_type, metadata
       FROM audit_logs
@@ -584,8 +585,14 @@ describe('cashflow service', () => {
     expect(audit[0]!.resource_id).toBe(close.id)
     expect(audit[0]!.actor_id).toBe(staff.id)
     expect(audit[0]!.actor_type).toBe('staff')
-    const metadata = JSON.parse(audit[0]!.metadata) as { balance: number; declaredCash: number }
-    expect(metadata.balance).toBe(400000)
-    expect(metadata.declaredCash).toBe(400000)
+    expect(audit[0]!.metadata.balance).toBe(400000)
+    expect(audit[0]!.metadata.declaredCash).toBe(400000)
+    // El acceso por campo via operador jsonb funciona (lo que el doble-encode rompía).
+    const byField = await sql<{ balance: number }[]>`
+      SELECT (metadata->>'balance')::int AS balance
+      FROM audit_logs
+      WHERE tenant_id = ${tenant.id} AND action = 'cashflow.daily_close'
+    `
+    expect(byField[0]!.balance).toBe(400000)
   })
 })

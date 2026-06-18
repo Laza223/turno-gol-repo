@@ -1,11 +1,11 @@
 import {
   index,
-  jsonb,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { jsonb } from '../jsonb'
 import { tenants } from './tenants'
 import { auditActorTypeEnum } from './enums'
 

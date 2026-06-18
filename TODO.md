@@ -387,3 +387,7 @@ La impersonación ("Entrar como este complejo") tiene el peor ratio complejidad/
 ## Pendientes de Debate
 
 *(se irán agregando a medida que avance el análisis)*
+
+### 13. Anonimización de jugadores con deuda
+- **Situación actual**: El código y los tests permiten que un jugador borre su cuenta (se anonimice por ley de privacidad ARCO) incluso si tiene un saldo deudor pendiente (`balance > 0`) en algún complejo. El sistema elimina su vinculación sin chequear deudas.
+- **Debate**: ¿Deberíamos bloquear la eliminación de la cuenta (ej: lanzando un `PlayerHasDebtError`) si tiene deudas, o permitimos que se elimine y el complejo asume la pérdida/lo maneja por fuera?

@@ -6,7 +6,7 @@ import { cleanup } from '@testing-library/react'
 
 const envTest = path.resolve(process.cwd(), '.env.test')
 if (existsSync(envTest)) {
-  config({ path: envTest })
+  config({ path: envTest, override: true })
 }
 
 // Auto-cleanup DOM after every test to prevent cross-file pollution under

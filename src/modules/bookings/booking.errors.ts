@@ -117,6 +117,18 @@ export class BookingNotYetStartedError extends Error {
   }
 }
 
+// P5: la corrección completed → no_show sólo se admite dentro de las 24h
+// posteriores a la completación (bookings.updated_at). Pasada la ventana, el
+// turno queda inmutable y la corrección debe resolverse por otra vía.
+export class NoShowCorrectionWindowExpiredError extends Error {
+  constructor(public readonly bookingId: string) {
+    super(
+      `Booking ${bookingId} cannot be corrected to no_show: the 24h window since completion has passed`,
+    )
+    this.name = 'NoShowCorrectionWindowExpiredError'
+  }
+}
+
 export class BookingDateOutOfRangeError extends Error {
   constructor(public readonly reason: 'past_date' | 'past_slot' | 'advance_exceeded') {
     super(`Booking date is out of range: ${reason}`)

@@ -29,17 +29,21 @@ const VALID_PAIRS: Array<[BookingStatus, BookingStatus]> = [
   ['confirmed', 'canceled_no_refund'],
   ['confirmed', 'completed'],
   ['confirmed', 'no_show'],
+  // P5: corrección de 24h. Admin puede revertir un turno mal completado a
+  // no_show. La ventana de 24h NO vive acá (la state machine es pura): la
+  // chequean markNoShow (capa app) y el trigger enforce_booking_invariants_fn.
+  ['completed', 'no_show'],
 ]
 
 const validSet = new Set(VALID_PAIRS.map(([a, b]) => `${a}->${b}`))
 
 describe('TRANSITIONS matrix (doc6 §3 — full coverage)', () => {
-  it('contains exactly 6 valid (from, to) pairs', () => {
+  it('contains exactly 7 valid (from, to) pairs', () => {
     let total = 0
     for (const from of ALL_STATUSES) {
       total += TRANSITIONS[from].size
     }
-    expect(total).toBe(6)
+    expect(total).toBe(7)
   })
 
   for (const from of ALL_STATUSES) {
@@ -59,7 +63,8 @@ describe('TRANSITIONS matrix (doc6 §3 — full coverage)', () => {
   })
 
   it('terminal states have empty outgoing set', () => {
-    for (const s of ['expired', 'canceled_refunded', 'canceled_no_refund', 'completed', 'no_show'] as const) {
+    // 'completed' ya NO es terminal puro: admite la corrección completed→no_show.
+    for (const s of ['expired', 'canceled_refunded', 'canceled_no_refund', 'no_show'] as const) {
       expect(TRANSITIONS[s].size).toBe(0)
     }
   })
@@ -100,6 +105,12 @@ describe('actor authorization', () => {
     expect(canTransition('confirmed', 'canceled_refunded', { actor: 'player' })).toBe(true)
     expect(canTransition('confirmed', 'canceled_refunded', { actor: 'admin' })).toBe(true)
     expect(canTransition('confirmed', 'canceled_refunded', { actor: 'system' })).toBe(true)
+  })
+
+  it('completed → no_show: admin OK, system BLOCKED, player BLOCKED', () => {
+    expect(canTransition('completed', 'no_show', { actor: 'admin' })).toBe(true)
+    expect(canTransition('completed', 'no_show', { actor: 'system' })).toBe(false)
+    expect(canTransition('completed', 'no_show', { actor: 'player' })).toBe(false)
   })
 })
 
@@ -191,19 +202,32 @@ describe('invariantes matriz ↔ actor', () => {
   })
 })
 
-describe('completed → no_show (corrección 24h delegada a la DB)', () => {
-  // booking.state-machine.ts L19-20: doc6 §3 admite completed -> no_show como
-  // corrección de 24h, pero la state machine la BLOQUEA (completed es terminal);
-  // la excepción la maneja el trigger enforce_booking_invariants_fn en la DB.
-  // Si alguien "arregla" esto agregando no_show al set de completed, rompe la
-  // garantía de inmutabilidad terminal de la capa app.
-  it('está bloqueada en la capa de aplicación para todo actor', () => {
-    expect(canTransition('completed', 'no_show')).toBe(false)
-    for (const actor of ALL_ACTORS) {
-      expect(canTransition('completed', 'no_show', { actor })).toBe(false)
-    }
+describe('completed → no_show (corrección de 24h, P5)', () => {
+  // doc6 §3: un admin puede corregir un turno mal marcado como completado.
+  // La state machine sólo gobierna estado+actor; la ventana de 24h la imponen
+  // markNoShow (capa app) y el trigger enforce_booking_invariants_fn (DB).
+  it('es transición válida en la matriz (sin ctx)', () => {
+    expect(canTransition('completed', 'no_show')).toBe(true)
+  })
+
+  it('sólo el admin puede ejecutarla', () => {
+    expect(canTransition('completed', 'no_show', { actor: 'admin' })).toBe(true)
+    expect(canTransition('completed', 'no_show', { actor: 'player' })).toBe(false)
+    expect(canTransition('completed', 'no_show', { actor: 'system' })).toBe(false)
+  })
+
+  it('assertTransition no lanza para admin', () => {
     expect(() =>
       assertTransition('completed', 'no_show', { actor: 'admin' }),
+    ).not.toThrow()
+  })
+
+  it('assertTransition lanza para player/system', () => {
+    expect(() =>
+      assertTransition('completed', 'no_show', { actor: 'player' }),
+    ).toThrow(InvalidTransitionError)
+    expect(() =>
+      assertTransition('completed', 'no_show', { actor: 'system' }),
     ).toThrow(InvalidTransitionError)
   })
 })

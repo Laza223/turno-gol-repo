@@ -16,6 +16,7 @@ import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurr
 import {
   BookingNotInConfirmedError,
   CourtOfflineError,
+  NoShowCorrectionWindowExpiredError,
   PlayerBannedError,
   PlayerHasOutstandingBalanceError,
   SlotTakenError,
@@ -76,6 +77,36 @@ async function insertPendingBooking(opts: {
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
       ${800000}, ${0}, 'not_required', NULL, 'pending_payment'
+    )
+    RETURNING id
+  `
+  return rows[0]!.id
+}
+
+// Inserts a booking already in 'completed' with a backdated updated_at. Raw
+// INSERT is NOT subject to enforce_booking_invariants (UPDATE-only) nor to
+// set_updated_at (BEFORE UPDATE only), so updated_at stays where we put it —
+// the only way to simulate a booking completed N hours ago without a real clock.
+async function insertCompletedBooking(opts: {
+  tenantId: string
+  courtId: string
+  playerId: string
+  date: string
+  timeStart: string
+  timeEnd: string
+  agedHours: number
+}): Promise<string> {
+  const sql = getSql()
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO bookings (
+      tenant_id, court_id, player_id, date, time_start, time_end,
+      price_snapshot, deposit_amount, deposit_status, payment_method, status, updated_at
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+      ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${800000}, ${0}, 'not_required', NULL, 'completed',
+      NOW() - (${opts.agedHours} || ' hours')::interval
     )
     RETURNING id
   `
@@ -474,17 +505,11 @@ describe('terminal state inmutabilidad', () => {
     )
     expect(completed.status).toBe('completed')
 
-    // Any field UPDATE on a 'completed' row is rejected by the trigger.
+    // A non-correction field UPDATE on a 'completed' row is still rejected by the
+    // trigger: only the completed→no_show status change is exempted (see the
+    // '24h correction' describe below).
     await expect(
       sql`UPDATE bookings SET notes_internal = 'foo' WHERE id = ${created.id}`,
-    ).rejects.toThrow(/terminal/i)
-
-    // doc6 §3 mentions a 24h completed → no_show correction. It is NOT implemented:
-    // enforce_booking_invariants_fn blocks it like any other post-terminal change.
-    // If P5 ever implements the 24h window, this assertion will fail on purpose,
-    // forcing a deliberate review instead of a silent behavior change.
-    await expect(
-      sql`UPDATE bookings SET status = 'no_show' WHERE id = ${created.id}`,
     ).rejects.toThrow(/terminal/i)
   })
 
@@ -518,6 +543,111 @@ describe('terminal state inmutabilidad', () => {
 
     await expect(
       sql`UPDATE bookings SET notes_internal = 'foo' WHERE id = ${created.id}`,
+    ).rejects.toThrow(/terminal/i)
+  })
+})
+
+describe('completed → no_show: corrección de 24h (P5)', () => {
+  it('un admin corrige completed → no_show dentro de las 24h', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const created = await withTenantContext(tenant.id, (tx) =>
+      createManualBooking(
+        tenant.id,
+        {
+          courtId,
+          date: PAST_DATE,
+          timeStart: '08:00',
+          timeEnd: '09:00',
+          durationMins: 60,
+          type: 'spontaneous',
+          staffUserId: staff.id,
+        },
+        tx,
+      ),
+    )
+    // completeBooking sets updated_at = NOW(), so we are inside the 24h window.
+    await withTenantContext(tenant.id, (tx) =>
+      completeBooking(created.id, 'admin', tx),
+    )
+
+    const corrected = await withTenantContext(tenant.id, (tx) =>
+      markNoShow(created.id, staff.id, tx),
+    )
+    expect(corrected.status).toBe('no_show')
+
+    const after = await sql<{ status: string }[]>`
+      SELECT status FROM bookings WHERE id = ${created.id}
+    `
+    expect(after[0]!.status).toBe('no_show')
+  })
+
+  it('rechaza la corrección pasadas las 24h (NoShowCorrectionWindowExpiredError)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertCompletedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '08:00',
+      timeEnd: '09:00',
+      agedHours: 25,
+    })
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => markNoShow(bookingId, staff.id, tx)),
+    ).rejects.toBeInstanceOf(NoShowCorrectionWindowExpiredError)
+
+    // El turno sigue 'completed' (la corrección no se aplicó).
+    const after = await sql<{ status: string }[]>`
+      SELECT status FROM bookings WHERE id = ${bookingId}
+    `
+    expect(after[0]!.status).toBe('completed')
+  })
+
+  it('el trigger DB permite el raw UPDATE dentro de 24h y lo bloquea pasadas', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    // Dentro de la ventana: el trigger lo permite.
+    const fresh = await insertCompletedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '08:00',
+      timeEnd: '09:00',
+      agedHours: 1,
+    })
+    await sql`UPDATE bookings SET status = 'no_show' WHERE id = ${fresh}`
+    const a = await sql<{ status: string }[]>`
+      SELECT status FROM bookings WHERE id = ${fresh}
+    `
+    expect(a[0]!.status).toBe('no_show')
+
+    // Pasada la ventana: el trigger lo bloquea (backstop de defensa en profundidad).
+    const stale = await insertCompletedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      agedHours: 25,
+    })
+    await expect(
+      sql`UPDATE bookings SET status = 'no_show' WHERE id = ${stale}`,
     ).rejects.toThrow(/terminal/i)
   })
 })

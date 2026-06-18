@@ -29,6 +29,7 @@ import {
   BookingNotYetEndedError,
   BookingNotYetStartedError,
   CourtOfflineError,
+  NoShowCorrectionWindowExpiredError,
   PlayerBannedError,
   PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
@@ -43,6 +44,7 @@ import { scheduleBookingExpiry } from '@/shared/jobs/schedule-expiry'
 import type {
   AvailableSlot,
   BookingRow,
+  BookingStatus,
   CreateManualBookingInput,
   CreateOnlineBookingInput,
   TransitionResult,
@@ -501,25 +503,56 @@ export async function markNoShow(
   _staffUserId: string,
   tx: DbTx,
 ): Promise<BookingRow> {
-  assertTransition('confirmed', 'no_show', { actor: 'admin' })
+  // Dos caminos, ambos sólo para admin:
+  //   1. confirmed → no_show: flujo normal (requiere time_start pasado).
+  //   2. completed → no_show: corrección de 24h (P5). Un admin revierte un turno
+  //      mal completado dentro de las 24h de la completación (bookings.updated_at).
+  const check = await tx.execute(sql`
+    SELECT
+      status,
+      (date + time_start) > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_started,
+      (NOW() - updated_at) < INTERVAL '24 hours' AS within_correction_window
+    FROM bookings
+    WHERE id = ${bookingId}
+  `)
+  const row = (
+    check as unknown as Array<{
+      status: BookingStatus
+      not_yet_started: boolean
+      within_correction_window: boolean
+    }>
+  )[0]
+  if (!row) throw new BookingNotInConfirmedError(bookingId)
+
+  if (row.status === 'completed') {
+    // Corrección de 24h. assertTransition gobierna el actor (sólo admin); la
+    // ventana la chequeamos acá y el trigger DB la respalda (defensa en profundidad).
+    assertTransition('completed', 'no_show', { actor: 'admin' })
+    if (!row.within_correction_window) {
+      throw new NoShowCorrectionWindowExpiredError(bookingId)
+    }
+    return applyNoShow(bookingId, 'completed', tx)
+  }
 
   // B1 audit fix: require that time_start has passed in ART. Otherwise admin could
   // pre-mark no-show on a future booking, triggering false auto-ban via no-show
   // penalty + corrupting reports.
-  const check = await tx.execute(sql`
-    SELECT (date + time_start) > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_started
-    FROM bookings
-    WHERE id = ${bookingId}
-  `)
-  const row = (check as unknown as Array<{ not_yet_started: boolean }>)[0]
-  if (row?.not_yet_started) {
+  assertTransition('confirmed', 'no_show', { actor: 'admin' })
+  if (row.not_yet_started) {
     throw new BookingNotYetStartedError(bookingId)
   }
+  return applyNoShow(bookingId, 'confirmed', tx)
+}
 
+async function applyNoShow(
+  bookingId: string,
+  fromStatus: 'confirmed' | 'completed',
+  tx: DbTx,
+): Promise<BookingRow> {
   const rows = await tx
     .update(bookings)
     .set({ status: 'no_show', updatedAt: new Date() })
-    .where(and(eq(bookings.id, bookingId), eq(bookings.status, 'confirmed')))
+    .where(and(eq(bookings.id, bookingId), eq(bookings.status, fromStatus)))
     .returning()
 
   if (rows.length === 0) throw new BookingNotInConfirmedError(bookingId)

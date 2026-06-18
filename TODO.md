@@ -382,6 +382,195 @@ La impersonación ("Entrar como este complejo") tiene el peor ratio complejidad/
 - [ ] `extractAuthUser()` en `auth.middleware.ts` — la rama de impersonación puede quedarse como dead code o limpiarse; NO hace falta testearla para v1
 - [ ] No crear el banner de impersonación ni los tests e2e de F2
 
+### 13. 💰 Pricing JSONB: simplificar estructura + UI de grilla hora×día (estilo ATC)
+- **Antes**: El pricing JSONB usaba franjas horarias amplias con objeto `prices: {"60": ..., "120": ...}` por duración. Configurar precios escalados hora a hora era imposible sin crear decenas de reglas manualmente. UX/UI horrible para el admin.
+- **Ahora**: Con el cambio #6 (solo 60 min), el pricing se simplifica a un solo campo `price` por regla (ya no necesita el objeto `prices` con claves por duración). Además, la UI de configuración de precios pasa a ser una **grilla visual de horas × días** donde el admin pone el precio en cada celda.
+
+#### Cómo funciona la UI (modelo ATC adaptado)
+
+**Vista de configuración de precios de una cancha:**
+```
+              Lun-Jue    Vie       Sáb       Dom
+  08:00      $35.000   $35.000   $45.000   $45.000
+  09:00      $35.000   $35.000   $45.000   $45.000
+  ...
+  18:00      $50.000   $55.000   $55.000   $55.000
+  19:00      $55.000   $60.000   $60.000   $60.000
+  20:00      $60.000   $65.000   $65.000   $60.000
+  21:00      $60.000   $65.000   $65.000   $55.000
+  22:00      $55.000   $60.000   $60.000   $50.000
+  23:00      $45.000   $50.000   $50.000   $45.000
+```
+
+**Flujo del admin:**
+1. Marcelo abre la cancha → sección "Precios"
+2. Ve una grilla con las horas operativas del complejo en las filas y los días en las columnas
+3. Puede editar celdas individuales o **seleccionar un bloque** de celdas y asignarles el mismo precio (bulk edit)
+4. Al guardar, el sistema **comprime automáticamente** celdas consecutivas con el mismo precio en una sola regla JSONB
+5. Ejemplo: si lunes a jueves de 08:00 a 17:00 todas tienen $35.000, se guarda como una sola regla `{"days": ["mon","tue","wed","thu"], "from": "08:00", "to": "17:00", "price": 3500000}`
+
+**Nuevo formato del JSONB** (cambio #6 ya lo definió, ahora se formaliza):
+```json
+{
+  "rules": [
+    { "days": ["mon","tue","wed","thu"], "from": "08:00", "to": "17:00", "price": 3500000 },
+    { "days": ["mon","tue","wed","thu"], "from": "17:00", "to": "18:00", "price": 4000000 },
+    { "days": ["fri"], "from": "08:00", "to": "17:00", "price": 3500000 },
+    { "days": ["fri"], "from": "17:00", "to": "18:00", "price": 4000000 }
+  ]
+}
+```
+
+**Ventaja para complejos simples**: Si el complejo tiene solo 3 precios (mañana/tarde/noche), selecciona el bloque 08-18 y pone $35k, el bloque 18-22 y pone $55k, el bloque 22-00 y pone $45k. Tres clicks.
+
+**Ventaja para complejos complejos**: Si tiene escalones hora a hora con viernes y sábados diferentes, edita celda por celda. El sistema lo guarda comprimido.
+
+#### Qué se elimina
+- El objeto `prices: {"60": number, "120": number}` → reemplazado por `price: number` (ya definido en cambio #6)
+- Los defaults hardcodeados en `courts.ts` que usan el formato viejo con `prices`
+- Toda UI que muestre franjas amplias fijas (mañana/tarde/noche)
+
+#### Impacto en código/docs
+- [ ] `src/modules/courts/court.types.ts` — `PricingRule.prices` → `PricingRule.price` (singular, `number`)
+- [ ] `src/shared/db/schema/courts.ts` — Eliminar defaults de pricing con formato viejo `prices: {"60":..., "120":...}`
+- [ ] `src/modules/courts/court.service.ts` — `calculatePrice()`: eliminar param `durationMins`, siempre evalúa `rule.price`
+- [ ] `src/modules/tenants/public.service.ts` — `getPriceForSlot()`: simplificar a `rule.price` en vez de `rule.prices[String(durationMins)]`
+- [ ] Tests unitarios e integración: actualizar todos los fixtures de pricing al formato nuevo
+- [ ] `docs/spec/doc6_entidades.md` — Court pricing JSONB: documentar formato nuevo
+- [ ] `docs/spec/doc13_database_schema.md` — JSONB schema actualizado
+- [ ] UI: nueva pantalla de configuración de precios con grilla hora×día
+- [ ] Wizard de onboarding: misma UI de grilla simplificada
+
+### 14. 🧹 Eliminar `booking_duration_minutes` de tenant settings (dead code)
+- **Antes**: `booking_duration_minutes: number[]` en `TenantSettings` permitía configurar duraciones de 60 o 120 minutos por complejo. El default en el schema todavía dice `[60, 120]`.
+- **Ahora**: Con el cambio #6 (solo 60 min), este campo es dead code. Siempre es `[60]`. Reemplazar por una constante global.
+
+#### Qué se elimina
+- `booking_duration_minutes` de `TenantSettings` type y del default JSONB en `tenants.ts`
+- `bookingDurationMinutes` de `PublicTenant` type y su mapping en `getPublicTenant()`
+- Toda lógica que lea `tenant.bookingDurationMinutes[0]` o `settings.booking_duration_minutes`
+- El parámetro `durationMins: 60 | 120` en `calculatePrice()` y `getPriceForSlot()`
+
+#### Qué se agrega
+- Constante global `SLOT_DURATION_MINUTES = 60` (en `src/shared/constants.ts` o similar)
+- Reemplazar todas las lecturas de `durationMins` por la constante
+
+#### Impacto en código/docs
+- [ ] `src/modules/tenants/tenant.types.ts` — Eliminar `booking_duration_minutes` del type `TenantSettings`
+- [ ] `src/shared/db/schema/tenants.ts` — Eliminar del default JSONB de `settings`
+- [ ] `src/modules/tenants/public.service.ts` — Reemplazar `tenant.bookingDurationMinutes[0] ?? 60` por constante
+- [ ] `src/modules/courts/court.service.ts` — `calculatePrice()` sin parámetro de duración
+- [ ] `PublicTenant` type — Eliminar `bookingDurationMinutes`
+- [ ] `UpdateTenantSettingsInput` — Eliminar si incluye duración
+- [ ] Tests: actualizar todos los que pasen `durationMins` como parámetro
+- [ ] `CLAUDE.md` — Actualizar línea 103 (ya dice "60 o 120", cambiar a "60 minutos fijo, constante global")
+- [ ] `docs/spec/doc6_entidades.md` — Tenant settings: eliminar campo
+
+### 15. 🚨 Enforce de `booking_advance_days` en el backend (bug potencial)
+- **Antes**: `booking_advance_days: 6` existe como configuración en `tenants.settings` y se expone en `PublicTenant`, pero **no hay validación en el backend** que impida crear una reserva para una fecha más allá de ese límite. Un jugador (o atacante) podría enviar una fecha 30 días en el futuro y la reserva se crearía.
+- **Ahora**: Agregar validación en el flujo de creación de booking (tanto online como manual) que rechace fechas más allá de `booking_advance_days` días desde hoy.
+
+#### Cómo funciona
+1. Jugador intenta reservar para el 30 de junio (12 días adelante)
+2. El sistema calcula: `hoy (18/jun) + booking_advance_days (6) = 24/jun`
+3. `30/jun > 24/jun` → rechaza con error "No se puede reservar con más de 6 días de anticipación"
+4. La grilla pública directamente **no muestra** días más allá del límite (defensa en frontend)
+5. El backend valida igualmente como segunda capa de seguridad
+
+#### Excepciones
+- **Reservas manuales del admin**: ¿Aplica el mismo límite o el admin puede reservar sin restricción de anticipación? Propuesta: el admin puede reservar sin límite de anticipación (necesita flexibilidad para eventos especiales, torneos, etc.)
+- **Bookings de abonados (`fixed`)**: Los abonados se generan rolling 8+ semanas adelante, no aplica este límite (ya están confirmados por el abono)
+
+#### Impacto en código/docs
+- [ ] Lógica de creación de booking online — Agregar validación de `booking_advance_days`
+- [ ] API de reserva pública — Rechazar con error descriptivo si excede anticipación
+- [ ] Grilla pública — No mostrar fechas más allá del límite de anticipación
+- [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 2: agregar validación de anticipación
+- [ ] `docs/spec/doc8_user_stories.md` — Agregar edge case de anticipación excedida
+- [ ] Tests: test de integración que valide el rechazo por anticipación excedida
+
+### 16. 🏗️ Separar `indoor` del enum `surface_type` → atributos por cancha
+- **Antes**: `surface_type` mezclaba dos dimensiones: superficie del piso (`synthetic_grass`, `natural_grass`, `cement`) y cobertura (`indoor`). Una cancha techada de césped sintético no podía representarse correctamente.
+- **Ahora**: Separar en dos conceptos:
+  1. **`surface_type`** (enum): solo describe el piso → `synthetic_grass` | `natural_grass` | `cement` | `tile`
+  2. **Atributos por cancha** (campos booleanos en `courts`): `is_covered` (techada/descubierta) + `has_lighting` (con/sin iluminación)
+
+#### Nuevo enum `surface_type`
+```sql
+-- Migración: quitar 'indoor', agregar 'tile' (baldosa)
+ALTER TYPE surface_type RENAME VALUE 'indoor' TO 'tile';
+-- O crear migración más segura que:
+-- 1. Actualice courts con surface_type='indoor' a 'synthetic_grass' + is_covered=true
+-- 2. Remueva 'indoor' del enum
+-- 3. Agregue 'tile' al enum
+```
+
+#### Nuevos campos en tabla `courts`
+| Campo | Tipo | Default | Descripción |
+|-------|------|---------|-------------|
+| `is_covered` | `boolean` | `false` | Cancha techada (true) o descubierta (false) |
+| `has_lighting` | `boolean` | `true` | Con iluminación (true) o sin iluminación (false) |
+
+#### Cómo se muestra en la página pública
+Debajo del nombre de cada cancha, estilo ATC:
+> "Césped sintético, Con iluminación, Descubierta"
+> "Cemento, Con iluminación, Techada"
+
+#### ¿Texto libre para superficie? NO
+El enum nos da filtros limpios en el marketplace/buscador. Texto libre destruye la capacidad de filtrar ("solo canchas de césped sintético"). Si aparece un piso nuevo en el futuro, se agrega al enum con una migración.
+
+#### Impacto en código/docs
+- [ ] Migración SQL: migrar canchas con `surface_type='indoor'` → `surface_type='synthetic_grass'` + `is_covered=true`
+- [ ] `src/shared/db/schema/enums.ts` — Quitar `indoor`, agregar `tile` en `surfaceTypeEnum`
+- [ ] `src/shared/db/schema/courts.ts` — Agregar `is_covered: boolean` y `has_lighting: boolean`
+- [ ] `src/modules/courts/court.types.ts` — Actualizar `CourtRow` y `CreateCourtInput`
+- [ ] `src/modules/tenants/public.service.ts` — `PublicCourtCard` y `PublicCourt`: incluir atributos
+- [ ] Trigger `courts_recalc_from_price` — Si denormaliza superficies, actualizar
+- [ ] `src/components/public/courtFacets.ts` — Actualizar facets de superficie
+- [ ] `docs/spec/doc6_entidades.md` — Court: actualizar campos y enum
+- [ ] `docs/spec/doc13_database_schema.md` — ALTER TABLE courts, ALTER TYPE surface_type
+- [ ] UI pública: mostrar "Césped sintético, Con iluminación, Descubierta" debajo del nombre
+- [ ] UI admin: formulario de cancha con selectores para superficie, cobertura e iluminación
+- [ ] Tests: actualizar fixtures que usen `surface_type='indoor'`
+
+### 17. ⚽ Nuevo campo `format` (Fútbol 5, 7, 8, 9, 11) separado de `capacity`
+- **Antes**: `capacity` (integer) se usaba tanto para la capacidad real de la cancha (10 jugadores) como para identificar el formato (Fútbol 5). Esto generaba confusión: la UI mostraba "Capacidad: 10" cuando debería decir "Fútbol 5". Además, los filtros del marketplace/buscador filtraban por capacity cuando el concepto que busca el jugador es "quiero una cancha de Fútbol 5".
+- **Ahora**: Agregar campo `format` que representa el número del nombre del formato (5, 7, 8, 9, 11). La UI muestra "Fútbol {format}". El `capacity` puede calcularse o mantenerse para validaciones internas.
+
+#### Nuevo campo en tabla `courts`
+| Campo | Tipo | Constraint | Descripción |
+|-------|------|-----------|-------------|
+| `format` | `integer` | `NOT NULL, CHECK (format IN (4, 5, 6, 7, 8, 9, 10, 11))` | Formato de la cancha: Fútbol 4, 5, 6, 7, 8, 9, 10, 11 |
+
+#### Cómo se muestra
+- **Admin (formulario)**: Dropdown "Formato de cancha" con opciones: Fútbol 4, Fútbol 5, ..., Fútbol 11
+- **Página pública**: "Cancha 3 - **Fútbol 5**" (debajo: "Césped sintético, Con iluminación, Descubierta")
+- **Marketplace/Buscador**: Filtro "Tipo de cancha" con checkboxes: Fútbol 5, Fútbol 7, Fútbol 8, etc.
+
+#### Relación con `capacity`
+- `format = 5` → `capacity = 10` (5 por lado)
+- `format = 7` → `capacity = 14`
+- `format = 8` → `capacity = 16`
+- `format = 11` → `capacity = 22`
+- **Propuesta**: `capacity` se calcula automáticamente como `format × 2`. Si se mantiene como campo, se auto-llena al elegir el formato. El admin no tiene que ingresarlo manualmente.
+
+#### Beneficio para filtros del marketplace
+El campo `court_formats` ya existe en la tabla `tenants` como denormalización para filtros públicos. Actualmente almacena `capacity` (enteros como 10, 14). Con el campo `format`, pasa a almacenar formatos reales (5, 7, 8, 11) que son más intuitivos para el jugador en la UI de búsqueda.
+
+#### Impacto en código/docs
+- [ ] Migración SQL: `ALTER TABLE courts ADD COLUMN format integer` + migrar `capacity` existente → `format = capacity / 2`
+- [ ] `src/shared/db/schema/courts.ts` — Agregar campo `format` con check constraint
+- [ ] `src/modules/courts/court.types.ts` — Agregar `format` a `CourtRow` y `CreateCourtInput`
+- [ ] `src/modules/tenants/public.service.ts` — `PublicCourtCard`: incluir `format`
+- [ ] Trigger `courts_recalc_from_price` — Denormalizar `format` en vez de `capacity` para `court_formats`
+- [ ] `src/components/public/courtFacets.ts` — Actualizar facets a usar formatos
+- [ ] `docs/spec/doc6_entidades.md` — Court: agregar campo `format`, actualizar `capacity`
+- [ ] `docs/spec/doc13_database_schema.md` — ALTER TABLE courts
+- [ ] UI admin: dropdown de formato en formulario de cancha
+- [ ] UI pública: mostrar "Fútbol {format}" en vez de "Capacidad: {capacity}"
+- [ ] `CLAUDE.md` — Documentar el campo `format` y la jerga: Fútbol 4, 5, 7, 8, 9, 11
+- [ ] Tests: actualizar fixtures y assertions que usen `capacity` como proxy de formato
+
 ---
 
 ## Pendientes de Debate

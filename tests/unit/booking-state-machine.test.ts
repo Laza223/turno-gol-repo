@@ -5,7 +5,10 @@ import {
   canTransition,
 } from '@/modules/bookings/booking.state-machine'
 import { InvalidTransitionError } from '@/modules/bookings/booking.errors'
-import type { BookingStatus } from '@/modules/bookings/booking.types'
+import type {
+  BookingStatus,
+  CancellationActor,
+} from '@/modules/bookings/booking.types'
 
 const ALL_STATUSES: BookingStatus[] = [
   'pending_payment',
@@ -16,6 +19,8 @@ const ALL_STATUSES: BookingStatus[] = [
   'completed',
   'no_show',
 ]
+
+const ALL_ACTORS: CancellationActor[] = ['player', 'admin', 'system']
 
 const VALID_PAIRS: Array<[BookingStatus, BookingStatus]> = [
   ['pending_payment', 'confirmed'],
@@ -100,11 +105,29 @@ describe('actor authorization', () => {
 
 describe('assertTransition', () => {
   it('returns void on valid transition', () => {
-    expect(() => assertTransition('confirmed', 'completed', { actor: 'system' })).not.toThrow()
+    expect(assertTransition('confirmed', 'completed', { actor: 'system' })).toBeUndefined()
+  })
+
+  it('no lanza en transición válida sin ctx', () => {
+    expect(() => assertTransition('pending_payment', 'confirmed')).not.toThrow()
   })
 
   it('throws InvalidTransitionError on invalid transition', () => {
     expect(() => assertTransition('expired', 'confirmed')).toThrow(InvalidTransitionError)
+  })
+
+  // Gap: el branch `reason ? (reason)` en InvalidTransitionError sólo agrega
+  // `(actor=...)` cuando hay ctx. Sin ctx el mensaje NO debe filtrar actor.
+  it('sin ctx: el mensaje de error no incluye actor=', () => {
+    try {
+      assertTransition('expired', 'confirmed')
+      throw new Error('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(InvalidTransitionError)
+      const msg = (e as Error).message
+      expect(msg).toContain('expired -> confirmed')
+      expect(msg).not.toContain('actor=')
+    }
   })
 
   it('error message includes from/to/actor', () => {
@@ -122,5 +145,65 @@ describe('assertTransition', () => {
 
   it('throws on self-loop', () => {
     expect(() => assertTransition('confirmed', 'confirmed')).toThrow(InvalidTransitionError)
+  })
+})
+
+// Invariantes que protegen contra refactors del orden matriz/actor en
+// canTransition. La matriz (sin ctx) ya está pinneada arriba; estas pruebas
+// pinnean la RELACIÓN entre la matriz y ACTOR_RULES sin acoplarse a la
+// estructura interna (sólo usan la API pública canTransition/assertTransition).
+describe('invariantes matriz ↔ actor', () => {
+  it('el actor nunca amplía la matriz: si pasa con ctx, también pasa sin ctx', () => {
+    for (const from of ALL_STATUSES) {
+      for (const to of ALL_STATUSES) {
+        for (const actor of ALL_ACTORS) {
+          if (canTransition(from, to, { actor })) {
+            // Una regla de actor sólo puede RESTRINGIR una transición válida,
+            // jamás habilitar una que la matriz prohíbe.
+            expect(canTransition(from, to)).toBe(true)
+          }
+        }
+      }
+    }
+  })
+
+  it('toda transición válida es alcanzable por al menos un actor', () => {
+    // Si una regla de actor quedara vacía, la transición sería inalcanzable en
+    // prod (todos los callers reales pasan ctx) mientras la matriz sin ctx
+    // seguiría verde. Esto lo detecta.
+    for (const [from, to] of VALID_PAIRS) {
+      const reachable = ALL_ACTORS.some((actor) =>
+        canTransition(from, to, { actor }),
+      )
+      expect(reachable).toBe(true)
+    }
+  })
+
+  it('transición inválida en la matriz permanece bloqueada con cualquier actor', () => {
+    for (const from of ALL_STATUSES) {
+      for (const to of ALL_STATUSES) {
+        if (validSet.has(`${from}->${to}`)) continue
+        for (const actor of ALL_ACTORS) {
+          expect(canTransition(from, to, { actor })).toBe(false)
+        }
+      }
+    }
+  })
+})
+
+describe('completed → no_show (corrección 24h delegada a la DB)', () => {
+  // booking.state-machine.ts L19-20: doc6 §3 admite completed -> no_show como
+  // corrección de 24h, pero la state machine la BLOQUEA (completed es terminal);
+  // la excepción la maneja el trigger enforce_booking_invariants_fn en la DB.
+  // Si alguien "arregla" esto agregando no_show al set de completed, rompe la
+  // garantía de inmutabilidad terminal de la capa app.
+  it('está bloqueada en la capa de aplicación para todo actor', () => {
+    expect(canTransition('completed', 'no_show')).toBe(false)
+    for (const actor of ALL_ACTORS) {
+      expect(canTransition('completed', 'no_show', { actor })).toBe(false)
+    }
+    expect(() =>
+      assertTransition('completed', 'no_show', { actor: 'admin' }),
+    ).toThrow(InvalidTransitionError)
   })
 })

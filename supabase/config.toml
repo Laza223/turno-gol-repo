@@ -117,8 +117,9 @@ enable_signup = true
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
-# Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+# Passwords shorter than this value will be rejected as weak. Espejado en Zod
+# (src/modules/auth/password.ts MIN_PASSWORD_LENGTH). Sin complejidad obligatoria.
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -129,8 +130,10 @@ enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
-# If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# If enabled, users need to confirm their email address before signing in. El alta
+# de staff (signUp) exige confirmar el email una vez (spec §5). enable_confirmations
+# debe configurarse también en el dashboard de Supabase PROD (R6).
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -148,6 +151,21 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Email templates (token_hash, NO PKCE `.ConfirmationURL`): el callback solo
+# soporta token_hash tras quitar la rama `code` (Google OAuth fuera). Estos
+# mismos templates y subjects deben cargarse a mano en el dashboard PROD (R6).
+[auth.email.template.confirmation]
+subject = "Confirmá tu cuenta en TurnoGol"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Restablecé tu contraseña de TurnoGol"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.magic_link]
+subject = "Tu acceso a TurnoGol"
+content_path = "./supabase/templates/magic_link.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

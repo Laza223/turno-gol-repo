@@ -68,9 +68,14 @@ async function main(): Promise<void> {
     if (authUser) {
       console.log(`[1/3] Auth user ya existe: ${authUser.id}`)
     } else {
+      // El SuperAdmin sigue passwordless (magic link + MFA TOTP, ADR-002 / spec
+      // auth §1). Password opcional vía SUPERADMIN_SEED_PASSWORD si se quiere
+      // login por contraseña; si no, se setea luego por "olvidé mi contraseña".
+      const seedPassword = process.env.SUPERADMIN_SEED_PASSWORD
       const { data, error } = await supabase.auth.admin.createUser({
         email,
         email_confirm: true,
+        ...(seedPassword ? { password: seedPassword } : {}),
       })
       if (error || !data?.user) {
         throw error ?? new Error('createUser no devolvió user')

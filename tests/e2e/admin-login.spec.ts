@@ -1,21 +1,26 @@
 import { test, expect } from './fixtures'
+import { E2E_TEST_PASSWORD } from './_helpers/test-credentials'
 
-test.describe('admin login flow', () => {
+test.describe('admin login flow (email + password)', () => {
   test('unauthenticated /dashboard redirects to /login', async ({ page }) => {
     await page.goto('/dashboard')
     await expect(page).toHaveURL(/\/login/)
   })
 
-  test('login page shows email input', async ({ page }) => {
+  test('login page shows email + password inputs and forgot link', async ({ page }) => {
     await page.goto('/login')
     await expect(page.getByLabel(/email/i)).toBeVisible()
+    await expect(page.getByLabel(/^contraseña$/i)).toBeVisible()
+    await expect(page.getByRole('link', { name: /olvidaste tu contraseña/i })).toBeVisible()
   })
 
-  test('submitting email triggers "check your inbox" message @critical', async ({ page }) => {
+  test('valid credentials log in and land on /dashboard @critical', async ({ page }) => {
     await page.goto('/login')
     await page.getByLabel(/email/i).fill('e2e-admin@turnogol.test')
-    await page.getByRole('button', { name: /(enviar|entrar|continuar)/i }).click()
-    await expect(page.getByText(/(revis[áa] tu mail|enviamos|check your inbox)/i)).toBeVisible({ timeout: 10_000 })
+    await page.getByLabel(/^contraseña$/i).fill(E2E_TEST_PASSWORD)
+    await page.getByRole('button', { name: /iniciar sesión/i }).click()
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
+    await expect(page.getByText(/E2E Complejo Demo/i).first()).toBeVisible()
   })
 
   test('with admin storageState, /dashboard renders', async ({ browser, adminStorageState }) => {
@@ -27,26 +32,22 @@ test.describe('admin login flow', () => {
     await ctx.close()
   })
 
-  test('login page email input is accessible (type + autocomplete)', async ({ page }) => {
+  test('login inputs are accessible (type + autocomplete)', async ({ page }) => {
     await page.goto('/login')
     const email = page.getByLabel(/email/i)
     await expect(email).toHaveAttribute('type', 'email')
     await expect(email).toHaveAttribute('autocomplete', 'email')
+    const password = page.getByLabel(/^contraseña$/i)
+    await expect(password).toHaveAttribute('type', 'password')
+    await expect(password).toHaveAttribute('autocomplete', 'current-password')
   })
 
-  test('invalid email does not navigate to sent state', async ({ page }) => {
+  test('wrong password shows a generic error and stays on /login', async ({ page }) => {
     await page.goto('/login')
-    await page.getByLabel(/email/i).fill('not-an-email')
-    await page.getByRole('button', { name: /(enviar|entrar|continuar)/i }).click()
-    // Native HTML5 validation prevents submit; if server-side, returns 'Email inválido'.
-    // Either way, we should NOT see the "sent" success state.
-    // Anchor on the SentState heading — the FormCard subtitle on /login
-    // ("Te enviamos un enlace mágico a tu email") would also match the
-    // /enviamos/ regex and is always visible, making this assertion always fail.
-    await expect(
-      page.getByRole('heading', { name: /revis[áa] tu (mail|email)/i }),
-    ).not.toBeVisible({ timeout: 2_000 })
-    // And we should still be on /login (not advanced past).
+    await page.getByLabel(/email/i).fill('e2e-admin@turnogol.test')
+    await page.getByLabel(/^contraseña$/i).fill('contraseña-incorrecta')
+    await page.getByRole('button', { name: /iniciar sesión/i }).click()
+    await expect(page.getByText(/email o contraseña incorrectos/i)).toBeVisible({ timeout: 10_000 })
     await expect(page).toHaveURL(/\/login/)
   })
 })

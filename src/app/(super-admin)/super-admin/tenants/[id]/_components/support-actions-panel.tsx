@@ -10,6 +10,7 @@ import {
   extendTrialAction,
   forceTenantStatusAction,
   reactivateTenantAction,
+  resetStaffPasswordAction,
   updateTenantSettingsAction,
   type SupportActionResult,
 } from '../actions'
@@ -153,6 +154,10 @@ export function SupportActionsPanel({
 
   // ── Reactivar ──
   const [reactivateFeedback, setReactivateFeedback] = useState<Feedback>(null)
+
+  // ── Reset de contraseña de staff ──
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetFeedback, setResetFeedback] = useState<Feedback>(null)
 
   const boolFields: Array<{ key: keyof SupportPanelSettings; label: string }> = [
     { key: 'requires_deposit', label: 'Requiere seña' },
@@ -418,6 +423,42 @@ export function SupportActionsPanel({
             Guardar settings
           </button>
           <FeedbackText feedback={settingsFeedback} />
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Resetear contraseña de staff"
+        description="Genera una contraseña temporal para un miembro del complejo (soporte telefónico). El titular entra con la temporal y el sistema lo obliga a cambiarla. Solo staff activo de este complejo."
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="reset-email" className="text-sm font-medium text-slate-700">
+              Email del staff
+            </label>
+            <input
+              id="reset-email"
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="staff@complejo.com"
+              autoComplete="off"
+              className={`${inputCls} w-64`}
+            />
+            <button
+              type="button"
+              disabled={pending || resetEmail.trim() === ''}
+              onClick={() =>
+                run(
+                  () => resetStaffPasswordAction({ tenantId, email: resetEmail.trim() }),
+                  setResetFeedback,
+                )
+              }
+              className={primaryBtn}
+            >
+              Resetear contraseña
+            </button>
+          </div>
+          <FeedbackText feedback={resetFeedback} />
         </div>
       </SectionCard>
 

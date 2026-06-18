@@ -1,23 +1,12 @@
+import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSql } from '@/shared/db/client'
+import { track } from '@/shared/observability'
 import { extractAuthUser } from './auth.middleware'
 import type { AuthUser } from './types'
 
 export type SignInResult = { ok: true } | { ok: false; error: string }
-
-export async function signInWithMagicLink(
-  email: string,
-  redirectTo: string,
-): Promise<SignInResult> {
-  const supabase = createClient()
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo },
-  })
-  if (error) return { ok: false, error: error.message }
-  return { ok: true }
-}
 
 export type PlayerProfile = {
   firstName: string
@@ -54,16 +43,71 @@ export async function signInWithPlayerMagicLink(
   return { ok: true }
 }
 
-export async function signInWithGoogle(
+/**
+ * Magic link de re-acceso para un jugador EXISTENTE con sesión vencida que cae
+ * en `/login` (form secundario passwordless). Sin perfil: el callback resuelve
+ * nombre desde el metadata previo / email y no pisa el consentimiento ya dado.
+ */
+export async function signInWithExistingPlayerMagicLink(
+  email: string,
   redirectTo: string,
-): Promise<{ url: string | null; error?: string }> {
+): Promise<SignInResult> {
   const supabase = createClient()
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo },
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo, data: { is_player: true } },
   })
-  if (error) return { url: null, error: error.message }
-  return { url: data?.url ?? null }
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export type PasswordSignInResult =
+  | { ok: true; user: User }
+  | { ok: false; code: 'invalid_credentials' | 'email_not_confirmed' }
+
+/**
+ * Login de staff por email + contraseña. No revela al caller si el email existe:
+ * cualquier fallo de credenciales o de confirmación se mapea a un código acotado
+ * que la action traduce a un mensaje genérico (ver §6.2 enumeración de usuarios).
+ */
+export async function signInWithPassword(
+  email: string,
+  password: string,
+): Promise<PasswordSignInResult> {
+  const supabase = createClient()
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error || !data?.user) {
+    const code = error?.code === 'email_not_confirmed' ? 'email_not_confirmed' : 'invalid_credentials'
+    return { ok: false, code }
+  }
+  return { ok: true, user: data.user }
+}
+
+/**
+ * Alta de staff por email + contraseña. Con `enable_confirmations=true` Supabase
+ * NO crea sesión: manda el email de confirmación (template `signup`/token_hash) y
+ * el callback provisiona al hacer click. El perfil viaja en `options.data` igual
+ * que el flujo OTP previo y lo persiste `getOrCreateStaffUser` en el callback.
+ */
+export async function signUpStaff(
+  params: { email: string; password: string; firstName: string; lastName: string; phone: string },
+  emailRedirectTo: string,
+): Promise<SignInResult> {
+  const supabase = createClient()
+  const { error } = await supabase.auth.signUp({
+    email: params.email,
+    password: params.password,
+    options: {
+      emailRedirectTo,
+      data: {
+        first_name: params.firstName,
+        last_name: params.lastName,
+        phone: params.phone,
+      },
+    },
+  })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
 }
 
 export async function signOut(): Promise<void> {
@@ -132,4 +176,55 @@ export async function getOrCreateStaffUser(
     RETURNING id
   `
   return created[0]
+}
+
+/**
+ * Única fuente de verdad de provisión + claims + ruteo del staff. Antes vivía
+ * inline en el callback; ahora la invocan el callback (confirmación de alta,
+ * type=signup) y `loginAction` (tras signInWithPassword). Graba EXACTAMENTE los
+ * mismos claims (`staff_user_id`, `tenant_id`, `role`) y ejecuta `refreshSession`
+ * — si no, el primer request entra sin claims y caen guards + RLS (riesgo R1/R3).
+ */
+export async function provisionAndRouteStaff(user: User): Promise<{ path: string }> {
+  const email = user.email
+  if (!email) throw new Error('provisionAndRouteStaff: user without email')
+
+  const userMeta: Record<string, unknown> = user.user_metadata ?? {}
+  const meta: Record<string, unknown> = user.app_metadata ?? {}
+  const givenName = typeof userMeta.given_name === 'string' ? userMeta.given_name : null
+  const familyName = typeof userMeta.family_name === 'string' ? userMeta.family_name : null
+  const firstNameMeta = typeof userMeta.first_name === 'string' ? userMeta.first_name : null
+  const lastNameMeta = typeof userMeta.last_name === 'string' ? userMeta.last_name : null
+  const phoneMeta = typeof userMeta.phone === 'string' ? userMeta.phone : null
+  const firstName = firstNameMeta ?? givenName ?? email.split('@')[0]
+  const lastName = lastNameMeta ?? familyName ?? ''
+
+  const ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
+  const tenants = await resolveStaffTenants(ourStaff.id)
+
+  const supabase = createClient()
+
+  if (tenants.length === 0) {
+    // Set staff_user_id so they pass the layout checks, even without a tenant.
+    const adminClient = createAdminClient()
+    await adminClient.auth.admin.updateUserById(user.id, {
+      app_metadata: { ...meta, staff_user_id: ourStaff.id },
+    })
+    await supabase.auth.refreshSession()
+    track.auth('staff.onboarding', { staffUserId: ourStaff.id, tenantCount: 0 })
+    return { path: '/onboarding' }
+  }
+
+  if (tenants.length === 1) {
+    await setStaffTenantClaim(user.id, tenants[0].tenantId, ourStaff.id)
+    // Force refresh so the new app_metadata.tenant_id appears in the next JWT.
+    await supabase.auth.refreshSession()
+    track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: 1 })
+    return { path: '/dashboard' }
+  }
+
+  // N tenants → user picks one at /select-tenant (page + selectTenantAction set
+  // the tenant_id claim and refresh the session before entering /dashboard).
+  track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: tenants.length })
+  return { path: '/select-tenant' }
 }

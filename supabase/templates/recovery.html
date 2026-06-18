@@ -1,0 +1,13 @@
+<!--
+  Recuperación de contraseña de STAFF ("olvidé mi contraseña").
+  type=recovery → el callback deja activa la sesión recovery y redirige a
+  /reset-password. Patrón token_hash. Ver spec §3.2/§4.3/§5.
+-->
+<h2>Restablecé tu contraseña</h2>
+<p>Pediste cambiar la contraseña de tu cuenta de TurnoGol. Hacé click para fijar una nueva:</p>
+<p>
+  <a href="{{ .SiteURL }}/api/auth/callback?token_hash={{ .TokenHash }}&type=recovery">
+    Cambiar mi contraseña
+  </a>
+</p>
+<p>Si no fuiste vos, ignorá este email: tu contraseña actual sigue funcionando.</p>

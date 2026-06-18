@@ -4,6 +4,7 @@ config({ path: '.env.local' })
 
 import { closeSql, getSql } from '@/shared/db/client'
 import { createClient } from '@supabase/supabase-js'
+import { E2E_TEST_PASSWORD } from '../tests/e2e/_helpers/test-credentials'
 
 const E2E = {
   tenantId: '00000000-0000-4000-8000-000000000001',
@@ -287,6 +288,9 @@ async function seedAuthUsers(): Promise<void> {
       id: E2E.adminAuthUserId,
       email: E2E.adminEmail,
       email_confirm: true,
+      // Staff ahora entra por email+password (spec auth migration). Password fijo
+      // de test, gateado por NODE_ENV en test-credentials.
+      password: E2E_TEST_PASSWORD,
       // extractAuthUser reads staff_user_id + tenant_id from app_metadata.
       app_metadata: {
         tenant_id: E2E.tenantId,
@@ -313,6 +317,7 @@ async function seedAuthUsers(): Promise<void> {
       id: E2E.freshAdminAuthUserId,
       email: E2E.freshAdminEmail,
       email_confirm: true,
+      password: E2E_TEST_PASSWORD,
       // 0-tenant admin: callback sets only staff_user_id; wizard creates tenant.
       app_metadata: { staff_user_id: E2E.freshStaffUserId },
     })
@@ -324,6 +329,7 @@ async function seedAuthUsers(): Promise<void> {
       id: E2E.secondAdminAuthUserId,
       email: E2E.secondAdminEmail,
       email_confirm: true,
+      password: E2E_TEST_PASSWORD,
       app_metadata: {
         tenant_id: E2E.tenantId,
         role: 'admin',

@@ -10,6 +10,15 @@ export type Policy = {
 export const POLICIES = {
   authMagicLink:      { limit: 5,   window: '60 s', keyBy: 'email',  failMode: 'closed' },
   authVerify:         { limit: 10,  window: '60 s', keyBy: 'ip',     failMode: 'closed' },
+  // Login de staff por contraseña. Defensa de fuerza bruta sobre UNA cuenta:
+  // keyBy email, ventana estricta tipo pinAttempts (~8 intentos / 5 min) y fail
+  // closed (si Upstash cae, denegar nuevos intentos antes que permitir adivinar
+  // contraseñas sin medir). Mensaje genérico en la action: no revela el email.
+  authPassword:       { limit: 8,   window: '5 m',  keyBy: 'email',  failMode: 'closed' },
+  // Alta de staff (signUp). Antes SIN rate-limit. keyBy IP (un mismo origen no
+  // debería crear cuentas en masa) + email-confirm + bajo volumen de altas.
+  // Fail closed: ante outage de Upstash, frenar el alta automatizada.
+  authRegister:       { limit: 5,   window: '10 m', keyBy: 'ip',     failMode: 'closed' },
   publicAvailability: { limit: 30,  window: '60 s', keyBy: 'ip',     failMode: 'open'   },
   adminCrud:          { limit: 100, window: '60 s', keyBy: 'tenant', failMode: 'open'   },
   playerBooking:      { limit: 20,  window: '60 s', keyBy: 'player', failMode: 'open'   },

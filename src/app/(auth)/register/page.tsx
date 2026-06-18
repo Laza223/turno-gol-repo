@@ -91,8 +91,8 @@ function FormPane({
           <Logo variant="vertical" className="w-32" />
         </div>
 
-        {state.status === 'sent' ? (
-          <SentState email={state.email} />
+        {state.status === 'confirm' ? (
+          <ConfirmState email={state.email} />
         ) : state.status === 'existing' ? (
           <ExistingState email={state.email} />
         ) : (
@@ -119,7 +119,7 @@ function FormCard({
           Creá tu cuenta
         </h1>
         <p className="text-sm text-slate-600">
-          En menos de un minuto. Sin contraseñas.
+          Creá tu cuenta en menos de un minuto.
         </p>
       </header>
 
@@ -160,6 +160,24 @@ function FormCard({
           helper="Formato argentino con prefijo +54 9"
           error={errs.phone}
         />
+        <Field
+          id="password"
+          name="password"
+          label="Contraseña"
+          type="password"
+          autoComplete="new-password"
+          placeholder="Mínimo 8 caracteres"
+          error={errs.password}
+        />
+        <Field
+          id="confirmPassword"
+          name="confirmPassword"
+          label="Repetir contraseña"
+          type="password"
+          autoComplete="new-password"
+          placeholder="Repetí la contraseña"
+          error={errs.confirmPassword}
+        />
         {errs._form && (
           <p role="alert" className="text-xs text-red-600">
             {errs._form}
@@ -178,17 +196,25 @@ function FormCard({
   )
 }
 
-function SentState({ email }: { email: string }) {
+function ConfirmState({ email }: { email: string }) {
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
         <Mail className="h-6 w-6 text-emerald-700" aria-hidden />
       </div>
       <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
-        Revisá tu email
+        Confirmá tu email
       </h1>
       <p className="mt-3 text-sm text-slate-600">
-        Te enviamos un enlace a <strong className="text-slate-900">{email}</strong>. Hacé click para activar tu cuenta.
+        Te enviamos un email a <strong className="text-slate-900">{email}</strong>.
+        Hacé click en el enlace para activar tu cuenta; después entrás con tu contraseña.
+      </p>
+      <p className="mt-6 text-xs text-slate-500">
+        ¿No llegó? Revisá spam. Podés volver a{' '}
+        <Link href="/register" className="font-semibold text-emerald-700 hover:underline">
+          registrarte
+        </Link>
+        .
       </p>
     </div>
   )

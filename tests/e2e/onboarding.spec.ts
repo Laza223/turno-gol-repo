@@ -3,10 +3,12 @@ import { test, expect } from './fixtures'
 /**
  * E2E: Onboarding wizard for new complex registration.
  *
- * Flow: /register → magic link → /onboarding (4-step wizard) → /dashboard.
+ * Flow: /register (email+password+confirm) → email de confirmación →
+ * /onboarding (4-step wizard) → /dashboard.
  *
- * Since the magic link auth flow is tested in admin-login.spec.ts, we start
- * from /register (form validation) and /onboarding (wizard steps) separately.
+ * El alta requiere confirmar el email (enable_confirmations), así que arrancamos
+ * desde /register (validación de form) y /onboarding (pasos del wizard) por
+ * separado, usando el storage state del fresh admin.
  */
 
 test.describe('onboarding', () => {
@@ -15,10 +17,12 @@ test.describe('onboarding', () => {
       await page.goto('/register')
 
       await expect(page.getByRole('heading', { name: /cre[áa] tu cuenta/i })).toBeVisible()
-      await expect(page.getByLabel(/nombre/i)).toBeVisible()
+      await expect(page.getByLabel(/^nombre$/i)).toBeVisible()
       await expect(page.getByLabel(/apellido/i)).toBeVisible()
       await expect(page.getByLabel(/email/i)).toBeVisible()
       await expect(page.getByLabel(/celular/i)).toBeVisible()
+      await expect(page.getByLabel(/^contraseña$/i)).toBeVisible()
+      await expect(page.getByLabel(/repetir contraseña/i)).toBeVisible()
       await expect(page.getByRole('button', { name: /crear cuenta/i })).toBeVisible()
     })
 

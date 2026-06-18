@@ -1,13 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import type { EmailOtpType, User } from '@supabase/supabase-js'
+import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import {
-  getOrCreateStaffUser,
-  resolveStaffTenants,
-  setStaffTenantClaim,
-} from '@/modules/auth/auth.service'
+import { provisionAndRouteStaff } from '@/modules/auth/auth.service'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { logger } from '@/shared/lib/logger'
@@ -17,7 +13,15 @@ import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const codeSchema = z.string().min(1).max(512)
+const tokenHashSchema = z.string().min(1).max(512)
+const ALLOWED_OTP_TYPES = new Set<EmailOtpType>([
+  'email',
+  'signup',
+  'recovery',
+  'magiclink',
+  'invite',
+  'email_change',
+])
 
 function redirectVerifyError(req: NextRequest, code: string): NextResponse {
   const url = new URL('/verify', req.url)
@@ -33,37 +37,32 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   const params = new URL(req.url).searchParams
   const supabase = createClient()
 
-  // Preferred flow: token_hash + verifyOtp. It needs NO PKCE code_verifier
-  // cookie, so it's robust to the two ways the code flow below breaks the first
-  // magic link: (1) requesting a second link overwrites the verifier cookie, so
-  // the first link's code no longer matches; (2) an email scanner prefetches the
-  // link and consumes the one-time code before the user clicks. verifyOtp sidesteps
-  // both. Requires the email template to point here with token_hash (see route doc).
-  const tokenHash = params.get('token_hash')
-  const code = params.get('code')
+  // token_hash + verifyOtp is the ONLY flow now (Google OAuth removed, so the
+  // PKCE `code` branch is gone). verifyOtp needs NO code_verifier cookie, so it's
+  // robust to the two ways the old code flow broke the first link: (1) requesting
+  // a second link overwrote the verifier cookie; (2) an email scanner prefetched
+  // and consumed the one-time code. Requires templates to point here with
+  // token_hash + type (confirmation/recovery/magic-link templates).
+  const tokenHash = tokenHashSchema.safeParse(params.get('token_hash'))
+  if (!tokenHash.success) return redirectVerifyError(req, 'invalid')
 
-  let user: User
-  if (tokenHash) {
-    const otpType = (params.get('type') ?? 'email') as EmailOtpType
-    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType })
-    if (error || !data?.user) {
-      logger.error('Supabase verifyOtp error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
-      track.auth('auth.exchange_failed', {})
-      return redirectVerifyError(req, 'exchange_failed')
-    }
-    user = data.user
-  } else if (code) {
-    const parsedCode = codeSchema.safeParse(code)
-    if (!parsedCode.success) return redirectVerifyError(req, 'invalid')
-    const { data, error } = await supabase.auth.exchangeCodeForSession(parsedCode.data)
-    if (error || !data?.user) {
-      logger.error('Supabase auth exchange error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
-      track.auth('auth.exchange_failed', {})
-      return redirectVerifyError(req, 'exchange_failed')
-    }
-    user = data.user
-  } else {
-    return redirectVerifyError(req, 'invalid')
+  const rawType = params.get('type') ?? 'email'
+  const otpType: EmailOtpType = ALLOWED_OTP_TYPES.has(rawType as EmailOtpType)
+    ? (rawType as EmailOtpType)
+    : 'email'
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash.data, type: otpType })
+  if (error || !data?.user) {
+    logger.error('Supabase verifyOtp error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
+    track.auth('auth.exchange_failed', {})
+    return redirectVerifyError(req, 'exchange_failed')
+  }
+  const user = data.user
+
+  // Recovery (staff "olvidé mi contraseña"): verifyOtp ya dejó activa la sesión
+  // recovery. No se provisiona ni se setean claims acá — el usuario va a
+  // /reset-password a fijar la nueva contraseña.
+  if (otpType === 'recovery') {
+    return NextResponse.redirect(new URL('/reset-password', req.url))
   }
 
   const meta: Record<string, unknown> = user.app_metadata ?? {}
@@ -99,42 +98,9 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL(next, req.url))
   }
 
-  // Staff path
-  const email = user.email
-  if (!email) return redirectVerifyError(req, 'invalid')
-
-  const givenName = typeof userMeta.given_name === 'string' ? userMeta.given_name : null
-  const familyName = typeof userMeta.family_name === 'string' ? userMeta.family_name : null
-  const firstNameMeta = typeof userMeta.first_name === 'string' ? userMeta.first_name : null
-  const lastNameMeta = typeof userMeta.last_name === 'string' ? userMeta.last_name : null
-  const phoneMeta = typeof userMeta.phone === 'string' ? userMeta.phone : null
-  const firstName = firstNameMeta ?? givenName ?? email.split('@')[0]
-  const lastName = lastNameMeta ?? familyName ?? ''
-
-  const ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
-  const tenants = await resolveStaffTenants(ourStaff.id)
-
-  if (tenants.length === 0) {
-    // Set staffUserId so they can pass the layout checks, even without a tenant
-    const adminClient = createAdminClient()
-    await adminClient.auth.admin.updateUserById(user.id, {
-      app_metadata: { ...meta, staff_user_id: ourStaff.id }
-    })
-    await supabase.auth.refreshSession()
-    track.auth('staff.onboarding', { staffUserId: ourStaff.id, tenantCount: 0 })
-    return NextResponse.redirect(new URL('/onboarding', req.url))
-  }
-
-  if (tenants.length === 1) {
-    await setStaffTenantClaim(user.id, tenants[0].tenantId, ourStaff.id)
-    // Force refresh so the new app_metadata.tenant_id appears in the next JWT.
-    await supabase.auth.refreshSession()
-    track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: 1 })
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  // N tenants → user picks one at /select-tenant (page + selectTenantAction set
-  // the tenant_id claim and refresh the session before entering /dashboard).
-  track.auth('staff.login', { staffUserId: ourStaff.id, tenantCount: tenants.length })
-  return NextResponse.redirect(new URL('/select-tenant', req.url))
+  // Staff: confirmación de alta (type=signup). Provisión + claims + ruteo en el
+  // helper único (compartido con loginAction).
+  if (!user.email) return redirectVerifyError(req, 'invalid')
+  const { path } = await provisionAndRouteStaff(user)
+  return NextResponse.redirect(new URL(path, req.url))
 }

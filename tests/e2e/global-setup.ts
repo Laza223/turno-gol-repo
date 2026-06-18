@@ -38,6 +38,8 @@ export default async function globalSetup(): Promise<void> {
   await fs.mkdir(AUTH_DIR, { recursive: true })
   // Serial: admin.generateLink for the same email invalidates prior tokens,
   // so parallel calls would race. globalSetup runs once before any worker.
+  // (El staff ya usa email+password, pero el mint de storage state sigue por
+  // generateLink — agnóstico al login —, así que la serialización se mantiene.)
   for (const [slug, email] of Object.entries(STORAGE_STATES)) {
     const state = await buildStorageState(email)
     await fs.writeFile(path.join(AUTH_DIR, `${slug}.json`), JSON.stringify(state), 'utf-8')

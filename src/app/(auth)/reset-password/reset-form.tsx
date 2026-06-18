@@ -1,0 +1,87 @@
+'use client'
+
+import { useFormState, useFormStatus } from 'react-dom'
+import { useState } from 'react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { resetPasswordAction, type ResetState } from './actions'
+
+const initial: ResetState = { status: 'idle' }
+
+export function ResetForm() {
+  const [state, formAction] = useFormState(resetPasswordAction, initial)
+  const [show, setShow] = useState(false)
+
+  return (
+    <form action={formAction} className="space-y-4" noValidate>
+      <div className="space-y-1.5">
+        <label htmlFor="password" className="text-sm font-medium text-slate-900">
+          Nueva contraseña
+        </label>
+        <div className="relative">
+          <input
+            id="password"
+            name="password"
+            type={show ? 'text' : 'password'}
+            autoComplete="new-password"
+            required
+            placeholder="Mínimo 8 caracteres"
+            aria-invalid={state.status === 'error' ? 'true' : undefined}
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 pr-11 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+          />
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
+            aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="confirmPassword" className="text-sm font-medium text-slate-900">
+          Repetir contraseña
+        </label>
+        <input
+          id="confirmPassword"
+          name="confirmPassword"
+          type={show ? 'text' : 'password'}
+          autoComplete="new-password"
+          required
+          placeholder="Repetí la contraseña"
+          aria-invalid={state.status === 'error' ? 'true' : undefined}
+          className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+        />
+      </div>
+
+      {state.status === 'error' && (
+        <p role="alert" className="text-xs text-red-600">
+          {state.message}
+        </p>
+      )}
+
+      <SubmitButton />
+    </form>
+  )
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30 disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+          Guardando…
+        </>
+      ) : (
+        'Guardar contraseña'
+      )}
+    </button>
+  )
+}

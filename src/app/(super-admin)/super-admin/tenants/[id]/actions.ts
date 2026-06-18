@@ -3,6 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { randomBytes } from 'node:crypto'
+import { and, eq } from 'drizzle-orm'
+import { z } from 'zod'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { uuid } from '@/shared/validation/primitives'
 import { requireSystemAdminAction } from '@/modules/auth/system-admin.guards'
 import {
@@ -253,6 +259,117 @@ export async function updateTenantSettingsAction(input: unknown): Promise<Suppor
     return { success: true, message: 'Settings actualizados.' }
   } catch (err) {
     return mapKnownError(err)
+  }
+}
+
+// ─── Reset de contraseña de staff (spec §7) ──────────────────────────────────
+
+const resetStaffPasswordInputSchema = z.object({
+  tenantId: uuid,
+  email: z.string().trim().toLowerCase().email(),
+})
+
+type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
+
+/**
+ * supabase-js no expone lookup por email: paginamos listUsers de forma acotada
+ * (mismo patrón que staff/actions.ts). null si no se ubica.
+ */
+async function findAuthUserByEmail(
+  adminClient: SupabaseClient,
+  email: string,
+): Promise<AuthUserLite | null> {
+  const PER_PAGE = 1000
+  const MAX_PAGES = 10
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage: PER_PAGE })
+    const users = data?.users ?? []
+    if (error || users.length === 0) return null
+    const found = users.find((u) => u.email?.toLowerCase() === email)
+    if (found) return found as AuthUserLite
+    if (users.length < PER_PAGE) return null
+  }
+  return null
+}
+
+/** Contraseña temporal legible para dictar por teléfono (≥8, sin ambigüedad). */
+function generateTempPassword(): string {
+  return `TG-${randomBytes(5).toString('hex')}`
+}
+
+/**
+ * Reset de contraseña de un staff (soporte telefónico). Genera una contraseña
+ * temporal + `force_password_change=true`: el titular entra con la temporal y el
+ * layout admin lo obliga a cambiarla. Solo aplica a staff (el jugador sigue
+ * passwordless). El email debe ser un miembro ACTIVO de este complejo: acota el
+ * alcance del panel per-tenant. Audita `support.user.password_reset`.
+ */
+export async function resetStaffPasswordAction(input: unknown): Promise<SupportActionResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+
+  const parsed = resetStaffPasswordInputSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+  const { tenantId, email } = parsed.data
+
+  const summary = await getTenantSummary(tenantId)
+  if (!summary) return { success: false, error: 'Complejo no encontrado.' }
+
+  const staffRow = await withTenantContext(tenantId, (tx) =>
+    tx
+      .select({ staffUserId: staffUsers.id })
+      .from(tenantStaffMembers)
+      .innerJoin(staffUsers, eq(staffUsers.id, tenantStaffMembers.staffUserId))
+      .where(
+        and(
+          eq(tenantStaffMembers.tenantId, tenantId),
+          eq(tenantStaffMembers.isActive, true),
+          eq(staffUsers.email, email),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null),
+  )
+  if (!staffRow) {
+    return { success: false, error: 'Ese email no es un miembro activo del complejo.' }
+  }
+
+  const adminClient = createAdminClient()
+  const authUser = await findAuthUserByEmail(adminClient, email)
+  if (!authUser) {
+    return { success: false, error: 'No se encontró la cuenta de acceso para ese email.' }
+  }
+
+  const temp = generateTempPassword()
+  const meta = authUser.app_metadata ?? {}
+  const { error } = await adminClient.auth.admin.updateUserById(authUser.id, {
+    password: temp,
+    app_metadata: { ...meta, force_password_change: true },
+  })
+  if (error) {
+    return { success: false, error: 'No se pudo resetear la contraseña. Probá de nuevo.' }
+  }
+
+  try {
+    await withTenantContext(tenantId, (tx) =>
+      insertAuditLog(tx, {
+        tenantId,
+        actorId: auth.admin.id,
+        actorType: 'system',
+        action: 'support.user.password_reset',
+        resourceType: 'staff_user',
+        resourceId: staffRow.staffUserId,
+        metadata: { staff_email: email, system_admin_email: auth.admin.email },
+      }),
+    )
+  } catch (err) {
+    return mapKnownError(err)
+  }
+
+  revalidateTenantPaths(tenantId)
+  return {
+    success: true,
+    message: `Contraseña temporal: ${temp} — dictásela al titular. Deberá cambiarla al entrar.`,
   }
 }
 

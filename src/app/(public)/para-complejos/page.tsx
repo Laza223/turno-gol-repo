@@ -265,7 +265,7 @@ function ShowcaseStrip() {
           </h2>
           <ol className="mt-10 space-y-5">
             {[
-              { n: '01', t: 'Creá tu cuenta', d: 'Email + nombre. Magic link, sin contraseñas.' },
+              { n: '01', t: 'Creá tu cuenta', d: 'Email, nombre y contraseña. Confirmás el email y listo.' },
               { n: '02', t: 'Cargá tus canchas', d: 'Nombre, superficie, capacidad. En segundos.' },
               { n: '03', t: 'Definí horarios y precios', d: 'Por franja, por día, como quieras.' },
               { n: '04', t: 'Conectá MercadoPago', d: 'OAuth en un click. Empezás a cobrar señas.' },

@@ -1,0 +1,16 @@
+<!--
+  Magic link del JUGADOR (passwordless, ADR-002). El staff ya NO usa magic link.
+  Obligatorio token_hash: el callback quitó la rama `code` (PKCE), así que el
+  template default `.ConfirmationURL` rompería el login del jugador.
+  `{{ .RedirectTo }}` ya trae `/api/auth/callback?next=…` (lo arma el sender):
+  por eso se le concatena `&token_hash…`, preservando el `next` de la reserva.
+  La rama jugador del callback se detecta por metadata is_player, no por type.
+-->
+<h2>Tu acceso a TurnoGol</h2>
+<p>Hacé click para entrar y ver tus reservas:</p>
+<p>
+  <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email">
+    Ingresar
+  </a>
+</p>
+<p>Si no pediste este acceso, ignorá este email.</p>

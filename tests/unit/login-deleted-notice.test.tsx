@@ -27,7 +27,11 @@ vi.mock('next/image', () => ({
 }))
 
 // Evitar cargar la Server Action real (Supabase/db) al importar el page.
-vi.mock('@/app/(auth)/login/actions', () => ({ loginAction: vi.fn() }))
+vi.mock('@/app/(auth)/login/actions', () => ({
+  loginAction: vi.fn(),
+  playerLoginAction: vi.fn(),
+  resendConfirmationAction: vi.fn(),
+}))
 
 import LoginPage from '@/app/(auth)/login/page'
 

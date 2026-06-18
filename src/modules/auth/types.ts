@@ -9,6 +9,10 @@ export type StaffUser = {
   staffUserId: string | null
   tenantId: string | null
   role: 'admin'
+  // app_metadata.force_password_change: tras un reset del SuperAdmin el staff
+  // entra con contraseña temporal y debe cambiarla. El layout del admin lo
+  // empuja a /reset-password mientras el flag esté. Ausente en impersonación.
+  forcePasswordChange?: boolean
 }
 
 export type PlayerUser = {

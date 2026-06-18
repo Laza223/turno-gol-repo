@@ -1,0 +1,14 @@
+<!--
+  Confirmación de alta de STAFF (enable_confirmations=true).
+  Patrón token_hash (NO PKCE `.ConfirmationURL`): el callback solo soporta
+  token_hash + verifyOtp tras quitar la rama `code`. type=signup → rama staff
+  (provisionAndRouteStaff). Ver docs/superpowers/specs/2026-06-16-auth-password-migration-design.md §3.2/§5.
+-->
+<h2>Confirmá tu cuenta en TurnoGol</h2>
+<p>¡Bienvenido! Hacé click para activar tu cuenta y empezar a gestionar tu complejo:</p>
+<p>
+  <a href="{{ .SiteURL }}/api/auth/callback?token_hash={{ .TokenHash }}&type=signup">
+    Confirmar mi cuenta
+  </a>
+</p>
+<p>Si no creaste esta cuenta, ignorá este email.</p>

@@ -1,19 +1,27 @@
 'use client'
 
 import { useFormState, useFormStatus } from 'react-dom'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeft, Loader2, Mail, Sparkles } from 'lucide-react'
-import { loginAction, type LoginState } from './actions'
-import { Logo } from '@/components/ui/logo'
-
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { ArrowLeft, Eye, EyeOff, Loader2, Mail, Sparkles } from 'lucide-react'
+import {
+  loginAction,
+  playerLoginAction,
+  resendConfirmationAction,
+  type LoginState,
+  type PlayerLoginState,
+  type ResendState,
+} from './actions'
+import { Logo } from '@/components/ui/logo'
 
 const HERO_IMG =
   'https://images.unsplash.com/photo-1551958219-acbc608c6377?q=80&w=2000&auto=format&fit=crop'
 
 const initial: LoginState = { status: 'idle' }
+const playerInitial: PlayerLoginState = { status: 'idle' }
+const resendInitial: ResendState = { status: 'idle' }
 
 function DeletedNotice() {
   const searchParams = useSearchParams()
@@ -101,7 +109,10 @@ function FormPane({
           <Logo variant="vertical" className="w-32" />
         </div>
 
-        {state.status === 'sent' ? <SentState email={state.email} /> : <FormCard state={state} formAction={formAction} />}
+        <FormCard state={state} formAction={formAction} />
+        <Suspense fallback={null}>
+          <PlayerAccess />
+        </Suspense>
       </div>
     </div>
   )
@@ -114,6 +125,9 @@ function FormCard({
   state: LoginState
   formAction: (formData: FormData) => void
 }) {
+  const [show, setShow] = useState(false)
+  const isError = state.status === 'error'
+
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 shadow-xl shadow-slate-900/5 backdrop-blur-md">
       <header className="mb-6 space-y-1">
@@ -121,7 +135,7 @@ function FormCard({
           Iniciá sesión
         </h1>
         <p className="text-sm text-slate-600">
-          Te enviamos un enlace mágico a tu email. Sin contraseñas.
+          Ingresá con tu email y contraseña.
         </p>
       </header>
 
@@ -141,15 +155,54 @@ function FormCard({
             autoComplete="email"
             required
             placeholder="vos@complejo.com"
-            aria-invalid={state.status === 'error' ? 'true' : undefined}
+            aria-invalid={isError ? 'true' : undefined}
             className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
           />
-          {state.status === 'error' && (
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium text-slate-900">
+              Contraseña
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={show ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              placeholder="••••••••"
+              aria-invalid={isError ? 'true' : undefined}
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 pr-11 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+            </button>
+          </div>
+        </div>
+
+        {isError && (
+          <div className="space-y-1.5">
             <p role="alert" className="text-xs text-red-600">
               {state.message}
             </p>
-          )}
-        </div>
+            {state.unconfirmedEmail && <ResendConfirmation email={state.unconfirmedEmail} />}
+          </div>
+        )}
+
         <SubmitButton />
       </form>
 
@@ -163,27 +216,100 @@ function FormCard({
   )
 }
 
-function SentState({ email }: { email: string }) {
+function ResendConfirmation({ email }: { email: string }) {
+  const [state, formAction] = useFormState(resendConfirmationAction, resendInitial)
+  if (state.status === 'sent') {
+    return (
+      <p className="text-xs text-emerald-700">
+        Te reenviamos el email de confirmación. Revisá tu bandeja.
+      </p>
+    )
+  }
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
-        <Mail className="h-6 w-6 text-emerald-700" aria-hidden />
-      </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
-        Revisá tu email
-      </h1>
-      <p className="mt-3 text-sm text-slate-600">
-        Te enviamos un enlace mágico a <strong className="text-slate-900">{email}</strong>.
-        Hacé click para entrar.
-      </p>
-      <p className="mt-6 text-xs text-slate-500">
-        ¿No llegó? Revisá spam o{' '}
-        <Link href="/login" className="font-semibold text-emerald-700 hover:underline">
-          probá de nuevo
-        </Link>
-        .
-      </p>
+    <form action={formAction}>
+      <input type="hidden" name="email" value={email} />
+      <button
+        type="submit"
+        className="text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+      >
+        Reenviar email de confirmación
+      </button>
+      {state.status === 'error' && (
+        <p role="alert" className="mt-1 text-xs text-red-600">
+          {state.message}
+        </p>
+      )}
+    </form>
+  )
+}
+
+function PlayerAccess() {
+  const [open, setOpen] = useState(false)
+  const [state, formAction] = useFormState(playerLoginAction, playerInitial)
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') ?? '/mis-reservas'
+
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-200/60 bg-white/70 p-4 text-center shadow-sm backdrop-blur-md">
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+        >
+          ¿Sos jugador? Ingresá con tu email
+        </button>
+      ) : state.status === 'sent' ? (
+        <div className="flex flex-col items-center gap-2 py-2">
+          <Mail className="h-5 w-5 text-emerald-700" aria-hidden />
+          <p className="text-sm text-slate-700">
+            Te enviamos un enlace de acceso a <strong>{state.email}</strong>.
+          </p>
+        </div>
+      ) : (
+        <form action={formAction} className="space-y-3 text-left" noValidate>
+          <input type="hidden" name="next" value={next} />
+          <label htmlFor="player-email" className="text-sm font-medium text-slate-900">
+            Email de jugador
+          </label>
+          <input
+            id="player-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="vos@email.com"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500"
+          />
+          {state.status === 'error' && (
+            <p role="alert" className="text-xs text-red-600">
+              {state.message}
+            </p>
+          )}
+          <PlayerSubmitButton />
+        </form>
+      )}
     </div>
+  )
+}
+
+function PlayerSubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-emerald-600 px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-60"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+          Enviando…
+        </>
+      ) : (
+        'Enviarme un enlace de acceso'
+      )}
+    </button>
   )
 }
 
@@ -198,10 +324,10 @@ function SubmitButton() {
       {pending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-          Enviando…
+          Ingresando…
         </>
       ) : (
-        'Enviar enlace mágico'
+        'Iniciar sesión'
       )}
     </button>
   )

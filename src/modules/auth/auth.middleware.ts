@@ -43,6 +43,7 @@ export const extractRealAuthUser = cache(async (): Promise<AuthUser | null> => {
     staffUserId,
     tenantId,
     role: 'admin',
+    forcePasswordChange: meta.force_password_change === true,
   }
 })
 

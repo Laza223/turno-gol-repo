@@ -55,4 +55,14 @@ describe('fail-mode behavior when Redis is unreachable', () => {
     expect(r.ok).toBe(false)
     expect(r.unavailable).toBe(true)
   })
+  it('authPassword fails CLOSED', async () => {
+    const r = await enforce('authPassword', 'a@b.com')
+    expect(r.ok).toBe(false)
+    expect(r.unavailable).toBe(true)
+  })
+  it('authRegister fails CLOSED', async () => {
+    const r = await enforce('authRegister', '1.2.3.4')
+    expect(r.ok).toBe(false)
+    expect(r.unavailable).toBe(true)
+  })
 })

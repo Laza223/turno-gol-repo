@@ -1,6 +1,12 @@
 /**
  * E2E auth — build Playwright storage state for a seeded Supabase user.
  *
+ * Mint de sesión AGNÓSTICO al método de login: solo establece cookies para un
+ * usuario ya provisionado (lee su app_metadata). Sirve igual al staff (ahora
+ * email+password) y al jugador (magic link); por eso se conserva tras la
+ * migración de auth. El test del FORM de login con contraseña vive aparte
+ * (admin-login.spec.ts), no acá.
+ *
  * Extracted from fixtures.ts so global-setup can pre-generate storage states
  * serially BEFORE any worker spawns. The app uses @supabase/ssr (PKCE), so
  * following an admin-generated magic link can't establish app cookies

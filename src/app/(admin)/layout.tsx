@@ -51,6 +51,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff') redirect('/login')
   if (!user.staffUserId) redirect('/login')
+  // Cambio forzado de contraseña (tras reset del SuperAdmin): hasta que el staff
+  // fije una nueva, no entra al panel. Antes de resolver tenant. Impersonación
+  // pasa: imp.user no trae el flag (spec §4.5 / R8).
+  if (user.forcePasswordChange) redirect('/reset-password')
   if (!user.tenantId) redirect('/onboarding')
 
   const tenant = await getStaffTenant(user.staffUserId)

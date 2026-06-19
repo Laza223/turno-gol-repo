@@ -431,15 +431,15 @@ La impersonación ("Entrar como este complejo") tiene el peor ratio complejidad/
 - Toda UI que muestre franjas amplias fijas (mañana/tarde/noche)
 
 #### Impacto en código/docs
-- [ ] `src/modules/courts/court.types.ts` — `PricingRule.prices` → `PricingRule.price` (singular, `number`)
-- [ ] `src/shared/db/schema/courts.ts` — Eliminar defaults de pricing con formato viejo `prices: {"60":..., "120":...}`
-- [ ] `src/modules/courts/court.service.ts` — `calculatePrice()`: eliminar param `durationMins`, siempre evalúa `rule.price`
-- [ ] `src/modules/tenants/public.service.ts` — `getPriceForSlot()`: simplificar a `rule.price` en vez de `rule.prices[String(durationMins)]`
-- [ ] Tests unitarios e integración: actualizar todos los fixtures de pricing al formato nuevo
-- [ ] `docs/spec/doc6_entidades.md` — Court pricing JSONB: documentar formato nuevo
-- [ ] `docs/spec/doc13_database_schema.md` — JSONB schema actualizado
-- [ ] UI: nueva pantalla de configuración de precios con grilla hora×día
-- [ ] Wizard de onboarding: misma UI de grilla simplificada
+- [x] `src/modules/courts/court.types.ts` — `PricingRule.prices` → `PricingRule.price` (singular, `number`)
+- [x] `src/shared/db/schema/courts.ts` — Eliminar defaults de pricing con formato viejo `prices: {"60":..., "120":...}`
+- [x] `src/modules/courts/court.service.ts` — `calculatePrice()`: eliminar param `durationMins`, siempre evalúa `rule.price`
+- [x] `src/modules/tenants/public.service.ts` — `getPriceForSlot()`: simplificar a `rule.price` en vez de `rule.prices[String(durationMins)]`
+- [x] Tests unitarios e integración: actualizar todos los fixtures de pricing al formato nuevo
+- [x] `docs/spec/doc6_entidades.md` — Court pricing JSONB: documentar formato nuevo
+- [x] `docs/spec/doc13_database_schema.md` — JSONB schema actualizado
+- [x] UI: nueva pantalla de configuración de precios con grilla hora×día
+- [x] Wizard de onboarding: misma UI de grilla simplificada
 
 ### 14. 🧹 Eliminar `booking_duration_minutes` de tenant settings (dead code)
 - **Antes**: `booking_duration_minutes: number[]` en `TenantSettings` permitía configurar duraciones de 60 o 120 minutos por complejo. El default en el schema todavía dice `[60, 120]`.
@@ -456,15 +456,15 @@ La impersonación ("Entrar como este complejo") tiene el peor ratio complejidad/
 - Reemplazar todas las lecturas de `durationMins` por la constante
 
 #### Impacto en código/docs
-- [ ] `src/modules/tenants/tenant.types.ts` — Eliminar `booking_duration_minutes` del type `TenantSettings`
-- [ ] `src/shared/db/schema/tenants.ts` — Eliminar del default JSONB de `settings`
-- [ ] `src/modules/tenants/public.service.ts` — Reemplazar `tenant.bookingDurationMinutes[0] ?? 60` por constante
-- [ ] `src/modules/courts/court.service.ts` — `calculatePrice()` sin parámetro de duración
-- [ ] `PublicTenant` type — Eliminar `bookingDurationMinutes`
-- [ ] `UpdateTenantSettingsInput` — Eliminar si incluye duración
-- [ ] Tests: actualizar todos los que pasen `durationMins` como parámetro
-- [ ] `CLAUDE.md` — Actualizar línea 103 (ya dice "60 o 120", cambiar a "60 minutos fijo, constante global")
-- [ ] `docs/spec/doc6_entidades.md` — Tenant settings: eliminar campo
+- [x] `src/modules/tenants/tenant.types.ts` — Eliminar `booking_duration_minutes` del type `TenantSettings`
+- [x] `src/shared/db/schema/tenants.ts` — Eliminar del default JSONB de `settings`
+- [x] `src/modules/tenants/public.service.ts` — Reemplazar `tenant.bookingDurationMinutes[0] ?? 60` por constante
+- [x] `src/modules/courts/court.service.ts` — `calculatePrice()` sin parámetro de duración
+- [x] `PublicTenant` type — Eliminar `bookingDurationMinutes`
+- [x] `UpdateTenantSettingsInput` — Eliminar si incluye duración
+- [x] Tests: actualizar todos los que pasen `durationMins` como parámetro
+- [x] `CLAUDE.md` — Actualizar línea 103 (ya dice "60 o 120", cambiar a "60 minutos fijo, constante global")
+- [x] `docs/spec/doc6_entidades.md` — Tenant settings: eliminar campo
 
 ### 15. 🚨 Enforce de `booking_advance_days` en el backend (bug potencial)
 - **Antes**: `booking_advance_days: 6` existe como configuración en `tenants.settings` y se expone en `PublicTenant`, pero **no hay validación en el backend** que impida crear una reserva para una fecha más allá de ese límite. Un jugador (o atacante) podría enviar una fecha 30 días en el futuro y la reserva se crearía.
@@ -482,12 +482,12 @@ La impersonación ("Entrar como este complejo") tiene el peor ratio complejidad/
 - **Bookings de abonados (`fixed`)**: Los abonados se generan rolling 8+ semanas adelante, no aplica este límite (ya están confirmados por el abono)
 
 #### Impacto en código/docs
-- [ ] Lógica de creación de booking online — Agregar validación de `booking_advance_days`
-- [ ] API de reserva pública — Rechazar con error descriptivo si excede anticipación
-- [ ] Grilla pública — No mostrar fechas más allá del límite de anticipación
-- [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 2: agregar validación de anticipación
-- [ ] `docs/spec/doc8_user_stories.md` — Agregar edge case de anticipación excedida
-- [ ] Tests: test de integración que valide el rechazo por anticipación excedida
+- [x] Lógica de creación de booking online — Agregar validación de `booking_advance_days`
+- [x] API de reserva pública — Rechazar con error descriptivo si excede anticipación
+- [x] Grilla pública — No mostrar fechas más allá del límite de anticipación
+- [x] `docs/spec/doc7_flujos_e2e.md` — Flujo 2: agregar validación de anticipación
+- [x] `docs/spec/doc8_user_stories.md` — Agregar edge case de anticipación excedida
+- [x] Tests: test de integración que valide el rechazo por anticipación excedida
 
 ### 16. 🏗️ Separar `indoor` del enum `surface_type` → atributos por cancha
 - **Antes**: `surface_type` mezclaba dos dimensiones: superficie del piso (`synthetic_grass`, `natural_grass`, `cement`) y cobertura (`indoor`). Una cancha techada de césped sintético no podía representarse correctamente.
@@ -520,18 +520,18 @@ Debajo del nombre de cada cancha, estilo ATC:
 El enum nos da filtros limpios en el marketplace/buscador. Texto libre destruye la capacidad de filtrar ("solo canchas de césped sintético"). Si aparece un piso nuevo en el futuro, se agrega al enum con una migración.
 
 #### Impacto en código/docs
-- [ ] Migración SQL: migrar canchas con `surface_type='indoor'` → `surface_type='synthetic_grass'` + `is_covered=true`
-- [ ] `src/shared/db/schema/enums.ts` — Quitar `indoor`, agregar `tile` en `surfaceTypeEnum`
-- [ ] `src/shared/db/schema/courts.ts` — Agregar `is_covered: boolean` y `has_lighting: boolean`
-- [ ] `src/modules/courts/court.types.ts` — Actualizar `CourtRow` y `CreateCourtInput`
-- [ ] `src/modules/tenants/public.service.ts` — `PublicCourtCard` y `PublicCourt`: incluir atributos
-- [ ] Trigger `courts_recalc_from_price` — Si denormaliza superficies, actualizar
-- [ ] `src/components/public/courtFacets.ts` — Actualizar facets de superficie
-- [ ] `docs/spec/doc6_entidades.md` — Court: actualizar campos y enum
-- [ ] `docs/spec/doc13_database_schema.md` — ALTER TABLE courts, ALTER TYPE surface_type
-- [ ] UI pública: mostrar "Césped sintético, Con iluminación, Descubierta" debajo del nombre
-- [ ] UI admin: formulario de cancha con selectores para superficie, cobertura e iluminación
-- [ ] Tests: actualizar fixtures que usen `surface_type='indoor'`
+- [x] Migración SQL: migrar canchas con `surface_type='indoor'` → `surface_type='synthetic_grass'` + `is_covered=true`
+- [x] `src/shared/db/schema/enums.ts` — Quitar `indoor`, agregar `tile` en `surfaceTypeEnum`
+- [x] `src/shared/db/schema/courts.ts` — Agregar `is_covered: boolean` y `has_lighting: boolean`
+- [x] `src/modules/courts/court.types.ts` — Actualizar `CourtRow` y `CreateCourtInput`
+- [x] `src/modules/tenants/public.service.ts` — `PublicCourtCard` y `PublicCourt`: incluir atributos
+- [x] Trigger `courts_recalc_from_price` — Si denormaliza superficies, actualizar
+- [x] `src/components/public/courtFacets.ts` — Actualizar facets de superficie
+- [x] `docs/spec/doc6_entidades.md` — Court: actualizar campos y enum
+- [x] `docs/spec/doc13_database_schema.md` — ALTER TABLE courts, ALTER TYPE surface_type
+- [x] UI pública: mostrar "Césped sintético, Con iluminación, Descubierta" debajo del nombre
+- [x] UI admin: formulario de cancha con selectores para superficie, cobertura e iluminación
+- [x] Tests: actualizar fixtures que usen `surface_type='indoor'`
 
 ### 17. ⚽ Nuevo campo `format` (Fútbol 5, 7, 8, 9, 11) separado de `capacity`
 - **Antes**: `capacity` (integer) se usaba tanto para la capacidad real de la cancha (10 jugadores) como para identificar el formato (Fútbol 5). Esto generaba confusión: la UI mostraba "Capacidad: 10" cuando debería decir "Fútbol 5". Además, los filtros del marketplace/buscador filtraban por capacity cuando el concepto que busca el jugador es "quiero una cancha de Fútbol 5".
@@ -558,18 +558,18 @@ El enum nos da filtros limpios en el marketplace/buscador. Texto libre destruye 
 El campo `court_formats` ya existe en la tabla `tenants` como denormalización para filtros públicos. Actualmente almacena `capacity` (enteros como 10, 14). Con el campo `format`, pasa a almacenar formatos reales (5, 7, 8, 11) que son más intuitivos para el jugador en la UI de búsqueda.
 
 #### Impacto en código/docs
-- [ ] Migración SQL: `ALTER TABLE courts ADD COLUMN format integer` + migrar `capacity` existente → `format = capacity / 2`
-- [ ] `src/shared/db/schema/courts.ts` — Agregar campo `format` con check constraint
-- [ ] `src/modules/courts/court.types.ts` — Agregar `format` a `CourtRow` y `CreateCourtInput`
-- [ ] `src/modules/tenants/public.service.ts` — `PublicCourtCard`: incluir `format`
-- [ ] Trigger `courts_recalc_from_price` — Denormalizar `format` en vez de `capacity` para `court_formats`
-- [ ] `src/components/public/courtFacets.ts` — Actualizar facets a usar formatos
-- [ ] `docs/spec/doc6_entidades.md` — Court: agregar campo `format`, actualizar `capacity`
-- [ ] `docs/spec/doc13_database_schema.md` — ALTER TABLE courts
-- [ ] UI admin: dropdown de formato en formulario de cancha
-- [ ] UI pública: mostrar "Fútbol {format}" en vez de "Capacidad: {capacity}"
-- [ ] `CLAUDE.md` — Documentar el campo `format` y la jerga: Fútbol 4, 5, 7, 8, 9, 11
-- [ ] Tests: actualizar fixtures y assertions que usen `capacity` como proxy de formato
+- [x] Migración SQL: `ALTER TABLE courts ADD COLUMN format integer` + migrar `capacity` existente → `format = capacity / 2`
+- [x] `src/shared/db/schema/courts.ts` — Agregar campo `format` con check constraint
+- [x] `src/modules/courts/court.types.ts` — Agregar `format` a `CourtRow` y `CreateCourtInput`
+- [x] `src/modules/tenants/public.service.ts` — `PublicCourtCard`: incluir `format`
+- [x] Trigger `courts_recalc_from_price` — Denormalizar `format` en vez de `capacity` para `court_formats`
+- [x] `src/components/public/courtFacets.ts` — Actualizar facets a usar formatos
+- [x] `docs/spec/doc6_entidades.md` — Court: agregar campo `format`, actualizar `capacity`
+- [x] `docs/spec/doc13_database_schema.md` — ALTER TABLE courts
+- [x] UI admin: dropdown de formato en formulario de cancha
+- [x] UI pública: mostrar "Fútbol {format}" en vez de "Capacidad: {capacity}"
+- [x] `CLAUDE.md` — Documentar el campo `format` y la jerga: Fútbol 4, 5, 7, 8, 9, 11
+- [x] Tests: actualizar fixtures y assertions que usen `capacity` como proxy de formato
 
 ---
 
@@ -580,3 +580,49 @@ El campo `court_formats` ya existe en la tabla `tenants` como denormalización p
 ### 13. Anonimización de jugadores con deuda
 - **Situación actual**: El código y los tests permiten que un jugador borre su cuenta (se anonimice por ley de privacidad ARCO) incluso si tiene un saldo deudor pendiente (`balance > 0`) en algún complejo. El sistema elimina su vinculación sin chequear deudas.
 - **Debate**: ¿Deberíamos bloquear la eliminación de la cuenta (ej: lanzando un `PlayerHasDebtError`) si tiene deudas, o permitimos que se elimine y el complejo asume la pérdida/lo maneja por fuera?
+### 18. ?? Eliminar booking-reminder worker y template (dead code)
+- **Antes**: Existe un worker completo (ooking-reminder.worker.ts) + template de email (ooking-reminder.ts) + queue (QUEUE_BOOKING_REMINDER) + job type (BookingReminderJobData) que implementan un recordatorio 24hs antes al jugador.
+- **Ahora**: **Eliminarlo por completo.** En P9.2 se decidi� expl�citamente que el recordatorio 24hs NO se env�a en v1 por costos de email masivo. Este c�digo es dead code que puede activarse accidentalmente y generar gastos.
+
+#### Impacto en c�digo
+- [x] src/shared/jobs/definitions.ts � Eliminar queue, type y send options
+- [x] src/shared/jobs/workers/booking-reminder.worker.ts � Eliminar archivo
+- [x] src/modules/notifications/templates/booking-reminder.ts � Eliminar archivo
+- [x] src/modules/notifications/templates/index.ts � Eliminar imports y registros de ooking_reminder
+- [x] Bootstrap de workers � Eliminar egisterBookingReminderWorker
+- [x] Tests � Eliminar tests del booking-reminder
+- [x] CLAUDE.md � Aclarar que no hay recordatorio 24hs en v1
+
+### 19. ?? Arreglar constantes de expiraci�n del timer
+- **Antes**: DEFAULT_EXPIRY_SECONDS est� en 15 minutos. Existe IN_PROCESS_EXPIRY_SECONDS (48hs).
+- **Ahora**: Reflejar las decisiones del bloque 2. Timer baja a 6 minutos. Se elimina el concepto de in_process timer extendido (MercadoPago online es inmediato o expira).
+
+#### Impacto en c�digo
+- [x] src/shared/jobs/definitions.ts � DEFAULT_EXPIRY_SECONDS = 6 * 60, eliminar IN_PROCESS_EXPIRY_SECONDS, ajustar expireInHours
+- [x] src/shared/jobs/definitions.ts � Actualizar comentarios ("Default: 15 min..." ? "6 min")
+- [x] src/modules/bookings/booking.expiry.ts � Eliminar rama que usa IN_PROCESS_EXPIRY_SECONDS
+- [x] src/shared/jobs/schedule-expiry.ts � Verificar que use la constante correcta
+- [x] Tests de expiraci�n � Actualizar fixtures y assertions de tiempo
+
+### 20. ?? Agregar email templates para eventos de negocio nuevos (bloques 3 y 5)
+- **Antes**: No existen templates de email para: cancelaci�n por culpa del complejo (cambio #3), generaci�n de deuda por no-show (cambio #5).
+- **Ahora**: Agregar 2 templates obligatorios:
+
+#### Template 1: ooking_canceled_by_complex
+- **Destinatario**: Jugador
+- **Contexto**: El complejo cancel� el turno manual o el admin del sistema lo cancel�.
+- **Data**: playerFirstName, courtName, date, 	imeStart, 	imeEnd, 	enantName, efundConfirmed (booleano).
+- **Contenido**: "Tu turno en X fue cancelado por el complejo". Si pag� se�a, avisar que se proces� la devoluci�n.
+
+#### Template 2: 
+o_show_debt_created
+- **Destinatario**: Jugador
+- **Contexto**: Jugador hizo no-show, el sistema liquid� el saldo a favor a 0 y le gener� una deuda por el restante.
+- **Data**: playerFirstName, courtName, date, 	imeStart, 	imeEnd, 	enantName, debtAmount, 	enantAddress.
+- **Contenido**: "Ten�s una deuda pendiente de X por el turno al que no asististe. Por favor acercate a X para regularizar tu situaci�n y que te desbloqueen para seguir reservando."
+
+#### Impacto en c�digo
+- [x] src/modules/notifications/templates/booking-canceled-by-complex.ts � Crear template siguiendo el patr�n exacto de los existentes
+- [x] src/modules/notifications/templates/no-show-debt-created.ts � Crear template
+- [x] src/modules/notifications/templates/index.ts � Registrar ambos templates
+- [x] Tests � Agregar snapshots o tests b�sicos de renderizado para los 2 nuevos templates

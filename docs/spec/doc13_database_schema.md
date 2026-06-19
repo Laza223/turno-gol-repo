@@ -55,12 +55,12 @@ CREATE TYPE billing_cycle AS ENUM ('monthly', 'annual');
 -- Estado de la cancha
 CREATE TYPE court_status AS ENUM ('online', 'offline');
 
--- Tipo de superficie
+-- Tipo de superficie (solo el piso; cobertura e iluminación son columnas en courts — cambio #16)
 CREATE TYPE surface_type AS ENUM (
   'synthetic_grass',  -- Césped sintético
   'natural_grass',    -- Césped natural
   'cement',           -- Cemento
-  'indoor'            -- Piso indoor
+  'tile'              -- Baldosa
 );
 
 -- Tipo de reserva
@@ -72,7 +72,7 @@ CREATE TYPE booking_type AS ENUM (
 
 -- Estado de la reserva (state machine más crítica del sistema)
 CREATE TYPE booking_status AS ENUM (
-  'pending_payment',      -- Esperando pago de seña (timeout 15 min o 48hs si CBU)
+  'pending_payment',      -- Esperando pago de seña (timeout 6 min)
   'confirmed',            -- Confirmada (con o sin seña)
   'expired',              -- Timeout sin pago → estado final
   'canceled_refunded',    -- Cancelada con reembolso (americano: una L)
@@ -105,8 +105,8 @@ CREATE TYPE player_status AS ENUM ('active', 'banned', 'anonymized');
 -- Estado del staff user
 CREATE TYPE staff_status AS ENUM ('active', 'inactive');
 
--- Rol del staff en un tenant (v1: solo admin, extensible a futuro)
-CREATE TYPE staff_role AS ENUM ('admin');
+-- Rol del staff en un tenant: admin (dueño) + manager (encargado permisivo, modelo ATC — cambio #11)
+CREATE TYPE staff_role AS ENUM ('admin', 'manager');
 
 -- Tipo de pago
 CREATE TYPE payment_type AS ENUM (
@@ -122,17 +122,17 @@ CREATE TYPE payment_method AS ENUM ('cash', 'transfer', 'mercadopago', 'other');
 -- Estado del pago
 CREATE TYPE payment_status AS ENUM (
   'pending',      -- Iniciado, esperando confirmación del webhook de MP
-  'in_process',   -- Pago CBU/transferencia bancaria en proceso (24-48hs). Extiende timer del booking a 48hs.
+  'in_process',   -- Pago CBU/transferencia bancaria en proceso (24-48hs en acreditar)
   'approved',     -- Pago exitoso
   'rejected',     -- Pago rechazado
   'refunded',     -- Reembolsado (total o parcial)
   'canceled'      -- Cancelado (americano, una L)
 );
 COMMENT ON TYPE payment_status IS
-  'in_process: exclusivo para pagos por transferencia bancaria/CBU que tardan 24-48hs. '
-  'Cuando un booking tiene un payment en in_process, el timer de expiración se extiende a 48hs '
-  '(vs. 15min para pending sin in_process). Nunca absorber in_process dentro de pending: '
-  'los reports financieros necesitan discriminar ambos estados.';
+  'in_process: pagos por transferencia bancaria/CBU que tardan 24-48hs en acreditar. '
+  'Las reservas online solo aceptan MercadoPago instantáneo, así que el timer del booking '
+  'NO se extiende (timer fijo de 6 min; cambios #2/#19). Nunca absorber in_process dentro de '
+  'pending: los reports financieros necesitan discriminar ambos estados.';
 
 -- Tipo de movimiento de caja (sin gastos — TurnoGol solo registra ingresos)
 CREATE TYPE cashflow_type AS ENUM ('income', 'adjustment');
@@ -223,8 +223,7 @@ CREATE TABLE tenants (
     "accepts_transfer": true,
     "accepts_mercadopago": true,
     "allow_online_booking": true,
-    "booking_advance_days": 14,
-    "booking_duration_minutes": [60, 90, 120],
+    "booking_advance_days": 6,
     "auto_complete_minutes": 30
   }'::JSONB,
 
@@ -254,7 +253,7 @@ CREATE INDEX idx_tenants_city ON tenants(city);
 
 COMMENT ON TABLE tenants IS 'Complejos deportivos. Entidad raíz del multi-tenancy.';
 COMMENT ON COLUMN tenants.slug IS 'URL amigable. turnogol.app/{slug}';
-COMMENT ON COLUMN tenants.settings IS 'Configuraciones del complejo: seña, cancelación, medios de pago, etc.';
+COMMENT ON COLUMN tenants.settings IS 'Configuraciones del complejo: seña, cancelación, medios de pago, etc. Turno fijo de 60 min (sin booking_duration_minutes). no_show_penalty es campo vestigial: el modelo activo de no-show es por deuda (player_tenant_relationships.balance, cambio #5).';
 ```
 
 ### 2.2 `players` — Jugadores (cross-tenant)
@@ -464,26 +463,34 @@ CREATE TABLE courts (
   tenant_id       UUID NOT NULL REFERENCES tenants(id),
   name            TEXT NOT NULL,                 -- "Cancha 1", "Cancha Norte"
   description     TEXT,
-  surface_type    surface_type NOT NULL DEFAULT 'synthetic_grass',
-  capacity        INTEGER NOT NULL,              -- Cantidad de jugadores (10, 14, 22)
+  surface_type    surface_type NOT NULL DEFAULT 'synthetic_grass',  -- solo el piso
+
+  -- Cambio #16: cobertura e iluminación como atributos por cancha
+  is_covered      BOOLEAN NOT NULL DEFAULT false,  -- Techada (true) o descubierta (false)
+  has_lighting    BOOLEAN NOT NULL DEFAULT true,   -- Con iluminación (true) o sin (false)
+
+  -- Cambio #17: formato Fútbol N. capacity = jugadores totales = format × 2
+  format          INTEGER NOT NULL DEFAULT 5,    -- Fútbol N (4..11)
+  capacity        INTEGER NOT NULL,              -- Jugadores totales (format × 2): 8, 10, 14, 22
   photos          TEXT[] DEFAULT '{}',           -- URLs en Supabase Storage
 
-  status          court_status NOT NULL DEFAULT 'active',
+  status          court_status NOT NULL DEFAULT 'online',
 
-  -- Precios por franja horaria (JSONB flexible)
+  -- Precios por franja horaria (JSONB) — grilla hora×día, price escalar (cambios #6/#13)
   pricing         JSONB NOT NULL DEFAULT '{
-    "weekday_morning":   {"price": 800000,  "hours": ["08:00-12:00"]},
-    "weekday_afternoon": {"price": 1000000, "hours": ["12:00-18:00"]},
-    "weekday_night":     {"price": 1200000, "hours": ["18:00-23:00"]},
-    "weekend_morning":   {"price": 1000000, "hours": ["08:00-14:00"]},
-    "weekend_night":     {"price": 1500000, "hours": ["14:00-23:00"]}
+    "rules": [
+      {"days": ["mon","tue","wed","thu"], "from": "08:00", "to": "18:00", "price": 800000},
+      {"days": ["mon","tue","wed","thu"], "from": "18:00", "to": "23:00", "price": 1200000},
+      {"days": ["fri","sat","sun"],       "from": "08:00", "to": "23:00", "price": 1500000}
+    ]
   }'::JSONB,
 
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   -- Constraints
-  CONSTRAINT chk_capacity_positive CHECK (capacity > 0)
+  CONSTRAINT chk_capacity_positive CHECK (capacity > 0),
+  CONSTRAINT courts_format_check CHECK (format IN (4, 5, 6, 7, 8, 9, 10, 11))
 );
 
 -- Índices
@@ -504,7 +511,7 @@ CREATE POLICY tenant_isolation_delete ON courts FOR DELETE
   USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 
 COMMENT ON TABLE courts IS 'Canchas del complejo. Cada cancha es independiente.';
-COMMENT ON COLUMN courts.pricing IS 'Precios en centavos ARS por franja horaria.';
+COMMENT ON COLUMN courts.pricing IS 'Reglas {days, from, to, price} con price escalar en centavos ARS (cambios #6/#13). Turno fijo 60 min, sin lookup por duración.';
 ```
 
 ### 3.2 `bookings` — Reservas (la tabla más crítica)
@@ -890,9 +897,10 @@ CREATE POLICY tenant_isolation_delete ON products FOR DELETE
 ```sql
 -- ============================================================
 -- TABLA: tenant_staff_members
--- Un staff user puede ser admin de múltiples complejos.
--- Solo existe el rol 'admin' en v1. Las zonas sensibles del panel
--- se protegen con tenant.settings.admin_pin (ver DECISIONES_SISTEMA.md P2.1).
+-- Un staff user puede operar múltiples complejos.
+-- 2 roles (modelo ATC, cambio #11): 'admin' (dueño, acceso total) y
+-- 'manager' (encargado permisivo: casi todo salvo MercadoPago, staff y
+-- facturación SaaS). Subsistema de PIN eliminado.
 -- ============================================================
 CREATE TABLE tenant_staff_members (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1187,6 +1195,11 @@ CREATE TABLE player_tenant_relationships (
   noshow_count     INTEGER NOT NULL DEFAULT 0,      -- Total de no-shows
   last_booking_at  TIMESTAMPTZ,
   first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- Saldo deudor en centavos ARS (cambio #5). Si > 0, el jugador queda bloqueado
+  -- para reservar online en este complejo hasta saldarlo. NO es billetera virtual:
+  -- refunds/no-shows se concilian entre jugador y complejo fuera del sistema.
+  balance          INTEGER NOT NULL DEFAULT 0,
 
   -- Estado de la relación
   status           TEXT NOT NULL DEFAULT 'active'   -- 'active' | 'blocked'

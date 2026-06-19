@@ -97,12 +97,14 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - Consentimiento v1: `players.agreed_to_terms_at` + `audit_logs`; NO existe tabla `consent_records` (se evalúa en v1.5)
 - Facturación AFIP: fuera de scope v1 (ADR-011), responsabilidad del complejo
 - Planes SaaS: Predio (1-3 canchas), Complejo (4-6), Estadio (7+). Sin límite de cantidad de staff.
-- `staff_role`: **2 roles** — `admin` (dueño, acceso total) y `manager` (encargado: grilla/reservas/caja, sin precios ni config). El uso de `manager` es opcional por complejo. ⚠️ El enum en código todavía incluye `read_only` (eliminado por decisión) — pendiente de quitar.
+- `staff_role`: **2 roles** (modelo ATC permisivo, cambio #11) — `admin` (dueño, acceso total) y `manager` (encargado: ve y opera casi todo — grilla, reservas, caja, reportes, métricas, canchas, jugadores, abonados, stock, config general — excepto conexión de MercadoPago, gestión de staff y facturación SaaS). Enum en código: `['admin','manager']` (`read_only` eliminado en migración 029). Subsistema de PIN eliminado.
 - `court_status`: `online` | `offline` (no active/maintenance/inactive)
+- `surface_type` (solo el piso): `synthetic_grass` | `natural_grass` | `cement` | `tile` (baldosa; `indoor` eliminado, cambio #16). Cobertura e iluminación son columnas booleanas por cancha: `is_covered` (def. false), `has_lighting` (def. true).
+- `courts.format`: entero Fútbol N, CHECK IN (4..11), default 5 (cambio #17). `capacity` = jugadores totales = `format × 2` (derivado en createCourt). Jerga UI: "Fútbol 5/7/8/11".
 - `deposit_mode`: configurable por complejo (on/off + porcentaje global). Sin modo garantía.
 - Duración de turno: 60 minutos fijo (constante global `SLOT_DURATION_MINUTES` en `src/shared/constants.ts`). El campo configurable `booking_duration_minutes` se eliminó (dead code, cambio #14).
 - Anticipación de reserva: default 6 días (como ATC).
-- Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles + precio por duración.
+- Precios por cancha: JSONB `{rules:[{days,from,to,price}]}` con `price` escalar (centavos ARS) por franja horaria. Turno fijo 60 min, sin lookup por duración (cambios #6/#13).
 - NO hay billetera virtual del jugador. Reembolsos/no-shows se resuelven entre jugador y complejo.
 - Gestión de caja completa (decisión actualizada): incluye stock/cantina (productos con precio, stock y alertas; ventas → CashFlow categoría `product_sale`) y control de gastos (`cashflow_type` = `expense`, categoría `operating_expense`). `cashflow_type`: `income` | `adjustment` | `expense`. Más cierre de caja diario.
 - Realtime Supabase: solo para admin (grilla). Jugador NO tiene Realtime en v1 (polling/refresh).

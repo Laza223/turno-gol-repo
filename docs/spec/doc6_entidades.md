@@ -61,16 +61,16 @@ updated_at        timestamp     UTC
 ```json
 {
   "requires_deposit": true,
-  "deposit_percentage": 50,
+  "deposit_percentage": 30,
   "cancellation_policy": {
-    "hours_before": 48,
-    "refund_on_cancel": true
+    "hours_before": 12,
+    "penalty_type": "deposit",
+    "penalty_amount": null
   },
   "no_show_policy": {
     "generates_debt": true,
     "blocks_until_paid": true
   },
-  "admin_pin": "$2b$10$...",
   "accepts_cash": true,
   "accepts_transfer": true,
   "accepts_mercadopago": true,
@@ -81,9 +81,11 @@ updated_at        timestamp     UTC
 ```
 
 > [!NOTE]
-> **`admin_pin`**: PIN hasheado para proteger zonas sensibles del panel (precios, configuración,
-> suscripción, desactivar canchas, reportes financieros). Permite que el empleado use la misma
-> cuenta admin sin acceder a funciones críticas.
+> **`no_show_policy`**: el no-show genera deuda (`generates_debt`) y bloquea al jugador para
+> reservar online en ese complejo hasta saldarla (`blocks_until_paid`). La deuda vive en
+> `player_tenant_relationships.balance` (cambio #5). Sin bans automáticos por no-show.
+> ⚠️ El código todavía conserva un campo vestigial `no_show_penalty: { type: 'ban_days' | 'none', days }`
+> en `TenantSettings` (pendiente de limpiar); el comportamiento activo es el modelo de deuda.
 
 ### Atributos derivados (NO guardar en DB, calcular)
 - `is_open_now` = evaluar `opening_hours` + `closed_dates` contra la hora actual
@@ -126,12 +128,15 @@ Una cancha es un espacio físico del complejo donde se juega. Tiene horarios de 
 id                UUID          PK
 tenant_id         UUID          FK → tenants
 name              string        "Cancha 1", "Cancha Norte", etc.
-description       string?       Info adicional (grass sintética, con techo, etc.)
-surface_type      enum          'synthetic_grass' | 'natural_grass' | 'cement' | 'indoor'
-capacity          integer       Cantidad de jugadores (5, 7, 11)
+description       string?       Info adicional
+surface_type      enum          'synthetic_grass' | 'natural_grass' | 'cement' | 'tile' (solo el piso)
+is_covered        boolean       DEFAULT false. Cancha techada (true) o descubierta (false) — cambio #16
+has_lighting      boolean       DEFAULT true. Con iluminación (true) o sin (false) — cambio #16
+format            integer       NOT NULL DEFAULT 5, CHECK IN (4,5,6,7,8,9,10,11). Fútbol N — cambio #17
+capacity          integer       NOT NULL. Jugadores totales = format × 2 (derivado, auto-llenado en createCourt)
 photos            string[]      URLs de fotos (en storage)
-status            enum          ver state machine (3 estados)
-pricing           JSONB         Precios por franja horaria (ver desglose)
+status            enum          'online' | 'offline' (ver state machine)
+pricing           JSONB         Precio por franja horaria (ver desglose)
 created_at        timestamp     UTC
 updated_at        timestamp     UTC
 ```
@@ -140,18 +145,19 @@ updated_at        timestamp     UTC
 ```json
 {
   "rules": [
-    { "days": [1,2,3,4,5], "from": "08:00", "to": "14:00", "prices": { "60": 800000, "120": 1400000 } },
-    { "days": [1,2,3,4,5], "from": "14:00", "to": "18:00", "prices": { "60": 1000000, "120": 1800000 } },
-    { "days": [1,2,3,4,5], "from": "18:00", "to": "00:00", "prices": { "60": 1200000, "120": 2200000 } },
-    { "days": [0,6], "from": "08:00", "to": "00:00", "prices": { "60": 1500000, "120": 2800000 } }
+    { "days": ["mon","tue","wed","thu"], "from": "08:00", "to": "18:00", "price": 800000 },
+    { "days": ["mon","tue","wed","thu"], "from": "18:00", "to": "23:00", "price": 1200000 },
+    { "days": ["fri","sat","sun"],       "from": "08:00", "to": "23:00", "price": 1500000 }
   ]
 }
 ```
 
 > [!NOTE]
-> **Reglas de precio**: El admin define franjas ilimitadas con puntos de corte horarios.
-> Cada regla especifica días de la semana (0=Dom, 6=Sáb), rango horario, y precio por duración (60/120 min).
-> Esto replica el modelo de ATC Sports donde el admin configura el precio por cada combinación de franja y duración.
+> **Reglas de precio**: El admin define franjas mediante una grilla hora×día (cambio #13).
+> Cada regla especifica días de la semana ("mon".."sun"), rango horario, y un único `price`
+> escalar (centavos ARS). Turno fijo de 60 min (`SLOT_DURATION_MINUTES`); ya no hay objeto
+> `prices` ni lookup de precio por duración (cambio #6). Al guardar, celdas consecutivas con
+> el mismo precio se comprimen en una sola regla.
 
 > [!NOTE]
 > **Horarios que cruzan medianoche**: si un complejo abre de 08:00 a 02:00 del día siguiente,
@@ -238,7 +244,7 @@ updated_at        timestamp     UTC
 ```
                             PENDING_PAYMENT
                             /      |      \
-              pago OK    /         |       \ timeout (15min / 48hs si in_process)
+              pago OK    /         |       \ timeout (6 min)
                         /   sin seña required \ 
                        ▼          ▼             ▼
                   CONFIRMED    CONFIRMED      EXPIRED
@@ -265,7 +271,7 @@ updated_at        timestamp     UTC
 |---|---|---|---|
 | `pending_payment` | `confirmed` | Pago de seña procesado por MP | Email confirmación al jugador |
 | `pending_payment` | `confirmed` | No requiere seña (depósito 0% o reserva manual sin seña) | Email confirmación |
-| `pending_payment` | `expired` | Timeout 15 min sin pago (o 48hs si MP in_process por CBU) | Slot liberado |
+| `pending_payment` | `expired` | Timeout 6 min sin pago | Slot liberado |
 | `pending_payment` | `expired` | Admin fuerza expiración manualmente | Slot liberado, email al jugador |
 | `confirmed` | `canceled_refunded` | Jugador cancela dentro del plazo de la política | Refund de seña vía MP, email confirmación. Si seña efectivo: "Contactá al complejo" |
 | `confirmed` | `canceled_no_refund` | Jugador cancela fuera del plazo | Sin reembolso, deposit_status → 'captured', email con info |
@@ -455,7 +461,7 @@ created_at        timestamp     UTC
 ## ENTIDAD 7: StaffUser (Usuario del Sistema)
 
 ### Definición
-Un StaffUser es la persona que administra un Tenant. En v1 solo existe el rol `admin`. El sistema usa un PIN para proteger zonas sensibles (precios, configuración, suscripción) permitiendo que empleados del complejo operen la cuenta sin acceso a funciones críticas.
+Un StaffUser es la persona que opera un Tenant. Hay 2 roles (modelo ATC permisivo, cambio #11): `admin` (dueño, acceso total) y `manager` (encargado: ve y opera casi todo — grilla, reservas, caja, reportes, métricas, canchas, jugadores, abonados, stock, configuración general — excepto conexión de MercadoPago, gestión de staff y facturación SaaS). El subsistema de PIN fue eliminado.
 
 ### Atributos propios
 ```
@@ -476,13 +482,13 @@ tenant_staff_members
 ├── id            UUID
 ├── tenant_id     UUID      FK → tenants
 ├── staff_user_id UUID      FK → staff_users
-├── role          enum      'admin' (único rol en v1)
+├── role          enum      'admin' | 'manager'
 ├── added_by      UUID      FK → staff_users (quién lo agregó)
 ├── created_at    timestamp
 └── is_active     boolean
 ```
 
-**Por qué mantener la tabla**: Aunque v1 tiene un solo rol, la tabla permite que un mismo email administre múltiples complejos y facilita la extensión futura.
+**Por qué mantener la tabla**: permite que un mismo email opere múltiples complejos con un rol por complejo (`admin` o `manager`) y facilita la extensión futura.
 
 ---
 
@@ -514,7 +520,7 @@ created_at        timestamp     UTC
 1. **Los pagos aprobados son inmutables**: no se editan, se crea un nuevo `Payment` de tipo `refund` si hay que devolver.
 2. **`amount` siempre en centavos** para evitar errores de punto flotante (ej: $8.000 ARS = 800000 centavos).
 3. **`mp_payment_id` es único** (constraint en DB). Garantiza idempotencia de webhooks.
-4. **Estado `in_process`**: para pagos por CBU/transferencia que pueden tardar 24-48hs. El timer del booking se extiende a 48hs en este caso.
+4. **Estado `in_process`**: para pagos por CBU/transferencia bancaria que pueden tardar 24-48hs en acreditar. Las reservas online solo aceptan MercadoPago instantáneo, así que el timer del booking NO se extiende (timer fijo de 6 min; cambios #2/#19). El estado se conserva para conciliar pagos por transferencia fuera del flujo de seña online.
 
 ---
 
@@ -671,7 +677,7 @@ tenant_id         UUID?         FK → tenants (null para notificaciones del sis
 recipient_type    enum          'player' | 'staff' | 'tenant_owner'
 recipient_id      UUID          FK → players o staff_users
 channel           enum          'email'
-trigger_event     string        'booking.confirmed' | 'booking.reminder_24h' | etc.
+trigger_event     string        'booking.confirmed' | 'booking.canceled' | 'booking.canceled_by_complex' | 'no_show.debt_created' | etc.
 status            enum          'queued' | 'sent' | 'delivered' | 'failed'
 content           JSONB         El contenido del mensaje enviado
 attempt_count     integer       DEFAULT 1

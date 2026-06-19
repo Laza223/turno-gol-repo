@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   renderBookingConfirmed,
   renderBookingCanceled,
-  renderBookingReminder,
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
@@ -84,19 +83,6 @@ describe('renderBookingCanceled', () => {
       canceledBy: 'admin',
     })
     expect(html).not.toContain('Motivo')
-  })
-})
-
-describe('renderBookingReminder', () => {
-  it('subject mentions tomorrow', () => {
-    const { subject } = renderBookingReminder(CONFIRMED_DATA)
-    expect(subject.toLowerCase()).toContain('mañana')
-  })
-
-  it('html contains date and time', () => {
-    const { html } = renderBookingReminder(CONFIRMED_DATA)
-    expect(html).toContain('02/06/2027')
-    expect(html).toContain('10:00')
   })
 })
 
@@ -254,7 +240,6 @@ describe('isTemplateName', () => {
     const valid = [
       'booking_confirmed',
       'booking_canceled',
-      'booking_reminder',
       'admin_new_booking',
       'trial_welcome',
       'trial_ending',

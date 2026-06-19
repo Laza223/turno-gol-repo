@@ -2,7 +2,6 @@ export type EmailContent = { subject: string; html: string; text?: string }
 
 export type { BookingConfirmedData } from './booking-confirmed'
 export type { BookingCanceledData } from './booking-canceled'
-export type { BookingReminderData } from './booking-reminder'
 export type { AdminNewBookingData } from './admin-new-booking'
 export type { TrialWelcomeData } from './trial-welcome'
 export type { TrialEndingData } from './trial-ending'
@@ -19,7 +18,6 @@ export type { TenantDeletionWarningData } from './tenant-deletion-warning'
 
 import { renderBookingConfirmed, type BookingConfirmedData } from './booking-confirmed'
 import { renderBookingCanceled, type BookingCanceledData } from './booking-canceled'
-import { renderBookingReminder, type BookingReminderData } from './booking-reminder'
 import { renderAdminNewBooking, type AdminNewBookingData } from './admin-new-booking'
 import { renderTrialWelcome, type TrialWelcomeData } from './trial-welcome'
 import { renderTrialEnding, type TrialEndingData } from './trial-ending'
@@ -37,7 +35,6 @@ import { renderTenantDeletionWarning, type TenantDeletionWarningData } from './t
 export {
   renderBookingConfirmed,
   renderBookingCanceled,
-  renderBookingReminder,
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
@@ -56,7 +53,6 @@ export {
 type TemplateDataMap = {
   booking_confirmed: BookingConfirmedData
   booking_canceled: BookingCanceledData
-  booking_reminder: BookingReminderData
   admin_new_booking: AdminNewBookingData
   trial_welcome: TrialWelcomeData
   trial_ending: TrialEndingData
@@ -77,7 +73,6 @@ export type TemplateName = keyof TemplateDataMap
 const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailContent } = {
   booking_confirmed: renderBookingConfirmed,
   booking_canceled: renderBookingCanceled,
-  booking_reminder: renderBookingReminder,
   admin_new_booking: renderAdminNewBooking,
   trial_welcome: renderTrialWelcome,
   trial_ending: renderTrialEnding,

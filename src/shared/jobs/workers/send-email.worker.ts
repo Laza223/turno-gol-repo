@@ -15,8 +15,7 @@ import { renderTemplate, isTemplateName } from '@/modules/notifications/template
 import { logger } from '@/shared/lib/logger'
 
 /**
- * Process a single notification. Exported for direct use in tests and
- * the booking-reminder worker (which enqueues from within the worker process).
+ * Process a single notification. Exported for direct use in tests.
  */
 export async function processSingleNotification(notif: NotificationRow): Promise<void> {
   if (notif.status === 'sent') return

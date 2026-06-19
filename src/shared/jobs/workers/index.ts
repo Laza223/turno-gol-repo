@@ -4,7 +4,6 @@ import { registerGenerateAbonadoSlotsWorker } from './generate-abonado-slots.wor
 import { registerSendEmailWorker } from './send-email.worker'
 import { registerExpireTrialsWorker } from './expire-trials.worker'
 import { registerAutoCompleteBookingsWorker } from './auto-complete-bookings.worker'
-import { registerBookingReminderWorker } from './booking-reminder.worker'
 import { registerDunningRetryWorker } from './dunning-retry.worker'
 import { registerDataRetentionCleanupWorker } from './data-retention-cleanup.worker'
 import { registerExpirePendingBookingWorker } from './expire-pending-booking.worker'
@@ -20,7 +19,6 @@ export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerSendEmailWorker(boss)
   await registerExpireTrialsWorker(boss)
   await registerAutoCompleteBookingsWorker(boss)
-  await registerBookingReminderWorker(boss)
   await registerDunningRetryWorker(boss)
   await registerDataRetentionCleanupWorker(boss)
   await registerExpirePendingBookingWorker(boss)

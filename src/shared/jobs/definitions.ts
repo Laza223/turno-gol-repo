@@ -9,7 +9,6 @@ export const QUEUE_SEND_EMAIL = 'send-email'
 export const QUEUE_PUSH_SEND = 'push-send'
 export const QUEUE_EXPIRE_TRIALS = 'expire-trials'
 export const QUEUE_AUTO_COMPLETE = 'auto-complete-bookings'
-export const QUEUE_BOOKING_REMINDER = 'booking-reminder'
 export const QUEUE_DUNNING_RETRY = 'dunning-retry'
 export const QUEUE_DATA_RETENTION = 'data-retention-cleanup'
 export const QUEUE_EXPIRE_PENDING_BOOKING = 'expire-pending-booking'
@@ -22,12 +21,6 @@ export const QUEUE_HEALTH_PING = 'health-ping'
 
 export type SendEmailJobData = {
   notification_id: string
-}
-
-export type BookingReminderJobData = {
-  booking_id: string
-  player_id: string
-  reminder_type: '24h'
 }
 
 export type ExpirePendingBookingJobData = {
@@ -45,12 +38,6 @@ export const SEND_EMAIL_SEND_OPTIONS = {
   retryDelay: 60,
   retryBackoff: true,
   expireInHours: 24,
-} as const
-
-export const BOOKING_REMINDER_SEND_OPTIONS = {
-  retryLimit: 2,
-  retryDelay: 300,
-  retryBackoff: true,
 } as const
 
 export const EXPIRE_PENDING_BOOKING_SEND_OPTIONS = {

@@ -107,6 +107,7 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - Gestión de caja completa (decisión actualizada): incluye stock/cantina (productos con precio, stock y alertas; ventas → CashFlow categoría `product_sale`) y control de gastos (`cashflow_type` = `expense`, categoría `operating_expense`). `cashflow_type`: `income` | `adjustment` | `expense`. Más cierre de caja diario.
 - Realtime Supabase: solo para admin (grilla). Jugador NO tiene Realtime en v1 (polling/refresh).
 - Push notifications: Web Push API al admin cuando llega reserva online (sonido fijo, no configurable).
+- NO hay recordatorio 24hs al jugador en v1 (descartado en P9.2 por costo de email masivo; worker/template eliminados, cambio #18). Se reconstruye con WhatsApp post-v1.
 - DB columns de cancelación: `canceled_reason`, `canceled_by`, `canceled_at` (sin doble L)
 - Middleware SET LOCAL: `app.current_tenant_id` para admin, `app.current_player_id` para jugador
 

@@ -8,7 +8,6 @@ import {
   DAY_LABELS,
   type DayKey,
   type PriceGrid,
-  activeHoursForDay,
   compressGridToRules,
   countEmptyCells,
   expandRulesToGrid,

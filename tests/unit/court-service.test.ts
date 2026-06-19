@@ -68,6 +68,17 @@ describe('calculatePrice', () => {
     const date = artDate('mon', '02:00')
     expect(calculatePrice(SAMPLE_PRICING, date)).toBeNull()
   })
+
+  it('regla que cierra en 00:00 cubre 23:00 (fin de día) pero no 00:00 (cambio #13)', () => {
+    // Las reglas de la grilla (#13) usan to:"00:00" como medianoche (24:00).
+    // Esta rama (rule.to === '00:00' → 24*60) no la ejercía ningún otro test.
+    const lateNight: CourtPricingData = {
+      rules: [{ days: ['mon'], from: '20:00', to: '00:00', price: 999000 }],
+    }
+    expect(calculatePrice(lateNight, artDate('mon', '23:00'))).toBe(999000)
+    // 00:00 del lunes cae ANTES de la franja 20:00–24:00 → sin cobertura.
+    expect(calculatePrice(lateNight, artDate('mon', '00:00'))).toBeNull()
+  })
 })
 
 const FULL_OPENING_HOURS: OpeningHours = {

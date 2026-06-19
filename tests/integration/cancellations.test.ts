@@ -889,9 +889,10 @@ describe('handleNoShow — penalty branches', () => {
   })
 })
 
-// ─── HALLAZGOS LATENTES (tests skip = especificación del fix) ─────────
-// Codifican el comportamiento CORRECTO esperado. Hoy fallarían porque el
-// código de prod tiene el gap. Quitar `.skip` cuando se aplique el fix.
+// ─── REGRESIÓN: paridad de guards entre cancelByAdmin y cancelByPlayer ─
+// Estos tests corren EN VIVO (sin .skip): el fix de prod ya está aplicado y
+// fijan el comportamiento correcto para que no regrese. NO hay specs skipped
+// en este archivo.
 describe('cancelByAdmin — inactive tenant guard (H8, paridad con cancelByPlayer)', () => {
   it('rechaza cancel+refund cuando el tenant está blocked y no toca el refund', async () => {
     const sql = getSql()

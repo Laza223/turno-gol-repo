@@ -296,7 +296,7 @@ describe('createOnlineBooking', () => {
     expect(booking.depositStatus).toBe('not_required')
     expect(booking.priceSnapshot).toBe(800000)
     // A confirmed booking is final: it must NOT arm an expiry timer, or the
-    // 15-min sweep would later expire an already-paid/no-deposit reservation.
+    // 6-min sweep would later expire an already-paid/no-deposit reservation.
     expect(armedExpiries).toHaveLength(0)
   })
 

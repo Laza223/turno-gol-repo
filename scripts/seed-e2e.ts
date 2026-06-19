@@ -139,7 +139,7 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
         // treat to=0 as 24h, so '00:00' would return null price for every slot.
         // (booking.service.priceForDuration DOES; helper inconsistency tracked.)
         to: '23:59',
-        prices: { '60': 10000, '120': 18000 },
+        price: 10000,
       },
     ],
   }
@@ -192,7 +192,7 @@ async function seedDepositTenantAndCourt(sql: SqlClient): Promise<void> {
         from: '00:00',
         // Match demo tenant: '23:59' so public.service.getPriceForSlot matches.
         to: '23:59',
-        prices: { '60': 10000, '120': 18000 },
+        price: 10000,
       },
     ],
   }

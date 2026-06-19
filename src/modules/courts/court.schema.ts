@@ -9,10 +9,7 @@ export const pricingRuleSchema = z.object({
   days: z.array(z.enum(DAY_KEYS)).min(1, 'Al menos un día requerido'),
   from: z.string().regex(HHMM_RE, 'Formato HH:MM requerido'),
   to: z.string().regex(HHMM_OR_MIDNIGHT_RE, 'Formato HH:MM requerido (00:00 = medianoche)'),
-  prices: z.object({
-    '60': z.number().int().positive('Precio 60min debe ser positivo'),
-    '120': z.number().int().positive('Precio 120min debe ser positivo'),
-  }),
+  price: z.number().int().positive('Precio debe ser positivo'),
 })
 
 export const courtPricingSchema = z.object({

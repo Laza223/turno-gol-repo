@@ -17,8 +17,10 @@ vi.mock('@/lib/crypto/encrypt', () => ({
   encrypt: (s: string) => `enc(${s})`,
 }))
 
-// Mock fetch to control MP token response.
-const fetchMock = vi.fn(
+// Mock fetch to control MP token response. Typed to fetch's signature so the
+// recorded `mock.calls` tuples carry the (input, init) args the route passes —
+// otherwise vitest infers a zero-arg call shape and `call[0]`/`call[1]` fail typecheck.
+const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(
   async () =>
     new Response(
       JSON.stringify({

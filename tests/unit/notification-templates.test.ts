@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   renderBookingConfirmed,
   renderBookingCanceled,
+  renderBookingCanceledByComplex,
+  renderNoShowDebtCreated,
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
@@ -83,6 +85,65 @@ describe('renderBookingCanceled', () => {
       canceledBy: 'admin',
     })
     expect(html).not.toContain('Motivo')
+  })
+})
+
+describe('renderBookingCanceledByComplex', () => {
+  const BASE = {
+    playerFirstName: 'Tomás',
+    courtName: 'Cancha 5',
+    date: '02/06/2027',
+    timeStart: '10:00',
+    timeEnd: '11:00',
+    tenantName: 'Complejo Norte',
+  }
+
+  it('subject names the tenant', () => {
+    const { subject } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: false })
+    expect(subject).toContain('Complejo Norte')
+    expect(subject.toLowerCase()).toContain('cancelad')
+  })
+
+  it('html confirms refund when refundConfirmed is true', () => {
+    const { html } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: true })
+    expect(html.toLowerCase()).toContain('reembolso')
+  })
+
+  it('html omits refund line when refundConfirmed is false', () => {
+    const { html } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: false })
+    expect(html).not.toContain('Reembolso confirmado')
+  })
+})
+
+describe('renderNoShowDebtCreated', () => {
+  const DATA = {
+    playerFirstName: 'Tomás',
+    courtName: 'Cancha 5',
+    date: '02/06/2027',
+    timeStart: '10:00',
+    timeEnd: '11:00',
+    tenantName: 'Complejo Norte',
+    debtAmount: '$15.000',
+    tenantAddress: 'Av. Libertador 1200',
+  }
+
+  it('subject signals a pending debt and names the tenant', () => {
+    const { subject } = renderNoShowDebtCreated(DATA)
+    expect(subject.toLowerCase()).toContain('deuda')
+    expect(subject).toContain('Complejo Norte')
+  })
+
+  it('html shows the amount, address and the regularize instruction', () => {
+    const { html } = renderNoShowDebtCreated(DATA)
+    expect(html).toContain('$15.000')
+    expect(html).toContain('Av. Libertador 1200')
+    expect(html.toLowerCase()).toContain('regularizar')
+  })
+
+  it('text is defined and includes the debt amount', () => {
+    const { text } = renderNoShowDebtCreated(DATA)
+    expect(text).toBeTruthy()
+    expect(text).toContain('$15.000')
   })
 })
 
@@ -240,6 +301,8 @@ describe('isTemplateName', () => {
     const valid = [
       'booking_confirmed',
       'booking_canceled',
+      'booking_canceled_by_complex',
+      'no_show_debt_created',
       'admin_new_booking',
       'trial_welcome',
       'trial_ending',

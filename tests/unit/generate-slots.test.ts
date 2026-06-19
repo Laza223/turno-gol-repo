@@ -11,13 +11,13 @@ const PRICING: CourtPricingData = {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '08:00',
       to: '18:00',
-      prices: { '60': 800000, '120': 1500000 },
+      price: 800000,
     },
     {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '18:00',
       to: '23:00',
-      prices: { '60': 1200000, '120': 2300000 },
+      price: 1200000,
     },
   ],
 }
@@ -69,7 +69,7 @@ describe('generateSlots', () => {
     expect(slots[0]).toMatchObject({
       timeStart: '08:00',
       timeEnd: '10:00',
-      price: 1500000,
+      price: 800000,
     })
     expect(slots[1]).toMatchObject({ timeStart: '10:00', timeEnd: '12:00' })
   })
@@ -195,7 +195,7 @@ describe('generateSlots', () => {
     it('un slot de 120 min se cobra según la regla de SU HORA DE INICIO', () => {
       // Slot 17:00-19:00 arranca en la franja mañana (corta 18:00) pero termina
       // en la franja noche. El precio se decide por la hora de inicio → tarifa
-      // mañana 120 (1500000). Test de anclaje: documenta y protege esta decisión.
+      // mañana (800000), no la noche (1200000). Test de anclaje de esa decisión.
       const slots = generateSlots({
         pricing: PRICING,
         dayKey: 'mon',
@@ -209,7 +209,7 @@ describe('generateSlots', () => {
       expect(slots[0]).toMatchObject({
         timeStart: '17:00',
         timeEnd: '19:00',
-        price: 1500000,
+        price: 800000,
       })
     })
   })

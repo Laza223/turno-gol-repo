@@ -7,7 +7,7 @@ import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 
-const PRICING = { rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', prices: { '60': 1000000, '120': 1800000 } }] }
+const PRICING = { rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 1000000 }] }
 const FUTURE = '2099-07-20'
 
 beforeAll(async () => { setExpiryScheduler(async () => {}); await ensureRoles() })

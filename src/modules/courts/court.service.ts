@@ -127,7 +127,6 @@ export async function getCourtCountAndLimit(
 export function calculatePrice(
   pricing: CourtPricingData,
   date: Date,
-  durationMins: 60 | 120,
 ): number | null {
   const artDate = new Date(date.getTime() - 3 * 60 * 60 * 1000)
   const dayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[artDate.getUTCDay()]!
@@ -139,7 +138,7 @@ export function calculatePrice(
     const fromMins = timeToMins(rule.from)
     const toMins = rule.to === '00:00' ? 24 * 60 : timeToMins(rule.to)
     if (slotMins >= fromMins && slotMins < toMins) {
-      return rule.prices[String(durationMins) as '60' | '120'] ?? null
+      return rule.price ?? null
     }
   }
   return null

@@ -12,19 +12,19 @@ const SAMPLE_PRICING: CourtPricingData = {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '08:00',
       to: '18:00',
-      prices: { '60': 800000, '120': 1500000 },
+      price: 800000,
     },
     {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '18:00',
       to: '23:00',
-      prices: { '60': 1200000, '120': 2300000 },
+      price: 1200000,
     },
     {
       days: ['fri', 'sat', 'sun'],
       from: '08:00',
       to: '23:00',
-      prices: { '60': 1500000, '120': 2900000 },
+      price: 1500000,
     },
   ],
 }
@@ -47,26 +47,26 @@ function artDate(isoWeekday: string, hhmmART: string): Date {
 }
 
 describe('calculatePrice', () => {
-  it('weekday morning 60min → 800000', () => {
+  it('weekday morning → 800000', () => {
     const date = artDate('mon', '09:00')
-    expect(calculatePrice(SAMPLE_PRICING, date, 60)).toBe(800000)
+    expect(calculatePrice(SAMPLE_PRICING, date)).toBe(800000)
   })
 
-  it('weekend night 120min → 2900000', () => {
+  it('weekend → 1500000', () => {
     const date = artDate('sat', '21:00')
-    expect(calculatePrice(SAMPLE_PRICING, date, 120)).toBe(2900000)
+    expect(calculatePrice(SAMPLE_PRICING, date)).toBe(1500000)
   })
 
   it('weekday at rule boundary 18:00 → 1200000', () => {
     // Exactly at from=18:00 → falls in second rule [18:00, 23:00)
     const date = artDate('mon', '18:00')
-    expect(calculatePrice(SAMPLE_PRICING, date, 60)).toBe(1200000)
+    expect(calculatePrice(SAMPLE_PRICING, date)).toBe(1200000)
   })
 
-  it('unsupported duration 90min → null', () => {
-    const date = artDate('mon', '09:00')
-    // TypeScript prevents 90 at compile time, cast for test
-    expect(calculatePrice(SAMPLE_PRICING, date, 90 as 60 | 120)).toBeNull()
+  it('hour outside any rule → null', () => {
+    // 02:00 ART: no rule covers it (todas arrancan 08:00)
+    const date = artDate('mon', '02:00')
+    expect(calculatePrice(SAMPLE_PRICING, date)).toBeNull()
   })
 })
 
@@ -93,7 +93,7 @@ describe('validatePricingRulesCoverage', () => {
         days: ['mon', 'tue', 'wed', 'thu', 'fri'],
         from: '08:00',
         to: '23:00',
-        prices: { '60': 800000, '120': 1500000 },
+        price: 800000,
       },
     ]
     const result = validatePricingRulesCoverage(weekdayOnlyRules, FULL_OPENING_HOURS)
@@ -112,7 +112,7 @@ describe('validatePricingRulesCoverage', () => {
         days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
         from: '08:00',
         to: '23:00',
-        prices: { '60': 800000, '120': 1500000 },
+        price: 800000,
       },
     ]
     const result = validatePricingRulesCoverage(weekdayFriRules, hours)

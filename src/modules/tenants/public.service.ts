@@ -78,7 +78,7 @@ type PricingRule = {
   days: string[]
   from: string
   to: string
-  prices: Record<string, number>
+  price: number
 }
 
 export type CourtPricingData = { rules: PricingRule[] }
@@ -121,7 +121,6 @@ export function getPriceForSlot(
   rules: PricingRule[],
   dayKey: string,
   slotTime: string,
-  durationMins: number,
 ): number | null {
   const slotMins = timeToMins(slotTime)
   for (const rule of rules) {
@@ -129,7 +128,7 @@ export function getPriceForSlot(
     const from = timeToMins(rule.from)
     const to = timeToMins(rule.to)
     if (slotMins >= from && slotMins < to) {
-      return rule.prices[String(durationMins)] ?? null
+      return rule.price ?? null
     }
   }
   return null
@@ -168,7 +167,7 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
       else status = 'occupied'
     }
 
-    const price = getPriceForSlot(p.pricing.rules, p.dayKey, timeStr, p.durationMins)
+    const price = getPriceForSlot(p.pricing.rules, p.dayKey, timeStr)
     slots.push({ time: timeStr, duration: p.durationMins, status, price })
   }
   return slots
@@ -269,9 +268,8 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
 function minPriceFromPricing(pricing: CourtPricingData): number | null {
   let min: number | null = null
   for (const rule of pricing.rules ?? []) {
-    for (const value of Object.values(rule.prices ?? {})) {
-      if (typeof value === 'number' && (min === null || value < min)) min = value
-    }
+    const value = rule.price
+    if (typeof value === 'number' && (min === null || value < min)) min = value
   }
   return min
 }

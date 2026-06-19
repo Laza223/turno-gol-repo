@@ -154,7 +154,6 @@ export async function createManualBooking(
     const calc = calculatePrice(
       court.pricing,
       artDateAt(input.date, input.timeStart),
-      input.durationMins,
     )
     if (calc === null) throw new PriceUnavailableError()
     priceSnapshot = calc
@@ -302,7 +301,6 @@ async function createOnlineBookingImpl(
   const calc = calculatePrice(
     court.pricing,
     artDateAt(input.date, input.timeStart),
-    input.durationMins,
   )
   if (calc === null) throw new PriceUnavailableError()
   const priceSnapshot = calc
@@ -596,7 +594,7 @@ export function generateSlots(p: GenerateSlotsInput): AvailableSlot[] {
     )
     const timeStart = minsToTime(start)
     const timeEnd = minsToTime(slotEnd)
-    const price = priceForDuration(p.pricing, p.dayKey, timeStart, p.durationMins)
+    const price = priceForSlot(p.pricing, p.dayKey, timeStart)
     slots.push({
       timeStart,
       timeEnd,
@@ -607,11 +605,10 @@ export function generateSlots(p: GenerateSlotsInput): AvailableSlot[] {
   return slots
 }
 
-function priceForDuration(
+function priceForSlot(
   pricing: CourtPricingData,
   dayKey: string,
   slotTime: string,
-  durationMins: 60 | 120,
 ): number | null {
   const slotMins = timeToMins(slotTime)
   for (const rule of pricing.rules) {
@@ -620,7 +617,7 @@ function priceForDuration(
     const toRaw = timeToMins(rule.to)
     const to = toRaw === 0 ? 24 * 60 : toRaw
     if (slotMins >= from && slotMins < to) {
-      return rule.prices[String(durationMins) as '60' | '120'] ?? null
+      return rule.price ?? null
     }
   }
   return null

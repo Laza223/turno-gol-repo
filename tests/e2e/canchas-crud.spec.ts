@@ -51,7 +51,7 @@ const ALL_DAY_PRICING = {
       days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
       from: '00:00',
       to: '00:00', // 00:00 → 24h coverage
-      prices: { '60': 10000, '120': 18000 },
+      price: 10000,
     },
   ],
 }

@@ -15,19 +15,19 @@ const DEFAULT_PRICING: CourtPricingData = {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '08:00',
       to: '18:00',
-      prices: { '60': 800000, '120': 1500000 },
+      price: 800000,
     },
     {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '18:00',
       to: '23:00',
-      prices: { '60': 1200000, '120': 2300000 },
+      price: 1200000,
     },
     {
       days: ['fri', 'sat', 'sun'],
       from: '08:00',
       to: '23:00',
-      prices: { '60': 1500000, '120': 2900000 },
+      price: 1500000,
     },
   ],
 }

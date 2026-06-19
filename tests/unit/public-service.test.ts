@@ -12,19 +12,19 @@ const SAMPLE_PRICING: CourtPricingData = {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '08:00',
       to: '18:00',
-      prices: { '60': 800000, '120': 1500000 },
+      price: 800000,
     },
     {
       days: ['mon', 'tue', 'wed', 'thu'],
       from: '18:00',
       to: '23:00',
-      prices: { '60': 1200000, '120': 2300000 },
+      price: 1200000,
     },
     {
       days: ['fri', 'sat', 'sun'],
       from: '08:00',
       to: '23:00',
-      prices: { '60': 1500000, '120': 2900000 },
+      price: 1500000,
     },
   ],
 }
@@ -46,15 +46,15 @@ const BASE_PARAMS: GenerateSlotsParams = {
 
 describe('getPriceForSlot', () => {
   it('returns price matching day and time window', () => {
-    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '08:00', 60)).toBe(800000)
-    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '17:59', 60)).toBe(800000)
-    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '18:00', 60)).toBe(1200000)
-    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'sat', '10:00', 60)).toBe(1500000)
+    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '08:00')).toBe(800000)
+    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '17:59')).toBe(800000)
+    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '18:00')).toBe(1200000)
+    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'sat', '10:00')).toBe(1500000)
   })
 
   it('returns null when no rule matches', () => {
-    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '23:30', 60)).toBeNull()
-    expect(getPriceForSlot([], 'mon', '08:00', 60)).toBeNull()
+    expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '23:30')).toBeNull()
+    expect(getPriceForSlot([], 'mon', '08:00')).toBeNull()
   })
 })
 

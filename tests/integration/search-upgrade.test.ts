@@ -11,16 +11,16 @@ import {
 import { insertBooking } from '../helpers/factories'
 
 type Pricing = {
-  rules: { days: string[]; from: string; to: string; prices: { '60': number; '120': number } }[]
+  rules: { days: string[]; from: string; to: string; price: number }[]
 }
-function pricing(p60: number, p120: number): Pricing {
+function pricing(p60: number): Pricing {
   return {
     rules: [
       {
         days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
         from: '08:00',
         to: '23:00',
-        prices: { '60': p60, '120': p120 },
+        price: p60,
       },
     ],
   }
@@ -28,7 +28,7 @@ function pricing(p60: number, p120: number): Pricing {
 
 async function insertCourt(
   tenantId: string,
-  opts: { surface?: string; capacity?: number; p60?: number; p120?: number; status?: string } = {},
+  opts: { surface?: string; capacity?: number; p60?: number; status?: string } = {},
 ): Promise<string> {
   const sql = getSql()
   const rows = await sql<{ id: string }[]>`
@@ -36,7 +36,7 @@ async function insertCourt(
     VALUES (
       ${tenantId}, ${'Cancha'}, ${opts.capacity ?? 10},
       ${opts.surface ?? 'synthetic_grass'}::surface_type,
-      ${sql.json(pricing(opts.p60 ?? 800000, opts.p120 ?? 1500000))},
+      ${sql.json(pricing(opts.p60 ?? 800000))},
       ${opts.status ?? 'online'}::court_status
     )
     RETURNING id
@@ -62,10 +62,10 @@ afterAll(async () => {
 describe('search upgrade: from_price_cents (trigger)', () => {
   it('expone el precio mínimo de las canchas online', async () => {
     const tenant = await createTestTenant()
-    await insertCourt(tenant.id, { p60: 1200000, p120: 2300000 })
-    await insertCourt(tenant.id, { p60: 700000, p120: 1400000 }) // más barata
+    await insertCourt(tenant.id, { p60: 1200000 })
+    await insertCourt(tenant.id, { p60: 700000 }) // más barata
     // Cancha offline con precio aún menor: NO debe contar.
-    await insertCourt(tenant.id, { p60: 100000, p120: 200000, status: 'offline' })
+    await insertCourt(tenant.id, { p60: 100000, status: 'offline' })
 
     const { results } = await searchPublicTenants({ city: undefined, q: undefined })
     const card = results.find((r) => r.id === tenant.id)!
@@ -147,9 +147,9 @@ describe('search upgrade: filtros', () => {
 
   it('filtra por rango de precio sobre from_price_cents', async () => {
     const cheap = await createTestTenant()
-    await insertCourt(cheap.id, { p60: 500000, p120: 900000 })
+    await insertCourt(cheap.id, { p60: 500000 })
     const pricey = await createTestTenant()
-    await insertCourt(pricey.id, { p60: 2000000, p120: 3500000 })
+    await insertCourt(pricey.id, { p60: 2000000 })
 
     const { results } = await searchPublicTenants({ minPriceCents: 400000, maxPriceCents: 1000000 })
     const ids = results.map((r) => r.id)
@@ -163,9 +163,9 @@ describe('search upgrade: ordenamiento', () => {
     const sql = getSql()
     await cleanupAll(sql) // aislar el orden global
     const a = await createTestTenant(sql, { name: 'AAA' })
-    await insertCourt(a.id, { p60: 1500000, p120: 2500000 })
+    await insertCourt(a.id, { p60: 1500000 })
     const b = await createTestTenant(sql, { name: 'BBB' })
-    await insertCourt(b.id, { p60: 600000, p120: 1000000 })
+    await insertCourt(b.id, { p60: 600000 })
 
     const { results } = await searchPublicTenants({ sort: 'price' })
     expect(results[0]!.id).toBe(b.id) // 600000 antes que 1500000

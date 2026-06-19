@@ -4,7 +4,7 @@ import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const PRICING = {
-  rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', prices: { '60': 800000, '120': 1500000 } }],
+  rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }],
 }
 
 beforeAll(async () => { await ensureRoles() })

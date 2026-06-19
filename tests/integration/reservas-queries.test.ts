@@ -7,7 +7,7 @@ import {
 } from '@/app/(admin)/reservas/queries'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
-const PRICING = { rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', prices: { '60': 900000, '120': 1700000 } }] }
+const PRICING = { rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 900000 }] }
 
 // Los seeds usan fechas 2099 (siempre futuras): con today fijo anterior, todo
 // cae en scope 'proximas'.

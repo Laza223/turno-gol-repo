@@ -31,19 +31,19 @@ const DEFAULT_RULES: PricingRule[] = [
     days: ['mon', 'tue', 'wed', 'thu'],
     from: '08:00',
     to: '18:00',
-    prices: { '60': 800000, '120': 1500000 },
+    price: 800000,
   },
   {
     days: ['mon', 'tue', 'wed', 'thu'],
     from: '18:00',
     to: '23:00',
-    prices: { '60': 1200000, '120': 2300000 },
+    price: 1200000,
   },
   {
     days: ['fri', 'sat', 'sun'],
     from: '08:00',
     to: '23:00',
-    prices: { '60': 1500000, '120': 2900000 },
+    price: 1500000,
   },
 ]
 
@@ -69,7 +69,7 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
   function addRule() {
     setRules((prev) => [
       ...prev,
-      { days: ['mon'], from: '08:00', to: '18:00', prices: { '60': 800000, '120': 1500000 } },
+      { days: ['mon'], from: '08:00', to: '18:00', price: 800000 },
     ])
   }
 
@@ -99,11 +99,9 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
     )
   }
 
-  function updateRulePrice(idx: number, duration: '60' | '120', cents: number) {
+  function updateRulePrice(idx: number, cents: number) {
     setRules((prev) =>
-      prev.map((r, i) =>
-        i === idx ? { ...r, prices: { ...r.prices, [duration]: cents } } : r,
-      ),
+      prev.map((r, i) => (i === idx ? { ...r, price: cents } : r)),
     )
   }
 
@@ -243,8 +241,8 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
               ))}
             </div>
 
-            {/* Time range + prices */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+            {/* Time range + price */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end">
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Desde</label>
                 <input
@@ -264,24 +262,11 @@ export function CourtForm({ court, onSaved, onCancel }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">60 min (ARS)</label>
+                <label className="block text-xs text-muted-foreground mb-1">Precio (ARS)</label>
                 <input
                   type="number"
-                  value={Math.round(rule.prices['60'] / 100)}
-                  onChange={(e) => updateRulePrice(idx, '60', Number(e.target.value) * 100)}
-                  min={0}
-                  step={100}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  className="w-full border rounded px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">120 min (ARS)</label>
-                <input
-                  type="number"
-                  value={Math.round(rule.prices['120'] / 100)}
-                  onChange={(e) => updateRulePrice(idx, '120', Number(e.target.value) * 100)}
+                  value={Math.round(rule.price / 100)}
+                  onChange={(e) => updateRulePrice(idx, Number(e.target.value) * 100)}
                   min={0}
                   step={100}
                   inputMode="decimal"

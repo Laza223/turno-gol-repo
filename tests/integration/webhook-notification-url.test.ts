@@ -32,7 +32,7 @@ const PRICING = {
       days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
       from: '08:00',
       to: '23:00',
-      prices: { '60': 1000000, '120': 1800000 },
+      price: 1000000,
     },
   ],
 }

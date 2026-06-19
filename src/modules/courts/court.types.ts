@@ -2,7 +2,7 @@ export type PricingRule = {
   days: string[]
   from: string
   to: string
-  prices: { '60': number; '120': number }
+  price: number
 }
 
 export type CourtPricingData = {

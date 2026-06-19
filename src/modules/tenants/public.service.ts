@@ -41,6 +41,9 @@ export type PublicCourtCard = {
   id: string
   name: string
   surfaceType: string
+  isCovered: boolean
+  hasLighting: boolean
+  format: number
   capacity: number
   photos: string[]
   fromPriceCents: number | null
@@ -62,6 +65,8 @@ export type PublicCourt = {
   id: string
   name: string
   surfaceType: string
+  isCovered: boolean
+  hasLighting: boolean
   slots: Slot[]
 }
 
@@ -285,6 +290,9 @@ export async function getPublicCourtCards(tenant: PublicTenant): Promise<PublicC
         id: courts.id,
         name: courts.name,
         surfaceType: courts.surfaceType,
+        isCovered: courts.isCovered,
+        hasLighting: courts.hasLighting,
+        format: courts.format,
         capacity: courts.capacity,
         photos: courts.photos,
         pricing: courts.pricing,
@@ -296,6 +304,9 @@ export async function getPublicCourtCards(tenant: PublicTenant): Promise<PublicC
     id: c.id,
     name: c.name,
     surfaceType: c.surfaceType,
+    isCovered: c.isCovered,
+    hasLighting: c.hasLighting,
+    format: c.format,
     capacity: c.capacity,
     photos: (c.photos ?? []) as string[],
     fromPriceCents: minPriceFromPricing(c.pricing as CourtPricingData),
@@ -339,6 +350,8 @@ async function getPublicAvailabilityImpl(
           id: courts.id,
           name: courts.name,
           surfaceType: courts.surfaceType,
+          isCovered: courts.isCovered,
+          hasLighting: courts.hasLighting,
           pricing: courts.pricing,
         })
         .from(courts)
@@ -378,6 +391,8 @@ async function getPublicAvailabilityImpl(
     id: court.id,
     name: court.name,
     surfaceType: court.surfaceType,
+    isCovered: court.isCovered,
+    hasLighting: court.hasLighting,
     slots: generateSlots({
       courtId: court.id,
       pricing: court.pricing as CourtPricingData,
@@ -427,6 +442,8 @@ export async function getPublicWeeklyAvailability(
         id: courts.id,
         name: courts.name,
         surfaceType: courts.surfaceType,
+        isCovered: courts.isCovered,
+        hasLighting: courts.hasLighting,
         pricing: courts.pricing,
       })
       .from(courts)
@@ -477,6 +494,8 @@ export async function getPublicWeeklyAvailability(
       id: court.id,
       name: court.name,
       surfaceType: court.surfaceType,
+      isCovered: court.isCovered,
+      hasLighting: court.hasLighting,
       slots: generateSlots({
         courtId: court.id,
         pricing: court.pricing as CourtPricingData,

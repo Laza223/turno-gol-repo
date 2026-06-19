@@ -16,6 +16,9 @@ function rowToCourtRow(row: typeof courts.$inferSelect): CourtRow {
     name: row.name,
     description: row.description,
     surfaceType: row.surfaceType,
+    isCovered: row.isCovered,
+    hasLighting: row.hasLighting,
+    format: row.format,
     capacity: row.capacity,
     photos: (row.photos as string[]) ?? [],
     status: row.status,
@@ -59,7 +62,11 @@ export async function createCourt(
       name: data.name,
       description: data.description ?? null,
       surfaceType: data.surfaceType,
-      capacity: data.capacity,
+      isCovered: data.isCovered ?? false,
+      hasLighting: data.hasLighting ?? true,
+      format: data.format,
+      // capacity derivado: jugadores totales = format × 2 (cambio #17).
+      capacity: data.format * 2,
       pricing: data.pricing as unknown as Record<string, unknown>,
     })
     .returning()
@@ -76,7 +83,12 @@ export async function updateCourt(
   if (data.name !== undefined) patch.name = data.name
   if (data.description !== undefined) patch.description = data.description ?? null
   if (data.surfaceType !== undefined) patch.surfaceType = data.surfaceType
-  if (data.capacity !== undefined) patch.capacity = data.capacity
+  if (data.isCovered !== undefined) patch.isCovered = data.isCovered
+  if (data.hasLighting !== undefined) patch.hasLighting = data.hasLighting
+  if (data.format !== undefined) {
+    patch.format = data.format
+    patch.capacity = data.format * 2 // capacity sigue derivado de format (cambio #17)
+  }
   if (data.pricing !== undefined) patch.pricing = data.pricing as unknown as Record<string, unknown>
 
   const rows = await tx

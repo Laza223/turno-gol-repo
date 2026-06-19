@@ -39,7 +39,7 @@ const SURFACE_LABELS: Record<string, string> = {
   synthetic_grass: 'Césped sintético',
   natural_grass: 'Césped natural',
   cement: 'Cemento',
-  indoor: 'Indoor',
+  tile: 'Baldosa',
 }
 
 type Props = {

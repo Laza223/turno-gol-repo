@@ -21,6 +21,12 @@ export type CourtActionResult =
   | { success: true; courtId?: string }
   | { success: false; error: string }
 
+// Checkbox/flag → boolean | undefined (ausente = undefined, usa default del schema).
+function formBool(v: FormDataEntryValue | null): boolean | undefined {
+  if (v == null) return undefined
+  return v === 'true' || v === 'on' || v === '1'
+}
+
 async function requireStaffTenant() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
@@ -43,11 +49,16 @@ export async function createCourtAction(formData: FormData): Promise<CourtAction
     return { success: false, error: 'Formato de precios inválido' }
   }
 
+  // Bridge: la UI todavía postea el formato bajo el campo legacy 'capacity'
+  // (valores 5/7/8/9/11 = el N del formato). Se interpreta como `format`.
+  const formatRaw = formData.get('format') ?? formData.get('capacity')
   const raw = {
     name: formData.get('name'),
     description: formData.get('description') || undefined,
     surfaceType: formData.get('surfaceType'),
-    capacity: Number(formData.get('capacity')),
+    format: Number(formatRaw),
+    isCovered: formBool(formData.get('isCovered')),
+    hasLighting: formBool(formData.get('hasLighting')),
     pricing: pricingParsed,
   }
 
@@ -99,11 +110,14 @@ export async function updateCourtAction(
     return { success: false, error: 'Formato de precios inválido' }
   }
 
+  const formatRaw = formData.get('format') ?? formData.get('capacity')
   const raw = {
     name: formData.get('name') ?? undefined,
     description: formData.get('description') ?? undefined,
     surfaceType: formData.get('surfaceType') ?? undefined,
-    capacity: formData.get('capacity') ? Number(formData.get('capacity')) : undefined,
+    format: formatRaw != null ? Number(formatRaw) : undefined,
+    isCovered: formBool(formData.get('isCovered')),
+    hasLighting: formBool(formData.get('hasLighting')),
     pricing: pricingParsed,
   }
 

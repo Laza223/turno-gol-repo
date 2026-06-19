@@ -30,7 +30,7 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
         <h3 className="text-sm font-semibold text-slate-900">{court.name}</h3>
         <div className="flex flex-wrap gap-1.5">
           <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/15">
-            {formatLabel(court.capacity)}
+            {formatLabel(court.format)}
           </span>
           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-500/15">
             {surfaceLabel(court.surfaceType)}

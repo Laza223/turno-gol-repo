@@ -9,7 +9,7 @@ const SURFACE_OPTIONS = [
   { value: 'synthetic_grass', label: 'Césped sintético' },
   { value: 'natural_grass', label: 'Césped natural' },
   { value: 'cement', label: 'Cemento' },
-  { value: 'indoor', label: 'Indoor' },
+  { value: 'tile', label: 'Baldosa' },
 ] as const
 
 const CAPACITY_OPTIONS = [5, 7, 8, 9, 11] as const

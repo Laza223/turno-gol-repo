@@ -36,8 +36,8 @@ export type SearchParams = {
   province?: string
   onlineOnly?: boolean
   // Filtros avanzados.
-  surfaces?: string[] // synthetic_grass | natural_grass | cement | indoor
-  formats?: number[] // capacity: 5 | 7 | 8 | 9 | 11
+  surfaces?: string[] // synthetic_grass | natural_grass | cement | tile
+  formats?: number[] // format: 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 (Fútbol N)
   amenities?: string[] // claves que deben ser true en tenants.amenities
   minPriceCents?: number
   maxPriceCents?: number

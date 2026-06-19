@@ -35,7 +35,7 @@ const DEFAULT_PRICING: CourtPricingData = {
 const COURT_INPUT = {
   name: 'Cancha Test',
   surfaceType: 'synthetic_grass' as const,
-  capacity: 10 as const,
+  format: 5 as const, // Fútbol 5 → capacity derivado = 10
   pricing: DEFAULT_PRICING,
 }
 
@@ -63,7 +63,8 @@ describe('createCourt', () => {
     expect(court.status).toBe('online')
     expect(court.name).toBe('Cancha Test')
     expect(court.surfaceType).toBe('synthetic_grass')
-    expect(court.capacity).toBe(10)
+    expect(court.format).toBe(5)
+    expect(court.capacity).toBe(10) // derivado = format × 2
   })
 })
 

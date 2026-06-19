@@ -1,16 +1,16 @@
 /**
  * Facets de cancha (superficie y formato) para badges y filtros de /explorar.
  * Las claves coinciden con `tenants.courtSurfaces` (surface_type enum) y
- * `tenants.courtFormats` (capacidad de la cancha).
+ * `tenants.courtFormats` (formato de la cancha: Fútbol N).
  */
 
-export type SurfaceKey = 'synthetic_grass' | 'natural_grass' | 'cement' | 'indoor'
+export type SurfaceKey = 'synthetic_grass' | 'natural_grass' | 'cement' | 'tile'
 
 export const SURFACE_LABELS: Record<SurfaceKey, string> = {
   synthetic_grass: 'Sintético',
   natural_grass: 'Césped natural',
   cement: 'Cemento',
-  indoor: 'Indoor',
+  tile: 'Baldosa',
 }
 
 export const SURFACE_OPTIONS: { key: SurfaceKey; label: string }[] = (
@@ -21,9 +21,9 @@ export function surfaceLabel(key: string): string {
   return (SURFACE_LABELS as Record<string, string>)[key] ?? key
 }
 
-/** Capacidades soportadas (jugadores por equipo no, total de la cancha). */
-export const FORMAT_OPTIONS = [5, 7, 8, 9, 11] as const
+/** Formatos soportados (Fútbol 4 al 11, cambio #17). */
+export const FORMAT_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11] as const
 
-export function formatLabel(capacity: number): string {
-  return `Fútbol ${capacity}`
+export function formatLabel(format: number): string {
+  return `Fútbol ${format}`
 }

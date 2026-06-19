@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   index,
   integer,
@@ -26,6 +27,12 @@ export const courts = pgTable(
     surfaceType: surfaceTypeEnum('surface_type')
       .notNull()
       .default('synthetic_grass'),
+    // Cambio #16: cobertura + iluminación como atributos por cancha.
+    isCovered: boolean('is_covered').notNull().default(false),
+    hasLighting: boolean('has_lighting').notNull().default(true),
+    // Cambio #17: formato (Fútbol N, 4..11). capacity = jugadores totales = format × 2.
+    // DEFAULT 5 (paridad con status) — createCourt() siempre lo setea explícito.
+    format: integer('format').notNull().default(5),
     capacity: integer('capacity').notNull(),
     photos: text('photos').array().default(sql`'{}'::text[]`),
 
@@ -50,6 +57,10 @@ export const courts = pgTable(
   },
   (table) => ({
     capacityCheck: check('chk_capacity_positive', sql`${table.capacity} > 0`),
+    formatCheck: check(
+      'courts_format_check',
+      sql`${table.format} IN (4, 5, 6, 7, 8, 9, 10, 11)`,
+    ),
     tenantIdx: index('idx_courts_tenant').on(table.tenantId),
     tenantStatusIdx: index('idx_courts_tenant_status').on(
       table.tenantId,

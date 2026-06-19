@@ -89,7 +89,7 @@ export function parseAvailabilitySearchParams(sp: {
 export type AvailabilitySearchParams = {
   date: string // YYYY-MM-DD (validated upstream)
   time: string // HH:MM (validated upstream)
-  formats?: number[] // court capacity: 5 | 7 | 8 | 9 | 11
+  formats?: number[] // court format (Fútbol N): 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11
 }
 
 function timeToMins(hhmm: string): number {
@@ -185,7 +185,7 @@ async function loadAvailableTenantIds({
   const idList = sql.join(candidates.map((c) => sql`${c.id}::uuid`), sql`, `)
   const endList = sql.join(candidates.map((c) => sql`${c.timeEnd}::time`), sql`, `)
   const formatCond = formats?.length
-    ? sql` AND c.capacity IN (${sql.join(formats.map((f) => sql`${f}`), sql`, `)})`
+    ? sql` AND c.format IN (${sql.join(formats.map((f) => sql`${f}`), sql`, `)})`
     : sql``
 
   const result = await db.execute(sql`
@@ -345,7 +345,7 @@ async function loadFreeSlotPillsByTenant({
     sql`, `,
   )
   const formatCond = formats?.length
-    ? sql` AND c.capacity IN (${sql.join(formats.map((f) => sql`${f}`), sql`, `)})`
+    ? sql` AND c.format IN (${sql.join(formats.map((f) => sql`${f}`), sql`, `)})`
     : sql``
   const result = await db.execute(sql`
     SELECT c.tenant_id AS tenant_id, c.id AS court_id,

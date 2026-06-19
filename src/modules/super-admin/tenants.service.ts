@@ -242,6 +242,7 @@ export type TenantDetail = {
     name: string
     status: 'online' | 'offline'
     surfaceType: string
+    format: number
     capacity: number
   }>
   staff: Array<{
@@ -317,6 +318,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
         name: courts.name,
         status: courts.status,
         surfaceType: courts.surfaceType,
+        format: courts.format,
         capacity: courts.capacity,
       })
       .from(courts)

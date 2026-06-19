@@ -28,13 +28,14 @@ function pricing(p60: number): Pricing {
 
 async function insertCourt(
   tenantId: string,
-  opts: { surface?: string; capacity?: number; p60?: number; status?: string } = {},
+  opts: { surface?: string; format?: number; p60?: number; status?: string } = {},
 ): Promise<string> {
   const sql = getSql()
+  const format = opts.format ?? 5
   const rows = await sql<{ id: string }[]>`
-    INSERT INTO courts (tenant_id, name, capacity, surface_type, pricing, status)
+    INSERT INTO courts (tenant_id, name, format, capacity, surface_type, pricing, status)
     VALUES (
-      ${tenantId}, ${'Cancha'}, ${opts.capacity ?? 10},
+      ${tenantId}, ${'Cancha'}, ${format}, ${format * 2},
       ${opts.surface ?? 'synthetic_grass'}::surface_type,
       ${sql.json(pricing(opts.p60 ?? 800000))},
       ${opts.status ?? 'online'}::court_status
@@ -77,20 +78,20 @@ describe('search upgrade: filtros', () => {
   it('filtra por superficie (cancha online con esa superficie)', async () => {
     const synthetic = await createTestTenant()
     await insertCourt(synthetic.id, { surface: 'synthetic_grass' })
-    const indoor = await createTestTenant()
-    await insertCourt(indoor.id, { surface: 'indoor' })
+    const tile = await createTestTenant()
+    await insertCourt(tile.id, { surface: 'tile' })
 
-    const { results } = await searchPublicTenants({ surfaces: ['indoor'] })
+    const { results } = await searchPublicTenants({ surfaces: ['tile'] })
     const ids = results.map((r) => r.id)
-    expect(ids).toContain(indoor.id)
+    expect(ids).toContain(tile.id)
     expect(ids).not.toContain(synthetic.id)
   })
 
-  it('filtra por formato (capacity)', async () => {
+  it('filtra por formato', async () => {
     const f5 = await createTestTenant()
-    await insertCourt(f5.id, { capacity: 5 })
+    await insertCourt(f5.id, { format: 5 })
     const f11 = await createTestTenant()
-    await insertCourt(f11.id, { capacity: 11 })
+    await insertCourt(f11.id, { format: 11 })
 
     const { results } = await searchPublicTenants({ formats: [11] })
     const ids = results.map((r) => r.id)
@@ -115,11 +116,11 @@ describe('search upgrade: filtros', () => {
   it('#1 los filtros de superficie/formato NO dependen de RLS de courts (regresión)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
-    await insertCourt(tenant.id, { surface: 'indoor', capacity: 11 }) // trigger denormaliza facets
+    await insertCourt(tenant.id, { surface: 'tile', format: 11 }) // trigger denormaliza facets
 
     // Facets en tenants (tabla global, sin RLS) → legibles sin tenant context.
     const byFacet = await withContext({ role: 'authenticated' }, (tx) =>
-      tx`SELECT id FROM tenants WHERE id = ${tenant.id} AND court_surfaces && ARRAY['indoor']::text[] AND court_formats && ARRAY[11]::integer[]` as unknown as Promise<
+      tx`SELECT id FROM tenants WHERE id = ${tenant.id} AND court_surfaces && ARRAY['tile']::text[] AND court_formats && ARRAY[11]::integer[]` as unknown as Promise<
         unknown[]
       >,
     )

@@ -27,11 +27,14 @@ export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'annual'])
 // ─── Court ──────────────────────────────────────────────────────
 export const courtStatusEnum = pgEnum('court_status', ['online', 'offline'])
 
+// Cambio #16: el enum describe SOLO el piso. La cobertura (techada) y la
+// iluminación pasaron a columnas booleanas por cancha (is_covered/has_lighting).
+// El valor de cobertura se reemplazó por baldosa (tile).
 export const surfaceTypeEnum = pgEnum('surface_type', [
   'synthetic_grass',
   'natural_grass',
   'cement',
-  'indoor',
+  'tile',
 ])
 
 // ─── Booking ────────────────────────────────────────────────────

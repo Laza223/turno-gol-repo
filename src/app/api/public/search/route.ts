@@ -8,7 +8,7 @@ import { findAvailableTenantIds } from '@/modules/tenants/availability-search.se
 
 export const dynamic = 'force-dynamic'
 
-const SURFACES = ['synthetic_grass', 'natural_grass', 'cement', 'indoor'] as const
+const SURFACES = ['synthetic_grass', 'natural_grass', 'cement', 'tile'] as const
 const FORMATS = [5, 7, 8, 9, 11] as const
 const AMENITIES = [
   'duchas',

@@ -53,12 +53,12 @@ async function seedTenant(
 async function seedCourt(
   sql: Sql,
   tenantId: string,
-  capacity: number,
+  format: number,
   status = 'online',
 ): Promise<string> {
   const rows = await sql<{ id: string }[]>`
-    INSERT INTO courts (tenant_id, name, capacity, status)
-    VALUES (${tenantId}, ${`Cancha F${capacity}`}, ${capacity}, ${status})
+    INSERT INTO courts (tenant_id, name, format, capacity, status)
+    VALUES (${tenantId}, ${`Cancha F${format}`}, ${format}, ${format * 2}, ${status})
     RETURNING id
   `
   return rows[0]!.id

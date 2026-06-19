@@ -1,6 +1,7 @@
 import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts } from '@/shared/db/schema'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { track, withSpan } from '@/shared/observability'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
@@ -28,7 +29,6 @@ export type PublicTenant = {
   // Métodos de pago presencial que el complejo declara aceptar (settings).
   acceptsCash: boolean
   acceptsTransfer: boolean
-  bookingDurationMinutes: number[]
   bookingAdvanceDays: number
   // Interfaz pública estilo ATC: amenities + coordenadas (ya en la fila tenants).
   amenities: Record<string, boolean>
@@ -258,7 +258,6 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
     depositPercentage: s.deposit_percentage ?? 30,
     acceptsCash: s.accepts_cash ?? true,
     acceptsTransfer: s.accepts_transfer ?? true,
-    bookingDurationMinutes: s.booking_duration_minutes ?? [60],
     bookingAdvanceDays: s.booking_advance_days ?? 6,
     amenities: (row.amenities ?? {}) as Record<string, boolean>,
     latitude: row.latitude == null ? null : Number(row.latitude),
@@ -332,7 +331,7 @@ async function getPublicAvailabilityImpl(
   const closedDatesSet = new Set(tenant.closedDates)
   const closedDay = (dayHours?.closed === true) || closedDatesSet.has(dateStr)
 
-  const durationMins = tenant.bookingDurationMinutes[0] ?? 60
+  const durationMins = SLOT_DURATION_MINUTES
 
   const { courtsData, bookingsData } = await withTenantContext(
     tenant.id,
@@ -421,7 +420,7 @@ export async function getPublicWeeklyAvailability(
 
   const dates = Array.from({ length: 7 }, (_, i) => addDaysStr(startDateStr, i))
   const endDateStr = dates[dates.length - 1]!
-  const durationMins = tenant.bookingDurationMinutes[0] ?? 60
+  const durationMins = SLOT_DURATION_MINUTES
   const closedDatesSet = new Set(tenant.closedDates)
 
   const { courtsData, bookingsByDate } = await withTenantContext(tenant.id, async (tx) => {

@@ -39,7 +39,6 @@ export type TenantSettings = {
   accepts_mercadopago: boolean
   allow_online_booking: boolean
   booking_advance_days: number
-  booking_duration_minutes: number[]
   auto_complete_minutes: number
   staff_pin_hash?: string
   onboarding_step?: number

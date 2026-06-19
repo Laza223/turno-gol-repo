@@ -163,7 +163,6 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
     accepts_mercadopago: true,
     allow_online_booking: true,
     booking_advance_days: 6,
-    booking_duration_minutes: [60, 120],
     auto_complete_minutes: 30,
     onboarding_completed: true,
   }
@@ -217,7 +216,6 @@ async function seedDepositTenantAndCourt(sql: SqlClient): Promise<void> {
     accepts_mercadopago: true,
     allow_online_booking: true,
     booking_advance_days: 6,
-    booking_duration_minutes: [60, 120],
     auto_complete_minutes: 30,
     onboarding_completed: true,
   }

@@ -13,6 +13,7 @@ import {
   sweepExpiredPendingBookings,
 } from '@/modules/bookings/booking.expiry'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
+import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import {
   cleanupAll,
   createTestPlayer,
@@ -85,7 +86,7 @@ afterAll(async () => {
 })
 
 describe('expirePendingBookingWithPolicy', () => {
-  it('expires a pending_payment booking past 15min with no in_process payment', async () => {
+  it('expires a pending_payment booking past its 6min window with no in_process payment', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -98,13 +99,12 @@ describe('expirePendingBookingWithPolicy', () => {
     expect(await statusOf(sql, bookingId)).toBe('expired')
   })
 
-  it('reschedules (does NOT expire) when a recent in_process transfer exists', async () => {
+  it('reschedules (does NOT expire) a booking still inside its 6min window', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(sql, tenant.id)
-    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 20 * 60, '12:00', '13:00')
-    await insertInProcessPayment(sql, tenant.id, bookingId, player.id)
+    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 2 * 60, '12:00', '13:00')
 
     const captured: Array<{ id: string; delay: number }> = []
     setExpiryScheduler(async (id, delay) => { captured.push({ id, delay }) })
@@ -114,17 +114,17 @@ describe('expirePendingBookingWithPolicy', () => {
     expect(action).toBe('rescheduled')
     expect(await statusOf(sql, bookingId)).toBe('pending_payment')
     expect(captured).toHaveLength(1)
-    // ~48h minus the 20min already elapsed.
-    expect(captured[0]!.delay).toBeGreaterThan(48 * 3600 - 30 * 60)
-    expect(captured[0]!.delay).toBeLessThanOrEqual(48 * 3600)
+    // ~6min minus the 2min already elapsed.
+    expect(captured[0]!.delay).toBeGreaterThan(60)
+    expect(captured[0]!.delay).toBeLessThanOrEqual(DEFAULT_EXPIRY_SECONDS)
   })
 
-  it('expires an in_process booking older than 48h', async () => {
+  it('expires past the 6min window even with an in_process transfer (no 48h grace)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(sql, tenant.id)
-    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 49 * 3600, '14:00', '15:00')
+    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 20 * 60, '14:00', '15:00')
     await insertInProcessPayment(sql, tenant.id, bookingId, player.id)
 
     const action = await expirePendingBookingWithPolicy(bookingId)

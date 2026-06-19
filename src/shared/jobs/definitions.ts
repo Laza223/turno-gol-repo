@@ -34,11 +34,9 @@ export type ExpirePendingBookingJobData = {
   bookingId: string
 }
 
-// ─── Expiry cutoffs (Hallazgo 1 + 2) ──────────────────────────────────────────
-// Default: 15 min for a normal deposit. in_process (CBU/transferencia 24-48h):
-// 48h before freeing the slot so we don't expire a booking mid-payment.
-export const DEFAULT_EXPIRY_SECONDS = 15 * 60
-export const IN_PROCESS_EXPIRY_SECONDS = 48 * 60 * 60
+// ─── Expiry cutoff ────────────────────────────────────────────────────────────
+// 6 min timer for an online deposit before the slot is freed.
+export const DEFAULT_EXPIRY_SECONDS = 6 * 60
 
 // ─── Send options (retry config) ──────────────────────────────────────────────
 
@@ -59,8 +57,8 @@ export const EXPIRE_PENDING_BOOKING_SEND_OPTIONS = {
   retryLimit: 3,
   retryDelay: 30,
   retryBackoff: true,
-  // Must outlive the 48h in_process cutoff so a rescheduled job isn't dropped.
-  expireInHours: 49,
+  // Comfortably outlives the 6 min timer + retries so a rescheduled job isn't dropped.
+  expireInHours: 1,
 } as const
 
 // ─── Push notifications ───────────────────────────────────────────────────────

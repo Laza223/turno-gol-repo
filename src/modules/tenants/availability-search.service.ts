@@ -6,6 +6,7 @@ import { track, withSpan } from '@/shared/observability'
 import { generateSlots } from './public.service'
 import { VISIBLE_TENANT_STATUSES } from './search.service'
 import type { OpeningHours, TenantSettings } from './tenant.types'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { addDays } from '@/shared/dates/art'
 import { dateStr, hhmm } from '@/shared/validation/primitives'
 
@@ -157,7 +158,7 @@ async function loadAvailableTenantIds({
   const candidates: Array<{ id: string; timeEnd: string }> = []
   for (const row of rows) {
     const s = row.settings as TenantSettings
-    const durationMins = s.booking_duration_minutes?.[0] ?? 60
+    const durationMins = SLOT_DURATION_MINUTES
     const matches = tenantMatchesRequestedSlot(
       {
         openingHours: row.openingHours as OpeningHours,
@@ -311,7 +312,7 @@ async function loadFreeSlotPillsByTenant({
   const candidates = new Map<string, { times: string[]; durationMins: number }>()
   for (const row of rows) {
     const s = row.settings as TenantSettings
-    const durationMins = s.booking_duration_minutes?.[0] ?? 60
+    const durationMins = SLOT_DURATION_MINUTES
     if (date > addDays(now.nowDateStr, s.booking_advance_days ?? 6)) continue
     const [y, mo, d] = date.split('-').map(Number)
     const dayKey = DAY_KEYS[new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1)).getUTCDay()]!

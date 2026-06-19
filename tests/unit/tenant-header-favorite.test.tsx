@@ -30,7 +30,6 @@ const tenant = {
   allowOnlineBooking: true,
   requiresDeposit: false,
   depositPercentage: 0,
-  bookingDurationMinutes: [60],
   bookingAdvanceDays: 6,
   amenities: {},
   latitude: null,

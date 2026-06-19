@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
 import {
   getTenantActivity,
@@ -189,7 +190,7 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
               .join(' · ') || '—'}
           </Dt>
           <Dt label="Anticipación de reserva">{s.booking_advance_days} días</Dt>
-          <Dt label="Duraciones">{s.booking_duration_minutes?.join(' / ') ?? '—'} min</Dt>
+          <Dt label="Duración">{SLOT_DURATION_MINUTES} min</Dt>
           <Dt label="Auto-completar">{s.auto_complete_minutes} min</Dt>
           <Dt label="Política de cancelación">
             {s.cancellation_policy

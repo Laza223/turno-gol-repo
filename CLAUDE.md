@@ -100,7 +100,7 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - `staff_role`: **2 roles** — `admin` (dueño, acceso total) y `manager` (encargado: grilla/reservas/caja, sin precios ni config). El uso de `manager` es opcional por complejo. ⚠️ El enum en código todavía incluye `read_only` (eliminado por decisión) — pendiente de quitar.
 - `court_status`: `online` | `offline` (no active/maintenance/inactive)
 - `deposit_mode`: configurable por complejo (on/off + porcentaje global). Sin modo garantía.
-- Duraciones de turno: 60 o 120 minutos (no 90).
+- Duración de turno: 60 minutos fijo (constante global `SLOT_DURATION_MINUTES` en `src/shared/constants.ts`). El campo configurable `booking_duration_minutes` se eliminó (dead code, cambio #14).
 - Anticipación de reserva: default 6 días (como ATC).
 - Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles + precio por duración.
 - NO hay billetera virtual del jugador. Reembolsos/no-shows se resuelven entre jugador y complejo.

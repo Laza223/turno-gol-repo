@@ -1,8 +1,5 @@
 import { getSql, getDb } from '@/shared/db/client'
-import {
-  DEFAULT_EXPIRY_SECONDS,
-  IN_PROCESS_EXPIRY_SECONDS,
-} from '@/shared/jobs/definitions'
+import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import { scheduleBookingExpiry } from '@/shared/jobs/schedule-expiry'
 import {
   enqueueNotification,
@@ -79,9 +76,8 @@ function fmtDate(date: string): string {
 }
 
 /**
- * Evaluate a single pending_payment booking and expire it when its window has
- * elapsed (Hallazgo 1 + 2). A transfer in `in_process` extends the window to
- * 48h instead of 15min; while still inside the window the job is re-armed and
+ * Evaluate a single pending_payment booking and expire it when its 6 min window
+ * has elapsed (Hallazgo 1). While still inside the window the job is re-armed and
  * the booking is left untouched.
  */
 export async function expirePendingBookingWithPolicy(
@@ -90,14 +86,11 @@ export async function expirePendingBookingWithPolicy(
   const state = await loadExpiryState(bookingId)
   if (!state || state.status !== 'pending_payment') return 'skipped'
 
-  const cutoffSeconds = state.hasInProcess
-    ? IN_PROCESS_EXPIRY_SECONDS
-    : DEFAULT_EXPIRY_SECONDS
+  const cutoffSeconds = DEFAULT_EXPIRY_SECONDS
   const elapsedSeconds = (Date.now() - new Date(state.createdAt).getTime()) / 1000
 
   if (elapsedSeconds < cutoffSeconds) {
-    // Not due yet — either an in_process transfer is pending its 48h grace, or
-    // the timer fired early. Re-arm for the remaining time; do NOT expire.
+    // Not due yet — the timer fired early. Re-arm for the remaining time; do NOT expire.
     await scheduleBookingExpiry(bookingId, cutoffSeconds - elapsedSeconds)
     return 'rescheduled'
   }
@@ -164,9 +157,9 @@ export async function expirePendingBookingWithPolicy(
 
 
 /**
- * Safety net (Hallazgo 1): sweep every pending_payment booking past its window
- * in case the per-booking pg-boss job never ran. Each one goes through the same
- * race-safe policy, so overlap with a live job is harmless.
+ * Safety net (Hallazgo 1): sweep every pending_payment booking past its 6 min
+ * window in case the per-booking pg-boss job never ran. Each one goes through the
+ * same race-safe policy, so overlap with a live job is harmless.
  */
 export async function sweepExpiredPendingBookings(): Promise<number> {
   const dbSql = getSql()
@@ -174,22 +167,7 @@ export async function sweepExpiredPendingBookings(): Promise<number> {
     SELECT b.id
     FROM bookings b
     WHERE b.status = 'pending_payment'
-      AND (
-        (
-          NOT EXISTS (
-            SELECT 1 FROM payments pay
-            WHERE pay.booking_id = b.id AND pay.status = 'in_process'
-          )
-          AND b.created_at < NOW() - INTERVAL '15 minutes'
-        )
-        OR (
-          EXISTS (
-            SELECT 1 FROM payments pay
-            WHERE pay.booking_id = b.id AND pay.status = 'in_process'
-          )
-          AND b.created_at < NOW() - INTERVAL '48 hours'
-        )
-      )
+      AND b.created_at < NOW() - (${DEFAULT_EXPIRY_SECONDS} * INTERVAL '1 second')
     ORDER BY b.created_at ASC
     LIMIT 500
   `

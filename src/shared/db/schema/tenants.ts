@@ -61,7 +61,6 @@ export const tenants = pgTable(
         "accepts_mercadopago": true,
         "allow_online_booking": true,
         "booking_advance_days": 6,
-        "booking_duration_minutes": [60, 120],
         "auto_complete_minutes": 30
       }'::jsonb`,
     ),

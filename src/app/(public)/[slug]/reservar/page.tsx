@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import BookingSummary from './components/BookingSummary'
 import LoginGate from './components/LoginGate'
@@ -48,7 +49,7 @@ export default async function ReservarPage({ params, searchParams }: Props) {
 
   const { court, date, time, dur } = searchParams
   const durNum = Number(dur)
-  if (!court || !date || !time || !DATE_RE.test(date) || !TIME_RE.test(time) || !tenant.bookingDurationMinutes.includes(durNum)) {
+  if (!court || !date || !time || !DATE_RE.test(date) || !TIME_RE.test(time) || durNum !== SLOT_DURATION_MINUTES) {
     return <InvalidState slug={params.slug} message="Faltan datos del turno. Elegí un horario desde la grilla." />
   }
 

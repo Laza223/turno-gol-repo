@@ -36,7 +36,6 @@ const FIXTURE_TENANT: PublicTenant = {
   depositPercentage: 30,
   acceptsCash: true,
   acceptsTransfer: true,
-  bookingDurationMinutes: [60],
   bookingAdvanceDays: 6,
   amenities: { techado: true, estacionamiento: true },
   latitude: -34.5703,

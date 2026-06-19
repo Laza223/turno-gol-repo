@@ -272,29 +272,16 @@ test.describe('canchas — edge: pricing coverage gap', () => {
         // Fill a unique name.
         await page.getByPlaceholder('Ej: Cancha 1').fill(`E2E Gap ${randomUUID().slice(0, 8)}`)
 
-        // The default CourtForm has 3 pricing rules that already cover everything.
-        // We need to create a gap: delete all rules and add only one partial rule.
-        // Click "Eliminar franja" on all but one rule.
-        // The form starts with DEFAULT_RULES (3 rules). Remove rules 2 and 3 (indices 1 and 2).
-        // "Eliminar franja" buttons appear only when rules.length > 1.
+        // The PricingGrid loads with DEFAULT_RULES covering every operative hour.
+        // Empty one operative cell (Mon 22:00) to leave a coverage gap: click it to
+        // open the inline editor, clear the value, commit with Enter.
+        await page.getByRole('button', { name: /^Lun 22:00/ }).click()
+        const cellEditor = page.getByLabel('Precio Lun 22:00')
+        await cellEditor.fill('')
+        await cellEditor.press('Enter')
 
-        // Remove second rule first (it slides up after first removal).
-        const removeButtons = page.getByRole('button', { name: 'Eliminar franja' })
-        // Remove until only 1 rule remains (click twice).
-        await removeButtons.first().click()
-        await removeButtons.first().click()
-
-        // Now we have 1 rule. Modify it to only cover Mon–Fri 08:00–18:00 (leaves a gap).
-        // The remaining rule index 0 may be any of the original 3; we just set it to partial coverage.
-        // Use direct locator for the time inputs (first two time inputs in the form).
-        const timeInputs = page.locator('input[type="time"]')
-        await timeInputs.first().fill('08:00') // from
-        await timeInputs.nth(1).fill('18:00') // to — leaves 18:00-23:00 gap
-
-        // Make sure only Mon–Fri are selected (deselect Sat/Sun if selected).
-        // Day buttons show L/M/X/J/V/S/D. Toggle Sat (S) and Sun (D) off if highlighted.
-        // We click them regardless — if active they go inactive (gap); if inactive they stay inactive.
-        // The important thing is the time range 08–18 will leave 18–23 uncovered for all selected days.
+        // The cell now reads "sin precio" → the compressed rules leave Mon 22:00
+        // uncovered, so the Server Action must reject with "Precios sin cubrir".
         // Submit the form.
         await page.getByRole('button', { name: 'Crear cancha' }).click()
 

@@ -8,7 +8,6 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
-import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 import { horariosSchema } from '@/modules/tenants/opening-hours.schema'
 
 export type HorariosActionResult =
@@ -23,9 +22,6 @@ export async function updateHorariosAction(
 ): Promise<HorariosActionResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const pinOk = await checkPinSessionAction()
-  if (!pinOk) return { success: false, error: 'PIN requerido.' }
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
@@ -66,9 +62,6 @@ export async function addClosedDateAction(
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
-  const pinOk = await checkPinSessionAction()
-  if (!pinOk) return { success: false, error: 'PIN requerido.' }
-
   const date = formData.get('date') as string
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { success: false, error: 'Fecha inválida.' }
@@ -108,9 +101,6 @@ export async function removeClosedDateAction(
 ): Promise<HorariosActionResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const pinOk = await checkPinSessionAction()
-  if (!pinOk) return { success: false, error: 'PIN requerido.' }
 
   const date = formData.get('date') as string
   const tenant = await getStaffTenant(user.staffUserId)

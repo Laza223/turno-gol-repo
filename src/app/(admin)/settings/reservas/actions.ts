@@ -9,7 +9,6 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
-import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 
 export type PolicyActionResult =
   | { success: true }
@@ -31,9 +30,6 @@ export async function updateReservasPolicyAction(
 ): Promise<PolicyActionResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const pinOk = await checkPinSessionAction()
-  if (!pinOk) return { success: false, error: 'PIN requerido.' }
 
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }

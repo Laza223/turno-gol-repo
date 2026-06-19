@@ -14,7 +14,6 @@ import {
   ChartLine,
   UserCog,
   Settings,
-  Lock,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -30,7 +29,6 @@ interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   label: string
-  pin?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -38,12 +36,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/grilla', icon: CalendarDays, label: 'Grilla' },
   { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
   { href: '/abonados', icon: Users, label: 'Abonados' },
-  { href: '/canchas', icon: Trophy, label: 'Canchas', pin: true },
+  { href: '/canchas', icon: Trophy, label: 'Canchas' },
   { href: '/caja', icon: Banknote, label: 'Caja' },
-  { href: '/reportes', icon: BarChart3, label: 'Reportes', pin: true },
-  { href: '/metricas', icon: ChartLine, label: 'Métricas', pin: true },
-  { href: '/staff', icon: UserCog, label: 'Equipo', pin: true },
-  { href: '/settings', icon: Settings, label: 'Configuración', pin: true },
+  { href: '/reportes', icon: BarChart3, label: 'Reportes' },
+  { href: '/metricas', icon: ChartLine, label: 'Métricas' },
+  { href: '/staff', icon: UserCog, label: 'Equipo' },
+  { href: '/settings', icon: Settings, label: 'Configuración' },
 ]
 
 function SidebarContent({
@@ -87,7 +85,7 @@ function SidebarContent({
 
       {/* Nav */}
       <nav aria-label="Navegación del panel" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, pin }) => {
+        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href ||
             (href !== '/dashboard' && pathname.startsWith(href + '/'))
@@ -115,13 +113,6 @@ function SidebarContent({
                 )}
               />
               <span className="flex-1 truncate">{label}</span>
-              {pin && (
-                <Lock
-                  className="h-3.5 w-3.5 shrink-0 text-slate-600"
-                  aria-hidden="true"
-                />
-              )}
-              {pin && <span className="sr-only">Requiere PIN</span>}
             </Link>
           )
         })}

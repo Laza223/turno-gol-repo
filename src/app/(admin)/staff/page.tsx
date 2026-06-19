@@ -3,7 +3,6 @@ import { Mail } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
-import { PinGate } from '@/components/pin-gate'
 import { STAFF_ROLE_LABELS, type StaffRole } from '@/modules/staff/roles'
 import { InviteStaffButton } from './InviteStaffButton'
 import { StaffActions } from './StaffActions'
@@ -55,11 +54,9 @@ export default async function StaffPage() {
   const members = await getStaffMembers(tenant.id)
   const activeCount = members.filter((m) => m.isActive).length
   const activeAdminCount = members.filter((m) => m.isActive && m.role === 'admin').length
-  const hasPin = !!tenant.settings.staff_pin_hash
 
   return (
-    <PinGate pinRequired={hasPin}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Equipo</h1>
@@ -146,7 +143,6 @@ export default async function StaffPage() {
             </div>
           )}
         </div>
-      </div>
-    </PinGate>
+    </div>
   )
 }

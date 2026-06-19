@@ -12,7 +12,6 @@ import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 
 type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
 
@@ -56,19 +55,15 @@ const STAFF_WRITE_BLOCKED_STATUSES = [
 ]
 
 /**
- * Guard server-side compartido para mutaciones de staff (Fase 3 #13/#14):
- * - Re-valida la sesion de PIN: la cookie tg_pin_session expira a los 30 min y
- *   el PinGate es solo UI, asi que una accion invocada directamente con la
- *   cookie vencida debe rechazarse. Mismo patron que settings/reservas/actions.ts.
- * - Bloquea tenants en estado no operativo (suspended/blocked/canceled/churned/
- *   deleted), que getStaffTenant no filtra.
+ * Guard server-side compartido para mutaciones de staff (Fase 3 #14):
+ * bloquea tenants en estado no operativo (suspended/blocked/canceled/churned/
+ * deleted), que getStaffTenant no filtra. La autorización por rol (solo admin)
+ * la aplica assertActorIsAdmin dentro de la transacción.
  * Devuelve un StaffActionResult de error, o null si la mutacion puede continuar.
  */
 async function guardStaffMutation(tenant: {
   status: string
 }): Promise<{ success: false; error: string } | null> {
-  const pinOk = await checkPinSessionAction()
-  if (!pinOk) return { success: false, error: 'PIN requerido.' }
   if (STAFF_WRITE_BLOCKED_STATUSES.includes(tenant.status)) {
     return { success: false, error: 'El complejo no está activo.' }
   }

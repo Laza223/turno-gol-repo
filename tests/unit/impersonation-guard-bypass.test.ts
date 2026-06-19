@@ -40,7 +40,7 @@ async function load() {
 }
 
 beforeEach(() => {
-  process.env.PIN_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+  process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
   h.getTenantById.mockResolvedValue(TENANT)
   h.getFirstActiveAdminStaffUserId.mockResolvedValue(PROXY_STAFF_ID)
 })

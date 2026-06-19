@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Guards de mutacion de staff (Fase 3 #12/#13/#14). Mockeamos toda la
-// infraestructura (auth, tenant, PIN, rate-limit, DB, Supabase admin) para
+// Guards de mutacion de staff (Fase 3 #12/#14). Mockeamos toda la
+// infraestructura (auth, tenant, rate-limit, DB, Supabase admin) para
 // testear la logica de autorizacion sin DB.
-vi.mock('@/app/(admin)/actions/pin', () => ({
-  checkPinSessionAction: vi.fn(),
-}))
 vi.mock('@/modules/auth/auth.middleware', () => ({
   extractAuthUser: vi.fn(),
 }))
@@ -29,7 +26,6 @@ import {
   inviteStaffAction,
   resendInviteAction,
 } from '@/app/(admin)/staff/actions'
-import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
@@ -60,36 +56,12 @@ beforeEach(() => {
   vi.mocked(extractAuthUser).mockResolvedValue(STAFF_USER as never)
   vi.mocked(getStaffTenant).mockResolvedValue(mockTenant('active') as never)
   vi.mocked(adminRateLimited).mockResolvedValue(null)
-  vi.mocked(checkPinSessionAction).mockResolvedValue(true)
   inviteUserByEmail.mockResolvedValue({ data: { user: { id: 'auth-1' } }, error: null })
   vi.mocked(createAdminClient).mockReturnValue({
     auth: {
       admin: { inviteUserByEmail, updateUserById: vi.fn().mockResolvedValue({}) },
     },
   } as never)
-})
-
-describe('staff actions — re-validacion de sesion PIN (#13)', () => {
-  it('inviteStaffAction rechaza si la sesion PIN expiro', async () => {
-    vi.mocked(checkPinSessionAction).mockResolvedValue(false)
-    const res = await inviteStaffAction(inviteForm())
-    expect(res).toEqual({ success: false, error: 'PIN requerido.' })
-    expect(adminRateLimited).not.toHaveBeenCalled()
-  })
-
-  it('deactivateStaffAction rechaza si la sesion PIN expiro', async () => {
-    vi.mocked(checkPinSessionAction).mockResolvedValue(false)
-    const res = await deactivateStaffAction('member-1')
-    expect(res).toEqual({ success: false, error: 'PIN requerido.' })
-    expect(adminRateLimited).not.toHaveBeenCalled()
-  })
-
-  it('resendInviteAction rechaza si la sesion PIN expiro', async () => {
-    vi.mocked(checkPinSessionAction).mockResolvedValue(false)
-    const res = await resendInviteAction('miembro@test.local')
-    expect(res).toEqual({ success: false, error: 'PIN requerido.' })
-    expect(inviteUserByEmail).not.toHaveBeenCalled()
-  })
 })
 
 describe('staff actions — estado del tenant / kill-switch (#14)', () => {
@@ -137,7 +109,7 @@ describe('resendInviteAction — verificacion de membership (#12)', () => {
 })
 
 describe('staff actions — happy path supera los guards', () => {
-  it('con PIN valido y tenant activo, deactivate avanza al rate-limit + DB', async () => {
+  it('con tenant activo, deactivate avanza al rate-limit + DB', async () => {
     vi.mocked(withTenantContext).mockResolvedValue({ success: true })
     const res = await deactivateStaffAction('member-1')
     expect(adminRateLimited).toHaveBeenCalledWith('tenant-1')

@@ -3,18 +3,15 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 /**
  * Cookie de impersonación del SuperAdmin (spec §6).
  *
- * Mismo patrón HMAC que la cookie de PIN (`src/modules/auth/pin.ts`): payload
- * base64url + firma SHA-256, comparación en tiempo constante. La diferencia es
- * que acá el payload es estructurado ({ tenantId, systemAdminId, exp }) en vez
- * de un simple timestamp.
+ * Patrón HMAC: payload base64url + firma SHA-256, comparación en tiempo
+ * constante. El payload es estructurado ({ tenantId, systemAdminId, exp }).
  *
- * SECRET — desviación deliberada del prompt: éste pedía `NEXT_PUBLIC_SUPABASE_ANON_KEY`
- * pero ese valor viaja al bundle del browser (prefijo NEXT_PUBLIC_), así que
- * usarlo como secreto HMAC haría la cookie FORJEABLE por cualquiera. Se usa
- * `PIN_COOKIE_SECRET` (server-only), que además es literalmente "el secreto de la
- * cookie de PIN" que el prompt mencionaba entre paréntesis. La firma acá es
- * defensa en profundidad: la barrera real sigue siendo el JWT de system_admin
- * que el guard exige aparte (una cookie válida sin sesión system_admin no sirve).
+ * SECRET — se usa `IMPERSONATION_COOKIE_SECRET` (server-only). NO usar
+ * `NEXT_PUBLIC_SUPABASE_ANON_KEY`: ese valor viaja al bundle del browser
+ * (prefijo NEXT_PUBLIC_), así que como secreto HMAC haría la cookie FORJEABLE
+ * por cualquiera. La firma acá es defensa en profundidad: la barrera real
+ * sigue siendo el JWT de system_admin que el guard exige aparte (una cookie
+ * válida sin sesión system_admin no sirve).
  *
  * Este módulo es PURO (solo node:crypto): lo importan workers, audit.ts y tests
  * sin arrastrar `next/headers`. La lectura de la cookie del request vive en
@@ -34,9 +31,9 @@ export type ImpersonationPayload = {
 }
 
 function getCookieSecret(): string {
-  const s = process.env.PIN_COOKIE_SECRET
+  const s = process.env.IMPERSONATION_COOKIE_SECRET
   if (!s || s.length < 16) {
-    throw new Error('PIN_COOKIE_SECRET missing or shorter than 16 chars')
+    throw new Error('IMPERSONATION_COOKIE_SECRET missing or shorter than 16 chars')
   }
   return s
 }

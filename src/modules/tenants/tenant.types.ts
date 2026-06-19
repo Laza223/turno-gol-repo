@@ -40,7 +40,6 @@ export type TenantSettings = {
   allow_online_booking: boolean
   booking_advance_days: number
   auto_complete_minutes: number
-  staff_pin_hash?: string
   onboarding_step?: number
   onboarding_completed?: boolean
   public_link_shared?: boolean

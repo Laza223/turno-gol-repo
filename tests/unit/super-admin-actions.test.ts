@@ -44,7 +44,7 @@ describe('settingsPatchSchema (whitelist de settings)', () => {
   it('rechaza campos NO whitelisteados (strict)', () => {
     const result = settingsPatchSchema.safeParse({
       requires_deposit: true,
-      staff_pin_hash: 'hack', // sensible: jamás editable por acá
+      onboarding_completed: true, // interno: jamás editable por el panel de soporte
     })
     expect(result.success).toBe(false)
   })

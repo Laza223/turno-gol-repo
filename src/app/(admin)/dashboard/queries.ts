@@ -14,7 +14,6 @@ export interface ChecklistState {
   complexData: boolean
   hasCourts: boolean
   hasSchedule: boolean
-  pinConfigured: boolean
   mpConnected: boolean
   publicLinkShared: boolean
   firstBookingReceived: boolean
@@ -96,7 +95,6 @@ export async function getChecklistState(
       complexData: true,
       hasCourts: courtsCount > 0,
       hasSchedule: true,
-      pinConfigured: typeof settings.staff_pin_hash === 'string' && settings.staff_pin_hash.length > 0,
       mpConnected,
       publicLinkShared: settings.public_link_shared === true,
       firstBookingReceived: firstBooking !== null,

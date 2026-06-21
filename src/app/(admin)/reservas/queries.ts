@@ -123,6 +123,8 @@ export type ReservaDetail = ReservaListRow & {
   playerPhone: string | null
   guestPhone: string | null
   canceledReason: string | null
+  /** Horas de anticipación de la política de cancelación del complejo (Tarea #3). */
+  cancellationPolicyHours: number
 }
 
 export async function getBookingDetail(
@@ -137,15 +139,52 @@ export async function getBookingDetail(
            b.payment_method AS "paymentMethod", b.notes_player AS "notesPlayer",
            b.notes_internal AS "notesInternal", b.guest_name AS "guestName", b.guest_phone AS "guestPhone",
            b.canceled_reason AS "canceledReason",
+           COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS "cancellationPolicyHours",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            p.phone AS "playerPhone"
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
+    JOIN tenants t ON t.id = b.tenant_id
     LEFT JOIN players p ON p.id = b.player_id
     WHERE b.tenant_id = ${tenantId} AND b.id = ${bookingId}
     LIMIT 1
   `)
   const list = rows as unknown as ReservaDetail[]
   return list[0] ?? null
+}
+
+export type BookingChargeRow = {
+  id: string
+  amount: number
+  method: string
+  description: string
+  occurredAt: string
+}
+
+export type BookingCharges = {
+  charges: BookingChargeRow[]
+  /** Suma de los cobros de mostrador (cash_flows income) del turno, en centavos. */
+  chargesTotal: number
+}
+
+/**
+ * Tarea #8 — cobros de mostrador del turno: cash_flows income vinculados al
+ * booking_id. NO incluye la seña (que se trackea aparte en deposit_amount), así
+ * el resumen suma seña + cobros sin doble-contar.
+ */
+export async function getBookingCharges(
+  tenantId: string,
+  bookingId: string,
+  tx: DbTx,
+): Promise<BookingCharges> {
+  const rows = await tx.execute(sql`
+    SELECT id, amount, method, description, occurred_at::text AS "occurredAt"
+    FROM cash_flows
+    WHERE tenant_id = ${tenantId} AND booking_id = ${bookingId} AND type = 'income'
+    ORDER BY occurred_at ASC
+  `)
+  const charges = rows as unknown as BookingChargeRow[]
+  const chargesTotal = charges.reduce((sum, c) => sum + c.amount, 0)
+  return { charges, chargesTotal }
 }

@@ -473,15 +473,16 @@ describe('cancelByPlayer — 4A: no deposit', () => {
   })
 })
 
-// ─── 4C: admin cancel with refund ───────────────────────────────────
-describe('cancelByAdmin — 4C: with refund', () => {
-  it('status=canceled_refunded, refund payment row, audit actor=staff', async () => {
+// ─── 4C / Tarea #3: admin cancela "el complejo" → reembolso forzado ──
+describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', () => {
+  it('in-policy: refund + canceled_reason con tipo + metadata cancellationType', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999) // in-policy
 
     const bookingId = await insertConfirmedBooking({
       tenantId: tenant.id,
@@ -505,7 +506,7 @@ describe('cancelByAdmin — 4C: with refund', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'mantenimiento', true, mockGateway, tx)
+      await cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', mockGateway, tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
@@ -513,32 +514,103 @@ describe('cancelByAdmin — 4C: with refund', () => {
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
     expect(await countCashFlows(bookingId)).toBe(0)
 
-    // Monto exacto del refund + gateway invocado con la seña, no con un valor arbitrario.
     expect(await getRefundPayment(bookingId)).toEqual({ amount: 240_000, status: 'approved' })
     expect(mockGateway.refundCalls).toContainEqual({ mpPaymentId, amount: 240_000 })
+    // canceled_reason incluye el tipo de cancelación (Tarea #3).
     expect(await getBookingCancelMeta(bookingId)).toEqual({
       canceled_by: 'admin',
-      canceled_reason: 'mantenimiento',
+      canceled_reason: 'Cancelado por el complejo: mantenimiento',
     })
+    // El rastro guarda el tipo de cancelación y el reason crudo.
+    const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled_by_admin')
+    expect(meta).toMatchObject({ reason: 'mantenimiento', cancellationType: 'complejo', shouldRefund: true })
 
     const audits = await getAuditLogs(bookingId)
     const cancelAudit = audits.find((a) => a.action === 'booking.canceled_by_admin')
     expect(cancelAudit).toBeDefined()
     expect(cancelAudit!.actor_type).toBe('staff')
-    // actor_id debe ser el staff real, no cualquier valor truthy.
     expect(cancelAudit!.actor_id).toBe(staff.id)
   })
-})
 
-// ─── 4C: admin cancel without refund ────────────────────────────────
-describe('cancelByAdmin — 4C: without refund', () => {
-  it('status=canceled_no_refund, deposit=captured, no refund rows', async () => {
+  it('FUERA de plazo: el complejo reembolsa igual (no es culpa del jugador)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 20000) // out-of-policy
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '16:00',
+      timeEnd: '17:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-pay-4c-oop-${bookingId.slice(0, 8)}`
+    const paymentId = await insertApprovedPayment({
+      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+    })
+    await linkPaymentToBooking(bookingId, paymentId)
+
+    await withTenantContext(tenant.id, async (tx) => {
+      await cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', mockGateway, tx)
+    })
+
+    // Aunque la política diría retener, el complejo reembolsa.
+    expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
+    expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
+    const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled_by_admin')
+    expect(meta).toMatchObject({ cancellationType: 'complejo', inPolicy: false, shouldRefund: true })
+  })
+})
+
+// ─── 4C / Tarea #3: admin cancela "el jugador" → política horaria ────
+describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', () => {
+  it('DENTRO de plazo: reembolso por política', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999) // in-policy
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id, courtId, playerId: player.id,
+      date: FUTURE_DATE, timeStart: '15:00', timeEnd: '16:00',
+      depositStatus: 'paid', depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-pay-4c-jin-${bookingId.slice(0, 8)}`
+    const paymentId = await insertApprovedPayment({
+      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+    })
+    await linkPaymentToBooking(bookingId, paymentId)
+
+    await withTenantContext(tenant.id, async (tx) => {
+      await cancelByAdmin(bookingId, staff.id, 'no puede ir', 'jugador', mockGateway, tx)
+    })
+
+    expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
+    expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
+    const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled_by_admin')
+    expect(meta).toMatchObject({ cancellationType: 'jugador', inPolicy: true, shouldRefund: true })
+  })
+
+  it('FUERA de plazo: sin reembolso, seña capturada', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 20000) // out-of-policy
 
     const bookingId = await insertConfirmedBooking({
       tenantId: tenant.id,
@@ -552,13 +624,17 @@ describe('cancelByAdmin — 4C: without refund', () => {
     })
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'excepción operativa', false, null, tx)
+      await cancelByAdmin(bookingId, staff.id, 'avisó tarde', 'jugador', null, tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
     expect(await getBookingDepositStatus(bookingId)).toBe('captured')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
     expect(await countCashFlows(bookingId)).toBe(0)
+    expect(await getBookingCancelMeta(bookingId)).toEqual({
+      canceled_by: 'admin',
+      canceled_reason: 'Cancelado a pedido del jugador: avisó tarde',
+    })
   })
 })
 
@@ -692,7 +768,7 @@ describe('Guard: cancel terminal booking', () => {
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
-        await cancelByAdmin(bookingId, staff.id, 'test', false, null, tx)
+        await cancelByAdmin(bookingId, staff.id, 'test', 'jugador', null, tx)
       }),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
   })
@@ -915,7 +991,7 @@ describe('cancelByAdmin — inactive tenant guard (H8, paridad con cancelByPlaye
 
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        cancelByAdmin(bookingId, staff.id, 'x', true, mockGateway, tx),
+        cancelByAdmin(bookingId, staff.id, 'x', 'complejo', mockGateway, tx),
       ),
     ).rejects.toBeInstanceOf(TenantInactiveError)
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)

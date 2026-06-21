@@ -97,8 +97,8 @@ describe('reservas actions — staff sin membresía activa (rol null) es rechaza
     expect(vi.mocked(handleNoShow)).not.toHaveBeenCalled()
   })
 
-  it('cancelBookingAction con shouldRefund=true NO resuelve el gateway MP ni reembolsa', async () => {
-    const res = await cancelBookingAction('b-1', 'lluvia torrencial', true)
+  it('cancelBookingAction NO resuelve el gateway MP ni cancela sin rol', async () => {
+    const res = await cancelBookingAction('b-1', 'lluvia torrencial', 'complejo')
     expect(res.success).toBe(false)
     expect(vi.mocked(getDb)).not.toHaveBeenCalled()
     expect(vi.mocked(resolveTenantGateway)).not.toHaveBeenCalled()
@@ -121,15 +121,19 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
     expect(vi.mocked(transitionFromPendingPayment)).toHaveBeenCalledWith('b-1', 'confirmed', FAKE_TX)
   })
 
-  it('cancelBookingAction sin reembolso funciona para manager', async () => {
+  it('cancelBookingAction (motivo jugador) funciona para manager y pasa el tipo a cancelByAdmin', async () => {
+    // El gateway se resuelve desde tenants.mp_access_token; sin token → null.
+    vi.mocked(getDb).mockReturnValue({
+      select: () => ({ from: () => ({ where: () => ({ limit: () => Promise.resolve([{ mpAccessToken: null }]) }) }) }),
+    } as never)
     vi.mocked(cancelByAdmin).mockResolvedValue({ id: 'b-1' } as never)
-    const res = await cancelBookingAction('b-1', 'lluvia torrencial', false)
+    const res = await cancelBookingAction('b-1', 'lluvia torrencial', 'jugador')
     expect(res.success).toBe(true)
     expect(vi.mocked(cancelByAdmin)).toHaveBeenCalledWith(
       'b-1',
       'staff-1',
       'lluvia torrencial',
-      false,
+      'jugador',
       null,
       FAKE_TX,
     )

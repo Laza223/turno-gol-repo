@@ -47,7 +47,7 @@ export function QuickActions({ booking, label }: Props) {
   const [pending, startTransition] = useTransition()
   const [noShowArmed, setNoShowArmed] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [shouldRefund, setShouldRefund] = useState(false)
+  const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
   const [reason, setReason] = useState('')
   const disarmRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -90,14 +90,13 @@ export function QuickActions({ booking, label }: Props) {
   }
 
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
+    if (!cancelType) {
+      return { success: false, error: 'Indicá quién cancela la reserva.' }
+    }
     if (reason.trim().length < 3) {
       return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
     }
-    const res = await cancelBookingAction(
-      booking.id,
-      reason.trim(),
-      hasPaidDeposit ? shouldRefund : false,
-    )
+    const res = await cancelBookingAction(booking.id, reason.trim(), cancelType)
     if (res.success) {
       toast({ title: 'Reserva cancelada', description: label, variant: 'success' })
       router.refresh()
@@ -107,17 +106,25 @@ export function QuickActions({ booking, label }: Props) {
 
   function openCancel() {
     setReason('')
-    setShouldRefund(false)
+    setCancelType(null)
     setCancelOpen(true)
   }
 
-  const refundWarning = !hasPaidDeposit
-    ? 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
-    : shouldRefund
-      ? booking.paymentMethod === 'mercadopago'
-        ? `Se reembolsará la seña de ${formatArs(booking.depositAmount)} vía MercadoPago.`
-        : `Coordiná el reembolso de ${formatArs(booking.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
-      : `La seña de ${formatArs(booking.depositAmount)} queda para el complejo (sin reembolso).`
+  // Preview del destino de la seña según el motivo. En la grilla no calculamos
+  // el plazo (no tenemos la política a mano); el server resuelve la retención.
+  let refundWarning: string | null = null
+  if (cancelType) {
+    if (!hasPaidDeposit) {
+      refundWarning = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
+    } else if (cancelType === 'complejo') {
+      refundWarning =
+        booking.paymentMethod === 'mercadopago'
+          ? `Se reembolsará la seña de ${formatArs(booking.depositAmount)} vía MercadoPago.`
+          : `Coordiná el reembolso de ${formatArs(booking.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+    } else {
+      refundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount)} si está dentro del plazo, retención si no.`
+    }
+  }
 
   const isPendingPayment = booking.status === 'pending_payment'
 
@@ -222,22 +229,40 @@ export function QuickActions({ booking, label }: Props) {
         onConfirm={onConfirmCancel}
       >
         <div className="space-y-3">
-          {hasPaidDeposit && (
-            <fieldset className="space-y-1">
-              <legend className="text-xs font-medium text-slate-700">¿Reembolsar la seña?</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name={`refund-${booking.id}`} checked={!shouldRefund} onChange={() => setShouldRefund(false)} />
-                Sin reembolso (la seña queda para el complejo)
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name={`refund-${booking.id}`} checked={shouldRefund} onChange={() => setShouldRefund(true)} />
-                Con reembolso
-              </label>
-            </fieldset>
+          <fieldset className="space-y-1">
+            <legend className="text-xs font-medium text-slate-700">¿Quién cancela?</legend>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name={`cancel-type-${booking.id}`}
+                className="mt-0.5"
+                checked={cancelType === 'complejo'}
+                onChange={() => setCancelType('complejo')}
+              />
+              <span>
+                <span className="font-medium">El complejo necesita cancelar</span>
+                <span className="block text-xs text-slate-500">Rotura, mantenimiento o error. Reembolso automático.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name={`cancel-type-${booking.id}`}
+                className="mt-0.5"
+                checked={cancelType === 'jugador'}
+                onChange={() => setCancelType('jugador')}
+              />
+              <span>
+                <span className="font-medium">El jugador pidió cancelar</span>
+                <span className="block text-xs text-slate-500">Se aplica la política de cancelación del complejo.</span>
+              </span>
+            </label>
+          </fieldset>
+          {refundWarning && (
+            <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+              {refundWarning}
+            </div>
           )}
-          <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
-            {refundWarning}
-          </div>
           <div className="space-y-1">
             <label htmlFor={`cancel-reason-${booking.id}`} className="text-xs font-medium text-slate-700">
               Motivo (obligatorio)

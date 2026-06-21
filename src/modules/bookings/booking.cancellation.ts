@@ -36,6 +36,29 @@ function artDateAt(dateStr: string, hhmm: string): Date {
   return new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0))
 }
 
+export type AdminCancellationType = 'complejo' | 'jugador'
+
+/**
+ * Tarea #3: el motivo decide el reembolso, el admin ya no elige a ciegas.
+ * - 'complejo' (rotura / mantenimiento / error del admin): reembolso SIEMPRE,
+ *   sin importar el plazo — no es culpa del jugador.
+ * - 'jugador' (pidió por teléfono): aplica la política normal — dentro del
+ *   plazo reembolsa, fuera retiene.
+ * `inPolicy` se devuelve para el rastro de auditoría (también en el caso
+ * 'complejo', donde no afecta la decisión pero documenta el contexto).
+ */
+export function decideAdminRefund(opts: {
+  cancellationType: AdminCancellationType
+  bookingStartUtcMs: number
+  policyHours: number
+  nowMs: number
+}): { shouldRefund: boolean; inPolicy: boolean } {
+  const inPolicy =
+    opts.nowMs < opts.bookingStartUtcMs - opts.policyHours * 3_600_000
+  const shouldRefund = opts.cancellationType === 'complejo' ? true : inPolicy
+  return { shouldRefund, inPolicy }
+}
+
 type LockedBooking = {
   id: string
   tenant_id: string
@@ -161,11 +184,18 @@ export async function cancelByPlayer(
   return rowToBookingRow(updated[0]!)
 }
 
+// Etiqueta legible que se antepone al motivo para que `canceled_reason`
+// incluya el tipo de cancelación (Tarea #3), sin agregar una columna nueva.
+const CANCELLATION_TYPE_LABEL: Record<AdminCancellationType, string> = {
+  complejo: 'Cancelado por el complejo',
+  jugador: 'Cancelado a pedido del jugador',
+}
+
 export async function cancelByAdmin(
   bookingId: string,
   staffUserId: string,
   reason: string,
-  shouldRefund: boolean,
+  cancellationType: AdminCancellationType,
   gateway: PaymentGateway | null,
   tx: DbTx,
 ): Promise<BookingRow> {
@@ -188,6 +218,18 @@ export async function cancelByAdmin(
 
   track.booking('booking.cancel.by_admin', { bookingId, tenantId: b.tenant_id })
 
+  // Tarea #3: el reembolso lo decide el motivo, no una casilla suelta del admin.
+  // 'complejo' reembolsa siempre; 'jugador' aplica la política horaria del complejo.
+  const settings = await loadSettings(b.tenant_id, tx)
+  const bookingStartUtc = artDateAt(b.date, b.time_start.slice(0, 5))
+  const policyHours = settings.cancellation_policy.hours_before
+  const { shouldRefund, inPolicy } = decideAdminRefund({
+    cancellationType,
+    bookingStartUtcMs: bookingStartUtc.getTime(),
+    policyHours,
+    nowMs: Date.now(),
+  })
+
   const targetStatus = shouldRefund ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
 
@@ -208,13 +250,15 @@ export async function cancelByAdmin(
     }
   }
 
+  const storedReason = `${CANCELLATION_TYPE_LABEL[cancellationType]}: ${reason}`
+
   const updated = await tx
     .update(bookings)
     .set({
       status: targetStatus,
       canceledBy: 'admin',
       canceledAt: new Date(),
-      canceledReason: reason,
+      canceledReason: storedReason,
       depositStatus: newDepositStatus,
       updatedAt: new Date(),
     })
@@ -228,7 +272,7 @@ export async function cancelByAdmin(
     action: 'booking.canceled_by_admin',
     resourceType: 'booking',
     resourceId: bookingId,
-    metadata: { reason, shouldRefund, depositStatus: newDepositStatus },
+    metadata: { reason, cancellationType, inPolicy, shouldRefund, depositStatus: newDepositStatus },
   })
 
   await invalidateCourtDateSlots(b.court_id, b.date)

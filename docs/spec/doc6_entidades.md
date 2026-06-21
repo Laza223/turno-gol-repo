@@ -212,18 +212,37 @@ notes_internal    text?         Notas visibles solo para el staff
 notes_player      text?         Notas visibles para el jugador
 guest_name        text?         Nombre del jugador si player_id IS NULL (reserva manual sin registrar)
 guest_phone       text?         Teléfono del jugador si player_id IS NULL
-canceled_reason   text?         Motivo de cancelación (si aplica)
-canceled_by       enum?         'player' | 'admin' | 'system'
+canceled_reason   text?         Motivo de cancelación (si aplica). Cancelación admin (cambio #3): prefijado con el tipo, p.ej. "Cancelado por el complejo: {motivo}" / "Cancelado a pedido del jugador: {motivo}"
+canceled_by       enum?         'player' | 'admin' | 'system' (quién ejecutó la acción; el TIPO complejo/jugador va en canceled_reason + audit metadata)
 canceled_at       timestamp?    Cuándo se canceló
 created_at        timestamp     UTC
 updated_at        timestamp     UTC
 ```
+
+> **Cancelación por admin — tipo decide el reembolso (cambio #3)**: el admin indica
+> primero *quién* cancela. "El complejo" reembolsa siempre; "el jugador" aplica la
+> política horaria. El AuditLog `booking.canceled_by_admin` guarda
+> `metadata = { reason, cancellationType: 'complejo'|'jugador', inPolicy, shouldRefund, depositStatus }`.
+> No hay columna nueva: el tipo se persiste en `canceled_reason` (prefijo) y en el audit. Ver Doc 7, Flujo 4C.
 
 ### Atributos derivados (NO guardar en DB)
 - `duration_minutes` = EXTRACT minutos entre `time_end` y `time_start`
 - `is_past` = `date + time_end < NOW()`
 - `is_cancellable_without_penalty` = evalúa política del complejo vs tiempo restante
 - `effective_price` = `price_snapshot` (siempre el del momento de creación)
+
+#### Cobros de turno (cambio #8 — atributos derivados, NO en DB)
+La seña no es el único cobro: el resto se cobra en el mostrador. Estos valores se
+calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
+- `deposit_counted` = `deposit_amount` si `deposit_status ∈ {paid, captured}`, si no `0`
+  (la seña reembolsada o no exigida no cuenta como dinero cobrado)
+- `charges_total` = Σ `cash_flows.amount` donde `type='income'` y `booking_id` = esta reserva
+- `amount_paid` = `deposit_counted` + `charges_total`
+- `amount_pending` = `max(0, price_snapshot − amount_paid)`
+
+> Los cobros de mostrador son CashFlows `income`/`booking` con `booking_id` (no entidades
+> nuevas). La seña se trackea aparte en `deposit_amount`/`payments`, por eso `charges_total`
+> NO incluye la seña: sumarlos no duplica. Ver Doc 7, Flujos 2/3.
 
 ### Relaciones
 - Pertenece a: 1 Tenant

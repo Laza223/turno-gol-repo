@@ -115,15 +115,24 @@ describe('QuickActions — confirmed', () => {
     await waitFor(() => expect(noShowMock).toHaveBeenCalledWith('b1'))
   })
 
-  it('Cancelar abre diálogo y exige motivo de 3+ caracteres', async () => {
+  it('Cancelar abre diálogo, exige elegir quién cancela y motivo de 3+ caracteres', async () => {
     render(<QuickActions booking={booking()} label="Juan · 14:00" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toBeTruthy()
 
+    // Sin elegir quién cancela ni motivo → error, no dispara la action.
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(cancelMock).not.toHaveBeenCalled()
+
+    // Paso 1: el jugador pidió cancelar (0 = complejo, 1 = jugador).
+    const radios = screen.getAllByRole('radio')
+    fireEvent.click(radios[1]!)
+
+    // Motivo todavía vacío → sigue exigiendo motivo.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     expect(cancelMock).not.toHaveBeenCalled()
 
     fireEvent.change(screen.getByLabelText('Motivo (obligatorio)'), {
@@ -131,7 +140,7 @@ describe('QuickActions — confirmed', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     await waitFor(() =>
-      expect(cancelMock).toHaveBeenCalledWith('b1', 'Lluvia torrencial', false),
+      expect(cancelMock).toHaveBeenCalledWith('b1', 'Lluvia torrencial', 'jugador'),
     )
   })
 

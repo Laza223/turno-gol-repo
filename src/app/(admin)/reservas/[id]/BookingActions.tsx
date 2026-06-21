@@ -6,30 +6,57 @@ import { completeBookingAction, markNoShowAction, cancelBookingAction } from '..
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 
+type CancellationType = 'complejo' | 'jugador'
+
 type Props = {
   bookingId: string
   status: string
   depositStatus: string
   depositAmount: number
   paymentMethod: string | null
+  /** Fecha del turno (YYYY-MM-DD) para evaluar la política de cancelación. */
+  bookingDate: string
+  /** Hora de inicio (HH:MM:SS). */
+  timeStart: string
+  /** Horas de anticipación de la política de cancelación del complejo. */
+  cancellationPolicyHours: number
 }
 
 function formatARS(centavos: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(centavos / 100)
 }
 
-export default function BookingActions({ bookingId, status, depositStatus, depositAmount, paymentMethod }: Props) {
+// ART = UTC-3. Mismo cálculo que el server (artDateAt) para que el preview de
+// "dentro/fuera de plazo" coincida con la decisión real de cancelByAdmin.
+function bookingStartMs(dateStr: string, hhmmss: string): number {
+  const [y, mo, d] = dateStr.split('-').map(Number)
+  const [h, m] = hhmmss.split(':').map(Number)
+  return Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0)
+}
+
+export default function BookingActions({
+  bookingId,
+  status,
+  depositStatus,
+  depositAmount,
+  paymentMethod,
+  bookingDate,
+  timeStart,
+  cancellationPolicyHours,
+}: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [noShowOpen, setNoShowOpen] = useState(false)
-  const [shouldRefund, setShouldRefund] = useState(false)
+  const [cancelType, setCancelType] = useState<CancellationType | null>(null)
   const [reason, setReason] = useState('')
 
   if (status !== 'confirmed') return null
 
   const hasPaidDeposit = depositStatus === 'paid' && depositAmount > 0
+  const inPolicy =
+    Date.now() < bookingStartMs(bookingDate, timeStart) - cancellationPolicyHours * 3_600_000
 
   function runDirect(fn: () => Promise<{ success: boolean; error?: string }>) {
     setError(null)
@@ -41,8 +68,9 @@ export default function BookingActions({ bookingId, status, depositStatus, depos
   }
 
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
+    if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
     if (reason.trim().length < 3) return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
-    const res = await cancelBookingAction(bookingId, reason.trim(), hasPaidDeposit ? shouldRefund : false)
+    const res = await cancelBookingAction(bookingId, reason.trim(), cancelType)
     if (res.success) {
       toast({ title: 'Reserva cancelada', variant: 'success' })
       router.refresh()
@@ -59,13 +87,23 @@ export default function BookingActions({ bookingId, status, depositStatus, depos
     return res
   }
 
-  const refundWarning = !hasPaidDeposit
-    ? 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
-    : shouldRefund
-      ? paymentMethod === 'mercadopago'
-        ? `Se reembolsará la seña de ${formatARS(depositAmount)} vía MercadoPago.`
-        : `Coordiná el reembolso de ${formatARS(depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
-      : `La seña de ${formatARS(depositAmount)} queda para el complejo (sin reembolso).`
+  // Paso 2: qué pasa con la seña según el motivo elegido. El complejo reembolsa
+  // siempre; el jugador, según la política horaria del complejo.
+  const willRefund = cancelType === 'complejo' ? true : cancelType === 'jugador' ? inPolicy : false
+
+  let refundPreview: string | null = null
+  if (cancelType) {
+    if (!hasPaidDeposit) {
+      refundPreview = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
+    } else if (willRefund) {
+      refundPreview =
+        paymentMethod === 'mercadopago'
+          ? `Se reembolsará la seña de ${formatARS(depositAmount)} vía MercadoPago.`
+          : `Coordiná el reembolso de ${formatARS(depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+    } else {
+      refundPreview = `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatARS(depositAmount)} queda para el complejo (sin reembolso).`
+    }
+  }
 
   return (
     <div className="space-y-2">
@@ -89,7 +127,7 @@ export default function BookingActions({ bookingId, status, depositStatus, depos
         <button
           type="button"
           disabled={pending}
-          onClick={() => { setReason(''); setShouldRefund(false); setCancelOpen(true) }}
+          onClick={() => { setReason(''); setCancelType(null); setCancelOpen(true) }}
           className="h-9 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60"
         >
           Cancelar
@@ -101,29 +139,49 @@ export default function BookingActions({ bookingId, status, depositStatus, depos
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title="Cancelar reserva"
-        description="Esta acción cancela el turno y libera el horario. Ingresá el motivo."
+        description="Primero indicá por qué se cancela. Eso define si corresponde reembolsar la seña."
         variant="destructive"
         confirmLabel="Cancelar reserva"
         cancelLabel="Volver"
         onConfirm={onConfirmCancel}
       >
         <div className="space-y-3">
-          {hasPaidDeposit && (
-            <fieldset className="space-y-1">
-              <legend className="text-xs font-medium text-slate-700">¿Reembolsar la seña?</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name="refund" checked={!shouldRefund} onChange={() => setShouldRefund(false)} />
-                Sin reembolso (la seña queda para el complejo)
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name="refund" checked={shouldRefund} onChange={() => setShouldRefund(true)} />
-                Con reembolso
-              </label>
-            </fieldset>
+          <fieldset className="space-y-1">
+            <legend className="text-xs font-medium text-slate-700">¿Quién cancela?</legend>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="cancel-type"
+                className="mt-0.5"
+                checked={cancelType === 'complejo'}
+                onChange={() => setCancelType('complejo')}
+              />
+              <span>
+                <span className="font-medium">El complejo necesita cancelar</span>
+                <span className="block text-xs text-slate-500">Rotura, mantenimiento o error. Reembolso automático de la seña.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="cancel-type"
+                className="mt-0.5"
+                checked={cancelType === 'jugador'}
+                onChange={() => setCancelType('jugador')}
+              />
+              <span>
+                <span className="font-medium">El jugador pidió cancelar</span>
+                <span className="block text-xs text-slate-500">Se aplica la política de cancelación del complejo.</span>
+              </span>
+            </label>
+          </fieldset>
+
+          {refundPreview && (
+            <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+              {refundPreview}
+            </div>
           )}
-          <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
-            {refundWarning}
-          </div>
+
           <div className="space-y-1">
             <label htmlFor="cancel-reason" className="text-xs font-medium text-slate-700">Motivo (obligatorio)</label>
             <textarea

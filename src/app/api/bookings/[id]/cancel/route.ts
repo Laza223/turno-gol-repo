@@ -17,9 +17,11 @@ import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 export const dynamic = 'force-dynamic'
 
+// Tarea #3: el cliente ya no elige el reembolso; indica el motivo
+// (complejo vs jugador) y el server decide la retención.
 const cancelBodySchema = z.object({
   reason: z.string().min(1).max(1000),
-  should_refund: z.boolean(),
+  cancellation_type: z.enum(['complejo', 'jugador']),
 })
 
 export const POST = withTenant(async (req, user, tx) => {
@@ -42,19 +44,20 @@ export const POST = withTenant(async (req, user, tx) => {
     return validationError(parsed.error, { status: 422 })
   }
 
-  const { reason, should_refund: shouldRefund } = parsed.data
+  const { reason, cancellation_type: cancellationType } = parsed.data
 
+  // Ambos motivos pueden terminar en reembolso (complejo siempre; jugador si
+  // está dentro del plazo), así que resolvemos el gateway si el complejo tiene
+  // MP linkeado. resolveTenantGateway no hace I/O.
   let gateway: PaymentGateway | null = null
-  if (shouldRefund) {
-    const tenantRows = await tx
-      .select({ mpAccessToken: tenants.mpAccessToken })
-      .from(tenants)
-      .where(eq(tenants.id, user.tenantId!))
-      .limit(1)
-    const mpAccessToken = tenantRows[0]?.mpAccessToken
-    if (mpAccessToken) {
-      gateway = resolveTenantGateway(user.tenantId!, mpAccessToken)
-    }
+  const tenantRows = await tx
+    .select({ mpAccessToken: tenants.mpAccessToken })
+    .from(tenants)
+    .where(eq(tenants.id, user.tenantId!))
+    .limit(1)
+  const mpAccessToken = tenantRows[0]?.mpAccessToken
+  if (mpAccessToken) {
+    gateway = resolveTenantGateway(user.tenantId!, mpAccessToken)
   }
 
   try {
@@ -62,7 +65,7 @@ export const POST = withTenant(async (req, user, tx) => {
       bookingId,
       user.staffUserId ?? '',
       reason,
-      shouldRefund,
+      cancellationType,
       gateway,
       tx,
     )

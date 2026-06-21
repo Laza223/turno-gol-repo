@@ -326,6 +326,34 @@ Al crear un Booking con status='pending_payment':
 | Booking expirado | 📊 AuditLog: `booking.expired` con actor=system |
 | Payment recibido | 📊 AuditLog: `payment.approved` |
 
+### Cobro del resto del turno al llegar (cambio #8)
+
+La seña solo cubre una parte del precio. El resto se cobra en el mostrador cuando
+el jugador llega. El detalle de la reserva (panel admin) tiene una sección
+**"Cobros de turno"** que muestra:
+
+```
+Precio del turno:        $55.000
+├── Seña (MP online):    $16.500  ✅ Pagado
+├── Resto pendiente:     $38.500  ⬜ Pendiente
+└── [+ Agregar cobro]
+```
+
+```
+PASO — Cobro presencial
+  ├── El admin abre la reserva → ve el saldo pendiente
+  ├── Toca "+ Agregar cobro" → ingresa monto + medio de pago (efectivo/transferencia/MP/otro)
+  ├── Se crea un CashFlow income/booking vinculado al `booking_id`
+  │     └── createCashFlow (idempotente por clientIdempotencyKey, guard de caja cerrada)
+  └── La sección recalcula: pagado = seña + Σ cobros; pendiente = price_snapshot − pagado (≥ 0)
+```
+
+- **Cobros parciales**: el admin puede registrar pagos sucesivos; el saldo baja en cada uno.
+- **Sin doble-conteo**: la seña se trackea en `deposit_amount` (cuenta solo si `paid`/`captured`);
+  los cobros de mostrador son CashFlows `income`/`booking` con `booking_id`. El resumen los suma sin solaparse.
+- **Estados cobrables**: `confirmed`, `completed`, `no_show`. No se cobra sobre reservas
+  canceladas, expiradas ni en `pending_payment`.
+
 ### Edge cases explícitos
 
 1. **Dos jugadores intentan reservar el mismo slot al mismo tiempo**: El primero que llega al COMMIT gana. El segundo recibe error amigable. Garantizado por `SELECT FOR UPDATE` (Doc 5, sección 9).
@@ -425,6 +453,13 @@ PASO 5 — Confirmación
 | Tipo = 'block' | No se envía email al jugador (no hay jugador). No genera CashFlow. |
 | El admin quiere una reserva de 2 horas | `time_end = time_start + 2h`. No hay restricción de duración en reserva manual. |
 | El slot ya está ocupado | Error: "Este horario ya tiene una reserva. ¿Querés ver los horarios libres?" |
+
+### Cobro del resto del turno (cambio #8)
+
+La seña del paso 4 cubre solo una parte. El resto se cobra al llegar desde la
+sección **"Cobros de turno"** del detalle de la reserva — mismo mecanismo que el
+Flujo 2 (CashFlow `income`/`booking` vinculado al `booking_id`). Aplica también a
+reservas de abonado (`type='fixed'`, sin seña: se cobra el precio completo).
 
 ### Estados intermedios
 
@@ -572,47 +607,60 @@ PASO 2 — Procesamiento
 
 ---
 
-### Variante 4C: Admin Cancela (Con o Sin Cargo)
+### Variante 4C: Admin Cancela (motivo decide el reembolso — cambio #3)
 
-**"El complejo cancela — él decide si devuelve o no"**
+**"Primero por qué se cancela; eso define si se devuelve la seña"**
+
+> Cambio #3 (TODO): el admin ya NO elige "con/sin reembolso" a ciegas. Primero
+> indica **quién** cancela; el sistema decide el reembolso a partir de eso. Protege
+> al jugador de perder la seña por culpa del complejo y le da estructura al admin.
 
 #### Punto de entrada
-- **URL**: Panel admin → Grilla → Click en reserva → "Cancelar reserva"
-- **Trigger**: Problema en la cancha (mantenimiento), error del admin, pedido del jugador
+- **URL**: Panel admin → Grilla (acción rápida) o Detalle de reserva → "Cancelar reserva"
+- **Trigger**: Problema en la cancha (mantenimiento), error del admin, o pedido telefónico del jugador
 
 #### Precondiciones
-- StaffUser tiene rol `admin`
+- StaffUser tiene rol `admin` o `manager`
 - Booking en status `confirmed`
 
 #### Happy Path
 
 ```
-PASO 1 — Modal de cancelación admin
-  ├── Opciones:
-  │     ├── "Cancelar CON reembolso de seña" (el complejo asume el costo)
-  │     └── "Cancelar SIN reembolso" (excepcional, requiere motivo obligatorio)
-  ├── Input obligatorio: motivo de cancelación
-  └── Botón: "Confirmar cancelación"
+PASO 1 — ¿Quién cancela? (motivo previo, obligatorio)
+  ├── Opción A: "El complejo necesita cancelar"
+  │     └── Rotura / mantenimiento / error del admin → NO es culpa del jugador
+  ├── Opción B: "El jugador pidió cancelar"
+  │     └── Llamó por teléfono, no puede hacerlo online
+  ├── Input obligatorio: motivo de cancelación (texto libre)
+  └── El modal muestra en vivo qué pasará con la seña (paso 2)
 
-PASO 2 — Procesamiento
-  ├── SI cancelar con reembolso:
-  │     ├── Idéntico a variante 4A (refund en MP, CashFlow, etc.)
-  │     ├── status → 'canceled_refunded'
+PASO 2 — El sistema decide el reembolso (server-side, no el admin)
+  ├── SI "El complejo cancela":
+  │     ├── Reembolso SIEMPRE (sin importar el plazo) — el complejo asume el costo
+  │     ├── status → 'canceled_refunded', deposit → refunded (refund MP o reembolso offline)
   │     └── canceled_by = 'admin'
-  ├── SI cancelar sin reembolso:
-  │     ├── Idéntico a variante 4B
-  │     ├── status → 'canceled_no_refund'
+  ├── SI "El jugador pidió cancelar":
+  │     ├── Se aplica la política horaria del complejo (igual que 4A/4B):
+  │     │     ├── Dentro del plazo → 'canceled_refunded' (reembolso)
+  │     │     └── Fuera del plazo  → 'canceled_no_refund' (seña capturada)
   │     └── canceled_by = 'admin'
   └── En ambos casos: slot liberado
+
+Nota: el motivo se guarda en `booking.canceled_reason` con prefijo del tipo, p.ej.
+"Cancelado por el complejo: rotura de red" / "Cancelado a pedido del jugador: avisó tarde".
 ```
 
 #### Diferencias en efectos secundarios
 
 | Evento | Efecto |
 |---|---|
-| Admin cancela con reembolso | 📩 Email al jugador: "El complejo {nombre} canceló tu turno del {fecha} {hora}. Tu seña fue devuelta. Disculpá las molestias." |
-| Admin cancela sin reembolso | 📩 Email al jugador: "El complejo {nombre} canceló tu turno del {fecha} {hora}. Contactá al complejo para más información." |
-| Cualquier cancelación admin | 📊 AuditLog: `booking.canceled_by_admin` con motivo + staff_user_id |
+| Complejo cancela (siempre con reembolso) | 📩 Email al jugador: "El complejo {nombre} canceló tu turno del {fecha} {hora}. Tu seña fue devuelta. Disculpá las molestias." |
+| Jugador pidió cancelar, dentro de plazo | Idéntico a 4A (refund + email de cancelación con reembolso) |
+| Jugador pidió cancelar, fuera de plazo | Idéntico a 4B (seña capturada, sin reembolso) |
+| Cualquier cancelación admin | 📊 AuditLog: `booking.canceled_by_admin` con `metadata = { reason, cancellationType, inPolicy, shouldRefund, depositStatus }` + staff_user_id |
+
+> Comisión MP (~5%): la absorbe el complejo en cualquier reembolso. Es costo del medio
+> de pago, no de TurnoGol. Para evitarlo, el complejo puede operar sin seña.
 
 ---
 

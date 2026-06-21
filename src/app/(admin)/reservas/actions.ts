@@ -1,7 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
+import { z } from 'zod'
+import { uuid, moneyCents, boundedText } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
@@ -14,7 +16,11 @@ import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurr
 import {
   cancelByAdmin,
   handleNoShow,
+  type AdminCancellationType,
 } from '@/modules/bookings/booking.cancellation'
+import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
+import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { createManualBookingSchema } from '@/modules/bookings/booking.schema'
 import {
@@ -31,6 +37,10 @@ import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 export type BookingActionResult =
   | { success: true; booking: BookingRow }
+  | { success: false; error: string }
+
+export type BookingChargeActionResult =
+  | { success: true; cashFlow: CashFlowRow }
   | { success: false; error: string }
 
 export async function createBookingAction(
@@ -204,10 +214,13 @@ export async function markNoShowAction(
 export async function cancelBookingAction(
   bookingId: string,
   reason: string,
-  shouldRefund: boolean,
+  cancellationType: AdminCancellationType,
 ): Promise<BookingActionResult> {
   if (!reason || reason.trim().length < 3) {
     return { success: false, error: 'El motivo debe tener al menos 3 caracteres.' }
+  }
+  if (cancellationType !== 'complejo' && cancellationType !== 'jugador') {
+    return { success: false, error: 'Indicá quién cancela la reserva.' }
   }
 
   const auth = await requireOperatorStaff()
@@ -219,33 +232,35 @@ export async function cancelBookingAction(
 
   const staffUserId = user.staffUserId
 
+  // El reembolso lo decide el motivo dentro de cancelByAdmin (Tarea #3), no el
+  // cliente. Resolvemos el gateway siempre que el complejo tenga MP linkeado,
+  // porque ambos motivos pueden terminar en reembolso (complejo siempre;
+  // jugador si está dentro del plazo). resolveTenantGateway no hace I/O.
   let gateway: PaymentGateway | null = null
-  if (shouldRefund) {
-    const db = getDb()
-    const rows = await db
-      .select({ mpAccessToken: tenants.mpAccessToken })
-      .from(tenants)
-      .where(eq(tenants.id, tenant.id))
-      .limit(1)
-    const mpAccessToken = rows[0]?.mpAccessToken
-    if (mpAccessToken) {
-      gateway = resolveTenantGateway(tenant.id, mpAccessToken)
-    }
+  const db = getDb()
+  const rows = await db
+    .select({ mpAccessToken: tenants.mpAccessToken })
+    .from(tenants)
+    .where(eq(tenants.id, tenant.id))
+    .limit(1)
+  const mpAccessToken = rows[0]?.mpAccessToken
+  if (mpAccessToken) {
+    gateway = resolveTenantGateway(tenant.id, mpAccessToken)
   }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
-      const booking = await cancelByAdmin(bookingId, staffUserId, reason, shouldRefund, gateway, tx)
+      const booking = await cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx)
       return { success: true as const, booking }
     } catch (err) {
       if (err instanceof BookingNotInConfirmedError) {
         return { success: false as const, error: 'La reserva no está en estado confirmado.' }
       }
-      // Hallazgo 2: se pidió refund pero MP no está disponible para este complejo.
+      // Hallazgo 2: corresponde refund pero MP no está disponible para este complejo.
       if (err instanceof RefundUnavailableError) {
         return {
           success: false as const,
-          error: 'No se pudo procesar el reembolso por MercadoPago. Cancelá sin reembolso o gestionalo manualmente.',
+          error: 'No se pudo procesar el reembolso por MercadoPago. Gestionalo manualmente.',
         }
       }
       throw err
@@ -253,5 +268,89 @@ export async function cancelBookingAction(
   })
 
   if (result.success) revalidateBooking(bookingId)
+  return result
+}
+
+const CHARGEABLE_STATUSES = ['confirmed', 'completed', 'no_show'] as const
+
+const addBookingChargeSchema = z.object({
+  bookingId: uuid,
+  // Cobro de mostrador: siempre positivo. moneyCents admite 0, acá lo excluimos.
+  amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
+  method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+  clientIdempotencyKey: uuid.optional(),
+  note: boundedText(200).optional(),
+})
+
+export type AddBookingChargeInput = z.input<typeof addBookingChargeSchema>
+
+/**
+ * Tarea #8 — "Cobros de turno": registra un pago (parcial o total) del turno en
+ * el mostrador como CashFlow income vinculado al booking_id. Reusa createCashFlow
+ * (mismo path transaccional: idempotencia + guard de caja cerrada) dentro de
+ * withTenantContext, así el cobro queda aislado por tenant y sin duplicados.
+ */
+export async function addBookingChargeAction(
+  input: AddBookingChargeInput,
+): Promise<BookingChargeActionResult> {
+  const parsed = addBookingChargeSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { bookingId, amount, method, clientIdempotencyKey, note } = parsed.data
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    // El booking tiene que existir en este tenant (RLS) y estar en un estado
+    // cobrable: no tiene sentido cobrar un turno cancelado/expirado o pendiente
+    // de pago (todavía no hay turno confirmado).
+    const bookingRows = await tx.execute(sql`
+      SELECT status FROM bookings WHERE id = ${bookingId} LIMIT 1
+    `)
+    const booking = (bookingRows as unknown as Array<{ status: string }>)[0]
+    if (!booking) {
+      return { success: false as const, error: 'La reserva no existe.' }
+    }
+    if (!CHARGEABLE_STATUSES.includes(booking.status as (typeof CHARGEABLE_STATUSES)[number])) {
+      return { success: false as const, error: 'No se puede cobrar una reserva en este estado.' }
+    }
+
+    try {
+      const cashFlow = await createCashFlow(
+        tenant.id,
+        user.staffUserId,
+        {
+          type: 'income',
+          category: 'booking',
+          amount,
+          method,
+          description: note?.trim() ? note.trim() : 'Cobro de turno',
+          bookingId,
+          clientIdempotencyKey,
+        },
+        tx,
+      )
+      return { success: true as const, cashFlow }
+    } catch (err) {
+      if (err instanceof DayAlreadyClosedError) {
+        return {
+          success: false as const,
+          error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
+        }
+      }
+      throw err
+    }
+  })
+
+  if (result.success) {
+    revalidateBooking(bookingId)
+    revalidatePath('/caja')
+  }
   return result
 }

@@ -158,7 +158,7 @@ describe('IDOR: admin route handlers (cross-tenant)', () => {
 
     const req = new NextRequest(`http://localhost/api/bookings/${bookingOfB}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ reason: 'idor', should_refund: false }),
+      body: JSON.stringify({ reason: 'idor', cancellation_type: 'jugador' }),
       headers: { 'content-type': 'application/json' },
     })
     const res = await cancelBooking(req)
@@ -180,12 +180,12 @@ describe('IDOR: admin route handlers (cross-tenant)', () => {
     expect(await adminAuditLogCount(bookingOfB)).toBe(0)
   })
 
-  it('cancel: admin de A no puede cancelar la reserva de B ni pidiendo reembolso (refund path bloqueado)', async () => {
-    // El camino con should_refund:true carga tenants.mp_access_token y resuelve
-    // gateway antes de cancelar: hay que probar que TAMPOCO toca la reserva ajena.
+  it('cancel: admin de A no puede cancelar la reserva de B ni como "complejo" (refund path bloqueado)', async () => {
+    // El motivo "complejo" carga tenants.mp_access_token y resuelve gateway antes
+    // de cancelar (reembolso forzado): hay que probar que TAMPOCO toca la reserva ajena.
     const req = new NextRequest(`http://localhost/api/bookings/${bookingOfB}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ reason: 'idor-refund', should_refund: true }),
+      body: JSON.stringify({ reason: 'idor-refund', cancellation_type: 'complejo' }),
       headers: { 'content-type': 'application/json' },
     })
     const res = await cancelBooking(req)
@@ -205,16 +205,17 @@ describe('IDOR: admin route handlers (cross-tenant)', () => {
     // realmente funciona, transiciona estado y registra el audit log.
     const req = new NextRequest(`http://localhost/api/bookings/${bookingOfAConfirmed}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ reason: 'lluvia', should_refund: false }),
+      body: JSON.stringify({ reason: 'lluvia', cancellation_type: 'complejo' }),
       headers: { 'content-type': 'application/json' },
     })
     const res = await cancelBooking(req)
 
     expect(res.status).toBe(200)
     const after = await rawBooking(bookingOfAConfirmed)
-    expect(after.status).toBe('canceled_no_refund')
+    // "complejo" reembolsa siempre (sin seña → solo libera el turno).
+    expect(after.status).toBe('canceled_refunded')
     expect(after.canceled_by).toBe('admin')
-    expect(after.canceled_reason).toBe('lluvia')
+    expect(after.canceled_reason).toBe('Cancelado por el complejo: lluvia')
     expect(after.canceled_at).not.toBeNull()
     // El audit log de cancelación SÍ existe para la reserva propia.
     expect(await adminAuditLogCount(bookingOfAConfirmed)).toBe(1)

@@ -5,8 +5,11 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { capitalizeFirst } from '@/lib/format'
-import { getBookingDetail } from '../queries'
+import { getBookingDetail, getBookingCharges } from '../queries'
 import BookingActions from './BookingActions'
+import BookingCharges from './BookingCharges'
+
+const CHARGEABLE_STATUSES = new Set(['confirmed', 'completed', 'no_show'])
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente', confirmed: 'Confirmada', completed: 'Completada',
@@ -31,7 +34,14 @@ export default async function ReservaDetailPage({ params }: Props) {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const booking = await withTenantContext(tenant.id, (tx) => getBookingDetail(tenant.id, params.id, tx))
+  const { booking, charges } = await withTenantContext(tenant.id, async (tx) => {
+    const detail = await getBookingDetail(tenant.id, params.id, tx)
+    if (!detail) return { booking: null, charges: null }
+    const c = CHARGEABLE_STATUSES.has(detail.status)
+      ? await getBookingCharges(tenant.id, params.id, tx)
+      : null
+    return { booking: detail, charges: c }
+  })
   if (!booking) notFound()
 
   const rows: Array<[string, string]> = [
@@ -75,12 +85,26 @@ export default async function ReservaDetailPage({ params }: Props) {
         )}
       </div>
 
+      {charges && (
+        <BookingCharges
+          bookingId={booking.id}
+          priceSnapshot={booking.priceSnapshot}
+          depositAmount={booking.depositAmount}
+          depositStatus={booking.depositStatus}
+          charges={charges.charges}
+          chargesTotal={charges.chargesTotal}
+        />
+      )}
+
       <BookingActions
         bookingId={booking.id}
         status={booking.status}
         depositStatus={booking.depositStatus}
         depositAmount={booking.depositAmount}
         paymentMethod={booking.paymentMethod ?? null}
+        bookingDate={booking.date}
+        timeStart={booking.timeStart}
+        cancellationPolicyHours={booking.cancellationPolicyHours}
       />
     </div>
   )

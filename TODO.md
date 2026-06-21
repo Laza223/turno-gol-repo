@@ -38,9 +38,10 @@
 - **JustificaciÃ³n**: Protege al jugador de perder la seÃ±a por culpa del complejo. Evita daÃ±o reputacional. Le da estructura al admin para que no tome decisiones arbitrarias.
 - **Nota**: La comisiÃ³n de MP (~5%) la absorbe el complejo en cualquier caso. Es costo del medio de pago, no de TurnoGol. Si quieren evitarlo, pueden configurar reservas sin seÃ±a.
 - **Impacto en cÃ³digo/docs**:
-  - [ ] `docs/spec/doc7_flujos_e2e.md` â€” Flujo 4C, reestructurar el modal de cancelaciÃ³n
-  - [ ] UI del panel admin â€” modal de cancelaciÃ³n con paso previo de motivo
-  - [ ] `canceled_reason` deberÃ­a incluir metadata del tipo de cancelaciÃ³n (complejo vs jugador)
+  - [x] `docs/spec/doc7_flujos_e2e.md` â€” Flujo 4C, reestructurar el modal de cancelaciÃ³n
+  - [x] UI del panel admin â€” modal de cancelaciÃ³n con paso previo de motivo (BookingActions + QuickActions)
+  - [x] `canceled_reason` incluye el tipo de cancelaciÃ³n (prefijo) + audit metadata `cancellationType`/`inPolicy`
+  - [x] LÃ³gica: `decideAdminRefund` (complejoâ†’reembolso forzado; jugadorâ†’polÃ­tica horaria). API `cancelBookingAction`/route reciben `cancellation_type` en vez de `should_refund`.
 
 ### 4. ðŸ“… Sistema de cobro de Abonados: copiar modelo ATC ("Saldo a Favor")
 - **Antes**: No habÃ­a forma de trackear si un abonado pagÃ³ o no. El `CashFlow` no tenÃ­a relaciÃ³n con el `Abonado`. El admin registraba plata en la caja pero no sabÃ­a quÃ© abonado pagÃ³ quÃ© mes.
@@ -226,9 +227,9 @@ Precio del turno:        $55.000
 - Agregar campo derivado: `booking.amount_pending` = `price_snapshot - amount_paid`
 
 #### Impacto en docs
-- [ ] `docs/spec/doc7_flujos_e2e.md` â€” Flujo 2 y 3: agregar paso de cobro del resto al llegar
-- [ ] `docs/spec/doc6_entidades.md` â€” Booking: documentar atributos derivados de cobro
-- [ ] UI: secciÃ³n "Cobros de turno" en el detalle de TODOS los bookings (misma UI que abonados)
+- [x] `docs/spec/doc7_flujos_e2e.md` â€” Flujo 2 y 3: agregar paso de cobro del resto al llegar
+- [x] `docs/spec/doc6_entidades.md` â€” Booking: documentar atributos derivados de cobro (`amount_paid`/`amount_pending`)
+- [x] UI: secciÃ³n "Cobros de turno" en el detalle del booking (`BookingCharges.tsx`) + action `addBookingChargeAction` + query `getBookingCharges`
 
 ### 9. ðŸ‘¤ Nuevo mÃ³dulo "Jugadores" en el panel admin
 - **Antes**: No existÃ­a un mÃ³dulo para gestionar jugadores/clientes. El admin solo veÃ­a jugadores dentro de cada reserva o abonado, sin una vista centralizada.
@@ -582,47 +583,47 @@ El campo `court_formats` ya existe en la tabla `tenants` como denormalizaciÃ³n p
 - **Debate**: Â¿DeberÃ­amos bloquear la eliminaciÃ³n de la cuenta (ej: lanzando un `PlayerHasDebtError`) si tiene deudas, o permitimos que se elimine y el complejo asume la pÃ©rdida/lo maneja por fuera?
 ### 18. ?? Eliminar booking-reminder worker y template (dead code)
 - **Antes**: Existe un worker completo (ooking-reminder.worker.ts) + template de email (ooking-reminder.ts) + queue (QUEUE_BOOKING_REMINDER) + job type (BookingReminderJobData) que implementan un recordatorio 24hs antes al jugador.
-- **Ahora**: **Eliminarlo por completo.** En P9.2 se decidió explícitamente que el recordatorio 24hs NO se envía en v1 por costos de email masivo. Este código es dead code que puede activarse accidentalmente y generar gastos.
+- **Ahora**: **Eliminarlo por completo.** En P9.2 se decidiï¿½ explï¿½citamente que el recordatorio 24hs NO se envï¿½a en v1 por costos de email masivo. Este cï¿½digo es dead code que puede activarse accidentalmente y generar gastos.
 
-#### Impacto en código
-- [x] src/shared/jobs/definitions.ts — Eliminar queue, type y send options
-- [x] src/shared/jobs/workers/booking-reminder.worker.ts — Eliminar archivo
-- [x] src/modules/notifications/templates/booking-reminder.ts — Eliminar archivo
-- [x] src/modules/notifications/templates/index.ts — Eliminar imports y registros de ooking_reminder
-- [x] Bootstrap de workers — Eliminar egisterBookingReminderWorker
-- [x] Tests — Eliminar tests del booking-reminder
-- [x] CLAUDE.md — Aclarar que no hay recordatorio 24hs en v1
+#### Impacto en cï¿½digo
+- [x] src/shared/jobs/definitions.ts ï¿½ Eliminar queue, type y send options
+- [x] src/shared/jobs/workers/booking-reminder.worker.ts ï¿½ Eliminar archivo
+- [x] src/modules/notifications/templates/booking-reminder.ts ï¿½ Eliminar archivo
+- [x] src/modules/notifications/templates/index.ts ï¿½ Eliminar imports y registros de ooking_reminder
+- [x] Bootstrap de workers ï¿½ Eliminar egisterBookingReminderWorker
+- [x] Tests ï¿½ Eliminar tests del booking-reminder
+- [x] CLAUDE.md ï¿½ Aclarar que no hay recordatorio 24hs en v1
 
-### 19. ?? Arreglar constantes de expiración del timer
-- **Antes**: DEFAULT_EXPIRY_SECONDS está en 15 minutos. Existe IN_PROCESS_EXPIRY_SECONDS (48hs).
+### 19. ?? Arreglar constantes de expiraciï¿½n del timer
+- **Antes**: DEFAULT_EXPIRY_SECONDS estï¿½ en 15 minutos. Existe IN_PROCESS_EXPIRY_SECONDS (48hs).
 - **Ahora**: Reflejar las decisiones del bloque 2. Timer baja a 6 minutos. Se elimina el concepto de in_process timer extendido (MercadoPago online es inmediato o expira).
 
-#### Impacto en código
-- [x] src/shared/jobs/definitions.ts — DEFAULT_EXPIRY_SECONDS = 6 * 60, eliminar IN_PROCESS_EXPIRY_SECONDS, ajustar expireInHours
-- [x] src/shared/jobs/definitions.ts — Actualizar comentarios ("Default: 15 min..." ? "6 min")
-- [x] src/modules/bookings/booking.expiry.ts — Eliminar rama que usa IN_PROCESS_EXPIRY_SECONDS
-- [x] src/shared/jobs/schedule-expiry.ts — Verificar que use la constante correcta
-- [x] Tests de expiración — Actualizar fixtures y assertions de tiempo
+#### Impacto en cï¿½digo
+- [x] src/shared/jobs/definitions.ts ï¿½ DEFAULT_EXPIRY_SECONDS = 6 * 60, eliminar IN_PROCESS_EXPIRY_SECONDS, ajustar expireInHours
+- [x] src/shared/jobs/definitions.ts ï¿½ Actualizar comentarios ("Default: 15 min..." ? "6 min")
+- [x] src/modules/bookings/booking.expiry.ts ï¿½ Eliminar rama que usa IN_PROCESS_EXPIRY_SECONDS
+- [x] src/shared/jobs/schedule-expiry.ts ï¿½ Verificar que use la constante correcta
+- [x] Tests de expiraciï¿½n ï¿½ Actualizar fixtures y assertions de tiempo
 
 ### 20. ?? Agregar email templates para eventos de negocio nuevos (bloques 3 y 5)
-- **Antes**: No existen templates de email para: cancelación por culpa del complejo (cambio #3), generación de deuda por no-show (cambio #5).
+- **Antes**: No existen templates de email para: cancelaciï¿½n por culpa del complejo (cambio #3), generaciï¿½n de deuda por no-show (cambio #5).
 - **Ahora**: Agregar 2 templates obligatorios:
 
 #### Template 1: ooking_canceled_by_complex
 - **Destinatario**: Jugador
-- **Contexto**: El complejo canceló el turno manual o el admin del sistema lo canceló.
+- **Contexto**: El complejo cancelï¿½ el turno manual o el admin del sistema lo cancelï¿½.
 - **Data**: playerFirstName, courtName, date, 	imeStart, 	imeEnd, 	enantName, efundConfirmed (booleano).
-- **Contenido**: "Tu turno en X fue cancelado por el complejo". Si pagó seña, avisar que se procesó la devolución.
+- **Contenido**: "Tu turno en X fue cancelado por el complejo". Si pagï¿½ seï¿½a, avisar que se procesï¿½ la devoluciï¿½n.
 
 #### Template 2: 
 o_show_debt_created
 - **Destinatario**: Jugador
-- **Contexto**: Jugador hizo no-show, el sistema liquidó el saldo a favor a 0 y le generó una deuda por el restante.
+- **Contexto**: Jugador hizo no-show, el sistema liquidï¿½ el saldo a favor a 0 y le generï¿½ una deuda por el restante.
 - **Data**: playerFirstName, courtName, date, 	imeStart, 	imeEnd, 	enantName, debtAmount, 	enantAddress.
-- **Contenido**: "Tenés una deuda pendiente de X por el turno al que no asististe. Por favor acercate a X para regularizar tu situación y que te desbloqueen para seguir reservando."
+- **Contenido**: "Tenï¿½s una deuda pendiente de X por el turno al que no asististe. Por favor acercate a X para regularizar tu situaciï¿½n y que te desbloqueen para seguir reservando."
 
-#### Impacto en código
-- [x] src/modules/notifications/templates/booking-canceled-by-complex.ts — Crear template siguiendo el patrón exacto de los existentes
-- [x] src/modules/notifications/templates/no-show-debt-created.ts — Crear template
-- [x] src/modules/notifications/templates/index.ts — Registrar ambos templates
-- [x] Tests — Agregar snapshots o tests básicos de renderizado para los 2 nuevos templates
+#### Impacto en cï¿½digo
+- [x] src/modules/notifications/templates/booking-canceled-by-complex.ts ï¿½ Crear template siguiendo el patrï¿½n exacto de los existentes
+- [x] src/modules/notifications/templates/no-show-debt-created.ts ï¿½ Crear template
+- [x] src/modules/notifications/templates/index.ts ï¿½ Registrar ambos templates
+- [x] Tests ï¿½ Agregar snapshots o tests bï¿½sicos de renderizado para los 2 nuevos templates

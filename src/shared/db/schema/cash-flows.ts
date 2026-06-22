@@ -12,6 +12,7 @@ import {
 import { tenants } from './tenants'
 import { bookings } from './bookings'
 import { products } from './products'
+import { abonados } from './abonados'
 import { staffUsers } from './staff-users'
 import {
   cashflowCategoryEnum,
@@ -37,6 +38,8 @@ export const cashFlows = pgTable(
 
     bookingId: uuid('booking_id').references(() => bookings.id),
     productId: uuid('product_id').references(() => products.id),
+    // Tarea #4: carga de saldo a favor de un abonado (categoría abonado_payment).
+    abonadoId: uuid('abonado_id').references(() => abonados.id),
 
     registeredBy: uuid('registered_by')
       .notNull()
@@ -61,7 +64,7 @@ export const cashFlows = pgTable(
     ),
     typeCategoryValid: check(
       'chk_cashflow_type_category',
-      sql`(${table.type} = 'income' AND ${table.category} IN ('booking', 'product_sale', 'other'))
+      sql`(${table.type} = 'income' AND ${table.category} IN ('booking', 'product_sale', 'other', 'abonado_payment'))
         OR (${table.type} = 'adjustment' AND ${table.category} IN ('other', 'no_show_correction'))
         OR (${table.type} = 'expense' AND ${table.category} = 'operating_expense')`,
     ),
@@ -78,6 +81,10 @@ export const cashFlows = pgTable(
       table.tenantId,
       table.category,
     ),
+    // Tarea #4: respalda la suma de cargas de saldo por abonado (recompute de credit_balance).
+    abonadoIdx: index('idx_cash_flows_abonado')
+      .on(table.tenantId, table.abonadoId)
+      .where(sql`abonado_id IS NOT NULL`),
     // Fix #55: índice UNIQUE parcial que respalda el ON CONFLICT (client_idempotency_key)
     // en createCashFlow(). Debe coincidir con la migración 023_cashflow_idempotency_key.sql.
     idempotencyKeyIdx: uniqueIndex('idx_cash_flows_idempotency_key')

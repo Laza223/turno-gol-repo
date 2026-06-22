@@ -82,3 +82,72 @@ describe('BookingFormModal — loading recovery', () => {
     })
   })
 })
+
+describe('BookingFormModal — reason / block-type dropdown', () => {
+  function lastPayload() {
+    return createBookingAction.mock.calls.at(-1)?.[0] as Record<string, unknown>
+  }
+
+  it('defaults to "Reserva Telefónica": contact fields visible, spontaneous on submit', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    // Contact path: guest name/phone inputs are present by default.
+    expect(screen.queryByLabelText(/Nombre/i)).toBeTruthy()
+    expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
+    fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), { target: { value: '11-1234-5678' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(lastPayload()).toMatchObject({
+      type: 'spontaneous',
+      guestName: 'Juan',
+      guestPhone: '11-1234-5678',
+    })
+  })
+
+  it('"Mantenimiento" hides contact fields and submits a block with the reason as guestName', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
+
+    // Internal block: no free-text contact fields.
+    expect(screen.queryByLabelText(/Nombre/i)).toBeNull()
+    expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    const payload = lastPayload()
+    expect(payload).toMatchObject({ type: 'block', guestName: 'Mantenimiento' })
+    expect(payload.guestPhone).toBeUndefined()
+  })
+
+  it('"Escuelita de Fútbol" submits a block named after the reason', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'school' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(lastPayload()).toMatchObject({ type: 'block', guestName: 'Escuelita de Fútbol' })
+  })
+
+  it('"Otro" keeps spontaneous with optional contact (name only, no phone required)', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'other' } })
+    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Pepe' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    const payload = lastPayload()
+    expect(payload).toMatchObject({ type: 'spontaneous', guestName: 'Pepe' })
+    expect(payload.guestPhone).toBeUndefined()
+  })
+})

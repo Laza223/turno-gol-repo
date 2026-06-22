@@ -13,6 +13,8 @@ export type AbonadoRow = {
   timeEnd: string
   pricePerSession: number
   monthlyPrice: number
+  /** Saldo a favor del abonado en centavos de ARS (modelo ATC, Tarea #4). */
+  creditBalance: number
   startsOn: Date
   endsOn: Date | null
   status: AbonadoStatus

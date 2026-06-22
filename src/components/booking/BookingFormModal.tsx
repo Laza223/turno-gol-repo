@@ -23,6 +23,35 @@ type Props = {
   onSuccess: (booking: BookingRow) => void
 }
 
+// Motivo / Tipo de bloqueo del turno manual. Dos familias:
+//   * 'contact' → reserva real (type='spontaneous'): muestra datos de contacto
+//     opcionales y cotiza con el precio de la cancha.
+//   * 'internal' → bloqueo interno (type='block'): sin contacto, sin costo
+//     (el server fuerza price 0 para type='block') y `guestName` autocompletado
+//     con el motivo, que la grilla muestra como etiqueta del bloque.
+type ReasonValue = 'phone' | 'maintenance' | 'school' | 'teachers' | 'other'
+type Reason = {
+  value: ReasonValue
+  label: string
+  kind: 'contact' | 'internal'
+  /** Nombre autocompletado para bloqueos internos (se guarda en guest_name). */
+  autoName?: string
+}
+
+const REASONS: Reason[] = [
+  { value: 'phone', label: 'Reserva Telefónica', kind: 'contact' },
+  { value: 'maintenance', label: 'Mantenimiento', kind: 'internal', autoName: 'Mantenimiento' },
+  { value: 'school', label: 'Escuelita de Fútbol', kind: 'internal', autoName: 'Escuelita de Fútbol' },
+  { value: 'teachers', label: 'Profesores', kind: 'internal', autoName: 'Profesores' },
+  { value: 'other', label: 'Otro', kind: 'contact' },
+]
+
+const DEFAULT_REASON: ReasonValue = 'phone'
+
+function reasonFor(value: ReasonValue): Reason {
+  return REASONS.find((r) => r.value === value) ?? REASONS[0]!
+}
+
 function timeToMins(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
   return (h ?? 0) * 60 + (m ?? 0)
@@ -36,8 +65,8 @@ function minsToTime(mins: number): string {
 
 export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
   const [duration, setDuration] = useState<60 | 120>(slot.durationMins)
+  const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
   const [error, setError] = useState<string | null>(null)
-  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -49,6 +78,8 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
   }, [slot.courtId, slot.date, slot.timeStart, slot.durationMins])
 
   const timeEnd = minsToTime(timeToMins(slot.timeStart) + duration)
+  const selectedReason = reasonFor(reason)
+  const isInternalBlock = selectedReason.kind === 'internal'
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -57,23 +88,27 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
     const guestPhone = ((fd.get('guestPhone') as string) ?? '').trim()
     const notesInternal = ((fd.get('notesInternal') as string) ?? '').trim()
 
-    // Inline validation: a guest name requires a phone (server enforces too).
-    if (guestName && !guestPhone) {
-      setPhoneError('Ingresá un teléfono para el invitado.')
-      return
-    }
-    setPhoneError(null)
-
-    const data = {
+    const common = {
       courtId: slot.courtId,
       date: slot.date,
       timeStart: slot.timeStart,
       timeEnd,
       durationMins: duration,
-      type: 'spontaneous' as const,
-      ...(guestName ? { guestName, guestPhone } : {}),
       ...(notesInternal ? { notesInternal } : {}),
     }
+
+    // Bloqueo interno: type='block' (precio 0 forzado en el server), nombre
+    // autocompletado con el motivo, sin datos de contacto.
+    // Reserva real (telefónica / otro): type='spontaneous'; nombre y teléfono
+    // son opcionales e independientes (sin burocracia para el admin).
+    const data = isInternalBlock
+      ? { ...common, type: 'block' as const, guestName: selectedReason.autoName }
+      : {
+          ...common,
+          type: 'spontaneous' as const,
+          ...(guestName ? { guestName } : {}),
+          ...(guestPhone ? { guestPhone } : {}),
+        }
 
     setError(null)
     startTransition(async () => {
@@ -82,8 +117,9 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
         if (result.success) {
           formRef.current?.reset()
           setDuration(slot.durationMins)
+          setReason(DEFAULT_REASON)
           toast({
-            title: 'Reserva creada',
+            title: isInternalBlock ? 'Turno bloqueado' : 'Reserva creada',
             description: `${slot.courtName} · ${slot.timeStart}–${timeEnd}`,
             variant: 'success',
           })
@@ -104,8 +140,8 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
   function handleOpenChange(isOpen: boolean) {
     if (!isOpen) {
       setError(null)
-      setPhoneError(null)
       setDuration(slot.durationMins)
+      setReason(DEFAULT_REASON)
       onClose()
     }
   }
@@ -123,6 +159,33 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
           </Dialog.Description>
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-foreground mb-1"
+              >
+                Motivo / Tipo de Bloqueo
+              </label>
+              <select
+                id="reason"
+                name="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value as ReasonValue)}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {REASONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+              {isInternalBlock && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Bloqueo interno sin costo. Se agenda como “{selectedReason.autoName}”.
+                </p>
+              )}
+            </div>
+
             <div>
               <label id="duration-label" className="block text-sm font-medium text-foreground mb-1">Duración</label>
               <div role="group" aria-labelledby="duration-label" className="flex gap-2">
@@ -144,50 +207,46 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="guestName"
-                className="block text-sm font-medium text-foreground mb-1"
-              >
-                Nombre del invitado <span className="text-muted-foreground">(opcional)</span>
-              </label>
-              <input
-                id="guestName"
-                name="guestName"
-                type="text"
-                maxLength={200}
-                autoComplete="name"
-                className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Ej: Juan Pérez"
-              />
-            </div>
+            {!isInternalBlock && (
+              <>
+                <div>
+                  <label
+                    htmlFor="guestName"
+                    className="block text-sm font-medium text-foreground mb-1"
+                  >
+                    Nombre <span className="text-muted-foreground">(opcional)</span>
+                  </label>
+                  <input
+                    id="guestName"
+                    name="guestName"
+                    type="text"
+                    maxLength={200}
+                    autoComplete="name"
+                    className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Ej: Juan Pérez"
+                  />
+                </div>
 
-            <div>
-              <label
-                htmlFor="guestPhone"
-                className="block text-sm font-medium text-foreground mb-1"
-              >
-                Teléfono <span className="text-muted-foreground">(requerido si hay nombre)</span>
-              </label>
-              <input
-                id="guestPhone"
-                name="guestPhone"
-                type="tel"
-                maxLength={50}
-                inputMode="tel"
-                autoComplete="tel"
-                aria-invalid={!!phoneError}
-                className={`w-full rounded-md border px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  phoneError ? 'border-red-400' : 'border-slate-200'
-                }`}
-                placeholder="Ej: 11-1234-5678"
-              />
-              {phoneError && (
-                <p role="alert" className="mt-1 text-xs text-red-600">
-                  {phoneError}
-                </p>
-              )}
-            </div>
+                <div>
+                  <label
+                    htmlFor="guestPhone"
+                    className="block text-sm font-medium text-foreground mb-1"
+                  >
+                    Teléfono <span className="text-muted-foreground">(opcional)</span>
+                  </label>
+                  <input
+                    id="guestPhone"
+                    name="guestPhone"
+                    type="tel"
+                    maxLength={50}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Ej: 11-1234-5678"
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label

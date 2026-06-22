@@ -43,7 +43,7 @@
   - [x] `canceled_reason` incluye el tipo de cancelación (prefijo) + audit metadata `cancellationType`/`inPolicy`
   - [x] Lógica: `decideAdminRefund` (complejo→reembolso forzado; jugador→política horaria). API `cancelBookingAction`/route reciben `cancellation_type` en vez de `should_refund`.
 
-### 4. 📅 Sistema de cobro de Abonados: copiar modelo ATC ("Saldo a Favor")
+### 4. 📅 Sistema de cobro de Abonados: copiar modelo ATC ("Saldo a Favor") — ✅ HECHO
 - **Antes**: No había forma de trackear si un abonado pagó o no. El `CashFlow` no tenía relación con el `Abonado`. El admin registraba plata en la caja pero no sabía qué abonado pagó qué mes.
 - **Ahora**: Sistema de **saldo a favor por abonado**, copiando el modelo probado de ATC Sports.
 
@@ -96,12 +96,17 @@
 - La generación rolling de instancias (8 semanas + 4) → no cambia
 - Pausa/cancelación del abonado → no cambia
 
-#### Impacto en docs
-- [ ] `docs/spec/doc6_entidades.md` — Abonado: agregar `credit_balance`, CashFlow: agregar `abonado_id` y categoría
-- [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 5: agregar sub-flujo de cobro semanal con "Mantener saldo"
-- [ ] `docs/spec/doc13_database_schema.md` — ALTER TABLE abonados, cash_flows
-- [ ] `CLAUDE.md` — Mencionar el sistema de saldo a favor
-- [ ] UI: sección "Cobros de turno" en el detalle de booking type='fixed'
+#### Impacto en docs/código (migración 033)
+- [x] `src/shared/db/migrations/033_abonado_credit_balance.sql` — `abonados.credit_balance`, `cash_flows.abonado_id` + categoría `abonado_payment`, `bookings.credit_applied`
+- [x] Schema Drizzle + tipos (`abonados.ts`, `cash-flows.ts`, `bookings.ts`, `enums.ts`, `abonado.types.ts`, `cashflow.types.ts`)
+- [x] `abonado.service.ts` — `loadAbonadoCredit` (carga → CashFlow `abonado_payment`) + `setBookingAbonadoCredit` (descuento/reversión "Mantener saldo", recompute idempotente)
+- [x] `docs/spec/doc6_entidades.md` — Abonado: `credit_balance` + subsección saldo; CashFlow: `abonado_id` + categoría; Booking: `credit_applied`
+- [x] `docs/spec/doc7_flujos_e2e.md` — Flujo 5: sub-flujo de cobro semanal con "Mantener saldo"
+- [x] `docs/spec/doc13_database_schema.md` — ALTER TABLE abonados, cash_flows, bookings + enum
+- [x] `docs/spec/doc8_user_stories.md` — US-ABO-005
+- [x] `CLAUDE.md` — sistema de saldo a favor
+- [x] UI: sección "Saldo a favor del abonado" con checkbox "Mantener saldo" en el detalle del booking `fixed` (`AbonadoCharges.tsx` + `toggleAbonadoCreditAction`)
+- [x] Tests de integración: `tests/integration/abonado-credit-debt.test.ts` (carga, idempotencia, descuento, reversión, saldo insuficiente)
 
 ### 5. 🚫 No-show: eliminar ban temporal → bloqueo por deuda (modelo ATC)
 - **Antes**: El no-show podía configurarse como `ban_days` (ban temporal de X días) o `deposit_capture` (retener seña) o `none`. El admin tenía que decidir cuántos días de ban, un número arbitrario.
@@ -231,7 +236,7 @@ Precio del turno:        $55.000
 - [x] `docs/spec/doc6_entidades.md` — Booking: documentar atributos derivados de cobro (`amount_paid`/`amount_pending`)
 - [x] UI: sección "Cobros de turno" en el detalle del booking (`BookingCharges.tsx`) + action `addBookingChargeAction` + query `getBookingCharges`
 
-### 9. 👤 Nuevo módulo "Jugadores" en el panel admin
+### 9. 👤 Nuevo módulo "Jugadores" en el panel admin — ✅ HECHO
 - **Antes**: No existía un módulo para gestionar jugadores/clientes. El admin solo veía jugadores dentro de cada reserva o abonado, sin una vista centralizada.
 - **Ahora**: Módulo **"Jugadores"** en el panel admin con búsqueda, ficha de jugador, historial, deudas y abonados.
 
@@ -256,39 +261,32 @@ Sin este módulo, el admin no puede:
   - `Abonado` WHERE `player_id` (abonados activos)
   - `CashFlow` WHERE `player_id` o vinculado a booking del jugador (cobros)
 
-#### Impacto en docs
-- [ ] `docs/business/TurnoGol_Plan_de_Negocio.md` — Sección 3.2: agregar módulo "Jugadores"
-- [ ] `docs/spec/doc8_user_stories.md` — Agregar stories de gestión de jugadores
-- [ ] `docs/spec/doc7_flujos_e2e.md` — Nuevo flujo: "Gestión de jugador y cobro de deuda"
-- [ ] UI: diseñar pantalla de búsqueda y ficha de jugador
+#### Impacto en docs/código
+- [x] UI: módulo `/jugadores` (listado con búsqueda + ficha individual): `page.tsx`, `[playerId]/page.tsx`, `DebtPayment.tsx`, `AbonadoCreditLoader.tsx`, `queries.ts`, `actions.ts`
+- [x] `registerDebtPayment` (PTR) — cobra deuda: reduce `balance` + CashFlow income, idempotente, rechaza sobrepago
+- [x] Nav admin: ítem "Jugadores" (`admin-sidebar.tsx`)
+- [x] `docs/spec/doc8_user_stories.md` — US-JUG-ADM-001
+- [x] `docs/spec/doc7_flujos_e2e.md` — Flujo 5B: "Gestión de jugador y cobro de deuda"
+- [x] `CLAUDE.md` — módulo Jugadores
+- [x] Tests de integración: cobro de deuda (reduce balance, idempotencia, sobrepago, sin deuda)
+- [ ] `docs/business/TurnoGol_Plan_de_Negocio.md` — Sección 3.2 (doc de negocio, no spec; pendiente menor)
 
-### 10. 👻 Eliminar reservas "fantasma": obligar creación de perfil de Jugador
-- **Antes**: En reservas manuales, el admin podía usar los campos sueltos `guest_name` y `guest_phone` sin vincular a un `Player`. Si el jugador faltaba, no se le podía generar deuda ni penalizar.
-- **Ahora**: Se eliminan `guest_name` y `guest_phone`. **Toda reserva debe tener un `player_id`**.
+### 10. 👻 ~~Eliminar reservas "fantasma": obligar creación de perfil de Jugador~~ — ❌ CANCELADA (decisión de producto)
+- **Estado**: **CANCELADA** el 2026-06-21. Se descarta forzar `player_id` en reservas manuales.
+- **Por qué se canceló**: El admin necesita **libertad para agendar rápido** (reserva telefónica, mantenimiento, escuelita, profes) sin la burocracia de buscar/crear un perfil de jugador en cada bloqueo. Obligar un `Player` por cada turno manual frena la operación del mostrador, que es justo donde se necesita velocidad. La rigidez del flujo "fantasma → perfil obligatorio" pesa más que el beneficio de trackear a un cliente que muchas veces es un bloqueo interno (no una persona).
+- **Qué se hace en su lugar**: Se mantienen `guest_name` y `guest_phone` en `bookings` como **datos de contacto opcionales**, y se mejora la UX del modal de reserva manual con un dropdown guiado de "Motivo / Tipo de Bloqueo" (Reserva Telefónica, Mantenimiento, Escuelita de Fútbol, Profesores, Otro). Bloqueos internos → `type='block'` sin costo; reservas reales → `type='spontaneous'` con contacto opcional.
 
-#### Cómo funciona
-Al crear una reserva manual en la grilla:
-1. El admin **busca** al jugador por nombre o teléfono en la base del complejo
-2. Si **existe** → lo selecciona
-3. Si **no existe** → crea un perfil rápido (solo nombre + teléfono, sin email ni contraseña)
-4. Esto crea un registro real en la tabla `players` y vincula la reserva
+#### Decisión vigente (reemplaza la propuesta original)
+- **NO** se eliminan `guest_name` / `guest_phone` de `bookings`.
+- **NO** se fuerza `player_id` (`bookings.player_id` sigue siendo nullable).
+- **NO** se crean registros en `players` automáticamente para turnos manuales.
+- Trackear deuda/no-show por persona sigue siendo posible cuando el admin **sí** elige vincular un `player_id` (camino opcional, no obligatorio).
 
-#### Justificación
-- Sin `player_id`, el sistema de deudas y penalizaciones por no-show (cambio #5) no funciona.
-- Permite que el jugador aparezca en el nuevo módulo "Jugadores" (cambio #9).
-- Permite trackear historial y tasa de asistencia de todos los clientes, no solo los digitales.
-- Si el jugador luego se registra online usando ese mismo número de teléfono/email, el sistema puede unificar su cuenta y mantener su historial intacto.
-
-#### Impacto en modelo de datos
-- Eliminar `guest_name` y `guest_phone` de la tabla `bookings`
-- Asegurar que `player_id` en `bookings` sea **obligatorio** (NOT NULL)
-- Modificar constraints de `players` si es necesario (ej. permitir email nulo si el login es por teléfono, o generar un pseudo-email, aunque el modelo password-based ya lo contempla). *Nota: a revisar junto con el refactor de Auth*.
-
-#### Impacto en docs
-- [ ] `docs/spec/doc6_entidades.md` — Bookings: remover `guest_name`/`guest_phone` y forzar `player_id`. Players: clarificar creación "lite" por admin.
-- [ ] `docs/decisions/DECISIONES_SISTEMA.md` — D16: revertir decisión (no más guest_name).
-- [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 3 (Reserva manual): actualizar paso de selección/creación de jugador.
-- [ ] `CLAUDE.md` — Eliminar mención de campos guest.
+#### Propuesta original (archivada, NO implementar)
+- ~~Eliminar `guest_name` y `guest_phone` de la tabla `bookings`~~
+- ~~Asegurar que `player_id` en `bookings` sea **obligatorio** (NOT NULL)~~
+- ~~Flujo de búsqueda/creación de perfil "lite" obligatorio en cada reserva manual~~
+- *Razonamiento original (sin vigencia): sin `player_id` no se puede generar deuda ni penalizar, y el jugador no aparecería en el módulo "Jugadores" (#9). Se acepta esa limitación a cambio de flexibilidad operativa.*
 
 ### 11. 👤 Roles de staff: adoptar modelo ATC (manager permisivo, eliminar PIN)
 - **Antes**: 2 roles (`admin` y `manager`) donde el `manager` estaba muy restringido (solo grilla/reservas/caja). Además, un sistema de **PIN** protegía "zonas sensibles" (reportes, métricas, canchas, settings, staff, facturación) como segunda capa. El resultado: doble complejidad (roles + PIN) sin beneficio claro — si el manager tenía el PIN, los roles no servían; si no lo tenía, no podía funcionar solo.

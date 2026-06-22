@@ -18,7 +18,7 @@ import type {
 } from './cashflow.types'
 
 const VALID_COMBOS: Record<CashFlowType, CashFlowCategory[]> = {
-  income: ['booking', 'product_sale', 'other'],
+  income: ['booking', 'product_sale', 'other', 'abonado_payment'],
   adjustment: ['other', 'no_show_correction'],
   expense: ['operating_expense'],
 }
@@ -44,9 +44,29 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
     description: r.description,
     bookingId: r.bookingId ?? null,
     productId: r.productId ?? null,
+    abonadoId: r.abonadoId ?? null,
     registeredBy: r.registeredBy,
     occurredAt: r.occurredAt,
     createdAt: r.createdAt,
+  }
+}
+
+/**
+ * Guard de caja cerrada: no se pueden registrar movimientos en un día ya
+ * cerrado (DailyCashClose existe). Extraído para reutilizarlo desde flujos que
+ * insertan cash_flows fuera de createCashFlow (p. ej. cobro de deuda).
+ */
+export async function assertDayOpen(
+  tenantId: string,
+  occurredAt: Date,
+  tx: DbTx,
+): Promise<void> {
+  const artDate = artDateOf(occurredAt)
+  const closeCheck = await tx.execute(
+    sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${artDate}::date LIMIT 1`,
+  )
+  if ((closeCheck as unknown[]).length > 0) {
+    throw new DayAlreadyClosedError(artDate)
   }
 }
 
@@ -59,14 +79,8 @@ export async function createCashFlow(
   validateCashFlowCombo(input.type, input.category)
 
   const occurredAt = input.occurredAt ?? new Date()
-  const artDate = artDateOf(occurredAt)
 
-  const closeCheck = await tx.execute(
-    sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${artDate}::date LIMIT 1`,
-  )
-  if ((closeCheck as unknown[]).length > 0) {
-    throw new DayAlreadyClosedError(artDate)
-  }
+  await assertDayOpen(tenantId, occurredAt, tx)
 
   // Fix #55: si el cliente envía una idempotency key, usar ON CONFLICT DO NOTHING
   // para ignorar el segundo insert en caso de doble-submit o reintento de red.
@@ -74,11 +88,11 @@ export async function createCashFlow(
     const result = await tx.execute(sql`
       INSERT INTO cash_flows (
         tenant_id, type, category, amount, method, description,
-        booking_id, product_id, registered_by, occurred_at, client_idempotency_key
+        booking_id, product_id, abonado_id, registered_by, occurred_at, client_idempotency_key
       ) VALUES (
         ${tenantId}, ${input.type}::cashflow_type, ${input.category}::cashflow_category,
         ${input.amount}, ${input.method}::payment_method, ${input.description},
-        ${input.bookingId ?? null}, ${input.productId ?? null},
+        ${input.bookingId ?? null}, ${input.productId ?? null}, ${input.abonadoId ?? null},
         ${staffUserId}, ${occurredAt.toISOString()},
         ${input.clientIdempotencyKey}
       )
@@ -108,6 +122,7 @@ export async function createCashFlow(
       description: input.description,
       bookingId: input.bookingId ?? null,
       productId: input.productId ?? null,
+      abonadoId: input.abonadoId ?? null,
       registeredBy: staffUserId,
       occurredAt,
     })
@@ -137,6 +152,7 @@ export async function getCashFlows(
     description: string
     booking_id: string | null
     product_id: string | null
+    abonado_id: string | null
     registered_by: string
     occurred_at: Date
     created_at: Date
@@ -150,6 +166,7 @@ export async function getCashFlows(
     description: r.description,
     bookingId: r.booking_id,
     productId: r.product_id,
+    abonadoId: r.abonado_id,
     registeredBy: r.registered_by,
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),

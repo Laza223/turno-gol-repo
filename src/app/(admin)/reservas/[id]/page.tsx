@@ -8,6 +8,7 @@ import { capitalizeFirst } from '@/lib/format'
 import { getBookingDetail, getBookingCharges } from '../queries'
 import BookingActions from './BookingActions'
 import BookingCharges from './BookingCharges'
+import AbonadoCharges from './AbonadoCharges'
 
 const CHARGEABLE_STATUSES = new Set(['confirmed', 'completed', 'no_show'])
 
@@ -84,6 +85,16 @@ export default async function ReservaDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {booking.type === 'fixed' && booking.abonadoId && (
+        <AbonadoCharges
+          bookingId={booking.id}
+          priceSnapshot={booking.priceSnapshot}
+          creditApplied={booking.creditApplied}
+          abonadoCreditBalance={booking.abonadoCreditBalance ?? 0}
+          status={booking.status}
+        />
+      )}
 
       {charges && (
         <BookingCharges

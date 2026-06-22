@@ -104,6 +104,8 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - Anticipación de reserva: default 6 días (como ATC).
 - Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles + precio por duración.
 - NO hay billetera virtual del jugador. Reembolsos/no-shows se resuelven entre jugador y complejo.
+- **Saldo a favor de abonados (modelo ATC, cambio #4)**: `abonados.credit_balance` (centavos, CHECK >= 0). Se carga con un `CashFlow` `income`/`abonado_payment` + `abonado_id` (entra a caja) y se consume al destildar "Mantener saldo" en el booking `fixed` (setea `bookings.credit_applied`; NO genera CashFlow). Invariante recalculado desde fuentes: `credit_balance = Σ(abonado_payment) − Σ(credit_applied)`. El saldo vive en el abonado (no se transfiere). Distinto de `player_tenant_relationships.balance` (deuda por no-show).
+- **Módulo Jugadores** (`/jugadores`, cambio #9): vista admin de jugadores vinculados al complejo (vía `player_tenant_relationships`, NUNCA guests). Ficha = stats + Deudas (cobrar `balance` → reduce PTR.balance + CashFlow) + Abonados (cargar saldo) + historial. Protegido con `requireOperatorStaff()` (admin + manager).
 - Gestión de caja completa (decisión actualizada): incluye stock/cantina (productos con precio, stock y alertas; ventas → CashFlow categoría `product_sale`) y control de gastos (`cashflow_type` = `expense`, categoría `operating_expense`). `cashflow_type`: `income` | `adjustment` | `expense`. Más cierre de caja diario.
 - Realtime Supabase: solo para admin (grilla). Jugador NO tiene Realtime en v1 (polling/refresh).
 - Push notifications: Web Push API al admin cuando llega reserva online (sonido fijo, no configurable).

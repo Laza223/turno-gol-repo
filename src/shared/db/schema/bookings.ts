@@ -56,6 +56,10 @@ export const bookings = pgTable(
     paymentMethod: paymentMethodEnum('payment_method'),
     paymentId: uuid('payment_id'),
 
+    // Centavos descontados del saldo a favor del abonado para esta instancia del
+    // turno fijo (Tarea #4 "Mantener saldo"). NO genera CashFlow. > 0 = ya descontado.
+    creditApplied: integer('credit_applied').notNull().default(0),
+
     notesInternal: text('notes_internal'),
     notesPlayer: text('notes_player'),
 
@@ -82,6 +86,10 @@ export const bookings = pgTable(
     depositNonNegative: check(
       'chk_deposit_non_negative',
       sql`${table.depositAmount} >= 0`,
+    ),
+    creditAppliedNonNegative: check(
+      'chk_booking_credit_non_negative',
+      sql`${table.creditApplied} >= 0`,
     ),
     paymentConsistency: check(
       'chk_booking_payment_consistency',

@@ -45,14 +45,16 @@ export const createManualBookingSchema = z
   .refine(
     (v) => {
       if (v.type === 'block') return true
-      // spontaneous: either playerId, or both guest fields, or neither (admin reservation)
+      // Reserva manual flexible: el admin puede agendar un jugador registrado
+      // (playerId) O dejar datos de invitado sueltos (guestName y/o guestPhone,
+      // ambos opcionales e independientes) O ninguno. Lo único inválido es
+      // mezclar un jugador registrado con datos de invitado.
       if (v.playerId) return !v.guestName && !v.guestPhone
-      if (v.guestName || v.guestPhone) return Boolean(v.guestName && v.guestPhone)
       return true
     },
     {
       message:
-        'Reserva manual: usar playerId, o (guestName + guestPhone), o ninguno. No mezclar.',
+        'Reserva manual: no combinar un jugador registrado con datos de invitado.',
     },
   )
 

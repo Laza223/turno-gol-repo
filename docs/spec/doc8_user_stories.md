@@ -40,7 +40,7 @@ Módulos:
 | Onboarding | ONB | US-ONB-001 a 005 | P0 |
 | Reservas | RES | US-RES-001 a 007 | P0 |
 | Cancelaciones | CAN | US-CAN-001 a 004 | P0 |
-| Abonados | ABO | US-ABO-001 a 004 | P1 |
+| Abonados | ABO | US-ABO-001 a 005 + US-JUG-ADM-001 | P1 |
 | Caja y Pagos | CAJ | US-CAJ-001 a 005 | P0-P1 |
 | Administración | ADM | US-ADM-001 a 005 | P0-P1 |
 | App del Jugador | JUG | US-JUG-001 a 004 | P0-P3 |
@@ -835,6 +835,73 @@ para que las instancias futuras se eliminen y el slot quede libre.
 - NO incluye cancelación por parte del jugador (solo el admin)
 
 **Dependencias**: US-ABO-001
+**Bloquea**: Ninguna
+
+---
+
+## US-ABO-005: Saldo a Favor del Abonado (cambio #4)
+
+**Epic**: Abonados
+**Persona**: Marcelo (Dueño) / Rodrigo (Encargado)
+**Prioridad**: P1 — Importante
+**Flujo relacionado**: Doc 7, Flujo 5 ("Saldo a favor")
+
+**Historia**:
+Como Marcelo,
+cuando el grupo de un abonado me paga sesiones por adelantado,
+quiero cargar ese dinero como "saldo a favor" del abonado y descontarlo manualmente semana a semana,
+para llevar el control de cuánto pagó cada abonado sin doble-contar la plata en la caja.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado que el grupo paga $40.000 en efectivo, cuando cargo saldo en el abonado, entonces se genera un CashFlow `income`/`abonado_payment` (entra a la caja del día) y `credit_balance` sube $40.000.
+- [ ] Dado que el grupo viene a jugar, cuando abro la instancia del turno fijo y **destildo** "Mantener saldo", entonces se descuenta `price_snapshot` del `credit_balance` y NO se genera un CashFlow nuevo.
+- [ ] Dado que dejo "Mantener saldo" tildado, entonces el saldo no se toca.
+- [ ] Dado que descontué por error, cuando **re-tildo** "Mantener saldo" (instancia aún confirmada), entonces el saldo se devuelve.
+
+❌ Edge Cases
+- [ ] Si el `credit_balance` no alcanza para descontar la sesión → error "El saldo no alcanza".
+- [ ] Idempotencia: doble-submit con la misma clave no duplica la carga ni dobla el saldo.
+- [ ] El saldo es por abonado: un jugador con 2 abonados tiene 2 saldos independientes (no se transfieren).
+
+🚫 Out of Scope
+- NO incluye cobro automático vía MercadoPago (v1 es 100% manual).
+- NO incluye descuento automático al completar (siempre manual, semana a semana).
+
+**Dependencias**: US-ABO-001
+**Bloquea**: US-JUG-ADM-001
+
+---
+
+## US-JUG-ADM-001: Módulo Jugadores y Cobro de Deuda (cambio #9)
+
+**Epic**: Abonados / Administración
+**Persona**: Marcelo (Dueño) / Rodrigo (Encargado)
+**Prioridad**: P1 — Importante
+**Flujo relacionado**: Doc 7, Flujo 5B
+
+**Historia**:
+Como Marcelo,
+quiero un módulo central "Jugadores" con la ficha de cada cliente vinculado al complejo,
+para ver su historial, cobrar deudas de no-show y cargar saldo de sus abonos en un solo lugar.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado que entro a `/jugadores`, entonces veo solo jugadores vinculados al complejo (no invitados telefónicos), con buscador por nombre/teléfono/email y badge rojo si tienen deuda.
+- [ ] Dado que abro una ficha, entonces veo stats (reservas, ausencias, tasa), deudas, abonados con saldo, e historial de reservas.
+- [ ] Dado que el jugador tiene deuda, cuando registro un pago (≤ deuda), entonces se genera un CashFlow income y `player_tenant_relationships.balance` baja; al llegar a 0 puede volver a reservar online.
+
+❌ Edge Cases
+- [ ] Un pago mayor a la deuda se rechaza ("El monto supera la deuda").
+- [ ] Si el jugador no tiene deuda, no se ofrece registrar pago.
+- [ ] El módulo está protegido con `requireOperatorStaff()` (admin + manager).
+
+🚫 Out of Scope
+- NO crea perfiles automáticamente para invitados telefónicos (decisión #10 cancelada).
+
+**Dependencias**: US-ABO-005, cambio #5 (deuda por no-show)
 **Bloquea**: Ninguna
 
 ---

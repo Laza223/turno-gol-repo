@@ -872,7 +872,35 @@ Job diario (cron: 03:00 ART):
 4. **Un feriado cae en el día del abonado**: No se genera instancia para ese día. El admin puede agregarlo manualmente a otro día si quiere.
 5. **Se crea un abonado y después se crea una reserva individual en un slot del abonado**: ERROR — el slot ya está ocupado por la instancia del abonado. La reserva individual no se puede crear.
 6. **El responsable del abonado no tiene celular registrado**: Se guarda `contact_phone` en el abonado. No necesita ser un Player registrado.
-7. **El abonado quiere pagar el mes por adelantado en efectivo**: El admin registra el pago manualmente en CashFlow. No hay relación directa con el Abonado (el pago es a nivel de movimiento de caja, no vinculado a cada instancia).
+7. **El abonado quiere pagar el mes por adelantado en efectivo**: El admin carga saldo a favor en el abonado (ver "Saldo a favor" abajo). Genera un CashFlow `income`/`abonado_payment` con `abonado_id` y acredita `credit_balance`.
+
+### Saldo a favor (cobro de abonado, cambio #4)
+
+Modelo ATC adaptado. El saldo vive en el **abonado** (`abonados.credit_balance`), no en el jugador.
+
+```
+CARGA DE SALDO (cuando el complejo recibe la plata):
+  Ficha del Jugador → Abonados → "+ Cargar saldo" (monto + medio de pago)
+    ├── CashFlow income / abonado_payment con abonado_id → entra a la caja del día
+    └── credit_balance += monto   (recalculado desde fuentes → idempotente)
+
+DESCUENTO SEMANAL (manual, cuando el grupo viene a jugar):
+  Detalle del booking fixed (instancia confirmada) → sección "Saldo a favor del abonado"
+    ├── Checkbox "Mantener saldo" (tildado por defecto, como ATC)
+    ├── DESTILDAR → descuenta price_snapshot del credit_balance
+    │     ├── setea bookings.credit_applied = price_snapshot
+    │     └── NO genera CashFlow (la plata ya entró al cargar el saldo) → evita doble conteo
+    ├── Re-TILDAR → devuelve el saldo (credit_applied → 0). Solo mientras la instancia está confirmed.
+    └── Si el saldo no alcanza (credit_balance < price_snapshot) → ❌ "El saldo no alcanza"
+
+INVARIANTE: credit_balance = Σ(abonado_payment) − Σ(credit_applied). CHECK >= 0.
+```
+
+| Caso (semana a semana) | Acción del admin |
+|---|---|
+| "Hoy pago en efectivo, no descuentes" | Mantener saldo (tildado) + registrar cobro nuevo si corresponde |
+| "Descontá del saldo que cargué" | Destildar "Mantener saldo" |
+| "Vino el primo pero descontá igual" | Destildar "Mantener saldo" |
 
 ### Out of scope
 
@@ -883,6 +911,47 @@ Job diario (cron: 03:00 ART):
 - ❌ Swap de turno entre abonados (coordinación manual entre el admin y los grupos)
 - ❌ Registro automático de asistencia del abonado (se usa el flujo normal de completar/no-show)
 - ❌ Cobro automático de abonados vía MercadoPago (v1 es 100% manual)
+
+---
+
+## FLUJO 5B: Gestión de Jugador y Cobro de Deuda (cambio #9)
+
+- **URL**: Panel admin → Jugadores (`/jugadores`)
+- **Actor**: admin o manager (`requireOperatorStaff()`)
+- **Alcance**: solo jugadores **vinculados al complejo** (`player_tenant_relationships`). Los invitados telefónicos (`guest_name`) NO aparecen (decisión #10 cancelada: no se fuerza creación de perfiles).
+
+```
+LISTADO (/jugadores)
+  ├── Búsqueda por nombre / teléfono / email
+  └── Orden: con deuda primero → última reserva → nombre. Badge rojo si balance > 0.
+
+FICHA (/jugadores/{playerId})
+  ├── Datos de contacto + "cliente desde" (first_seen_at)
+  ├── Stats: reservas totales, completadas, ausencias, tasa de ausencia
+  ├── Deudas: muestra player_tenant_relationships.balance
+  │     └── "+ Registrar pago" (monto ≤ deuda + medio de pago)
+  │           ├── CashFlow income (entra a caja)
+  │           ├── balance -= monto (GREATEST(0, …); idempotente por idempotency key)
+  │           └── balance llega a 0 → el jugador puede reservar online de nuevo (cambio #5)
+  ├── Abonados: abonos del jugador con su saldo a favor → "+ Cargar saldo" (ver Flujo 5)
+  └── Historial: últimas reservas con estado
+```
+
+### Decisiones del negocio (if/else)
+
+| Condición | Resultado |
+|---|---|
+| Pago > deuda pendiente | ❌ Rechazado ("El monto supera la deuda"). La deuda no es una billetera. |
+| Jugador sin deuda (balance = 0) | No se muestra el formulario de pago ("Sin deuda"). |
+| Caja del día ya cerrada | ❌ El cobro se rechaza: registrarlo como ajuste en Caja. |
+| Jugador no vinculado al complejo | 404 (no aparece en el módulo). |
+
+### Efectos secundarios
+
+| Evento | Efecto |
+|---|---|
+| Pago de deuda registrado | 📊 AuditLog: `player.debt_payment` · CashFlow income en caja · balance reducido |
+| Carga de saldo de abonado | 📊 AuditLog: `abonado.credit_loaded` · CashFlow `abonado_payment` |
 
 ---
 

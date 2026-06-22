@@ -208,6 +208,7 @@ deposit_amount    integer       Monto de seña cobrada en centavos (0 si no se e
 deposit_status    enum          'not_required' | 'pending' | 'paid' | 'refunded' | 'captured'
 payment_method    enum?         'mercadopago' | 'cash' | 'transfer' | 'other'
 payment_id        UUID?         FK → payments (el cobro de la seña, si es MP)
+credit_applied    integer       Centavos descontados del saldo a favor del abonado para ESTA instancia (cambio #4, "Mantener saldo"). Default 0. > 0 = ya descontado. NO genera CashFlow. CHECK >= 0.
 notes_internal    text?         Notas visibles solo para el staff
 notes_player      text?         Notas visibles para el jugador
 guest_name        text?         Nombre del jugador si player_id IS NULL (reserva manual sin registrar)
@@ -348,6 +349,7 @@ day_of_week       integer       0=Domingo, 1=Lunes, ..., 6=Sábado
 time_start        time          Hora de inicio semanal
 time_end          time          Hora de fin semanal
 price_per_session integer       Precio por sesión en centavos (puede diferir del precio de lista)
+credit_balance    integer       Saldo a favor del abonado en centavos ARS (modelo ATC, cambio #4). Default 0. Se carga vía CashFlow abonado_payment y se consume al descontar sesiones (booking.credit_applied). NO se transfiere entre abonados del mismo jugador. CHECK >= 0.
 starts_on         date          Primera fecha del turno fijo
 ends_on           date?         Última fecha (null = indefinido)
 status            enum          'active' | 'paused' | 'canceled'
@@ -400,6 +402,16 @@ PAUSED ──── admin cancela ────── ┘
 2. **Si se pausa el abono, las instancias de booking futuras se eliminan** (el slot queda libre).
 3. **Si se cancela, las instancias futuras se eliminan** (las pasadas permanecen en historial).
 4. **El `price_per_session` puede diferir del precio de lista** — es un precio acordado privadamente.
+
+### Saldo a favor (modelo ATC, cambio #4)
+
+El abonado lleva un `credit_balance` (centavos ARS) que copia el modelo de ATC Sports:
+
+- **Carga de saldo**: el complejo recibe plata por adelantado (ej: 4 sesiones en efectivo) → desde la ficha del Jugador toca "Cargar saldo" → se genera un `CashFlow` `income` / `abonado_payment` con `abonado_id` (entra a la caja del día) y se acredita el `credit_balance`.
+- **Descuento semanal MANUAL ("Mantener saldo")**: en el detalle del booking `fixed` (instancia confirmada) hay un checkbox **"Mantener saldo"** (tildado por defecto). Al **destildarlo**, se descuenta `price_snapshot` del `credit_balance` y se marca `booking.credit_applied` para esa instancia. **NO genera un CashFlow nuevo** (la plata ya entró al cargar el saldo): evita doble contabilización. Re-tildar devuelve el saldo (solo mientras la instancia está `confirmed`).
+- **Invariante**: `credit_balance = Σ(cash_flows.amount WHERE abonado_id, category='abonado_payment') − Σ(bookings.credit_applied WHERE abonado_id)`. El recálculo desde estas fuentes hace la operación idempotente ante reintentos. CHECK `credit_balance >= 0`.
+- El saldo vive en el **abonado**, no en el jugador: un jugador con 2 abonados tiene 2 saldos independientes que no se transfieren.
+- Separado de `player_tenant_relationships.balance` (deuda por no-show, cambio #5).
 
 ---
 
@@ -540,27 +552,30 @@ created_at        timestamp     UTC
 ## ENTIDAD 9: CashFlow (Movimiento de Caja)
 
 ### Definición
-Representa un ingreso de dinero en la caja del complejo. Solo ingresos y ajustes (no gastos).
+Representa un movimiento de caja del complejo: ingresos, ajustes y gastos.
 
 ### Atributos propios
 ```
 id                UUID          PK
 tenant_id         UUID          FK → tenants
-type              enum          'income' | 'adjustment'
-category          enum          'booking' | 'product_sale' | 'other' | 'no_show_correction'
+type              enum          'income' | 'adjustment' | 'expense'   (migración 025)
+category          enum          'booking' | 'product_sale' | 'other' | 'no_show_correction' | 'operating_expense' (025) | 'abonado_payment' (033)
 amount            integer       En centavos de ARS
 method            enum          'cash' | 'transfer' | 'mercadopago' | 'other'
 description       string        Descripción del movimiento
-booking_id        UUID?         FK → bookings (si está relacionado con una reserva)
+booking_id        UUID?         FK → bookings (cobro de turno vinculado, cambio #8)
 product_id        UUID?         FK → products (si es venta de producto)
+abonado_id        UUID?         FK → abonados (carga de saldo a favor, category='abonado_payment', cambio #4)
 registered_by     UUID          FK → staff_users
 occurred_at       timestamp     Cuándo ocurrió el movimiento
 created_at        timestamp     UTC
 ```
 
 > [!NOTE]
-> **Sin gastos**: TurnoGol no gestiona egresos (luz, agua, sueldos). Solo registra ingresos
-> de reservas y ajustes. El complejo maneja sus gastos con sus propios sistemas contables.
+> **Combinaciones type/category válidas** (CHECK `chk_cashflow_type_category`):
+> `income` → `booking` | `product_sale` | `other` | `abonado_payment`;
+> `adjustment` → `other` | `no_show_correction`; `expense` → `operating_expense`.
+> El descuento semanal del saldo de abonado ("Mantener saldo", cambio #4) NO genera CashFlow.
 
 ### Atributos derivados
 - `daily_balance(date)` = SUM(income) + SUM(adjustment) para ese día

@@ -32,6 +32,7 @@ import {
   SlotTakenError,
   CourtOfflineError,
   PriceUnavailableError,
+  BookingValidationError,
   BookingNotInConfirmedError,
   BookingNotYetEndedError,
   BookingNotYetStartedError,
@@ -91,6 +92,10 @@ export async function createBookingAction(
       }
       if (err instanceof PriceUnavailableError) {
         return { success: false as const, error: 'No hay precio configurado para este horario.' }
+      }
+      if (err instanceof BookingValidationError) {
+        // Tarea #6: turnos de 60 min (los bloques sí pueden durar varias horas).
+        return { success: false as const, error: err.message }
       }
       throw err
     }

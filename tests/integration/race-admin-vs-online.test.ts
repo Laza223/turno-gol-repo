@@ -85,7 +85,6 @@ function attemptManual(args: {
   date: string
   timeStart: string
   timeEnd: string
-  durationMins: 60 | 120
 }): Promise<Attempt> {
   return withTenantContext(tenant.id, async (tx) => {
     try {
@@ -96,7 +95,6 @@ function attemptManual(args: {
           date: args.date,
           timeStart: args.timeStart,
           timeEnd: args.timeEnd,
-          durationMins: args.durationMins,
           type: 'spontaneous',
           staffUserId: seed.staffUserId,
           playerId,
@@ -115,7 +113,6 @@ function attemptOnline(args: {
   date: string
   timeStart: string
   timeEnd: string
-  durationMins: 60 | 120
   requiresDeposit?: boolean
   depositPercentage?: number
 }): Promise<Attempt> {
@@ -129,7 +126,6 @@ function attemptOnline(args: {
           date: args.date,
           timeStart: args.timeStart,
           timeEnd: args.timeEnd,
-          durationMins: args.durationMins,
           requiresDeposit: args.requiresDeposit ?? false,
           depositPercentage: args.depositPercentage ?? 0,
         },
@@ -166,8 +162,8 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
     const timeEnd = '21:00'
 
     const results = await Promise.all([
-      attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }),
-      attemptOnline({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }),
+      attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd }),
+      attemptOnline({ courtId: seed.courtId, date, timeStart, timeEnd }),
     ])
 
     const winners = results.filter((r) => r.outcome === 'won')
@@ -197,8 +193,8 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
 
     const attempts: Promise<Attempt>[] = []
     for (let i = 0; i < 5; i++) {
-      attempts.push(attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }))
-      attempts.push(attemptOnline({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }))
+      attempts.push(attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd }))
+      attempts.push(attemptOnline({ courtId: seed.courtId, date, timeStart, timeEnd }))
     }
     const results = await Promise.all(attempts)
 
@@ -232,7 +228,6 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
       date,
       timeStart,
       timeEnd,
-      durationMins: 60,
       requiresDeposit: true,
       depositPercentage: 50,
     })
@@ -245,7 +240,7 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
 
     // El admin intenta el mismo slot mientras la online sigue impaga: debe perder
     // porque checkOverlap y la exclusion constraint incluyen pending_payment.
-    const admin = await attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 })
+    const admin = await attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd })
     expect(admin.outcome).toBe('lost')
     expect(admin.outcome === 'lost' && admin.error).toBeInstanceOf(SlotTakenError)
 
@@ -270,8 +265,8 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
     const timeEnd = '21:00'
 
     const [admin, online] = await Promise.all([
-      attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }),
-      attemptOnline({ courtId: court2Id, date, timeStart, timeEnd, durationMins: 60 }),
+      attemptManual({ courtId: seed.courtId, date, timeStart, timeEnd }),
+      attemptOnline({ courtId: court2Id, date, timeStart, timeEnd }),
     ])
 
     // El lock (FOR UPDATE) y la exclusion constraint son por cancha (court_id
@@ -283,16 +278,17 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
     expect(await countActiveBookings(court2Id, date, timeStart)).toBe(1)
   }, 30_000)
 
-  it('reserva manual de 120 min del admin vs online de 60 min con solape PARCIAL: exactamente 1 gana y la otra recibe SlotTakenError', async () => {
+  it('reserva manual off-grid del admin vs online con solape PARCIAL: exactamente 1 gana y la otra recibe SlotTakenError', async () => {
     const date = '2026-08-16'
 
-    // Admin: 20:00–22:00 (120). Jugador online: 21:00–22:00 (60). Solapan en
-    // [21:00, 22:00). El archivo original sólo probaba slots idénticos; un check
-    // que comparara igualdad de time_start/time_end en vez de rango dejaría
-    // coexistir estas dos. El solape parcial cruzando manual↔online lo descarta.
+    // Tarea #6: ambos turnos son de 60 min, pero el manual va off-grid (20:30–
+    // 21:30) y el online en hora redonda (21:00–22:00). Solapan en [21:00, 21:30).
+    // El archivo original sólo probaba slots idénticos; un check que comparara
+    // igualdad de time_start/time_end en vez de rango dejaría coexistir estas dos.
+    // El solape parcial cruzando manual↔online lo descarta.
     const [admin, online] = await Promise.all([
-      attemptManual({ courtId: seed.courtId, date, timeStart: '20:00', timeEnd: '22:00', durationMins: 120 }),
-      attemptOnline({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', durationMins: 60 }),
+      attemptManual({ courtId: seed.courtId, date, timeStart: '20:30', timeEnd: '21:30' }),
+      attemptOnline({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00' }),
     ])
 
     const results = [admin, online]

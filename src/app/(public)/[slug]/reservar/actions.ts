@@ -15,6 +15,7 @@ import { createDepositPayment } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import {
   BookingDateOutOfRangeError,
+  BookingValidationError,
   CourtOfflineError,
   PlayerBannedError,
   PlayerHasOutstandingBalanceError,
@@ -140,7 +141,6 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
           date,
           timeStart: time,
           timeEnd,
-          durationMins: dur,
           requiresDeposit: settings.requires_deposit,
           depositPercentage: settings.deposit_percentage,
           maxAdvanceDays: settings.booking_advance_days ?? 6,
@@ -165,6 +165,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       }
     }
   } catch (err) {
+    if (err instanceof BookingValidationError) redirect(`${backTo}&error=unavailable`)
     if (err instanceof BookingDateOutOfRangeError) redirect(`${backTo}&error=date_out_of_range`)
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
     if (err instanceof PlayerBannedError) redirect(`${backTo}&error=banned`)

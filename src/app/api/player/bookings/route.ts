@@ -12,6 +12,7 @@ import {
 } from '@/modules/bookings/booking.service'
 import {
   BookingDateOutOfRangeError,
+  BookingValidationError,
   CourtOfflineError,
   PlayerBannedError,
   PlayerHasOutstandingBalanceError,
@@ -56,7 +57,6 @@ const playerBookingSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time_start: z.string().regex(/^\d{2}:\d{2}$/),
   time_end: z.string().regex(/^\d{2}:\d{2}$/),
-  duration_mins: z.union([z.literal(60), z.literal(120)]),
   notes_player: z.string().max(1000).optional(),
 })
 
@@ -104,7 +104,6 @@ export const POST = withPlayer(async (req, user, tx) => {
         date: parsed.data.date,
         timeStart: parsed.data.time_start,
         timeEnd: parsed.data.time_end,
-        durationMins: parsed.data.duration_mins,
         requiresDeposit: settings.requires_deposit,
         depositPercentage: settings.deposit_percentage,
         notesPlayer: parsed.data.notes_player,
@@ -133,12 +132,14 @@ export const POST = withPlayer(async (req, user, tx) => {
         { code: 'PLAYER_HAS_DEBT' },
       )
     }
+    if (err instanceof BookingValidationError) {
+      return businessRule(err.message)
+    }
     if (err instanceof SlotTakenError) {
       const alternatives = await getAlternatives(
         tenant.id,
         parsed.data.court_id,
         parsed.data.date,
-        parsed.data.duration_mins,
         tx,
       )
       return conflict('Este turno acaba de ser tomado por otro jugador.', {
@@ -160,10 +161,9 @@ async function getAlternatives(
   tenantId: string,
   courtId: string,
   date: string,
-  durationMins: 60 | 120,
   tx: Parameters<typeof createOnlineBooking>[2],
 ) {
-  const slots = await getAvailableSlots(tenantId, courtId, date, durationMins, tx)
+  const slots = await getAvailableSlots(tenantId, courtId, date, tx)
   return slots
     .filter((s) => s.available)
     .slice(0, 3)

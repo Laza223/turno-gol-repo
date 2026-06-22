@@ -108,7 +108,7 @@
 - [x] UI: sección "Saldo a favor del abonado" con checkbox "Mantener saldo" en el detalle del booking `fixed` (`AbonadoCharges.tsx` + `toggleAbonadoCreditAction`)
 - [x] Tests de integración: `tests/integration/abonado-credit-debt.test.ts` (carga, idempotencia, descuento, reversión, saldo insuficiente)
 
-### 5. 🚫 No-show: eliminar ban temporal → bloqueo por deuda (modelo ATC)
+### 5. 🚫 No-show: eliminar ban temporal → bloqueo por deuda (modelo ATC) — ✅ HECHO (código + CLAUDE.md; specs doc6/7 + DECISIONES pendientes)
 - **Antes**: El no-show podía configurarse como `ban_days` (ban temporal de X días) o `deposit_capture` (retener seña) o `none`. El admin tenía que decidir cuántos días de ban, un número arbitrario.
 - **Ahora**: El no-show **siempre genera deuda**. El jugador queda **bloqueado para reservar online en ese complejo hasta que pague la deuda**. Sin números arbitrarios, sin configuración.
 
@@ -145,10 +145,10 @@
 - [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 4D: reescribir penalización
 - [ ] `docs/spec/doc6_entidades.md` — Booking: eliminar referencia a `ban_days`, Tenant settings: simplificar `no_show_policy`
 - [ ] `docs/decisions/DECISIONES_SISTEMA.md` — P7.1: actualizar con modelo de deuda
-- [ ] `CLAUDE.md` — Actualizar regla de no-show
-- [ ] Código: eliminar lógica de ban temporal por no-show, agregar lógica de deuda
+- [x] `CLAUDE.md` — Actualizar regla de no-show (no-show = deuda)
+- [x] Código: `handleNoShow` (deuda, sin ban), `applyNoShow` captura seña, `addNoShowDebt` (PTR), removido `no_show_penalty` de settings/UI/super-admin, migración `034_drop_no_show_penalty.sql`, template `no_show_debt_created` ya existía. Tests: `no-show-debt` (unit) + `cancellations.test.ts` reescrito al modelo deuda.
 
-### 6. ⏰ Duraciones de turno: solo 60 minutos (eliminar 90 y 120)
+### 6. ⏰ Duraciones de turno: solo 60 minutos (eliminar 90 y 120) — ✅ HECHO (código + CLAUDE.md; specs doc6/7/13 + DECISIONES pendientes)
 - **Antes**: El sistema soportaba turnos de 60 o 120 minutos (90 ya había sido eliminado). El pricing tenía precios por duración.
 - **Ahora**: **Solo turnos de 60 minutos**. Si alguien quiere 2 horas seguidas, reserva 2 turnos. Para arreglos especiales (escuelitas, profes), el admin hace reserva manual con el precio que quiera.
 - **Justificación**: Así funciona la realidad. Todas las canchas reservan en horarios en punto (18:00, 19:00, 20:00). Lo que pase dentro (si empiezan a las :00 o :15, cuánto juegan) lo maneja la cancha en el momento. No podemos abarcar todo.
@@ -169,14 +169,14 @@
 - Toda lógica que evalúe duración para calcular precio
 
 #### Impacto en docs
-- [ ] `CLAUDE.md` — Línea 103: cambiar "60 o 120" por "60 minutos únicamente"
+- [x] `CLAUDE.md` — "60 minutos fijo" + pricing sin precio por duración
 - [ ] `docs/spec/doc6_entidades.md` — Court pricing JSONB, Tenant settings
 - [ ] `docs/spec/doc7_flujos_e2e.md` — Referencias a duración configurable
 - [ ] `docs/spec/doc13_database_schema.md` — pricing JSONB schema
 - [ ] `docs/decisions/DECISIONES_SISTEMA.md` — P3.1
-- [ ] Código: simplificar evaluación de precio (no más lookup por duración)
+- [x] Código: validación 60 min en creación (`assertSlotDuration`/`slotDurationMins`, online + manual no-block; blocks exentos), `generateSlots`/`getAvailableSlots`/`getAvailableSlotsCached` a 60 fijo, removido `durationMins` de inputs/schemas/rutas/`SLOT_DURATIONS`. Tests: `booking-duration` (unit) + suites actualizadas.
 
-### 7. 🔔 Push notifications al admin: horario silencioso
+### 7. 🔔 Push notifications al admin: horario silencioso — ✅ HECHO (código + CLAUDE.md; doc8 pendiente)
 - **Antes**: Las push notifications al admin sonaban a cualquier hora, incluyendo de madrugada cuando jugadores reservan online a las 2am.
 - **Ahora**: Las push notifications respetan un **horario silencioso** alineado con el horario de operación del complejo.
 
@@ -190,9 +190,10 @@
 Si el push suena a las 2am cada noche, Marcelo va a desactivar las notificaciones completamente. Y ahí pierde el valor de ser notificado en tiempo real cuando SÍ está en el complejo trabajando.
 
 #### Impacto en docs
-- [ ] `CLAUDE.md` — Actualizar línea sobre push notifications
+- [x] `CLAUDE.md` — Actualizar línea sobre push notifications (horario silencioso)
 - [ ] `docs/spec/doc8_user_stories.md` — Si hay story de push notifications
-- [ ] Código: lógica de envío de push con check de horario del tenant
+- [x] Código: `notifyAdminPush` agenda con `startAfter` en madrugada (00:00–08:00 tz del complejo) vía `pushSendOptions`/`quietHoursReleaseAt` (`push-quiet-hours.ts`). Tests: `push-quiet-hours` (unit).
+- **Nota**: en vez de "badge silencioso" se eligió `startAfter` (entrega diferida a las 08:00), más simple y robusto que reconfigurar el payload web-push.
 
 ### 8. 💸 "Cobros de turno" para TODOS los bookings (no solo abonados)
 - **Antes**: El sistema trackea bien la seña (deposit), pero el pago del **resto del turno** cuando el jugador llega al complejo no tiene flujo explícito. El admin registra plata suelta en la caja sin vincularlo al booking.

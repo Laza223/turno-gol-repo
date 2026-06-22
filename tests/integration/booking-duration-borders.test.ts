@@ -29,8 +29,11 @@ beforeAll(async () => {
 
 afterAll(async () => closeSql())
 
+// Tarea #6: las reservas son de 60 min. Un bloque de 2 horas se modela como
+// `block` (mantenimiento), exento de la validación de 60 min, que igual participa
+// del exclusion constraint (tsrange) con el resto de las reservas.
 describe('booking exclusion constraint: adjacency vs overlap borders', () => {
-  it('60min + 120min adjacent (20:00-21:00 + 21:00-23:00) → both allowed', async () => {
+  it('60min spontaneous + 2h block adyacentes (20:00-21:00 + 21:00-23:00) → ambos permitidos', async () => {
     const date = '2026-09-01'
 
     const a = await withTenantContext(tenant.id, (tx) =>
@@ -41,7 +44,6 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
           date,
           timeStart: '20:00',
           timeEnd: '21:00',
-          durationMins: 60,
           type: 'spontaneous',
           staffUserId: seed.staffUserId,
           playerId,
@@ -59,10 +61,8 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
           date,
           timeStart: '21:00',
           timeEnd: '23:00',
-          durationMins: 120,
-          type: 'spontaneous',
+          type: 'block',
           staffUserId: seed.staffUserId,
-          playerId,
         },
         tx,
       ),
@@ -70,7 +70,7 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
     expect(b.status).toBe('confirmed')
   }, 30_000)
 
-  it('120min that overlaps existing 60min (20:00-22:00 then 21:00-23:00) → second rejected', async () => {
+  it('2h block que solapa un 60min existente (20:00-22:00 luego 21:00-23:00) → segundo rechazado', async () => {
     const date = '2026-09-02'
 
     await withTenantContext(tenant.id, (tx) =>
@@ -81,10 +81,8 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
           date,
           timeStart: '20:00',
           timeEnd: '22:00',
-          durationMins: 120,
-          type: 'spontaneous',
+          type: 'block',
           staffUserId: seed.staffUserId,
-          playerId,
         },
         tx,
       ),
@@ -99,10 +97,8 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
             date,
             timeStart: '21:00',
             timeEnd: '23:00',
-            durationMins: 120,
-            type: 'spontaneous',
+            type: 'block',
             staffUserId: seed.staffUserId,
-            playerId,
           },
           tx,
         ),
@@ -121,7 +117,6 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
           date,
           timeStart: '20:00',
           timeEnd: '21:00',
-          durationMins: 60,
           type: 'spontaneous',
           staffUserId: seed.staffUserId,
           playerId,
@@ -139,7 +134,6 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
             date,
             timeStart: '20:00',
             timeEnd: '21:00',
-            durationMins: 60,
             type: 'spontaneous',
             staffUserId: seed.staffUserId,
             playerId,
@@ -163,7 +157,6 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
           date,
           timeStart: '20:00',
           timeEnd: '21:00',
-          durationMins: 60,
           type: 'spontaneous',
           staffUserId: seed.staffUserId,
           playerId,
@@ -181,7 +174,6 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
           date,
           timeStart: '20:00',
           timeEnd: '21:00',
-          durationMins: 60,
           type: 'spontaneous',
           staffUserId: seed.staffUserId,
           playerId,
@@ -190,5 +182,48 @@ describe('booking exclusion constraint: adjacency vs overlap borders', () => {
       ),
     )
     expect(b.status).toBe('confirmed')
+  }, 30_000)
+})
+
+// Tarea #6: la validación de 60 min en la creación de turnos.
+describe('Tarea #6 — sólo turnos de 60 minutos', () => {
+  it('rechaza una reserva spontaneous de 120 min', async () => {
+    const date = '2026-09-05'
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        createManualBooking(
+          tenant.id,
+          {
+            courtId: seed.courtId,
+            date,
+            timeStart: '18:00',
+            timeEnd: '20:00',
+            type: 'spontaneous',
+            staffUserId: seed.staffUserId,
+            playerId,
+          },
+          tx,
+        ),
+      ),
+    ).rejects.toThrow(/60 minutos/)
+  }, 30_000)
+
+  it('permite un block de varias horas (mantenimiento)', async () => {
+    const date = '2026-09-06'
+    const blk = await withTenantContext(tenant.id, (tx) =>
+      createManualBooking(
+        tenant.id,
+        {
+          courtId: seed.courtId,
+          date,
+          timeStart: '08:00',
+          timeEnd: '12:00',
+          type: 'block',
+          staffUserId: seed.staffUserId,
+        },
+        tx,
+      ),
+    )
+    expect(blk.status).toBe('confirmed')
   }, 30_000)
 })

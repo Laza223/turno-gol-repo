@@ -1,10 +1,11 @@
-import { and, eq, sql } from 'drizzle-orm'
-import { bookings, tenantPlayerBans, tenants } from '@/shared/db/schema'
+import { eq, sql } from 'drizzle-orm'
+import { bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { createRefund } from '@/modules/payments/payment.service'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import { addNoShowDebt } from '@/modules/relationships/ptr.service'
 import { markNoShow } from './booking.service'
 import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
@@ -16,17 +17,6 @@ import {
 } from './booking.errors'
 import type { BookingRow, DepositStatus } from './booking.types'
 import { track } from '@/shared/observability'
-
-const PG_UNIQUE_VIOLATION = '23505'
-
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === PG_UNIQUE_VIOLATION
-  )
-}
 
 // Converts ART local date+time to a UTC Date for policy comparison.
 // ART = UTC-3; a booking at "2027-06-01 21:00 ART" → UTC 2027-06-02 00:00.
@@ -280,6 +270,33 @@ export async function cancelByAdmin(
   return rowToBookingRow(updated[0]!)
 }
 
+/**
+ * Tarea #5: la deuda por no-show = precio del turno − seña capturada.
+ * `markNoShow` ya capturó la seña pagada (deposit_status='paid' → 'captured') en
+ * la transición, así que acá restamos lo que el complejo se quedó. Función pura
+ * para testearla sin DB.
+ */
+export function computeNoShowDebt(b: {
+  priceSnapshot: number
+  depositAmount: number
+  depositStatus: DepositStatus
+}): number {
+  const capturedDeposit = b.depositStatus === 'captured' ? b.depositAmount : 0
+  return Math.max(0, b.priceSnapshot - capturedDeposit)
+}
+
+/**
+ * Tarea #5 — No-show: en vez del viejo ban temporal por días, el no-show genera
+ * deuda financiera. El jugador queda bloqueado para reservar online en este
+ * complejo hasta saldarla (createOnlineBooking gatea por balance > 0).
+ *
+ *  1. markNoShow transiciona el booking a no_show y captura la seña pagada.
+ *  2. Si hay jugador vinculado y deuda > 0, se suma `price − seña` a
+ *     player_tenant_relationships.balance (incremento atómico, concurrencia-safe).
+ *
+ * Los bans manuales (tenant_player_bans) siguen existiendo para otros motivos,
+ * pero ya no se disparan automáticamente por no-show.
+ */
 export async function handleNoShow(
   bookingId: string,
   staffUserId: string,
@@ -294,58 +311,33 @@ export async function handleNoShow(
     action: 'booking.marked_no_show',
     resourceType: 'booking',
     resourceId: bookingId,
-    metadata: {},
+    metadata: { depositStatus: booking.depositStatus },
   })
 
+  // Sin jugador vinculado (bloqueo interno / reserva sin player) no hay a quién
+  // cobrarle: no se genera deuda.
   if (!booking.playerId) return booking
 
-  const settings = await loadSettings(booking.tenantId, tx)
-  const penalty = settings.no_show_penalty
+  const debt = computeNoShowDebt(booking)
+  if (debt <= 0) return booking
 
-  if (penalty.type === 'none') return booking
+  await addNoShowDebt(booking.tenantId, booking.playerId, debt, tx)
 
-  const cutoffDate = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
-  const countResult = await tx.execute(sql`
-    SELECT COUNT(*)::int AS n
-    FROM bookings
-    WHERE tenant_id = ${booking.tenantId}
-      AND player_id = ${booking.playerId}
-      AND status = 'no_show'
-      AND date >= ${cutoffDate}::date
-  `)
-  const count = (countResult as unknown as Array<{ n: number }>)[0]?.n ?? 0
-
-  const threshold = penalty.threshold ?? 3
-  if (count < threshold) return booking
-
-  const activeBan = await tx
-    .select({ id: tenantPlayerBans.id })
-    .from(tenantPlayerBans)
-    .where(
-      and(
-        eq(tenantPlayerBans.tenantId, booking.tenantId),
-        eq(tenantPlayerBans.playerId, booking.playerId),
-        sql`(${tenantPlayerBans.bannedUntil} IS NULL OR ${tenantPlayerBans.bannedUntil} > NOW())`,
-      ),
-    )
-    .limit(1)
-
-  if (activeBan.length > 0) return booking
-
-  const bannedUntil = new Date(Date.now() + penalty.days * 86_400_000)
-
-  try {
-    await tx.insert(tenantPlayerBans).values({
-      tenantId: booking.tenantId,
-      playerId: booking.playerId,
-      reason: `${count} no-shows en los últimos 30 días`,
-      bannedBy: staffUserId || null,
-      bannedUntil,
-    })
-  } catch (err) {
-    if (isUniqueViolation(err)) return booking
-    throw err
-  }
+  await insertAuditLog(tx, {
+    tenantId: booking.tenantId,
+    actorId: staffUserId,
+    actorType: 'staff',
+    action: 'player.no_show_debt_created',
+    resourceType: 'player',
+    resourceId: booking.playerId,
+    metadata: {
+      bookingId,
+      debt,
+      priceSnapshot: booking.priceSnapshot,
+      depositCaptured:
+        booking.depositStatus === 'captured' ? booking.depositAmount : 0,
+    },
+  })
 
   return booking
 }

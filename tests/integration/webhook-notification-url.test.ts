@@ -85,7 +85,6 @@ describe('createDepositPayment — notification URL', () => {
           date: FUTURE,
           timeStart: '14:00',
           timeEnd: '15:00',
-          durationMins: 60,
           requiresDeposit: true,
           depositPercentage: 30,
         },

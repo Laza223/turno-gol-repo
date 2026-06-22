@@ -28,6 +28,7 @@ import {
   BookingNotInConfirmedError,
   BookingNotYetEndedError,
   BookingNotYetStartedError,
+  BookingValidationError,
   CourtOfflineError,
   NoShowCorrectionWindowExpiredError,
   PlayerBannedError,
@@ -36,6 +37,7 @@ import {
   SlotTakenError,
 } from './booking.errors'
 import { addDays, artTodayStr } from '@/shared/dates/art'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rowToBookingRow } from './booking.mappers'
 import { calcDepositCents } from './deposit'
@@ -72,6 +74,32 @@ function artDateAt(dateStr: string, hhmm: string): Date {
   const [y, mo, d] = dateStr.split('-').map(Number)
   const [h, m] = hhmm.split(':').map(Number)
   return new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0))
+}
+
+/**
+ * Tarea #6: duración de un turno en minutos a partir de time_start/time_end.
+ * El cierre a medianoche ('00:00') cuenta como fin del día (1440) para que
+ * 23:00→00:00 dé 60 min. Tolera strings con segundos (HH:MM:SS).
+ */
+export function slotDurationMins(timeStart: string, timeEnd: string): number {
+  const start = timeToMins(timeStart.slice(0, 5))
+  let end = timeToMins(timeEnd.slice(0, 5))
+  if (end === 0) end = 24 * 60
+  return end - start
+}
+
+/**
+ * Tarea #6: el sistema solo ofrece turnos de 60 minutos. Para arreglos
+ * especiales (2 horas seguidas, escuelitas) se reservan turnos separados o el
+ * admin usa un `block`. Los `block` (mantenimiento) sí pueden abarcar varias
+ * horas, así que se excluyen de esta validación.
+ */
+function assertSlotDuration(timeStart: string, timeEnd: string): void {
+  if (slotDurationMins(timeStart, timeEnd) !== SLOT_DURATION_MINUTES) {
+    throw new BookingValidationError(
+      `Los turnos son de ${SLOT_DURATION_MINUTES} minutos.`,
+    )
+  }
 }
 
 function isExclusionViolation(err: unknown): boolean {
@@ -140,6 +168,12 @@ export async function createManualBooking(
   input: CreateManualBookingInput,
   tx: DbTx,
 ): Promise<BookingRow> {
+  // Tarea #6: reservas son de 60 min. Los `block` (mantenimiento) pueden abarcar
+  // varias horas, así que no se validan.
+  if (input.type !== 'block') {
+    assertSlotDuration(input.timeStart, input.timeEnd)
+  }
+
   const court = await lockCourtOrThrow(input.courtId, tx)
   if (court.tenantId !== tenantId) {
     throw new CourtOfflineError(input.courtId)
@@ -244,6 +278,8 @@ async function createOnlineBookingImpl(
   if (!isValidCalendarDate(input.date)) {
     throw new BookingDateOutOfRangeError('past_date')
   }
+  // Tarea #6: las reservas online son siempre de 60 minutos.
+  assertSlotDuration(input.timeStart, input.timeEnd)
   const todayStr = artTodayStr()
   if (input.date < todayStr) {
     throw new BookingDateOutOfRangeError('past_date')
@@ -548,9 +584,17 @@ async function applyNoShow(
   fromStatus: 'confirmed' | 'completed',
   tx: DbTx,
 ): Promise<BookingRow> {
+  // Tarea #5: la seña pagada queda para el complejo cuando hay no-show. Se captura
+  // en el MISMO UPDATE que la transición: el trigger enforce_booking_invariants_fn
+  // bloquea cualquier UPDATE posterior sobre un booking ya en estado terminal, así
+  // que una segunda sentencia para tocar deposit_status fallaría.
   const rows = await tx
     .update(bookings)
-    .set({ status: 'no_show', updatedAt: new Date() })
+    .set({
+      status: 'no_show',
+      depositStatus: sql`CASE WHEN ${bookings.depositStatus} = 'paid' THEN 'captured'::deposit_status ELSE ${bookings.depositStatus} END`,
+      updatedAt: new Date(),
+    })
     .where(and(eq(bookings.id, bookingId), eq(bookings.status, fromStatus)))
     .returning()
 
@@ -576,7 +620,6 @@ export type GenerateSlotsInput = {
   closeHhmm: string
   closedDay: boolean
   occupied: Array<{ timeStartMins: number; timeEndMins: number }>
-  durationMins: 60 | 120
 }
 
 export function generateSlots(p: GenerateSlotsInput): AvailableSlot[] {
@@ -584,11 +627,12 @@ export function generateSlots(p: GenerateSlotsInput): AvailableSlot[] {
   const openMins = timeToMins(p.openHhmm)
   let closeMins = timeToMins(p.closeHhmm)
   if (closeMins === 0) closeMins = 24 * 60
-  const lastStart = closeMins - p.durationMins
+  // Tarea #6: turnos de 60 min fijos.
+  const lastStart = closeMins - SLOT_DURATION_MINUTES
 
   const slots: AvailableSlot[] = []
-  for (let start = openMins; start <= lastStart; start += p.durationMins) {
-    const slotEnd = start + p.durationMins
+  for (let start = openMins; start <= lastStart; start += SLOT_DURATION_MINUTES) {
+    const slotEnd = start + SLOT_DURATION_MINUTES
     const overlaps = p.occupied.some(
       (b) => start < b.timeEndMins && slotEnd > b.timeStartMins,
     )
@@ -627,7 +671,6 @@ export async function getAvailableSlots(
   tenantId: string,
   courtId: string,
   dateStr: string,
-  durationMins: 60 | 120,
   tx: DbTx,
 ): Promise<AvailableSlot[]> {
   const courtRows = await tx
@@ -695,7 +738,6 @@ export async function getAvailableSlots(
     closeHhmm: dayHours?.close ?? '23:00',
     closedDay,
     occupied,
-    durationMins,
   })
 }
 
@@ -712,12 +754,15 @@ export async function getAvailableSlotsCached(
   tenantId: string,
   courtId: string,
   dateStr: string,
-  durationMins: 60 | 120,
 ): Promise<AvailableSlot[]> {
-  const { slots } = await readThroughSlots(courtId, dateStr, durationMins, () =>
-    withTenantContext(tenantId, (tx) =>
-      getAvailableSlots(tenantId, courtId, dateStr, durationMins, tx),
-    ),
+  const { slots } = await readThroughSlots(
+    courtId,
+    dateStr,
+    SLOT_DURATION_MINUTES,
+    () =>
+      withTenantContext(tenantId, (tx) =>
+        getAvailableSlots(tenantId, courtId, dateStr, tx),
+      ),
   )
   return slots
 }

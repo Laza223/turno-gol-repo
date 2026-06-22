@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { generateSlots } from '@/modules/bookings/booking.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 
+// Tarea #6: turnos de 60 min fijos (ya no hay parámetro de duración).
 // Cutoff a las 18:00: tarifa mañana (mon-thu 08:00-18:00) y tarifa noche
 // (mon-thu 18:00-23:00). Viernes deliberadamente SIN regla para ejercitar el
 // camino price=null. 23:00-00:00 tampoco tiene regla (la noche corta a las 23).
@@ -31,7 +32,6 @@ describe('generateSlots', () => {
       closeHhmm: '23:00',
       closedDay: true,
       occupied: [],
-      durationMins: 60,
     })
     expect(slots).toHaveLength(0)
   })
@@ -44,7 +44,6 @@ describe('generateSlots', () => {
       closeHhmm: '23:00',
       closedDay: false,
       occupied: [],
-      durationMins: 60,
     })
     expect(slots).toHaveLength(15)
     expect(slots[0]).toMatchObject({ timeStart: '08:00', timeEnd: '09:00' })
@@ -55,26 +54,7 @@ describe('generateSlots', () => {
     })
   })
 
-  it('los slots de 120 min avanzan de a 120 y terminan donde corresponde', () => {
-    const slots = generateSlots({
-      pricing: PRICING,
-      dayKey: 'mon',
-      openHhmm: '08:00',
-      closeHhmm: '12:00',
-      closedDay: false,
-      occupied: [],
-      durationMins: 120,
-    })
-    expect(slots).toHaveLength(2)
-    expect(slots[0]).toMatchObject({
-      timeStart: '08:00',
-      timeEnd: '10:00',
-      price: 800000,
-    })
-    expect(slots[1]).toMatchObject({ timeStart: '10:00', timeEnd: '12:00' })
-  })
-
-  it('asigna el precio correcto según la regla horaria y la duración', () => {
+  it('asigna el precio correcto según la regla horaria', () => {
     const slots = generateSlots({
       pricing: PRICING,
       dayKey: 'mon',
@@ -82,7 +62,6 @@ describe('generateSlots', () => {
       closeHhmm: '23:00',
       closedDay: false,
       occupied: [],
-      durationMins: 60,
     })
     expect(slots.find((s) => s.timeStart === '09:00')?.price).toBe(800000)
     expect(slots.find((s) => s.timeStart === '19:00')?.price).toBe(1200000)
@@ -98,7 +77,6 @@ describe('generateSlots', () => {
       closeHhmm: '23:00',
       closedDay: false,
       occupied: [],
-      durationMins: 60,
     })
     // FIX (antes 🔴): el viejo test solo hacía slots.every(price===null), que es
     // verdad VACUA si generateSlots devolviera []. Anclamos también la cantidad:
@@ -117,7 +95,6 @@ describe('generateSlots', () => {
         closeHhmm: '23:00',
         closedDay: false,
         occupied: [{ timeStartMins: 14 * 60, timeEndMins: 16 * 60 }],
-        durationMins: 60,
       })
       const unavailable = slots.filter((s) => !s.available).map((s) => s.timeStart)
       expect(unavailable).toEqual(['14:00', '15:00'])
@@ -135,7 +112,6 @@ describe('generateSlots', () => {
         closeHhmm: '23:00',
         closedDay: false,
         occupied: [{ timeStartMins: 14 * 60 + 30, timeEndMins: 15 * 60 + 30 }],
-        durationMins: 60,
       })
       const unavailable = slots.filter((s) => !s.available).map((s) => s.timeStart)
       expect(unavailable).toEqual(['14:00', '15:00'])
@@ -151,7 +127,6 @@ describe('generateSlots', () => {
         closeHhmm: '23:00',
         closedDay: false,
         occupied: [{ timeStartMins: 15 * 60, timeEndMins: 16 * 60 }],
-        durationMins: 60,
       })
       expect(slots.find((s) => s.timeStart === '14:00')?.available).toBe(true)
       expect(slots.find((s) => s.timeStart === '15:00')?.available).toBe(false)
@@ -168,7 +143,6 @@ describe('generateSlots', () => {
         closeHhmm: '00:00', // wrap: closeMins 0 → 24*60
         closedDay: false,
         occupied: [],
-        durationMins: 60,
       })
       expect(slots.map((s) => s.timeStart)).toEqual(['22:00', '23:00'])
       expect(slots[slots.length - 1]?.timeEnd).toBe('00:00')
@@ -184,33 +158,9 @@ describe('generateSlots', () => {
         closeHhmm: '11:30',
         closedDay: false,
         occupied: [],
-        durationMins: 60,
       })
       expect(slots.map((s) => s.timeStart)).toEqual(['08:00', '09:00', '10:00'])
       expect(slots[slots.length - 1]?.timeEnd).toBe('11:00')
-    })
-  })
-
-  describe('precio cruzando el cutoff', () => {
-    it('un slot de 120 min se cobra según la regla de SU HORA DE INICIO', () => {
-      // Slot 17:00-19:00 arranca en la franja mañana (corta 18:00) pero termina
-      // en la franja noche. El precio se decide por la hora de inicio → tarifa
-      // mañana (800000), no la noche (1200000). Test de anclaje de esa decisión.
-      const slots = generateSlots({
-        pricing: PRICING,
-        dayKey: 'mon',
-        openHhmm: '17:00',
-        closeHhmm: '19:00',
-        closedDay: false,
-        occupied: [],
-        durationMins: 120,
-      })
-      expect(slots).toHaveLength(1)
-      expect(slots[0]).toMatchObject({
-        timeStart: '17:00',
-        timeEnd: '19:00',
-        price: 800000,
-      })
     })
   })
 })

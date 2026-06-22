@@ -11,6 +11,7 @@ import {
 } from '@/modules/bookings/booking.service'
 import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import {
+  BookingValidationError,
   CourtOfflineError,
   PriceUnavailableError,
   SlotTakenError,
@@ -161,12 +162,14 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
       status: 201,
     })
   } catch (err) {
+    if (err instanceof BookingValidationError) {
+      return businessRule(err.message)
+    }
     if (err instanceof SlotTakenError) {
       const alternatives = await getSuggestedAlternatives(
         tenantId,
         parsed.data.courtId,
         parsed.data.date,
-        parsed.data.durationMins,
         tx,
       )
       return conflict('Este turno acaba de ser tomado por otro jugador.', {
@@ -188,10 +191,9 @@ async function getSuggestedAlternatives(
   tenantId: string,
   courtId: string,
   date: string,
-  durationMins: 60 | 120,
   tx: Parameters<typeof createManualBooking>[2],
 ) {
-  const slots = await getAvailableSlots(tenantId, courtId, date, durationMins, tx)
+  const slots = await getAvailableSlots(tenantId, courtId, date, tx)
   return slots
     .filter((s) => s.available)
     .slice(0, 3)

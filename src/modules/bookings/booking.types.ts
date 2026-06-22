@@ -54,7 +54,6 @@ export type CreateOnlineBookingInput = {
   date: string // YYYY-MM-DD
   timeStart: string // HH:MM
   timeEnd: string // HH:MM
-  durationMins: 60 | 120
   requiresDeposit: boolean
   depositPercentage: number
   notesPlayer?: string
@@ -74,7 +73,6 @@ export type CreateManualBookingInput = {
   date: string
   timeStart: string
   timeEnd: string
-  durationMins: 60 | 120
   type: 'spontaneous' | 'block'
   staffUserId: string
   playerId?: string

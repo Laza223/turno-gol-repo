@@ -57,6 +57,31 @@ export async function ensurePTR(
   `)
 }
 
+/**
+ * Tarea #5 — Asienta deuda por no-show en player_tenant_relationships.balance.
+ *
+ * Incremento atómico vía UPSERT (`balance = balance + amount`): serializa
+ * no-shows concurrentes del mismo jugador (la fila se lockea en el DO UPDATE) y
+ * crea la relación si la reserva era manual y el jugador todavía no tenía PTR
+ * (createManualBooking no llama a ensurePTR). No-op si amount <= 0 (block, o
+ * seña capturada ≥ precio). Debe correr dentro del mismo tx que la transición a
+ * no_show para que deuda y estado del booking sean atómicos.
+ */
+export async function addNoShowDebt(
+  tenantId: string,
+  playerId: string,
+  amount: number,
+  tx: DbTx,
+): Promise<void> {
+  if (amount <= 0) return
+  await tx.execute(sql`
+    INSERT INTO player_tenant_relationships (tenant_id, player_id, balance)
+    VALUES (${tenantId}, ${playerId}, ${amount})
+    ON CONFLICT (player_id, tenant_id)
+    DO UPDATE SET balance = player_tenant_relationships.balance + ${amount}
+  `)
+}
+
 type RawCashFlow = {
   id: string
   tenant_id: string

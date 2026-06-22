@@ -16,7 +16,10 @@ import {
   QUEUE_PUSH_SEND,
   type PushSendJobData,
 } from '@/shared/jobs/definitions'
+import { pushSendOptions } from './push-quiet-hours'
 import { logger } from '@/shared/lib/logger'
+
+const DEFAULT_TIMEZONE = 'America/Argentina/Buenos_Aires'
 
 export type AdminPushPayload = PushSendJobData['payload']
 
@@ -31,10 +34,19 @@ export async function notifyAdminPush(
   if (subs.length === 0) {
     return { enqueued: 0 }
   }
+
+  // Tarea #7: respetar el horario silencioso del complejo. En madrugada el push
+  // se agenda para las 08:00 locales (startAfter) en vez de sonar al instante.
+  const tzRows = await sql<{ timezone: string | null }[]>`
+    SELECT timezone FROM tenants WHERE id = ${tenantId} LIMIT 1
+  `
+  const timeZone = tzRows[0]?.timezone ?? DEFAULT_TIMEZONE
+  const options = pushSendOptions(new Date(), timeZone)
+
   const boss = await getBoss()
   for (const sub of subs) {
     const data: PushSendJobData = { subscription_id: sub.id, payload }
-    await boss.send(QUEUE_PUSH_SEND, data, PUSH_SEND_SEND_OPTIONS)
+    await boss.send(QUEUE_PUSH_SEND, data, options)
   }
   logger.info('enqueued admin push notifications', {
     module: 'push.service',

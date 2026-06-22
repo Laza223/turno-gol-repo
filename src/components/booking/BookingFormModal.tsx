@@ -77,9 +77,13 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
     setDuration(slot.durationMins)
   }, [slot.courtId, slot.date, slot.timeStart, slot.durationMins])
 
-  const timeEnd = minsToTime(timeToMins(slot.timeStart) + duration)
   const selectedReason = reasonFor(reason)
   const isInternalBlock = selectedReason.kind === 'internal'
+  // Tarea #6: las reservas reales son de 60 min fijos. Solo los bloqueos internos
+  // (mantenimiento, escuelita) pueden abarcar varias horas, así que el selector de
+  // duración se muestra únicamente para ellos.
+  const effectiveDuration = isInternalBlock ? duration : 60
+  const timeEnd = minsToTime(timeToMins(slot.timeStart) + effectiveDuration)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -93,7 +97,6 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
       date: slot.date,
       timeStart: slot.timeStart,
       timeEnd,
-      durationMins: duration,
       ...(notesInternal ? { notesInternal } : {}),
     }
 
@@ -186,26 +189,28 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
               )}
             </div>
 
-            <div>
-              <label id="duration-label" className="block text-sm font-medium text-foreground mb-1">Duración</label>
-              <div role="group" aria-labelledby="duration-label" className="flex gap-2">
-                {([60, 120] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={duration === d}
-                    onClick={() => setDuration(d)}
-                    className={`flex-1 py-1.5 min-h-11 md:min-h-9 rounded border text-sm font-medium transition-colors duration-100 ${
-                      duration === d
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {d} min
-                  </button>
-                ))}
+            {isInternalBlock && (
+              <div>
+                <label id="duration-label" className="block text-sm font-medium text-foreground mb-1">Duración del bloqueo</label>
+                <div role="group" aria-labelledby="duration-label" className="flex gap-2">
+                  {([60, 120] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={duration === d}
+                      onClick={() => setDuration(d)}
+                      className={`flex-1 py-1.5 min-h-11 md:min-h-9 rounded border text-sm font-medium transition-colors duration-100 ${
+                        duration === d
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {d} min
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {!isInternalBlock && (
               <>

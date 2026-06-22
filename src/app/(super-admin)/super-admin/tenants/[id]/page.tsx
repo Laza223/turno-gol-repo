@@ -197,11 +197,7 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
               ? `${s.cancellation_policy.hours_before} hs antes · penalidad: ${s.cancellation_policy.penalty_type}`
               : '—'}
           </Dt>
-          <Dt label="Penalidad por ausencia">
-            {s.no_show_penalty?.type === 'ban_days'
-              ? `Ban por ${s.no_show_penalty.days} días`
-              : 'Sin penalidad'}
-          </Dt>
+          <Dt label="Ausencia (no-show)">Genera deuda (bloqueo hasta saldar)</Dt>
           <Dt label="Onboarding">
             {s.onboarding_completed ? 'Completado' : `Paso ${s.onboarding_step ?? 1}`}
           </Dt>

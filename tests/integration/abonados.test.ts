@@ -349,7 +349,6 @@ describe('abonado service', () => {
         date: '2028-03-04',
         timeStart: '14:00',
         timeEnd: '15:00',
-        durationMins: 60,
         requiresDeposit: false,
         depositPercentage: 0,
       }, tx),

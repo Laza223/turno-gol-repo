@@ -12,14 +12,15 @@ import type { AvailableSlot } from '@/modules/bookings/booking.types'
  *    read; it must never break a booking flow.
  *  - Bounded staleness. The 30s TTL means even a missed invalidation self-heals
  *    within half a minute, so invalidation is best-effort, not transactional.
- *  - Invalidation deletes every duration for a court+date because a single
- *    booking change affects both the 60' and 120' grids.
+ *  - Invalidation deletes the duration key for a court+date.
  */
+
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 
 export const SLOTS_CACHE_TTL_SECONDS = 30
 
-// Turn durations supported by the product (doc CLAUDE.md: 60 or 120, never 90).
-export const SLOT_DURATIONS = [60, 120] as const
+// Tarea #6: el producto solo ofrece turnos de 60 min (constante global).
+export const SLOT_DURATIONS = [SLOT_DURATION_MINUTES] as const
 
 // Minimal surface we need from Upstash Redis — keeps the module testable with a
 // plain in-memory double and decoupled from the full client type. The SET ops

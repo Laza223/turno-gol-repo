@@ -127,16 +127,14 @@ async function setTenantPolicy(tenantId: string, hoursBefore: number): Promise<v
   `
 }
 
-async function setTenantNoShowPenalty(
-  tenantId: string,
-  opts: { type: string; days: number; threshold: number },
-): Promise<void> {
+async function getPlayerBalance(tenantId: string, playerId: string): Promise<number> {
   const sql = getSql()
-  await sql`
-    UPDATE tenants
-    SET settings = settings || ${sql.json({ no_show_penalty: opts })}
-    WHERE id = ${tenantId}
+  const rows = await sql<{ balance: number | null }[]>`
+    SELECT balance FROM player_tenant_relationships
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+    LIMIT 1
   `
+  return Number(rows[0]?.balance ?? 0)
 }
 
 async function getBookingDepositStatus(bookingId: string): Promise<string> {
@@ -218,18 +216,6 @@ async function getBookingCanceledAt(bookingId: string): Promise<string | null> {
   return rows[0]!.canceled_at
 }
 
-async function countActiveBans(tenantId: string, playerId: string): Promise<number> {
-  const sql = getSql()
-  const rows = await sql<{ c: string }[]>`
-    SELECT COUNT(*)::text AS c
-    FROM tenant_player_bans
-    WHERE tenant_id = ${tenantId}
-      AND player_id = ${playerId}
-      AND (banned_until IS NULL OR banned_until > NOW())
-  `
-  return Number(rows[0]!.c)
-}
-
 async function countAllBans(tenantId: string, playerId: string): Promise<number> {
   const sql = getSql()
   const rows = await sql<{ c: string }[]>`
@@ -265,23 +251,6 @@ async function getBookingCancelMeta(
     SELECT canceled_by, canceled_reason FROM bookings WHERE id = ${bookingId}
   `
   return rows[0]!
-}
-
-async function getLatestBan(
-  tenantId: string,
-  playerId: string,
-): Promise<{ reason: string; banned_until: string | null; banned_by: string | null } | undefined> {
-  const sql = getSql()
-  const rows = await sql<
-    Array<{ reason: string; banned_until: string | null; banned_by: string | null }>
-  >`
-    SELECT reason, banned_until, banned_by
-    FROM tenant_player_bans
-    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
-    ORDER BY banned_at DESC
-    LIMIT 1
-  `
-  return rows[0]
 }
 
 beforeAll(async () => {
@@ -638,110 +607,110 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
   })
 })
 
-// ─── 4D: 3rd no-show → ban ──────────────────────────────────────────
-describe('handleNoShow — 4D: ban after threshold', () => {
-  it('3rd no-show triggers ban insert', async () => {
+// ─── Tarea #5: no-show genera deuda (modelo ATC, sin ban temporal) ───
+describe('handleNoShow — Tarea #5: genera deuda', () => {
+  async function insertPastConfirmed(opts: {
+    tenantId: string
+    courtId: string
+    playerId: string | null
+    depositStatus?: string
+    depositAmount?: number
+  }): Promise<string> {
+    const sql = getSql()
+    const rows = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, player_id, date, time_start, time_end,
+        price_snapshot, deposit_amount, deposit_status, status
+      ) VALUES (
+        ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+        CURRENT_DATE - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        ${800_000}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, 'confirmed'
+      )
+      RETURNING id
+    `
+    return rows[0]!.id
+  }
+
+  it('sin se\u00f1a → balance += precio completo, se\u00f1a intacta, sin ban', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
-    await setTenantNoShowPenalty(tenant.id, { type: 'ban_days', days: 1, threshold: 3 })
 
-    // Insert 2 past no-shows directly (within 30-day window)
-    await sql`
-      INSERT INTO bookings (
-        tenant_id, court_id, player_id, date, time_start, time_end,
-        price_snapshot, deposit_amount, deposit_status, status
-      ) VALUES
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 5, '08:00'::time, '09:00'::time, 800000, 0, 'not_required', 'no_show'),
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 3, '09:00'::time, '10:00'::time, 800000, 0, 'not_required', 'no_show')
-    `
+    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
 
-    // 3rd booking: insert confirmed, then handleNoShow
-    const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id,
-      courtId,
-      playerId: player.id,
-      date: FUTURE_DATE,
-      timeStart: '16:00',
-      timeEnd: '17:00',
-    })
-
-    // handleNoShow requires booking time to be in the past for markNoShow to work.
-    // Force date to today so the DB trigger doesn't block (status='confirmed' → 'no_show' is allowed).
-    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${bookingId}`
-
-    await withTenantContext(tenant.id, async (tx) => {
-      await handleNoShow(bookingId, staff.id, tx)
-    })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
 
     expect(await getBookingStatus(bookingId)).toBe('no_show')
-    expect(await countActiveBans(tenant.id, player.id)).toBe(1)
+    expect(await getBookingDepositStatus(bookingId)).toBe('not_required')
+    expect(await getPlayerBalance(tenant.id, player.id)).toBe(800_000)
+    // El viejo auto-ban por no-show ya no existe.
+    expect(await countAllBans(tenant.id, player.id)).toBe(0)
 
-    // El ban debe tener fecha futura (ban_days=1) y registrar quién/por qué.
-    const ban = await getLatestBan(tenant.id, player.id)
-    expect(ban).toBeDefined()
-    expect(ban!.banned_by).toBe(staff.id)
-    expect(ban!.reason).toContain('no-show')
-    expect(ban!.banned_until).not.toBeNull()
-    expect(new Date(ban!.banned_until!).getTime()).toBeGreaterThan(Date.now())
-
-    // handleNoShow también debe dejar audit log del no-show (no solo del ban).
     const audits = await getAuditLogs(bookingId)
     expect(audits.some((a) => a.action === 'booking.marked_no_show')).toBe(true)
   })
 
-  it('2nd ban allowed after first expires (trigger permits non-active ban)', async () => {
+  it('con se\u00f1a paga → se\u00f1a capturada + balance += (precio − se\u00f1a)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
-    await setTenantNoShowPenalty(tenant.id, { type: 'ban_days', days: 1, threshold: 3 })
 
-    // Insert 2 past no-shows
-    await sql`
-      INSERT INTO bookings (
-        tenant_id, court_id, player_id, date, time_start, time_end,
-        price_snapshot, deposit_amount, deposit_status, status
-      ) VALUES
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 5, '10:00'::time, '11:00'::time, 800000, 0, 'not_required', 'no_show'),
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 4, '11:00'::time, '12:00'::time, 800000, 0, 'not_required', 'no_show')
-    `
-
-    // 3rd no-show → triggers first ban
-    const b1Id = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '18:00', timeEnd: '19:00',
-    })
-    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${b1Id}`
-    await withTenantContext(tenant.id, async (tx) => {
-      await handleNoShow(b1Id, staff.id, tx)
-    })
-    expect(await countActiveBans(tenant.id, player.id)).toBe(1)
-
-    // Expire the first ban
-    await sql`
-      UPDATE tenant_player_bans
-      SET banned_until = NOW() - INTERVAL '1 second'
-      WHERE tenant_id = ${tenant.id} AND player_id = ${player.id}
-    `
-    expect(await countActiveBans(tenant.id, player.id)).toBe(0)
-
-    // 4th no-show within the 30-day window → new ban allowed (trigger accepts expired+new)
-    const b2Id = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '19:00', timeEnd: '20:00',
-    })
-    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${b2Id}`
-    await withTenantContext(tenant.id, async (tx) => {
-      await handleNoShow(b2Id, staff.id, tx)
+    const bookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
 
-    expect(await countActiveBans(tenant.id, player.id)).toBe(1)
+    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+
+    expect(await getBookingStatus(bookingId)).toBe('no_show')
+    expect(await getBookingDepositStatus(bookingId)).toBe('captured')
+    expect(await getPlayerBalance(tenant.id, player.id)).toBe(560_000)
+    expect(await countAllBans(tenant.id, player.id)).toBe(0)
+  })
+
+  it('sin jugador vinculado → no genera deuda', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: null })
+
+    const booking = await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+
+    expect(booking.status).toBe('no_show')
+    expect(await getBookingStatus(bookingId)).toBe('no_show')
+  })
+
+  it('idempotente: un segundo no-show lanza y no duplica la deuda', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+
+    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+    expect(await getPlayerBalance(tenant.id, player.id)).toBe(800_000)
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx)),
+    ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
+
+    // La deuda no se duplic\u00f3.
+    expect(await getPlayerBalance(tenant.id, player.id)).toBe(800_000)
   })
 })
 
@@ -869,99 +838,6 @@ describe('cancelByPlayer — state guard', () => {
         cancelByPlayer(ghostId, player.id, undefined, mockGateway, tx),
       ),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
-  })
-})
-
-// ─── GAP E/F/G: ramas faltantes de la penalización por no-show ────────
-describe('handleNoShow — penalty branches', () => {
-  it('no banea por debajo del umbral (1er no-show, threshold=3)', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const player = await createTestPlayer(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const courtId = await insertCourt(tenant.id)
-    await setTenantNoShowPenalty(tenant.id, { type: 'ban_days', days: 1, threshold: 3 })
-
-    const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '06:00', timeEnd: '07:00',
-    })
-    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${bookingId}`
-
-    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
-
-    expect(await getBookingStatus(bookingId)).toBe('no_show')
-    expect(await countAllBans(tenant.id, player.id)).toBe(0)
-  })
-
-  it('no banea cuando la penalización es type=none aunque supere el umbral', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const player = await createTestPlayer(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const courtId = await insertCourt(tenant.id)
-    await setTenantNoShowPenalty(tenant.id, { type: 'none', days: 0, threshold: 3 })
-
-    // 2 no-shows previos + el 3ro vía handleNoShow ⇒ count=3 ≥ threshold.
-    await sql`
-      INSERT INTO bookings (
-        tenant_id, court_id, player_id, date, time_start, time_end,
-        price_snapshot, deposit_amount, deposit_status, status
-      ) VALUES
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 5, '06:00'::time, '07:00'::time, 800000, 0, 'not_required', 'no_show'),
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 3, '07:00'::time, '08:00'::time, 800000, 0, 'not_required', 'no_show')
-    `
-    const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '08:00', timeEnd: '09:00',
-    })
-    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${bookingId}`
-
-    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
-
-    expect(await getBookingStatus(bookingId)).toBe('no_show')
-    expect(await countAllBans(tenant.id, player.id)).toBe(0)
-  })
-
-  it('no crea un 2do ban mientras el primero sigue activo (idempotencia)', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const player = await createTestPlayer(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const courtId = await insertCourt(tenant.id)
-    await setTenantNoShowPenalty(tenant.id, { type: 'ban_days', days: 30, threshold: 3 })
-
-    await sql`
-      INSERT INTO bookings (
-        tenant_id, court_id, player_id, date, time_start, time_end,
-        price_snapshot, deposit_amount, deposit_status, status
-      ) VALUES
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 6, '06:00'::time, '07:00'::time, 800000, 0, 'not_required', 'no_show'),
-        (${tenant.id}, ${courtId}, ${player.id}, CURRENT_DATE - 5, '07:00'::time, '08:00'::time, 800000, 0, 'not_required', 'no_show')
-    `
-    // 3er no-show → primer ban (activo 30 días).
-    const b1 = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '08:00', timeEnd: '09:00',
-    })
-    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${b1}`
-    await withTenantContext(tenant.id, (tx) => handleNoShow(b1, staff.id, tx))
-    expect(await countActiveBans(tenant.id, player.id)).toBe(1)
-
-    // 4to no-show con el ban TODAVÍA activo → no debe duplicar el ban.
-    const b2 = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '09:00', timeEnd: '10:00',
-    })
-    await sql`UPDATE bookings SET date = CURRENT_DATE - INTERVAL '1 day' WHERE id = ${b2}`
-    await withTenantContext(tenant.id, (tx) => handleNoShow(b2, staff.id, tx))
-
-    expect(await getBookingStatus(b2)).toBe('no_show')
-    expect(await countActiveBans(tenant.id, player.id)).toBe(1)
-    expect(await countAllBans(tenant.id, player.id)).toBe(1)
   })
 })
 

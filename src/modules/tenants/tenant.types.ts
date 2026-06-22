@@ -29,11 +29,8 @@ export type TenantSettings = {
     penalty_type: 'deposit' | 'full'
     penalty_amount: number | null
   }
-  no_show_penalty: {
-    type: 'ban_days' | 'none'
-    days: number
-    threshold?: number
-  }
+  // Tarea #5: el no-show ya no banea por días; genera deuda en
+  // player_tenant_relationships.balance. No hay configuración por complejo.
   accepts_cash: boolean
   accepts_transfer: boolean
   accepts_mercadopago: boolean

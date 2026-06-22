@@ -31,7 +31,7 @@ describe('booking + deposit checkout', () => {
         tenant.id,
         {
           playerId: player.id, courtId, date: FUTURE, timeStart: '10:00', timeEnd: '11:00',
-          durationMins: 60, requiresDeposit: true, depositPercentage: 30,
+          requiresDeposit: true, depositPercentage: 30,
         },
         tx,
       )

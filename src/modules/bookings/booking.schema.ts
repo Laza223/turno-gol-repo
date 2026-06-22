@@ -7,7 +7,6 @@ const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 const uuid = z.string().regex(UUID_RE, 'UUID inválido')
 const dateStr = z.string().regex(DATE_RE, 'Formato YYYY-MM-DD requerido')
 const hhmm = z.string().regex(HHMM_RE, 'Formato HH:MM requerido')
-const duration = z.union([z.literal(60), z.literal(120)])
 
 export const createOnlineBookingSchema = z.object({
   playerId: uuid,
@@ -15,7 +14,6 @@ export const createOnlineBookingSchema = z.object({
   date: dateStr,
   timeStart: hhmm,
   timeEnd: hhmm,
-  durationMins: duration,
   requiresDeposit: z.boolean(),
   depositPercentage: z.number().int().min(0).max(100),
   notesPlayer: z.string().max(1000).optional(),
@@ -27,7 +25,6 @@ export const createManualBookingSchema = z
     date: dateStr,
     timeStart: hhmm,
     timeEnd: hhmm,
-    durationMins: duration,
     type: z.enum(['spontaneous', 'block']),
     staffUserId: uuid,
     playerId: uuid.optional(),
@@ -73,7 +70,6 @@ export const expirePendingBookingSchema = z.object({
 export const getAvailableSlotsSchema = z.object({
   courtId: uuid,
   date: dateStr,
-  durationMins: duration,
 })
 
 // ── Output (response) contracts — doc15 §2 ────────────────────────────────────

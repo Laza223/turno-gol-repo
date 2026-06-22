@@ -112,13 +112,12 @@ describe('get / set round-trip', () => {
 
 describe('invalidateCourtDateSlots', () => {
   it('deletes every configured duration for the court+date', async () => {
+    // Tarea #6: el producto solo ofrece 60 min, así que SLOT_DURATIONS = [60].
     await setCachedSlots(COURT, DATE, 60, SLOTS)
-    await setCachedSlots(COURT, DATE, 120, SLOTS)
 
     await invalidateCourtDateSlots(COURT, DATE)
 
     expect(await getCachedSlots(COURT, DATE, 60)).toBeNull()
-    expect(await getCachedSlots(COURT, DATE, 120)).toBeNull()
     // Also clears the availability-search tracking set for the date (funnel).
     expect(store.deleted).toEqual([
       ...SLOT_DURATIONS.map((d) => `slots:${COURT}:2026-06-01:${d}`),

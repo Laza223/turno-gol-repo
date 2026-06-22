@@ -110,61 +110,14 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
         <p className="text-xs text-slate-500">0 = sin límite de anticipación</p>
       </div>
 
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-slate-700">Penalidad por ausencia</legend>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-slate-700">Ausencias (no-show)</legend>
         <p className="text-xs text-slate-500">
-          Qué pasa cuando un jugador reserva y no se presenta al turno.
+          Cuando marcás a un jugador como ausente, el sistema le genera una deuda
+          por el valor del turno (menos la seña, si la pagó). Queda bloqueado para
+          reservar online en tu complejo hasta que la salde. No requiere
+          configuración.
         </p>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-            <input
-              type="radio"
-              name="noShowPenaltyType"
-              value="ban_days"
-              defaultChecked={(s.no_show_penalty?.type ?? 'ban_days') === 'ban_days'}
-              className="accent-emerald-600"
-            />
-            Suspensión temporal
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-            <input
-              type="radio"
-              name="noShowPenaltyType"
-              value="none"
-              defaultChecked={s.no_show_penalty?.type === 'none'}
-              className="accent-emerald-600"
-            />
-            Sin penalidad
-          </label>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="noShowPenaltyThreshold">Ausencias para suspender</Label>
-            <Input
-              id="noShowPenaltyThreshold"
-              name="noShowPenaltyThreshold"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={10}
-              defaultValue={s.no_show_penalty?.threshold ?? 2}
-              className="h-10"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="noShowPenaltyDays">Días de suspensión</Label>
-            <Input
-              id="noShowPenaltyDays"
-              name="noShowPenaltyDays"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={30}
-              defaultValue={s.no_show_penalty?.days ?? 7}
-              className="h-10"
-            />
-          </div>
-        </div>
       </fieldset>
 
       <SubmitButton className="bg-emerald-600 hover:bg-emerald-500">Guardar cambios</SubmitButton>

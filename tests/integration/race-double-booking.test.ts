@@ -57,7 +57,6 @@ function attemptManualBooking(args: {
   date: string
   timeStart: string
   timeEnd: string
-  durationMins: 60 | 120
   priceOverride?: number
 }): Promise<Attempt> {
   return withTenantContext(tenant.id, async (tx) => {
@@ -69,7 +68,6 @@ function attemptManualBooking(args: {
           date: args.date,
           timeStart: args.timeStart,
           timeEnd: args.timeEnd,
-          durationMins: args.durationMins,
           type: 'spontaneous',
           staffUserId: seed.staffUserId,
           playerId,
@@ -111,7 +109,7 @@ describe('race: double booking — manual bookings concurrentes (mismo court/slo
 
     const N = 10
     const attempts = Array.from({ length: N }, () =>
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60 }),
+      attemptManualBooking({ courtId: seed.courtId, date, timeStart, timeEnd }),
     )
     const results = await Promise.all(attempts)
 
@@ -146,8 +144,8 @@ describe('race: double booking — manual bookings concurrentes (mismo court/slo
     const timeEnd = '21:00'
 
     const [a, b] = await Promise.all([
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart, timeEnd, durationMins: 60, priceOverride: 800000 }),
-      attemptManualBooking({ courtId: court2Id, date, timeStart, timeEnd, durationMins: 60, priceOverride: 800000 }),
+      attemptManualBooking({ courtId: seed.courtId, date, timeStart, timeEnd, priceOverride: 800000 }),
+      attemptManualBooking({ courtId: court2Id, date, timeStart, timeEnd, priceOverride: 800000 }),
     ])
 
     // El lock + la exclusion constraint son por cancha (court_id WITH =). Si una
@@ -162,8 +160,8 @@ describe('race: double booking — manual bookings concurrentes (mismo court/slo
     const date = '2026-06-19'
 
     const [first, second] = await Promise.all([
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '20:00', timeEnd: '21:00', durationMins: 60, priceOverride: 800000 }),
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', durationMins: 60, priceOverride: 800000 }),
+      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '20:00', timeEnd: '21:00', priceOverride: 800000 }),
+      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', priceOverride: 800000 }),
     ])
 
     // tsrange es semiabierto [): 21:00 (fin) y 21:00 (inicio) NO solapan. Si la
@@ -175,16 +173,17 @@ describe('race: double booking — manual bookings concurrentes (mismo court/slo
     expect(await countActiveBookings(seed.courtId, date, '21:00')).toBe(1)
   }, 30_000)
 
-  it('reserva de 120 min vs reserva de 60 min con solape PARCIAL → exactamente 1 gana y la otra recibe SlotTakenError', async () => {
+  it('dos reservas de 60 min con solape PARCIAL off-grid → exactamente 1 gana y la otra recibe SlotTakenError', async () => {
     const date = '2026-06-20'
 
-    // A: 20:00–22:00 (120). B: 21:00–22:00 (60). Solapan en [21:00, 22:00).
-    // El test original solo usaba slots idénticos (solape exacto); un check que
-    // comparara igualdad de time_start/time_end en vez de rango dejaría coexistir
-    // estas dos y pasaría igual. El solape parcial bajo carrera lo descarta.
+    // Tarea #6: ambos turnos de 60 min. A va off-grid (20:30–21:30) y B en hora
+    // redonda (21:00–22:00). Solapan en [21:00, 21:30). El test original solo
+    // usaba slots idénticos (solape exacto); un check que comparara igualdad de
+    // time_start/time_end en vez de rango dejaría coexistir estas dos y pasaría
+    // igual. El solape parcial bajo carrera lo descarta.
     const [a, b] = await Promise.all([
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '20:00', timeEnd: '22:00', durationMins: 120, priceOverride: 1500000 }),
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', durationMins: 60, priceOverride: 800000 }),
+      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '20:30', timeEnd: '21:30', priceOverride: 1500000 }),
+      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', priceOverride: 800000 }),
     ])
 
     const results = [a, b]

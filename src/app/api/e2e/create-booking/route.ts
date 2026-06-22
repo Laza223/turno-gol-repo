@@ -20,13 +20,6 @@ const bodySchema = z.object({
   timeEnd: z.string().regex(/^\d{2}:\d{2}$/),
 })
 
-function durationMins(timeStart: string, timeEnd: string): 60 | 120 {
-  const [sh, sm] = timeStart.split(':').map(Number)
-  const [eh, em] = timeEnd.split(':').map(Number)
-  const diff = (eh! * 60 + em!) - (sh! * 60 + sm!)
-  return diff >= 120 ? 120 : 60
-}
-
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isE2EAllowed()) {
     return notFound('No encontrado.')
@@ -56,7 +49,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           date: parsed.data.date,
           timeStart: parsed.data.timeStart,
           timeEnd: parsed.data.timeEnd,
-          durationMins: durationMins(parsed.data.timeStart, parsed.data.timeEnd),
           // E2E tenant has requires_deposit=false → booking confirms without MP.
           requiresDeposit: false,
           depositPercentage: 0,

@@ -102,13 +102,14 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - `deposit_mode`: configurable por complejo (on/off + porcentaje global). Sin modo garantía.
 - Duración de turno: 60 minutos fijo (constante global `SLOT_DURATION_MINUTES` en `src/shared/constants.ts`). El campo configurable `booking_duration_minutes` se eliminó (dead code, cambio #14).
 - Anticipación de reserva: default 6 días (como ATC).
-- Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles + precio por duración.
-- NO hay billetera virtual del jugador. Reembolsos/no-shows se resuelven entre jugador y complejo.
+- Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles, **un precio por franja** (`rule.price`). Turnos de 60 min fijos: no hay precio por duración (cambios #6/#13).
+- NO hay billetera virtual del jugador. Reembolsos se resuelven entre jugador y complejo.
+- **No-show = deuda (cambio #5, modelo ATC)**: marcar no-show captura la seña pagada (`deposit_status='captured'`) y suma `price_snapshot − seña` a `player_tenant_relationships.balance`; el jugador queda bloqueado para reservar online en ese complejo hasta saldarla. Se eliminó el ban temporal por días (`no_show_penalty` ya no existe en settings, migr. 034); los bans manuales (`tenant_player_bans`) siguen para otros motivos. Lógica en `handleNoShow` (`booking.cancellation.ts`), incremento atómico vía `addNoShowDebt`.
 - **Saldo a favor de abonados (modelo ATC, cambio #4)**: `abonados.credit_balance` (centavos, CHECK >= 0). Se carga con un `CashFlow` `income`/`abonado_payment` + `abonado_id` (entra a caja) y se consume al destildar "Mantener saldo" en el booking `fixed` (setea `bookings.credit_applied`; NO genera CashFlow). Invariante recalculado desde fuentes: `credit_balance = Σ(abonado_payment) − Σ(credit_applied)`. El saldo vive en el abonado (no se transfiere). Distinto de `player_tenant_relationships.balance` (deuda por no-show).
 - **Módulo Jugadores** (`/jugadores`, cambio #9): vista admin de jugadores vinculados al complejo (vía `player_tenant_relationships`, NUNCA guests). Ficha = stats + Deudas (cobrar `balance` → reduce PTR.balance + CashFlow) + Abonados (cargar saldo) + historial. Protegido con `requireOperatorStaff()` (admin + manager).
 - Gestión de caja completa (decisión actualizada): incluye stock/cantina (productos con precio, stock y alertas; ventas → CashFlow categoría `product_sale`) y control de gastos (`cashflow_type` = `expense`, categoría `operating_expense`). `cashflow_type`: `income` | `adjustment` | `expense`. Más cierre de caja diario.
 - Realtime Supabase: solo para admin (grilla). Jugador NO tiene Realtime en v1 (polling/refresh).
-- Push notifications: Web Push API al admin cuando llega reserva online (sonido fijo, no configurable).
+- Push notifications: Web Push API al admin cuando llega reserva online (sonido fijo, no configurable). **Horario silencioso (cambio #7)**: en madrugada (00:00–08:00 en la timezone del complejo) el push se agenda (`startAfter`) para las 08:00 locales en vez de sonar al instante. Implementado en `notifyAdminPush` vía `pushSendOptions`/`quietHoursReleaseAt` (`push-quiet-hours.ts`).
 - NO hay recordatorio 24hs al jugador en v1 (descartado en P9.2 por costo de email masivo; worker/template eliminados, cambio #18). Se reconstruye con WhatsApp post-v1.
 - DB columns de cancelación: `canceled_reason`, `canceled_by`, `canceled_at` (sin doble L)
 - Middleware SET LOCAL: `app.current_tenant_id` para admin, `app.current_player_id` para jugador

@@ -20,9 +20,6 @@ const reservasPolicySchema = z.object({
   depositPercentage: z.number().int().min(10).max(100),
   allowOnlineBooking: z.boolean(),
   cancellationHoursBefore: z.number().int().min(0).max(72),
-  noShowPenaltyType: z.enum(['none', 'ban_days']),
-  noShowPenaltyDays: z.number().int().min(1).max(30),
-  noShowPenaltyThreshold: z.number().int().min(1).max(10),
 })
 
 export async function updateReservasPolicyAction(
@@ -46,9 +43,6 @@ export async function updateReservasPolicyAction(
     depositPercentage: Number(formData.get('depositPercentage')),
     allowOnlineBooking: formData.get('allowOnlineBooking') === 'true',
     cancellationHoursBefore: Number(formData.get('cancellationHoursBefore')),
-    noShowPenaltyType: formData.get('noShowPenaltyType'),
-    noShowPenaltyDays: Number(formData.get('noShowPenaltyDays')),
-    noShowPenaltyThreshold: Number(formData.get('noShowPenaltyThreshold')),
   }
 
   const parsed = reservasPolicySchema.safeParse(raw)
@@ -58,10 +52,11 @@ export async function updateReservasPolicyAction(
 
   const {
     requiresDeposit, depositPercentage, allowOnlineBooking,
-    cancellationHoursBefore, noShowPenaltyType, noShowPenaltyDays,
-    noShowPenaltyThreshold,
+    cancellationHoursBefore,
   } = parsed.data
 
+  // Tarea #5: ya no se persiste no_show_penalty (el no-show genera deuda, sin
+  // configuración por complejo).
   const patch = {
     requires_deposit: requiresDeposit,
     deposit_percentage: depositPercentage,
@@ -70,11 +65,6 @@ export async function updateReservasPolicyAction(
       hours_before: cancellationHoursBefore,
       penalty_type: 'deposit',
       penalty_amount: null,
-    },
-    no_show_penalty: {
-      type: noShowPenaltyType,
-      days: noShowPenaltyDays,
-      threshold: noShowPenaltyThreshold,
     },
   }
 

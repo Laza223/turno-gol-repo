@@ -47,8 +47,10 @@ describe('inputMode coverage (regression guard)', () => {
       'utf8',
     )
     // Capture each block starting at type="number"
+    // (Tarea #5: se eliminaron los inputs de penalidad por ausencia; quedan
+    // depositPercentage y cancellationHoursBefore.)
     const typeNumberMatches = Array.from(file.matchAll(/type="number"/g))
-    expect(typeNumberMatches.length).toBeGreaterThanOrEqual(4)
+    expect(typeNumberMatches.length).toBeGreaterThanOrEqual(2)
 
     for (const match of typeNumberMatches) {
       const start = match.index ?? 0

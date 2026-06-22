@@ -55,7 +55,6 @@ export const tenants = pgTable(
         "requires_deposit": true,
         "deposit_percentage": 30,
         "cancellation_policy": {"hours_before": 12, "penalty_type": "deposit", "penalty_amount": null},
-        "no_show_penalty": {"type": "ban_days", "days": 7},
         "accepts_cash": true,
         "accepts_transfer": true,
         "accepts_mercadopago": true,

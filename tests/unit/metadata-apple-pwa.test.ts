@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 // can be imported in a plain Vitest/Node environment.
 vi.mock('next/font/google', () => ({
   Inter: () => ({ variable: '--font-inter', className: 'inter' }),
+  Archivo: () => ({ variable: '--font-archivo', className: 'archivo' }),
 }))
 
 import { metadata } from '@/app/layout'

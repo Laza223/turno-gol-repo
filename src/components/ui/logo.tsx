@@ -18,10 +18,15 @@ export function Logo({ variant = 'vertical', className, iconClassName, textClass
 
   if (variant === 'horizontal') {
     return (
-      <div className={cn("flex items-center gap-2", className)}>
-        <TurnoGolLogoIcon className={cn("h-9 w-9 shrink-0", cleanIconClass, textClassName)} />
-        <span className={cn("font-display text-xl font-bold tracking-tight", textClassName)}>
-          Turno<span className="text-emerald-500">Gol</span>
+      <div className={cn("flex items-center", className)}>
+        {/* Wordmark where the 'O' in Gol is replaced by the minimalist ball icon */}
+        <span className={cn("font-display text-2xl font-bold tracking-tight flex items-center", textClassName)}>
+          Turno
+          <span className="text-emerald-500 flex items-center">
+            G
+            <TurnoGolLogoIcon className={cn("h-[0.7em] w-[0.7em] mx-[0.05em] text-emerald-500", cleanIconClass)} />
+            l
+          </span>
         </span>
       </div>
     )
@@ -29,8 +34,10 @@ export function Logo({ variant = 'vertical', className, iconClassName, textClass
 
   if (variant === 'vertical') {
     return (
-      <div className={cn("flex flex-col items-center justify-center gap-3", className)}>
+      <div className={cn("flex flex-col items-center justify-center gap-4", className)}>
+        {/* Large icon on top */}
         <TurnoGolLogoIcon className={cn("h-24 w-24 sm:h-32 sm:w-32 shrink-0", cleanIconClass, textClassName)} />
+        {/* Clean text below */}
         <span className={cn("font-display text-4xl sm:text-5xl font-bold tracking-tight", textClassName)}>
           Turno<span className="text-emerald-500">Gol</span>
         </span>

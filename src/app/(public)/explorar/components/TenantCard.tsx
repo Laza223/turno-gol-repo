@@ -153,7 +153,44 @@ export default function TenantCard({
   )
 }
 
-/** Placeholder hasta Task 3.1 (variante mapa). Evita romper tipos/imports. */
-function TenantCardCompact(_props: { tenant: PublicTenantCard; initialFavorited?: boolean }) {
-  return null
+function TenantCardCompact({
+  tenant,
+  initialFavorited = false,
+}: {
+  tenant: PublicTenantCard
+  initialFavorited?: boolean
+}) {
+  const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
+  return (
+    <article className="group relative flex gap-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
+      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+        {tenant.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-lg font-bold text-emerald-600/40">
+            {tenant.name.slice(0, 2).toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="truncate text-sm font-semibold text-slate-900">
+            <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0">
+              {tenant.name}
+            </Link>
+          </h3>
+          {tenant.reviewCount > 0 && <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />}
+        </div>
+        <p className="truncate text-xs text-slate-500">{tenant.city}, {tenant.province}</p>
+        {fromPrice && (
+          <p className="mt-auto flex items-baseline gap-1">
+            <span className="font-display text-base font-bold text-emerald-700 tabular-nums">{fromPrice}</span>
+            <span className="text-xs text-slate-400">/turno</span>
+          </p>
+        )}
+      </div>
+      <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-2 top-2 z-20" />
+    </article>
+  )
 }

@@ -180,3 +180,17 @@ describe('TenantCard — body (rediseño Matchday)', () => {
     expect(screen.getByText('Reservá online')).toBeTruthy()
   })
 })
+
+describe('TenantCard — variante compact', () => {
+  it('muestra nombre, precio y link al perfil; sin controles de carrusel', () => {
+    render(
+      <TenantCard
+        tenant={{ ...baseTenant, coverUrl: '/c.jpg', fromPriceCents: 950000 }}
+        variant="compact"
+      />,
+    )
+    expect(screen.getByRole('link', { name: /El Potrero/ }).getAttribute('href')).toBe('/el-potrero')
+    expect(screen.getByText(/\$\s?9\.500/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Foto siguiente' })).toBeNull()
+  })
+})

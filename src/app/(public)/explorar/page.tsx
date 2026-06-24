@@ -218,7 +218,6 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
             <ExplorarSplitView
               results={results}
               favoritedIds={Array.from(favoriteIds)}
-              photosByTenant={{}}
             />
           ) : results.length === 0 ? (
             <EmptyResults avail={avail ? { date: avail.date, time: avail.time } : null} />

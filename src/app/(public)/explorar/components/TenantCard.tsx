@@ -180,7 +180,11 @@ function TenantCardCompact({
               {tenant.name}
             </Link>
           </h3>
-          {tenant.reviewCount > 0 && <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />}
+          {tenant.reviewCount > 0 && (
+            <span className="shrink-0">
+              <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />
+            </span>
+          )}
         </div>
         <p className="truncate text-xs text-slate-500">{tenant.city}, {tenant.province}</p>
         {fromPrice && (

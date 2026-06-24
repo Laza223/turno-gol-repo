@@ -21,7 +21,7 @@ const t = (id: string, name: string): PublicTenantCard => ({
 
 describe('ExplorarSplitView', () => {
   it('renderiza la lista compacta y el mapa', () => {
-    render(<ExplorarSplitView results={[t('a', 'Uno'), t('b', 'Dos')]} favoritedIds={[]} photosByTenant={{}} />)
+    render(<ExplorarSplitView results={[t('a', 'Uno'), t('b', 'Dos')]} favoritedIds={[]} />)
     expect(screen.getByText('Uno')).toBeTruthy()
     expect(screen.getByText('Dos')).toBeTruthy()
     expect(screen.getByTestId('map')).toBeTruthy()

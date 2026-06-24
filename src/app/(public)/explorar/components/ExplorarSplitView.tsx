@@ -13,11 +13,9 @@ import ExplorarMapLoader from './ExplorarMapLoader'
 export default function ExplorarSplitView({
   results,
   favoritedIds,
-  photosByTenant: _photosByTenant,
 }: {
   results: PublicTenantCard[]
   favoritedIds: string[]
-  photosByTenant: Record<string, string[]>
 }) {
   const favs = useMemo(() => new Set(favoritedIds), [favoritedIds])
   const [activeId, setActiveId] = useState<string | null>(null)

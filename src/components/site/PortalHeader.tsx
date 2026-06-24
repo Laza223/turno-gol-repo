@@ -57,20 +57,12 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
                 variant="overlay"
               />
             ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="hidden rounded-full px-3 py-1.5 text-xs font-semibold text-slate-200 transition-all duration-200 hover:bg-white/10 hover:text-white md:text-sm sm:inline-flex"
-                >
-                  Iniciar sesión
-                </Link>
-                <Link
-                  href="/register"
-                  className="inline-flex h-9 items-center rounded-full bg-white px-4 text-xs font-semibold text-slate-900 shadow-md transition-all duration-200 hover:bg-slate-100 active:scale-95 md:text-sm"
-                >
-                  Comenzar
-                </Link>
-              </>
+              <Link
+                href="/ingresar"
+                className="inline-flex h-9 items-center rounded-full bg-white px-4 text-xs font-semibold text-slate-900 shadow-md transition-all duration-200 hover:bg-slate-100 active:scale-95 md:text-sm"
+              >
+                Ingresar
+              </Link>
             )}
           </div>
         </div>
@@ -119,7 +111,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
                 <span>Para complejos</span>
               </Link>
               <Link
-                href="/login"
+                href="/ingresar"
                 className="inline-flex h-9 items-center gap-1.5 rounded-full bg-emerald-600 px-4 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
               >
                 <LogIn className="h-4 w-4" />

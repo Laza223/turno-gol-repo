@@ -11,7 +11,7 @@ export default function SiteFooter() {
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
           <Link href="/explorar" className="hover:text-white transition-colors">Explorar</Link>
-          <Link href="/login" className="hover:text-white transition-colors">Iniciar sesión</Link>
+          <Link href="/ingresar" className="hover:text-white transition-colors">Iniciar sesión</Link>
           <a href="mailto:hola@turnogol.app" className="hover:text-white transition-colors">Contacto</a>
           <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
           <Link href="/terms" className="hover:text-white transition-colors">Términos</Link>

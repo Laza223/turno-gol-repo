@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import { parseIntent, type SuccessIntent } from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import SuccessRedirect from './SuccessRedirect'
+import SuccessRedirect from '@/app/(auth)/verify/SuccessRedirect'
 
 const ERROR_COPY: Record<string, string> = {
   expired: 'Este enlace expiró. Generá uno nuevo desde Iniciar sesión.',

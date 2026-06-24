@@ -105,7 +105,7 @@ Runbook de emergencia (documentar antes de lanzar):
 |---|---|---|
 | Número de tarjeta | ❌ NUNCA | MercadoPago lo maneja. Ellos tienen PCI DSS. |
 | CVV | ❌ NUNCA | Idem |
-| Contraseñas en texto plano | ❌ NUNCA | Usamos magic link (sin contraseña) |
+| Contraseñas en texto plano | ❌ NUNCA | Staff: contraseña hasheada (bcrypt/Supabase Auth). Jugador: passwordless (magic link). Nunca en texto plano. |
 | Nombre del jugador | ✅ | Necesario para la reserva |
 | Email del jugador | ✅ | Auth y comunicaciones |
 | Celular del jugador | ✅ (opcional) | Contacto alternativo |
@@ -114,11 +114,12 @@ Runbook de emergencia (documentar antes de lanzar):
 
 ### Autenticación y autorización
 
-**Para staff del complejo (admin, recepcionista):**
-- Magic link por email (sin contraseña): link de 1 uso, válido 15 minutos
+**Para staff del complejo (admin, manager):**
+- Email + contraseña (hasheada con bcrypt/Supabase Auth). Magic link queda deprecado para staff (ADR-013 reemplaza ADR-002 para este caso).
 - JWT access token: válido 1 hora
 - JWT refresh token: válido 30 días, rotación en cada uso
 - Sesiones: invalidadas al cambiar de dispositivo (configurable)
+- SuperAdmin: alta por script + MFA TOTP (panel `/internal`)
 
 **Para jugadores (B2C):**
 - Magic link por email O autenticación con Google/Apple (menor fricción)
@@ -127,17 +128,21 @@ Runbook de emergencia (documentar antes de lanzar):
 
 **Permisos por rol (RBAC):**
 
-| Acción | Admin | Recepcionista | Solo Lectura | Jugador |
-|---|:---:|:---:|:---:|:---:|
-| Ver grilla de reservas | ✅ | ✅ | ✅ | ❌ |
-| Crear reserva manual | ✅ | ✅ | ❌ | ❌ |
-| Cancelar reserva | ✅ | ✅ | ❌ | Sólo la propia |
-| Ver reportes financieros | ✅ | ❌ | ❌ | ❌ |
-| Gestionar abonados | ✅ | ✅ (ver) | ❌ | ❌ |
-| Configurar el complejo | ✅ | ❌ | ❌ | ❌ |
-| Gestionar usuarios de staff | ✅ | ❌ | ❌ | ❌ |
-| Ver caja del día | ✅ | ✅ | ❌ | ❌ |
-| Editar precios de canchas | ✅ | ❌ | ❌ | ❌ |
+**2 roles (Modelo ATC):** `admin` (dueño, acceso total) y `manager` (encargado permisivo). El `manager` opera el día a día (grilla, reservas, caja, abonados, reportes, métricas y configuración general). El `admin` es el único que conecta MercadoPago, gestiona facturación/staff y la suscripción SaaS. **No hay sistema de PIN** ni rol `read_only` (eliminado, migr. 029).
+
+| Acción | Admin | Manager | Jugador |
+|---|:---:|:---:|:---:|
+| Ver grilla de reservas | ✅ | ✅ | ❌ |
+| Crear reserva manual | ✅ | ✅ | ❌ |
+| Cancelar reserva | ✅ | ✅ | Sólo la propia |
+| Ver reportes / métricas | ✅ | ✅ | ❌ |
+| Gestionar abonados | ✅ | ✅ | ❌ |
+| Gestionar caja (ingresos/gastos/cierre) | ✅ | ✅ | ❌ |
+| Editar precios de canchas | ✅ | ✅ | ❌ |
+| Configuración general del complejo | ✅ | ✅ | ❌ |
+| Conectar MercadoPago / facturación | ✅ | ❌ | ❌ |
+| Gestionar usuarios de staff | ✅ | ❌ | ❌ |
+| Gestionar suscripción SaaS (cancelar/cambiar plan) | ✅ | ❌ | ❌ |
 
 ### Baseline de seguridad: OWASP Top 10
 
@@ -175,7 +180,7 @@ CREATE POLICY tenant_isolation ON bookings
 SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 ```
 
-### Tablas que tienen `tenant_id` (datos aislados — **12 tablas con RLS**)
+### Tablas que tienen `tenant_id` (datos aislados — **13 tablas con RLS**)
 
 > [!IMPORTANT]
 > Lista canónica. En caso de discrepancia, **CLAUDE.md y doc12 ganan**.
@@ -192,6 +197,12 @@ SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 - `notifications` (notificaciones enviadas)
 - `audit_logs` (logs de auditoría)
 - `tenant_player_bans` (bans de jugadores por complejo)
+- `push_subscriptions` (suscripciones Web Push del staff)
+
+> [!NOTE]
+> **Tablas híbridas (`tenant_id` + RLS por jugador)**: `player_tenant_relationships`, `reviews`
+> (lectura pública + insert del jugador), `player_favorites` (solo el jugador).
+> **Operacional**: `feature_flags` (fila `tenant_id` NULL = default global; seteado = override).
 
 ### Tablas que NO tienen `tenant_id` (datos globales, cross-tenant — 7 tablas)
 

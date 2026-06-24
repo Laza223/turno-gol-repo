@@ -47,8 +47,9 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 10 | `tenant_subscriptions` | TenantSubscription | Suscripción SaaS del complejo |
 | 11 | `tenant_player_bans` | TenantPlayerBan | Bans de jugadores por complejo |
 | 12 | `daily_cash_closes` | DailyCashClose | Cierre de caja diario del complejo (INMUTABLE post-cierre) |
+| 13 | `push_subscriptions` | PushSubscription | Suscripciones Web Push del staff (aviso de reserva online) |
 
-**Total: 12 tablas aisladas con RLS.**
+**Total: 13 tablas aisladas con RLS.**
 
 ### Tablas SIN `tenant_id` — Datos globales (cross-tenant o del sistema)
 
@@ -60,14 +61,17 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 4 | `plans` | Plan | Los planes de suscripción son iguales para todos los complejos. |
 | 5 | `price_versions` | PriceVersion | Historial de precios de planes, datos del sistema. |
 | 6 | `processed_webhooks` | ProcessedWebhook | Idempotencia de webhooks de MP, datos del sistema. |
-| 7 | `player_tenant_relationships` | PlayerTenantRelationship | Relación jugador↔complejo. Global pero con RLS dual (staff ve por tenant, jugador ve los suyos). |
-| 8 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel `/internal` con MFA + IP whitelist. |
+| 7 | `player_tenant_relationships` | PlayerTenantRelationship | Relación jugador↔complejo. `tenant_id` + RLS dual (staff por tenant, jugador por player_id). |
+| 8 | `reviews` | Review | Reseñas post-partido. `tenant_id` + RLS híbrida: lectura **pública** + INSERT del jugador dueño del booking. |
+| 9 | `player_favorites` | PlayerFavorite | Favoritos del jugador. `tenant_id` + RLS por jugador (`app.current_player_id`). Sin lectura pública. |
+| 10 | `feature_flags` | FeatureFlag | Toggle operacional. Fila `tenant_id` NULL = default global; seteado = override por complejo. Acceso vía service role. |
+| 11 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel `/internal` con MFA + IP whitelist. |
 
-**Total: 6 tablas globales + 1 con RLS dual (`player_tenant_relationships`) + 1 sistema (`system_admins`).**
+**Total: 6 tablas globales + 3 híbridas (RLS por jugador: `player_tenant_relationships`, `reviews`, `player_favorites`) + 1 operacional (`feature_flags`) + 1 sistema (`system_admins`).**
 
 > [!NOTE]
-> † `player_tenant_relationships` tiene `tenant_id` y RLS dual: una policy para staff (por tenant) y otra para jugador (por player_id).
-> Se clasifica como "global" porque la relación es cross-tenant (un jugador tiene relaciones con N complejos).
+> † Las **híbridas** tienen `tenant_id` y RLS por jugador. `player_tenant_relationships`: dual staff (por tenant) + jugador (por player_id). `reviews`: lectura pública + INSERT del jugador dueño de un booking `completed`. `player_favorites`: solo el jugador (`app.current_player_id`).
+> Se agrupan acá (no en "aisladas puras") porque su acceso no es exclusivamente por `app.current_tenant_id`.
 
 > [!IMPORTANT]
 > **Regla absoluta**: Si una tabla tiene datos que podrían exponer información de un complejo
@@ -144,7 +148,7 @@ CREATE INDEX idx_audit_logs_tenant_created ON audit_logs(tenant_id, created_at);
 ```sql
 -- ================================================
 -- PATRÓN: Activar RLS y crear policies para cada tabla aislada
--- Se repite para las 11 tablas
+-- Se repite para las 13 tablas aisladas (las híbridas agregan policies de jugador)
 -- ================================================
 
 -- 1. Activar RLS (la tabla rechaza acceso por defecto hasta que exista un policy)
@@ -377,8 +381,8 @@ Request HTTP a /internal/*
 
 **Campos clave:**
 - `tenant_id` en el payload raíz Y en `app_metadata` (Supabase usa `app_metadata` para sus policies).
-- `role`: `admin` — único rol en v1. Zonas sensibles protegidas por PIN del tenant.
-- El JWT se genera al autenticarse y tiene el tenant_id del complejo donde se autenticó.
+- `role`: `admin` | `manager` (Modelo ATC, 2 roles). El gating de acciones sensibles es por **rol** en la capa de app (`requireAdminStaff` / `requireOperatorStaff`), **sin PIN**.
+- El JWT se genera al autenticarse (staff: email + contraseña, ADR-013) y tiene el tenant_id del complejo donde se autenticó.
 
 **¿Qué pasa si un staff es admin de 2 complejos?** Al loguearse, elige el complejo. El JWT se emite con el `tenant_id` del complejo elegido. Para cambiar de complejo, hace "switch" → se genera un nuevo JWT con el otro `tenant_id`. Nunca tiene un JWT con acceso a 2 tenants simultáneamente.
 
@@ -803,7 +807,7 @@ async function registerComplex(data: RegisterInput) {
   // 1. Crear el tenant (tabla global, no tiene RLS)
   const tenant = await systemDb.query(`
     INSERT INTO tenants (name, slug, status, trial_ends_at, ...)
-    VALUES ($1, $2, 'trial', NOW() + INTERVAL '30 days', ...)
+    VALUES ($1, $2, 'trialing', NOW() + INTERVAL '30 days', ...)
     RETURNING id
   `, [data.name, data.slug]);
 
@@ -876,7 +880,7 @@ staff_users                    tenant_staff_members
 
 **Flujo de login para multi-tenant staff:**
 ```
-1. Staff se autentica (magic link → verified email)
+1. Staff se autentica (email + contraseña — ADR-013)
 2. Backend busca: SELECT tenant_id, role FROM tenant_staff_members
    WHERE staff_user_id = $user_id AND is_active = true
 3. Si tiene 1 solo tenant → JWT directo con ese tenant_id
@@ -1010,12 +1014,15 @@ describe('Tenant Isolation', () => {
 ### 10.2 Test de aislamiento para CADA tabla
 
 ```typescript
-// Generar tests de aislamiento automáticamente para las 12 tablas
+// Generar tests de aislamiento automáticamente para las 13 tablas aisladas
 const ISOLATED_TABLES = [
   'courts', 'bookings', 'abonados', 'payments', 'cash_flows',
   'products', 'tenant_staff_members', 'daily_cash_closes',
-  'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans'
+  'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans',
+  'push_subscriptions'
 ];
+// Híbridas (reviews, player_favorites, player_tenant_relationships) tienen su propio
+// test de aislamiento por jugador (ver §10.3) además del de tenant.
 
 for (const table of ISOLATED_TABLES) {
   describe(`RLS on ${table}`, () => {

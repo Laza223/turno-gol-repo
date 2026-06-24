@@ -60,7 +60,7 @@ CREATE TYPE surface_type AS ENUM (
   'synthetic_grass',  -- Césped sintético
   'natural_grass',    -- Césped natural
   'cement',           -- Cemento
-  'indoor'            -- Piso indoor
+  'tile'              -- Baldosa (antes indoor)
 );
 
 -- Tipo de reserva
@@ -72,7 +72,7 @@ CREATE TYPE booking_type AS ENUM (
 
 -- Estado de la reserva (state machine más crítica del sistema)
 CREATE TYPE booking_status AS ENUM (
-  'pending_payment',      -- Esperando pago de seña (timeout 15 min o 48hs si CBU)
+  'pending_payment',      -- Esperando pago de seña (timeout 6 min)
   'confirmed',            -- Confirmada (con o sin seña)
   'expired',              -- Timeout sin pago → estado final
   'canceled_refunded',    -- Cancelada con reembolso (americano: una L)
@@ -105,8 +105,11 @@ CREATE TYPE player_status AS ENUM ('active', 'banned', 'anonymized');
 -- Estado del staff user
 CREATE TYPE staff_status AS ENUM ('active', 'inactive');
 
--- Rol del staff en un tenant (v1: solo admin, extensible a futuro)
-CREATE TYPE staff_role AS ENUM ('admin');
+-- Rol del staff en un tenant (Modelo ATC, 2 roles — migración 029 quitó 'read_only')
+--   admin   = Dueño. Acceso total; único que conecta MP, gestiona facturación y staff.
+--   manager = Encargado permisivo. Grilla/reservas/caja, reportes, métricas y
+--             configuración general. Sin sistema de PIN.
+CREATE TYPE staff_role AS ENUM ('admin', 'manager');
 
 -- Tipo de pago
 CREATE TYPE payment_type AS ENUM (
@@ -122,17 +125,12 @@ CREATE TYPE payment_method AS ENUM ('cash', 'transfer', 'mercadopago', 'other');
 -- Estado del pago
 CREATE TYPE payment_status AS ENUM (
   'pending',      -- Iniciado, esperando confirmación del webhook de MP
-  'in_process',   -- Pago CBU/transferencia bancaria en proceso (24-48hs). Extiende timer del booking a 48hs.
+  'in_process',   -- En proceso (transferencias bancarias/CVU que tardan 24-48hs) — Fix #12 F1
   'approved',     -- Pago exitoso
   'rejected',     -- Pago rechazado
   'refunded',     -- Reembolsado (total o parcial)
   'canceled'      -- Cancelado (americano, una L)
 );
-COMMENT ON TYPE payment_status IS
-  'in_process: exclusivo para pagos por transferencia bancaria/CBU que tardan 24-48hs. '
-  'Cuando un booking tiene un payment en in_process, el timer de expiración se extiende a 48hs '
-  '(vs. 15min para pending sin in_process). Nunca absorber in_process dentro de pending: '
-  'los reports financieros necesitan discriminar ambos estados.';
 
 -- Tipo de movimiento de caja ('expense' agregado en migración 025)
 CREATE TYPE cashflow_type AS ENUM ('income', 'adjustment', 'expense');
@@ -152,10 +150,14 @@ CREATE TYPE cashflow_category AS ENUM (
 CREATE TYPE recipient_type AS ENUM ('player', 'staff', 'tenant_owner');
 
 -- Canal de notificación
-CREATE TYPE notification_channel AS ENUM ('email');  -- v1 email-only (ADR-003). Push se evalúa en v1.5.
+-- Canal de notificaciones POR EMAIL (registro de mails transaccionales).
+-- v1 email-only para este registro (ADR-003). Las push notifications al admin NO
+-- usan esta tabla: van por Web Push API con su propia tabla `push_subscriptions`
+-- (ver §3.15) y se entregan directo al navegador, no se materializan acá.
+CREATE TYPE notification_channel AS ENUM ('email');
 
 -- Estado de notificación
-CREATE TYPE notification_status AS ENUM ('queued', 'sent', 'delivered', 'failed');
+CREATE TYPE notification_status AS ENUM ('queued', 'sending', 'sent', 'delivered', 'failed');
 
 -- Tipo de actor en audit log
 CREATE TYPE audit_actor_type AS ENUM ('staff', 'player', 'system');
@@ -217,21 +219,27 @@ CREATE TABLE tenants (
       "penalty_type": "deposit",
       "penalty_amount": null
     },
-    "no_show_penalty": {
-      "type": "ban_days",
-      "days": 7
-    },
     "accepts_cash": true,
     "accepts_transfer": true,
     "accepts_mercadopago": true,
     "allow_online_booking": true,
-    "booking_advance_days": 14,
-    "booking_duration_minutes": [60, 90, 120],
+    "booking_advance_days": 6,
     "auto_complete_minutes": 30
   }'::JSONB,
 
   -- Feature flag overrides por tenant (Doc 11 ADR-010)
   feature_overrides JSONB NOT NULL DEFAULT '{}',
+
+  -- Servicios del complejo para filtros/badges de la interfaz pública
+  -- { duchas, estacionamiento, bar, parrilla, vestuario, wifi, techado, iluminacion }
+  amenities       JSONB NOT NULL DEFAULT '{}',
+
+  -- Facets denormalizados de las canchas 'online' (cambios #16/#17). Mantenidos por
+  -- el trigger courts_recalc_from_price; evitan tocar courts (RLS-aislada) en la
+  -- interfaz pública. NULL/{} = sin canchas online.
+  from_price_cents INTEGER,                       -- "Desde $X" en las cards (centavos ARS)
+  court_surfaces  TEXT[] NOT NULL DEFAULT '{}',   -- surface_type distintos disponibles
+  court_formats   INTEGER[] NOT NULL DEFAULT '{}',-- formatos de Fútbol distintos disponibles
 
   -- Credenciales OAuth de MercadoPago del complejo (para cobrar señas)
   -- El complejo conecta su cuenta MP durante el onboarding (Doc 4 §7, Doc 10 §2)
@@ -467,7 +475,10 @@ CREATE TABLE courts (
   name            TEXT NOT NULL,                 -- "Cancha 1", "Cancha Norte"
   description     TEXT,
   surface_type    surface_type NOT NULL DEFAULT 'synthetic_grass',
-  capacity        INTEGER NOT NULL,              -- Cantidad de jugadores (10, 14, 22)
+  format          INTEGER NOT NULL DEFAULT 5,    -- 4, 5, 6, 7, etc.
+  is_covered      BOOLEAN NOT NULL DEFAULT false,
+  has_lighting    BOOLEAN NOT NULL DEFAULT true,
+  capacity        INTEGER NOT NULL,              -- Cantidad de jugadores (ej: format * 2)
   photos          TEXT[] DEFAULT '{}',           -- URLs en Supabase Storage
 
   status          court_status NOT NULL DEFAULT 'active',
@@ -900,9 +911,11 @@ CREATE POLICY tenant_isolation_delete ON products FOR DELETE
 ```sql
 -- ============================================================
 -- TABLA: tenant_staff_members
--- Un staff user puede ser admin de múltiples complejos.
--- Solo existe el rol 'admin' en v1. Las zonas sensibles del panel
--- se protegen con tenant.settings.admin_pin (ver DECISIONES_SISTEMA.md P2.1).
+-- Un staff user puede operar en múltiples complejos.
+-- 2 roles (Modelo ATC): 'admin' (dueño, acceso total) y 'manager' (encargado
+-- permisivo: grilla/reservas/caja, reportes, configuración general). El gating de
+-- acciones sensibles es por ROL en la capa de app (requireAdminStaff /
+-- requireOperatorStaff), NO por PIN. No hay sistema de PIN.
 -- ============================================================
 CREATE TABLE tenant_staff_members (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1198,6 +1211,9 @@ CREATE TABLE player_tenant_relationships (
   last_booking_at  TIMESTAMPTZ,
   first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+  -- Saldo deudor (Modelo ATC, cambio #5)
+  balance          INTEGER NOT NULL DEFAULT 0,      -- Centavos ARS. Si > 0, bloqueado para reservas online
+
   -- Estado de la relación
   status           TEXT NOT NULL DEFAULT 'active'   -- 'active' | 'blocked'
                    CHECK (status IN ('active', 'blocked')),
@@ -1361,6 +1377,119 @@ COMMENT ON COLUMN daily_cash_closes.diff_amount IS
   'por method=''cash'' (NO incluye transfer ni mercadopago, que no están en el cajón físico). '
   'Positivo = sobrante (más efectivo del esperado). Negativo = faltante. '
   'Calculado en el momento del cierre, NUNCA recalculado después.';
+```
+
+### 3.15 `push_subscriptions` — Suscripciones Web Push del admin (aislada)
+
+```sql
+-- ============================================================
+-- TABLA: push_subscriptions  (migración 014)
+-- Suscripciones Web Push API del staff. Habilitan el aviso al admin cuando entra
+-- una reserva online (notifyAdminPush). Aislada por tenant_id (RLS estándar).
+-- El push se entrega directo al navegador del staff; NO se registra en `notifications`.
+-- ============================================================
+CREATE TABLE push_subscriptions (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  staff_user_id   UUID NOT NULL REFERENCES staff_users(id) ON DELETE CASCADE,
+  endpoint        TEXT NOT NULL UNIQUE,            -- Endpoint del push service del browser
+  p256dh_key      TEXT NOT NULL,                   -- Clave pública del cliente (VAPID)
+  auth_key        TEXT NOT NULL,                   -- Secreto de autenticación del cliente
+  user_agent      TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at    TIMESTAMPTZ
+);
+
+CREATE INDEX idx_push_subscriptions_tenant_staff ON push_subscriptions(tenant_id, staff_user_id);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+-- Policies estándar de aislamiento por tenant (SELECT/INSERT/UPDATE/DELETE), igual patrón que el resto.
+
+COMMENT ON TABLE push_subscriptions IS
+  'Suscripciones Web Push del staff para el aviso de reserva online (ver Doc 11 ADR-013-push). '
+  'Horario silencioso 00:00–08:00 local: el push se agenda (startAfter) para las 08:00, no suena al instante.';
+```
+
+### 3.16 `reviews` — Reseñas de jugadores (híbrida)
+
+```sql
+-- ============================================================
+-- TABLA: reviews  (migración 016)
+-- Reseña post-partido del jugador (interfaz pública estilo ATC).
+-- tenant_id denormalizado desde el booking para listados públicos rápidos.
+-- Híbrida: lectura PÚBLICA (perfil del complejo) + INSERT solo del jugador dueño
+-- de un booking 'completed'. 1 review por booking.
+-- ============================================================
+CREATE TABLE reviews (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID NOT NULL REFERENCES tenants(id),
+  player_id       UUID NOT NULL REFERENCES players(id),
+  booking_id      UUID NOT NULL REFERENCES bookings(id),
+  rating          INTEGER NOT NULL,
+  comment         TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT chk_review_rating_range CHECK (rating BETWEEN 1 AND 5),
+  CONSTRAINT chk_review_comment_length CHECK (comment IS NULL OR char_length(comment) <= 500)
+);
+
+CREATE UNIQUE INDEX uq_reviews_booking ON reviews(booking_id);
+CREATE INDEX idx_reviews_tenant_created ON reviews(tenant_id, created_at);
+CREATE INDEX idx_reviews_player ON reviews(player_id);
+
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+-- Lectura pública (anon role) + INSERT del jugador dueño del booking 'completed'
+-- (app.current_player_id). Ver 016_reviews.sql.
+```
+
+### 3.17 `player_favorites` — Complejos favoritos del jugador (híbrida)
+
+```sql
+-- ============================================================
+-- TABLA: player_favorites  (migración 017)
+-- Complejos favoritos (❤️) del jugador. Cross-tenant: un jugador marca N complejos.
+-- Híbrida: el jugador SOLO ve/modifica los suyos (app.current_player_id).
+-- NO hay lectura pública.
+-- ============================================================
+CREATE TABLE player_favorites (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id       UUID NOT NULL REFERENCES players(id),
+  tenant_id       UUID NOT NULL REFERENCES tenants(id),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX uq_player_favorites_player_tenant ON player_favorites(player_id, tenant_id);
+CREATE INDEX idx_player_favorites_player ON player_favorites(player_id);
+CREATE INDEX idx_player_favorites_tenant ON player_favorites(tenant_id);
+
+ALTER TABLE player_favorites ENABLE ROW LEVEL SECURITY;
+-- Policy única por app.current_player_id (el jugador solo ve/escribe sus favoritos).
+```
+
+### 3.18 `feature_flags` — Toggles operacionales (operacional)
+
+```sql
+-- ============================================================
+-- TABLA: feature_flags  (migración 015)
+-- Toggles operacionales (Fase 6). NO son los feature flags por plan (esos viven en
+-- plans.features, ADR-010). Una fila con tenant_id = NULL es un DEFAULT GLOBAL;
+-- una fila con tenant_id seteado es un OVERRIDE por complejo (ej: kill switch).
+-- ============================================================
+CREATE TABLE feature_flags (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key             TEXT NOT NULL,
+  value           BOOLEAN NOT NULL DEFAULT false,
+  tenant_id       UUID REFERENCES tenants(id) ON DELETE CASCADE,  -- NULL = default global
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Unicidad por índices parciales (migración 015): una fila global por key y una
+-- fila por key+tenant. NO un UNIQUE(key) plano (impediría global + override del mismo key).
+CREATE UNIQUE INDEX uq_feature_flags_global ON feature_flags(key) WHERE tenant_id IS NULL;
+CREATE UNIQUE INDEX uq_feature_flags_tenant ON feature_flags(key, tenant_id) WHERE tenant_id IS NOT NULL;
+
+COMMENT ON TABLE feature_flags IS
+  'Toggles operacionales. Fila tenant_id NULL = default global; tenant_id seteado = override por complejo.';
 ```
 
 ---
@@ -1632,8 +1761,19 @@ FROM plans;
 | 17 | `notifications` | Aislada | Sí | ~1.500.000/año |
 | 18 | `audit_logs` | Aislada | Sí | ~3.000.000/año |
 | 19 | `tenant_player_bans` | Aislada | Sí | ~500 |
+| 20 | `push_subscriptions` | Aislada | Sí | ~1.000 |
+| 21 | `reviews` | Híbrida | Pública + jugador‡ | ~200.000/año |
+| 22 | `player_favorites` | Híbrida | Jugador‡ | ~120.000 |
+| 23 | `feature_flags` | Operacional | No (service role) | ~50 |
 
-**Total: 19 tablas de negocio + 1 tabla de sistema (`system_admins`)** (6 globales + 12 aisladas con RLS + 1 híbrida + 1 sistema).
+**Total: 23 tablas de negocio + 1 tabla de sistema (`system_admins`)** (6 globales + 13 aisladas con RLS + 3 híbridas + 1 operacional + 1 sistema).
+
+> [!NOTE]
+> **‡ Tablas híbridas**: tienen `tenant_id` y RLS por jugador (`app.current_player_id`):
+> - `reviews`: lectura **pública** (perfil del complejo) + INSERT del jugador dueño de un booking `completed`.
+> - `player_favorites`: solo el jugador ve/escribe los suyos (sin lectura pública).
+> - `player_tenant_relationships`: dual staff (por tenant) + jugador (por player_id).
+> **Operacional**: `feature_flags` con fila `tenant_id = NULL` (default global) o `tenant_id` seteado (override por complejo).
 
 > [!NOTE]
 > **† RLS Dual**: `bookings` y `player_tenant_relationships` tienen dos tipos de policies que se evalúan con OR:
@@ -1786,10 +1926,14 @@ Las migrations deben ejecutarse en este orden por dependencias de foreign keys:
    5.2  bookings (FK → tenants, courts, players, abonados) — SIN FK a payments aún
    5.3  payments (FK → tenants, bookings, players)
    5.4  ALTER bookings ADD FK payment_id → payments (referencia circular resuelta)
-   5.5  cash_flows (FK → tenants, bookings, products)
+   5.5  cash_flows (FK → tenants, bookings, products, abonados)
    5.6  daily_cash_closes (FK → tenants, staff_users)
    5.7  notifications (FK → tenants)
    5.8  audit_logs (FK → tenants)
+   5.9  push_subscriptions (FK → tenants, staff_users) — migr. 014, aislada
+   5.10 feature_flags (FK → tenants, nullable) — migr. 015, operacional
+   5.11 reviews (FK → tenants, players, bookings) — migr. 016, híbrida
+   5.12 player_favorites (FK → players, tenants) — migr. 017, híbrida
 6. Triggers y funciones
 7. Seed data
    7.1  plans (planes de suscripción SaaS)

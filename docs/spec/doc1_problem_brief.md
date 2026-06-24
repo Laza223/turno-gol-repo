@@ -164,7 +164,7 @@ El valor de TurnoGol radica en su modelo **B2B2C**. La solución al problema del
 
 **Para el jugador (B2C)**:
 
-> TurnoGol es la app donde encontrás cancha libre en tu zona, reservás en 30 segundos, pagás con MercadoPago, y te olvidás hasta que te llegue el recordatorio por email.
+> TurnoGol es la app donde encontrás cancha libre en tu zona, reservás en 30 segundos, pagás con MercadoPago, y tu turno queda confirmado al instante (con email de confirmación).
 
 ---
 

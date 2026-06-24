@@ -276,13 +276,13 @@ Idéntico al flujo con seña EXCEPTO:
 | El slot se ocupó entre que el jugador vio la grilla y confirmó | Error amigable + sugerencia de horarios alternativos |
 | El pago de MP falla | Booking queda en `pending_payment`. El jugador puede reintentar. |
 | El pago de MP queda "in_process" (transferencia bancaria) | Booking queda en `pending_payment`. Se confirma cuando MP notifica via webhook. |
-| El jugador abandona el checkout de MP | Booking queda en `pending_payment` por max 15 minutos → timeout → `expired` |
+| El jugador abandona el checkout de MP | Booking queda en `pending_payment` por max 6 minutos → timeout → `expired` |
 
 ### Estados intermedios
 
 | Estado | Qué ve el jugador | Duración máxima |
 |---|---|---|
-| `pending_payment` | "Tu reserva está procesando el pago..." | 15 minutos |
+| `pending_payment` | "Tu reserva está procesando el pago..." | 6 minutos |
 | Checkout de MP abierto | Pantalla de MP (fuera de TurnoGol) | Hasta que pague, cancele o timeout |
 | Esperando webhook de MP | "Confirmando tu pago..." (spinner) | ~5 segundos normalmente, hasta 30s |
 
@@ -290,13 +290,13 @@ Idéntico al flujo con seña EXCEPTO:
 
 ```
 Al crear un Booking con status='pending_payment':
-  → Se programa un job que se ejecuta en 15 minutos
-  → Si en 15 minutos el booking sigue en 'pending_payment':
+  → Se programa un job que se ejecuta en 6 minutos
+  → Si en 6 minutos el booking sigue en 'pending_payment':
       → Transición a 'expired'
-      → El slot se libera
+      → El slot se liberado
       → 📩 Email al jugador: "Tu reserva expiró porque no se completó el pago. 
          ¿Querés intentar de nuevo?"
-  → Si el pago llegó antes de los 15 min → el job se cancela (no-op)
+  → Si el pago llegó antes de los 6 min → el job se cancela (no-op)
 ```
 
 ### Puntos de salida
@@ -315,13 +315,13 @@ Al crear un Booking con status='pending_payment':
 | Booking confirmado | 📩 Email al complejo: "Nueva reserva: {cancha} {fecha} {hora} — {nombre_jugador}" |
 | Booking confirmado | 📊 AuditLog: `booking.confirmed` con actor=player |
 | Booking confirmado | 💰 CashFlow: income, category='booking', method='mercadopago', amount=deposit |
-| Booking confirmado | ⏰ Cron: programar recordatorio email 24hs antes del turno |
-| Booking confirmado | ⏰ Cron: programar recordatorio email 2hs antes del turno |
+| Booking confirmado (reserva online) | 🔔 Web Push al admin: "Nueva reserva: {cancha} {fecha} {hora}". En horario silencioso (00:00–08:00 local) se agenda para las 08:00 |
 
 > [!NOTE]
-> **Recordatorios cuando `player_id IS NULL`**: Si la reserva no tiene jugador registrado
-> (ej: reserva manual sin player), NO se programan recordatorios por email (no hay destinatario).
+> **Emails cuando `player_id IS NULL`**: Si la reserva no tiene jugador registrado
+> (ej: reserva manual sin player), NO se envían emails al jugador (no hay destinatario).
 > El admin es responsable de avisar al jugador por sus propios medios.
+> (En v1 NO hay recordatorio 24h/2h — cambio #18; se reconstruye con WhatsApp post-v1.)
 | Booking expirado | 📩 Email al jugador: "Tu reserva para {cancha} el {fecha} expiró" |
 | Booking expirado | 📊 AuditLog: `booking.expired` con actor=system |
 | Payment recibido | 📊 AuditLog: `payment.approved` |
@@ -362,7 +362,7 @@ PASO — Cobro presencial
 4. **El jugador paga y luego cierra la ventana antes de ver la confirmación**: No importa. El webhook llega igual y el booking se confirma. El jugador recibe email de confirmación.
 5. **El precio de la cancha cambió entre que el jugador vio la grilla y pagó**: Se usa `price_snapshot` (el precio al momento del paso 3, no el actual). El cambio de precio no afecta reservas ya creadas.
 6. **El jugador quiere reservar 2 turnos seguidos en la misma cancha**: Tiene que hacer 2 reservas separadas. Cada una es independiente.
-7. **La conexión del jugador se corta durante el checkout de MP**: Si ya pagó → el webhook funciona igual → booking confirmado. Si no pagó → timeout 15 min → expired.
+7. **La conexión del jugador se corta durante el checkout de MP**: Si ya pagó → el webhook funciona igual → booking confirmado. Si no pagó → timeout 6 min → expired.
 8. **MP está caído**: El sistema detecta el error de la API de MP → muestra: "El sistema de pagos no está disponible. Contactá al complejo para reservar por teléfono." Si el complejo acepta reservas sin seña, se puede hacer sin pago.
 
 ### Out of scope
@@ -468,7 +468,7 @@ La reserva manual no tiene estados intermedios significativos. Se confirma en el
 **Excepción**: Si el admin eligió "Enviar link de pago por email":
 | Estado | Qué pasa | Duración |
 |---|---|---|
-| Link enviado, sin pagar | Booking en `pending_payment` | 15 minutos (luego expira) |
+| Link enviado, sin pagar | Booking en `pending_payment` | 6 minutos (luego expira) |
 | Jugador paga por link | Webhook de MP → booking pasa a `confirmed` | — |
 
 ### Puntos de salida
@@ -683,12 +683,12 @@ ESCENARIO A — El recepcionista marca "No vino" (antes de los 30 min post-turno
   ├── Panel admin → Grilla → Reserva pasada → Botón "No se presentó"
   ├── Confirmación: "¿Confirmar que {jugador} no se presentó?"
   ├── Actualizar Booking: status → 'no_show'
-  ├── Evaluar penalidad según tenant.settings.no_show_penalty:
-  │     ├── type = 'ban_days' → crear/actualizar ban temporal para este jugador
-  │     │     └── tenant_player_bans: ban_until = NOW() + penalty.days
-  │     ├── type = 'deposit_capture' → la seña ya está capturada (no hay acción adicional)
-  │     └── type = 'none' → sin penalidad
-  └── Output: booking marcado como no_show
+  ├── Generar deuda (Modelo ATC, cambio #5):
+  │     ├── Si deposit_status = 'paid' → actualizar a 'captured' (retiene seña)
+  │     ├── Calcular deuda: amount_pending = max(0, price_snapshot - seña_capturada)
+  │     ├── Sumar amount_pending al balance del jugador en player_tenant_relationships
+  │     └── Si balance > 0, el jugador queda bloqueado para reservas online en este complejo.
+  └── Output: booking marcado como no_show y deuda registrada
 
 ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
   ├── Job programado: buscar bookings con status='confirmed' AND time_end < NOW() - 30min
@@ -705,7 +705,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 | `deposit_status = 'paid'` y cancela en plazo | Refund vía API de MP + CashFlow de expense |
 | `deposit_status = 'paid'` y cancela fuera de plazo | Sin refund. `deposit_status → 'captured'` |
 | Booking tiene `abonado_id` (turno fijo) | El admin decide: ¿el abonado pierde ese turno o se corre? (gestión manual) |
-| El jugador acumula 3 no-shows en 30 días | Ban automático según `no_show_penalty` config del complejo |
+| Jugador tiene deuda (balance > 0) | Bloqueado para reservar online en este complejo hasta saldar |
 | Booking tipo 'block' | NO aplica lógica de penalidad ni reembolso (no hay jugador ni seña) |
 
 ### Edge cases explícitos (todas las variantes)
@@ -1557,11 +1557,9 @@ FLUJO 9 (Cancelación cuenta) ◄──── Requiere: TenantSubscription (Fluj
 
 | Job | Frecuencia | Flujo origen | Descripción |
 |---|---|---|---|
-| Expiración de bookings | Cada 1 minuto | Flujo 2 | Bookings en `pending_payment` > 15 min → `expired` |
-| Auto-completar bookings | Cada 5 minutos | Flujo 4D | Bookings `confirmed` con time_end < NOW() - 30min → `completed` |
+| Expiración de bookings | Cada 1 minuto (o delayed job al crear) | Flujo 2 | Bookings en `pending_payment` > **6 min** → `expired` |
+| Auto-completar bookings | Cada 30 minutos | Flujo 4D | Bookings `confirmed` con time_end < NOW() - 30min → `completed` |
 | Generación rolling de abonados | Diario 03:00 | Flujo 5 | Generar instancias futuras para abonados con < 4 semanas |
-| Recordatorios email 24hs | Diario 09:00 | Flujos 2, 3 | Email a jugadores con reservas para mañana |
-| Recordatorios email 2hs | Cada 30 minutos | Flujos 2, 3 | Email a jugadores con reservas en 2 horas |
 | Notificaciones de trial | Diario 10:00 | Flujo 7 | Emails según día del trial (7, 14, 21, 28, 30, 31) |
 | Dunning reintentos | Según programación | Flujo 8 | Reintentar cobros de suscripción (día 2, 5) |
 | Suspensión por dunning | Diario | Flujo 8 | Tenants con payment > 7 días sin pagar → suspended |

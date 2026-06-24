@@ -183,7 +183,7 @@ El "jugador" no es un perfil monolítico. Tiene dos modos de uso:
 | Modo | Ejemplo | Cómo interactúa con TurnoGol |
 |---|---|---|
 | **Espontáneo** | Tomás quiere jugar el jueves, busca cancha | Busca disponibilidad → reserva → paga seña → juega |
-| **Abonado** (turno fijo) | Tomás tiene turno fijo los viernes con su grupo | Recibe email recordatorio → va y juega. Si un viernes no puede → avisa al complejo o cancela su instancia |
+| **Abonado** (turno fijo) | Tomás tiene turno fijo los viernes con su grupo | Su turno ya está confirmado en "Mis turnos" → va y juega. Si un viernes no puede → avisa al complejo o cancela su instancia. (Sin recordatorio 24h en v1, cambio #18; se reconstruye con WhatsApp post-v1.) |
 
 > [!NOTE]
 > **El "abonado" es un estado, no un tipo de usuario.** Un jugador puede ser abonado en un complejo
@@ -225,7 +225,7 @@ El "jugador" no es un perfil monolítico. Tiene dos modos de uso:
 | Pagar la seña sin efectivo | Quiere asegurar el turno | MercadoPago en 2 clics | Espontáneo |
 | Cancelar si se cae el partido | Los amigos no pueden ir | Sin cargo o con reintegro según política del complejo | Ambos |
 | Cancelar una semana del turno fijo | Ese viernes no puede | Avisar al complejo o hacerlo desde la app, sin llamar | Abonado |
-| Ver detalle de su turno fijo | Le llega el recordatorio | Confirmar hora, cancha, y cuánto paga | Abonado |
+| Ver detalle de su turno fijo | Entra a "Mis turnos" | Confirmar hora, cancha, y cuánto paga | Abonado |
 
 ### Objeciones
 | Objeción | Respuesta |
@@ -262,7 +262,7 @@ El "jugador" no es un perfil monolítico. Tiene dos modos de uso:
 | App - Búsqueda de canchas | | | ✅ |
 | App - Mis turnos (espontáneos + fijos) | | | ✅ |
 | Email - Confirmación de reserva | | | ✅ |
-| Email - Recordatorio 24hs | | | ✅ |
+| Push - Aviso de reserva online (al admin) | ✅ | ✅ | |
 
 > [!NOTE]
 > La columna "Tomás (Jugador)" cubre **ambos modos**: espontáneo y abonado.

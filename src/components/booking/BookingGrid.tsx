@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState, useTransition, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { LayoutGrid, MoonStar } from 'lucide-react'
+import { LayoutGrid, MoonStar, ArrowDownUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useArtNow } from '@/hooks/use-art-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
@@ -75,6 +75,8 @@ export function BookingGrid({
   // visible (atenuada) hasta que llega el server component del día nuevo.
   const [isNavPending, startNavTransition] = useTransition()
 
+  const [isCompact, setIsCompact] = useState(false)
+
   const navigateToDate = useCallback(
     (d: string) => {
       startNavTransition(() => router.push(`/grilla?date=${d}`))
@@ -113,6 +115,25 @@ export function BookingGrid({
     },
     [artNow, date],
   )
+
+  const nowTopRem = useMemo(() => {
+    if (!artNow.date || artNow.date !== date || !openHhmm) return null
+    const [nH, nM] = artNow.time.split(':').map(Number)
+    const [oH, oM] = openHhmm.split(':').map(Number)
+    if (nH === undefined || nM === undefined || oH === undefined || oM === undefined) return null
+
+    const nowMins = nH * 60 + nM
+    const openMins = oH * 60 + oM
+    
+    // Si la hora actual es antes de la apertura, o muy después, no dibujamos la línea (o se corta)
+    // Asumimos cada slot de 30 mins
+    if (nowMins >= openMins) {
+      const diffMins = nowMins - openMins
+      const rowHeightRem = isCompact ? 2.5 : 3.5
+      return 2.75 + (diffMins / 30) * rowHeightRem
+    }
+    return null
+  }, [artNow.time, artNow.date, date, openHhmm, isCompact])
 
   const handleSlotClick = useCallback(
     (courtId: string, slotTime: string) => {
@@ -216,16 +237,33 @@ export function BookingGrid({
               {LABEL_DAYS[dayKey]} {dateLabel}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const today = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
-              navigateToDate(today)
-            }}
-            className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm font-medium border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-150 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            Hoy
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCompact(!isCompact)}
+              aria-pressed={isCompact}
+              aria-label="Modo compacto"
+              className={cn(
+                "px-3 py-1.5 min-h-11 md:min-h-9 flex items-center justify-center gap-1.5 text-sm font-medium border rounded-md transition-colors duration-150",
+                isCompact 
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400" 
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              )}
+            >
+              <ArrowDownUp aria-hidden className="h-4 w-4" />
+              <span className="hidden sm:inline">{isCompact ? 'Compacto' : 'Normal'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
+                navigateToDate(today)
+              }}
+              className="px-3 py-1.5 min-h-11 md:min-h-9 text-sm font-medium border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors duration-150 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Hoy
+            </button>
+          </div>
         </div>
         <WeekStrip date={date} todayArt={artNow.date} onNavigate={navigateToDate} />
       </div>
@@ -265,14 +303,23 @@ export function BookingGrid({
             )}
           >
             <div
-              className="grid"
+              className="grid relative"
               style={{
                 gridTemplateColumns: `3.5rem repeat(${courts.length}, minmax(8.5rem, 1fr))`,
-                gridTemplateRows: `2.75rem repeat(${slots.length}, 3.5rem)`,
+                gridTemplateRows: `2.75rem repeat(${slots.length}, ${isCompact ? '2.5rem' : '3.5rem'})`,
                 minWidth: `${56 + courts.length * 136}px`,
               }}
               onKeyDown={handleGridKeyDown}
             >
+              {nowTopRem !== null && (
+                <div 
+                  className="absolute left-[3.5rem] right-0 z-20 pointer-events-none flex items-center"
+                  style={{ top: `calc(${nowTopRem}rem - 0.5px)` }}
+                >
+                  <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                  <div className="flex-1 h-[2px] bg-red-500/70 dark:bg-red-500/50" />
+                </div>
+              )}
               {/* Esquina: tapa el cruce de los dos ejes sticky. */}
               <div
                 aria-hidden

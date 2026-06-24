@@ -368,7 +368,7 @@ para asegurar mi turno sin tener que llamar al complejo.
 ✅ Happy Path
 - [ ] Dado que hago click en un slot libre en la página pública del complejo, cuando se abre el modal, entonces veo: cancha, fecha, hora, precio total ($X), seña requerida ($Y = X × deposit_percentage%).
 - [ ] Dado que hago click en "Reservar y pagar seña", cuando no estoy logueado, entonces veo opciones: email (magic link), Google, o registrarme.
-- [ ] Dado que me autentiqué, cuando el sistema procesa mi reserva, entonces se crea un Booking con status=`pending_payment` y un timer de 15 minutos empieza.
+- [ ] Dado que me autentiqué, cuando el sistema procesa mi reserva, entonces se crea un Booking con status=`pending_payment` y un timer de 6 minutos empieza.
 - [ ] Dado que el booking está en `pending_payment`, cuando soy redirigido al checkout de MercadoPago, entonces el monto es exactamente `deposit_amount` y la referencia es el `booking.id`.
 - [ ] Dado que pago exitosamente en MP, cuando el webhook llega a TurnoGol, entonces el booking pasa a `confirmed`, el deposit_status pasa a `paid`, y recibo email de confirmación.
 - [ ] Dado que mi reserva está confirmada, cuando veo la pantalla de éxito, entonces veo: cancha, fecha, hora, seña pagada, monto restante para pagar en el complejo, y botón "Agregar al calendario".
@@ -377,7 +377,7 @@ para asegurar mi turno sin tener que llamar al complejo.
 - [ ] Si el slot fue tomado por otro jugador mientras me autenticaba → error: "¡Ups! Este turno acaba de ser tomado." + sugerencia de horarios alternativos libres en la misma cancha (o en otras).
 - [ ] Si el pago de MP es rechazado → el booking sigue en `pending_payment`. Mostrar: "El pago no se procesó. ¿Querés intentar con otro medio de pago?"
 - [ ] Si el pago de MP queda "in_process" (transferencia bancaria, CBU) → el booking sigue en `pending_payment`. Mostrar: "Tu pago está siendo procesado. Te avisamos por email cuando se confirme."
-- [ ] Si cierro la ventana de MP sin pagar y pasan 15 minutos → el booking pasa a `expired`. Recibo email: "Tu reserva expiró. ¿Querés reservar de nuevo?"
+- [ ] Si cierro la ventana de MP sin pagar y pasan 6 minutos → el booking pasa a `expired`. Recibo email: "Tu reserva expiró. ¿Querés reservar de nuevo?"
 - [ ] Si el webhook de MP llega duplicado → chequear `mp_event_id` en `processed_webhooks`. Si ya existe → ignorar.
 - [ ] Si pago pero cierro la ventana antes de ver la confirmación → el webhook llega igual → booking confirmado → email de confirmación enviado.
 - [ ] Si estoy baneado globalmente → error: "Tu cuenta está temporalmente suspendida."
@@ -395,7 +395,7 @@ para asegurar mi turno sin tener que llamar al complejo.
 
 **Notas de implementación**:
 - El `price_snapshot` se captura en la transacción atómica, no del modal previo
-- Timeout de 15 minutos del booking se implementa como delayed job/scheduled task
+- Timeout de 6 minutos del booking se implementa como delayed job/scheduled task
 - El webhook handler debe ser idempotente (tabla `processed_webhooks`)
 
 ---
@@ -443,25 +443,25 @@ para reservar en menos de 1 minuto.
 
 **Historia**:
 Como el sistema,
-cuando una reserva lleva más de 15 minutos en `pending_payment`,
+cuando una reserva lleva más de 6 minutos en `pending_payment`,
 quiero expirarla automáticamente y liberar el slot,
 para que otro jugador pueda reservar y el complejo no pierda turnos.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que un Booking tiene status=`pending_payment` y fue creado hace más de 15 minutos, cuando el job de expiración se ejecuta, entonces el booking pasa a status=`expired`.
+- [ ] Dado que un Booking tiene status=`pending_payment` y fue creado hace más de 6 minutos, cuando el job de expiración se ejecuta, entonces el booking pasa a status=`expired`.
 - [ ] Dado que un booking expiró, cuando el slot se libera, entonces otro jugador puede ver ese slot como "libre" en la grilla y reservarlo.
 - [ ] Dado que el booking expiró, entonces se envía email al jugador: "Tu reserva para {cancha} el {fecha} expiró porque no se completó el pago."
 - [ ] Dado que el booking expiró, entonces se registra en AuditLog: `booking.expired` con actor=system.
 
 ❌ Edge Cases
-- [ ] Si el pago de MP llega en el segundo 14:59 (justo antes de expirar) → el booking se confirma (el webhook llega primero, el job de expiración lo encuentra ya en `confirmed` y no hace nada).
+- [ ] Si el pago de MP llega en el segundo 05:59 (justo antes de expirar) → el booking se confirma (el webhook llega primero, el job de expiración lo encuentra ya en `confirmed` y no hace nada).
 - [ ] Si el job de expiración se ejecuta pero el webhook de MP llega 5 segundos después → el webhook encuentra el booking en `expired` → NO lo reactiva (estado final). El pago se reembolsa automáticamente.
 - [ ] Si el job de expiración falla → retry con exponential backoff. El booking puede quedar "zombie" hasta que el retry lo resuelva.
 
 🚫 Out of Scope
-- NO incluye configuración del timeout por complejo (es fijo 15 minutos en v1)
+- NO incluye configuración del timeout por complejo (es fijo 6 minutos en v1)
 - NO incluye extensión del timeout por el jugador
 
 **Dependencias**: US-RES-003
@@ -653,7 +653,7 @@ para mantener trazabilidad de por qué se canceló.
 
 ---
 
-## US-CAN-004: No-Show y Penalidad Automática
+## US-CAN-004: Deuda por No-Show (cambio #5)
 
 **Epic**: Cancelaciones
 **Persona**: Rodrigo (Recepcionista) + Sistema
@@ -663,26 +663,25 @@ para mantener trazabilidad de por qué se canceló.
 **Historia**:
 Como Rodrigo,
 cuando un jugador no se presentó a su turno,
-quiero marcarlo como "no se presentó" para que se aplique la penalidad configurada,
-para desincentivar los no-shows que perjudican al complejo.
+quiero marcarlo como "no se presentó" para que se le genere una deuda automáticamente,
+para desincentivar los no-shows y bloquearle reservas futuras hasta que pague.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que la hora de fin del turno ya pasó, cuando hago click en "No se presentó", entonces booking.status → `no_show` y se evalúa `tenant.settings.no_show_penalty`.
-- [ ] Dado que no_show_penalty.type = `ban_days` y days = 7, cuando el jugador acumula la cantidad configurada de no-shows, entonces se crea un ban temporal: `tenant_player_bans` con ban_until = NOW() + 7 días.
-- [ ] Dado que el jugador fue baneado, cuando intenta reservar en ESTE complejo, entonces ve error: "No podés reservar en este complejo hasta el {fecha}."
-- [ ] Dado que el ban expiró, cuando el jugador intenta reservar, entonces puede hacerlo normalmente (el ban se levanta automáticamente).
+- [ ] Dado que la hora de fin del turno ya pasó, cuando hago click en "No se presentó", entonces booking.status → `no_show`.
+- [ ] Dado que se marca como no_show, entonces se calcula la deuda: `amount_pending = max(0, price_snapshot - seña_capturada)`.
+- [ ] Dado que la deuda > 0, entonces se suma al `balance` del jugador en `player_tenant_relationships`.
+- [ ] Dado que el jugador tiene deuda (`balance > 0`), cuando intenta reservar online en ESTE complejo, entonces ve error: "Tenés una deuda pendiente de ${balance}. Contactá al complejo para saldarla y volver a reservar."
 
 ❌ Edge Cases
+- [ ] Si la reserva estaba 100% pagada → no se genera deuda (`balance` no cambia).
 - [ ] Si nadie marca en 30 minutos post-time_end → el sistema auto-completa como `completed` (NO como no_show). El admin tiene 24hs para corregir.
-- [ ] Si el `no_show_penalty.type` = `none` → no hay penalidad. Solo se marca el status.
-- [ ] Si el jugador no tiene cuenta (reserva manual sin Player) → no se puede aplicar ban (no hay player_id).
+- [ ] Si el jugador no tiene cuenta (reserva manual sin Player) → no se puede generar deuda. Se marca como no_show sin impacto.
 
 🚫 Out of Scope
-- NO incluye penalidad económica (cobrar al jugador por no-show)
-- NO incluye ban global automático por no-shows cross-tenant
-- NO incluye apelación de ban por parte del jugador
+- NO incluye penalidad adicional más allá del precio del turno (no hay recargo).
+- NO incluye cobro automático de la deuda de la tarjeta.
 
 **Dependencias**: US-RES-007
 **Bloquea**: Ninguna
@@ -1149,11 +1148,7 @@ para que el sistema aplique mis reglas automáticamente sin intervención manual
   - `deposit_percentage` (10%-100%, default 30%)
   - `allow_online_booking` (sí/no)
   - `cancellation_hours_before` (0-72h, default 12h)
-  - `no_show_penalty.type` (none / ban_days)
-  - `no_show_penalty.days` (si ban_days: 1-30 días)
-  - `no_show_penalty.threshold` (después de cuántos no-shows)
 - [ ] Dado que cambio una configuración, cuando guardo, entonces todos los flujos futuros usan la nueva configuración (las reservas existentes NO se afectan retroactivamente).
-- [ ] Dado que activo `no_show_penalty`, entonces el dashboard muestra: "Penalidad por no-show activa: ban de {N} días después de {threshold} faltas."
 
 ❌ Edge Cases
 - [ ] Si desactivo `requires_deposit` y ya hay reservas en `pending_payment` → esas reservas se confirman automáticamente (sin esperar pago).

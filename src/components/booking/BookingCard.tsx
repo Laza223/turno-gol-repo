@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Ban, Plus } from 'lucide-react'
+import { Ban, Plus, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BookingPopover } from './BookingPopover'
 import type { GridBooking } from './BookingGrid'
@@ -159,15 +159,41 @@ function BookingCardComponent({
   const isBlock = booking.type === 'block'
   const popoverId = `booking-popover-${booking.id}`
 
-  // El popover abre por hover (wrapper: entrar al popover no lo cierra) y por
+  // Hover intent: delay de 300ms para evitar popovers accidentales al mover el mouse rápido.
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  const handleMouseEnter = React.useCallback(() => {
+    if (!onDetailChange) return
+    timeoutRef.current = setTimeout(() => {
+      onDetailChange(booking.id)
+    }, 300)
+  }, [onDetailChange, booking.id])
+
+  const handleMouseLeave = React.useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    if (onDetailChange) {
+      onDetailChange(null)
+    }
+  }, [onDetailChange])
+
+  // Limpiar timeout si se desmonta
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
+
+  // El popover abre por hover con intent y por
   // focus (tab o tap en mobile dispara focus). Escape lo cierra sin perder
   // el lugar en la grilla.
   return (
     <div
       style={placement(col, row, span)}
       className="relative m-0.5"
-      onMouseEnter={onDetailChange ? () => onDetailChange(booking.id) : undefined}
-      onMouseLeave={onDetailChange ? () => onDetailChange(null) : undefined}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <button
         type="button"
@@ -200,8 +226,11 @@ function BookingCardComponent({
           {displayName && (
             <span className="truncate text-xs font-medium leading-tight">{displayName}</span>
           )}
-          <span className="inline-flex items-center gap-1 text-[11px] leading-tight opacity-90">
+          <span className="inline-flex items-center gap-1 text-[11px] leading-tight opacity-90 mt-auto">
             {isBlock && <Ban aria-hidden className="h-3 w-3" />}
+            {booking.status === 'pending_payment' && (
+              <AlertCircle aria-hidden className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+            )}
             {visual.label}
           </span>
         </span>

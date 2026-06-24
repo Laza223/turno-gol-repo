@@ -12,21 +12,21 @@
 - **Ahora**: **6 minutos** (alineado con ATC que da ~5 min).
 - **Justificación**: 15 min bloquea slots en horario pico innecesariamente. El jugador que va a pagar lo hace en <2 min. El que no paga en 6 min no iba a pagar en 15 tampoco.
 - **Impacto en código/docs**:
-  - [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 2 paso 4 y timer de expiración
-  - [ ] `docs/spec/doc6_entidades.md` — Booking state machine, referencia al timeout
-  - [ ] `docs/spec/doc4_monetizacion.md` — §7 webhooks de señas
-  - [ ] `CLAUDE.md` — Si menciona el timer
-  - [ ] Lógica de negocio en código (pg-boss job de expiración)
-  - [ ] Tests que validen el timer
+  - [x] `docs/spec/doc7_flujos_e2e.md` — Flujo 2 paso 4 y timer de expiración
+  - [x] `docs/spec/doc6_entidades.md` — Booking state machine, referencia al timeout
+  - [x] `docs/spec/doc4_monetizacion.md` — §7 webhooks de señas
+  - [x] `CLAUDE.md` — Si menciona el timer
+  - [x] Lógica de negocio en código (pg-boss job de expiración)
+  - [x] Tests que validen el timer
 
 ### 2. 🧹 Eliminar estado `in_process` y extensión de 48hs para pagos de seña online
 - **Antes**: Si el jugador pagaba por CBU/transferencia, el pago quedaba `in_process` y el timer se extendía a 48 horas, bloqueando el slot.
 - **Ahora**: Las reservas online **solo aceptan MercadoPago** (pagos instantáneos). No se acepta transferencia bancaria, efectivo, ni medios lentos para reservas online. La extensión de 48hs no aplica.
 - **Justificación**: Un slot de cancha es time-sensitive. No se puede bloquear 48hs esperando una acreditación. Si el jugador quiere pagar por otro medio, lo arregla directamente con el complejo (reserva manual del admin).
 - **Impacto en código/docs**:
-  - [ ] `docs/spec/doc4_monetizacion.md` — §7 webhook `payment.pending (in_process)` con extensión a 48hs → eliminar/aclarar
-  - [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 2, referencia a pago in_process con 48hs
-  - [ ] `docs/spec/doc6_entidades.md` — Payment entity, estado `in_process` no aplica a señas online
+  - [x] `docs/spec/doc4_monetizacion.md` — §7 webhook `payment.pending (in_process)` con extensión a 48hs → eliminar/aclarar
+  - [x] `docs/spec/doc7_flujos_e2e.md` — Flujo 2, referencia a pago in_process con 48hs
+  - [x] `docs/spec/doc6_entidades.md` — Payment entity, estado `in_process` no aplica a señas online
 
 ---
 
@@ -142,11 +142,11 @@
 - Si fue **reserva manual del admin con seña en efectivo**: deuda = `price_snapshot - deposit_amount` (misma lógica)
 
 #### Impacto en docs
-- [ ] `docs/spec/doc7_flujos_e2e.md` — Flujo 4D: reescribir penalización
-- [ ] `docs/spec/doc6_entidades.md` — Booking: eliminar referencia a `ban_days`, Tenant settings: simplificar `no_show_policy`
-- [ ] `docs/decisions/DECISIONES_SISTEMA.md` — P7.1: actualizar con modelo de deuda
-- [x] `CLAUDE.md` — Actualizar regla de no-show (no-show = deuda)
-- [x] Código: `handleNoShow` (deuda, sin ban), `applyNoShow` captura seña, `addNoShowDebt` (PTR), removido `no_show_penalty` de settings/UI/super-admin, migración `034_drop_no_show_penalty.sql`, template `no_show_debt_created` ya existía. Tests: `no-show-debt` (unit) + `cancellations.test.ts` reescrito al modelo deuda.
+  - [x] `docs/spec/doc7_flujos_e2e.md` — Flujo 4D: reescribir penalización
+  - [x] `docs/spec/doc6_entidades.md` — Booking: eliminar referencia a `ban_days`, Tenant settings: simplificar `no_show_policy`
+  - [x] `docs/decisions/DECISIONES_SISTEMA.md` — P7.1: actualizar con modelo de deuda
+  - [x] `CLAUDE.md` — Actualizar regla de no-show (no-show = deuda)
+  - [x] Código: `handleNoShow` (deuda, sin ban), `applyNoShow` captura seña, `addNoShowDebt` (PTR), removido `no_show_penalty` de settings/UI/super-admin, migración `034_drop_no_show_penalty.sql`, template `no_show_debt_created` ya existía. Tests: `no-show-debt` (unit) + `cancellations.test.ts` reescrito al modelo deuda.
 
 ### 6. ⏰ Duraciones de turno: solo 60 minutos (eliminar 90 y 120) — ✅ HECHO (código + CLAUDE.md; specs doc6/7/13 + DECISIONES pendientes)
 - **Antes**: El sistema soportaba turnos de 60 o 120 minutos (90 ya había sido eliminado). El pricing tenía precios por duración.
@@ -170,10 +170,10 @@
 
 #### Impacto en docs
 - [x] `CLAUDE.md` — "60 minutos fijo" + pricing sin precio por duración
-- [ ] `docs/spec/doc6_entidades.md` — Court pricing JSONB, Tenant settings
-- [ ] `docs/spec/doc7_flujos_e2e.md` — Referencias a duración configurable
-- [ ] `docs/spec/doc13_database_schema.md` — pricing JSONB schema
-- [ ] `docs/decisions/DECISIONES_SISTEMA.md` — P3.1
+- [x] `docs/spec/doc6_entidades.md` — Court pricing JSONB, Tenant settings
+- [x] `docs/spec/doc7_flujos_e2e.md` — Referencias a duración configurable
+- [x] `docs/spec/doc13_database_schema.md` — pricing JSONB schema
+- [x] `docs/decisions/DECISIONES_SISTEMA.md` — P3.1
 - [x] Código: validación 60 min en creación (`assertSlotDuration`/`slotDurationMins`, online + manual no-block; blocks exentos), `generateSlots`/`getAvailableSlots`/`getAvailableSlotsCached` a 60 fijo, removido `durationMins` de inputs/schemas/rutas/`SLOT_DURATIONS`. Tests: `booking-duration` (unit) + suites actualizadas.
 
 ### 7. 🔔 Push notifications al admin: horario silencioso — ✅ HECHO (código + CLAUDE.md; doc8 pendiente)
@@ -191,7 +191,7 @@ Si el push suena a las 2am cada noche, Marcelo va a desactivar las notificacione
 
 #### Impacto en docs
 - [x] `CLAUDE.md` — Actualizar línea sobre push notifications (horario silencioso)
-- [ ] `docs/spec/doc8_user_stories.md` — Si hay story de push notifications
+- [x] `docs/spec/doc8_user_stories.md` — Si hay story de push notifications
 - [x] Código: `notifyAdminPush` agenda con `startAfter` en madrugada (00:00–08:00 tz del complejo) vía `pushSendOptions`/`quietHoursReleaseAt` (`push-quiet-hours.ts`). Tests: `push-quiet-hours` (unit).
 - **Nota**: en vez de "badge silencioso" se eligió `startAfter` (entrega diferida a las 08:00), más simple y robusto que reconfigurar el payload web-push.
 
@@ -270,7 +270,7 @@ Sin este módulo, el admin no puede:
 - [x] `docs/spec/doc7_flujos_e2e.md` — Flujo 5B: "Gestión de jugador y cobro de deuda"
 - [x] `CLAUDE.md` — módulo Jugadores
 - [x] Tests de integración: cobro de deuda (reduce balance, idempotencia, sobrepago, sin deuda)
-- [ ] `docs/business/TurnoGol_Plan_de_Negocio.md` — Sección 3.2 (doc de negocio, no spec; pendiente menor)
+- [x] `docs/business/TurnoGol_Plan_de_Negocio.md` — Sección 3.2 (doc de negocio, no spec; pendiente menor)
 
 ### 10. 👻 ~~Eliminar reservas "fantasma": obligar creación de perfil de Jugador~~ — ❌ CANCELADA (decisión de producto)
 - **Estado**: **CANCELADA** el 2026-06-21. Se descarta forzar `player_id` en reservas manuales.
@@ -325,24 +325,24 @@ Sin este módulo, el admin no puede:
 - Las páginas que antes usaban `PinGate` ahora simplemente usan `requireOperatorStaff()` (sin PIN)
 
 #### Impacto en docs
-- [ ] `CLAUDE.md` — Eliminar toda mención de PIN, actualizar descripción de roles (manager = acceso a casi todo)
-- [ ] `docs/decisions/DECISIONES_SISTEMA.md` — P2.1: actualizar con modelo ATC, eliminar referencia a PIN
-- [ ] `docs/spec/doc6_entidades.md` — Tenant settings: eliminar `staff_pin_hash`
-- [ ] `docs/spec/doc12_tenant_isolation.md` — Si menciona PIN
-- [ ] `docs/decisions/security-decisions.md` — Eliminar/actualizar sección de PIN
+- [x] `CLAUDE.md` — Eliminar toda mención de PIN, actualizar descripción de roles (manager = acceso a casi todo)
+- [x] `docs/decisions/DECISIONES_SISTEMA.md` — P2.1: actualizar con modelo ATC, eliminar referencia a PIN
+- [x] `docs/spec/doc6_entidades.md` — Tenant settings: eliminar `staff_pin_hash`
+- [x] `docs/spec/doc12_tenant_isolation.md` — Si menciona PIN
+- [x] `docs/decisions/security-decisions.md` — Eliminar/actualizar sección de PIN
 
 #### Impacto en código
-- [ ] Eliminar `src/modules/auth/pin.ts`
-- [ ] Eliminar `src/components/pin-gate.tsx` (y su barrel export)
-- [ ] Eliminar `src/app/(admin)/actions/pin.ts` (o equivalente)
-- [ ] Eliminar `/settings/pin` page
-- [ ] Remover `PinGate` de: `/reportes`, `/metricas`, `/canchas`, `/staff`, `/settings/reservas`, `/settings/horarios`, `/settings/facturacion`
-- [ ] Remover `checkPinSessionAction` de: staff actions, settings actions
-- [ ] Actualizar guards: las páginas de reportes/métricas/canchas/config usan `requireOperatorStaff` en vez de `requireAdminStaff` + PinGate
-- [ ] Mantener `requireAdminStaff` solo en: conexión MP (`/settings/facturacion` parcial), `/staff`, facturación SaaS
-- [ ] Migrar `PIN_COOKIE_SECRET` → renombrar a `COOKIE_SECRET` o crear `IMPERSONATION_COOKIE_SECRET` independiente para la cookie de impersonación del SuperAdmin
-- [ ] Eliminar `staff_pin_hash` del schema de tenant settings
-- [ ] Actualizar/eliminar tests de PIN
+- [x] Eliminar `src/modules/auth/pin.ts`
+- [x] Eliminar `src/components/pin-gate.tsx` (y su barrel export)
+- [x] Eliminar `src/app/(admin)/actions/pin.ts` (o equivalente)
+- [x] Eliminar `/settings/pin` page
+- [x] Remover `PinGate` de: `/reportes`, `/metricas`, `/canchas`, `/staff`, `/settings/reservas`, `/settings/horarios`, `/settings/facturacion`
+- [x] Remover `checkPinSessionAction` de: staff actions, settings actions
+- [x] Actualizar guards: las páginas de reportes/métricas/canchas/config usan `requireOperatorStaff` en vez de `requireAdminStaff` + PinGate
+- [x] Mantener `requireAdminStaff` solo en: conexión MP (`/settings/facturacion` parcial), `/staff`, facturación SaaS
+- [x] Migrar `PIN_COOKIE_SECRET` → renombrar a `COOKIE_SECRET` o crear `IMPERSONATION_COOKIE_SECRET` independiente para la cookie de impersonación del SuperAdmin
+- [x] Eliminar `staff_pin_hash` del schema de tenant settings
+- [x] Actualizar/eliminar tests de PIN
 
 ### 12. 🎭 Super Admin: diferir impersonación (F2) a post-lanzamiento
 - **Antes**: La spec del Super Admin (`docs/superpowers/specs/2026-06-12-super-admin-design.md`) define 3 fases: F1 (Dashboard + Tenants), F2 (Impersonación), F3 (Jugadores + Jobs + Audit).
@@ -374,13 +374,13 @@ La impersonación ("Entrar como este complejo") tiene el peor ratio complejidad/
 - F3: `/super-admin/players` búsqueda global, `/super-admin/jobs` DLQ, `/super-admin/audit` logs
 
 #### Impacto en docs
-- [ ] `docs/superpowers/specs/2026-06-12-super-admin-design.md` — Marcar F2 como "deferida a post-lanzamiento"
-- [ ] `CLAUDE.md` — Actualizar sección Super Admin (sin impersonación en v1)
+- [x] `docs/superpowers/specs/2026-06-12-super-admin-design.md` — Marcar F2 como "deferida a post-lanzamiento"
+- [x] `CLAUDE.md` — Actualizar sección Super Admin (sin impersonación en v1)
 
 #### Impacto en código
-- [ ] No implementar `impersonation.server.ts` más allá de lo que ya existe (o limpiarlo si no se usa)
-- [ ] `extractAuthUser()` en `auth.middleware.ts` — la rama de impersonación puede quedarse como dead code o limpiarse; NO hace falta testearla para v1
-- [ ] No crear el banner de impersonación ni los tests e2e de F2
+- [x] No implementar `impersonation.server.ts` más allá de lo que ya existe (o limpiarlo si no se usa)
+- [x] `extractAuthUser()` en `auth.middleware.ts` — la rama de impersonación puede quedarse como dead code o limpiarse; NO hace falta testearla para v1
+- [x] No crear el banner de impersonación ni los tests e2e de F2
 
 ### 13. 💰 Pricing JSONB: simplificar estructura + UI de grilla hora×día (estilo ATC)
 - **Antes**: El pricing JSONB usaba franjas horarias amplias con objeto `prices: {"60": ..., "120": ...}` por duración. Configurar precios escalados hora a hora era imposible sin crear decenas de reglas manualmente. UX/UI horrible para el admin.
@@ -580,46 +580,35 @@ El campo `court_formats` ya existe en la tabla `tenants` como denormalización p
 ### 13. Anonimización de jugadores con deuda
 - **Situación actual**: El código y los tests permiten que un jugador borre su cuenta (se anonimice por ley de privacidad ARCO) incluso si tiene un saldo deudor pendiente (`balance > 0`) en algún complejo. El sistema elimina su vinculación sin chequear deudas.
 - **Debate**: ¿Deberíamos bloquear la eliminación de la cuenta (ej: lanzando un `PlayerHasDebtError`) si tiene deudas, o permitimos que se elimine y el complejo asume la pérdida/lo maneja por fuera?
-### 18. ?? Eliminar booking-reminder worker y template (dead code)
-- **Antes**: Existe un worker completo (ooking-reminder.worker.ts) + template de email (ooking-reminder.ts) + queue (QUEUE_BOOKING_REMINDER) + job type (BookingReminderJobData) que implementan un recordatorio 24hs antes al jugador.
-- **Ahora**: **Eliminarlo por completo.** En P9.2 se decidi� expl�citamente que el recordatorio 24hs NO se env�a en v1 por costos de email masivo. Este c�digo es dead code que puede activarse accidentalmente y generar gastos.
 
-#### Impacto en c�digo
-- [x] src/shared/jobs/definitions.ts � Eliminar queue, type y send options
-- [x] src/shared/jobs/workers/booking-reminder.worker.ts � Eliminar archivo
-- [x] src/modules/notifications/templates/booking-reminder.ts � Eliminar archivo
-- [x] src/modules/notifications/templates/index.ts � Eliminar imports y registros de ooking_reminder
-- [x] Bootstrap de workers � Eliminar egisterBookingReminderWorker
-- [x] Tests � Eliminar tests del booking-reminder
-- [x] CLAUDE.md � Aclarar que no hay recordatorio 24hs en v1
+### 18. 🗑️ Eliminar booking-reminder worker y template (dead code)
+- **Antes**: Existe un worker completo (`booking-reminder.worker.ts`) + template de email (`booking-reminder.ts`) + queue (`QUEUE_BOOKING_REMINDER`) + job type (`BookingReminderJobData`) que implementan un recordatorio 24hs antes al jugador.
+- **Ahora**: **Eliminarlo por completo.** En P9.2 se decidió explícitamente que el recordatorio 24hs NO se envía en v1 por costos de email masivo. Este código es dead code que puede activarse accidentalmente y generar gastos.
 
-### 19. ?? Arreglar constantes de expiraci�n del timer
-- **Antes**: DEFAULT_EXPIRY_SECONDS est� en 15 minutos. Existe IN_PROCESS_EXPIRY_SECONDS (48hs).
+#### Impacto en código
+- [x] `src/shared/jobs/definitions.ts` — Eliminar queue, type y send options
+- [x] `src/shared/jobs/workers/booking-reminder.worker.ts` — Eliminar archivo
+- [x] `src/modules/notifications/templates/booking-reminder.ts` — Eliminar archivo
+- [x] `src/modules/notifications/templates/index.ts` — Eliminar imports y registros de `booking_reminder`
+- [x] Bootstrap de workers — Eliminar `registerBookingReminderWorker`
+- [x] Tests — Eliminar tests del booking-reminder
+- [x] `CLAUDE.md` — Aclarar que no hay recordatorio 24hs en v1
+
+### 19. ⏱️ Arreglar constantes de expiración del timer
+- **Antes**: `DEFAULT_EXPIRY_SECONDS` está en 15 minutos. Existe `IN_PROCESS_EXPIRY_SECONDS` (48hs).
 - **Ahora**: Reflejar las decisiones del bloque 2. Timer baja a 6 minutos. Se elimina el concepto de in_process timer extendido (MercadoPago online es inmediato o expira).
 
-#### Impacto en c�digo
-- [x] src/shared/jobs/definitions.ts � DEFAULT_EXPIRY_SECONDS = 6 * 60, eliminar IN_PROCESS_EXPIRY_SECONDS, ajustar expireInHours
-- [x] src/shared/jobs/definitions.ts � Actualizar comentarios ("Default: 15 min..." ? "6 min")
-- [x] src/modules/bookings/booking.expiry.ts � Eliminar rama que usa IN_PROCESS_EXPIRY_SECONDS
-- [x] src/shared/jobs/schedule-expiry.ts � Verificar que use la constante correcta
-- [x] Tests de expiraci�n � Actualizar fixtures y assertions de tiempo
+#### Impacto en código
+- [x] `src/shared/jobs/definitions.ts` — `DEFAULT_EXPIRY_SECONDS` = 6 * 60, eliminar `IN_PROCESS_EXPIRY_SECONDS`, ajustar expireInHours
+- [x] `src/shared/jobs/definitions.ts` — Actualizar comentarios ("Default: 15 min..." → "6 min")
+- [x] `src/modules/bookings/booking.expiry.ts` — Eliminar rama que usa `IN_PROCESS_EXPIRY_SECONDS`
+- [x] `src/shared/jobs/schedule-expiry.ts` — Verificar que use la constante correcta
+- [x] Tests de expiración — Actualizar fixtures y assertions de tiempo
 
-### 20. ?? Agregar email templates para eventos de negocio nuevos (bloques 3 y 5)
-- **Antes**: No existen templates de email para: cancelaci�n por culpa del complejo (cambio #3), generaci�n de deuda por no-show (cambio #5).
+### 20. 📧 Agregar email templates para eventos de negocio nuevos (bloques 3 y 5)
+- **Antes**: No existen templates de email para: cancelación por culpa del complejo (cambio #3), generación de deuda por no-show (cambio #5).
 - **Ahora**: Agregar 2 templates obligatorios:
 
-#### Template 1: ooking_canceled_by_complex
-- **Destinatario**: Jugador
-- **Contexto**: El complejo cancel� el turno manual o el admin del sistema lo cancel�.
-- **Data**: playerFirstName, courtName, date, 	imeStart, 	imeEnd, 	enantName, efundConfirmed (booleano).
-- **Contenido**: "Tu turno en X fue cancelado por el complejo". Si pag� se�a, avisar que se proces� la devoluci�n.
-
-#### Template 2: 
-o_show_debt_created
-- **Destinatario**: Jugador
-- **Contexto**: Jugador hizo no-show, el sistema liquid� el saldo a favor a 0 y le gener� una deuda por el restante.
-- **Data**: playerFirstName, courtName, date, 	imeStart, 	imeEnd, 	enantName, debtAmount, 	enantAddress.
-- **Contenido**: "Ten�s una deuda pendiente de X por el turno al que no asististe. Por favor acercate a X para regularizar tu situaci�n y que te desbloqueen para seguir reservando."
 
 #### Impacto en c�digo
 - [x] src/modules/notifications/templates/booking-canceled-by-complex.ts � Crear template siguiendo el patr�n exacto de los existentes

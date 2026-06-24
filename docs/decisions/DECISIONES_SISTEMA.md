@@ -125,6 +125,8 @@
 
 **Tu respuesta**: No, solo las mismas decisiones que ATC.
 
+> **🔄 ACTUALIZACIÓN 2026-06-22:** La duración de los turnos será fija en **60 minutos** para simplificar la grilla (Decisión de negocio).
+
 ---
 
 ### P3.2 — ¿Cuántos días de anticipación puede reservar un jugador?
@@ -149,12 +151,14 @@
 
 ---
 
-### P3.4 — ¿Qué pasa si un jugador reserva y no paga la seña en 15 minutos?
+### P3.4 — ¿Qué pasa si un jugador reserva y no paga la seña en 6 minutos?
 
 **Estado actual**: La reserva expira automáticamente y el slot se libera.
-**Pregunta**: ¿15 minutos está bien? ¿Querés que sea configurable por complejo?
+**Pregunta**: ¿6 minutos está bien? ¿Querés que sea configurable por complejo?
 
 **Tu respuesta**: 15 minutos está bien.
+
+> **🔄 ACTUALIZACIÓN 2026-06-22:** El timer de expiración se redujo a **6 minutos fijos** (antes 15). Se eliminó la extensión a 48hs por pagos en proceso. Todo expira a los 6 minutos exactos.
 
 ---
 
@@ -353,6 +357,8 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 **Pregunta**: ¿El ban automático por 3 no-shows está bien? ¿Querés que sea configurable?
 
 **Tu respuesta**: El proceso en ATC es así: "Política de No-show: El administrador marca la falta manualmente para ejecutar la retención de la seña, generar una deuda en la ficha del jugador y activar bloqueos automáticos que impiden nuevas reservas online hasta que se regularice la situación.", haremos lo mismo.
+
+> **🔄 ACTUALIZACIÓN 2026-06-22:** Se implementó explícitamente el **Modelo de Deuda (ATC)**. El ban temporal por acumulación se eliminó. Ahora cada no-show genera una deuda en el jugador equivalente a `precio - seña`. Cualquier deuda `balance > 0` bloquea automáticamente las reservas online hasta que sea saldada en el mostrador.
 
 ---
 

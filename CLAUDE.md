@@ -61,7 +61,7 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - Timestamps en UTC, conversión a ART solo en el frontend
 - UUIDs como primary keys, nunca autoincremental
 - `SET LOCAL` para tenant context, nunca `SET` sin LOCAL
-- Auth staff: en migración de Magic Link → email+password (spec aprobado). Jugador sigue passwordless (Magic Link + magic link de Google descartado). SuperAdmin: script + MFA TOTP. La identidad sale del JWT (`app_metadata`), no del método de login.
+- Auth staff: email+password. Jugador sigue passwordless (Magic Link). SuperAdmin: script + MFA TOTP. La identidad sale del JWT (`app_metadata`), no del método de login.
 - Correr `pnpm typecheck` después de cada cambio
 
 ## Convenciones de comunicación
@@ -83,7 +83,7 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - **RLS dual en `bookings` y `player_tenant_relationships`**: policy para admin (por `app.current_tenant_id`), policy para jugador (por `app.current_player_id`). Policy Realtime SOLO en `bookings` (grilla admin). `player_tenant_relationships` no necesita Realtime en v1.
 - Background jobs usan rol de servicio separado
 - `tenants.mp_access_token` + `mp_refresh_token`: credenciales OAuth MP del complejo para cobrar señas (encriptadas at-rest)
-- **Super Admin**: tabla `system_admins`, panel en `/super-admin/*`, puede ver todos los tenants, impersonar, métricas globales
+- **Super Admin**: tabla `system_admins`, panel en `/super-admin/*`, puede ver todos los tenants, métricas globales. Fase 2 (Impersonación) diferida.
 
 ## Convenciones críticas de schema
 - ENUMs usan `canceled` (americano, una L). NUNCA `cancelled` (británico, doble L)
@@ -97,7 +97,7 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - Consentimiento v1: `players.agreed_to_terms_at` + `audit_logs`; NO existe tabla `consent_records` (se evalúa en v1.5)
 - Facturación AFIP: fuera de scope v1 (ADR-011), responsabilidad del complejo
 - Planes SaaS: Predio (1-3 canchas), Complejo (4-6), Estadio (7+). Sin límite de cantidad de staff.
-- `staff_role`: **2 roles** — `admin` (dueño, acceso total) y `manager` (encargado: grilla/reservas/caja, sin precios ni config). El uso de `manager` es opcional por complejo. ⚠️ El enum en código todavía incluye `read_only` (eliminado por decisión) — pendiente de quitar.
+- `staff_role`: **2 roles** (Modelo ATC) — `admin` (dueño, acceso total, único que conecta MP/facturación/staff) y `manager` permisivo (encargado: grilla/reservas/caja, reportes, métricas, configuración general). Sin sistema de PIN. ⚠️ El enum en código todavía incluye `read_only` (eliminado por decisión) — pendiente de quitar.
 - `court_status`: `online` | `offline` (no active/maintenance/inactive)
 - `deposit_mode`: configurable por complejo (on/off + porcentaje global). Sin modo garantía.
 - Duración de turno: 60 minutos fijo (constante global `SLOT_DURATION_MINUTES` en `src/shared/constants.ts`). El campo configurable `booking_duration_minutes` se eliminó (dead code, cambio #14).

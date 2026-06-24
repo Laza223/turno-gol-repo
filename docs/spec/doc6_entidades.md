@@ -61,16 +61,12 @@ updated_at        timestamp     UTC
 ```json
 {
   "requires_deposit": true,
-  "deposit_percentage": 50,
+  "deposit_percentage": 30,
   "cancellation_policy": {
-    "hours_before": 48,
-    "refund_on_cancel": true
+    "hours_before": 12,
+    "penalty_type": "deposit",
+    "penalty_amount": null
   },
-  "no_show_policy": {
-    "generates_debt": true,
-    "blocks_until_paid": true
-  },
-  "admin_pin": "$2b$10$...",
   "accepts_cash": true,
   "accepts_transfer": true,
   "accepts_mercadopago": true,
@@ -79,11 +75,6 @@ updated_at        timestamp     UTC
   "auto_complete_minutes": 30
 }
 ```
-
-> [!NOTE]
-> **`admin_pin`**: PIN hasheado para proteger zonas sensibles del panel (precios, configuración,
-> suscripción, desactivar canchas, reportes financieros). Permite que el empleado use la misma
-> cuenta admin sin acceder a funciones críticas.
 
 ### Atributos derivados (NO guardar en DB, calcular)
 - `is_open_now` = evaluar `opening_hours` + `closed_dates` contra la hora actual
@@ -127,8 +118,11 @@ id                UUID          PK
 tenant_id         UUID          FK → tenants
 name              string        "Cancha 1", "Cancha Norte", etc.
 description       string?       Info adicional (grass sintética, con techo, etc.)
-surface_type      enum          'synthetic_grass' | 'natural_grass' | 'cement' | 'indoor'
-capacity          integer       Cantidad de jugadores (5, 7, 11)
+surface_type      enum          'synthetic_grass' | 'natural_grass' | 'cement' | 'tile'
+format            integer       Formato de Fútbol (4, 5, 6, 7, 8, 9, 10, 11)
+is_covered        boolean       Cancha techada o descubierta
+has_lighting      boolean       Cancha con iluminación
+capacity          integer       Cantidad de jugadores (ej: format * 2)
 photos            string[]      URLs de fotos (en storage)
 status            enum          ver state machine (3 estados)
 pricing           JSONB         Precios por franja horaria (ver desglose)
@@ -140,18 +134,18 @@ updated_at        timestamp     UTC
 ```json
 {
   "rules": [
-    { "days": [1,2,3,4,5], "from": "08:00", "to": "14:00", "prices": { "60": 800000, "120": 1400000 } },
-    { "days": [1,2,3,4,5], "from": "14:00", "to": "18:00", "prices": { "60": 1000000, "120": 1800000 } },
-    { "days": [1,2,3,4,5], "from": "18:00", "to": "00:00", "prices": { "60": 1200000, "120": 2200000 } },
-    { "days": [0,6], "from": "08:00", "to": "00:00", "prices": { "60": 1500000, "120": 2800000 } }
+    { "days": [1,2,3,4,5], "from": "08:00", "to": "14:00", "price": 800000 },
+    { "days": [1,2,3,4,5], "from": "14:00", "to": "18:00", "price": 1000000 },
+    { "days": [1,2,3,4,5], "from": "18:00", "to": "00:00", "price": 1200000 },
+    { "days": [0,6], "from": "08:00", "to": "00:00", "price": 1500000 }
   ]
 }
 ```
 
 > [!NOTE]
 > **Reglas de precio**: El admin define franjas ilimitadas con puntos de corte horarios.
-> Cada regla especifica días de la semana (0=Dom, 6=Sáb), rango horario, y precio por duración (60/120 min).
-> Esto replica el modelo de ATC Sports donde el admin configura el precio por cada combinación de franja y duración.
+> Cada regla especifica días de la semana (0=Dom, 6=Sáb), rango horario, y precio base (turnos de 60 min).
+> Esto replica el modelo de ATC Sports donde el admin configura el precio por cada combinación de franja en una grilla.
 
 > [!NOTE]
 > **Horarios que cruzan medianoche**: si un complejo abre de 08:00 a 02:00 del día siguiente,
@@ -258,7 +252,7 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 ```
                             PENDING_PAYMENT
                             /      |      \
-              pago OK    /         |       \ timeout (15min / 48hs si in_process)
+              pago OK    /         |       \ timeout (6min)
                         /   sin seña required \ 
                        ▼          ▼             ▼
                   CONFIRMED    CONFIRMED      EXPIRED
@@ -285,23 +279,23 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 |---|---|---|---|
 | `pending_payment` | `confirmed` | Pago de seña procesado por MP | Email confirmación al jugador |
 | `pending_payment` | `confirmed` | No requiere seña (depósito 0% o reserva manual sin seña) | Email confirmación |
-| `pending_payment` | `expired` | Timeout 15 min sin pago (o 48hs si MP in_process por CBU) | Slot liberado |
+| `pending_payment` | `expired` | Timeout 6 min sin pago | Slot liberado |
 | `pending_payment` | `expired` | Admin fuerza expiración manualmente | Slot liberado, email al jugador |
 | `confirmed` | `canceled_refunded` | Jugador cancela dentro del plazo de la política | Refund de seña vía MP, email confirmación. Si seña efectivo: "Contactá al complejo" |
 | `confirmed` | `canceled_no_refund` | Jugador cancela fuera del plazo | Sin reembolso, deposit_status → 'captured', email con info |
 | `confirmed` | `canceled_no_refund` | Admin cancela con cargo | Sin reembolso |
 | `confirmed` | `canceled_refunded` | Admin cancela sin cargo | Reembolso si había seña, email disculpa |
-| `confirmed` | `completed` | Auto-complete: 30 min después de `time_end` si nadie marcó | CashFlow income registrado |
-| `confirmed` | `no_show` | Admin marca como no-show dentro de ventana 24hs | Penalidad si aplica |
-| `completed` | `no_show` | Corrección posterior (dentro de 24 hs) | CashFlow compensatorio (ajuste) |
+| `confirmed` | `completed` | Auto-complete: 30 min después de `time_end` si nadie marcó (job cada 30 min) | CashFlow income registrado |
+| `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Deuda (cambio #5): captura seña (`deposit_status='captured'`) + suma `price_snapshot − seña` a `player_tenant_relationships.balance`; el jugador queda bloqueado para reservar online hasta saldarla |
+| `completed` | — | — | Estado final inmutable |
 | `expired` | — | — | Estado final |
 | `no_show` | — | — | Estado final inmutable |
 
 > [!NOTE]
-> **Corrección post-cierre de caja**: si un admin marca un `completed` como `no_show` después
-> de cerrar la caja, NO se modifica el cierre. Se genera un `CashFlow` compensatorio
-> de tipo `adjustment` con la diferencia. La caja cerrada es inmutable; los ajustes posteriores
-> se registran como movimientos nuevos.
+> **Estados terminales inmutables**: `completed`, `no_show` y `expired` son finales. NO hay
+> transición `completed → no_show` (un trigger de DB bloquea todo UPDATE post-terminal).
+> Cualquier ajuste contable posterior al cierre de caja (p. ej. categoría `no_show_correction`)
+> se registra como un `CashFlow` `adjustment` NUEVO: la caja cerrada es inmutable.
 
 ### Invariantes de la Reserva
 
@@ -486,12 +480,12 @@ created_at        timestamp     UTC
 ## ENTIDAD 7: StaffUser (Usuario del Sistema)
 
 ### Definición
-Un StaffUser es la persona que administra un Tenant. En v1 solo existe el rol `admin`. El sistema usa un PIN para proteger zonas sensibles (precios, configuración, suscripción) permitiendo que empleados del complejo operen la cuenta sin acceso a funciones críticas.
+Un StaffUser es la persona que administra un Tenant. Hay **2 roles** (Modelo ATC): `admin` (dueño, acceso total; único que conecta MP, factura y gestiona staff) y `manager` (encargado permisivo: grilla/reservas/caja, reportes, métricas y configuración general). El gating de acciones sensibles es por **rol** en la capa de aplicación (`requireAdminStaff` / `requireOperatorStaff`), **sin sistema de PIN**.
 
 ### Atributos propios
 ```
 id                UUID          PK
-email             string        Único. Para autenticación (magic link o Google OAuth)
+email             string        Único. Autenticación staff: email + contraseña (ADR-013; ADR-002 magic link deprecado para staff)
 first_name        string
 last_name         string
 phone             string?
@@ -507,13 +501,13 @@ tenant_staff_members
 ├── id            UUID
 ├── tenant_id     UUID      FK → tenants
 ├── staff_user_id UUID      FK → staff_users
-├── role          enum      'admin' (único rol en v1)
+├── role          enum      'admin' | 'manager' (Modelo ATC, 2 roles; migr. 029 quitó 'read_only')
 ├── added_by      UUID      FK → staff_users (quién lo agregó)
 ├── created_at    timestamp
 └── is_active     boolean
 ```
 
-**Por qué mantener la tabla**: Aunque v1 tiene un solo rol, la tabla permite que un mismo email administre múltiples complejos y facilita la extensión futura.
+**Por qué mantener la tabla**: permite que un mismo email opere múltiples complejos (con rol potencialmente distinto en cada uno) y desacopla la identidad del usuario de su rol por complejo.
 
 ---
 
@@ -532,7 +526,7 @@ amount            integer       En centavos de ARS (evitar decimales)
 currency          string        DEFAULT 'ARS'
 type              enum          'deposit' | 'full_payment' | 'refund' | 'penalty'
 method            enum          'cash' | 'transfer' | 'mercadopago' | 'other'
-status            enum          'pending' | 'approved' | 'rejected' | 'refunded' | 'canceled' | 'in_process'
+status            enum          'pending' | 'approved' | 'rejected' | 'refunded' | 'canceled'
 mp_payment_id     string?       ID del pago en MercadoPago (para idempotencia)
 mp_preference_id  string?       ID de la preferencia de pago generada
 description       string?       Descripción del cobro
@@ -545,7 +539,6 @@ created_at        timestamp     UTC
 1. **Los pagos aprobados son inmutables**: no se editan, se crea un nuevo `Payment` de tipo `refund` si hay que devolver.
 2. **`amount` siempre en centavos** para evitar errores de punto flotante (ej: $8.000 ARS = 800000 centavos).
 3. **`mp_payment_id` es único** (constraint en DB). Garantiza idempotencia de webhooks.
-4. **Estado `in_process`**: para pagos por CBU/transferencia que pueden tardar 24-48hs. El timer del booking se extiende a 48hs en este caso.
 
 ---
 
@@ -705,7 +698,7 @@ tenant_id         UUID?         FK → tenants (null para notificaciones del sis
 recipient_type    enum          'player' | 'staff' | 'tenant_owner'
 recipient_id      UUID          FK → players o staff_users
 channel           enum          'email'
-trigger_event     string        'booking.confirmed' | 'booking.reminder_24h' | etc.
+trigger_event     string        'booking.confirmed' | 'booking.canceled' | 'abonado.created' | etc. (NO hay recordatorio 24h/2h en v1, cambio #18)
 status            enum          'queued' | 'sent' | 'delivered' | 'failed'
 content           JSONB         El contenido del mensaje enviado
 attempt_count     integer       DEFAULT 1
@@ -781,7 +774,6 @@ banned_by         UUID?         FK → staff_users (quién lo baneó)
 ### Invariantes
 1. **Un solo ban _activo_ por jugador por complejo** — enforceado con un índice único parcial en DB (`WHERE banned_until IS NULL OR banned_until > NOW()`), NO con un UNIQUE plano. Esto preserva el historial de bans expirados y permite re-banear al mismo jugador sin borrar registros anteriores.
 2. Si `banned_until` es NULL, el ban es permanente hasta que un admin lo levante.
-3. El Flujo 4D (3 no-shows en 30 días) crea automáticamente un ban temporal.
 
 ---
 
@@ -806,6 +798,80 @@ created_at        timestamp     UTC
 1. **INSERT only**, nunca UPDATE. Los precios históricos son inmutables.
 2. Solo un registro por plan puede tener `valid_until = NULL` (el precio vigente).
 3. Los clientes anuales con `price_locked_until` usan el precio de la versión vigente al momento de su suscripción.
+
+---
+
+## ENTIDAD 19: Review (Reseña del Jugador)
+
+### Definición
+Reseña post-partido que deja un jugador sobre un complejo (interfaz pública estilo ATC). Tabla **híbrida**: lectura pública (perfil del complejo) + INSERT solo del jugador dueño de un booking `completed`. Una review por booking.
+
+### Atributos propios
+```
+id                UUID          PK
+tenant_id         UUID          FK → tenants (denormalizado desde el booking para listados públicos rápidos)
+player_id         UUID          FK → players
+booking_id        UUID          FK → bookings (UNIQUE — 1 review por reserva)
+rating            integer       CHECK 1..5
+comment           text?         Máx 500 caracteres
+created_at        timestamp     UTC
+```
+
+---
+
+## ENTIDAD 20: PushSubscription (Suscripción Web Push del Staff)
+
+### Definición
+Suscripción Web Push API del navegador del staff. Habilita el **aviso push al admin cuando entra una reserva online** (`notifyAdminPush`). Tabla **aislada** (tenant_id + RLS). El push se entrega directo al navegador; NO se materializa en `notifications`.
+
+### Atributos propios
+```
+id                UUID          PK
+tenant_id         UUID          FK → tenants (ON DELETE CASCADE)
+staff_user_id     UUID          FK → staff_users (ON DELETE CASCADE)
+endpoint          text          UNIQUE — endpoint del push service del browser
+p256dh_key        text          Clave pública del cliente (VAPID)
+auth_key          text          Secreto de autenticación del cliente
+user_agent        text?
+created_at        timestamp     UTC
+last_used_at      timestamp?
+```
+
+> [!NOTE]
+> **Horario silencioso (cambio #7)**: en madrugada (00:00–08:00 en la timezone del complejo) el push
+> se agenda (`startAfter`) para las 08:00 locales en vez de sonar al instante. Sonido fijo (no configurable).
+
+---
+
+## ENTIDAD 21: PlayerFavorite (Complejo Favorito del Jugador)
+
+### Definición
+Complejo marcado como favorito (❤️) por un jugador. Cross-tenant (un jugador marca N complejos). Tabla **híbrida**: el jugador solo ve/escribe los suyos (`app.current_player_id`). Sin lectura pública.
+
+### Atributos propios
+```
+id                UUID          PK
+player_id         UUID          FK → players
+tenant_id         UUID          FK → tenants
+created_at        timestamp     UTC
+UNIQUE (player_id, tenant_id)
+```
+
+---
+
+## ENTIDAD 22: FeatureFlag (Toggle Operacional)
+
+### Definición
+Toggle operacional del sistema (Fase 6). **No** son los feature flags por plan (esos viven en `plans.features`, ADR-010). Fila con `tenant_id` NULL = default global; con `tenant_id` seteado = override por complejo (p. ej. kill switch de `suspended`).
+
+### Atributos propios
+```
+id                UUID          PK
+key               string        Nombre del flag
+value             boolean        DEFAULT false
+tenant_id         UUID?         FK → tenants (NULL = default global; seteado = override)
+created_at        timestamp     UTC
+```
 
 ---
 
@@ -864,10 +930,20 @@ Este glosario se traduce directamente en las siguientes tablas:
 | ProcessedWebhook | `processed_webhooks` |
 | TenantPlayerBan | `tenant_player_bans` |
 | PriceVersion | `price_versions` |
+| Review | `reviews` |
+| PushSubscription | `push_subscriptions` |
+| PlayerFavorite | `player_favorites` |
+| FeatureFlag | `feature_flags` |
 | SystemAdmin | `system_admins` |
 
-**Total: 19 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
-(12 aisladas con RLS + 6 globales + 1 híbrida + 1 sistema)
+**Total: 23 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
+(13 aisladas con RLS + 6 globales + 3 híbridas + 1 operacional + 1 sistema)
+
+> Aisladas (13): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, products,
+> tenant_staff_members, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, push_subscriptions.
+> Globales (6): tenants, players, staff_users, plans, price_versions, processed_webhooks.
+> Híbridas (3, RLS por jugador): player_tenant_relationships, reviews, player_favorites.
+> Operacional (1): feature_flags. Sistema (1): system_admins.
 
 > [!NOTE]
 > **Tabla `system_admins` agregada** para el panel de super admin de TurnoGol.

@@ -341,7 +341,7 @@ TurnoGol recibe webhook → confirma la reserva
 Booking.status = 'confirmed', Booking.deposit_status = 'paid'
 Email al jugador: "Tu reserva está confirmada 🎉"
       ↓
-Si el jugador no paga en 15 minutos → Booking.status = 'expired', slot se libera
+Si el jugador no paga en 6 minutos → Booking.status = 'expired', slot se libera
 ```
 
 **Flujo de cancelación con seña:**
@@ -378,8 +378,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | Evento de MP | Qué hacemos en TurnoGol |
 |---|---|
 | `payment.approved` | Confirmar booking, setear deposit_status = 'paid' |
-| `payment.rejected` | No modificar booking (sigue pending_payment, timer de 15 min sigue) |
-| `payment.pending` (in_process) | Extender timer a 48hs (CBU/transferencia puede tardar) |
+| `payment.rejected` | No modificar booking (sigue pending_payment, timer de 6 min sigue) |
 | `payment.refunded` | Actualizar deposit_status = 'refunded' |
 
 > [!IMPORTANT]

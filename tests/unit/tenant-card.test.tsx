@@ -149,3 +149,34 @@ describe('TenantCard — píldoras de turnos libres', () => {
     expect(screen.queryByText('18:00')).toBeNull()
   })
 })
+
+describe('TenantCard — body (rediseño Matchday)', () => {
+  it('muestra el precio en el body con font-display y "/turno"', () => {
+    render(<TenantCard tenant={{ ...baseTenant, fromPriceCents: 1200000 }} />)
+    const price = screen.getByText(/\$\s?12\.000/)
+    expect(price.className).toContain('font-display')
+    expect(screen.getByText('/turno')).toBeTruthy()
+  })
+
+  it('sin precio no rompe ni muestra "/turno"', () => {
+    render(<TenantCard tenant={{ ...baseTenant, fromPriceCents: null }} />)
+    expect(screen.queryByText('/turno')).toBeNull()
+  })
+
+  it('muestra el rating en el body cuando hay reseñas', () => {
+    render(<TenantCard tenant={{ ...baseTenant, avgRating: 4.8, reviewCount: 123 }} />)
+    // RatingStars renderiza el número y el conteo
+    expect(screen.getByText(/4[.,]8/)).toBeTruthy()
+  })
+
+  it('muestra los formatos como chips de "Fútbol N"', () => {
+    render(<TenantCard tenant={{ ...baseTenant, courtFormats: [5, 7] }} />)
+    expect(screen.getByText('Fútbol 5')).toBeTruthy()
+    expect(screen.getByText('Fútbol 7')).toBeTruthy()
+  })
+
+  it('muestra el badge "Reservá online" cuando corresponde', () => {
+    render(<TenantCard tenant={{ ...baseTenant, allowOnlineBooking: true }} />)
+    expect(screen.getByText('Reservá online')).toBeTruthy()
+  })
+})

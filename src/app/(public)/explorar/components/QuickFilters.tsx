@@ -22,7 +22,7 @@ function toggleCsv(list: string[], value: string): string | undefined {
 }
 
 const chipBase =
-  'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors'
+  'inline-flex h-11 md:h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
 const chipOn = 'border-emerald-600 bg-emerald-50 text-emerald-700'
 const chipOff = 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
 
@@ -96,7 +96,7 @@ export default function QuickFilters() {
 
       <Dialog open={drawer} onOpenChange={setDrawer}>
         <DialogTrigger asChild>
-          <button type="button" className={`${chipBase} ${chipOff}`}>
+          <button type="button" aria-haspopup="dialog" className={`${chipBase} ${chipOff}`}>
             <SlidersHorizontal className="h-4 w-4" aria-hidden />
             Todos los filtros
             {activeCount > 0 && (

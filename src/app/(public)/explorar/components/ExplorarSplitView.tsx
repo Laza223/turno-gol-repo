@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import TenantCard from './TenantCard'
 import ExplorarMapLoader from './ExplorarMapLoader'
@@ -19,7 +19,7 @@ export default function ExplorarSplitView({
   favoritedIds: string[]
   photosByTenant: Record<string, string[]>
 }) {
-  const favs = new Set(favoritedIds)
+  const favs = useMemo(() => new Set(favoritedIds), [favoritedIds])
   const [activeId, setActiveId] = useState<string | null>(null)
 
   return (

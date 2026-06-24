@@ -183,6 +183,12 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       : ({} as Record<string, SlotPill[]>),
   ])
 
+  const _listHrefParams = new URLSearchParams()
+  for (const [k, v] of Object.entries(searchParams)) {
+    if (v && k !== 'view' && k !== 'offset') _listHrefParams.set(k, v)
+  }
+  const listHref = `/explorar${_listHrefParams.toString() ? `?${_listHrefParams.toString()}` : ''}`
+
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
       <JsonLd
@@ -250,21 +256,14 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       </div>
 
       {/* FAB mobile: solo visible en vista mapa en pantallas < lg */}
-      {view === 'map' && (() => {
-        const p = new URLSearchParams()
-        for (const [k, v] of Object.entries(searchParams)) {
-          if (v && k !== 'view' && k !== 'offset') p.set(k, v)
-        }
-        const listHref = `/explorar${p.toString() ? `?${p.toString()}` : ''}`
-        return (
-          <Link
-            href={listHref}
-            className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg lg:hidden"
-          >
-            <List className="h-4 w-4" aria-hidden /> Ver lista
-          </Link>
-        )
-      })()}
+      {view === 'map' && (
+        <Link
+          href={listHref}
+          className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden"
+        >
+          <List className="h-4 w-4" aria-hidden /> Ver lista
+        </Link>
+      )}
     </div>
   )
 }

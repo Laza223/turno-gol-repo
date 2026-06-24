@@ -37,7 +37,13 @@ function FitBounds({ points }: { points: [number, number][] }) {
   return null
 }
 
-export default function ExplorarMap({ results }: { results: PublicTenantCard[] }) {
+export default function ExplorarMap({
+  results,
+  activeId = null,
+}: {
+  results: PublicTenantCard[]
+  activeId?: string | null
+}) {
   const located = useMemo(() => results.filter(isLocated), [results])
   const points = useMemo<[number, number][]>(
     () => located.map((t) => [t.latitude, t.longitude]),

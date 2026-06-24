@@ -16,6 +16,12 @@ const ExplorarMap = dynamic(() => import('./ExplorarMap'), {
   ),
 })
 
-export default function ExplorarMapLoader({ results }: { results: PublicTenantCard[] }) {
-  return <ExplorarMap results={results} />
+export default function ExplorarMapLoader({
+  results,
+  activeId = null,
+}: {
+  results: PublicTenantCard[]
+  activeId?: string | null
+}) {
+  return <ExplorarMap results={results} activeId={activeId} />
 }

@@ -124,7 +124,15 @@ B2B las linkea igual. Aceptable: son neutrales.
 
 ## 5. Inventario de repunteo
 
-### 5.1 Pasan a `/ingresar` (jugador) — ~14 sitios
+### 5.1 Pasan a `/ingresar` (jugador) — ~16 sitios
+
+> NOTA (verificado por workflow 2026-06-24): los números de línea de archivos de
+> chrome (`PortalHeader`, `para-complejos`, `register`, `login`) derivaron en
+> `main`. **Editar por contenido**, no por línea. El plan
+> (`docs/superpowers/plans/2026-06-24-acceso-complejos-jugadores.md`) trae los
+> snippets exactos. Se suman 3 comentarios a repuntear:
+> `eliminar-cuenta/actions.ts:46`, `FavoriteButton.tsx:19`,
+> `auth.service.ts:46-48`.
 
 Redirects de guard:
 - `src/app/(player)/layout.tsx:9`
@@ -186,6 +194,10 @@ Puntos a alinear:
 - `register/page.tsx` submit **Crear cuenta** (queda); cross-link "¿Ya tenés
   cuenta? Iniciá sesión" → "¿Ya tenés cuenta? **Ingresar**" (→ `/login`).
 - `OwnerBanner` (`src/app/page.tsx`): "Conocé más" → `/para-complejos` (queda).
+- **Header del jugador (home + portal):** pierde a propósito el CTA standalone a
+  `/register` ("Comenzar"). Queda solo **"Ingresar"** → `/ingresar`. El alta de
+  complejo se alcanza por el link **"Para complejos"** → `/para-complejos`
+  (puerta B2B). Así ninguna superficie de jugador empuja al alta de staff.
 
 ## 7. Refinamiento visual (alcance)
 

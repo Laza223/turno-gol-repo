@@ -37,7 +37,6 @@ export function Logo({ variant = 'vertical', className, iconClassName, textClass
             priority
           />
         </div>
-        <span className={cn("text-lg font-semibold tracking-tight", textClassName)}>TurnoGol</span>
       </div>
     )
   }

@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { unstable_cache } from 'next/cache'
-import { SearchX } from 'lucide-react'
 import {
   getCourtPhotosByTenant,
   listPublicCities,
@@ -18,11 +17,13 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { playerFavorites } from '@/shared/db/schema'
 import { eq } from 'drizzle-orm'
-import SearchBar from './components/SearchBar'
 import TenantCard from './components/TenantCard'
 import ExplorarToolbar from './components/ExplorarToolbar'
 import ExplorarFilters from './components/ExplorarFilters'
 import ExplorarMapLoader from './components/ExplorarMapLoader'
+import SearchBand from './components/SearchBand'
+import QuickFilters from './components/QuickFilters'
+import EmptyResults from './components/EmptyResults'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 
@@ -189,17 +190,12 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
           { name: 'Explorar', url: absoluteUrl('/explorar') },
         ])}
       />
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Explorá complejos de fútbol
-        </h1>
-        <p className="text-sm text-slate-500">
-          Encontrá tu cancha ideal: filtrá por superficie, formato, servicios y precio.
-        </p>
-      </header>
+      <SearchBand cities={cities} />
 
-      <SearchBar cities={cities} />
-      <ExplorarToolbar total={total} />
+      <div className="sticky top-16 z-20 -mx-4 space-y-2 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 sm:px-6 lg:px-8">
+        <QuickFilters />
+        <ExplorarToolbar total={total} />
+      </div>
 
       <div className="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6">
         <aside className="hidden lg:block">
@@ -212,17 +208,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
           {view === 'map' ? (
             <ExplorarMapLoader results={results} />
           ) : results.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-20 text-slate-400">
-              <SearchX className="h-10 w-10" aria-hidden />
-              <p className="text-sm">
-                {avail
-                  ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}.`
-                  : 'No encontramos complejos con esos filtros.'}
-              </p>
-              <Link href="/explorar" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">
-                Limpiar búsqueda
-              </Link>
-            </div>
+            <EmptyResults avail={avail ? { date: avail.date, time: avail.time } : null} />
           ) : (
             <>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">

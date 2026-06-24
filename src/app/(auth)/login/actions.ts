@@ -6,12 +6,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import {
   provisionAndRouteStaff,
-  signInWithExistingPlayerMagicLink,
   signInWithPassword,
 } from '@/modules/auth/auth.service'
 import { MIN_PASSWORD_LENGTH } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
-import { sanitizeNext } from '@/lib/safe-redirect'
 
 const GENERIC = 'Email o contraseña incorrectos.'
 
@@ -99,38 +97,4 @@ export async function resendConfirmationAction(
   })
   // Respuesta genérica: confirma siempre, exista o no la cuenta.
   return { status: 'sent' }
-}
-
-// ── Acceso secundario passwordless para jugadores con sesión vencida ─────────
-
-export type PlayerLoginState =
-  | { status: 'idle' }
-  | { status: 'sent'; email: string }
-  | { status: 'error'; message: string }
-
-export async function playerLoginAction(
-  _prev: PlayerLoginState,
-  formData: FormData,
-): Promise<PlayerLoginState> {
-  const email = z
-    .string()
-    .trim()
-    .toLowerCase()
-    .email({ message: 'Ingresá un email válido' })
-    .safeParse(formData.get('email'))
-  if (!email.success) return { status: 'error', message: 'Ingresá un email válido.' }
-
-  const rl = await enforce('authMagicLink', email.data)
-  if (!rl.ok) {
-    return { status: 'error', message: 'Demasiados intentos. Esperá un minuto.' }
-  }
-
-  const nextRaw = formData.get('next')
-  const safeNext = sanitizeNext(typeof nextRaw === 'string' ? nextRaw : null, '/mis-reservas')
-  const redirectTo = `${callbackOrigin()}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
-  const result = await signInWithExistingPlayerMagicLink(email.data, redirectTo)
-  if (!result.ok) {
-    return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.' }
-  }
-  return { status: 'sent', email: email.data }
 }

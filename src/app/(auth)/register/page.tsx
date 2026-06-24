@@ -189,7 +189,7 @@ function FormCard({
       <p className="mt-6 text-center text-sm text-slate-600">
         ¿Ya tenés cuenta?{' '}
         <Link href="/login" className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
-          Iniciá sesión
+          Ingresar
         </Link>
       </p>
     </div>
@@ -237,7 +237,7 @@ function ExistingState({ email }: { email: string }) {
         href="/login"
         className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-colors hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
       >
-        Iniciar sesión
+        Ingresar
       </Link>
     </div>
   )

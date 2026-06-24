@@ -1,17 +1,14 @@
 'use client'
 
 import { useFormState, useFormStatus } from 'react-dom'
-import { Suspense, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, Eye, EyeOff, Loader2, Mail, Sparkles } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react'
 import {
   loginAction,
-  playerLoginAction,
   resendConfirmationAction,
   type LoginState,
-  type PlayerLoginState,
   type ResendState,
 } from './actions'
 import { Logo } from '@/components/ui/logo'
@@ -20,27 +17,7 @@ const HERO_IMG =
   'https://images.unsplash.com/photo-1551958219-acbc608c6377?q=80&w=2000&auto=format&fit=crop'
 
 const initial: LoginState = { status: 'idle' }
-const playerInitial: PlayerLoginState = { status: 'idle' }
 const resendInitial: ResendState = { status: 'idle' }
-
-function DeletedNotice() {
-  const searchParams = useSearchParams()
-  const deleted = searchParams.get('deleted')
-
-  if (deleted !== '1') return null
-
-  return (
-    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-sm shadow-emerald-100 flex items-start gap-3">
-      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 ring-2 ring-emerald-50">
-        <span className="text-xs font-bold text-emerald-700">✓</span>
-      </div>
-      <div>
-        <p className="font-semibold text-emerald-900">Tu cuenta fue eliminada</p>
-        <p className="text-xs text-emerald-700 mt-0.5">Lamentamos verte partir. Podés volver a registrarte cuando quieras.</p>
-      </div>
-    </div>
-  )
-}
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(loginAction, initial)
@@ -110,9 +87,6 @@ function FormPane({
         </div>
 
         <FormCard state={state} formAction={formAction} />
-        <Suspense fallback={null}>
-          <PlayerAccess />
-        </Suspense>
       </div>
     </div>
   )
@@ -138,10 +112,6 @@ function FormCard({
           Ingresá con tu email y contraseña.
         </p>
       </header>
-
-      <Suspense fallback={null}>
-        <DeletedNotice />
-      </Suspense>
 
       <form action={formAction} className="space-y-4" noValidate>
         <div className="space-y-1.5">
@@ -209,7 +179,7 @@ function FormCard({
       <p className="mt-6 text-center text-sm text-slate-600">
         ¿Sos nuevo?{' '}
         <Link href="/register" className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
-          Creá tu cuenta
+          Empezar gratis
         </Link>
       </p>
     </div>
@@ -243,76 +213,6 @@ function ResendConfirmation({ email }: { email: string }) {
   )
 }
 
-function PlayerAccess() {
-  const [open, setOpen] = useState(false)
-  const [state, formAction] = useFormState(playerLoginAction, playerInitial)
-  const searchParams = useSearchParams()
-  const next = searchParams.get('next') ?? '/mis-reservas'
-
-  return (
-    <div className="mt-4 rounded-2xl border border-slate-200/60 bg-white/70 p-4 text-center shadow-sm backdrop-blur-md">
-      {!open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
-        >
-          ¿Sos jugador? Ingresá con tu email
-        </button>
-      ) : state.status === 'sent' ? (
-        <div className="flex flex-col items-center gap-2 py-2">
-          <Mail className="h-5 w-5 text-emerald-700" aria-hidden />
-          <p className="text-sm text-slate-700">
-            Te enviamos un enlace de acceso a <strong>{state.email}</strong>.
-          </p>
-        </div>
-      ) : (
-        <form action={formAction} className="space-y-3 text-left" noValidate>
-          <input type="hidden" name="next" value={next} />
-          <label htmlFor="player-email" className="text-sm font-medium text-slate-900">
-            Email de jugador
-          </label>
-          <input
-            id="player-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            placeholder="vos@email.com"
-            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500"
-          />
-          {state.status === 'error' && (
-            <p role="alert" className="text-xs text-red-600">
-              {state.message}
-            </p>
-          )}
-          <PlayerSubmitButton />
-        </form>
-      )}
-    </div>
-  )
-}
-
-function PlayerSubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-emerald-600 px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-60"
-    >
-      {pending ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-          Enviando…
-        </>
-      ) : (
-        'Enviarme un enlace de acceso'
-      )}
-    </button>
-  )
-}
-
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
@@ -327,7 +227,7 @@ function SubmitButton() {
           Ingresando…
         </>
       ) : (
-        'Iniciar sesión'
+        'Ingresar'
       )}
     </button>
   )

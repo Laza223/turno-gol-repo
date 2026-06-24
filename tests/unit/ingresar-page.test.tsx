@@ -2,7 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 
-// useFormState/useFormStatus son undefined en vitest: mockeamos react-dom.
 vi.mock('react-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-dom')>()
   return {
@@ -12,13 +11,11 @@ vi.mock('react-dom', async (importOriginal) => {
   }
 })
 
-// Controla el query string visto por useSearchParams en cada test.
 const searchStr = vi.fn(() => '')
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(searchStr()),
 }))
 
-// next/image necesita config de runtime: lo simplificamos a un <img>.
 vi.mock('next/image', () => ({
   default: (props: Record<string, unknown>) => {
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
@@ -26,27 +23,31 @@ vi.mock('next/image', () => ({
   },
 }))
 
-// Evitar cargar la Server Action real (Supabase/db) al importar el page.
-vi.mock('@/app/(auth)/login/actions', () => ({
-  loginAction: vi.fn(),
+vi.mock('@/app/(auth)/ingresar/actions', () => ({
   playerLoginAction: vi.fn(),
-  resendConfirmationAction: vi.fn(),
 }))
 
-import LoginPage from '@/app/(auth)/login/page'
+import IngresarPage from '@/app/(auth)/ingresar/page'
 
 beforeEach(() => searchStr.mockReturnValue(''))
 afterEach(() => cleanup())
 
-describe('LoginPage — ?deleted=1 (#27)', () => {
-  it('muestra el aviso de cuenta eliminada cuando deleted=1', () => {
+describe('IngresarPage — acceso jugador', () => {
+  it('renderiza el form de email con el submit "Enviarme el enlace"', () => {
+    render(<IngresarPage />)
+    expect(screen.getByLabelText(/email/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /enviarme el enlace/i })).toBeTruthy()
+  })
+
+  it('muestra el aviso de cuenta eliminada con ?deleted=1', () => {
     searchStr.mockReturnValue('deleted=1')
-    render(<LoginPage />)
+    render(<IngresarPage />)
     expect(screen.getByText(/tu cuenta fue eliminada/i)).toBeTruthy()
   })
 
-  it('no muestra el aviso sin el query param', () => {
-    render(<LoginPage />)
-    expect(screen.queryByText(/tu cuenta fue eliminada/i)).toBeNull()
+  it('ofrece reservar en Explorar para primera vez', () => {
+    render(<IngresarPage />)
+    const link = screen.getByRole('link', { name: /explorar/i })
+    expect(link.getAttribute('href')).toBe('/explorar')
   })
 })

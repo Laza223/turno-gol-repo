@@ -150,3 +150,8 @@ mobile (`min-h-11 md:min-h-9`).
 - [ ] Páginas `reserva/[bookingId]/*` dentro del shell, con CTAs de continuidad.
 - [ ] Bottom-nav visible para jugador logueado también en zona pública (mobile); oculto si deslogueado.
 - [ ] "Cuenta" es un hub (Perfil/Datos/Eliminar); rutas `/perfil` `/configuracion` `/eliminar-cuenta` intactas.
+
+## 10. `/explorar` (identidad "Matchday")
+La vista `/explorar` evoluciona la identidad con un motivo de líneas de cal y la fuente
+`font-display`. Reglas específicas en `pages/explorar.md` (prevalece sobre esta página).
+La banda de búsqueda es **clara** (no viola §1) y `PortalHeader` no cambia.

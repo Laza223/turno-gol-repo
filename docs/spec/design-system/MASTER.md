@@ -43,6 +43,10 @@
 font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 ```
 
+**Display (excepción):** `Archivo` (variable, Google Fonts) vía `--font-archivo` →
+clase `font-display`. Uso restringido a la vista `/explorar` (hero, h1/h2, numeral de
+precio de card). Ver `pages/explorar.md`. El resto del sistema sigue en Inter.
+
 ### Type Scale
 
 | Role | Size | Weight | Line Height | Tailwind |

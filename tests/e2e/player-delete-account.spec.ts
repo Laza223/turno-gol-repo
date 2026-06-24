@@ -4,7 +4,7 @@
  * Covers /eliminar-cuenta player area:
  *   #1  Open page → click "Eliminar mi cuenta" trigger → ConfirmDialog opens →
  *       confirm button disabled before typing email → type email → button
- *       enabled → confirm → redirect to /login?deleted=1 → DB assert
+ *       enabled → confirm → redirect to /ingresar?deleted=1 → DB assert
  *       status='anonymized' + email contains '@anon.local' → PTR rows deleted.
  *
  * CRITICAL: this test anonymizes the player row.
@@ -31,7 +31,7 @@ test.describe('Player delete account (Ley 25.326)', () => {
     await resetPlayer(supabase)
   })
 
-  test('type-to-confirm email → anonymize → redirect to login @critical', async ({
+  test('type-to-confirm email → anonymize → redirect to ingresar @critical', async ({
     browser,
     playerStorageState,
   }) => {

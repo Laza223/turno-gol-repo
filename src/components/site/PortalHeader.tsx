@@ -10,7 +10,7 @@ type Props = { variant?: 'overlay' | 'solid' }
 
 /**
  * Cabecera única del portal, session-aware. Reemplaza al antiguo `SiteNav`.
- * - Deslogueado: "Iniciar sesión" / "Comenzar" (igual que antes).
+ * - Deslogueado: un único CTA "Ingresar" → /ingresar.
  * - Jugador logueado: chip de avatar + nombre con menú de cuenta.
  * La sesión llega del PortalSessionProvider (hidratación client-side): el HTML
  * server-rendered es siempre el estado anónimo (habilita ISR) y el chip del

@@ -33,11 +33,14 @@ export function Logo({ variant = 'vertical', className, iconClassName, textClass
             alt="TurnoGol Icon"
             width={64}
             height={64}
-            className="h-full w-full object-cover object-top scale-[1.4]"
+            className="h-full w-full object-cover"
+            style={{ transform: 'scale(1.95)', transformOrigin: 'top center' }}
             priority
           />
         </div>
-        <span className={cn("text-lg font-semibold tracking-tight", textClassName)}>TurnoGol</span>
+        <span className={cn("font-display text-lg font-bold tracking-tight", textClassName)}>
+          Turno<span className="text-emerald-500">Gol</span>
+        </span>
       </div>
     )
   }
@@ -50,7 +53,8 @@ export function Logo({ variant = 'vertical', className, iconClassName, textClass
         alt="TurnoGol Icon"
         width={64}
         height={64}
-        className={cn("h-full w-full object-cover object-top scale-[1.4]", iconClassName)}
+        className={cn("h-full w-full object-cover", iconClassName)}
+        style={{ transform: 'scale(1.95)', transformOrigin: 'top center' }}
         priority
       />
     </div>

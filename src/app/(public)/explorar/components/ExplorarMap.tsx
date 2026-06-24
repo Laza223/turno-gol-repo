@@ -18,9 +18,12 @@ function isLocated(t: PublicTenantCard): t is Located {
 
 // Pin estilo Airbnb: pastilla con el precio "Desde". Usa divIcon para evitar
 // el bug de los íconos por defecto de Leaflet con bundlers.
-function priceIcon(t: Located): L.DivIcon {
+// active=true → color más oscuro + leve escala para resaltar en split view.
+function priceIcon(t: Located, active = false): L.DivIcon {
   const label = t.fromPriceCents != null ? formatArs(t.fromPriceCents) : t.name.slice(0, 2).toUpperCase()
-  const html = `<div style="transform:translate(-50%,-100%);white-space:nowrap;background:#059669;color:#fff;font-weight:700;font-size:12px;line-height:1;padding:6px 10px;border-radius:9999px;box-shadow:0 2px 8px rgba(2,6,23,.35);border:2px solid #fff">${label}</div>`
+  const bg = active ? '#047857' : '#059669'
+  const scale = active ? 'transform:translate(-50%,-100%) scale(1.12);' : 'transform:translate(-50%,-100%);'
+  const html = `<div style="${scale}white-space:nowrap;background:${bg};color:#fff;font-weight:700;font-size:12px;line-height:1;padding:6px 10px;border-radius:9999px;box-shadow:0 2px 8px rgba(2,6,23,.35);border:2px solid #fff">${label}</div>`
   return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -28] })
 }
 
@@ -76,7 +79,7 @@ export default function ExplorarMap({
         />
         <FitBounds points={points} />
         {located.map((t) => (
-          <Marker key={t.id} position={[t.latitude, t.longitude]} icon={priceIcon(t)}>
+          <Marker key={t.id} position={[t.latitude, t.longitude]} icon={priceIcon(t, t.id === activeId)}>
             <Popup>
               <div className="w-52">
                 <p className="text-sm font-semibold text-slate-900">{t.name}</p>

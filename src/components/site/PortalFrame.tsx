@@ -23,7 +23,7 @@ export default function PortalFrame({ header, footer, children }: Props) {
   return (
     <div
       className={cn(
-        'flex min-h-dvh flex-col bg-background',
+        'flex min-h-dvh flex-col player-shell-bg',
         session && 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0',
       )}
     >

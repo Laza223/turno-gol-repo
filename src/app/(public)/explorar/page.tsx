@@ -182,14 +182,14 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
   ])
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <JsonLd
         data={buildBreadcrumbList([
           { name: 'Inicio', url: absoluteUrl('/') },
           { name: 'Explorar', url: absoluteUrl('/explorar') },
         ])}
       />
-      <header className="space-y-1">
+      <header className="space-y-1 px-1">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Explorá complejos de fútbol
         </h1>
@@ -198,61 +198,65 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
         </p>
       </header>
 
-      <SearchBar cities={cities} />
-      <ExplorarToolbar total={total} />
+      {/* Solid slate backdrop container sheet to make elements look premium and structured */}
+      <div className="rounded-3xl border border-slate-200/80 bg-slate-50/95 p-4 shadow-sm backdrop-blur-sm sm:p-6 lg:p-8 space-y-6">
+        <SearchBar cities={cities} />
+        <ExplorarToolbar total={total} />
 
-      <div className="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6">
-        <aside className="hidden lg:block">
-          <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <ExplorarFilters />
-          </div>
-        </aside>
-
-        <div className="min-w-0">
-          {view === 'map' ? (
-            <ExplorarMapLoader results={results} />
-          ) : results.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-20 text-slate-400">
-              <SearchX className="h-10 w-10" aria-hidden />
-              <p className="text-sm">
-                {avail
-                  ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}.`
-                  : 'No encontramos complejos con esos filtros.'}
-              </p>
-              <Link href="/explorar" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">
-                Limpiar búsqueda
-              </Link>
+        <div className="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6">
+          <aside className="hidden lg:block">
+            {/* Standard white card sidebar popping nicely on bg-slate-50 */}
+            <div className="sticky top-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <ExplorarFilters />
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {results.map((t) => {
-                  const pills = pillsByTenant[t.id]
-                  return (
-                    <TenantCard
-                      key={t.id}
-                      tenant={t}
-                      initialFavorited={favoriteIds.has(t.id)}
-                      photos={photosByTenant[t.id] ?? []}
-                      slotPills={
-                        avail && pills?.length ? { date: avail.date, slots: pills } : undefined
-                      }
-                    />
-                  )
-                })}
+          </aside>
+
+          <div className="min-w-0">
+            {view === 'map' ? (
+              <ExplorarMapLoader results={results} />
+            ) : results.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-20 text-slate-400">
+                <SearchX className="h-10 w-10" aria-hidden />
+                <p className="text-sm">
+                  {avail
+                    ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}.`
+                    : 'No encontramos complejos con esos filtros.'}
+                </p>
+                <Link href="/explorar" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">
+                  Limpiar búsqueda
+                </Link>
               </div>
-              {hasMore && (
-                <div className="mt-10 flex justify-center">
-                  <Link
-                    href={pageUrl(searchParams, offset + PAGE_SIZE)}
-                    className="inline-flex h-11 items-center rounded-lg border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-                  >
-                    Ver más complejos
-                  </Link>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {results.map((t) => {
+                    const pills = pillsByTenant[t.id]
+                    return (
+                      <TenantCard
+                        key={t.id}
+                        tenant={t}
+                        initialFavorited={favoriteIds.has(t.id)}
+                        photos={photosByTenant[t.id] ?? []}
+                        slotPills={
+                          avail && pills?.length ? { date: avail.date, slots: pills } : undefined
+                        }
+                      />
+                    )
+                  })}
                 </div>
-              )}
-            </>
-          )}
+                {hasMore && (
+                  <div className="mt-10 flex justify-center">
+                    <Link
+                      href={pageUrl(searchParams, offset + PAGE_SIZE)}
+                      className="inline-flex h-11 items-center rounded-lg border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                    >
+                      Ver más complejos
+                    </Link>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

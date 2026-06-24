@@ -74,7 +74,7 @@ export default async function PublicComplexPage(props: Props) {
   ) as string[]
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <JsonLd
         data={[
           buildLocalBusiness(tenant),
@@ -86,36 +86,39 @@ export default async function PublicComplexPage(props: Props) {
         ]}
       />
 
-      {galleryPhotos.length > 0 && <TenantGallery photos={galleryPhotos} name={tenant.name} />}
+      {/* Solid slate backdrop container sheet to make elements look premium and structured */}
+      <div className="rounded-3xl border border-slate-200/80 bg-slate-50/95 p-4 shadow-sm backdrop-blur-sm sm:p-6 lg:p-8 space-y-6">
+        {galleryPhotos.length > 0 && <TenantGallery photos={galleryPhotos} name={tenant.name} />}
 
-      <TenantHeader tenant={tenant} avgRating={summary.average} reviewCount={summary.count} />
+        <TenantHeader tenant={tenant} avgRating={summary.average} reviewCount={summary.count} />
 
-      {courtCards.length > 0 && (
-        <section aria-label="Canchas" className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Canchas <span className="text-sm font-normal text-slate-400">({courtCards.length})</span>
-          </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {courtCards.map((court) => (
-              <CourtCard key={court.id} court={court} />
-            ))}
-          </div>
-        </section>
-      )}
+        {courtCards.length > 0 && (
+          <section aria-label="Canchas" className="space-y-3">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Canchas <span className="text-sm font-normal text-slate-400">({courtCards.length})</span>
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {courtCards.map((court) => (
+                <CourtCard key={court.id} court={court} />
+              ))}
+            </div>
+          </section>
+        )}
 
-      {/* La grilla es 100% client-side (fetch a /api/public/availability): el
-          Suspense es obligatorio porque AvailabilityGrid usa useSearchParams()
-          dentro de una ruta prerenderada estáticamente. */}
-      <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
-        <AvailabilityGrid tenant={tenant} />
-      </Suspense>
+        {/* La grilla es 100% client-side (fetch a /api/public/availability): el
+            Suspense es obligatorio porque AvailabilityGrid usa useSearchParams()
+            dentro de una ruta prerenderada estáticamente. */}
+        <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
+          <AvailabilityGrid tenant={tenant} />
+        </Suspense>
 
-      <ReviewsSection
-        tenantId={tenant.id}
-        initial={reviewsPage.reviews}
-        total={reviewsPage.total}
-        average={summary.average}
-      />
+        <ReviewsSection
+          tenantId={tenant.id}
+          initial={reviewsPage.reviews}
+          total={reviewsPage.total}
+          average={summary.average}
+        />
+      </div>
     </div>
   )
 }

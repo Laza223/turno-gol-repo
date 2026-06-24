@@ -116,10 +116,10 @@ export default function ExplorarFilters({ onApplied }: Props) {
       {/* Cerramiento */}
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-slate-900">Cerramiento</legend>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={techado} onChange={() => setTechado((v) => !v)} className={checkbox} />
-          <Umbrella className="h-4 w-4 text-slate-400" aria-hidden />
-          Techado
+        <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={techado} onChange={() => setTechado((v) => !v)} className={`${checkbox} mt-0.5`} />
+          <Umbrella className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" aria-hidden />
+          <span className="break-words whitespace-normal leading-tight flex-1">Techado</span>
         </label>
       </fieldset>
 
@@ -128,14 +128,14 @@ export default function ExplorarFilters({ onApplied }: Props) {
         <legend className="mb-2 text-sm font-semibold text-slate-900">Superficie</legend>
         <div className="flex flex-col gap-2">
           {SURFACE_OPTIONS.map(({ key, label }) => (
-            <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <label key={key} className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={surfaces.has(key)}
                 onChange={() => setSurfaces((s) => toggle(s, key))}
-                className={checkbox}
+                className={`${checkbox} mt-0.5`}
               />
-              {label}
+              <span className="break-words whitespace-normal leading-tight flex-1">{label}</span>
             </label>
           ))}
         </div>
@@ -169,19 +169,19 @@ export default function ExplorarFilters({ onApplied }: Props) {
       {/* Servicios */}
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-slate-900">Servicios</legend>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-2">
           {SERVICE_KEYS.map((key) => {
             const { label, Icon } = AMENITIES[key]
             return (
-              <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <label key={key} className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
                 <input
                   type="checkbox"
                   checked={services.has(key)}
                   onChange={() => setServices((s) => toggle(s, key))}
-                  className={checkbox}
+                  className={`${checkbox} mt-0.5`}
                 />
-                <Icon className="h-4 w-4 text-slate-400" aria-hidden />
-                {label}
+                <Icon className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" aria-hidden />
+                <span className="break-words whitespace-normal leading-tight flex-1">{label}</span>
               </label>
             )
           })}
@@ -230,10 +230,10 @@ export default function ExplorarFilters({ onApplied }: Props) {
       </fieldset>
 
       {/* Reserva online */}
-      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-        <input type="checkbox" checked={online} onChange={() => setOnline((v) => !v)} className={checkbox} />
-        <Zap className="h-4 w-4 text-emerald-500" aria-hidden />
-        Solo con reserva online
+      <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+        <input type="checkbox" checked={online} onChange={() => setOnline((v) => !v)} className={`${checkbox} mt-0.5`} />
+        <Zap className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" aria-hidden />
+        <span className="break-words whitespace-normal leading-tight flex-1">Solo con reserva online</span>
       </label>
 
       <div className="flex gap-2 border-t border-slate-100 pt-4">

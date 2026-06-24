@@ -17,10 +17,11 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { playerFavorites } from '@/shared/db/schema'
 import { eq } from 'drizzle-orm'
+import { List } from 'lucide-react'
 import TenantCard from './components/TenantCard'
 import ExplorarToolbar from './components/ExplorarToolbar'
 import ExplorarFilters from './components/ExplorarFilters'
-import ExplorarMapLoader from './components/ExplorarMapLoader'
+import ExplorarSplitView from './components/ExplorarSplitView'
 import SearchBand from './components/SearchBand'
 import QuickFilters from './components/QuickFilters'
 import EmptyResults from './components/EmptyResults'
@@ -197,16 +198,22 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
         <ExplorarToolbar total={total} />
       </div>
 
-      <div className="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6">
-        <aside className="hidden lg:block">
-          <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <ExplorarFilters />
-          </div>
-        </aside>
+      <div className={view === 'map' ? '' : 'lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6'}>
+        {view === 'list' && (
+          <aside className="hidden lg:block">
+            <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <ExplorarFilters />
+            </div>
+          </aside>
+        )}
 
         <div className="min-w-0">
           {view === 'map' ? (
-            <ExplorarMapLoader results={results} />
+            <ExplorarSplitView
+              results={results}
+              favoritedIds={Array.from(favoriteIds)}
+              photosByTenant={{}}
+            />
           ) : results.length === 0 ? (
             <EmptyResults avail={avail ? { date: avail.date, time: avail.time } : null} />
           ) : (
@@ -241,6 +248,23 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
           )}
         </div>
       </div>
+
+      {/* FAB mobile: solo visible en vista mapa en pantallas < lg */}
+      {view === 'map' && (() => {
+        const p = new URLSearchParams()
+        for (const [k, v] of Object.entries(searchParams)) {
+          if (v && k !== 'view' && k !== 'offset') p.set(k, v)
+        }
+        const listHref = `/explorar${p.toString() ? `?${p.toString()}` : ''}`
+        return (
+          <Link
+            href={listHref}
+            className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg lg:hidden"
+          >
+            <List className="h-4 w-4" aria-hidden /> Ver lista
+          </Link>
+        )
+      })()}
     </div>
   )
 }

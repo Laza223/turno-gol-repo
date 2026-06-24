@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { provisionAndRouteStaff } from '@/modules/auth/auth.service'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
 import { logger } from '@/shared/lib/logger'
 import { track, withSpan } from '@/shared/observability'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
@@ -95,12 +96,13 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
 
     track.auth('player.login', { playerId: player.id })
     const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
-    return NextResponse.redirect(new URL(next, req.url))
+    const intent = playerSuccessIntent(next)
+    return NextResponse.redirect(new URL(successVerifyPath(next, intent), req.url))
   }
 
   // Staff: confirmación de alta (type=signup). Provisión + claims + ruteo en el
   // helper único (compartido con loginAction).
   if (!user.email) return redirectVerifyError(req, 'invalid')
   const { path } = await provisionAndRouteStaff(user)
-  return NextResponse.redirect(new URL(path, req.url))
+  return NextResponse.redirect(new URL(successVerifyPath(path, 'signup'), req.url))
 }

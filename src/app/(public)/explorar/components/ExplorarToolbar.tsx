@@ -1,11 +1,8 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
-import { List, Map as MapIcon, SlidersHorizontal } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { List, Map as MapIcon } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import ExplorarFilters from './ExplorarFilters'
 import { buildExplorarUrl } from './url'
 
 type Props = { total: number }
@@ -17,26 +14,14 @@ const SORTS = [
   { value: 'distance', label: 'Más cercano' },
 ]
 
-function countCsv(v: string | null): number {
-  return v ? v.split(',').filter(Boolean).length : 0
-}
-
-/** Barra de herramientas: contador, filtros (drawer mobile), orden y vista lista/mapa. */
+/** Barra de herramientas: contador, orden y toggle lista/mapa. */
 export default function ExplorarToolbar({ total }: Props) {
   const router = useRouter()
   const params = useSearchParams()
   const { toast } = useToast()
-  const [open, setOpen] = useState(false)
 
   const view = params.get('view') === 'map' ? 'map' : 'list'
   const sort = params.get('sort') ?? 'name'
-  const activeCount =
-    countCsv(params.get('surfaces')) +
-    countCsv(params.get('formats')) +
-    countCsv(params.get('amenities')) +
-    (params.get('online') === '1' ? 1 : 0) +
-    (params.get('minPrice') ? 1 : 0) +
-    (params.get('maxPrice') ? 1 : 0)
 
   function setView(next: 'list' | 'map') {
     router.push(buildExplorarUrl(params, { view: next === 'list' ? undefined : 'map' }, { resetOffset: false }))
@@ -77,37 +62,10 @@ export default function ExplorarToolbar({ total }: Props) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <p className="text-sm text-slate-500" aria-live="polite">
-          <span className="font-semibold text-slate-900 tabular-nums">{total}</span>{' '}
-          {total === 1 ? 'complejo' : 'complejos'}
-        </p>
-
-        {/* Filtros — drawer en mobile (en desktop el sidebar está siempre visible) */}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 lg:hidden"
-            >
-              <SlidersHorizontal className="h-4 w-4" aria-hidden />
-              Filtros
-              {activeCount > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1 text-xs font-semibold text-white tabular-nums">
-                  {activeCount}
-                </span>
-              )}
-            </button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Filtros</DialogTitle>
-            </DialogHeader>
-            <ExplorarFilters onApplied={() => setOpen(false)} />
-          </DialogContent>
-        </Dialog>
-      </div>
-
+      <p className="text-sm text-slate-500" aria-live="polite">
+        <span className="font-semibold text-slate-900 tabular-nums">{total}</span>{' '}
+        {total === 1 ? 'complejo' : 'complejos'}
+      </p>
       <div className="flex items-center gap-2">
         <label htmlFor="exp-sort" className="sr-only">
           Ordenar por

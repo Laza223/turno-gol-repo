@@ -95,7 +95,7 @@ export default function SearchBar({ cities }: Props) {
     <form
       onSubmit={onSubmit}
       aria-label="Buscar canchas"
-      className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
+      className="rounded-2xl bg-white/80 p-3 shadow-sm ring-1 ring-emerald-100 backdrop-blur-sm sm:p-4"
     >
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-end">
         {/* Texto libre */}

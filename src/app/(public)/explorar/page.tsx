@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { unstable_cache } from 'next/cache'
-import { SearchX } from 'lucide-react'
 import {
   getCourtPhotosByTenant,
   listPublicCities,
@@ -18,11 +17,14 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { playerFavorites } from '@/shared/db/schema'
 import { eq } from 'drizzle-orm'
-import SearchBar from './components/SearchBar'
+import { List } from 'lucide-react'
 import TenantCard from './components/TenantCard'
 import ExplorarToolbar from './components/ExplorarToolbar'
 import ExplorarFilters from './components/ExplorarFilters'
-import ExplorarMapLoader from './components/ExplorarMapLoader'
+import ExplorarSplitView from './components/ExplorarSplitView'
+import SearchBand from './components/SearchBand'
+import QuickFilters from './components/QuickFilters'
+import EmptyResults from './components/EmptyResults'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 
@@ -181,6 +183,12 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       : ({} as Record<string, SlotPill[]>),
   ])
 
+  const _listHrefParams = new URLSearchParams()
+  for (const [k, v] of Object.entries(searchParams)) {
+    if (v && k !== 'view' && k !== 'offset') _listHrefParams.set(k, v)
+  }
+  const listHref = `/explorar${_listHrefParams.toString() ? `?${_listHrefParams.toString()}` : ''}`
+
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <JsonLd
@@ -189,61 +197,49 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
           { name: 'Explorar', url: absoluteUrl('/explorar') },
         ])}
       />
-      <header className="space-y-1 px-1">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Explorá complejos de fútbol
-        </h1>
-        <p className="text-sm text-slate-500">
-          Encontrá tu cancha ideal: filtrá por superficie, formato, servicios y precio.
-        </p>
-      </header>
+      <SearchBand cities={cities} />
 
-      {/* Solid slate backdrop container sheet to make elements look premium and structured */}
-      <div className="rounded-3xl border border-slate-200/80 bg-slate-50/95 p-4 shadow-sm backdrop-blur-sm sm:p-6 lg:p-8 space-y-6">
-        <SearchBar cities={cities} />
+      <div className="sticky top-16 z-20 -mx-4 space-y-2 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 sm:px-6 lg:px-8">
+        <QuickFilters />
         <ExplorarToolbar total={total} />
+      </div>
 
-        <div className="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6">
+      <div className={view === 'map' ? '' : 'lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6'}>
+        {view === 'list' && (
           <aside className="hidden lg:block">
-            {/* Standard white card sidebar popping nicely on bg-slate-50 */}
-            <div className="sticky top-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <ExplorarFilters />
             </div>
           </aside>
+        )}
 
-          <div className="min-w-0">
-            {view === 'map' ? (
-              <ExplorarMapLoader results={results} />
-            ) : results.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-20 text-slate-400">
-                <SearchX className="h-10 w-10" aria-hidden />
-                <p className="text-sm">
-                  {avail
-                    ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}.`
-                    : 'No encontramos complejos con esos filtros.'}
-                </p>
-                <Link href="/explorar" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">
-                  Limpiar búsqueda
-                </Link>
+        <div className="min-w-0">
+          {view === 'map' ? (
+            <ExplorarSplitView
+              results={results}
+              favoritedIds={Array.from(favoriteIds)}
+            />
+          ) : results.length === 0 ? (
+            <EmptyResults avail={avail ? { date: avail.date, time: avail.time } : null} />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {results.map((t) => {
+                  const pills = pillsByTenant[t.id]
+                  return (
+                    <TenantCard
+                      key={t.id}
+                      tenant={t}
+                      initialFavorited={favoriteIds.has(t.id)}
+                      photos={photosByTenant[t.id] ?? []}
+                      slotPills={
+                        avail && pills?.length ? { date: avail.date, slots: pills } : undefined
+                      }
+                    />
+                  )
+                })}
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                  {results.map((t) => {
-                    const pills = pillsByTenant[t.id]
-                    return (
-                      <TenantCard
-                        key={t.id}
-                        tenant={t}
-                        initialFavorited={favoriteIds.has(t.id)}
-                        photos={photosByTenant[t.id] ?? []}
-                        slotPills={
-                          avail && pills?.length ? { date: avail.date, slots: pills } : undefined
-                        }
-                      />
-                    )
-                  })}
-                </div>
+
                 {hasMore && (
                   <div className="mt-10 flex justify-center">
                     <Link
@@ -258,7 +254,16 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
             )}
           </div>
         </div>
-      </div>
+
+      {/* FAB mobile: solo visible en vista mapa en pantallas < lg */}
+      {view === 'map' && (
+        <Link
+          href={listHref}
+          className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden"
+        >
+          <List className="h-4 w-4" aria-hidden /> Ver lista
+        </Link>
+      )}
     </div>
   )
 }

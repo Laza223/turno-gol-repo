@@ -1,57 +1,42 @@
-import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { TurnoGolLogoIcon } from './TurnoGolLogoIcon'
 
 interface LogoProps {
-  variant?: 'vertical' | 'horizontal' | 'icon'
+  variant?: 'vertical' | 'horizontal' | 'icon' | 'vector'
   className?: string
   iconClassName?: string
   textClassName?: string
 }
 
-export function Logo({ variant = 'vertical', className, iconClassName, textClassName }: LogoProps) {
-  if (variant === 'vertical') {
-    return (
-      <div className={cn("flex flex-col items-center justify-center", className)}>
-        <Image
-          src="/logo-turno-gol.png"
-          alt="TurnoGol Logo"
-          width={400}
-          height={400}
-          className={cn("w-full h-auto max-w-[200px] object-contain", iconClassName)}
-          priority
-        />
-      </div>
-    )
+export function Logo({ variant = 'vertical', className, iconClassName, textClassName = "text-slate-900" }: LogoProps) {
+  // Strip background/border/shadow from legacy icon classes to use the SVG without a background box
+  const cleanIconClass = iconClassName?.replace(/\b(bg-|border-|shadow-)\S*/g, '').trim()
+
+  if (variant === 'vector' || variant === 'icon') {
+    return <TurnoGolLogoIcon className={cn("h-9 w-9 shrink-0", cleanIconClass, className)} />
   }
 
   if (variant === 'horizontal') {
     return (
       <div className={cn("flex items-center gap-2", className)}>
-        <div className={cn("relative flex items-center justify-center h-9 w-9 shrink-0 overflow-hidden rounded-md bg-white p-1 shadow-sm", iconClassName)}>
-          <Image
-            src="/logo-turno-gol.png"
-            alt="TurnoGol Icon"
-            width={64}
-            height={64}
-            className="h-full w-full object-cover object-top scale-[1.4]"
-            priority
-          />
-        </div>
+        <TurnoGolLogoIcon className={cn("h-9 w-9 shrink-0", cleanIconClass, textClassName)} />
+        <span className={cn("font-display text-xl font-bold tracking-tight", textClassName)}>
+          Turno<span className="text-emerald-500">Gol</span>
+        </span>
       </div>
     )
   }
 
-  // icon
-  return (
-    <div className={cn("relative flex items-center justify-center h-9 w-9 shrink-0 overflow-hidden rounded-md bg-white p-1 shadow-sm", className)}>
-      <Image
-        src="/logo-turno-gol.png"
-        alt="TurnoGol Icon"
-        width={64}
-        height={64}
-        className={cn("h-full w-full object-cover object-top scale-[1.4]", iconClassName)}
-        priority
-      />
-    </div>
-  )
+  if (variant === 'vertical') {
+    return (
+      <div className={cn("flex flex-col items-center justify-center gap-3", className)}>
+        <TurnoGolLogoIcon className={cn("h-24 w-24 sm:h-32 sm:w-32 shrink-0", cleanIconClass, textClassName)} />
+        <span className={cn("font-display text-4xl sm:text-5xl font-bold tracking-tight", textClassName)}>
+          Turno<span className="text-emerald-500">Gol</span>
+        </span>
+      </div>
+    )
+  }
+
+  return null
 }

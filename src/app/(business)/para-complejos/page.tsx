@@ -99,14 +99,14 @@ const testimonials = [
 
 export default function ParaComplejosPage() {
   return (
-    <div className="bg-slate-950 text-slate-100">
+    <>
       <Hero />
       <Features />
       <StatsBar />
       <ShowcaseStrip />
       <Testimonials />
       <FinalCta />
-    </div>
+    </>
   )
 }
 
@@ -156,14 +156,14 @@ function Hero() {
               href="/register"
               className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 text-sm font-semibold text-white shadow-xl shadow-emerald-500/30 hover:bg-emerald-400 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-emerald-500/40 transition-all duration-300"
             >
-              Comenzá gratis 30 días
+              Empezar gratis
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
             </Link>
             <Link
               href="/login"
               className="inline-flex h-12 items-center justify-center rounded-lg border border-white/20 bg-white/5 px-6 text-sm font-semibold text-white backdrop-blur-sm hover:bg-white/10 transition-colors duration-150"
             >
-              Iniciar sesión
+              Ingresar
             </Link>
           </div>
           <ul className="mt-10 flex flex-col gap-3 text-sm text-slate-300 sm:flex-row sm:gap-8">
@@ -388,14 +388,14 @@ function FinalCta() {
             href="/register"
             className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-8 text-sm font-semibold text-white shadow-xl shadow-emerald-500/30 hover:bg-emerald-400 hover:-translate-y-0.5 transition-all duration-300"
           >
-            Crear mi cuenta
+            Empezar gratis
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
           </Link>
           <Link
             href="/login"
             className="inline-flex h-12 items-center justify-center rounded-lg border border-white/20 px-8 text-sm font-semibold text-white hover:bg-white/5 transition-colors duration-150"
           >
-            Ya tengo cuenta
+            Ingresar
           </Link>
         </div>
       </div>

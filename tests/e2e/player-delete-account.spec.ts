@@ -71,8 +71,8 @@ test.describe('Player delete account (Ley 25.326)', () => {
 
       await confirmButton.click()
 
-      // Should redirect to /login (with ?deleted=1)
-      await page.waitForURL(/\/login(\?.*)?$/, { timeout: 10_000 })
+      // Should redirect to /ingresar (with ?deleted=1)
+      await page.waitForURL(/\/ingresar(\?.*)?$/, { timeout: 10_000 })
 
       // DB assertion: player anonymized
       const supabase = makeServiceClient()

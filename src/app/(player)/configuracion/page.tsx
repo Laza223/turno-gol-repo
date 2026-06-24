@@ -21,14 +21,14 @@ export function generateMetadata(): Metadata {
 
 export default async function ConfiguracionPage() {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/login')
+  if (!user || user.type !== 'player') redirect('/ingresar')
 
   const rows = await withPlayerContext(user.playerId, (tx) =>
     tx.select().from(players).where(eq(players.id, user.playerId)).limit(1),
   )
 
   const player = rows[0]
-  if (!player) redirect('/login')
+  if (!player) redirect('/ingresar')
 
   const { firstName } = player
 

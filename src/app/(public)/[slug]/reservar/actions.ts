@@ -182,7 +182,7 @@ export async function retryDepositPaymentAction(formData: FormData): Promise<voi
   if (!UUID_RE.test(bookingId)) redirect('/')
 
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/login')
+  if (!user || user.type !== 'player') redirect('/ingresar')
 
   const rl = await enforce('playerBooking', user.playerId)
   if (!rl.ok) redirect(`/reserva/${bookingId}/error`)

@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
           '/admin/',
           '/super-admin/',
           '/player/',
+          '/ingresar',
           '/login',
           '/register',
           '/onboarding',

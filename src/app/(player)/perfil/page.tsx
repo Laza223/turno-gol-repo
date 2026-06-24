@@ -71,7 +71,7 @@ export default async function PerfilPage({
   searchParams: { tab?: string }
 }) {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/login')
+  if (!user || user.type !== 'player') redirect('/ingresar')
 
   const tab: TabKey = TABS.some((t) => t.key === searchParams.tab)
     ? (searchParams.tab as TabKey)
@@ -82,7 +82,7 @@ export default async function PerfilPage({
   )
 
   const player = rows[0]
-  if (!player) redirect('/login')
+  if (!player) redirect('/ingresar')
 
   const favorites = tab === 'favoritos' ? await loadFavorites(user.playerId) : null
 

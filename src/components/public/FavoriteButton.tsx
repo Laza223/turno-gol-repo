@@ -16,7 +16,7 @@ type Props = {
 
 /**
  * Botón de favorito (❤️). Optimista: togglea al instante y revierte si falla.
- * Si el jugador no está logueado (401), lo manda a /login y vuelve.
+ * Si el jugador no está logueado (401), lo manda a /ingresar y vuelve.
  * Pensado para vivir dentro de un <Link> de card: corta la propagación del click.
  */
 export default function FavoriteButton({
@@ -50,7 +50,7 @@ export default function FavoriteButton({
       })
       if (res.status === 401) {
         const back = encodeURIComponent(window.location.pathname + window.location.search)
-        window.location.href = `/login?next=${back}`
+        window.location.href = `/ingresar?next=${back}`
         return
       }
       if (!res.ok) throw new Error('toggle failed')

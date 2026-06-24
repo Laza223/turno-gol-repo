@@ -23,7 +23,7 @@ export async function updateProfileAction(
   formData: FormData,
 ): Promise<UpdateProfileResult> {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/login')
+  if (!user || user.type !== 'player') redirect('/ingresar')
 
   const raw = {
     first_name: formData.get('first_name') as string,
@@ -85,7 +85,7 @@ export async function updateNotificationPrefAction(
   enabled: boolean,
 ): Promise<UpdatePrefResult> {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/login')
+  if (!user || user.type !== 'player') redirect('/ingresar')
 
   const parsed = prefSchema.safeParse({ pref, enabled })
   if (!parsed.success) {

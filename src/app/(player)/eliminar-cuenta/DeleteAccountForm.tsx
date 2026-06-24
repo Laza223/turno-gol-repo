@@ -39,7 +39,7 @@ export function DeleteAccountForm({ confirmEmail }: { confirmEmail: string }) {
           if (!result.success) {
             return { success: false, error: result.error }
           }
-          router.push('/login?deleted=1')
+          router.push('/ingresar?deleted=1')
           return { success: true }
         }}
       />

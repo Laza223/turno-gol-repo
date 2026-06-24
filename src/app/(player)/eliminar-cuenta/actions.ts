@@ -15,7 +15,7 @@ export type DeleteAccountResult = { success: true } | { success: false; error: s
 export async function requestDeleteAccountAction(): Promise<DeleteAccountResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') {
-    redirect('/login')
+    redirect('/ingresar')
   }
 
   try {
@@ -28,7 +28,7 @@ export async function requestDeleteAccountAction(): Promise<DeleteAccountResult>
         const supabase = createClient()
         await supabase.auth.signOut()
       }
-      redirect('/login?deleted=1')
+      redirect('/ingresar?deleted=1')
     } else if (err instanceof PlayerNotFoundError) {
       return {
         success: false,
@@ -43,7 +43,7 @@ export async function requestDeleteAccountAction(): Promise<DeleteAccountResult>
   // SKIPPED in E2E because all player tests share one playerStorageState file
   // generated once in globalSetup — a real signOut invalidates that file's
   // refresh_token globally and every subsequent player spec ends up
-  // redirected to /login. The router.push('/login?deleted=1') in
+  // redirected to /ingresar. The router.push('/ingresar?deleted=1') in
   // DeleteAccountForm still navigates the UI; the SQL anonymize already ran.
   if (process.env.NEXT_PUBLIC_E2E !== '1') {
     const supabase = createClient()

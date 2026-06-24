@@ -31,7 +31,7 @@ export type PlayerBookingActionResult =
 
 async function requirePlayer() {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/login')
+  if (!user || user.type !== 'player') redirect('/ingresar')
   return user
 }
 

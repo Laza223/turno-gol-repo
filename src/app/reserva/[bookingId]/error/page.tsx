@@ -24,7 +24,7 @@ async function loadBooking(bookingId: string, playerId: string) {
 
 export default async function ReservaErrorPage({ params }: Props) {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/login')
+  if (!user || user.type !== 'player') redirect('/ingresar')
 
   const booking = await loadBooking(params.bookingId, user.playerId)
 

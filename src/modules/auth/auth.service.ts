@@ -45,7 +45,7 @@ export async function signInWithPlayerMagicLink(
 
 /**
  * Magic link de re-acceso para un jugador EXISTENTE con sesión vencida que cae
- * en `/login` (form secundario passwordless). Sin perfil: el callback resuelve
+ * en `/ingresar` (form passwordless del jugador). Sin perfil: el callback resuelve
  * nombre desde el metadata previo / email y no pisa el consentimiento ya dado.
  */
 export async function signInWithExistingPlayerMagicLink(

@@ -7,19 +7,16 @@ export async function GET() {
     (
       <div
         style={{
-          fontSize: 120,
           background: '#059669',
           width: '100%',
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
-          fontWeight: 700,
           borderRadius: 38,
         }}
       >
-        TG
+        <span style={{ color: "white", fontWeight: 900, fontSize: "60%", fontStyle: "italic" }}>TG</span>
       </div>
     ),
     { width: 192, height: 192 },

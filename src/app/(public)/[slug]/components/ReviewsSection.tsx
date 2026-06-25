@@ -52,7 +52,7 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
       className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-slate-900">Reseñas</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">Reseñas</h2>
         {total > 0 && (
           <div className="flex items-center gap-2 text-slate-700">
             <RatingStars rating={average} count={total} variant="full" />
@@ -91,7 +91,7 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
                 type="button"
                 onClick={loadMore}
                 disabled={loading}
-                className="inline-flex h-10 items-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-60"
+                className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-6 text-sm font-medium text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md disabled:opacity-60 motion-reduce:hover:translate-y-0"
               >
                 {loading ? 'Cargando…' : 'Ver más reseñas'}
               </button>

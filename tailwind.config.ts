@@ -21,6 +21,7 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-inter)', ...fontFamily.sans],
         display: ['var(--font-archivo)', ...fontFamily.sans],
+        logo: ['var(--font-sora)', ...fontFamily.sans],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -79,10 +80,21 @@ const config: Config = {
           from: { height: 'var(--accordion-content-height)' },
           to: { height: '0' },
         },
+        'tg-float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-12px)' },
+        },
+        'tg-drift': {
+          '0%': { transform: 'translate3d(0,0,0)' },
+          '50%': { transform: 'translate3d(3%,-2%,0)' },
+          '100%': { transform: 'translate3d(0,0,0)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'tg-float': 'tg-float 8s ease-in-out infinite',
+        'tg-drift': 'tg-drift 18s ease-in-out infinite',
       },
     },
   },

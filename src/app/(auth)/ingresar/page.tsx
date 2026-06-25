@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, Loader2, Mail } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react'
 import { playerLoginAction, type PlayerLoginState } from './actions'
 import { Logo } from '@/components/ui/logo'
 
@@ -14,17 +14,27 @@ const HERO_IMG =
 
 const initial: PlayerLoginState = { status: 'idle' }
 
+/** Glass dark premium (espeja LoginGate / retorno de reserva). */
+const cardStyle = {
+  background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.85))',
+  border: '1px solid rgba(255,255,255,.1)',
+  boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -42px rgba(0,0,0,.9)',
+} as const
+
+const inputClass =
+  'h-11 w-full rounded-lg border border-white/10 bg-white/[.04] px-3.5 text-sm text-white placeholder:text-slate-500 transition-colors focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 aria-[invalid=true]:border-red-500'
+
 function DeletedNotice() {
   const searchParams = useSearchParams()
   if (searchParams.get('deleted') !== '1') return null
   return (
-    <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-sm shadow-emerald-100">
-      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 ring-2 ring-emerald-50">
-        <span className="text-xs font-bold text-emerald-700">✓</span>
+    <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
+      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 ring-2 ring-emerald-500/10">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" aria-hidden />
       </div>
       <div>
-        <p className="font-semibold text-emerald-900">Tu cuenta fue eliminada</p>
-        <p className="mt-0.5 text-xs text-emerald-700">
+        <p className="font-semibold text-emerald-200">Tu cuenta fue eliminada</p>
+        <p className="mt-0.5 text-xs text-emerald-300/80">
           Lamentamos verte partir. Podés volver cuando quieras.
         </p>
       </div>
@@ -34,7 +44,7 @@ function DeletedNotice() {
 
 export default function IngresarPage() {
   return (
-    <div className="grid min-h-dvh lg:grid-cols-2">
+    <div className="grid min-h-dvh lg:grid-cols-2" style={{ background: '#020617' }}>
       <ImagePane />
       <FormPane />
     </div>
@@ -43,7 +53,7 @@ export default function IngresarPage() {
 
 function ImagePane() {
   return (
-    <div className="relative hidden lg:block">
+    <div className="relative isolate hidden overflow-hidden lg:block">
       <Image
         src={HERO_IMG}
         alt="Jugadores en una cancha de fútbol"
@@ -54,18 +64,44 @@ function ImagePane() {
       />
       <div
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-br from-slate-950/85 via-slate-950/60 to-emerald-900/45"
+        className="absolute inset-0 bg-gradient-to-br from-[#020617]/95 via-[#020617]/70 to-emerald-900/40"
+      />
+      {/* Glow blob */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[-12%] left-[-8%] h-[460px] w-[460px] rounded-full blur-[12px]"
+        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)' }}
       />
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
         <Link href="/">
           <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30" />
         </Link>
         <div className="max-w-md">
-          <h2 className="text-3xl font-extrabold tracking-tight text-white">
+          <div className="inline-flex items-center gap-2.5 font-logo text-[12px] font-bold uppercase tracking-[.1em] text-emerald-400">
+            <span className="relative flex h-[9px] w-[9px]">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
+            </span>
+            Acceso de jugadores
+          </div>
+          <h2
+            className="mt-4 font-display font-black italic text-white"
+            style={{ fontSize: 'clamp(32px, 3vw, 44px)', lineHeight: '1', letterSpacing: '-0.03em' }}
+          >
             Tu próxima cancha,
-            <br />a un toque.
+            <br />
+            <span
+              style={{
+                background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                color: 'transparent',
+              }}
+            >
+              a un toque.
+            </span>
           </h2>
-          <p className="mt-4 text-sm text-slate-300">
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
             Entrá con tu email y seguí tus reservas. Sin contraseñas.
           </p>
         </div>
@@ -76,10 +112,16 @@ function ImagePane() {
 
 function FormPane() {
   return (
-    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative isolate flex items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
+      {/* Glow blob */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-[-15%] top-[-10%] -z-10 h-[440px] w-[440px] rounded-full blur-[12px]"
+        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.16), transparent 72%)' }}
+      />
       <Link
         href="/"
-        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 lg:hidden"
+        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white lg:hidden"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Volver
@@ -87,15 +129,15 @@ function FormPane() {
 
       <div className="w-full max-w-md">
         <div className="mb-8 flex justify-center lg:hidden">
-          <Logo variant="vertical" className="w-32" />
+          <Logo variant="vertical" className="w-32" textClassName="text-white" />
         </div>
         <Suspense fallback={null}>
           <DeletedNotice />
         </Suspense>
         <FormCard />
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-6 text-center text-sm text-slate-400">
           ¿Primera vez?{' '}
-          <Link href="/explorar" className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
+          <Link href="/explorar" className="font-semibold text-emerald-300 transition-colors hover:text-emerald-200">
             Reservá tu cancha en Explorar
           </Link>
         </p>
@@ -111,29 +153,51 @@ function FormCard() {
 
   if (state.status === 'sent') {
     return (
-      <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
-          <Mail className="h-6 w-6 text-emerald-700" aria-hidden />
+      <div className="rounded-2xl p-8 text-center" style={cardStyle}>
+        <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
+          <span aria-hidden className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden" />
+          <span
+            className="relative flex h-16 w-16 items-center justify-center rounded-full text-emerald-300"
+            style={{
+              background: 'radial-gradient(closest-side, rgba(16,185,129,.28), rgba(2,6,23,.4))',
+              border: '1px solid rgba(16,185,129,.4)',
+              boxShadow: '0 0 50px rgba(16,185,129,.45)',
+            }}
+          >
+            <Mail className="h-6 w-6" aria-hidden />
+          </span>
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Revisá tu email</h1>
-        <p className="mt-3 text-sm text-slate-600">
-          Te enviamos un enlace de acceso a <strong className="text-slate-900">{state.email}</strong>.
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-white">Revisá tu email</h1>
+        <p className="mt-3 text-sm text-slate-400">
+          Te enviamos un enlace de acceso a <strong className="text-slate-200">{state.email}</strong>.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 shadow-xl shadow-slate-900/5 backdrop-blur-md">
+    <div className="rounded-2xl p-8" style={cardStyle}>
       <header className="mb-6 space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Ingresá a tu cuenta</h1>
-        <p className="text-sm text-slate-600">Sin contraseñas: te mandamos un enlace de acceso por email.</p>
+        <h1 className="font-display text-3xl font-black italic tracking-tight text-white">
+          Ingresá a tu{' '}
+          <span
+            style={{
+              background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
+            cuenta
+          </span>
+        </h1>
+        <p className="text-sm text-slate-400">Sin contraseñas: te mandamos un enlace de acceso por email.</p>
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>
         <input type="hidden" name="next" value={next} />
         <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-slate-900">
+          <label htmlFor="email" className="text-sm font-medium text-slate-300">
             Email
           </label>
           <input
@@ -144,11 +208,11 @@ function FormCard() {
             required
             placeholder="vos@email.com"
             aria-invalid={state.status === 'error' ? 'true' : undefined}
-            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 aria-[invalid=true]:border-red-500"
+            className={inputClass}
           />
         </div>
         {state.status === 'error' && (
-          <p role="alert" className="text-xs text-red-600">
+          <p role="alert" className="text-xs text-red-300">
             {state.message}
           </p>
         )}
@@ -164,7 +228,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:bg-emerald-500 hover:shadow-xl hover:shadow-emerald-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:translate-y-0 disabled:opacity-60"
+      className="group inline-flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020617] disabled:translate-y-0 disabled:opacity-60"
     >
       {pending ? (
         <>

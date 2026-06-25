@@ -54,22 +54,22 @@ const METHOD_DEFS: Record<PayMethod, MethodDef> = {
     label: 'MercadoPago',
     description: 'Pagás la seña online ahora',
     icon: <MercadoPagoIcon />,
-    iconClass: 'bg-sky-100 text-sky-600',
-    checkedClass: 'peer-checked:border-sky-500 peer-checked:ring-sky-500',
+    iconClass: 'bg-sky-500/15 text-sky-300',
+    checkedClass: 'peer-checked:border-sky-400 peer-checked:ring-sky-400',
   },
   cash: {
     label: 'Efectivo',
     description: 'Pagás al llegar al complejo',
     icon: <CashIcon />,
-    iconClass: 'bg-emerald-100 text-emerald-700',
-    checkedClass: 'peer-checked:border-emerald-600 peer-checked:ring-emerald-600',
+    iconClass: 'bg-emerald-500/15 text-emerald-300',
+    checkedClass: 'peer-checked:border-emerald-400 peer-checked:ring-emerald-400',
   },
   transfer: {
     label: 'Transferencia',
     description: 'Coordinás los datos con el complejo',
     icon: <TransferIcon />,
-    iconClass: 'bg-blue-100 text-blue-700',
-    checkedClass: 'peer-checked:border-blue-600 peer-checked:ring-blue-600',
+    iconClass: 'bg-blue-500/15 text-blue-300',
+    checkedClass: 'peer-checked:border-blue-400 peer-checked:ring-blue-400',
   },
 }
 
@@ -86,7 +86,7 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
 
   return (
     <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-slate-900">Método de pago</legend>
+      <legend className="text-sm font-semibold text-white">Método de pago</legend>
       <div className={`grid grid-cols-1 gap-2 ${methods.length > 1 ? 'sm:grid-cols-2' : ''}`}>
         {methods.map((m, i) => {
           const def = METHOD_DEFS[m]
@@ -100,14 +100,14 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
                 className="peer sr-only"
               />
               <span
-                className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:bg-slate-50 peer-checked:ring-1 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-600 ${def.checkedClass}`}
+                className={`flex items-center gap-3 rounded-xl border border-white/10 bg-white/[.04] p-3 transition-colors hover:bg-white/[.07] peer-checked:ring-1 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-500 ${def.checkedClass}`}
               >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${def.iconClass}`}>
                   {def.icon}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-slate-900">{def.label}</span>
-                  <span className="block text-xs text-slate-500">{def.description}</span>
+                  <span className="block text-sm font-semibold text-white">{def.label}</span>
+                  <span className="block text-xs text-slate-400">{def.description}</span>
                 </span>
               </span>
             </label>

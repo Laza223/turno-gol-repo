@@ -38,6 +38,9 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`
   const amenities = activeAmenities(tenant.amenities)
 
+  const chipClass =
+    'inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md motion-reduce:hover:translate-y-0'
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -46,14 +49,16 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
             <Image
               src={tenant.logoUrl}
               alt={`Logo de ${tenant.name}`}
-              width={56}
-              height={56}
-              sizes="56px"
-              className="h-14 w-14 flex-shrink-0 rounded-lg border border-slate-200 object-cover shadow-sm"
+              width={64}
+              height={64}
+              sizes="64px"
+              className="h-16 w-16 flex-shrink-0 rounded-xl border border-slate-200 object-cover shadow-sm"
             />
           )}
-          <div className="min-w-0 space-y-1">
-            <h1 className="text-2xl font-semibold text-foreground">{tenant.name}</h1>
+          <div className="min-w-0 space-y-1.5">
+            <h1 className="font-display text-[26px] font-black italic tracking-tight text-slate-900 sm:text-3xl">
+              {tenant.name}
+            </h1>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               {reviewCount > 0 && (
                 <RatingStars rating={avgRating} count={reviewCount} className="text-slate-700" />
@@ -73,45 +78,36 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <MapPin className="h-4 w-4 flex-shrink-0" aria-hidden />
+      <div className="space-y-3">
+        <p className="flex items-center gap-1.5 text-sm text-slate-500">
+          <MapPin className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
           {tenant.address}, {tenant.city}
-        </span>
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 font-medium text-emerald-700 transition-colors duration-150 hover:text-emerald-800"
-        >
-          <Navigation className="h-4 w-4 flex-shrink-0" aria-hidden />
-          Cómo llegar
-        </a>
-        <a
-          href={`tel:${tenant.phone}`}
-          className="flex items-center gap-1.5 transition-colors duration-150 hover:text-foreground"
-        >
-          <Phone className="h-4 w-4 flex-shrink-0" aria-hidden />
-          {tenant.phone}
-        </a>
-        {whatsappUrl && (
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-medium text-green-600 transition-colors duration-150 hover:text-green-700"
-          >
-            <MessageCircle className="h-4 w-4 flex-shrink-0" aria-hidden />
-            WhatsApp
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={chipClass}>
+            <Navigation className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
+            Cómo llegar
           </a>
-        )}
-        <Link
-          href={`/${tenant.slug}/disponibilidad`}
-          className="flex items-center gap-1.5 font-medium text-emerald-700 transition-colors hover:text-emerald-800"
-        >
-          <CalendarDays className="h-4 w-4 flex-shrink-0" aria-hidden />
-          Ver semana completa
-        </Link>
+          <a href={`tel:${tenant.phone}`} className={chipClass}>
+            <Phone className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
+            {tenant.phone}
+          </a>
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 text-sm font-medium text-green-700 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-green-400 hover:shadow-md motion-reduce:hover:translate-y-0"
+            >
+              <MessageCircle className="h-4 w-4 flex-shrink-0" aria-hidden />
+              WhatsApp
+            </a>
+          )}
+          <Link href={`/${tenant.slug}/disponibilidad`} className={chipClass}>
+            <CalendarDays className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
+            Ver semana completa
+          </Link>
+        </div>
       </div>
 
       {/* Amenities / servicios */}
@@ -132,16 +128,18 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
         </ul>
       )}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Horarios</h2>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm">
+        <h2 className="mb-3.5 font-logo text-[12px] font-bold uppercase tracking-[.08em] text-slate-500">
+          Horarios
+        </h2>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           {DAY_ORDER.map((day) => {
             const hours = tenant.openingHours[day as keyof typeof tenant.openingHours]
             if (!hours) return null
             return (
               <div key={day}>
-                <div className="text-xs font-medium text-slate-600">{DAY_LABELS[day]}</div>
-                <div className="text-xs text-slate-500 tabular-nums">
+                <div className="text-xs font-semibold text-slate-700">{DAY_LABELS[day]}</div>
+                <div className="text-xs tabular-nums text-slate-500">
                   {hours.closed ? 'Cerrado' : `${hours.open} – ${hours.close}`}
                 </div>
               </div>

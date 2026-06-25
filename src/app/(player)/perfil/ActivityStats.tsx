@@ -45,18 +45,20 @@ export default function ActivityStats({
           <li
             key={label}
             aria-label={`${value} ${detail ? `${detail} de ` : ''}${label.toLowerCase()}`}
-            className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-4 text-center shadow-sm"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2 py-5 text-center shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
           >
             <span className={`flex h-9 w-9 items-center justify-center rounded-full ${accent}`}>
               <Icon className="h-4 w-4" aria-hidden />
             </span>
-            <span className="text-2xl font-bold tabular-nums text-slate-900">
+            <span className="font-display text-3xl font-black italic tabular-nums text-slate-900">
               {value}
               {detail && (
-                <span className="block text-[11px] font-medium text-slate-500">{detail}</span>
+                <span className="block font-sans text-[11px] font-medium not-italic text-slate-500">
+                  {detail}
+                </span>
               )}
             </span>
-            <span className="text-xs text-slate-500 leading-tight">{label}</span>
+            <span className="text-xs leading-tight text-slate-500">{label}</span>
           </li>
         ))}
       </ul>

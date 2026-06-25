@@ -15,19 +15,8 @@ export async function GET() {
           justifyContent: 'center',
         }}
       >
-        <div
-          style={{
-            fontSize: 240,
-            color: 'white',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            // No borderRadius — OS aplica la mask (safe zone interno automático)
-          }}
-        >
-          TG
-        </div>
+        {/* No borderRadius — OS aplica la mask. Mark al ~58% para respetar la safe zone. */}
+        <span style={{ color: "white", fontWeight: 900, fontSize: "60%", fontStyle: "italic" }}>TG</span>
       </div>
     ),
     { width: 512, height: 512 },

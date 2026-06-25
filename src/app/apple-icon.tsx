@@ -9,19 +9,16 @@ export default function AppleIcon() {
     (
       <div
         style={{
-          fontSize: 110,
           background: '#059669',
           width: '100%',
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
-          fontWeight: 700,
           borderRadius: 36,
         }}
       >
-        TG
+        <span style={{ color: "white", fontWeight: 900, fontSize: "60%", fontStyle: "italic" }}>TG</span>
       </div>
     ),
     size,

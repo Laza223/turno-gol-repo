@@ -7,6 +7,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'
 import { buildMetadata } from '@/lib/seo/metadata'
+import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { DataExportButton } from './DataExportButton'
 
 export function generateMetadata(): Metadata {
@@ -33,32 +34,40 @@ export default async function ConfiguracionPage() {
   const { firstName } = player
 
   return (
-    <div className="px-4 py-5 space-y-6 max-w-lg mx-auto">
-      <h1 className="text-xl font-semibold text-slate-900">Mi cuenta</h1>
-      <p className="text-sm text-slate-500">
-        {firstName ? `Hola ${firstName}, gestioná` : 'Gestioná'} tu perfil y tus datos.
-      </p>
+    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      <PlayerHeroBand
+        eyebrow="Ajustes"
+        title="Mi"
+        accent="cuenta"
+        subtitle={`${firstName ? `Hola ${firstName}, gestioná` : 'Gestioná'} tu perfil y tus datos.`}
+      />
 
       {/* Card 0: Mi perfil */}
       <Link
         href="/perfil"
-        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50 active:scale-[0.99]"
+        className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
       >
-        <div className="flex items-center gap-2">
-          <User className="h-5 w-5 shrink-0 text-slate-600" aria-hidden />
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15">
+            <User className="h-5 w-5" aria-hidden />
+          </span>
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Mi perfil</h2>
+            <h2 className="font-display text-base font-bold tracking-tight text-slate-900">Mi perfil</h2>
             <p className="text-sm text-slate-600">Editá tu nombre, teléfono y zona preferida.</p>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+        <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" aria-hidden />
       </Link>
 
       {/* Card 1: Tus datos */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Download className="h-5 w-5 text-slate-600 shrink-0" />
-          <h2 className="text-base font-semibold text-slate-900">Tus datos personales</h2>
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-600/15">
+            <Download className="h-5 w-5" aria-hidden />
+          </span>
+          <h2 className="font-display text-base font-bold tracking-tight text-slate-900">
+            Tus datos personales
+          </h2>
         </div>
         <p className="text-sm text-slate-600">
           Descargá una copia de todos tus datos guardados en TurnoGol (perfil, reservas, pagos,
@@ -68,10 +77,14 @@ export default async function ConfiguracionPage() {
       </div>
 
       {/* Card 2: Eliminar cuenta */}
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Trash2 className="h-5 w-5 text-red-600 shrink-0" />
-          <h2 className="text-base font-semibold text-red-900">Eliminar mi cuenta</h2>
+      <div className="space-y-3 rounded-2xl border border-red-200 bg-red-50 p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 ring-1 ring-inset ring-red-600/15">
+            <Trash2 className="h-5 w-5" aria-hidden />
+          </span>
+          <h2 className="font-display text-base font-bold tracking-tight text-red-900">
+            Eliminar mi cuenta
+          </h2>
         </div>
         <p className="text-sm text-red-800">
           Eliminá permanentemente tu cuenta. Tu perfil se anonimiza, pero el historial financiero
@@ -79,7 +92,7 @@ export default async function ConfiguracionPage() {
         </p>
         <Link
           href="/eliminar-cuenta"
-          className="inline-flex h-11 items-center justify-center rounded-md border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors active:scale-[0.98]"
+          className="inline-flex h-11 items-center justify-center rounded-xl border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 active:scale-[0.98]"
         >
           Iniciar eliminación
         </Link>

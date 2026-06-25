@@ -14,7 +14,7 @@ export function DeleteAccountForm({ confirmEmail }: { confirmEmail: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="h-11 w-full bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold active:scale-[0.98] transition-colors"
+        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white shadow-md shadow-red-600/25 transition-colors hover:bg-red-700 active:scale-[0.98]"
       >
         Eliminar mi cuenta
       </button>

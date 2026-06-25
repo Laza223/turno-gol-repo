@@ -21,6 +21,7 @@ export default function OpenGraphImage() {
           padding: 80,
         }}
       >
+        <span style={{ color: "white", fontWeight: 900, fontSize: "60%", fontStyle: "italic" }}>TG</span>
         <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: -2 }}>TurnoGol</div>
         <div style={{ fontSize: 36, fontWeight: 500, marginTop: 24, opacity: 0.95 }}>
           Reservá tu cancha de fútbol

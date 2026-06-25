@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
+import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 
 type Props = { params: { bookingId: string } }
 
@@ -27,22 +28,26 @@ export default async function ReservaPendientePage({ params }: Props) {
 
   if (!booking) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-        <p className="text-sm text-slate-600">No encontramos tu reserva. Revisá tus reservas en el panel.</p>
-      </div>
+      <ReservaDarkShell>
+        <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+          <p className="text-sm text-slate-400">No encontramos tu reserva. Revisá tus reservas en el panel.</p>
+        </div>
+      </ReservaDarkShell>
     )
   }
 
   const expiresAt = new Date(new Date(booking.createdAt).getTime() + 15 * 60 * 1000).toISOString()
 
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-      <span className="sr-only">Reserva {params.bookingId}</span>
-      <PaymentStatusWatcher
-        bookingId={params.bookingId}
-        initialStatus={booking.status}
-        expiresAt={expiresAt}
-      />
-    </div>
+    <ReservaDarkShell>
+      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+        <span className="sr-only">Reserva {params.bookingId}</span>
+        <PaymentStatusWatcher
+          bookingId={params.bookingId}
+          initialStatus={booking.status}
+          expiresAt={expiresAt}
+        />
+      </div>
+    </ReservaDarkShell>
   )
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Archivo } from 'next/font/google'
+import { Inter, Archivo, Sora } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SITE_URL, SITE_NAME, SITE_LOCALE, DEFAULT_OG_IMAGE } from '@/lib/seo/metadata'
@@ -14,6 +14,15 @@ const inter = Inter({
 const archivo = Archivo({
   subsets: ['latin'],
   variable: '--font-archivo',
+  display: 'swap',
+})
+
+// Logo-only display face. Geometric grotesque with more character than Archivo
+// for the TurnoGol wordmark. Single family, restricted to <Logo />.
+const sora = Sora({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-sora',
   display: 'swap',
 })
 
@@ -54,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={`${inter.variable} ${archivo.variable}`}>
+    <html lang="es" className={`${inter.variable} ${archivo.variable} ${sora.variable}`}>
       <body className="font-sans antialiased">
         <a
           href="#main-content"

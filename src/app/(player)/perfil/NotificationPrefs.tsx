@@ -14,9 +14,9 @@ const PREF_DEFS: Array<{
 }> = [
   {
     key: 'email',
-    label: 'Recordatorios por email',
+    label: 'Novedades por email',
     description:
-      'Te avisamos 24 h antes de cada partido. Los emails de confirmación y cancelación se envían siempre.',
+      'Recibí novedades de tus reservas por email. Los emails de confirmación y cancelación se envían siempre.',
     Icon: Mail,
   },
   {
@@ -66,7 +66,7 @@ export default function NotificationPrefs({
         return (
           <div
             key={key}
-            className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-emerald-400/40"
           >
             <span
               className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${

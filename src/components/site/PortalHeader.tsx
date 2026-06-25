@@ -22,48 +22,56 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
 
   if (variant === 'overlay') {
     return (
-      <header className="absolute inset-x-0 top-0 z-30 w-full px-4 py-4 md:px-6">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full border border-white/10 bg-slate-950/20 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.15)] backdrop-blur-md sm:px-6 lg:px-8">
-          <Link href="/" aria-label="TurnoGol — inicio" className="transition-opacity hover:opacity-90">
-            <Logo
-              variant="horizontal"
-              textClassName="text-white font-bold"
-              iconClassName="bg-white/95 border-emerald-500 shadow-emerald-500/30"
-            />
-          </Link>
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <Link
-              href="/explorar"
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-200 transition-all duration-200 hover:bg-white/10 hover:text-white md:text-sm"
-            >
-              <Search className="h-4 w-4" />
-              <span>Explorar</span>
+      <header className="sticky top-0 z-50 w-full px-6 pt-[18px]">
+        <div className="mx-auto max-w-[1240px]">
+          <div
+            className="flex items-center justify-between gap-6"
+            style={{
+              padding: '12px 14px 12px 24px',
+              borderRadius: '9999px',
+              background: 'rgba(8,15,32,.62)',
+              backdropFilter: 'blur(18px) saturate(1.2)',
+              WebkitBackdropFilter: 'blur(18px) saturate(1.2)',
+              border: '1px solid rgba(255,255,255,.09)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 18px 50px -28px rgba(0,0,0,.9)',
+            }}
+          >
+            <Link href="/" aria-label="TurnoGol — inicio" className="flex-shrink-0 transition-opacity hover:opacity-90">
+              <Logo variant="horizontal" textClassName="text-white" />
             </Link>
-            <Link
-              href="/para-complejos"
-              className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-200 transition-all duration-200 hover:bg-white/10 hover:text-white md:text-sm sm:inline-flex"
-            >
-              <Building2 className="h-4 w-4" />
-              <span>Para complejos</span>
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            {session ? (
-              <AccountMenu
-                firstName={session.firstName}
-                lastName={session.lastName}
-                email={session.email}
-                avatarUrl={session.avatarUrl}
-                variant="overlay"
-              />
-            ) : (
+            <div className="flex items-center gap-1.5">
               <Link
-                href="/ingresar"
-                className="inline-flex h-9 items-center rounded-full bg-white px-4 text-xs font-semibold text-slate-900 shadow-md transition-all duration-200 hover:bg-slate-100 active:scale-95 md:text-sm"
+                href="/explorar"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white"
               >
-                Ingresar
+                <Search className="h-[17px] w-[17px]" aria-hidden />
+                Explorar
               </Link>
-            )}
+              <Link
+                href="/para-complejos"
+                className="hidden items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
+              >
+                <Building2 className="h-[17px] w-[17px]" aria-hidden />
+                Para complejos
+              </Link>
+              <span aria-hidden className="mx-1.5 h-[22px] w-px bg-white/10" />
+              {session ? (
+                <AccountMenu
+                  firstName={session.firstName}
+                  lastName={session.lastName}
+                  email={session.email}
+                  avatarUrl={session.avatarUrl}
+                  variant="overlay"
+                />
+              ) : (
+                <Link
+                  href="/ingresar"
+                  className="inline-flex h-11 items-center rounded-full border border-white/20 bg-white/5 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 active:scale-95"
+                >
+                  Ingresar
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </header>

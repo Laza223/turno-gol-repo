@@ -7,7 +7,7 @@ import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import { useNearestCity } from '@/hooks/use-nearest-city'
 import type { CityCount } from '@/modules/tenants/search.service'
 
-type Props = { cities: CityCount[] }
+type Props = { cities: CityCount[]; layout?: 'horizontal' | 'vertical' }
 
 /** YYYY-MM-DD de hoy en horario local (evita el shift de toISOString en UTC). */
 function todayLocal(): string {
@@ -35,7 +35,7 @@ function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
  * La localidad se pre-llena con geolocalización (ciudad del complejo más cercano,
  * datos propios — sin geocoding externo) solo mientras el usuario no toque el campo.
  */
-export default function HeroSearch({ cities }: Props) {
+export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const router = useRouter()
   const today = useMemo(todayLocal, [])
   const [city, setCity] = useState('')
@@ -88,19 +88,153 @@ export default function HeroSearch({ cities }: Props) {
         : ''
 
   const fieldClass =
-    'h-14 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-base text-slate-900 shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-[62px] w-full rounded-xl border border-slate-200 bg-white pl-11 pr-3 text-base text-slate-900 shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+
+  const labelClass = 'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-[.05em] text-slate-500'
+
+  if (layout === 'vertical') {
+    return (
+      <form
+        onSubmit={onSubmit}
+        aria-label="Buscar canchas de fútbol"
+        style={{
+          position: 'relative',
+          padding: '28px',
+          borderRadius: '22px',
+          background: 'linear-gradient(180deg, rgba(255,255,255,.98), rgba(241,245,249,.95))',
+          border: '1px solid rgba(255,255,255,.85)',
+          boxShadow:
+            '0 0 70px rgba(16,185,129,.30), 0 40px 80px -34px rgba(0,0,0,.9), inset 0 1px 0 #ffffff',
+        }}
+      >
+        <div className="mb-4 flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.045em] text-emerald-700">
+          <span className="relative flex h-[9px] w-[9px] shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
+          </span>
+          Encontrá tu turno ideal
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div onFocusCapture={() => setCityTouched(true)}>
+            <label htmlFor="hero-city-v" className={labelClass}>
+              Localidad
+            </label>
+            <Combobox
+              id="hero-city-v"
+              options={cityOptions}
+              value={city}
+              onChange={(v) => {
+                setCity(v)
+                setCityTouched(true)
+              }}
+              placeholder="¿Dónde querés jugar?"
+              emptyMessage="No encontramos esa localidad"
+              listboxLabel="Localidades"
+              clearOptionLabel="Todas las ciudades"
+              inputClassName={fieldClass}
+              aria-describedby="hero-city-v-status"
+              leadingIcon={
+                <MapPin
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
+                  aria-hidden
+                />
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="hero-date-v" className={labelClass}>
+                Fecha
+              </label>
+              <div className="relative">
+                <CalendarDays
+                  className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
+                  aria-hidden
+                />
+                <input
+                  id="hero-date-v"
+                  type="date"
+                  value={date}
+                  min={today}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="hero-time-v" className={labelClass}>
+                Hora
+              </label>
+              <div className="relative">
+                <Clock
+                  className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
+                  aria-hidden
+                />
+                <select
+                  id="hero-time-v"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className={`${fieldClass} appearance-none pr-8`}
+                >
+                  <option value="">Cualquier horario</option>
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 text-base font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 active:scale-[0.99] motion-reduce:hover:translate-y-0"
+          >
+            <Search className="h-[19px] w-[19px]" aria-hidden />
+            Buscar canchas
+          </button>
+        </div>
+
+        <p id="hero-city-v-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-slate-500">
+          {geoMessage}
+        </p>
+      </form>
+    )
+  }
 
   return (
     <form
       onSubmit={onSubmit}
       aria-label="Buscar canchas de fútbol"
-      className="rounded-2xl border border-white/10 bg-white/95 p-5 shadow-2xl shadow-emerald-950/30 backdrop-blur-md sm:p-6"
+      style={{
+        position: 'relative',
+        padding: '34px',
+        borderRadius: '24px',
+        background: 'linear-gradient(180deg, rgba(255,255,255,.98), rgba(241,245,249,.95))',
+        border: '1px solid rgba(255,255,255,.85)',
+        boxShadow:
+          '0 0 70px rgba(16,185,129,.30), 0 44px 90px -34px rgba(0,0,0,.9), inset 0 1px 0 #ffffff',
+      }}
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-        {/* Localidad. onFocusCapture: si el usuario ya está en el campo, la
-            detección tardía no debe pisarle nada. */}
-        <div className="lg:col-span-4" onFocusCapture={() => setCityTouched(true)}>
-          <label htmlFor="hero-city" className="mb-1.5 block text-xs font-semibold text-slate-700">
+      {/* Card header */}
+      <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.045em] text-emerald-700">
+          <span className="relative flex h-[9px] w-[9px] shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
+          </span>
+          Buscá tu próximo partido
+        </div>
+        <span className="text-[12.5px] font-semibold text-slate-500">+1.200 turnos libres hoy</span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.05fr_1.05fr_auto] lg:items-end">
+        {/* Localidad */}
+        <div onFocusCapture={() => setCityTouched(true)}>
+          <label htmlFor="hero-city" className={labelClass}>
             Localidad
           </label>
           <Combobox
@@ -111,7 +245,7 @@ export default function HeroSearch({ cities }: Props) {
               setCity(v)
               setCityTouched(true)
             }}
-            placeholder="Todas las ciudades"
+            placeholder="¿Dónde querés jugar?"
             emptyMessage="No encontramos esa localidad"
             listboxLabel="Localidades"
             clearOptionLabel="Todas las ciudades"
@@ -119,7 +253,7 @@ export default function HeroSearch({ cities }: Props) {
             aria-describedby="hero-city-status"
             leadingIcon={
               <MapPin
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
                 aria-hidden
               />
             }
@@ -127,37 +261,43 @@ export default function HeroSearch({ cities }: Props) {
         </div>
 
         {/* Fecha */}
-        <div className="lg:col-span-3">
-          <label htmlFor="hero-date" className="mb-1.5 block text-xs font-semibold text-slate-700">
+        <div>
+          <label htmlFor="hero-date" className={labelClass}>
             Fecha
           </label>
           <div className="relative">
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+            <CalendarDays
+              className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600 z-10"
+              aria-hidden
+            />
             <input
               id="hero-date"
               type="date"
               value={date}
               min={today}
               onChange={(e) => setDate(e.target.value)}
-              className={`${fieldClass} pr-3`}
+              className={fieldClass}
             />
           </div>
         </div>
 
         {/* Hora */}
-        <div className="lg:col-span-2">
-          <label htmlFor="hero-time" className="mb-1.5 block text-xs font-semibold text-slate-700">
+        <div>
+          <label htmlFor="hero-time" className={labelClass}>
             Hora
           </label>
           <div className="relative">
-            <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+            <Clock
+              className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600 z-10"
+              aria-hidden
+            />
             <select
               id="hero-time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               className={`${fieldClass} appearance-none pr-8`}
             >
-              <option value="">Cualquiera</option>
+              <option value="">Cualquier horario</option>
               {HOURS.map((h) => (
                 <option key={h} value={h}>
                   {h}
@@ -170,14 +310,13 @@ export default function HeroSearch({ cities }: Props) {
         {/* Buscar */}
         <button
           type="submit"
-          className="group inline-flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.99] motion-reduce:hover:translate-y-0 lg:col-span-3"
+          className="inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 text-base font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 active:scale-[0.99] motion-reduce:hover:translate-y-0"
         >
-          <Search className="h-5 w-5" aria-hidden />
+          <Search className="h-[19px] w-[19px]" aria-hidden />
           Buscar canchas
         </button>
       </div>
 
-      {/* Estado de geolocalización: sutil, nunca bloqueante. Altura reservada para no mover el hero. */}
       <p id="hero-city-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-slate-500">
         {geoMessage}
       </p>

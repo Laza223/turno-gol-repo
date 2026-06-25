@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { sql } from 'drizzle-orm'
-import { CalendarX, RotateCcw } from 'lucide-react'
+import { CalendarX, Compass, MapPin, RotateCcw } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { CancelBookingButton } from './CancelBookingButton'
@@ -25,13 +25,25 @@ function artToday(): string {
   return new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
 }
 
+const AR_TZ = 'America/Argentina/Buenos_Aires'
+
 function formatDate(dateStr: string): string {
   return new Date(`${dateStr}T12:00:00Z`).toLocaleDateString('es-AR', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: AR_TZ,
   })
+}
+
+/** Partes para el bloque-fecha de la tarjeta (día grande + mes/día-semana chico). */
+function dateParts(dateStr: string): { weekday: string; day: string; month: string } {
+  const d = new Date(`${dateStr}T12:00:00Z`)
+  return {
+    weekday: d.toLocaleDateString('es-AR', { weekday: 'short', timeZone: AR_TZ }),
+    day: d.toLocaleDateString('es-AR', { day: '2-digit', timeZone: AR_TZ }),
+    month: d.toLocaleDateString('es-AR', { month: 'short', timeZone: AR_TZ }),
+  }
 }
 
 function formatARS(centavos: number): string {
@@ -50,13 +62,20 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_CLASSES: Record<string, string> = {
-  confirmed: 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20',
+  confirmed: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
   pending_payment: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
   completed: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20',
   canceled_refunded: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20',
   canceled_no_refund: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20',
   no_show: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20',
 }
+
+/** Color del bloque-fecha según estado (esmeralda activo, atenuado si cerrado). */
+const DATE_BLOCK_CLASSES: Record<string, string> = {
+  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
+  pending_payment: 'bg-amber-50 text-amber-700 ring-amber-600/15',
+}
+const DATE_BLOCK_MUTED = 'bg-slate-50 text-slate-500 ring-slate-300/40'
 
 export default async function MisReservasPage({
   searchParams,
@@ -88,107 +107,192 @@ export default async function MisReservasPage({
   const bookings = allBookings.filter((b) =>
     tab === 'proximos' ? b.date >= today : b.date < today,
   )
+  const upcomingCount = allBookings.filter((b) => b.date >= today).length
+
+  const tabClass = (active: boolean) =>
+    `flex-1 rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
+      active
+        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+        : 'text-slate-600 hover:text-slate-900'
+    }`
 
   return (
-    <div className="px-4 py-5 space-y-4 max-w-lg mx-auto">
-      <h1 className="text-xl font-semibold text-slate-900">Mis Reservas</h1>
-
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200">
-        <a
-          href="/mis-reservas?tab=proximos"
-          className={`flex-1 text-center py-2 text-sm font-medium transition-colors duration-150 ${
-            tab === 'proximos'
-              ? 'border-b-2 border-emerald-600 text-emerald-700'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
+    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      {/* Banda dark premium (puente visual con el home) */}
+      <section
+        className="relative isolate overflow-hidden rounded-3xl border border-white/[.08] px-6 py-7"
+        style={{
+          background: 'linear-gradient(135deg, #07131d 0%, #020617 58%)',
+          boxShadow: '0 30px 70px -42px rgba(0,0,0,.9)',
+        }}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-[-12%] top-[-60%] -z-10 h-[420px] w-[420px] rounded-full blur-[12px]"
+          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.26), transparent 70%)' }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            backgroundImage:
+              'linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px)',
+            backgroundSize: '38px 38px',
+            WebkitMaskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
+            maskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
+          }}
+        />
+        <div className="font-logo text-[12px] font-bold uppercase tracking-[.1em] text-emerald-400">
+          Tu actividad
+        </div>
+        <h1
+          className="mt-2 font-display font-black italic text-white"
+          style={{ fontSize: 'clamp(26px, 6vw, 36px)', lineHeight: '1', letterSpacing: '-0.03em' }}
         >
+          Mis{' '}
+          <span
+            style={{
+              background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
+            reservas
+          </span>
+        </h1>
+        <p className="mt-2.5 text-[14px] leading-relaxed text-slate-400 tabular-nums">
+          {upcomingCount > 0
+            ? `Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`
+            : 'Acá ves tus turnos próximos y tu historial.'}
+        </p>
+      </section>
+
+      {/* Tabs como segmented control premium */}
+      <div className="flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+        <a href="/mis-reservas?tab=proximos" className={tabClass(tab === 'proximos')}>
           Próximos
         </a>
-        <a
-          href="/mis-reservas?tab=historial"
-          className={`flex-1 text-center py-2 text-sm font-medium transition-colors duration-150 ${
-            tab === 'historial'
-              ? 'border-b-2 border-emerald-600 text-emerald-700'
-              : 'text-slate-500 hover:text-slate-900'
-          }`}
-        >
+        <a href="/mis-reservas?tab=historial" className={tabClass(tab === 'historial')}>
           Historial
         </a>
       </div>
 
       {/* Booking list */}
       {bookings.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
-          <CalendarX className="h-10 w-10" />
-          <p className="text-sm text-center">
-            {tab === 'proximos'
-              ? 'No tenés reservas próximas.'
-              : 'No tenés reservas en el historial.'}
-          </p>
+        <div className="flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15">
+            <CalendarX className="h-8 w-8" aria-hidden />
+          </div>
+          <div className="space-y-1">
+            <h2 className="font-display text-lg font-bold tracking-tight text-slate-900">
+              {tab === 'proximos' ? 'Todavía no tenés turnos' : 'Historial vacío'}
+            </h2>
+            <p className="text-sm text-slate-500">
+              {tab === 'proximos'
+                ? 'Reservá tu próxima cancha en segundos.'
+                : 'Acá van a aparecer tus partidos jugados.'}
+            </p>
+          </div>
+          <Link
+            href="/explorar"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0"
+          >
+            <Compass className="h-4 w-4" aria-hidden />
+            Explorar complejos
+          </Link>
         </div>
       ) : (
         <ul className="space-y-3">
-          {bookings.map((b) => (
-            <li
-              key={b.id}
-              className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 space-y-2"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{b.court_name}</p>
-                  <p className="text-xs text-slate-500">{b.tenant_name}</p>
-                </div>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shrink-0 ${
-                    STATUS_CLASSES[b.status] ?? STATUS_CLASSES.completed
-                  }`}
-                >
-                  {STATUS_LABELS[b.status] ?? b.status}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm text-slate-700 tabular-nums">
-                    {formatDate(b.date)} · {b.time_start.slice(0, 5)}–{b.time_end.slice(0, 5)}
-                  </p>
-                  <p className="text-xs text-slate-500 tabular-nums">{formatARS(b.price_snapshot)}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {b.type === 'fixed' && (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/20">
-                      Turno fijo
-                    </span>
-                  )}
-                  {b.status === 'confirmed' && (
-                    <CancelBookingButton
-                      bookingId={b.id}
-                      courtName={b.court_name}
-                      dateLabel={formatDate(b.date)}
-                      timeLabel={`${b.time_start.slice(0, 5)}–${b.time_end.slice(0, 5)}`}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {b.status === 'completed' && (
-                <div className="flex flex-wrap items-center gap-1 border-t border-slate-100 pt-2">
-                  {!b.has_review && (
-                    <LeaveReviewButton bookingId={b.id} tenantName={b.tenant_name} />
-                  )}
-                  <Link
-                    href={`/${b.tenant_slug}`}
-                    className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          {bookings.map((b) => {
+            const dp = dateParts(b.date)
+            const blockClass = DATE_BLOCK_CLASSES[b.status] ?? DATE_BLOCK_MUTED
+            return (
+              <li
+                key={b.id}
+                className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
+              >
+                <div className="flex gap-4">
+                  {/* Bloque-fecha */}
+                  <div
+                    className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 ring-1 ring-inset ${blockClass}`}
                   >
-                    <RotateCcw className="h-4 w-4" aria-hidden />
-                    Reservar de nuevo
-                  </Link>
+                    <span className="font-logo text-[10px] font-bold uppercase tracking-wide opacity-70">
+                      {dp.weekday}
+                    </span>
+                    <span className="font-display text-xl font-black italic leading-none tabular-nums">
+                      {dp.day}
+                    </span>
+                    <span className="font-logo text-[10px] font-bold uppercase tracking-wide opacity-70">
+                      {dp.month}
+                    </span>
+                  </div>
+
+                  {/* Contenido */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{b.court_name}</p>
+                        <p className="flex items-center gap-1 truncate text-xs text-slate-500">
+                          <MapPin className="h-3 w-3 shrink-0 text-emerald-600/70" aria-hidden />
+                          {b.tenant_name}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          STATUS_CLASSES[b.status] ?? STATUS_CLASSES.completed
+                        }`}
+                      >
+                        {STATUS_LABELS[b.status] ?? b.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 flex items-end justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <p className="text-sm text-slate-700 tabular-nums">
+                          {b.time_start.slice(0, 5)}–{b.time_end.slice(0, 5)}
+                        </p>
+                        <p className="font-display text-base font-bold text-emerald-700 tabular-nums">
+                          {formatARS(b.price_snapshot)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {b.type === 'fixed' && (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/20">
+                            Turno fijo
+                          </span>
+                        )}
+                        {b.status === 'confirmed' && (
+                          <CancelBookingButton
+                            bookingId={b.id}
+                            courtName={b.court_name}
+                            dateLabel={formatDate(b.date)}
+                            timeLabel={`${b.time_start.slice(0, 5)}–${b.time_end.slice(0, 5)}`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </li>
-          ))}
+
+                {b.status === 'completed' && (
+                  <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-slate-100 pt-2">
+                    {!b.has_review && (
+                      <LeaveReviewButton bookingId={b.id} tenantName={b.tenant_name} />
+                    )}
+                    <Link
+                      href={`/${b.tenant_slug}`}
+                      className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-slate-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                    >
+                      <RotateCcw className="h-4 w-4" aria-hidden />
+                      Reservar de nuevo
+                    </Link>
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

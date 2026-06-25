@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import { parseIntent, type SuccessIntent } from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { Logo } from '@/components/ui/logo'
 import SuccessRedirect from '@/app/(auth)/verify/SuccessRedirect'
 
 const ERROR_COPY: Record<string, string> = {
@@ -29,6 +30,15 @@ const SUCCESS_COPY: Record<SuccessIntent, { title: string; subtitle: string; cta
   },
 }
 
+const cardStyle = {
+  background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.85))',
+  border: '1px solid rgba(255,255,255,.1)',
+  boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -42px rgba(0,0,0,.9)',
+} as const
+
+const ctaClass =
+  'mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0'
+
 export default function VerifyPage({
   searchParams,
 }: {
@@ -39,20 +49,26 @@ export default function VerifyPage({
   const isError = Boolean(errCode)
 
   return (
-    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12">
+    <div
+      className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12"
+      style={{ background: '#020617' }}
+    >
       <div
         aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.12),_transparent_60%)]"
+        className="pointer-events-none absolute right-[-10%] top-[-12%] h-[520px] w-[520px] rounded-full blur-[12px]"
+        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.2), transparent 70%)' }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[-16%] left-[-10%] h-[440px] w-[440px] rounded-full"
+        style={{ background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)' }}
       />
       <div className="relative w-full max-w-md">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">
-            TG
-          </span>
-          <span className="text-base font-semibold text-slate-900">TurnoGol</span>
+        <Link href="/" className="mb-8 flex items-center justify-center">
+          <Logo variant="horizontal" textClassName="text-white" />
         </Link>
 
-        <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
+        <div className="rounded-2xl p-8 text-center" style={cardStyle}>
           {isSuccess ? (
             <SuccessState next={searchParams.next} intent={parseIntent(searchParams.intent)} />
           ) : isError ? (
@@ -71,15 +87,22 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
   const copy = SUCCESS_COPY[intent]
   return (
     <>
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
-        <CheckCircle2 className="h-6 w-6 text-emerald-700" aria-hidden />
+      <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
+        <span aria-hidden className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden" />
+        <span
+          className="relative flex h-16 w-16 items-center justify-center rounded-full text-emerald-300"
+          style={{
+            background: 'radial-gradient(closest-side, rgba(16,185,129,.28), rgba(2,6,23,.4))',
+            border: '1px solid rgba(16,185,129,.4)',
+            boxShadow: '0 0 50px rgba(16,185,129,.45)',
+          }}
+        >
+          <CheckCircle2 className="h-7 w-7" aria-hidden />
+        </span>
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">{copy.title}</h1>
-      <p className="mt-3 text-sm text-slate-600">{copy.subtitle}</p>
-      <Link
-        href={safeNext}
-        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30"
-      >
+      <h1 className="font-display text-2xl font-black italic tracking-tight text-white">{copy.title}</h1>
+      <p className="mt-3 text-sm text-slate-400">{copy.subtitle}</p>
+      <Link href={safeNext} className={ctaClass}>
         {copy.cta}
       </Link>
       <p className="mt-4 text-xs text-slate-500">
@@ -93,15 +116,13 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
 function LoadingState() {
   return (
     <>
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-700" aria-hidden />
+      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
+        <Loader2 className="h-7 w-7 animate-spin text-emerald-300" aria-hidden />
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+      <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
         Verificando tu enlace…
       </h1>
-      <p className="mt-3 text-sm text-slate-600">
-        Esto tarda un instante. No cierres esta pestaña.
-      </p>
+      <p className="mt-3 text-sm text-slate-400">Esto tarda un instante. No cierres esta pestaña.</p>
     </>
   )
 }
@@ -110,17 +131,14 @@ function ErrorState({ code }: { code: string }) {
   const message = ERROR_COPY[code] ?? ERROR_COPY.invalid
   return (
     <>
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 ring-8 ring-red-50">
-        <AlertCircle className="h-6 w-6 text-red-600" aria-hidden />
+      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 ring-8 ring-red-500/10">
+        <AlertCircle className="h-7 w-7 text-red-300" aria-hidden />
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+      <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
         No pudimos verificar tu enlace
       </h1>
-      <p className="mt-3 text-sm text-slate-600">{message}</p>
-      <Link
-        href="/login"
-        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30"
-      >
+      <p className="mt-3 text-sm text-slate-400">{message}</p>
+      <Link href="/login" className={ctaClass}>
         Volver a intentar
       </Link>
     </>

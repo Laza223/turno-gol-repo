@@ -10,7 +10,7 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
   const fromPrice = formatFromPrice(court.fromPriceCents)
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0">
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
         {photo ? (
           <Image
@@ -18,18 +18,33 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
             alt={`Cancha ${court.name}`}
             fill
             sizes="(max-width: 640px) 50vw, 240px"
-            className="object-cover"
+            className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-emerald-600/40">
-            <Users className="h-8 w-8" aria-hidden />
+          <div
+            className="relative flex h-full w-full items-center justify-center overflow-hidden text-emerald-300/70"
+            style={{
+              background:
+                'radial-gradient(130% 130% at 78% 0%, rgba(16,185,129,.42), transparent 58%), linear-gradient(140deg, #065f46, #022c22)',
+            }}
+          >
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  'linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px)',
+                backgroundSize: '24px 24px',
+              }}
+            />
+            <Users className="relative h-8 w-8" aria-hidden />
           </div>
         )}
       </div>
       <div className="space-y-1.5 p-3">
         <h3 className="text-sm font-semibold text-slate-900">{court.name}</h3>
         <div className="flex flex-wrap gap-1.5">
-          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/15">
+          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15">
             {formatLabel(court.format)}
           </span>
           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-500/15">
@@ -37,7 +52,7 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
           </span>
         </div>
         {fromPrice && (
-          <p className="text-sm font-semibold text-slate-900 tabular-nums">{fromPrice}</p>
+          <p className="font-display text-base font-bold tabular-nums text-emerald-700">{fromPrice}</p>
         )}
       </div>
     </div>

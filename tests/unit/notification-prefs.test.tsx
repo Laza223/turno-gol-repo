@@ -15,7 +15,7 @@ afterEach(() => cleanup())
 describe('NotificationPrefs', () => {
   it('renderiza ambos switches con el estado inicial del jugador', () => {
     render(<NotificationPrefs initialEmail={true} initialPush={false} />)
-    const email = screen.getByRole('switch', { name: 'Recordatorios por email' })
+    const email = screen.getByRole('switch', { name: 'Novedades por email' })
     const push = screen.getByRole('switch', { name: 'Notificaciones push' })
     expect(email.getAttribute('aria-checked')).toBe('true')
     expect(push.getAttribute('aria-checked')).toBe('false')
@@ -25,13 +25,13 @@ describe('NotificationPrefs', () => {
     updateMock.mockResolvedValue({ success: true })
     render(<NotificationPrefs initialEmail={true} initialPush={true} />)
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Recordatorios por email' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Novedades por email' }))
 
     expect(updateMock).toHaveBeenCalledWith('email', false)
     await waitFor(() => {
       expect(
         screen
-          .getByRole('switch', { name: 'Recordatorios por email' })
+          .getByRole('switch', { name: 'Novedades por email' })
           .getAttribute('aria-checked'),
       ).toBe('false')
     })

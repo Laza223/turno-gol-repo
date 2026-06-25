@@ -24,7 +24,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-600/20 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-md"
+      className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 active:scale-[0.98] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:hover:translate-y-0"
     >
       {pending ? 'Guardando…' : 'Guardar cambios'}
     </button>
@@ -39,7 +39,7 @@ export function ProfileForm({ defaultValues }: Props) {
     <form
       action={formAction}
       onSubmit={() => setDidSubmit(true)}
-      className="space-y-4"
+      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -53,7 +53,7 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.firstName}
             autoComplete="given-name"
             required
-            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
         <div className="space-y-1">
@@ -67,7 +67,7 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.lastName}
             autoComplete="family-name"
             required
-            className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
       </div>
@@ -103,7 +103,7 @@ export function ProfileForm({ defaultValues }: Props) {
 
       <div className="space-y-1">
         <label className="text-sm font-medium text-slate-700">Email</label>
-        <div className="h-11 px-3 flex items-center border border-slate-200 rounded-md bg-slate-50 text-sm text-slate-500">
+        <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-sm text-slate-500">
           {defaultValues.email}
         </div>
         <p className="text-xs text-slate-400">El email no puede modificarse.</p>

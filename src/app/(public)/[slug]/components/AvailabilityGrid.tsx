@@ -131,7 +131,7 @@ function SlotCell({
       <a
         href={`tel:${phone}`}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600 hover:bg-green-100 transition-colors duration-150"
+        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600"
       >
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" aria-hidden />
@@ -145,7 +145,7 @@ function SlotCell({
   return (
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
-      className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600 hover:bg-green-100 active:scale-[0.98] transition-colors duration-150"
+      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100"
     >
       <span>Reservar</span>
       {priceLine}
@@ -250,12 +250,12 @@ export default function AvailabilityGrid({ tenant }: Props) {
 
   return (
     <section
-      className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4"
+      className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4"
       aria-label="Grilla de disponibilidad"
     >
       {/* Date navigation */}
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-foreground">Disponibilidad</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">Disponibilidad</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -427,7 +427,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
       {!loading && availability && !noCourts && (
         <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-green-50 ring-1 ring-inset ring-green-600" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-emerald-50 ring-1 ring-inset ring-emerald-600" />
             Libre
           </span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">

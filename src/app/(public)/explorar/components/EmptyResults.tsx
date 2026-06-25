@@ -7,18 +7,23 @@ export default function EmptyResults({
   avail?: { date: string; time: string } | null
 }) {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white py-16 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white py-16 text-center shadow-sm">
       <div className="relative h-24 w-48 text-emerald-600/25">
         <PitchLines variant="empty" className="h-full w-full" />
       </div>
-      <p className="max-w-sm text-sm text-slate-500">
-        {avail
-          ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}.`
-          : 'No encontramos complejos con esos filtros.'}
-      </p>
+      <div className="space-y-1.5">
+        <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">
+          {avail ? 'Sin turnos a esa hora' : 'No hay resultados'}
+        </h2>
+        <p className="mx-auto max-w-sm text-sm text-slate-500">
+          {avail
+            ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}. Probá otro horario.`
+            : 'No encontramos complejos con esos filtros. Probá ampliar la búsqueda.'}
+        </p>
+      </div>
       <Link
         href="/explorar"
-        className="inline-flex h-10 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+        className="inline-flex h-11 items-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0"
       >
         Limpiar búsqueda
       </Link>

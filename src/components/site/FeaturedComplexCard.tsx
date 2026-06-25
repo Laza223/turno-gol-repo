@@ -1,94 +1,139 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Zap } from 'lucide-react'
+import { ArrowRight, MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import { formatFromPrice } from '@/lib/format'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import RatingStars from '@/components/public/RatingStars'
 
-/**
- * Tarjeta de complejo destacado para la landing (tema oscuro).
- * Coherente con el lenguaje visual del hero/features. La versión clara
- * (TenantCard) vive en /explorar.
- */
 export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCard }) {
   const fromPrice = formatFromPrice(tenant.fromPriceCents)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
+  const initials = tenant.name.slice(0, 2).toUpperCase()
 
   return (
     <Link
       href={`/${tenant.slug}`}
-      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40 hover:shadow-2xl hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+      className="group block overflow-hidden border border-white/[.09] transition-[transform,box-shadow,border-color] duration-[180ms] hover:-translate-y-[6px] hover:border-emerald-500/40 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020617]"
+      style={{
+        borderRadius: '20px',
+        background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.82))',
+        boxShadow: '0 24px 50px -34px rgba(0,0,0,.9)',
+      }}
+      onMouseEnter={(e) => {
+        ;(e.currentTarget as HTMLElement).style.boxShadow =
+          '0 30px 60px -30px rgba(0,0,0,.95), 0 0 40px -6px rgba(16,185,129,.35)'
+      }}
+      onMouseLeave={(e) => {
+        ;(e.currentTarget as HTMLElement).style.boxShadow = '0 24px 50px -34px rgba(0,0,0,.9)'
+      }}
     >
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-800">
-        {tenant.coverUrl ? (
+      {/* Cover */}
+      <div
+        className="relative h-[168px] overflow-hidden"
+        style={{
+          background:
+            'radial-gradient(130% 130% at 78% 0%, rgba(16,185,129,.45), transparent 58%), linear-gradient(140deg, #065f46, #022c22)',
+        }}
+      >
+        {/* Grid pattern */}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              'linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
+        {/* Ghost initials */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute bottom-[14px] left-5 font-display font-black italic leading-none text-white/[.14]"
+          style={{ fontSize: '56px', letterSpacing: '-0.04em' }}
+        >
+          {initials}
+        </span>
+
+        {/* Cover photo when available */}
+        {tenant.coverUrl && (
           <Image
             src={tenant.coverUrl}
             alt={`Cancha de ${tenant.name}`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+            className="object-cover opacity-80 transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-900/40 to-slate-800 text-4xl font-bold text-emerald-300/40">
-            {tenant.name.slice(0, 2).toUpperCase()}
+        )}
+
+        {/* "Reserva online" badge */}
+        {tenant.allowOnlineBooking && (
+          <div className="absolute left-[14px] top-[14px]">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-500 px-[10px] py-[5px] text-xs font-semibold text-white shadow-lg">
+              <Zap className="h-3 w-3" aria-hidden />
+              Reserva online
+            </span>
           </div>
         )}
-        {/* Degradé para legibilidad de los overlays */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/30"
-        />
 
+        {/* Rating badge */}
         {tenant.reviewCount > 0 && (
-          <div className="absolute left-3 top-3 inline-flex items-center rounded-full bg-slate-950/70 px-2 py-1 text-white backdrop-blur-sm">
+          <div
+            className="absolute right-[14px] top-[14px] inline-flex items-center gap-1 rounded-full px-[10px] py-[5px] backdrop-blur-sm"
+            style={{
+              background: 'rgba(2,6,23,.62)',
+              border: '1px solid rgba(255,255,255,.14)',
+            }}
+          >
             <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />
           </div>
         )}
-
-        {tenant.allowOnlineBooking && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
-            <Zap className="h-3 w-3" aria-hidden />
-            Reserva online
-          </span>
-        )}
-
-        {fromPrice && (
-          <span className="absolute bottom-3 left-3 inline-flex items-baseline gap-1 rounded-lg bg-white/95 px-2.5 py-1 text-sm font-bold text-slate-900 shadow-sm tabular-nums">
-            {fromPrice}
-          </span>
-        )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="text-base font-semibold text-white transition-colors group-hover:text-emerald-300">
-          {tenant.name}
-        </h3>
-        <p className="flex items-center gap-1.5 text-sm text-slate-400">
-          <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {/* Body */}
+      <div className="p-[18px_20px_20px]">
+        <h3 className="font-display font-bold text-[18px] text-[#f8fafc]">{tenant.name}</h3>
+        <div className="mt-[6px] flex items-center gap-[6px] text-[13px] text-slate-400">
+          <MapPin className="h-[14px] w-[14px] shrink-0 text-emerald-500" aria-hidden />
           <span className="truncate">
             {tenant.address ? `${tenant.address} · ` : ''}
             {tenant.city}
           </span>
-        </p>
+        </div>
 
+        {/* Amenity tags */}
         {amenities.length > 0 && (
-          <ul className="mt-auto flex flex-wrap gap-1.5 pt-1">
-            {amenities.map((key) => {
-              const { label, Icon } = AMENITIES[key]
-              return (
-                <li
-                  key={key}
-                  title={label}
-                  className="inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-1 text-[11px] text-slate-300 ring-1 ring-inset ring-white/10"
-                >
-                  <Icon className="h-3.5 w-3.5 text-emerald-300/80" aria-hidden />
-                  <span className="sr-only sm:not-sr-only">{label}</span>
-                </li>
-              )
-            })}
-          </ul>
+          <div className="mt-[14px] flex flex-wrap gap-[7px]">
+            {amenities.map((key) => (
+              <span
+                key={key}
+                className="whitespace-nowrap rounded-[8px] border border-white/[.08] bg-white/[.05] px-[10px] py-[4px] text-xs font-semibold text-slate-300"
+              >
+                {AMENITIES[key].label}
+              </span>
+            ))}
+          </div>
         )}
+
+        {/* Footer */}
+        <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/[.08] pt-[16px]">
+          <div>
+            {fromPrice && (
+              <>
+                <span className="text-xs text-slate-500">Desde </span>
+                <span className="font-display font-bold text-[17px] text-[#f8fafc]">
+                  {fromPrice}
+                </span>
+              </>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[13.5px] font-bold text-emerald-400">
+            Ver turnos
+            <ArrowRight className="h-[15px] w-[15px]" aria-hidden />
+          </span>
+        </div>
       </div>
     </Link>
   )

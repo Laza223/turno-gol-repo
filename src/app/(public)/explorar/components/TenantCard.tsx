@@ -44,8 +44,25 @@ export default function TenantCard({
         {allPhotos.length > 0 ? (
           <TenantCardCarousel photos={allPhotos} name={tenant.name} href={`/${tenant.slug}`} />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-3xl font-bold text-emerald-600/40">
-            {tenant.name.slice(0, 2).toUpperCase()}
+          <div
+            className="relative flex h-full w-full items-center justify-center overflow-hidden"
+            style={{
+              background:
+                'radial-gradient(130% 130% at 78% 0%, rgba(16,185,129,.45), transparent 58%), linear-gradient(140deg, #065f46, #022c22)',
+            }}
+          >
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  'linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px)',
+                backgroundSize: '28px 28px',
+              }}
+            />
+            <span className="font-display text-5xl font-black italic tracking-tight text-white/[.16]">
+              {tenant.name.slice(0, 2).toUpperCase()}
+            </span>
           </div>
         )}
         <div
@@ -53,7 +70,7 @@ export default function TenantCard({
           className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent"
         />
         {tenant.allowOnlineBooking && (
-          <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+          <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-md shadow-emerald-900/30">
             <Zap className="h-3 w-3" aria-hidden />
             Reservá online
           </span>
@@ -140,7 +157,7 @@ export default function TenantCard({
           )}
           {fromPrice && (
             <p className="flex items-baseline gap-1 text-right">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">desde</span>
+              <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-slate-400">desde</span>
               <span className="font-display text-xl font-bold text-emerald-700 tabular-nums">
                 {fromPrice}
               </span>

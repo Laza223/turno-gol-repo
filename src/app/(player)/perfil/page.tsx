@@ -17,6 +17,7 @@ import {
   getPlayerActivity,
   isoMondayOf,
 } from '@/modules/players/activity.service'
+import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { ProfileForm } from './ProfileForm'
 import FavoritesList from './FavoritesList'
 import ActivityStats from './ActivityStats'
@@ -94,43 +95,45 @@ export default async function PerfilPage({
   const artToday = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
 
   return (
-    <div className="px-4 py-5 space-y-6 max-w-lg mx-auto">
-      <h1 className="text-xl font-semibold text-slate-900">Mi Perfil</h1>
-
-      {/* Avatar + name */}
-      <div className="flex items-center gap-4">
-        {player.avatarUrl ? (
-          <Image
-            src={player.avatarUrl}
-            alt="Avatar"
-            width={64}
-            height={64}
-            className="rounded-full object-cover"
-          />
-        ) : (
-          <div className="h-16 w-16 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xl font-semibold">
-            {initials(player.firstName, player.lastName)}
+    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      <PlayerHeroBand eyebrow="Tu cuenta" title="Mi" accent="perfil">
+        <div className="mt-4 flex items-center gap-4">
+          {player.avatarUrl ? (
+            <Image
+              src={player.avatarUrl}
+              alt="Avatar"
+              width={64}
+              height={64}
+              className="h-16 w-16 rounded-full object-cover ring-1 ring-white/15"
+            />
+          ) : (
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-full font-display text-xl font-black italic text-emerald-200 ring-1 ring-emerald-400/30"
+              style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), rgba(2,6,23,.4))' }}
+            >
+              {initials(player.firstName, player.lastName)}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate font-display text-xl font-black italic tracking-tight text-white">
+              {player.firstName} {player.lastName}
+            </p>
+            <p className="truncate text-sm text-slate-400">{player.email}</p>
           </div>
-        )}
-        <div>
-          <p className="text-base font-semibold text-slate-900">
-            {player.firstName} {player.lastName}
-          </p>
-          <p className="text-sm text-slate-500">{player.email}</p>
         </div>
-      </div>
+      </PlayerHeroBand>
 
-      {/* Tabs (server-side, mismo patrón que /mis-reservas) */}
-      <div className="flex border-b border-slate-200">
+      {/* Tabs como segmented control premium (mismo patrón que /mis-reservas) */}
+      <div className="flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
         {TABS.map((t) => (
           <a
             key={t.key}
             href={`/perfil?tab=${t.key}`}
             aria-current={tab === t.key ? 'page' : undefined}
-            className={`flex-1 text-center py-2 text-sm font-medium transition-colors duration-150 ${
+            className={`flex-1 rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
               tab === t.key
-                ? 'border-b-2 border-emerald-600 text-emerald-700'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             {t.label}
@@ -152,8 +155,8 @@ export default async function PerfilPage({
 
           {/* Legal notice */}
           {player.agreedToTermsAt && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-start gap-3">
-              <User className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+              <User className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               <p className="text-xs text-slate-500">
                 Términos aceptados el {formatDate(player.agreedToTermsAt)}
                 {player.termsVersion ? ` (versión ${player.termsVersion})` : ''}.

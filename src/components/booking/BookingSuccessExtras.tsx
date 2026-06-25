@@ -5,7 +5,7 @@ import { CalendarPlus, MessageCircle, Navigation } from 'lucide-react'
 
 const BookingMiniMap = dynamic(() => import('./BookingMiniMap'), {
   ssr: false,
-  loading: () => <div className="h-44 w-full animate-pulse bg-slate-100" aria-hidden />,
+  loading: () => <div className="h-44 w-full animate-pulse bg-white/5" aria-hidden />,
 })
 
 type Props = {
@@ -94,7 +94,7 @@ export default function BookingSuccessExtras(props: Props) {
   return (
     <div className="mt-6 w-full space-y-3">
       {hasGeo && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-white/10 shadow-sm">
           <BookingMiniMap lat={props.latitude!} lng={props.longitude!} label={tenantName} />
         </div>
       )}
@@ -103,7 +103,7 @@ export default function BookingSuccessExtras(props: Props) {
         <button
           type="button"
           onClick={shareWhatsApp}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-700 motion-reduce:hover:translate-y-0"
         >
           <MessageCircle className="h-4 w-4" aria-hidden />
           Compartir
@@ -111,18 +111,18 @@ export default function BookingSuccessExtras(props: Props) {
         <button
           type="button"
           onClick={addToCalendar}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.04] px-4 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[.08]"
         >
-          <CalendarPlus className="h-4 w-4" aria-hidden />
+          <CalendarPlus className="h-4 w-4 text-emerald-400" aria-hidden />
           Calendario
         </button>
         <a
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.04] px-4 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[.08]"
         >
-          <Navigation className="h-4 w-4" aria-hidden />
+          <Navigation className="h-4 w-4 text-emerald-400" aria-hidden />
           Cómo llegar
         </a>
       </div>

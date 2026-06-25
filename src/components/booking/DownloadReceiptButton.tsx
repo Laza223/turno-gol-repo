@@ -24,7 +24,7 @@ export default function DownloadReceiptButton({ fileName }: { fileName: string }
     <button
       type="button"
       onClick={handlePrint}
-      className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+      className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.04] px-4 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[.08]"
     >
       <FileDown className="h-4 w-4" aria-hidden />
       Descargar comprobante

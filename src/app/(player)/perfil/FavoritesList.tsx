@@ -17,16 +17,22 @@ export default function FavoritesList({
 }) {
   if (tenants.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
-        <Heart className="h-10 w-10" aria-hidden />
-        <p className="text-sm text-center">
-          Todavía no marcaste complejos favoritos.
-          <br />
-          Tocá el corazón de un complejo para guardarlo acá.
-        </p>
+      <div className="flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 ring-1 ring-inset ring-rose-500/15">
+          <Heart className="h-8 w-8" aria-hidden />
+        </div>
+        <div className="space-y-1">
+          <h2 className="font-display text-lg font-bold tracking-tight text-slate-900">
+            Sin favoritos todavía
+          </h2>
+          <p className="text-sm text-slate-500">
+            Todavía no marcaste complejos favoritos. Tocá el corazón de un complejo para guardarlo
+            acá.
+          </p>
+        </div>
         <Link
           href="/explorar"
-          className="mt-2 inline-flex h-11 items-center rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0"
         >
           Explorar complejos
         </Link>

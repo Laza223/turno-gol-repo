@@ -45,11 +45,13 @@ export default async function EliminarCuentaPage() {
   const futureConfirmedCount = futureBookingRows[0]?.count ?? 0
 
   return (
-    <div className="px-4 py-5 space-y-5 max-w-lg mx-auto">
-      <h1 className="text-xl font-semibold text-slate-900">Eliminar mi cuenta</h1>
+    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      <h1 className="font-display text-2xl font-black italic tracking-tight text-slate-900">
+        Eliminar mi cuenta
+      </h1>
 
       {/* Warning card */}
-      <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
+      <div className="space-y-2 rounded-2xl border border-red-300 bg-red-50 p-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
           <p className="text-sm font-bold text-red-700">Esta acción es irreversible</p>
@@ -61,7 +63,7 @@ export default async function EliminarCuentaPage() {
       </div>
 
       {/* Info card */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Qué pasa con tus datos</h2>
 
         <div className="space-y-1">
@@ -86,7 +88,7 @@ export default async function EliminarCuentaPage() {
 
       {/* Fix #57: advertencia sobre reservas futuras confirmadas */}
       {futureConfirmedCount > 0 && (
-        <div className="rounded-lg border border-orange-300 bg-orange-50 p-4 flex gap-2 items-start">
+        <div className="flex items-start gap-2 rounded-2xl border border-orange-300 bg-orange-50 p-4">
           <CalendarClock className="h-5 w-5 text-orange-700 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-sm font-semibold text-orange-800">
@@ -105,7 +107,7 @@ export default async function EliminarCuentaPage() {
       )}
 
       {/* Reminder card */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-2 items-start">
+      <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
         <Info className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
         <p className="text-sm text-amber-900">
           ¿Querés conservar una copia? Podés{' '}

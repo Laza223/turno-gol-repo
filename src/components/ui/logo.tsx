@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils'
-import { TurnoGolLogoIcon } from './TurnoGolLogoIcon'
 
 interface LogoProps {
   variant?: 'vertical' | 'horizontal' | 'icon' | 'vector'
@@ -8,25 +7,20 @@ interface LogoProps {
   textClassName?: string
 }
 
-export function Logo({ variant = 'vertical', className, iconClassName, textClassName = "text-slate-900" }: LogoProps) {
-  // Strip background/border/shadow from legacy icon classes to use the SVG without a background box
-  const cleanIconClass = iconClassName?.replace(/\b(bg-|border-|shadow-)\S*/g, '').trim()
-
+export function Logo({ variant = 'horizontal', className, textClassName = "text-slate-900" }: LogoProps) {
   if (variant === 'vector' || variant === 'icon') {
-    return <TurnoGolLogoIcon className={cn("h-9 w-9 shrink-0", cleanIconClass, className)} />
+    return (
+      <span className={cn("font-display text-2xl uppercase italic font-black tracking-tighter", textClassName, className)}>
+        T<span className="text-emerald-500">G</span>
+      </span>
+    )
   }
 
   if (variant === 'horizontal') {
     return (
-      <div className={cn("flex items-center", className)}>
-        {/* Wordmark where the 'O' in Gol is replaced by the minimalist ball icon */}
-        <span className={cn("font-display text-2xl font-bold tracking-tight flex items-center", textClassName)}>
-          Turno
-          <span className="text-emerald-500 flex items-center">
-            G
-            <TurnoGolLogoIcon className={cn("h-[0.7em] w-[0.7em] mx-[0.05em] text-emerald-500", cleanIconClass)} />
-            l
-          </span>
+      <div className={cn("flex items-center gap-2", className)}>
+        <span className={cn("font-display text-2xl uppercase italic font-black tracking-tighter", textClassName)}>
+          Turno<span className="text-emerald-500">Gol</span>
         </span>
       </div>
     )
@@ -34,11 +28,8 @@ export function Logo({ variant = 'vertical', className, iconClassName, textClass
 
   if (variant === 'vertical') {
     return (
-      <div className={cn("flex flex-col items-center justify-center gap-4", className)}>
-        {/* Large icon on top */}
-        <TurnoGolLogoIcon className={cn("h-24 w-24 sm:h-32 sm:w-32 shrink-0", cleanIconClass, textClassName)} />
-        {/* Clean text below */}
-        <span className={cn("font-display text-4xl sm:text-5xl font-bold tracking-tight", textClassName)}>
+      <div className={cn("flex flex-col items-center justify-center gap-2", className)}>
+        <span className={cn("font-display text-4xl sm:text-5xl uppercase italic font-black tracking-tighter", textClassName)}>
           Turno<span className="text-emerald-500">Gol</span>
         </span>
       </div>

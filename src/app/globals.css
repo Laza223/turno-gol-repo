@@ -174,9 +174,8 @@
   box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.9);
 }
 
-.card-premium-interactive {
-  cursor: pointer;
-}
+/* Lift/glow en hover. NO fija cursor: los cards genuinamente clickeables
+   agregan `cursor-pointer`; los KPI display-only conservan el lift sin engañar. */
 .card-premium-interactive:hover {
   transform: translateY(-4px);
   border-color: rgba(16, 185, 129, 0.30);

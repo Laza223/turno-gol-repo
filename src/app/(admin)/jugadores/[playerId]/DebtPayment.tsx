@@ -69,22 +69,22 @@ export default function DebtPayment({ playerId, balance }: Props) {
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="card-premium rounded-xl p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-900">Deudas</h2>
+        <h2 className="text-sm font-semibold text-foreground">Deudas</h2>
         {balance > 0 ? (
-          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:text-red-400">
             Debe {formatARS(balance)}
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
             Sin deuda
           </span>
         )}
       </div>
 
       {balance > 0 && (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-muted-foreground">
           El jugador está bloqueado para reservar online en este complejo hasta saldar la deuda.
         </p>
       )}
@@ -94,15 +94,15 @@ export default function DebtPayment({ playerId, balance }: Props) {
           <button
             type="button"
             onClick={openForm}
-            className="mt-4 h-9 rounded-lg border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+            className="mt-4 h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
           >
             + Registrar pago
           </button>
         ) : (
-          <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
             <div className="flex flex-col gap-3 sm:flex-row">
               <div className="flex-1 space-y-1">
-                <label htmlFor="debt-amount" className="text-xs font-medium text-slate-700">
+                <label htmlFor="debt-amount" className="text-xs font-medium text-foreground">
                   Monto (ARS)
                 </label>
                 <input
@@ -113,18 +113,18 @@ export default function DebtPayment({ playerId, balance }: Props) {
                   step="0.01"
                   value={amountPesos}
                   onChange={(e) => setAmountPesos(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <label htmlFor="debt-method" className="text-xs font-medium text-slate-700">
+                <label htmlFor="debt-method" className="text-xs font-medium text-foreground">
                   Medio de pago
                 </label>
                 <select
                   id="debt-method"
                   value={method}
                   onChange={(e) => setMethod(e.target.value as Method)}
-                  className="h-[38px] w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  className="h-[38px] w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   <option value="cash">Efectivo</option>
                   <option value="transfer">Transferencia</option>
@@ -134,7 +134,7 @@ export default function DebtPayment({ playerId, balance }: Props) {
               </div>
             </div>
             {error && (
-              <p role="alert" className="text-xs text-red-600">
+              <p role="alert" className="text-xs text-red-600 dark:text-red-400">
                 {error}
               </p>
             )}
@@ -151,7 +151,7 @@ export default function DebtPayment({ playerId, balance }: Props) {
                 type="button"
                 disabled={pending}
                 onClick={() => setOpen(false)}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
               >
                 Cancelar
               </button>

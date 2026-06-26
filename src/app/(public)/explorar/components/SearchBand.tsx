@@ -57,7 +57,7 @@ export default function SearchBand({ cities }: { cities: CityCount[] }) {
             hoy?
           </span>
         </h1>
-        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-slate-400">
+        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
           Filtrá por formato, superficie, servicios y precio. Mirá qué hay libre y reservá online en
           segundos.
         </p>

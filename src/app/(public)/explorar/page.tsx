@@ -199,7 +199,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       />
       <SearchBand cities={cities} />
 
-      <div className="sticky top-16 z-20 -mx-4 space-y-2 border-b border-slate-200/80 bg-white/85 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-white/70 sm:px-6 lg:px-8">
+      <div className="sticky top-16 z-20 -mx-4 space-y-2 border-b border-border bg-card/85 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/70 sm:px-6 lg:px-8">
         <QuickFilters />
         <ExplorarToolbar total={total} />
       </div>
@@ -207,7 +207,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       <div className={view === 'map' ? '' : 'lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6'}>
         {view === 'list' && (
           <aside className="hidden lg:block">
-            <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-sm">
               <ExplorarFilters />
             </div>
           </aside>
@@ -244,7 +244,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
                   <div className="mt-10 flex justify-center">
                     <Link
                       href={pageUrl(searchParams, offset + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-7 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md motion-reduce:hover:translate-y-0"
+                      className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md motion-reduce:hover:translate-y-0"
                     >
                       Ver más complejos
                     </Link>

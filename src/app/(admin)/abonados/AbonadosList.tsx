@@ -248,7 +248,7 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
                 type="button"
                 disabled={isPending}
                 onClick={() => void openReactivate()}
-                className="text-xs text-green-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs text-green-700 dark:text-green-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Reactivar
               </button>

@@ -91,7 +91,7 @@ export function AbonadoDialogs({
         description={
           <div className="space-y-2">
             <p>Esta acción es permanente. Se eliminarán todas las reservas futuras desde la fecha elegida.</p>
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+            <p className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
               Las reservas futuras desde esa fecha serán borradas sin posibilidad de recuperación.
             </p>
           </div>
@@ -103,7 +103,7 @@ export function AbonadoDialogs({
         onConfirm={onConfirmCancel}
       >
         <div className="space-y-1">
-          <label htmlFor={`cancel-date-${abonadoId}`} className="text-xs font-medium text-slate-700">
+          <label htmlFor={`cancel-date-${abonadoId}`} className="text-xs font-medium text-foreground">
             Cancelar desde
           </label>
           <input
@@ -112,7 +112,7 @@ export function AbonadoDialogs({
             min={todayART()}
             value={cancelFromDate}
             onChange={(e) => onCancelFromDateChange(e.target.value)}
-            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-10 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
       </ConfirmDialog>
@@ -132,17 +132,17 @@ function ReactivatePreview({
   error: string | null
 }) {
   if (loading) {
-    return <p className="text-sm text-slate-500">Cargando fechas disponibles…</p>
+    return <p className="text-sm text-muted-foreground">Cargando fechas disponibles…</p>
   }
   if (error) {
     return (
-      <p className="text-sm text-red-600" role="alert">
+      <p className="text-sm text-red-600 dark:text-red-400" role="alert">
         No se pudo cargar la vista previa: {error}
       </p>
     )
   }
   if (dates.length === 0) {
-    return <p className="text-sm text-slate-500">No se encontraron fechas futuras para generar.</p>
+    return <p className="text-sm text-muted-foreground">No se encontraron fechas futuras para generar.</p>
   }
 
   const available = dates.filter((d) => !conflicts.includes(d))
@@ -154,7 +154,7 @@ function ReactivatePreview({
         Se generarán <strong>{available.length}</strong> turno{available.length !== 1 ? 's' : ''}{' '}
         futuro{available.length !== 1 ? 's' : ''}
         {conflicts.length > 0 && (
-          <span className="text-amber-700">
+          <span className="text-amber-700 dark:text-amber-300">
             {' '}
             ({conflicts.length === 1
               ? '1 fecha ya ocupada se va a saltar'
@@ -168,11 +168,11 @@ function ReactivatePreview({
           <li key={d} className="flex items-center justify-between text-xs">
             <span>{d}</span>
             {conflictSet.has(d) ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 ring-1 ring-inset ring-amber-600/20">
+              <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
                 Ocupado
               </span>
             ) : (
-              <span className="rounded-full bg-green-50 px-2 py-0.5 text-green-700 ring-1 ring-inset ring-green-600/20">
+              <span className="rounded-full bg-green-50 dark:bg-green-500/10 px-2 py-0.5 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">
                 Libre
               </span>
             )}

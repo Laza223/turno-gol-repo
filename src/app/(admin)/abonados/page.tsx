@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Users } from 'lucide-react'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -36,23 +38,26 @@ export default async function AbonadosPage({
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Abonados</h1>
-        <a
-          href="/abonados/nuevo"
-          className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-        >
-          + Nuevo Abonado
-        </a>
-      </div>
+      <PageHeader
+        title="Abonados"
+        icon={<Users className="h-6 w-6" aria-hidden="true" />}
+        actions={
+          <a
+            href="/abonados/nuevo"
+            className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+          >
+            + Nuevo Abonado
+          </a>
+        }
+      />
 
       <div className="flex gap-2 flex-wrap">
         <Link
           href="/abonados"
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
             !statusFilter
-              ? 'bg-slate-900 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-foreground text-background shadow-sm'
+              : 'bg-muted text-foreground hover:bg-accent'
           }`}
         >
           Todos
@@ -63,8 +68,8 @@ export default async function AbonadosPage({
             href={`/abonados?status=${s}`}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               statusFilter === s
-                ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-foreground text-background shadow-sm'
+                : 'bg-muted text-foreground hover:bg-accent'
             }`}
           >
             {STATUS_LABELS[s]}

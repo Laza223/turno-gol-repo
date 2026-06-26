@@ -173,6 +173,21 @@
   }
 }
 
+/* ─── Leaflet dark-mode overrides ────────────────────────────────────────
+   leaflet/dist/leaflet.css hardcodes white popup backgrounds. On always-dark
+   /explorar we override them via the .dark wrapper. */
+.dark .leaflet-popup-content-wrapper {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+.dark .leaflet-popup-tip {
+  background: hsl(var(--card));
+}
+.dark .leaflet-popup-content-wrapper a {
+  color: hsl(var(--primary));
+}
+
 /* ─── Comprobante de reserva imprimible ───────────────────────────────────
    "Descargar comprobante" usa window.print(): el comprobante (#booking-receipt)
    vive oculto en la página de éxito y es lo ÚNICO visible al imprimir (el

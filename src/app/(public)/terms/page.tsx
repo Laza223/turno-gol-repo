@@ -10,14 +10,14 @@ export default function TermsPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-10 space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Términos y Condiciones
         </h1>
-        <p className="text-sm text-slate-500">Última actualización: 25 de mayo de 2026.</p>
+        <p className="text-sm text-muted-foreground">Última actualización: 25 de mayo de 2026.</p>
       </header>
 
-      <section className="space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">1. Objeto del servicio</h2>
+      <section className="space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">1. Objeto del servicio</h2>
         <p>
           TurnoGol es una plataforma SaaS de gestión de complejos deportivos de fútbol en Argentina.
           Funcionamos como <strong>intermediario tecnológico</strong> entre los complejos (canchas)
@@ -36,8 +36,8 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">2. Responsabilidad del complejo</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">2. Responsabilidad del complejo</h2>
         <p>El complejo deportivo, en su calidad de prestador del servicio físico, es responsable de:</p>
         <ul className="list-disc space-y-1 pl-6">
           <li>
@@ -63,8 +63,8 @@ export default function TermsPage() {
         </ul>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">3. Declaración jurada de mayoría de edad</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">3. Declaración jurada de mayoría de edad</h2>
         <p>
           Al crear una cuenta en TurnoGol como jugador, declarás bajo juramento ser mayor de 18
           años. Esta declaración se registra en tu perfil junto con la versión vigente de los
@@ -74,8 +74,8 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">4. Pagos</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">4. Pagos</h2>
         <p>
           Cuando reservás online, la <strong>seña</strong> se procesa a través de MercadoPago y va
           directamente a la cuenta de MercadoPago del complejo (conectada vía OAuth). TurnoGol{' '}
@@ -93,8 +93,8 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">5. Cancelaciones</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">5. Cancelaciones</h2>
         <p>
           La política de cancelación y reembolso de cada reserva la define{' '}
           <strong>el complejo</strong>, no TurnoGol. Generalmente existe una ventana mínima de
@@ -108,8 +108,8 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">6. Suscripciones SaaS (clientes B2B)</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">6. Suscripciones SaaS (clientes B2B)</h2>
         <p>
           TurnoGol ofrece tres planes de suscripción mensual para complejos, según la cantidad de
           canchas:
@@ -138,8 +138,8 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">7. Suspensión y baja de cuenta</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">7. Suspensión y baja de cuenta</h2>
         <p>
           TurnoGol puede suspender o dar de baja una cuenta de jugador en los siguientes casos:
         </p>
@@ -157,15 +157,15 @@ export default function TermsPage() {
         </ul>
         <p>
           Si considerás que una suspensión fue incorrecta, podés apelarla escribiendo a{' '}
-          <a className="text-emerald-700 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
             privacidad@turnogol.app
           </a>
           .
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">8. Limitación de responsabilidad</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">8. Limitación de responsabilidad</h2>
         <p>
           Sin perjuicio del derecho del consumidor aplicable conforme a la ley argentina, TurnoGol{' '}
           <strong>no responde por</strong>:
@@ -195,8 +195,8 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">9. Ley aplicable y jurisdicción</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">9. Ley aplicable y jurisdicción</h2>
         <p>
           Estos Términos se rigen por las leyes de la <strong>República Argentina</strong>.
           Cualquier controversia que no pueda resolverse de buena fe será sometida a los tribunales
@@ -206,8 +206,8 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">10. Cambios en estos términos</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">10. Cambios en estos términos</h2>
         <p>
           Si modificamos los Términos y Condiciones te lo informaremos por email (al menos 30 días
           antes para cambios sustanciales). La nueva versión tiene efecto a partir de la fecha de
@@ -217,11 +217,11 @@ export default function TermsPage() {
         </p>
         <p>
           La versión vigente está siempre disponible en{' '}
-          <Link className="text-emerald-700 hover:underline" href="/terms">
+          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/terms">
             turnogol.app/terms
           </Link>
           . Para consultas, escribinos a{' '}
-          <a className="text-emerald-700 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
             privacidad@turnogol.app
           </a>
           .

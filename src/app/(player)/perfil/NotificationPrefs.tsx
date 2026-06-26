@@ -66,18 +66,18 @@ export default function NotificationPrefs({
         return (
           <div
             key={key}
-            className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-emerald-400/40"
+            className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-emerald-400/40"
           >
             <span
               className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                on ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                on ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-muted text-muted-foreground'
               }`}
             >
               <Icon className="h-4 w-4" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-900">{label}</p>
-              <p className="mt-0.5 text-xs leading-5 text-slate-500">{description}</p>
+              <p className="text-sm font-semibold text-foreground">{label}</p>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p>
             </div>
             <button
               type="button"
@@ -86,7 +86,7 @@ export default function NotificationPrefs({
               aria-label={label}
               onClick={() => toggle(key)}
               className={`relative mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
-                on ? 'bg-emerald-600' : 'bg-slate-300'
+                on ? 'bg-emerald-600' : 'bg-input'
               }`}
             >
               <span
@@ -101,7 +101,7 @@ export default function NotificationPrefs({
       })}
 
       {error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-300">
           {error}
         </p>
       )}

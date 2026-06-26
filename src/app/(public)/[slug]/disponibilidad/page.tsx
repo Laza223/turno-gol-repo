@@ -33,10 +33,10 @@ export default async function DisponibilidadPage({ params }: Props) {
           { name: 'Disponibilidad', url: absoluteUrl(`/${tenant.slug}/disponibilidad`) },
         ])}
       />
-      <Link href={`/${tenant.slug}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+      <Link href={`/${tenant.slug}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
         <ChevronLeft className="h-4 w-4" aria-hidden /> {tenant.name}
       </Link>
-      <h1 className="text-xl font-bold tracking-tight text-slate-900">Disponibilidad semanal</h1>
+      <h1 className="text-xl font-bold tracking-tight text-foreground">Disponibilidad semanal</h1>
       <WeeklyAvailability slug={tenant.slug} week={week} />
     </div>
   )

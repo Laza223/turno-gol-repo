@@ -124,7 +124,7 @@ export default async function PerfilPage({
       </PlayerHeroBand>
 
       {/* Tabs como segmented control premium (mismo patrón que /mis-reservas) */}
-      <div className="flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+      <div className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-sm">
         {TABS.map((t) => (
           <a
             key={t.key}
@@ -133,7 +133,7 @@ export default async function PerfilPage({
             className={`flex-1 rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
               tab === t.key
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {t.label}
@@ -155,9 +155,9 @@ export default async function PerfilPage({
 
           {/* Legal notice */}
           {player.agreedToTermsAt && (
-            <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-              <User className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-              <p className="text-xs text-slate-500">
+            <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
                 Términos aceptados el {formatDate(player.agreedToTermsAt)}
                 {player.termsVersion ? ` (versión ${player.termsVersion})` : ''}.
               </p>

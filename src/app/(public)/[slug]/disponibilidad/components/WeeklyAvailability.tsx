@@ -32,7 +32,7 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
               onClick={() => setActive(i)}
               aria-pressed={isActive}
               className={`flex min-w-[68px] snap-start flex-col items-center rounded-xl border px-3 py-2 text-xs transition-colors ${
-                isActive ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                isActive ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-border bg-card text-muted-foreground hover:bg-accent'
               }`}
             >
               <span className="font-semibold capitalize">{dow}</span>
@@ -43,26 +43,26 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
       </div>
 
       {day.courts.length === 0 ? (
-        <p className="py-10 text-center text-sm text-slate-500">Sin canchas disponibles este día.</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">Sin canchas disponibles este día.</p>
       ) : (
         <div className="space-y-5">
           {day.courts.map((court) => {
             const free = court.slots.filter((s) => s.status === 'free')
             return (
-              <div key={court.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-sm font-semibold text-slate-900">{court.name}</h3>
+              <div key={court.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold text-foreground">{court.name}</h3>
                 {free.length === 0 ? (
-                  <p className="text-xs text-slate-400">Sin turnos libres.</p>
+                  <p className="text-xs text-muted-foreground">Sin turnos libres.</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {free.map((s) => (
                       <Link
                         key={s.time}
                         href={`/${slug}/reservar?court=${court.id}&date=${day.date}&time=${s.time}&dur=${s.duration}`}
-                        className="flex flex-col items-center rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 hover:bg-green-100 active:scale-[0.98] transition-colors"
+                        className="flex flex-col items-center rounded-lg bg-green-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-emerald-300 ring-1 ring-inset ring-green-600/20 dark:ring-emerald-400/20 hover:bg-green-100 dark:hover:bg-emerald-500/15 active:scale-[0.98] transition-colors"
                       >
                         <span className="tabular-nums">{s.time}</span>
-                        {s.price && <span className="text-[10px] text-green-600 tabular-nums">{formatARS(s.price)}</span>}
+                        {s.price && <span className="text-[10px] text-green-600 dark:text-emerald-400 tabular-nums">{formatARS(s.price)}</span>}
                       </Link>
                     ))}
                   </div>

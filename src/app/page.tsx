@@ -103,8 +103,8 @@ function Hero({ cities }: { cities: CityCount[] }) {
   return (
     <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 py-[60px] pb-[84px]">
       {/* Background Image */}
-      <div 
-        aria-hidden 
+      <div
+        aria-hidden
         className="pointer-events-none absolute inset-0 z-0 opacity-30"
         style={{
           backgroundImage: "url('/bg-hero-2.png')",
@@ -358,42 +358,40 @@ function BookingCardMockup() {
                 style={
                   state === 'selected'
                     ? {
-                        background: 'linear-gradient(160deg, #10b981, #059669)',
-                        border: '1px solid #34d399',
-                        boxShadow:
-                          '0 0 22px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.3)',
-                      }
+                      background: 'linear-gradient(160deg, #10b981, #059669)',
+                      border: '1px solid #34d399',
+                      boxShadow:
+                        '0 0 22px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.3)',
+                    }
                     : state === 'free'
                       ? {
-                          background: 'rgba(16,185,129,.08)',
-                          border: '1px solid rgba(16,185,129,.32)',
-                        }
+                        background: 'rgba(16,185,129,.08)',
+                        border: '1px solid rgba(16,185,129,.32)',
+                      }
                       : {
-                          background: 'rgba(255,255,255,.03)',
-                          border: '1px solid rgba(255,255,255,.06)',
-                          opacity: '0.55',
-                        }
+                        background: 'rgba(255,255,255,.03)',
+                        border: '1px solid rgba(255,255,255,.06)',
+                        opacity: '0.55',
+                      }
                 }
               >
                 <span
-                  className={`font-logo font-bold text-[15px] ${
-                    state === 'selected'
-                      ? 'text-white'
-                      : state === 'free'
-                        ? 'text-[#6ee7b7]'
-                        : 'text-slate-500 line-through'
-                  }`}
+                  className={`font-logo font-bold text-[15px] ${state === 'selected'
+                    ? 'text-white'
+                    : state === 'free'
+                      ? 'text-[#6ee7b7]'
+                      : 'text-slate-500 line-through'
+                    }`}
                 >
                   {time}
                 </span>
                 <span
-                  className={`text-[10px] uppercase tracking-[.04em] ${
-                    state === 'selected'
-                      ? 'text-[#d1fae5]'
-                      : state === 'free'
-                        ? 'text-emerald-400'
-                        : 'text-slate-600'
-                  }`}
+                  className={`text-[10px] uppercase tracking-[.04em] ${state === 'selected'
+                    ? 'text-[#d1fae5]'
+                    : state === 'free'
+                      ? 'text-emerald-400'
+                      : 'text-slate-600'
+                    }`}
                 >
                   {state === 'selected' ? 'Elegido' : state === 'free' ? 'Libre' : 'Ocupado'}
                 </span>
@@ -524,8 +522,8 @@ function HowItWorks() {
   return (
     <section className="relative z-10 py-20 sm:py-24 overflow-hidden">
       {/* Background Image */}
-      <div 
-        aria-hidden 
+      <div
+        aria-hidden
         className="pointer-events-none absolute inset-0 z-[-1] opacity-[0.12] mix-blend-luminosity"
         style={{
           backgroundImage: "url('/bg-how-it-works.png')",
@@ -669,8 +667,8 @@ function OwnerBanner() {
             }}
           >
             {/* Background Image */}
-            <div 
-              aria-hidden 
+            <div
+              aria-hidden
               className="pointer-events-none absolute inset-0 z-[-2] opacity-25"
               style={{
                 backgroundImage: "url('/bg-owner.png')",

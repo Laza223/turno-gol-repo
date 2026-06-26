@@ -39,8 +39,8 @@ export default function TenantCard({
   )
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 border-t-2 border-t-emerald-500 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0">
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0">
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
         {allPhotos.length > 0 ? (
           <TenantCardCarousel photos={allPhotos} name={tenant.name} href={`/${tenant.slug}`} />
         ) : (
@@ -80,7 +80,7 @@ export default function TenantCard({
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-semibold text-slate-900 transition-colors group-hover:text-emerald-700">
+          <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
             <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0 focus-visible:outline-none">
               {tenant.name}
             </Link>
@@ -92,7 +92,7 @@ export default function TenantCard({
           )}
         </div>
 
-        <p className="flex items-center gap-1.5 text-sm text-slate-500">
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
           <span className="truncate">
             {tenant.city}, {tenant.province}
@@ -107,13 +107,13 @@ export default function TenantCard({
             {formats.map((f) => (
               <span
                 key={`f-${f}`}
-                className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15"
+                className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
               >
                 {formatLabel(f)}
               </span>
             ))}
             {surfaces.map((s) => (
-              <span key={`s-${s}`} className="text-xs text-slate-500">
+              <span key={`s-${s}`} className="text-xs text-muted-foreground">
                 · {surfaceLabel(s)}
               </span>
             ))}
@@ -141,7 +141,7 @@ export default function TenantCard({
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           {amenities.length > 0 ? (
-            <ul className="flex flex-wrap items-center gap-2 text-slate-400">
+            <ul className="flex flex-wrap items-center gap-2 text-muted-foreground">
               {amenities.map((key) => {
                 const { label, Icon } = AMENITIES[key]
                 return (
@@ -157,11 +157,11 @@ export default function TenantCard({
           )}
           {fromPrice && (
             <p className="flex items-baseline gap-1 text-right">
-              <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-slate-400">desde</span>
-              <span className="font-display text-xl font-bold text-emerald-700 tabular-nums">
+              <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">desde</span>
+              <span className="font-display text-xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
                 {fromPrice}
               </span>
-              <span className="text-xs text-slate-400">/turno</span>
+              <span className="text-xs text-muted-foreground">/turno</span>
             </p>
           )}
         </div>
@@ -179,20 +179,20 @@ function TenantCardCompact({
 }) {
   const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
   return (
-    <article className="group relative flex gap-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
-      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+    <article className="group relative flex gap-3 rounded-xl border border-border bg-card p-2.5 shadow-sm transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
+      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
         {tenant.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} loading="lazy" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-lg font-bold text-emerald-600/40">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-muted text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:text-emerald-300">
             {tenant.name.slice(0, 2).toUpperCase()}
           </div>
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="truncate text-sm font-semibold text-slate-900">
+          <h3 className="truncate text-sm font-semibold text-foreground">
             <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0">
               {tenant.name}
             </Link>
@@ -203,11 +203,11 @@ function TenantCardCompact({
             </span>
           )}
         </div>
-        <p className="truncate text-xs text-slate-500">{tenant.city}, {tenant.province}</p>
+        <p className="truncate text-xs text-muted-foreground">{tenant.city}, {tenant.province}</p>
         {fromPrice && (
           <p className="mt-auto flex items-baseline gap-1">
-            <span className="font-display text-base font-bold text-emerald-700 tabular-nums">{fromPrice}</span>
-            <span className="text-xs text-slate-400">/turno</span>
+            <span className="font-display text-base font-bold text-emerald-700 tabular-nums dark:text-emerald-400">{fromPrice}</span>
+            <span className="text-xs text-muted-foreground">/turno</span>
           </p>
         )}
       </div>

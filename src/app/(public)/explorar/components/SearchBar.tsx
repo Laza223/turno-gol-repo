@@ -89,20 +89,18 @@ export default function SearchBar({ cities }: Props) {
   }
 
   const fieldClass =
-    'h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
-  const labelClass = 'mb-1.5 block font-logo text-[11px] font-bold uppercase tracking-[.05em] text-slate-500'
+  const labelClass = 'mb-1.5 block font-logo text-[11px] font-bold uppercase tracking-[.05em] text-muted-foreground'
 
   return (
     <form
       onSubmit={onSubmit}
       aria-label="Buscar canchas"
-      className="rounded-2xl p-3 sm:p-4"
+      className="rounded-2xl border border-border bg-card/95 p-3 sm:p-4"
       style={{
-        background: 'linear-gradient(180deg, rgba(255,255,255,.98), rgba(241,245,249,.96))',
-        border: '1px solid rgba(255,255,255,.85)',
         boxShadow:
-          '0 0 60px rgba(16,185,129,.22), 0 30px 60px -34px rgba(0,0,0,.7), inset 0 1px 0 #ffffff',
+          '0 0 60px rgba(16,185,129,.22), 0 30px 60px -34px rgba(0,0,0,.7)',
       }}
     >
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-end">
@@ -141,7 +139,7 @@ export default function SearchBar({ cities }: Props) {
             inputClassName={fieldClass}
             leadingIcon={
               <MapPin
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
             }

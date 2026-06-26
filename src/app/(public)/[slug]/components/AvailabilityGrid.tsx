@@ -77,7 +77,7 @@ function SlotCell({
 }) {
   if (slot.status === 'past') {
     return (
-      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-400">
+      <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
         —
       </span>
     )
@@ -101,7 +101,7 @@ function SlotCell({
   // ring 500/600 sólido como indicador no-textual (≥3:1 vs blanco).
   if (slot.status === 'occupied') {
     return (
-      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500">
+      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground ring-1 ring-inset ring-border">
         <span>Ocupado</span>
         {priceLine}
       </span>
@@ -110,7 +110,7 @@ function SlotCell({
 
   if (slot.status === 'fixed') {
     return (
-      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600">
+      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-400/20">
         <span>Turno fijo</span>
         {priceLine}
       </span>
@@ -119,7 +119,7 @@ function SlotCell({
 
   if (slot.status === 'blocked') {
     return (
-      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-inset ring-red-600">
+      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-inset ring-red-600 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20">
         <span>Bloqueado</span>
         {priceLine}
       </span>
@@ -131,7 +131,7 @@ function SlotCell({
       <a
         href={`tel:${phone}`}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600"
+        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
       >
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" aria-hidden />
@@ -145,7 +145,7 @@ function SlotCell({
   return (
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
-      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100"
+      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
     >
       <span>Reservar</span>
       {priceLine}
@@ -250,19 +250,19 @@ export default function AvailabilityGrid({ tenant }: Props) {
 
   return (
     <section
-      className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4"
+      className="bg-card rounded-2xl border border-border shadow-sm p-4 sm:p-6 space-y-4"
       aria-label="Grilla de disponibilidad"
     >
       {/* Date navigation */}
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">Disponibilidad</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Disponibilidad</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => date && loadDate(addDays(date, -1))}
             disabled={!date || !today || date <= today || loading}
             aria-label="Día anterior"
-            className="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
+            className="h-8 w-8 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
@@ -289,8 +289,8 @@ export default function AvailabilityGrid({ tenant }: Props) {
               }}
               className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
             />
-            <span className="flex h-8 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-slate-200 px-2 text-sm font-medium text-foreground tabular-nums peer-hover:bg-slate-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 transition-colors duration-150">
-              <Calendar className="h-3.5 w-3.5 text-slate-500" aria-hidden />
+            <span className="flex h-8 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-border px-2 text-sm font-medium text-foreground tabular-nums peer-hover:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 transition-colors duration-150">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
               {date ? formatDateES(date) : ' '}
             </span>
           </div>
@@ -299,7 +299,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
             onClick={() => date && loadDate(addDays(date, 1))}
             disabled={!date || !maxDate || date >= maxDate || loading}
             aria-label="Día siguiente"
-            className="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
+            className="h-8 w-8 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
@@ -313,7 +313,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
       {!loading && error && (
         <p
           role="alert"
-          className="text-sm text-red-600 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2"
+          className="text-sm text-red-600 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20"
         >
           No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e
           intentá de nuevo.
@@ -341,7 +341,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
             className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
               effectiveFilter === 'all'
                 ? 'border-emerald-700 bg-emerald-700 text-white'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                : 'border-border bg-card text-muted-foreground hover:bg-accent'
             }`}
           >
             Todas
@@ -355,7 +355,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
               className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
                 effectiveFilter === court.id
                   ? 'border-emerald-700 bg-emerald-700 text-white'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  : 'border-border bg-card text-muted-foreground hover:bg-accent'
               }`}
             >
               {court.name}
@@ -379,7 +379,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
               <tr>
                 <th
                   scope="col"
-                  className="text-xs font-medium text-slate-500 uppercase tracking-wide text-left py-2 pr-4 w-16"
+                  className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-left py-2 pr-4 w-16"
                 >
                   Hora
                 </th>
@@ -387,16 +387,16 @@ export default function AvailabilityGrid({ tenant }: Props) {
                   <th
                     key={court.id}
                     scope="col"
-                    className="text-xs font-medium text-slate-500 uppercase tracking-wide text-center py-2 px-2 min-w-[110px]"
+                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-center py-2 px-2 min-w-[110px]"
                   >
                     {court.name}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {timeRows.map((row) => (
-                <tr key={row.time} className="hover:bg-slate-50">
+                <tr key={row.time} className="hover:bg-accent">
                   <td className="py-1.5 pr-4 text-xs text-muted-foreground tabular-nums align-middle">
                     {row.time}
                   </td>
@@ -412,7 +412,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
                           phone={tenant.phone}
                         />
                       ) : (
-                        <span className="text-slate-200 text-xs">—</span>
+                        <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </td>
                   ))}
@@ -425,25 +425,25 @@ export default function AvailabilityGrid({ tenant }: Props) {
 
       {/* Legend */}
       {!loading && availability && !noCourts && (
-        <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-emerald-50 ring-1 ring-inset ring-emerald-600" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-emerald-50 ring-1 ring-inset ring-emerald-600 dark:bg-emerald-500/10 dark:ring-emerald-400/20" />
             Libre
           </span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-slate-100 ring-1 ring-inset ring-slate-500" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-muted ring-1 ring-inset ring-border" />
             Ocupado
           </span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-blue-50 ring-1 ring-inset ring-blue-600" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-blue-50 ring-1 ring-inset ring-blue-600 dark:bg-blue-500/10 dark:ring-blue-400/20" />
             Turno fijo
           </span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-red-50 ring-1 ring-inset ring-red-600" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-red-50 ring-1 ring-inset ring-red-600 dark:bg-red-500/10 dark:ring-red-400/20" />
             Bloqueado
           </span>
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-slate-100" />
+            <span className="inline-block w-3 h-3 rounded-sm bg-muted" />
             Pasado
           </span>
         </div>

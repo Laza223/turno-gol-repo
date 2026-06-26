@@ -55,7 +55,7 @@ export default function ExplorarMap({
 
   if (located.length === 0) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white text-slate-400">
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card text-muted-foreground">
         <MapPin className="h-10 w-10" aria-hidden />
         <p className="max-w-xs text-center text-sm">
           Los complejos de esta búsqueda todavía no tienen ubicación cargada en el mapa.
@@ -71,7 +71,7 @@ export default function ExplorarMap({
     // isolate: los panes internos de Leaflet usan z-index 400+; sin un stacking
     // context propio taparían cualquier dropdown de la página (p. ej. el combobox
     // de localidad, que el <select> nativo anterior no sufría por ser popup del OS).
-    <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+    <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-sm">
       <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -82,19 +82,19 @@ export default function ExplorarMap({
           <Marker key={t.id} position={[t.latitude, t.longitude]} icon={priceIcon(t, t.id === activeId)}>
             <Popup>
               <div className="w-52">
-                <p className="text-sm font-semibold text-slate-900">{t.name}</p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {t.address ? `${t.address} · ` : ''}
                   {t.city}
                 </p>
                 <div className="mt-2 flex items-center justify-between">
                   {t.reviewCount > 0 ? (
-                    <RatingStars rating={t.avgRating} count={t.reviewCount} className="text-slate-700" />
+                    <RatingStars rating={t.avgRating} count={t.reviewCount} className="text-muted-foreground" />
                   ) : (
-                    <span className="text-xs text-slate-400">Sin reseñas</span>
+                    <span className="text-xs text-muted-foreground">Sin reseñas</span>
                   )}
                   {t.fromPriceCents != null && (
-                    <span className="text-sm font-bold text-slate-900 tabular-nums">
+                    <span className="text-sm font-bold text-foreground tabular-nums">
                       {formatArs(t.fromPriceCents)}
                     </span>
                   )}

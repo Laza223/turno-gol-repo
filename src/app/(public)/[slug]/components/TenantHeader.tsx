@@ -39,7 +39,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
   const amenities = activeAmenities(tenant.amenities)
 
   const chipClass =
-    'inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md motion-reduce:hover:translate-y-0'
+    'inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0'
 
   return (
     <div className="space-y-4">
@@ -52,16 +52,16 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
               width={64}
               height={64}
               sizes="64px"
-              className="h-16 w-16 flex-shrink-0 rounded-xl border border-slate-200 object-cover shadow-sm"
+              className="h-16 w-16 flex-shrink-0 rounded-xl border border-border object-cover shadow-sm"
             />
           )}
           <div className="min-w-0 space-y-1.5">
-            <h1 className="font-display text-[26px] font-black italic tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="font-display text-[26px] font-black italic tracking-tight text-foreground sm:text-3xl">
               {tenant.name}
             </h1>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               {reviewCount > 0 && (
-                <RatingStars rating={avgRating} count={reviewCount} className="text-slate-700" />
+                <RatingStars rating={avgRating} count={reviewCount} className="text-foreground" />
               )}
             </div>
             {tenant.description && (
@@ -79,7 +79,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
       </div>
 
       <div className="space-y-3">
-        <p className="flex items-center gap-1.5 text-sm text-slate-500">
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <MapPin className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
           {tenant.address}, {tenant.city}
         </p>
@@ -97,7 +97,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 text-sm font-medium text-green-700 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-green-400 hover:shadow-md motion-reduce:hover:translate-y-0"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 text-sm font-medium text-green-700 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-green-400 hover:shadow-md motion-reduce:hover:translate-y-0 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300"
             >
               <MessageCircle className="h-4 w-4 flex-shrink-0" aria-hidden />
               WhatsApp
@@ -118,7 +118,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
             return (
               <li
                 key={key}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm"
               >
                 <Icon className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
                 {label}
@@ -128,8 +128,8 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
         </ul>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm">
-        <h2 className="mb-3.5 font-logo text-[12px] font-bold uppercase tracking-[.08em] text-slate-500">
+      <div className="rounded-2xl border border-border bg-muted/40 p-5 shadow-sm">
+        <h2 className="mb-3.5 font-logo text-[12px] font-bold uppercase tracking-[.08em] text-muted-foreground">
           Horarios
         </h2>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
@@ -138,8 +138,8 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
             if (!hours) return null
             return (
               <div key={day}>
-                <div className="text-xs font-semibold text-slate-700">{DAY_LABELS[day]}</div>
-                <div className="text-xs tabular-nums text-slate-500">
+                <div className="text-xs font-semibold text-foreground">{DAY_LABELS[day]}</div>
+                <div className="text-xs tabular-nums text-muted-foreground">
                   {hours.closed ? 'Cerrado' : `${hours.open} – ${hours.close}`}
                 </div>
               </div>

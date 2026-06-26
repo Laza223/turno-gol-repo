@@ -39,11 +39,11 @@ export function ProfileForm({ defaultValues }: Props) {
     <form
       action={formAction}
       onSubmit={() => setDidSubmit(true)}
-      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm"
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label htmlFor="first_name" className="text-sm font-medium text-slate-700">
+          <label htmlFor="first_name" className="text-sm font-medium text-foreground">
             Nombre
           </label>
           <input
@@ -53,11 +53,11 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.firstName}
             autoComplete="given-name"
             required
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="last_name" className="text-sm font-medium text-slate-700">
+          <label htmlFor="last_name" className="text-sm font-medium text-foreground">
             Apellido
           </label>
           <input
@@ -67,13 +67,13 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.lastName}
             autoComplete="family-name"
             required
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
       </div>
 
       <div className="space-y-1">
-        <label htmlFor="phone" className="text-sm font-medium text-slate-700">
+        <label htmlFor="phone" className="text-sm font-medium text-foreground">
           Teléfono
         </label>
         <input
@@ -83,12 +83,12 @@ export function ProfileForm({ defaultValues }: Props) {
           inputMode="tel"
           defaultValue={defaultValues.phone}
           autoComplete="tel"
-          className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
+          className="w-full h-11 px-3 border border-border bg-background rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
 
       <div className="space-y-1">
-        <label htmlFor="preferred_area" className="text-sm font-medium text-slate-700">
+        <label htmlFor="preferred_area" className="text-sm font-medium text-foreground">
           Zona preferida
         </label>
         <input
@@ -97,27 +97,27 @@ export function ProfileForm({ defaultValues }: Props) {
           type="text"
           defaultValue={defaultValues.preferredArea}
           placeholder="Ej: Palermo, Villa Crespo..."
-          className="w-full h-11 px-3 border border-slate-200 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
+          className="w-full h-11 px-3 border border-border bg-background rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-slate-700">Email</label>
-        <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-sm text-slate-500">
+        <label className="text-sm font-medium text-foreground">Email</label>
+        <div className="flex h-11 items-center rounded-xl border border-border bg-muted/40 px-3.5 text-sm text-muted-foreground">
           {defaultValues.email}
         </div>
-        <p className="text-xs text-slate-400">El email no puede modificarse.</p>
+        <p className="text-xs text-muted-foreground">El email no puede modificarse.</p>
       </div>
 
       <SubmitButton />
 
       {!state.success && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-300">
           {state.error}
         </p>
       )}
       {didSubmit && state.success && (
-        <p role="status" className="text-xs text-emerald-700">
+        <p role="status" className="text-xs text-emerald-700 dark:text-emerald-400">
           Perfil actualizado
         </p>
       )}

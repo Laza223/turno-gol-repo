@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
-import { ChevronRight, Download, Trash2, User } from 'lucide-react'
+import { ChevronRight, Download, Palette, Trash2, User } from 'lucide-react'
 import type { Metadata } from 'next'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
@@ -9,6 +9,7 @@ import { players } from '@/shared/db/schema'
 import { buildMetadata } from '@/lib/seo/metadata'
 import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { DataExportButton } from './DataExportButton'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
@@ -45,31 +46,47 @@ export default async function ConfiguracionPage() {
       {/* Card 0: Mi perfil */}
       <Link
         href="/perfil"
-        className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
+        className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
             <User className="h-5 w-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-display text-base font-bold tracking-tight text-slate-900">Mi perfil</h2>
-            <p className="text-sm text-slate-600">Editá tu nombre, teléfono y zona preferida.</p>
+            <h2 className="font-display text-base font-bold tracking-tight text-foreground">Mi perfil</h2>
+            <p className="text-sm text-muted-foreground">Editá tu nombre, teléfono y zona preferida.</p>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" aria-hidden />
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" aria-hidden />
       </Link>
 
-      {/* Card 1: Tus datos */}
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* Card Apariencia */}
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-600/15">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
+            <Palette className="h-5 w-5" aria-hidden />
+          </span>
+          <h2 className="font-display text-base font-bold tracking-tight text-foreground">
+            Apariencia
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Elegí el tema de la aplicación: seguí la preferencia de tu dispositivo, o forzá claro u oscuro.
+        </p>
+        <ThemeToggle />
+      </div>
+
+      {/* Card 1: Tus datos */}
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-600/15 dark:bg-sky-500/10 dark:text-sky-300">
             <Download className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className="font-display text-base font-bold tracking-tight text-slate-900">
+          <h2 className="font-display text-base font-bold tracking-tight text-foreground">
             Tus datos personales
           </h2>
         </div>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Descargá una copia de todos tus datos guardados en TurnoGol (perfil, reservas, pagos,
           complejos con los que jugaste). Tu derecho de acceso según la Ley 25.326 (ARCO).
         </p>
@@ -77,22 +94,22 @@ export default async function ConfiguracionPage() {
       </div>
 
       {/* Card 2: Eliminar cuenta */}
-      <div className="space-y-3 rounded-2xl border border-red-200 bg-red-50 p-5">
+      <div className="space-y-3 rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-400/20 dark:bg-red-500/10">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 ring-1 ring-inset ring-red-600/15">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 ring-1 ring-inset ring-red-600/15 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20">
             <Trash2 className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className="font-display text-base font-bold tracking-tight text-red-900">
+          <h2 className="font-display text-base font-bold tracking-tight text-red-900 dark:text-red-300">
             Eliminar mi cuenta
           </h2>
         </div>
-        <p className="text-sm text-red-800">
+        <p className="text-sm text-red-800 dark:text-red-200">
           Eliminá permanentemente tu cuenta. Tu perfil se anonimiza, pero el historial financiero
           de los complejos se conserva por requisitos legales. Acción irreversible.
         </p>
         <Link
           href="/eliminar-cuenta"
-          className="inline-flex h-11 items-center justify-center rounded-xl border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 active:scale-[0.98]"
+          className="inline-flex h-11 items-center justify-center rounded-xl border border-red-300 bg-card px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 active:scale-[0.98] dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
         >
           Iniciar eliminación
         </Link>

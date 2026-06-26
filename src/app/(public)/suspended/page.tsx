@@ -10,15 +10,15 @@ export const metadata: Metadata = {
 export default function SuspendedPage() {
   return (
     <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50">
-        <PauseCircle className="h-8 w-8 text-amber-600" aria-hidden />
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50 dark:bg-amber-500/10 dark:ring-amber-400/20">
+        <PauseCircle className="h-8 w-8 text-amber-600 dark:text-amber-300" aria-hidden />
       </div>
 
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">
         Tu cuenta está temporalmente suspendida
       </h1>
 
-      <p className="mt-3 text-sm leading-relaxed text-slate-600">
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         El acceso al panel de tu complejo está pausado por el momento. Tus datos están a salvo y no
         se perdió nada. En cuanto se regularice la situación vas a poder volver a operar normalmente.
       </p>
@@ -30,7 +30,7 @@ export default function SuspendedPage() {
         Contactar a soporte
       </a>
 
-      <Link href="/" className="mt-4 text-sm font-medium text-slate-500 hover:text-slate-700">
+      <Link href="/" className="mt-4 text-sm font-medium text-muted-foreground hover:text-foreground">
         Volver al inicio
       </Link>
     </section>

@@ -4,6 +4,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SITE_URL, SITE_NAME, SITE_LOCALE, DEFAULT_OG_IMAGE } from '@/lib/seo/metadata'
 import { WebVitalsReporter } from '@/components/perf/WebVitalsReporter'
+import ThemeProvider from '@/components/theme/ThemeProvider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -63,17 +64,19 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={`${inter.variable} ${archivo.variable} ${sora.variable}`}>
+    <html lang="es" suppressHydrationWarning className={`${inter.variable} ${archivo.variable} ${sora.variable}`}>
       <body className="font-sans antialiased">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-emerald-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-        >
-          Saltar al contenido
-        </a>
-        {children}
-        <Toaster />
-        <WebVitalsReporter />
+        <ThemeProvider>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-emerald-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+          >
+            Saltar al contenido
+          </a>
+          {children}
+          <Toaster />
+          <WebVitalsReporter />
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -53,7 +53,7 @@ export default function TenantGallery({ photos, name }: Props) {
         <button
           type="button"
           onClick={() => openAt(0)}
-          className="relative col-span-4 row-span-2 overflow-hidden bg-slate-100 sm:col-span-2"
+          className="relative col-span-4 row-span-2 overflow-hidden bg-muted sm:col-span-2"
         >
           <Image
             src={main}
@@ -69,7 +69,7 @@ export default function TenantGallery({ photos, name }: Props) {
             key={p + i}
             type="button"
             onClick={() => openAt(i + 1)}
-            className="relative hidden overflow-hidden bg-slate-100 sm:block"
+            className="relative hidden overflow-hidden bg-muted sm:block"
           >
             <Image
               src={p}

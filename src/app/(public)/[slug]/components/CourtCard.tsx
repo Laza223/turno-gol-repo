@@ -10,8 +10,8 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
   const fromPrice = formatFromPrice(court.fromPriceCents)
 
   return (
-    <div className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0">
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+    <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
         {photo ? (
           <Image
             src={photo}
@@ -42,17 +42,17 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
         )}
       </div>
       <div className="space-y-1.5 p-3">
-        <h3 className="text-sm font-semibold text-slate-900">{court.name}</h3>
+        <h3 className="text-sm font-semibold text-foreground">{court.name}</h3>
         <div className="flex flex-wrap gap-1.5">
-          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15">
+          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
             {formatLabel(court.format)}
           </span>
-          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-500/15">
+          <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-inset ring-border">
             {surfaceLabel(court.surfaceType)}
           </span>
         </div>
         {fromPrice && (
-          <p className="font-display text-base font-bold tabular-nums text-emerald-700">{fromPrice}</p>
+          <p className="font-display text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{fromPrice}</p>
         )}
       </div>
     </div>

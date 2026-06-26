@@ -62,8 +62,8 @@ export default function ExplorarToolbar({ total }: Props) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-500" aria-live="polite">
-        <span className="font-semibold text-slate-900 tabular-nums">{total}</span>{' '}
+      <p className="text-sm text-muted-foreground" aria-live="polite">
+        <span className="font-semibold text-foreground tabular-nums">{total}</span>{' '}
         {total === 1 ? 'complejo' : 'complejos'}
       </p>
       <div className="flex items-center gap-2">
@@ -74,7 +74,7 @@ export default function ExplorarToolbar({ total }: Props) {
           id="exp-sort"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="h-9 rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           {SORTS.map((s) => (
             <option key={s.value} value={s.value}>
@@ -84,12 +84,12 @@ export default function ExplorarToolbar({ total }: Props) {
         </select>
 
         {/* Toggle vista lista / mapa */}
-        <div className="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" role="group" aria-label="Vista">
+        <div className="inline-flex overflow-hidden rounded-lg border border-border bg-card shadow-sm" role="group" aria-label="Vista">
           <button
             type="button"
             onClick={() => setView('list')}
             aria-pressed={view === 'list'}
-            className={`${toggleBase} ${view === 'list' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+            className={`${toggleBase} ${view === 'list' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-accent'}`}
           >
             <List className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Lista</span>
@@ -98,7 +98,7 @@ export default function ExplorarToolbar({ total }: Props) {
             type="button"
             onClick={() => setView('map')}
             aria-pressed={view === 'map'}
-            className={`${toggleBase} border-l border-slate-200 ${view === 'map' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+            className={`${toggleBase} border-l border-border ${view === 'map' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-accent'}`}
           >
             <MapIcon className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Mapa</span>

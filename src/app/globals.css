@@ -48,6 +48,41 @@
     /* Nav sidebar width */
     --sidebar-width: 240px;
   }
+
+  .dark {
+    --background: 224 71% 4%;          /* #020617 slate-950 */
+    --foreground: 210 40% 98%;         /* slate-50 */
+
+    --card: 222 33% 9%;                /* superficie elevada ~#0d1424 */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 33% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 161 94% 30%;            /* emerald-600 (CTA, igual que light) */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 14%;          /* nested surface */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%;   /* más claro para legibilidad dark */
+
+    --accent: 217 33% 17%;             /* hover bg */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 72% 51%;          /* red-600 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 160 84% 39%;               /* emerald-500 */
+
+    --success: 142 70% 45%;            /* green más vivo para dark */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;             /* amber más vivo para dark */
+    --warning-foreground: 0 0% 100%;
+  }
 }
 
 @layer base {
@@ -80,6 +115,18 @@
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMidYMid slice'%3E%3Cg stroke='%23059669' stroke-width='2' stroke-opacity='0.15' fill='none'%3E%3Cline x1='600' y1='0' x2='600' y2='800'/%3E%3Ccircle cx='600' cy='400' r='160'/%3E%3Ccircle cx='600' cy='400' r='4' fill='%23059669' fill-opacity='0.15'/%3E%3Crect x='-10' y='150' width='220' height='500' rx='8'/%3E%3Crect x='-10' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 210 300 A 130 130 0 0 1 210 500'/%3E%3Crect x='990' y='150' width='220' height='500' rx='8'/%3E%3Crect x='1140' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 990 300 A 130 130 0 0 0 990 500'/%3E%3C/g%3E%3C/svg%3E"),
     linear-gradient(to bottom right, #f0fdf4, #e6fced);
   background-size: cover, 100% 100%;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* Player shell — variante dark: misma cancha recoloreada sobre #020617 + glow */
+.dark .player-shell-bg {
+  background-color: #020617;
+  background-image:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 42%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMidYMid slice'%3E%3Cg stroke='%2334d399' stroke-width='2' stroke-opacity='0.06' fill='none'%3E%3Cline x1='600' y1='0' x2='600' y2='800'/%3E%3Ccircle cx='600' cy='400' r='160'/%3E%3Ccircle cx='600' cy='400' r='4' fill='%2334d399' fill-opacity='0.06'/%3E%3Crect x='-10' y='150' width='220' height='500' rx='8'/%3E%3Crect x='-10' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 210 300 A 130 130 0 0 1 210 500'/%3E%3Crect x='990' y='150' width='220' height='500' rx='8'/%3E%3Crect x='1140' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 990 300 A 130 130 0 0 0 990 500'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(to bottom right, #07131d, #020617);
+  background-size: cover, cover, 100% 100%;
   background-position: center;
   background-attachment: fixed;
 }
@@ -124,6 +171,21 @@
   .skeleton {
     animation: none;
   }
+}
+
+/* ─── Leaflet dark-mode overrides ────────────────────────────────────────
+   leaflet/dist/leaflet.css hardcodes white popup backgrounds. On always-dark
+   /explorar we override them via the .dark wrapper. */
+.dark .leaflet-popup-content-wrapper {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+.dark .leaflet-popup-tip {
+  background: hsl(var(--card));
+}
+.dark .leaflet-popup-content-wrapper a {
+  color: hsl(var(--primary));
 }
 
 /* ─── Comprobante de reserva imprimible ───────────────────────────────────

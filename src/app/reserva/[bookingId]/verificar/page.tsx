@@ -87,9 +87,9 @@ function verdictFor(status: string): Verdict {
 }
 
 const TONE_STYLES: Record<Verdict['tone'], { ring: string; badge: string; icon: typeof CheckCircle2 }> = {
-  ok: { ring: 'bg-emerald-100 ring-emerald-50', badge: 'text-emerald-700', icon: CheckCircle2 },
-  warn: { ring: 'bg-amber-100 ring-amber-50', badge: 'text-amber-600', icon: Clock3 },
-  bad: { ring: 'bg-red-100 ring-red-50', badge: 'text-red-600', icon: XCircle },
+  ok: { ring: 'bg-emerald-100 dark:bg-emerald-500/10 ring-emerald-50 dark:ring-emerald-400/20', badge: 'text-emerald-700 dark:text-emerald-300', icon: CheckCircle2 },
+  warn: { ring: 'bg-amber-100 dark:bg-amber-500/10 ring-amber-50 dark:ring-amber-400/20', badge: 'text-amber-600 dark:text-amber-300', icon: Clock3 },
+  bad: { ring: 'bg-red-100 dark:bg-red-500/10 ring-red-50 dark:ring-red-400/20', badge: 'text-red-600 dark:text-red-300', icon: XCircle },
 }
 
 export default async function VerificarReservaPage({ params }: { params: { bookingId: string } }) {
@@ -100,9 +100,9 @@ export default async function VerificarReservaPage({ params }: { params: { booki
   if (!booking) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-        <XCircle className="h-10 w-10 text-slate-300" aria-hidden />
-        <h1 className="mt-4 text-lg font-bold text-slate-900">No pudimos verificar esta reserva</h1>
-        <p className="mt-2 text-sm text-slate-600">El código no corresponde a una reserva válida.</p>
+        <XCircle className="h-10 w-10 text-muted-foreground" aria-hidden />
+        <h1 className="mt-4 text-lg font-bold text-foreground">No pudimos verificar esta reserva</h1>
+        <p className="mt-2 text-sm text-muted-foreground">El código no corresponde a una reserva válida.</p>
       </div>
     )
   }
@@ -116,31 +116,31 @@ export default async function VerificarReservaPage({ params }: { params: { booki
       <div className={`mb-5 flex h-16 w-16 items-center justify-center rounded-full ring-8 ${tone.ring}`}>
         <Icon className={`h-8 w-8 ${tone.badge}`} aria-hidden />
       </div>
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">{verdict.title}</h1>
-      <p className="mt-2 text-sm text-slate-600">{verdict.detail}</p>
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">{verdict.title}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{verdict.detail}</p>
 
-      <dl className="mt-6 w-full space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-left text-sm shadow-sm">
+      <dl className="mt-6 w-full space-y-2 rounded-xl border border-border bg-card p-4 text-left text-sm shadow-sm">
         <div className="flex justify-between gap-3">
-          <dt className="text-slate-500">Complejo</dt>
-          <dd className="font-medium text-slate-900">{booking.tenantName} · {booking.city}</dd>
+          <dt className="text-muted-foreground">Complejo</dt>
+          <dd className="font-medium text-foreground">{booking.tenantName} · {booking.city}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-slate-500">Cancha</dt>
-          <dd className="font-medium text-slate-900">{booking.courtName}</dd>
+          <dt className="text-muted-foreground">Cancha</dt>
+          <dd className="font-medium text-foreground">{booking.courtName}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-slate-500">Fecha</dt>
-          <dd className="font-medium text-slate-900 tabular-nums">{booking.date.split('-').reverse().join('/')}</dd>
+          <dt className="text-muted-foreground">Fecha</dt>
+          <dd className="font-medium text-foreground tabular-nums">{booking.date.split('-').reverse().join('/')}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-slate-500">Horario</dt>
-          <dd className="font-medium text-slate-900 tabular-nums">
+          <dt className="text-muted-foreground">Horario</dt>
+          <dd className="font-medium text-foreground tabular-nums">
             {booking.timeStart.slice(0, 5)}–{booking.timeEnd.slice(0, 5)}
           </dd>
         </div>
       </dl>
 
-      <p className="mt-4 text-xs text-slate-400">
+      <p className="mt-4 text-xs text-muted-foreground">
         Verificado por TurnoGol · código {params.bookingId.slice(0, 8).toUpperCase()}
       </p>
     </div>

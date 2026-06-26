@@ -9,7 +9,7 @@ export default function Loading() {
         <Skeleton className="mt-2 h-4 w-96 max-w-full" />
       </div>
 
-      <div className="rounded-3xl border border-slate-200/80 bg-slate-50/95 p-4 shadow-sm backdrop-blur-sm sm:p-6 lg:p-8 space-y-6">
+      <div className="rounded-3xl border border-border/80 bg-card/95 p-4 shadow-sm backdrop-blur-sm sm:p-6 lg:p-8 space-y-6">
         {/* Barra de búsqueda */}
         <Skeleton className="h-20 w-full rounded-2xl" />
 
@@ -21,12 +21,12 @@ export default function Loading() {
 
         <div className="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6">
           {/* Sidebar de filtros */}
-          <Skeleton className="hidden h-[640px] rounded-2xl bg-white border border-slate-200 lg:block" />
+          <Skeleton className="hidden h-[640px] rounded-2xl bg-card border border-border lg:block" />
 
         {/* Grilla de cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="overflow-hidden rounded-2xl border border-slate-200 border-t-2 border-t-emerald-500/40 bg-white shadow-sm">
+            <div key={i} className="overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500/40 bg-card shadow-sm">
               <Skeleton className="aspect-[16/9] w-full rounded-none" />
               <div className="flex flex-col gap-2 p-4">
                 <div className="flex justify-between">

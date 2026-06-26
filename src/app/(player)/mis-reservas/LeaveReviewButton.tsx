@@ -61,7 +61,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-50 active:scale-[0.98] motion-reduce:active:scale-100"
+          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] motion-reduce:active:scale-100"
         >
           <Star className="h-4 w-4" aria-hidden />
           Dejar reseña
@@ -93,7 +93,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
                 <Star
                   className={cn(
                     'h-8 w-8',
-                    n <= shown ? 'fill-amber-400 text-amber-400' : 'text-slate-300',
+                    n <= shown ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground',
                   )}
                   aria-hidden
                 />
@@ -102,7 +102,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="review-comment" className="text-sm font-medium text-slate-700">
+            <label htmlFor="review-comment" className="text-sm font-medium text-foreground">
               Comentario (opcional)
             </label>
             <textarea
@@ -112,9 +112,9 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
               maxLength={500}
               rows={3}
               placeholder="¿Qué te pareció la cancha, el lugar, la atención?"
-              className="w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full resize-none rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
-            <p className="text-right text-xs text-slate-400 tabular-nums">{comment.length}/500</p>
+            <p className="text-right text-xs text-muted-foreground tabular-nums">{comment.length}/500</p>
           </div>
 
           <button

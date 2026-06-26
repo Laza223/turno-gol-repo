@@ -36,7 +36,7 @@ export function PlayerBottomNav() {
   return (
     <nav
       aria-label="Navegación del jugador"
-      className="fixed inset-x-0 bottom-0 z-10 flex border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {NAV_ITEMS.map(({ href, label, Icon, match }) => {
         const active = match(pathname)
@@ -46,7 +46,7 @@ export function PlayerBottomNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={`flex flex-1 flex-col items-center gap-0.5 py-3 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 ${
-              active ? 'text-emerald-700' : 'text-slate-500 hover:text-slate-900'
+              active ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <Icon className="h-5 w-5" aria-hidden />

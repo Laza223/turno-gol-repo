@@ -31,7 +31,7 @@ export function AccountMenu({ firstName, lastName, email, avatarUrl, variant = '
   const chip =
     variant === 'overlay'
       ? 'bg-white/15 hover:bg-white/25 ring-white/25 text-white'
-      : 'bg-white hover:bg-slate-50 ring-slate-200 text-slate-700'
+      : 'bg-card hover:bg-accent ring-border text-foreground'
 
   return (
     <DropdownMenu>
@@ -59,32 +59,32 @@ export function AccountMenu({ firstName, lastName, email, avatarUrl, variant = '
 
       <DropdownMenuContent align="end" sideOffset={8} className="w-60">
         <div className="px-2 py-1.5">
-          <p className="truncate text-sm font-semibold text-slate-900">
+          <p className="truncate text-sm font-semibold text-foreground">
             {firstName} {lastName}
           </p>
-          <p className="truncate text-xs text-slate-500">{email}</p>
+          <p className="truncate text-xs text-muted-foreground">{email}</p>
         </div>
-        <div className="my-1 h-px bg-slate-100" />
+        <div className="my-1 h-px bg-border" />
 
         <DropdownMenuItem asChild>
           <Link href="/mis-reservas" className={itemClass}>
-            <Calendar className="h-4 w-4 text-slate-500" aria-hidden />
+            <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden />
             Mis reservas
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/configuracion" className={itemClass}>
-            <Settings className="h-4 w-4 text-slate-500" aria-hidden />
+            <Settings className="h-4 w-4 text-muted-foreground" aria-hidden />
             Cuenta
           </Link>
         </DropdownMenuItem>
 
-        <div className="my-1 h-px bg-slate-100" />
+        <div className="my-1 h-px bg-border" />
 
         <form action={signOutAction}>
           <DropdownMenuItem asChild>
             <button type="submit" className={cn(itemClass, 'w-full text-left')}>
-              <LogOut className="h-4 w-4 text-slate-500" aria-hidden />
+              <LogOut className="h-4 w-4 text-muted-foreground" aria-hidden />
               Salir
             </button>
           </DropdownMenuItem>

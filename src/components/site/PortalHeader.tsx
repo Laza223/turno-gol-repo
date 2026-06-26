@@ -80,14 +80,14 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
 
   return (
     <header className="sticky top-0 z-30 w-full px-4 py-3 bg-transparent">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full border border-slate-200/80 bg-white/80 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] backdrop-blur-md sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full border border-border bg-card/80 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] backdrop-blur-md sm:px-6 lg:px-8">
         <Link href="/" aria-label="TurnoGol — inicio" className="transition-opacity hover:opacity-90">
-          <Logo variant="horizontal" textClassName="text-slate-900 font-bold" iconClassName="bg-white border-slate-200" />
+          <Logo variant="horizontal" textClassName="text-foreground font-bold" iconClassName="bg-card border-border" />
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">
           <Link
             href="/explorar"
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 md:text-sm"
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground md:text-sm"
           >
             <Search className="h-4 w-4" />
             <span>Explorar</span>
@@ -96,7 +96,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
             <>
               <Link
                 href="/mis-reservas"
-                className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 md:text-sm sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
               >
                 <Calendar className="h-4 w-4" />
                 <span>Mis reservas</span>
@@ -113,7 +113,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
             <>
               <Link
                 href="/para-complejos"
-                className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 md:text-sm sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
               >
                 <Building2 className="h-4 w-4" />
                 <span>Para complejos</span>

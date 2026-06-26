@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Receipt } from 'lucide-react'
+import { Receipt, Banknote } from 'lucide-react'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -37,10 +38,14 @@ function DeltaLine({
 }) {
   const delta = current - reference
   const color =
-    delta === 0 ? 'text-slate-400' : (delta > 0) !== invert ? 'text-emerald-600' : 'text-red-600'
+    delta === 0
+      ? 'text-muted-foreground'
+      : (delta > 0) !== invert
+        ? 'text-emerald-600 dark:text-emerald-400'
+        : 'text-red-600 dark:text-red-400'
   const sign = delta > 0 ? '+' : delta < 0 ? '−' : ''
   return (
-    <p className="text-xs text-slate-500">
+    <p className="text-xs text-muted-foreground">
       {label}{' '}
       <span className={`font-medium tabular-nums ${color}`}>
         {sign}
@@ -70,11 +75,11 @@ function categoryLabel(type: string, category: string): string {
 }
 
 const CATEGORY_BADGE: Record<string, string> = {
-  booking: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  product_sale: 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  operating_expense: 'bg-red-50 text-red-700 ring-red-600/20',
-  no_show_correction: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  other: 'bg-slate-100 text-slate-700 ring-slate-500/20',
+  booking: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20 dark:ring-emerald-500/30',
+  product_sale: 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-600/20 dark:ring-sky-500/30',
+  operating_expense: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  no_show_correction: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',
+  other: 'bg-muted text-foreground ring-slate-500/20',
 }
 
 function CategoryBadge({ type, category }: { type: string; category: string }) {
@@ -113,52 +118,53 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">Caja — {date}</h1>
-          {summary.isClosed && (
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-500/20">
-              Caja cerrada
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-md border border-slate-200 bg-white overflow-hidden">
+      <PageHeader
+        title={`Caja — ${date}`}
+        icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
+        actions={
+          <>
+            {summary.isClosed && (
+              <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-foreground ring-1 ring-inset ring-slate-500/20">
+                Caja cerrada
+              </span>
+            )}
+            <div className="flex items-center rounded-md border border-border bg-card overflow-hidden">
             <Link
               href={`/caja?date=${prevDay}`}
-              className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-r border-slate-200"
+              className="px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors border-r border-border"
             >
               ← Anterior
             </Link>
             <Link
               href="/caja"
-              className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-r border-slate-200"
+              className="px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors border-r border-border"
             >
               Hoy
             </Link>
             <Link
               href={`/caja?date=${nextDay}`}
-              className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              className="px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
             >
               Siguiente →
             </Link>
           </div>
-          <CajaActions
-            date={date}
-            totalIncome={summary.totalIncome + summary.totalAdjustments}
-            totalExpense={summary.totalExpense}
-            balance={summary.balance}
-            isClosed={summary.isClosed}
-          />
-        </div>
-      </div>
+            <CajaActions
+              date={date}
+              totalIncome={summary.totalIncome + summary.totalAdjustments}
+              totalExpense={summary.totalExpense}
+              balance={summary.balance}
+              isClosed={summary.isClosed}
+            />
+          </>
+        }
+      />
 
       {/* Resumen del día: saldo neto destacado (primero en mobile), ingresos y egresos
           con comparativa vs ayer y vs promedio diario de la última semana. */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <div className="col-span-2 order-first lg:order-last lg:col-span-1 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm">
-          <p className="text-sm text-slate-600">Saldo neto del día</p>
-          <p className={`text-3xl font-bold tabular-nums ${summary.balance < 0 ? 'text-red-700' : 'text-emerald-800'}`}>
+        <div className="col-span-2 order-first lg:order-last lg:col-span-1 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-500/10 p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Saldo neto del día</p>
+          <p className={`text-3xl font-bold tabular-nums ${summary.balance < 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-800 dark:text-emerald-300'}`}>
             {formatARS(summary.balance)}
           </p>
           <div className="mt-2 space-y-0.5">
@@ -166,9 +172,9 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
             <DeltaLine label="vs prom. semanal" current={summary.balance} reference={comparisons.weekAvg.balance} />
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Ingresos</p>
-          <p className="text-2xl font-bold tabular-nums text-emerald-700">
+        <div className="card-premium rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Ingresos</p>
+          <p className="text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
             {formatARS(summary.totalIncome + summary.totalAdjustments)}
           </p>
           <div className="mt-2 space-y-0.5">
@@ -184,9 +190,9 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
             />
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Egresos</p>
-          <p className="text-2xl font-bold tabular-nums text-red-700">{formatARS(summary.totalExpense)}</p>
+        <div className="card-premium rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Egresos</p>
+          <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">{formatARS(summary.totalExpense)}</p>
           <div className="mt-2 space-y-0.5">
             <DeltaLine
               label="vs ayer"
@@ -206,8 +212,8 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
 
       {/* Cierre guardado: el registro inmutable que generó "Cerrar caja" */}
       {summary.isClosed && summary.close && (
-        <div className="rounded-lg border border-slate-300 bg-slate-50 p-4 shadow-sm">
-          <h2 className="text-sm font-medium text-slate-900">
+        <div className="rounded-lg border border-border bg-muted/40 p-4 shadow-sm">
+          <h2 className="text-sm font-medium text-foreground">
             Cierre del día —{' '}
             {summary.close.closedAt.toLocaleTimeString('es-AR', {
               hour: '2-digit',
@@ -218,25 +224,25 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
           </h2>
           <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
             <div>
-              <dt className="text-slate-500">Ingresos</dt>
-              <dd className="font-medium tabular-nums text-emerald-700">
+              <dt className="text-muted-foreground">Ingresos</dt>
+              <dd className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
                 {formatARS(summary.close.totalIncome + summary.close.totalAdjustments)}
               </dd>
             </div>
             <div>
-              <dt className="text-slate-500">Egresos</dt>
-              <dd className="font-medium tabular-nums text-red-700">−{formatARS(summary.close.totalExpense)}</dd>
+              <dt className="text-muted-foreground">Egresos</dt>
+              <dd className="font-medium tabular-nums text-red-700 dark:text-red-400">−{formatARS(summary.close.totalExpense)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Saldo neto</dt>
-              <dd className="font-semibold tabular-nums text-slate-900">{formatARS(summary.close.balance)}</dd>
+              <dt className="text-muted-foreground">Saldo neto</dt>
+              <dd className="font-semibold tabular-nums text-foreground">{formatARS(summary.close.balance)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Efectivo contado</dt>
-              <dd className="font-medium tabular-nums text-slate-900">
+              <dt className="text-muted-foreground">Efectivo contado</dt>
+              <dd className="font-medium tabular-nums text-foreground">
                 {formatARS(summary.close.declaredCash)}
                 {summary.close.diffAmount !== 0 && (
-                  <span className="ml-1 text-xs font-medium text-amber-700">
+                  <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-300">
                     (dif. {formatARS(summary.close.diffAmount)})
                   </span>
                 )}
@@ -244,8 +250,8 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
             </div>
           </dl>
           {summary.close.note && (
-            <p className="mt-2 text-sm text-slate-600">
-              <span className="text-slate-500">Nota:</span> {summary.close.note}
+            <p className="mt-2 text-sm text-muted-foreground">
+              <span className="text-muted-foreground">Nota:</span> {summary.close.note}
             </p>
           )}
         </div>
@@ -258,8 +264,8 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
 
       {/* By method */}
       {Object.keys(summary.byMethod).length > 0 && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-medium text-slate-900 mb-3">Desglose por método</h2>
+        <div className="card-premium rounded-lg p-4">
+          <h2 className="text-sm font-medium text-foreground mb-3">Desglose por método</h2>
           <div className="space-y-1">
             {Object.entries(summary.byMethod).map(([method, total]) => (
               <div key={method} className="flex justify-between text-sm">
@@ -272,9 +278,9 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
       )}
 
       {/* Movements list */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-          <h2 className="font-medium text-slate-900">Movimientos del día</h2>
+      <div className="rounded-lg border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-4 py-3 flex items-center justify-between">
+          <h2 className="font-medium text-foreground">Movimientos del día</h2>
         </div>
         {cashFlows.length === 0 ? (
           <EmptyState
@@ -290,14 +296,14 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
                 <li key={cf.id} className="flex items-start justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
                     <CategoryBadge type={cf.type} category={cf.category} />
-                    <p className="mt-1 truncate text-sm text-slate-700">{cf.description}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-1 truncate text-sm text-foreground">{cf.description}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {METHOD_LABELS[cf.method] ?? cf.method} ·{' '}
                       {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <p
-                    className={`shrink-0 text-sm font-semibold tabular-nums ${cf.type === 'expense' ? 'text-red-700' : 'text-slate-900'}`}
+                    className={`shrink-0 text-sm font-semibold tabular-nums ${cf.type === 'expense' ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}
                   >
                     {cf.type === 'expense' ? '−' : ''}
                     {formatARS(cf.amount)}
@@ -310,28 +316,28 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 text-left">
-                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Categoría</th>
-                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Método</th>
-                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Descripción</th>
-                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide text-right">Monto</th>
-                    <th className="p-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Hora</th>
+                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Categoría</th>
+                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Método</th>
+                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Descripción</th>
+                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide text-right">Monto</th>
+                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Hora</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {cashFlows.map((cf) => (
-                    <tr key={cf.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={cf.id} className="hover:bg-accent transition-colors">
                       <td className="p-3">
                         <CategoryBadge type={cf.type} category={cf.category} />
                       </td>
-                      <td className="p-3 text-slate-700">{METHOD_LABELS[cf.method] ?? cf.method}</td>
-                      <td className="p-3 max-w-xs truncate text-slate-700">{cf.description}</td>
+                      <td className="p-3 text-foreground">{METHOD_LABELS[cf.method] ?? cf.method}</td>
+                      <td className="p-3 max-w-xs truncate text-foreground">{cf.description}</td>
                       <td
-                        className={`p-3 text-right font-medium tabular-nums ${cf.type === 'expense' ? 'text-red-700' : 'text-slate-900'}`}
+                        className={`p-3 text-right font-medium tabular-nums ${cf.type === 'expense' ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}
                       >
                         {cf.type === 'expense' ? '−' : ''}
                         {formatARS(cf.amount)}
                       </td>
-                      <td className="p-3 tabular-nums text-slate-500">
+                      <td className="p-3 tabular-nums text-muted-foreground">
                         {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                       </td>
                     </tr>

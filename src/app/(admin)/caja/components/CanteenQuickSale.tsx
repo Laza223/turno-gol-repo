@@ -45,13 +45,13 @@ export function CanteenQuickSale({
   const [editorOpen, setEditorOpen] = useState(false)
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <h2 className="font-medium text-slate-900">Cantina/Bar</h2>
+    <div className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h2 className="font-medium text-foreground">Cantina/Bar</h2>
         <button
           type="button"
           onClick={() => setEditorOpen(true)}
-          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <Pencil className="h-4 w-4" aria-hidden="true" />
           Configurar
@@ -59,7 +59,7 @@ export function CanteenQuickSale({
       </div>
       {products.length === 0 ? (
         <div className="px-4 py-6 text-center">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Cargá tus productos (agua, gatorade, cerveza…) y registrá cada venta con un toque.
           </p>
           <button
@@ -77,10 +77,10 @@ export function CanteenQuickSale({
               key={p.id}
               type="button"
               onClick={() => setSale(p)}
-              className="min-h-[56px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-emerald-400 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors"
+              className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left hover:border-emerald-400 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors"
             >
-              <span className="block truncate text-sm font-semibold text-slate-900">{p.name}</span>
-              <span className="block text-sm tabular-nums text-slate-500">{formatARS(p.price)}</span>
+              <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
+              <span className="block text-sm tabular-nums text-muted-foreground">{formatARS(p.price)}</span>
             </button>
           ))}
         </div>
@@ -176,14 +176,14 @@ function QuickSaleDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-600">Cantidad</span>
+            <span className="text-sm text-muted-foreground">Cantidad</span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
                 disabled={qty <= 1 || isPending}
                 aria-label="Restar uno"
-                className="flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-foreground hover:bg-accent disabled:opacity-40 transition-colors"
               >
                 <Minus className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -193,14 +193,14 @@ function QuickSaleDialog({
                 onClick={() => setQty((q) => Math.min(99, q + 1))}
                 disabled={isPending}
                 aria-label="Sumar uno"
-                className="flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-foreground hover:bg-accent disabled:opacity-40 transition-colors"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>
           <fieldset>
-            <legend className="mb-1.5 text-sm text-slate-600">Método de pago</legend>
+            <legend className="mb-1.5 text-sm text-muted-foreground">Método de pago</legend>
             <div className="grid grid-cols-3 gap-2">
               {METHOD_OPTIONS.map((m) => (
                 <button
@@ -211,8 +211,8 @@ function QuickSaleDialog({
                   aria-pressed={method === m.value}
                   className={`h-11 rounded-md border px-1 text-xs font-medium transition-colors ${
                     method === m.value
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      : 'border-border bg-card text-muted-foreground hover:bg-accent'
                   }`}
                 >
                   {m.label}
@@ -318,14 +318,14 @@ function ProductsEditorDialog({
           <DialogTitle>Productos de cantina</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Cada producto se vende con un toque desde la caja. El precio es por unidad, en pesos.
           </p>
           {editing.length === 0 ? (
             <button
               type="button"
               onClick={loadSuggested}
-              className="h-11 w-full rounded-md border border-dashed border-slate-300 text-sm font-medium text-slate-600 hover:border-emerald-400 hover:text-emerald-700 transition-colors"
+              className="h-11 w-full rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground hover:border-emerald-400 hover:text-emerald-700 transition-colors"
             >
               Cargar sugeridos (Agua, Gatorade, Cerveza)
             </button>
@@ -339,7 +339,7 @@ function ProductsEditorDialog({
                     onChange={(e) => update(r.id, { name: e.target.value })}
                     placeholder="Producto"
                     aria-label="Nombre del producto"
-                    className="h-11 min-w-0 flex-1 rounded-md border border-slate-200 px-3 text-sm"
+                    className="h-11 min-w-0 flex-1 rounded-md border border-border px-3 text-sm"
                   />
                   <input
                     type="number"
@@ -350,13 +350,13 @@ function ProductsEditorDialog({
                     onChange={(e) => update(r.id, { pricePesos: e.target.value })}
                     placeholder="Precio"
                     aria-label="Precio en pesos"
-                    className="h-11 w-24 rounded-md border border-slate-200 px-3 text-sm tabular-nums"
+                    className="h-11 w-24 rounded-md border border-border px-3 text-sm tabular-nums"
                   />
                   <button
                     type="button"
                     onClick={() => setRows(editing.filter((x) => x.id !== r.id))}
                     aria-label={`Eliminar ${r.name.trim() || 'producto'}`}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -368,7 +368,7 @@ function ProductsEditorDialog({
             <button
               type="button"
               onClick={() => addRow()}
-              className="h-11 w-full rounded-md border border-dashed border-slate-300 text-sm font-medium text-slate-600 hover:border-emerald-400 hover:text-emerald-700 transition-colors"
+              className="h-11 w-full rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground hover:border-emerald-400 hover:text-emerald-700 transition-colors"
             >
               + Agregar producto
             </button>
@@ -379,7 +379,7 @@ function ProductsEditorDialog({
               type="button"
               disabled={isPending}
               onClick={() => handleClose(false)}
-              className="h-11 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              className="h-11 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60"
             >
               Cancelar
             </button>

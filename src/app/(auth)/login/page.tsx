@@ -72,10 +72,10 @@ function FormPane({
   formAction: (formData: FormData) => void
 }) {
   return (
-    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
       <Link
         href="/"
-        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900 transition-colors lg:hidden"
+        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Volver
@@ -103,19 +103,19 @@ function FormCard({
   const isError = state.status === 'error'
 
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 shadow-xl shadow-slate-900/5 backdrop-blur-md">
+    <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <header className="mb-6 space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           Iniciá sesión
         </h1>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Ingresá con tu email y contraseña.
         </p>
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>
         <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-slate-900">
+          <label htmlFor="email" className="text-sm font-medium text-foreground">
             Email
           </label>
           <input
@@ -126,18 +126,18 @@ function FormCard({
             required
             placeholder="vos@complejo.com"
             aria-invalid={isError ? 'true' : undefined}
-            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+            className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
           />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium text-slate-900">
+            <label htmlFor="password" className="text-sm font-medium text-foreground">
               Contraseña
             </label>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+              className="text-xs font-medium text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline"
             >
               ¿Olvidaste tu contraseña?
             </Link>
@@ -151,13 +151,13 @@ function FormCard({
               required
               placeholder="••••••••"
               aria-invalid={isError ? 'true' : undefined}
-              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 pr-11 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+              className="h-11 w-full rounded-lg border border-border bg-card px-3.5 pr-11 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
             />
             <button
               type="button"
               onClick={() => setShow((v) => !v)}
               aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
             </button>
@@ -166,7 +166,7 @@ function FormCard({
 
         {isError && (
           <div className="space-y-1.5">
-            <p role="alert" className="text-xs text-red-600">
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
               {state.message}
             </p>
             {state.unconfirmedEmail && <ResendConfirmation email={state.unconfirmedEmail} />}
@@ -176,9 +176,9 @@ function FormCard({
         <SubmitButton />
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         ¿Sos nuevo?{' '}
-        <Link href="/register" className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
+        <Link href="/register" className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline">
           Empezar gratis
         </Link>
       </p>
@@ -190,7 +190,7 @@ function ResendConfirmation({ email }: { email: string }) {
   const [state, formAction] = useFormState(resendConfirmationAction, resendInitial)
   if (state.status === 'sent') {
     return (
-      <p className="text-xs text-emerald-700">
+      <p className="text-xs text-emerald-700 dark:text-emerald-400">
         Te reenviamos el email de confirmación. Revisá tu bandeja.
       </p>
     )
@@ -200,12 +200,12 @@ function ResendConfirmation({ email }: { email: string }) {
       <input type="hidden" name="email" value={email} />
       <button
         type="submit"
-        className="text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+        className="text-xs font-medium text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline"
       >
         Reenviar email de confirmación
       </button>
       {state.status === 'error' && (
-        <p role="alert" className="mt-1 text-xs text-red-600">
+        <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
           {state.message}
         </p>
       )}

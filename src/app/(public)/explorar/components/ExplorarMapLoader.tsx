@@ -9,7 +9,7 @@ const ExplorarMap = dynamic(() => import('./ExplorarMap'), {
   ssr: false,
   loading: () => (
     <div
-      className="h-[70vh] w-full animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
+      className="h-[70vh] w-full animate-pulse rounded-2xl border border-border bg-muted"
       aria-busy="true"
       aria-label="Cargando mapa"
     />

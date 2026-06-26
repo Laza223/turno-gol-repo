@@ -225,7 +225,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
           </div>
         </div>
         {priceError && (
-          <p role="alert" className="mt-1.5 text-xs text-red-600">{priceError}</p>
+          <p role="alert" className="mt-1.5 text-xs text-red-600 dark:text-red-300">{priceError}</p>
         )}
       </fieldset>
 

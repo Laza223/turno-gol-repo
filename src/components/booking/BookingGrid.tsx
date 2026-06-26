@@ -296,7 +296,7 @@ export function BookingGrid({
             role="region"
             aria-label={`Grilla de turnos del ${LABEL_DAYS[dayKey]} ${dateLabel}`}
             className={cn(
-              'overflow-auto overscroll-x-contain snap-x snap-proximity max-h-[70dvh] rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900',
+              'overflow-auto overscroll-x-contain snap-x snap-proximity max-h-[70dvh] rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(2,6,23,0.04),0_8px_24px_-12px_rgba(2,6,23,0.10)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-[0_24px_50px_-34px_rgba(0,0,0,0.9)]',
               'transition-opacity duration-150 motion-reduce:transition-none',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
               isNavPending && 'opacity-60',

@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 export default function SuspendedPage() {
   return (
     <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50">
-        <PauseCircle className="h-8 w-8 text-amber-600" aria-hidden />
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50 dark:bg-amber-500/10 dark:ring-amber-400/20">
+        <PauseCircle className="h-8 w-8 text-amber-600 dark:text-amber-300" aria-hidden />
       </div>
 
       <h1 className="text-2xl font-bold tracking-tight text-foreground">

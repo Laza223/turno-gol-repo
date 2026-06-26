@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           Para consultas sobre privacidad, ejercicio de derechos o reclamos, podés contactarnos en{' '}
-          <a className="text-emerald-700 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
             privacidad@turnogol.app
           </a>
           . Respondemos en un plazo máximo de 10 días hábiles.
@@ -237,7 +237,7 @@ export default function PrivacyPage() {
           <strong>Agencia de Acceso a la Información Pública (AAIP)</strong>. Si considerás que tus
           derechos no fueron respetados, podés presentar un reclamo en{' '}
           <a
-            className="text-emerald-700 hover:underline"
+            className="text-emerald-700 dark:text-emerald-300 hover:underline"
             href="https://www.argentina.gob.ar/aaip"
             target="_blank"
             rel="noopener noreferrer"
@@ -258,7 +258,7 @@ export default function PrivacyPage() {
           Si modificamos esta política te lo informaremos por email (al menos 30 días antes para
           cambios sustanciales) y publicaremos la fecha de actualización al inicio de este documento.
           La versión vigente está siempre disponible en{' '}
-          <Link className="text-emerald-700 hover:underline" href="/privacy">
+          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/privacy">
             turnogol.app/privacy
           </Link>
           .

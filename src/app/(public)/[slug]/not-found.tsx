@@ -10,7 +10,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center text-sm font-medium text-emerald-700 hover:text-emerald-800 transition-colors duration-150"
+          className="inline-flex items-center text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors duration-150"
         >
           ← Volver al inicio
         </Link>

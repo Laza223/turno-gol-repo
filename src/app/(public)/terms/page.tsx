@@ -157,7 +157,7 @@ export default function TermsPage() {
         </ul>
         <p>
           Si considerás que una suspensión fue incorrecta, podés apelarla escribiendo a{' '}
-          <a className="text-emerald-700 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
             privacidad@turnogol.app
           </a>
           .
@@ -217,11 +217,11 @@ export default function TermsPage() {
         </p>
         <p>
           La versión vigente está siempre disponible en{' '}
-          <Link className="text-emerald-700 hover:underline" href="/terms">
+          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/terms">
             turnogol.app/terms
           </Link>
           . Para consultas, escribinos a{' '}
-          <a className="text-emerald-700 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
             privacidad@turnogol.app
           </a>
           .

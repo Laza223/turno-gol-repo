@@ -244,7 +244,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
                   <div className="mt-10 flex justify-center">
                     <Link
                       href={pageUrl(searchParams, offset + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md motion-reduce:hover:translate-y-0"
+                      className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0"
                     >
                       Ver más complejos
                     </Link>

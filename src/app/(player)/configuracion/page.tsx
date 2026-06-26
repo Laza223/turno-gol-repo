@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
-import { ChevronRight, Download, Trash2, User } from 'lucide-react'
+import { ChevronRight, Download, Palette, Trash2, User } from 'lucide-react'
 import type { Metadata } from 'next'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
@@ -9,6 +9,7 @@ import { players } from '@/shared/db/schema'
 import { buildMetadata } from '@/lib/seo/metadata'
 import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { DataExportButton } from './DataExportButton'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
@@ -58,6 +59,22 @@ export default async function ConfiguracionPage() {
         </div>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" aria-hidden />
       </Link>
+
+      {/* Card Apariencia */}
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
+            <Palette className="h-5 w-5" aria-hidden />
+          </span>
+          <h2 className="font-display text-base font-bold tracking-tight text-foreground">
+            Apariencia
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Elegí el tema de la aplicación: seguí la preferencia de tu dispositivo, o forzá claro u oscuro.
+        </p>
+        <ThemeToggle />
+      </div>
 
       {/* Card 1: Tus datos */}
       <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">

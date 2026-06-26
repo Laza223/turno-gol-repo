@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Calendar, ChevronDown, LogOut, Settings } from 'lucide-react'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -78,6 +79,12 @@ export function AccountMenu({ firstName, lastName, email, avatarUrl, variant = '
             Cuenta
           </Link>
         </DropdownMenuItem>
+
+        <div className="my-1 h-px bg-border" />
+        <div className="px-2 py-1.5">
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Tema</p>
+          <ThemeToggle />
+        </div>
 
         <div className="my-1 h-px bg-border" />
 

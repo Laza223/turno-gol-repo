@@ -63,7 +63,7 @@ export function DataExportButton() {
         {status === 'loading' ? 'Generando...' : 'Descargar mis datos'}
       </button>
       {status === 'error' && error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-300">
           {error}
         </p>
       )}

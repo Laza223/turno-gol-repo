@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTheme } from 'next-themes'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { PricingRule } from '@/modules/courts/court.types'
 import {
@@ -33,19 +34,27 @@ function parseCellKey(key: string): { day: DayKey; hour: number } {
   return { day: day as DayKey, hour: Number(hour) }
 }
 
-// Heat map: emerald-50 (barato) → emerald-700 (caro). Interpola en RGB.
+// Heat map: barato → caro, interpolado en RGB. Inline style NO responde a
+// `.dark`, así que se elige la rampa por tema. Light: emerald-50 → emerald-700.
+// Dark: emerald-950 muy oscuro → emerald-500 brillante (sobre card oscuro).
 const HEAT_LO = [236, 253, 245] // #ecfdf5
 const HEAT_HI = [4, 120, 87] //   #047857
-function heatStyle(price: number, min: number, max: number): React.CSSProperties {
+const HEAT_LO_DARK = [6, 33, 25] // ~emerald-950
+const HEAT_HI_DARK = [16, 185, 129] // #10b981 emerald-500
+function heatStyle(price: number, min: number, max: number, isDark: boolean): React.CSSProperties {
   const t = max > min ? (price - min) / (max - min) : 0.45
-  const mix = (i: number) => Math.round(HEAT_LO[i]! + (HEAT_HI[i]! - HEAT_LO[i]!) * t)
+  const lo = isDark ? HEAT_LO_DARK : HEAT_LO
+  const hi = isDark ? HEAT_HI_DARK : HEAT_HI
+  const mix = (i: number) => Math.round(lo[i]! + (hi[i]! - lo[i]!) * t)
   return {
     backgroundColor: `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`,
-    color: t > 0.52 ? '#ffffff' : '#064e3b',
+    color: isDark ? (t > 0.52 ? '#022c22' : '#6ee7b7') : t > 0.52 ? '#ffffff' : '#064e3b',
   }
 }
 
 export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const hours = useMemo(() => getOperativeHours(openingHours), [openingHours])
   const [grid, setGrid] = useState<PriceGrid>(() => expandRulesToGrid(initialRules, openingHours))
 
@@ -185,7 +194,7 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
 
   if (hours.length === 0) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
         Configurá los horarios de atención del complejo antes de cargar precios.{' '}
         <a href="/settings/horarios" className="font-medium underline underline-offset-2">
           Ir a horarios
@@ -212,12 +221,12 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
         </Button>
 
         {showBulkBar && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-            <span className="text-xs font-medium text-slate-600">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted px-2 py-1.5">
+            <span className="text-xs font-medium text-muted-foreground">
               {selected.size} celda{selected.size === 1 ? '' : 's'}
             </span>
             <div className="flex items-center gap-1">
-              <span className="text-sm text-slate-400">$</span>
+              <span className="text-sm text-muted-foreground">$</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -231,7 +240,7 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
                 }}
                 placeholder="35.000"
                 aria-label="Precio para las celdas seleccionadas"
-                className="h-9 w-24 rounded-md border border-slate-200 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-9 w-24 rounded-md border border-border px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
             </div>
             <Button
@@ -262,13 +271,13 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
       </div>
 
       {/* Grilla */}
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-sm select-none">
           <thead>
             <tr>
               <th
                 scope="col"
-                className="sticky left-0 z-10 w-16 bg-slate-50 px-2 py-2 text-left text-xs font-semibold text-slate-500"
+                className="sticky left-0 z-10 w-16 bg-muted px-2 py-2 text-left text-xs font-semibold text-muted-foreground"
               >
                 Hora
               </th>
@@ -276,7 +285,7 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
                 <th
                   key={day}
                   scope="col"
-                  className="bg-slate-50 px-2 py-2 text-center text-xs font-semibold text-slate-600"
+                  className="bg-muted px-2 py-2 text-center text-xs font-semibold text-muted-foreground"
                   style={{ width: `${88 / dayCount}%` }}
                 >
                   {DAY_LABELS[day]}
@@ -286,10 +295,10 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
           </thead>
           <tbody>
             {hours.map((hour) => (
-              <tr key={hour} className="border-t border-slate-100">
+              <tr key={hour} className="border-t border-border">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-white px-2 py-1 text-left text-xs font-medium tabular-nums text-slate-500"
+                  className="sticky left-0 z-10 bg-card px-2 py-1 text-left text-xs font-medium tabular-nums text-muted-foreground"
                 >
                   {hourLabel(hour)}
                 </th>
@@ -300,7 +309,7 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
                     return (
                       <td
                         key={day}
-                        className="border-l border-slate-100 bg-slate-50/60 px-1 py-1 text-center text-slate-300"
+                        className="border-l border-border bg-muted/40 px-1 py-1 text-center text-muted-foreground/40"
                         aria-hidden
                       >
                         ·
@@ -311,10 +320,10 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
                   const isSelected = selected.has(key)
                   const isEditing = editing === key
                   const style =
-                    price != null ? heatStyle(price, priceStats.min, priceStats.max) : undefined
+                    price != null ? heatStyle(price, priceStats.min, priceStats.max, isDark) : undefined
 
                   return (
-                    <td key={day} className="border-l border-slate-100 p-0.5">
+                    <td key={day} className="border-l border-border p-0.5">
                       {isEditing ? (
                         <input
                           autoFocus
@@ -333,7 +342,7 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
                             }
                           }}
                           aria-label={`Precio ${DAY_LABELS[day]} ${hourLabel(hour)}`}
-                          className="h-8 w-full rounded-md border-2 border-emerald-600 px-1 text-center text-xs tabular-nums focus-visible:outline-none"
+                          className="h-8 w-full rounded-md border-2 border-emerald-600 bg-background text-foreground px-1 text-center text-xs tabular-nums focus-visible:outline-none"
                         />
                       ) : (
                         <button
@@ -348,7 +357,7 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
                           aria-pressed={isSelected}
                           className={`flex h-8 w-full items-center justify-center rounded-md text-xs font-medium tabular-nums transition-colors ${
                             price == null
-                              ? 'bg-amber-50 text-amber-400 ring-1 ring-inset ring-amber-200 hover:bg-amber-100'
+                              ? 'bg-amber-50 text-amber-500 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20'
                               : ''
                           } ${
                             isSelected ? 'ring-2 ring-emerald-500 ring-offset-1' : ''
@@ -368,7 +377,7 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
 
       {/* Estado */}
       {emptyCount > 0 ? (
-        <p className="text-xs text-amber-700">
+        <p className="text-xs text-amber-700 dark:text-amber-300">
           Faltan {emptyCount} celda{emptyCount === 1 ? '' : 's'} con precio. Completalas antes de
           guardar (toda hora operativa necesita un precio).
         </p>

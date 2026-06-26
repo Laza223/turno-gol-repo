@@ -92,7 +92,7 @@ export default async function ConfiguracionPage() {
         </p>
         <Link
           href="/eliminar-cuenta"
-          className="inline-flex h-11 items-center justify-center rounded-xl border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 active:scale-[0.98] dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+          className="inline-flex h-11 items-center justify-center rounded-xl border border-red-300 bg-card px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 active:scale-[0.98] dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
         >
           Iniciar eliminación
         </Link>

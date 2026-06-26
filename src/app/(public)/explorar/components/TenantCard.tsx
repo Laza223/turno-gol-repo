@@ -185,7 +185,7 @@ function TenantCardCompact({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} loading="lazy" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100 text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:to-muted dark:text-emerald-300">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-muted text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:text-emerald-300">
             {tenant.name.slice(0, 2).toUpperCase()}
           </div>
         )}

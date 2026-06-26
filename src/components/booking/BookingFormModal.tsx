@@ -152,8 +152,8 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white rounded-lg shadow-xl p-6 focus:outline-none">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border rounded-xl shadow-2xl dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] p-6 focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
           <Dialog.Title className="text-base font-semibold text-foreground mb-1">
             Nueva reserva
           </Dialog.Title>
@@ -174,7 +174,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                 name="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value as ReasonValue)}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 {REASONS.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -202,7 +202,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                       className={`flex-1 py-1.5 min-h-11 md:min-h-9 rounded border text-sm font-medium transition-colors duration-100 ${
                         duration === d
                           ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          : 'bg-card text-foreground border-border hover:bg-accent'
                       }`}
                     >
                       {d} min
@@ -227,7 +227,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                     type="text"
                     maxLength={200}
                     autoComplete="name"
-                    className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     placeholder="Ej: Juan Pérez"
                   />
                 </div>
@@ -246,7 +246,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                     maxLength={50}
                     inputMode="tel"
                     autoComplete="tel"
-                    className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     placeholder="Ej: 11-1234-5678"
                   />
                 </div>
@@ -265,13 +265,13 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                 name="notesInternal"
                 maxLength={1000}
                 rows={2}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-[44px] md:min-h-0 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-[44px] md:min-h-0 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                 placeholder="Solo visible para el staff"
               />
             </div>
 
             {error && (
-              <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25">
                 {error}
               </p>
             )}
@@ -280,7 +280,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
               <Dialog.Close asChild>
                 <button
                   type="button"
-                  className="px-4 py-2 min-h-11 md:min-h-10 text-sm font-medium text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors duration-100"
+                  className="px-4 py-2 min-h-11 md:min-h-10 text-sm font-medium text-foreground border border-border rounded-md hover:bg-accent transition-colors duration-100"
                 >
                   Cancelar
                 </button>
@@ -288,7 +288,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
               <button
                 type="submit"
                 disabled={isPending}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-11 md:min-h-10 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-11 md:min-h-10 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-[0.98] motion-reduce:active:scale-100"
               >
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 {isPending ? 'Guardando…' : 'Confirmar'}

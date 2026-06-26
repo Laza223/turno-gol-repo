@@ -220,7 +220,7 @@ export function BookingGrid({
         <div
           role="status"
           aria-live="polite"
-          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800"
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200"
         >
           Sin conexión. Los datos pueden no estar actualizados.
         </div>
@@ -336,7 +336,7 @@ export function BookingGrid({
                 >
                   <span className="truncate">{court.name}</span>
                   {court.status === 'offline' && (
-                    <span className="shrink-0 font-normal text-slate-400">(offline)</span>
+                    <span className="shrink-0 font-normal text-slate-400 dark:text-slate-500">(offline)</span>
                   )}
                 </div>
               ))}

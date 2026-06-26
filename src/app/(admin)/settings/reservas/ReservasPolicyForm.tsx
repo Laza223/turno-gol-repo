@@ -26,9 +26,9 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
       className="space-y-6 max-w-lg"
     >
       <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-slate-700">Seña</legend>
+        <legend className="text-sm font-medium text-foreground">Seña</legend>
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input
               type="radio"
               name="requiresDeposit"
@@ -38,7 +38,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             />
             Requerir seña
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input
               type="radio"
               name="requiresDeposit"
@@ -61,18 +61,18 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             defaultValue={s.deposit_percentage ?? 30}
             className="h-10 w-32"
           />
-          <p className="text-xs text-slate-500">Entre 10% y 100%</p>
+          <p className="text-xs text-muted-foreground">Entre 10% y 100%</p>
         </div>
       </fieldset>
 
       <div className="space-y-1.5">
         <Label>Reservas online</Label>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Permite que los jugadores reserven solos desde la página pública de tu complejo. Si las
           deshabilitás, solo vos podés cargar reservas desde el panel.
         </p>
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input
               type="radio"
               name="allowOnlineBooking"
@@ -82,7 +82,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             />
             Habilitadas
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input
               type="radio"
               name="allowOnlineBooking"
@@ -107,12 +107,12 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
           defaultValue={s.cancellation_policy?.hours_before ?? 12}
           className="h-10 w-32"
         />
-        <p className="text-xs text-slate-500">0 = sin límite de anticipación</p>
+        <p className="text-xs text-muted-foreground">0 = sin límite de anticipación</p>
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-slate-700">Ausencias (no-show)</legend>
-        <p className="text-xs text-slate-500">
+        <legend className="text-sm font-medium text-foreground">Ausencias (no-show)</legend>
+        <p className="text-xs text-muted-foreground">
           Cuando marcás a un jugador como ausente, el sistema le genera una deuda
           por el valor del turno (menos la seña, si la pagó). Queda bloqueado para
           reservar online en tu complejo hasta que la salde. No requiere
@@ -124,12 +124,12 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
 
       <div aria-live="polite" className="min-h-[1.25rem]">
         {!state.success && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {state.error}
           </p>
         )}
         {didSubmit && state.success && (
-          <p role="status" className="text-sm text-emerald-700">
+          <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
             Políticas guardadas.
           </p>
         )}

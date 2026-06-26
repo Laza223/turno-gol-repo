@@ -18,7 +18,7 @@ export default function Loading() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+            className="rounded-lg border border-border bg-card p-4 shadow-sm"
           >
             <Skeleton className="h-3 w-20" />
             <Skeleton className="mt-2 h-6 w-28" />
@@ -28,8 +28,8 @@ export default function Loading() {
       </div>
 
       {/* By court table */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-6 py-4">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-6 py-4">
           <Skeleton className="h-4 w-24" />
         </div>
         <div className="space-y-2 px-6 py-3">
@@ -47,8 +47,8 @@ export default function Loading() {
       </div>
 
       {/* By payment method table */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-6 py-4">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-6 py-4">
           <Skeleton className="h-4 w-40" />
         </div>
         <div className="space-y-2 px-6 py-3">

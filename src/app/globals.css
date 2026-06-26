@@ -104,10 +104,18 @@
   }
 }
 
-/* Field texture shell — layout wrapper con fondo texturizado limpio */
+/* Field texture shell — layout wrapper del panel admin. Theme-adaptive:
+   light = campo slate claro + glow emerald tenue; dark = campo slate-900. */
 .shell-bg {
+  background-color: hsl(214 25% 90%);
+  background-image:
+    radial-gradient(circle at top right, rgba(5, 150, 105, 0.06), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.05), transparent 40%);
+  background-attachment: fixed;
+}
+.dark .shell-bg {
   background-color: hsl(var(--shell-bg));
-  background-image: 
+  background-image:
     radial-gradient(circle at top right, rgba(5, 150, 105, 0.15), transparent 40%),
     radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.1), transparent 40%);
   background-attachment: fixed;

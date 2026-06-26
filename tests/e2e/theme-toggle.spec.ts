@@ -43,4 +43,40 @@ test.describe('Toggle de tema', () => {
       await ctx.close()
     }
   })
+
+  test('admin: el panel flipa con el tema global (sidebar incluido)', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    // Dev compila /dashboard on-demand en el primer hit (lento en frío).
+    test.setTimeout(120_000)
+    const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
+    const page = await ctx.newPage()
+
+    try {
+      await page.goto('/dashboard')
+
+      // El switch de tema (AdminThemeMenu) está montado en el header admin.
+      // La interacción del dropdown Radix en sí se cubre con el patrón del
+      // AccountMenu del jugador; acá validamos que el panel admin completo
+      // (chrome incluido) responde al tema que ese toggle persiste.
+      await expect(page.getByRole('button', { name: 'Cambiar tema' })).toBeVisible({
+        timeout: 60_000,
+      })
+
+      // next-themes persiste el tema elegido en localStorage['theme'].
+      // Forzar "oscuro" → el panel admin flipa a dark.
+      await page.evaluate(() => window.localStorage.setItem('theme', 'dark'))
+      await page.reload()
+      await expect(page.locator('html')).toHaveClass(/dark/)
+
+      // Forzar "claro" → vuelve a light (el sidebar, antes dark-por-diseño,
+      // ahora también flipa).
+      await page.evaluate(() => window.localStorage.setItem('theme', 'light'))
+      await page.reload()
+      await expect(page.locator('html')).not.toHaveClass(/dark/)
+    } finally {
+      await ctx.close()
+    }
+  })
 })

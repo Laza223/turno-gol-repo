@@ -86,16 +86,16 @@ export default async function PublicComplexPage(props: Props) {
         ]}
       />
 
-      {/* Clean white sheet — structured, premium, deep soft shadow */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_24px_70px_-38px_rgba(2,6,23,.4)] sm:p-6 lg:p-8 space-y-7">
+      {/* Clean sheet — structured, premium, deep soft shadow */}
+      <div className="rounded-3xl border border-border bg-card p-4 shadow-[0_24px_70px_-38px_rgba(2,6,23,.4)] sm:p-6 lg:p-8 space-y-7">
         {galleryPhotos.length > 0 && <TenantGallery photos={galleryPhotos} name={tenant.name} />}
 
         <TenantHeader tenant={tenant} avgRating={summary.average} reviewCount={summary.count} />
 
         {courtCards.length > 0 && (
           <section aria-label="Canchas" className="space-y-3.5">
-            <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">
-              Canchas <span className="font-sans text-sm font-normal text-slate-400">({courtCards.length})</span>
+            <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
+              Canchas <span className="font-sans text-sm font-normal text-muted-foreground">({courtCards.length})</span>
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {courtCards.map((court) => (

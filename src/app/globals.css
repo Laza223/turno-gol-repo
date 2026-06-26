@@ -47,9 +47,14 @@
 
     /* Nav sidebar width */
     --sidebar-width: 240px;
+
+    /* Native control chrome (date/time/select/checkbox/radio) follows theme */
+    color-scheme: light;
+    accent-color: hsl(var(--primary));
   }
 
   .dark {
+    color-scheme: dark;
     --background: 224 71% 4%;          /* #020617 slate-950 */
     --foreground: 210 40% 98%;         /* slate-50 */
 
@@ -141,6 +146,74 @@
   );
 }
 
+/* Variante dark: slate-950 profundo + glow emerald sutil (lenguaje del portal) */
+.dark .content-area-gradient {
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 42%),
+    linear-gradient(160deg, hsl(224 60% 5%) 0%, hsl(224 71% 4%) 55%, hsl(222 47% 6%) 100%);
+}
+
+/* ─── Sistema de superficies premium (theme-adaptive) ──────────────────────
+   Light = elevación (sombra suave en capas, sin translucidez → no se ve barroso).
+   Dark  = glass (relleno white-alpha + blur + sombra profunda + glow emerald).
+   Base estática; el lift/glow en hover es opt-in vía .card-premium-interactive. */
+.card-premium {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 0.25rem);
+  box-shadow:
+    0 1px 2px rgba(2, 6, 23, 0.04),
+    0 8px 24px -12px rgba(2, 6, 23, 0.12);
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.dark .card-premium {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.9);
+}
+
+.card-premium-interactive {
+  cursor: pointer;
+}
+.card-premium-interactive:hover {
+  transform: translateY(-4px);
+  border-color: rgba(16, 185, 129, 0.30);
+  box-shadow:
+    0 1px 2px rgba(2, 6, 23, 0.05),
+    0 18px 40px -16px rgba(16, 185, 129, 0.20);
+}
+.dark .card-premium-interactive:hover {
+  border-color: rgba(16, 185, 129, 0.40);
+  box-shadow:
+    0 24px 50px -30px rgba(0, 0, 0, 0.9),
+    0 0 40px -8px rgba(16, 185, 129, 0.35);
+}
+
+/* ─── Banda de page-header premium (theme-adaptive) ────────────────────────
+   Light = gradiente slate sutil + tinte emerald. Dark = slate-950 + radial glow. */
+.page-header-band {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, 0.06), transparent 55%),
+    linear-gradient(180deg, hsl(214 25% 95%), hsl(214 25% 91%));
+}
+.dark .page-header-band {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(16, 185, 129, 0.16), transparent 55%),
+    linear-gradient(180deg, hsl(222 47% 7%), hsl(224 71% 4%));
+}
+
+/* Halo emerald reutilizable para icon-chips de StatCard / acciones */
+.icon-halo {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(13, 148, 136, 0.10));
+  color: hsl(var(--primary));
+}
+.dark .icon-halo {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(13, 148, 136, 0.12));
+  color: hsl(160 84% 55%);
+}
+
 /* Skeleton shimmer */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
@@ -170,6 +243,10 @@
 
   .skeleton {
     animation: none;
+  }
+
+  .card-premium-interactive:hover {
+    transform: none;
   }
 }
 

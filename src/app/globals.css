@@ -48,6 +48,41 @@
     /* Nav sidebar width */
     --sidebar-width: 240px;
   }
+
+  .dark {
+    --background: 224 71% 4%;          /* #020617 slate-950 */
+    --foreground: 210 40% 98%;         /* slate-50 */
+
+    --card: 222 33% 9%;                /* superficie elevada ~#0d1424 */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 33% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 161 94% 30%;            /* emerald-600 (CTA, igual que light) */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 14%;          /* nested surface */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%;   /* más claro para legibilidad dark */
+
+    --accent: 217 33% 17%;             /* hover bg */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 72% 51%;          /* red-600 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 160 84% 39%;               /* emerald-500 */
+
+    --success: 142 70% 45%;            /* green más vivo para dark */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;             /* amber más vivo para dark */
+    --warning-foreground: 0 0% 100%;
+  }
 }
 
 @layer base {

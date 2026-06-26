@@ -27,3 +27,10 @@ docs/audit/reports/fase-f03-raw/lhci/*.html
 docs/audit/reports/fase-f03-raw/lhci/*.json
 docs/audit/reports/fase-f06-raw/lhci/*.html
 docs/audit/reports/fase-f06-raw/lhci/*.json
+
+# design-sync (claude.ai/design) — staged scripts, build output, machine state
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

@@ -63,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={`${inter.variable} ${archivo.variable} ${sora.variable}`}>
+    <html lang="es" className={`dark ${inter.variable} ${archivo.variable} ${sora.variable}`}>
       <body className="font-sans antialiased">
         <a
           href="#main-content"

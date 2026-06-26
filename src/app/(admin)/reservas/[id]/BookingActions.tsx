@@ -120,7 +120,7 @@ export default function BookingActions({
           type="button"
           disabled={pending}
           onClick={() => setNoShowOpen(true)}
-          className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+          className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
         >
           Marcar ausente
         </button>
@@ -128,12 +128,12 @@ export default function BookingActions({
           type="button"
           disabled={pending}
           onClick={() => { setReason(''); setCancelType(null); setCancelOpen(true) }}
-          className="h-9 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60"
+          className="h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
         >
           Cancelar
         </button>
       </div>
-      {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
       <ConfirmDialog
         open={cancelOpen}
@@ -147,7 +147,7 @@ export default function BookingActions({
       >
         <div className="space-y-3">
           <fieldset className="space-y-1">
-            <legend className="text-xs font-medium text-slate-700">¿Quién cancela?</legend>
+            <legend className="text-xs font-medium text-foreground">¿Quién cancela?</legend>
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="radio"
@@ -158,7 +158,7 @@ export default function BookingActions({
               />
               <span>
                 <span className="font-medium">El complejo necesita cancelar</span>
-                <span className="block text-xs text-slate-500">Rotura, mantenimiento o error. Reembolso automático de la seña.</span>
+                <span className="block text-xs text-muted-foreground">Rotura, mantenimiento o error. Reembolso automático de la seña.</span>
               </span>
             </label>
             <label className="flex items-start gap-2 text-sm">
@@ -171,25 +171,25 @@ export default function BookingActions({
               />
               <span>
                 <span className="font-medium">El jugador pidió cancelar</span>
-                <span className="block text-xs text-slate-500">Se aplica la política de cancelación del complejo.</span>
+                <span className="block text-xs text-muted-foreground">Se aplica la política de cancelación del complejo.</span>
               </span>
             </label>
           </fieldset>
 
           {refundPreview && (
-            <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+            <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
               {refundPreview}
             </div>
           )}
 
           <div className="space-y-1">
-            <label htmlFor="cancel-reason" className="text-xs font-medium text-slate-700">Motivo (obligatorio)</label>
+            <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">Motivo (obligatorio)</label>
             <textarea
               id="cancel-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>

@@ -62,7 +62,7 @@ export function ReservasToolbar() {
   return (
     <div className="flex w-full items-center gap-2 sm:w-auto">
       <div className="relative w-full sm:w-72">
-        <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <label htmlFor="reservas-search" className="sr-only">
           Buscar por nombre o número de reserva
         </label>
@@ -73,21 +73,21 @@ export function ReservasToolbar() {
           onChange={(e) => onChange(e.target.value)}
           placeholder="Buscar nombre o nº de reserva"
           autoComplete="off"
-          className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 [&::-webkit-search-cancel-button]:hidden"
+          className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 [&::-webkit-search-cancel-button]:hidden"
         />
         {value && (
           <button
             type="button"
             onClick={clear}
             aria-label="Limpiar búsqueda"
-            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X aria-hidden className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      <div role="group" aria-label="Densidad de la lista" className="flex shrink-0 rounded-lg bg-slate-100 p-0.5">
+      <div role="group" aria-label="Densidad de la lista" className="flex shrink-0 rounded-lg bg-muted p-0.5">
         <button
           type="button"
           onClick={() => setVista(false)}
@@ -96,7 +96,7 @@ export function ReservasToolbar() {
           title="Vista detallada"
           className={cn(
             'flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
-            !compact ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+            !compact ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           <LayoutList aria-hidden className="h-4 w-4" />
@@ -109,7 +109,7 @@ export function ReservasToolbar() {
           title="Vista compacta"
           className={cn(
             'flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
-            compact ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+            compact ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           <Rows3 aria-hidden className="h-4 w-4" />

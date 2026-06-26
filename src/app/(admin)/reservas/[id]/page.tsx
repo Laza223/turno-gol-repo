@@ -58,30 +58,30 @@ export default async function ReservaDetailPage({ params }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <Link href="/reservas" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+      <Link href="/reservas" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
         <ChevronLeft className="h-4 w-4" aria-hidden /> Reservas
       </Link>
-      <h1 className="text-2xl font-semibold text-slate-900">Detalle de la reserva</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Detalle de la reserva</h1>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="card-premium rounded-xl p-6">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
           {rows.map(([label, value]) => (
             <div key={label}>
-              <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-              <dd className="text-sm font-medium text-slate-900">{value}</dd>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+              <dd className="text-sm font-medium text-foreground">{value}</dd>
             </div>
           ))}
         </dl>
         {booking.notesPlayer && (
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <dt className="text-xs uppercase tracking-wide text-slate-500">Nota del jugador</dt>
-            <dd className="mt-1 text-sm text-slate-700">{booking.notesPlayer}</dd>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Nota del jugador</dt>
+            <dd className="mt-1 text-sm text-foreground">{booking.notesPlayer}</dd>
           </div>
         )}
         {booking.canceledReason && (
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <dt className="text-xs uppercase tracking-wide text-slate-500">Motivo de cancelación</dt>
-            <dd className="mt-1 text-sm text-slate-700">{booking.canceledReason}</dd>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Motivo de cancelación</dt>
+            <dd className="mt-1 text-sm text-foreground">{booking.canceledReason}</dd>
           </div>
         )}
       </div>

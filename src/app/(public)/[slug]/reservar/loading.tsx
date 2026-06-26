@@ -5,7 +5,7 @@ export default function ReservarLoading() {
     <div className="mx-auto max-w-md px-4 py-8 sm:px-6 space-y-5">
       <Skeleton className="h-7 w-48" />
       {/* Summary card */}
-      <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+      <div className="space-y-3 rounded-xl border border-border p-4">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
         <Skeleton className="h-4 w-2/3" />

@@ -10,14 +10,14 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-10 space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Política de Privacidad
         </h1>
-        <p className="text-sm text-slate-500">Última actualización: 25 de mayo de 2026.</p>
+        <p className="text-sm text-muted-foreground">Última actualización: 25 de mayo de 2026.</p>
       </header>
 
-      <section className="space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">1. Quiénes somos</h2>
+      <section className="space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">1. Quiénes somos</h2>
         <p>
           TurnoGol es una plataforma SaaS que permite a complejos deportivos de fútbol en Argentina
           gestionar reservas, pagos y clientes. A los fines de la Ley 25.326 de Protección de Datos
@@ -36,8 +36,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">2. Qué datos recolectamos</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">2. Qué datos recolectamos</h2>
         <p>De los <strong>jugadores</strong> recolectamos:</p>
         <ul className="list-disc space-y-1 pl-6">
           <li>Nombre y apellido (obligatorio para identificarte en las reservas).</li>
@@ -67,8 +67,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">3. Para qué usamos tus datos</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">3. Para qué usamos tus datos</h2>
         <ul className="list-disc space-y-1 pl-6">
           <li>Operar la plataforma: crear cuenta, autenticar, mostrar y gestionar reservas.</li>
           <li>
@@ -93,8 +93,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">4. Con quién compartimos tus datos</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">4. Con quién compartimos tus datos</h2>
         <p>
           TurnoGol no vende, alquila ni comercializa tus datos personales. Trabajamos con los
           siguientes sub-encargados del tratamiento, cada uno con su propia política de privacidad y
@@ -138,8 +138,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">5. Cuánto tiempo retenemos tus datos</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">5. Cuánto tiempo retenemos tus datos</h2>
         <ul className="list-disc space-y-1 pl-6">
           <li>
             <strong>Cuenta del jugador</strong>: mientras esté activa. Tras 12 meses sin actividad,
@@ -168,8 +168,8 @@ export default function PrivacyPage() {
         </ul>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">6. Tus derechos (ARCO — Ley 25.326)</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">6. Tus derechos (ARCO — Ley 25.326)</h2>
         <p>
           La Ley 25.326 te garantiza los derechos de <strong>Acceso</strong>,{' '}
           <strong>Rectificación</strong>, <strong>Cancelación</strong> y{' '}
@@ -180,7 +180,7 @@ export default function PrivacyPage() {
             <strong>Acceso</strong>: podés solicitar copia de todos los datos que tenemos sobre vos.
             Plazo de respuesta: 10 días hábiles. Gratuito una vez cada 6 meses. Endpoint
             disponible:{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5 text-sm">
+            <code className="rounded bg-muted px-1 py-0.5 text-sm">
               /api/player/data-export
             </code>{' '}
             (autenticado) o por mail a privacidad@turnogol.app.
@@ -208,8 +208,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">7. Cookies y seguridad</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">7. Cookies y seguridad</h2>
         <p>
           TurnoGol usa <strong>únicamente cookies esenciales</strong> para el funcionamiento del
           servicio: sesión de autenticación gestionada por Supabase Auth, y la cookie de PIN gate
@@ -228,8 +228,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">
           8. Autoridad de aplicación (AAIP)
         </h2>
         <p>
@@ -252,8 +252,8 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className="mt-10 space-y-4 text-slate-700">
-        <h2 className="text-xl font-semibold text-slate-900">9. Cambios en esta política</h2>
+      <section className="mt-10 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">9. Cambios en esta política</h2>
         <p>
           Si modificamos esta política te lo informaremos por email (al menos 30 días antes para
           cambios sustanciales) y publicaremos la fecha de actualización al inicio de este documento.

@@ -31,7 +31,7 @@ export function CancelBookingButton({ bookingId, courtName, dateLabel, timeLabel
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors duration-150 h-11 px-3 rounded-md hover:bg-red-50 active:scale-[0.98]"
+        className="text-xs font-medium text-red-600 hover:text-red-700 transition-colors duration-150 h-11 px-3 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-[0.98]"
       >
         Cancelar
       </button>
@@ -56,7 +56,7 @@ export function CancelBookingButton({ bookingId, courtName, dateLabel, timeLabel
         onConfirm={handleConfirm}
       >
         <div className="space-y-1">
-          <label htmlFor="cancel-reason" className="text-xs font-medium text-slate-700">
+          <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">
             Motivo (opcional)
           </label>
           <textarea
@@ -66,7 +66,7 @@ export function CancelBookingButton({ bookingId, courtName, dateLabel, timeLabel
             maxLength={500}
             rows={2}
             placeholder="Ej: no puedo ir, lluvia, equivocación de horario..."
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 resize-none"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 resize-none"
           />
         </div>
       </ConfirmDialog>

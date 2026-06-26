@@ -46,11 +46,11 @@ export function ImpersonateButton({
         <LogIn className="h-4 w-4" aria-hidden="true" />
         {pending ? 'Entrando…' : 'Entrar como este complejo'}
       </button>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Abre el panel del complejo como soporte. Un banner rojo te recordará que
         estás impersonando; toda acción se audita como super admin.
       </p>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }

@@ -60,7 +60,7 @@ function FeedbackText({ feedback }: { feedback: Feedback }) {
   return (
     <p
       role="status"
-      className={`text-xs ${feedback.kind === 'ok' ? 'text-green-700' : 'text-red-600'}`}
+      className={`text-xs ${feedback.kind === 'ok' ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
     >
       {feedback.text}
     </p>
@@ -77,16 +77,16 @@ function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-base font-semibold text-slate-950">{title}</h3>
-      <p className="mt-1 text-xs text-slate-500">{description}</p>
+    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
       <div className="mt-4">{children}</div>
     </section>
   )
 }
 
 const inputCls =
-  'h-10 rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500'
+  'h-10 rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500'
 const primaryBtn =
   'h-10 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700 disabled:opacity-60'
 const destructiveBtn =
@@ -174,13 +174,13 @@ export function SupportActionsPanel({
         description={`Estado actual: ${STATUS_LABELS[status]}. Solo se ofrecen destinos válidos según el ciclo de vida; las ventanas temporales del FSM (dunning/retención) se siguen respetando.`}
       >
         {forceableTargets.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             No hay transiciones forzables desde el estado actual.
           </p>
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="force-target" className="text-sm font-medium text-slate-700">
+              <label htmlFor="force-target" className="text-sm font-medium text-foreground">
                 Estado destino
               </label>
               <select
@@ -190,7 +190,7 @@ export function SupportActionsPanel({
                   setForceTarget(e.target.value as TenantStatus | '')
                   setForceConfirm('')
                 }}
-                className={`${inputCls} bg-white`}
+                className={`${inputCls} bg-card`}
               >
                 <option value="">Elegir…</option>
                 {forceableTargets.map((s) => (
@@ -219,8 +219,8 @@ export function SupportActionsPanel({
               </button>
             </div>
             {forceIsDestructive && (
-              <div className="space-y-1 rounded-md bg-red-50 p-3 ring-1 ring-inset ring-red-600/20">
-                <label htmlFor="force-confirm" className="block text-xs font-medium text-red-700">
+              <div className="space-y-1 rounded-md bg-red-50 dark:bg-red-500/10 p-3 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30">
+                <label htmlFor="force-confirm" className="block text-xs font-medium text-red-700 dark:text-red-400">
                   Acción destructiva. Escribí el nombre exacto del complejo (<span className="font-semibold">{tenantName}</span>) para confirmar:
                 </label>
                 <input
@@ -262,13 +262,13 @@ export function SupportActionsPanel({
         description="Mueve el fin de trial a max(hoy, fin actual) + días. Solo para tenants en trial."
       >
         {!isTrialing ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             El complejo no está en trial — no aplica.
           </p>
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="trial-days" className="text-sm font-medium text-slate-700">
+              <label htmlFor="trial-days" className="text-sm font-medium text-foreground">
                 Días (1–90)
               </label>
               <input
@@ -301,20 +301,20 @@ export function SupportActionsPanel({
         description="Swap inmediato del plan, sin cargo de proración. Si hay suscripción MP activa, actualiza el monto recurrente para el próximo ciclo."
       >
         {!hasSubscription ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             El complejo no tiene suscripción registrada — no aplica.
           </p>
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="target-plan" className="text-sm font-medium text-slate-700">
+              <label htmlFor="target-plan" className="text-sm font-medium text-foreground">
                 Plan destino
               </label>
               <select
                 id="target-plan"
                 value={targetPlanId}
                 onChange={(e) => setTargetPlanId(e.target.value)}
-                className={`${inputCls} bg-white`}
+                className={`${inputCls} bg-card`}
               >
                 <option value="">Elegir…</option>
                 {plans
@@ -348,12 +348,12 @@ export function SupportActionsPanel({
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {boolFields.map(({ key, label }) => (
-              <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
+              <label key={key} className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={form[key] as boolean}
                   onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
-                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  className="h-4 w-4 rounded border-border text-emerald-600 dark:text-emerald-400 focus:ring-emerald-500"
                 />
                 {label}
               </label>
@@ -361,7 +361,7 @@ export function SupportActionsPanel({
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="flex flex-col gap-1">
-              <label htmlFor="deposit-pct" className="text-xs font-medium text-slate-700">
+              <label htmlFor="deposit-pct" className="text-xs font-medium text-foreground">
                 % de seña (0–100)
               </label>
               <input
@@ -377,7 +377,7 @@ export function SupportActionsPanel({
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="advance-days" className="text-xs font-medium text-slate-700">
+              <label htmlFor="advance-days" className="text-xs font-medium text-foreground">
                 Anticipación (días, 1–60)
               </label>
               <input
@@ -393,7 +393,7 @@ export function SupportActionsPanel({
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="auto-complete" className="text-xs font-medium text-slate-700">
+              <label htmlFor="auto-complete" className="text-xs font-medium text-foreground">
                 Auto-completar (min, 0–1440)
               </label>
               <input
@@ -432,7 +432,7 @@ export function SupportActionsPanel({
       >
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <label htmlFor="reset-email" className="text-sm font-medium text-slate-700">
+            <label htmlFor="reset-email" className="text-sm font-medium text-foreground">
               Email del staff
             </label>
             <input
@@ -467,13 +467,13 @@ export function SupportActionsPanel({
         description="Cancela el preapproval de MercadoPago y pasa el tenant a 'canceled'. El acceso sigue hasta el fin del período pagado. Irreversible sin reactivación."
       >
         {!hasSubscription ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             El complejo no tiene suscripción registrada — no aplica.
           </p>
         ) : (
           <div className="space-y-3">
             <div className="flex flex-col gap-1">
-              <label htmlFor="cancel-reason" className="text-xs font-medium text-slate-700">
+              <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">
                 Motivo (obligatorio)
               </label>
               <textarea
@@ -481,11 +481,11 @@ export function SupportActionsPanel({
                 rows={2}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
-            <div className="space-y-1 rounded-md bg-red-50 p-3 ring-1 ring-inset ring-red-600/20">
-              <label htmlFor="cancel-confirm" className="block text-xs font-medium text-red-700">
+            <div className="space-y-1 rounded-md bg-red-50 dark:bg-red-500/10 p-3 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30">
+              <label htmlFor="cancel-confirm" className="block text-xs font-medium text-red-700 dark:text-red-400">
                 Acción destructiva. Escribí el nombre exacto del complejo (<span className="font-semibold">{tenantName}</span>) para confirmar:
               </label>
               <input

@@ -119,6 +119,18 @@
   background-attachment: fixed;
 }
 
+/* Player shell — variante dark: misma cancha recoloreada sobre #020617 + glow */
+.dark .player-shell-bg {
+  background-color: #020617;
+  background-image:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 42%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMidYMid slice'%3E%3Cg stroke='%2334d399' stroke-width='2' stroke-opacity='0.06' fill='none'%3E%3Cline x1='600' y1='0' x2='600' y2='800'/%3E%3Ccircle cx='600' cy='400' r='160'/%3E%3Ccircle cx='600' cy='400' r='4' fill='%2334d399' fill-opacity='0.06'/%3E%3Crect x='-10' y='150' width='220' height='500' rx='8'/%3E%3Crect x='-10' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 210 300 A 130 130 0 0 1 210 500'/%3E%3Crect x='990' y='150' width='220' height='500' rx='8'/%3E%3Crect x='1140' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 990 300 A 130 130 0 0 0 990 500'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(to bottom right, #07131d, #020617);
+  background-size: cover, cover, 100% 100%;
+  background-position: center;
+  background-attachment: fixed;
+}
+
 /* Subtle gradient para el área de contenido — evita un bloque plano */
 .content-area-gradient {
   background: linear-gradient(

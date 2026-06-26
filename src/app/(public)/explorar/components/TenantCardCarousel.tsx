@@ -125,7 +125,7 @@ export default function TenantCardCarousel({ photos, name, href }: Props) {
             {slides.map((_, i) => (
               <span
                 key={i}
-                className={`h-1.5 w-1.5 rounded-full ${i === index ? 'bg-white' : 'bg-white/50'}`}
+                className={`h-1.5 w-1.5 rounded-full ${i === index ? 'bg-white/80 dark:bg-white/70' : 'bg-white/50 dark:bg-white/40'}`}
               />
             ))}
           </div>

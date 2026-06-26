@@ -18,19 +18,19 @@ export function StepCourts() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Tus Canchas</h2>
-        <p className="text-sm text-slate-600 mt-1">Configuración de canchas</p>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Tus Canchas</h2>
+        <p className="text-sm text-muted-foreground mt-1">Configuración de canchas</p>
       </div>
 
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 space-y-2">
+      <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-sm text-emerald-900 dark:text-emerald-100 space-y-2">
         <p className="font-medium">Podés agregar tus canchas desde el panel de configuración.</p>
-        <p className="text-emerald-800">
+        <p className="text-emerald-800 dark:text-emerald-200">
           Necesitás al menos 1 cancha en estado <strong>online</strong> para aparecer en búsquedas
           públicas y recibir reservas.
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <button
         onClick={handleContinue}

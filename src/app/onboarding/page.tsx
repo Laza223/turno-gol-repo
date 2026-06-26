@@ -29,21 +29,21 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-muted/40 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo header */}
         <div className="mb-6 flex items-center justify-center">
-          <Logo variant="horizontal" textClassName="text-slate-900" iconClassName="bg-white border-slate-200 shadow-sm" />
+          <Logo variant="horizontal" textClassName="text-foreground" iconClassName="bg-card border-border shadow-sm" />
         </div>
 
-        <div className="rounded-2xl bg-white shadow-md shadow-slate-200/60 border border-slate-200 p-8">
+        <div className="card-premium rounded-2xl p-8">
           {/* Stepper */}
           <div className="mb-8">
-            <div className="flex justify-between text-xs font-medium text-slate-500 mb-3">
+            <div className="flex justify-between text-xs font-medium text-muted-foreground mb-3">
               <span>Paso {currentStep} de 4</span>
-              <span className="tabular-nums text-emerald-700">{Math.round((currentStep / 4) * 100)}%</span>
+              <span className="tabular-nums text-emerald-700 dark:text-emerald-400">{Math.round((currentStep / 4) * 100)}%</span>
             </div>
-            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${(currentStep / 4) * 100}%` }}

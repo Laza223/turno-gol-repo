@@ -48,11 +48,11 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Horarios</h2>
-        <p className="text-sm text-slate-600 mt-1">Horarios de apertura</p>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Horarios</h2>
+        <p className="text-sm text-muted-foreground mt-1">Horarios de apertura</p>
       </div>
 
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         Valores pre-cargados. Editá solo lo que sea diferente para tu complejo.
       </p>
 
@@ -60,7 +60,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-slate-500 border-b border-slate-200">
+              <tr className="text-left text-muted-foreground border-b border-border">
                 <th className="pb-2 pr-4 font-medium">Día</th>
                 <th className="pb-2 pr-4 font-medium">Apertura</th>
                 <th className="pb-2 pr-4 font-medium">Cierre</th>
@@ -80,7 +80,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
                         value={day.open}
                         onChange={(e) => updateDay(key, 'open', e.target.value)}
                         disabled={isClosed}
-                        className="border border-slate-200 rounded-md px-2.5 py-1.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
+                        className="border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-muted disabled:text-muted-foreground"
                       />
                     </td>
                     <td className="py-2 pr-4">
@@ -89,7 +89,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
                         value={day.close}
                         onChange={(e) => updateDay(key, 'close', e.target.value)}
                         disabled={isClosed}
-                        className="border border-slate-200 rounded-md px-2.5 py-1.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-100 disabled:text-slate-400"
+                        className="border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-muted disabled:text-muted-foreground"
                       />
                     </td>
                     <td className="py-2">
@@ -100,7 +100,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
                           onChange={(e) => updateDay(key, 'closed', !e.target.checked)}
                           className="rounded"
                         />
-                        <span className="text-xs text-slate-600">
+                        <span className="text-xs text-muted-foreground">
                           {isClosed ? 'Cerrado' : 'Abierto'}
                         </span>
                       </label>
@@ -112,7 +112,7 @@ export function StepSchedule({ openingHours }: StepScheduleProps) {
           </table>
         </div>
 
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
         <button
           type="submit"

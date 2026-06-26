@@ -313,7 +313,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
       {!loading && error && (
         <p
           role="alert"
-          className="text-sm text-red-600 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2"
+          className="text-sm text-red-600 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20"
         >
           No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e
           intentá de nuevo.

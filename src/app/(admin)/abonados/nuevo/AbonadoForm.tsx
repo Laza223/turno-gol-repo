@@ -9,9 +9,9 @@ const DAYS = [
   { value: '4', label: 'Jueves' }, { value: '5', label: 'Viernes' }, { value: '6', label: 'Sábado' }, { value: '0', label: 'Domingo' },
 ]
 const initial: NewAbonadoState = { status: 'idle' }
-const field = 'h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
+const field = 'h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
 const labelCls = 'space-y-1 text-sm block'
-const labelSpan = 'font-medium text-slate-900'
+const labelSpan = 'font-medium text-foreground'
 
 type PreviewData = {
   dates: string[]
@@ -50,14 +50,14 @@ export function PreviewSlotsView({
   const noSlots = goodCount === 0
 
   return (
-    <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-base font-semibold text-slate-900">Fechas del turno fijo</h2>
+    <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-foreground">Fechas del turno fijo</h2>
       <ul className="divide-y divide-slate-100">
         {dates.map((d) => {
           const isConflict = conflictSet.has(d)
           return (
             <li key={d} className="flex items-center justify-between py-2">
-              <span className="text-sm text-slate-700">{d}</span>
+              <span className="text-sm text-foreground">{d}</span>
               {isConflict
                 ? <Badge variant="warning">Ocupado</Badge>
                 : <Badge variant="success">Libre</Badge>
@@ -66,7 +66,7 @@ export function PreviewSlotsView({
           )
         })}
       </ul>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         Se crearán {goodCount} turno{goodCount !== 1 ? 's' : ''}.
         {conflicts.length > 0 &&
           (conflicts.length === 1
@@ -74,7 +74,7 @@ export function PreviewSlotsView({
             : ` ${conflicts.length} fechas ya están ocupadas y se van a saltar.`)}
       </p>
       {noSlots && (
-        <p role="alert" className="text-xs text-amber-700">
+        <p role="alert" className="text-xs text-amber-700 dark:text-amber-300">
           No se va a crear ningún turno: todas las fechas están ocupadas. Revisá el día y el horario elegidos.
         </p>
       )}
@@ -82,7 +82,7 @@ export function PreviewSlotsView({
         <button
           type="button"
           onClick={onBack}
-          className="h-10 rounded-lg border border-slate-200 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          className="h-10 rounded-lg border border-border px-5 text-sm font-semibold text-foreground hover:bg-accent transition-colors"
         >
           Volver a editar
         </button>
@@ -177,10 +177,10 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
   }
 
   return (
-    <form onSubmit={handlePreviewSubmit} className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <form onSubmit={handlePreviewSubmit} className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-slate-900">Turno fijo</legend>
+          <legend className="text-sm font-semibold text-foreground">Turno fijo</legend>
           <label className={labelCls}>
             <span className={labelSpan}>Cancha</span>
             <select name="courtId" required className={field} defaultValue="">
@@ -203,7 +203,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
 
         <div className="space-y-6">
           <fieldset className="space-y-4">
-            <legend className="text-sm font-semibold text-slate-900">Cliente</legend>
+            <legend className="text-sm font-semibold text-foreground">Cliente</legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className={labelCls}><span className={labelSpan}>Nombre y apellido</span><input name="contactName" required className={field} /></label>
               <label className={labelCls}><span className={labelSpan}>Teléfono</span><input name="contactPhone" required className={field} /></label>
@@ -211,7 +211,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
           </fieldset>
 
           <fieldset className="space-y-4">
-            <legend className="text-sm font-semibold text-slate-900">Precio y pago</legend>
+            <legend className="text-sm font-semibold text-foreground">Precio y pago</legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className={labelCls}><span className={labelSpan}>Precio por turno (en pesos)</span><input name="pricePerSession" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required placeholder="Ej: 25000" className={field} /></label>
               <label className={labelCls}>
@@ -225,16 +225,16 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
             <label className={labelCls}>
               <span className={labelSpan}>Precio mensual (en pesos)</span>
               <input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required placeholder="Ej: 100000" className={field} />
-              <span className="block text-xs font-normal text-slate-500">
+              <span className="block text-xs font-normal text-muted-foreground">
                 La cuota que el abonado paga por mes por su turno fijo. Es el monto que vas a cobrarle cada mes.
               </span>
             </label>
           </fieldset>
         </div>
       </div>
-      <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
+      <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
       {previewError && (
-        <p role="alert" className="text-xs text-red-600">{previewError}</p>
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">{previewError}</p>
       )}
       <button
         type="submit"

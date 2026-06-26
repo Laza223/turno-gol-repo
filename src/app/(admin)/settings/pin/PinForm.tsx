@@ -68,7 +68,7 @@ export function PinForm({ hasPin }: Props) {
           className="h-10"
           placeholder="••••"
         />
-        <p className="text-xs text-slate-500">4 a 8 dígitos numéricos.</p>
+        <p className="text-xs text-muted-foreground">4 a 8 dígitos numéricos.</p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="confirmPin">Confirmar nuevo PIN</Label>
@@ -87,12 +87,12 @@ export function PinForm({ hasPin }: Props) {
       <SubmitButton hasPin={hasPin} />
 
       {errorMessage && (
-        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-inset ring-red-600/20">
+        <p role="alert" className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30">
           {errorMessage}
         </p>
       )}
       {state.success && (
-        <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+        <p role="status" className="rounded-md bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-500/30">
           PIN actualizado correctamente.
         </p>
       )}

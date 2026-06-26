@@ -74,21 +74,21 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 p-4">
+    <div className="rounded-lg border border-border p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-900">
+          <p className="text-sm font-medium text-foreground">
             {abonado.courtName} · {DAY_LABELS[abonado.dayOfWeek] ?? '—'}{' '}
             {abonado.timeStart.slice(0, 5)}–{abonado.timeEnd.slice(0, 5)}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {STATUS_LABELS[abonado.status] ?? abonado.status} ·{' '}
             {formatARS(abonado.pricePerSession)}/sesión
           </p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-slate-500">Saldo a favor</p>
-          <p className="text-sm font-semibold text-emerald-700">
+          <p className="text-xs text-muted-foreground">Saldo a favor</p>
+          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
             {formatARS(abonado.creditBalance)}
           </p>
         </div>
@@ -98,15 +98,15 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
         <button
           type="button"
           onClick={openForm}
-          className="mt-3 h-8 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+          className="mt-3 h-8 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
         >
           + Cargar saldo
         </button>
       ) : (
-        <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="mt-3 space-y-3 rounded-lg border border-border bg-muted/40 p-3">
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="flex-1 space-y-1">
-              <label htmlFor={`credit-amount-${abonado.id}`} className="text-xs font-medium text-slate-700">
+              <label htmlFor={`credit-amount-${abonado.id}`} className="text-xs font-medium text-foreground">
                 Monto (ARS)
               </label>
               <input
@@ -117,18 +117,18 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
                 step="0.01"
                 value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
             </div>
             <div className="flex-1 space-y-1">
-              <label htmlFor={`credit-method-${abonado.id}`} className="text-xs font-medium text-slate-700">
+              <label htmlFor={`credit-method-${abonado.id}`} className="text-xs font-medium text-foreground">
                 Medio de pago
               </label>
               <select
                 id={`credit-method-${abonado.id}`}
                 value={method}
                 onChange={(e) => setMethod(e.target.value as Method)}
-                className="h-[38px] w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-[38px] w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <option value="cash">Efectivo</option>
                 <option value="transfer">Transferencia</option>
@@ -138,7 +138,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
             </div>
           </div>
           {error && (
-            <p role="alert" className="text-xs text-red-600">
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
               {error}
             </p>
           )}
@@ -155,7 +155,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
               type="button"
               disabled={pending}
               onClick={() => setOpen(false)}
-              className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+              className="h-8 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -168,10 +168,10 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
 
 export default function AbonadoCreditLoader({ playerId, abonados }: Props) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-900">Abonados</h2>
+    <section className="card-premium rounded-xl p-6">
+      <h2 className="text-sm font-semibold text-foreground">Abonados</h2>
       {abonados.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-500">El jugador no tiene abonos en este complejo.</p>
+        <p className="mt-2 text-sm text-muted-foreground">El jugador no tiene abonos en este complejo.</p>
       ) : (
         <div className="mt-4 space-y-3">
           {abonados.map((a) => (

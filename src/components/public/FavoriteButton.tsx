@@ -74,14 +74,14 @@ export default function FavoriteButton({
         disabled={pending}
         aria-pressed={fav}
         className={cn(
-          'inline-flex h-11 items-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-colors disabled:opacity-60',
+          'group inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-all duration-200 shadow-sm backdrop-blur-md active:scale-95 disabled:opacity-60 disabled:pointer-events-none hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
           fav
-            ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
-            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+            ? 'border-red-500/20 bg-red-500/10 text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500/20 dark:hover:bg-red-500/20'
+            : 'border-border/50 bg-card/60 text-foreground/90 hover:bg-card hover:border-red-500/30 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400',
           className,
         )}
       >
-        <Heart className={cn('h-4 w-4', fav && 'fill-current')} aria-hidden />
+        <Heart className={cn('h-4 w-4 transition-all duration-200 group-hover:scale-110', fav ? 'fill-current text-red-600 dark:text-red-400' : 'text-current')} aria-hidden />
         {fav ? 'Guardado' : 'Guardar'}
       </button>
     )
@@ -96,12 +96,12 @@ export default function FavoriteButton({
       aria-label={label}
       title={label}
       className={cn(
-        'inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:bg-white hover:text-red-600 active:scale-90 disabled:opacity-60 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
-        fav && 'text-red-600',
+        'group inline-flex h-9 w-9 items-center justify-center rounded-full bg-card/85 text-foreground/70 border border-border/40 shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/30 active:scale-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+        fav && 'text-red-600 border-red-500/30 bg-red-500/10 dark:text-red-400 dark:bg-red-500/25',
         className,
       )}
     >
-      <Heart className={cn('h-[18px] w-[18px] transition-transform', fav && 'fill-current')} aria-hidden />
+      <Heart className={cn('h-[18px] w-[18px] transition-all duration-200 group-hover:scale-110', fav && 'fill-current')} aria-hidden />
     </button>
   )
 }

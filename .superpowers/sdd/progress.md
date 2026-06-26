@@ -67,3 +67,50 @@ Sin commitear (regla commit-only-when-asked): spec + plan + ledger.
 ## Pre-existing (NO nuestros, verificar)
 - tests/unit/booking-grid.test.tsx:247 tooltip — falla en base.
 - lint: PricingGrid.tsx (unused var) + BookingCard.tsx (4 hooks-in-conditional).
+
+---
+
+# SDD Progress — admin-dark-premium (2da tanda)
+
+Plan: docs/superpowers/plans/2026-06-26-admin-dark-premium.md
+Spec: docs/superpowers/specs/2026-06-26-admin-dark-premium-design.md
+Branch: feat/admin-dark-premium (base d82f400 = main tras merge PR #24)
+Execution: SDD por tarea (implementer + reviewer adversarial, fix loop max 2). NO push (commit-only-when-asked: usuario aprobo ejecutar plan SDD = commits por tarea en branch, sin push).
+
+Baseline pre-T0 (cambios premium ya empezados, foldeados al branch):
+- [x] docs spec+plan (commit docs)
+- [x] chrome premium compartido: dropdown glass + ThemeToggle full-width + AccountMenu avatar/seccion + Fav/Share hover-lift+dark (commit feat premium chrome)
+
+## Fase 0 — Fundaciones (BLOQUEA todo)
+- [x] T0: globals.css (.dark .content-area-gradient, color-scheme, util premium) + doc20 MASTER.md (dark first-class, glass permitido, font-display extendido)
+- [x] T1: primitivas premium (PageHeader/PremiumCard/StatCard + patron tabla, reusa Reveal)
+- [x] T2: useChartTheme hook
+- [x] T3: chrome admin theme-adaptive + ThemeToggle en header (sidebar/header/layout-shell/status-banner/pin-gate/PushNotificationManager)
+- [x] T4: BookingFormModal + grilla gaps (banner offline amber)
+
+## Fase 1 — Superficies (T5-T19, una por tarea)
+- [x] T5 dashboard (PageHeader+Reveal+checklist premium)
+- [x] T6 grilla
+- [x] T7 reservas
+- [x] T8 caja
+- [x] T9 abonados
+- [x] T10 canchas
+- [x] T11 jugadores
+- [x] T12 metricas
+- [x] T13 reportes
+- [x] T14 settings
+- [x] T15 staff
+- [x] T16 super-admin
+- [x] T17 auth-staff
+- [x] T18 onboarding
+- [x] T19 select-tenant
+
+## Fase 2 — Cierre
+- [x] T20 para-complejos (verificado: isla hardcoded dark, cero tokens que flipeen) (verificar isla always-dark) / T21 e2e admin / T22 review final whole-branch
+
+
+## ESTADO ADMIN-DARK-PREMIUM: COMPLETO / merge-ready (branch feat/admin-dark-premium, base d82f400)
+Fase 0 (T0-T4) + Fase 1 (T5-T19, 15 superficies) + Fase 2 (T20-T22). ~26 commits.
+Gate whole-branch: typecheck exit 0; unit 1401/1402 (1 pre-existente booking-grid:247, test identico a main, NO nuestro); residual de color crudo = limpio en todas las superficies; excepciones intactas (impersonation rojo / receipt+print / QR / Leaflet / para-complejos / hero ImagePane); review adversarial final (charts/heat-map/CTAs invertidas/glass/semanticos) = 0 issues; e2e admin theme-flip VERDE (puerto aislado :3100, Supabase local).
+Aprendizaje e2e: el dropdown Radix (AdminThemeMenu) NO abre en Playwright headless dev -> test admin valida el flip via localStorage['theme'] (lo que next-themes persiste) + presencia del boton; interaccion del dropdown cubierta por patron AccountMenu.
+Pendiente NO-bloqueante (pre-existente): booking-grid.test.tsx:247 tooltip.

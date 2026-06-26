@@ -50,11 +50,11 @@ export default function ShareButton({ url, message, label = 'Compartir', classNa
         <button
           type="button"
           className={cn(
-            'inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50',
+            'group inline-flex h-11 items-center gap-2 rounded-xl border border-border/50 bg-card/60 px-4 text-sm font-semibold text-foreground/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:border-emerald-500/30 dark:hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
             className,
           )}
         >
-          <Share2 className="h-4 w-4" aria-hidden />
+          <Share2 className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" aria-hidden />
           {label}
         </button>
       </DropdownMenuTrigger>

@@ -24,9 +24,9 @@ export default async function PinSettingsPage() {
   return (
     <PinGate pinRequired={hasPin}>
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
-        <nav className="flex gap-1 border-b border-slate-200">
+        <nav className="flex gap-1 border-b border-border">
           {SETTINGS_TABS.map(({ href, label }) => {
             const active = href === '/settings/pin'
             return (
@@ -36,8 +36,8 @@ export default async function PinSettingsPage() {
                 className={
                   'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
                   (active
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-900')
+                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
+                    : 'border-transparent text-muted-foreground hover:text-foreground')
                 }
               >
                 {label}
@@ -46,16 +46,16 @@ export default async function PinSettingsPage() {
           })}
         </nav>
 
-        <div className="max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="max-w-md card-premium rounded-lg p-6">
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
-              <Shield className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-500/10">
+              <Shield className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-foreground">
                 {hasPin ? 'Cambiar PIN de administrador' : 'Configurar PIN de administrador'}
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {hasPin
                   ? 'El PIN protege precios, configuración y gestión de equipo.'
                   : 'Sin PIN configurado, las zonas sensibles no están protegidas.'}
@@ -66,7 +66,7 @@ export default async function PinSettingsPage() {
           <PinForm hasPin={hasPin} />
 
           {!hasPin && (
-            <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+            <p className="mt-4 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
               <strong>Recomendado:</strong> Configurá un PIN antes de dar acceso a empleados.
             </p>
           )}

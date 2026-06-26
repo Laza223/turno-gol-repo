@@ -150,7 +150,7 @@ export function QuickActions({ booking, label }: Props) {
               type="button"
               disabled={pending}
               onClick={() => run(() => completeBookingAction(booking.id), 'Marcada como completada')}
-              className={cn(inlineBtn, 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
+              className={cn(inlineBtn, 'border border-border bg-card text-foreground hover:bg-accent')}
             >
               Completada
             </button>
@@ -163,7 +163,7 @@ export function QuickActions({ booking, label }: Props) {
                 inlineBtn,
                 noShowArmed
                   ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                  : 'border border-border bg-card text-foreground hover:bg-accent',
               )}
             >
               {noShowArmed ? '¿Confirmar ausente?' : 'Ausente'}
@@ -172,7 +172,7 @@ export function QuickActions({ booking, label }: Props) {
               type="button"
               disabled={pending}
               onClick={openCancel}
-              className={cn(inlineBtn, 'border border-red-200 bg-white text-red-600 hover:bg-red-50')}
+              className={cn(inlineBtn, 'border border-red-200 dark:border-red-500/30 bg-card text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10')}
             >
               Cancelar
             </button>
@@ -186,7 +186,7 @@ export function QuickActions({ booking, label }: Props) {
           <DropdownMenuTrigger
             disabled={pending}
             aria-label={`Acciones para ${label}`}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
           >
             <MoreVertical aria-hidden className="h-5 w-5" />
           </DropdownMenuTrigger>
@@ -209,7 +209,7 @@ export function QuickActions({ booking, label }: Props) {
                 >
                   Marcar ausente
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={openCancel} className="text-red-600 focus:text-red-700">
+                <DropdownMenuItem onSelect={openCancel} className="text-red-600 dark:text-red-400 focus:text-red-700">
                   Cancelar reserva
                 </DropdownMenuItem>
               </>
@@ -230,7 +230,7 @@ export function QuickActions({ booking, label }: Props) {
       >
         <div className="space-y-3">
           <fieldset className="space-y-1">
-            <legend className="text-xs font-medium text-slate-700">¿Quién cancela?</legend>
+            <legend className="text-xs font-medium text-foreground">¿Quién cancela?</legend>
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="radio"
@@ -241,7 +241,7 @@ export function QuickActions({ booking, label }: Props) {
               />
               <span>
                 <span className="font-medium">El complejo necesita cancelar</span>
-                <span className="block text-xs text-slate-500">Rotura, mantenimiento o error. Reembolso automático.</span>
+                <span className="block text-xs text-muted-foreground">Rotura, mantenimiento o error. Reembolso automático.</span>
               </span>
             </label>
             <label className="flex items-start gap-2 text-sm">
@@ -254,17 +254,17 @@ export function QuickActions({ booking, label }: Props) {
               />
               <span>
                 <span className="font-medium">El jugador pidió cancelar</span>
-                <span className="block text-xs text-slate-500">Se aplica la política de cancelación del complejo.</span>
+                <span className="block text-xs text-muted-foreground">Se aplica la política de cancelación del complejo.</span>
               </span>
             </label>
           </fieldset>
           {refundWarning && (
-            <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+            <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
               {refundWarning}
             </div>
           )}
           <div className="space-y-1">
-            <label htmlFor={`cancel-reason-${booking.id}`} className="text-xs font-medium text-slate-700">
+            <label htmlFor={`cancel-reason-${booking.id}`} className="text-xs font-medium text-foreground">
               Motivo (obligatorio)
             </label>
             <textarea
@@ -272,7 +272,7 @@ export function QuickActions({ booking, label }: Props) {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>

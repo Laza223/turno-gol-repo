@@ -18,10 +18,10 @@ export default async function NuevoAbonadoPage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <Link href="/abonados" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+      <Link href="/abonados" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
         <ChevronLeft className="h-4 w-4" aria-hidden /> Abonados
       </Link>
-      <h1 className="text-2xl font-semibold text-slate-900">Nuevo abonado</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Nuevo abonado</h1>
       <AbonadoForm courts={courtOptions} />
     </div>
   )

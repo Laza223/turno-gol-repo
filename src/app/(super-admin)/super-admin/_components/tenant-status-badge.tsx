@@ -6,14 +6,14 @@ import type { TenantStatus } from '@/modules/super-admin/dashboard.service'
  */
 
 const STATUS_STYLES: Record<TenantStatus, string> = {
-  trialing: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  active: 'bg-green-50 text-green-700 ring-green-600/20',
-  past_due: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  suspended: 'bg-red-50 text-red-700 ring-red-600/20',
-  blocked: 'bg-red-50 text-red-700 ring-red-600/20',
-  canceled: 'bg-slate-100 text-slate-600 ring-slate-500/20',
-  churned: 'bg-slate-100 text-slate-600 ring-slate-500/20',
-  deleted: 'bg-slate-100 text-slate-600 ring-slate-500/20',
+  trialing: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',
+  active: 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-500/30',
+  past_due: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',
+  suspended: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  blocked: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  canceled: 'bg-muted text-muted-foreground ring-slate-500/20',
+  churned: 'bg-muted text-muted-foreground ring-slate-500/20',
+  deleted: 'bg-muted text-muted-foreground ring-slate-500/20',
 }
 
 export const STATUS_LABELS: Record<TenantStatus, string> = {

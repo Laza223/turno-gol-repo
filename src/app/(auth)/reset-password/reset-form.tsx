@@ -14,7 +14,7 @@ export function ResetForm() {
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <div className="space-y-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-slate-900">
+        <label htmlFor="password" className="text-sm font-medium text-foreground">
           Nueva contraseña
         </label>
         <div className="relative">
@@ -26,13 +26,13 @@ export function ResetForm() {
             required
             placeholder="Mínimo 8 caracteres"
             aria-invalid={state.status === 'error' ? 'true' : undefined}
-            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 pr-11 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+            className="h-11 w-full rounded-lg border border-border bg-card px-3.5 pr-11 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
           />
           <button
             type="button"
             onClick={() => setShow((v) => !v)}
             aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
           </button>
@@ -40,7 +40,7 @@ export function ResetForm() {
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="confirmPassword" className="text-sm font-medium text-slate-900">
+        <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
           Repetir contraseña
         </label>
         <input
@@ -51,12 +51,12 @@ export function ResetForm() {
           required
           placeholder="Repetí la contraseña"
           aria-invalid={state.status === 'error' ? 'true' : undefined}
-          className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+          className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
         />
       </div>
 
       {state.status === 'error' && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {state.message}
         </p>
       )}

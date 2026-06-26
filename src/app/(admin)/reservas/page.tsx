@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarX } from 'lucide-react'
+import { CalendarX, CalendarCheck } from 'lucide-react'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -112,28 +113,30 @@ export default async function ReservasPage({ searchParams }: Props) {
       ? groupBy(rows, (r) => r.courtName)
       : groupBy(rows, (r) => r.date)
 
+  const totalToday = countFor(counts, '')
+  const headerSubtitle =
+    scope === 'hoy'
+      ? `${formatDateLong(today)} · ${totalToday === 1 ? '1 reserva' : `${totalToday} reservas`}`
+      : undefined
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Reservas</h1>
-          {scope === 'hoy' && (
-            <p className="text-sm text-slate-500">
-              {formatDateLong(today)} ·{' '}
-              {countFor(counts, '') === 1 ? '1 reserva' : `${countFor(counts, '')} reservas`}
-            </p>
-          )}
-        </div>
-        <Link
-          href="/grilla"
-          className="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
-        >
-          Ir a la grilla
-        </Link>
-      </div>
+      <PageHeader
+        title="Reservas"
+        subtitle={headerSubtitle}
+        icon={<CalendarCheck className="h-6 w-6" aria-hidden="true" />}
+        actions={
+          <Link
+            href="/grilla"
+            className="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-[0.98] motion-reduce:active:scale-100"
+          >
+            Ir a la grilla
+          </Link>
+        }
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-slate-100 p-1">
+        <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-muted p-1">
           {SCOPES.map((s) => {
             const active = scope === s.value
             return (
@@ -143,7 +146,7 @@ export default async function ReservasPage({ searchParams }: Props) {
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
-                  active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900',
+                  active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {s.label}
@@ -167,14 +170,14 @@ export default async function ReservasPage({ searchParams }: Props) {
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                 active
                   ? 'bg-emerald-600 text-white'
-                  : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50',
+                  : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',
               )}
             >
               {f.label}
               <span
                 className={cn(
                   'rounded-full px-1.5 py-px text-[11px] font-semibold tabular-nums',
-                  active ? 'bg-emerald-700 text-emerald-50' : 'bg-slate-100 text-slate-500',
+                  active ? 'bg-emerald-700 text-emerald-50' : 'bg-muted text-muted-foreground',
                 )}
               >
                 {count}
@@ -200,7 +203,7 @@ export default async function ReservasPage({ searchParams }: Props) {
         <div className="space-y-6">
           {groups.map(([groupKey, groupRows]) => (
             <section key={groupKey} aria-label={scope === 'hoy' ? groupKey : formatDateLong(groupKey)}>
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {scope === 'hoy' ? groupKey : formatDateLong(groupKey)}
               </h2>
               <ul className={compact ? 'space-y-1' : 'space-y-2'}>

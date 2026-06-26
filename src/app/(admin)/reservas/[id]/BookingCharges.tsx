@@ -92,44 +92,44 @@ export default function BookingCharges({
   const isPaidInFull = pendingAmount === 0
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-900">Cobros de turno</h2>
+    <section className="card-premium rounded-xl p-6">
+      <h2 className="text-sm font-semibold text-foreground">Cobros de turno</h2>
 
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex items-center justify-between">
-          <dt className="text-slate-600">Precio del turno</dt>
-          <dd className="font-semibold text-slate-900">{formatARS(priceSnapshot)}</dd>
+          <dt className="text-muted-foreground">Precio del turno</dt>
+          <dd className="font-semibold text-foreground">{formatARS(priceSnapshot)}</dd>
         </div>
         {depositAmount > 0 && (
           <div className="flex items-center justify-between">
-            <dt className="text-slate-600">
+            <dt className="text-muted-foreground">
               Seña{' '}
               {depositCounted > 0 ? (
-                <span className="text-emerald-600">✓ pagada</span>
+                <span className="text-emerald-600 dark:text-emerald-400">✓ pagada</span>
               ) : (
-                <span className="text-slate-400">({depositStatus})</span>
+                <span className="text-muted-foreground">({depositStatus})</span>
               )}
             </dt>
-            <dd className="text-slate-700">{formatARS(depositAmount)}</dd>
+            <dd className="text-foreground">{formatARS(depositAmount)}</dd>
           </div>
         )}
         {charges.map((c) => (
           <div key={c.id} className="flex items-center justify-between">
-            <dt className="text-slate-600">
+            <dt className="text-muted-foreground">
               Cobro · {METHOD_LABELS[c.method] ?? c.method}
               {c.description && c.description !== 'Cobro de turno' ? ` · ${c.description}` : ''}
             </dt>
-            <dd className="text-slate-700">{formatARS(c.amount)}</dd>
+            <dd className="text-foreground">{formatARS(c.amount)}</dd>
           </div>
         ))}
         <div className="flex items-center justify-between border-t border-slate-100 pt-2">
-          <dt className="font-medium text-slate-700">Pagado</dt>
-          <dd className="font-semibold text-slate-900">{formatARS(totalPaid)}</dd>
+          <dt className="font-medium text-foreground">Pagado</dt>
+          <dd className="font-semibold text-foreground">{formatARS(totalPaid)}</dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="font-medium text-slate-700">Saldo pendiente</dt>
+          <dt className="font-medium text-foreground">Saldo pendiente</dt>
           <dd
-            className={`font-semibold ${isPaidInFull ? 'text-emerald-600' : 'text-amber-600'}`}
+            className={`font-semibold ${isPaidInFull ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
           >
             {isPaidInFull ? 'Pagado completo' : formatARS(pendingAmount)}
           </dd>
@@ -140,15 +140,15 @@ export default function BookingCharges({
         <button
           type="button"
           onClick={openForm}
-          className="mt-4 h-9 rounded-lg border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+          className="mt-4 h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
         >
           + Agregar cobro
         </button>
       ) : (
-        <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/40 p-4">
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="flex-1 space-y-1">
-              <label htmlFor="charge-amount" className="text-xs font-medium text-slate-700">
+              <label htmlFor="charge-amount" className="text-xs font-medium text-foreground">
                 Monto (ARS)
               </label>
               <input
@@ -158,18 +158,18 @@ export default function BookingCharges({
                 min={1}
                 value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
             </div>
             <div className="flex-1 space-y-1">
-              <label htmlFor="charge-method" className="text-xs font-medium text-slate-700">
+              <label htmlFor="charge-method" className="text-xs font-medium text-foreground">
                 Medio de pago
               </label>
               <select
                 id="charge-method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value as typeof method)}
-                className="h-[38px] w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-[38px] w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <option value="cash">Efectivo</option>
                 <option value="transfer">Transferencia</option>
@@ -179,7 +179,7 @@ export default function BookingCharges({
             </div>
           </div>
           {error && (
-            <p role="alert" className="text-xs text-red-600">
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
               {error}
             </p>
           )}
@@ -196,7 +196,7 @@ export default function BookingCharges({
               type="button"
               disabled={pending}
               onClick={() => setOpen(false)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+              className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
               Cancelar
             </button>

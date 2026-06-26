@@ -76,26 +76,26 @@ export default async function JugadorProfilePage({ params }: Props) {
     <div className="max-w-3xl space-y-6 p-6">
       <Link
         href="/jugadores"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden /> Jugadores
       </Link>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">{profile.name}</h1>
+      <div className="card-premium rounded-xl p-6">
+        <h1 className="text-2xl font-semibold text-foreground">{profile.name}</h1>
         <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-500">Email</dt>
-            <dd className="text-slate-800">{profile.email}</dd>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
+            <dd className="text-foreground">{profile.email}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-500">Teléfono</dt>
-            <dd className="text-slate-800">{profile.phone ?? '—'}</dd>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Teléfono</dt>
+            <dd className="text-foreground">{profile.phone ?? '—'}</dd>
           </div>
           {profile.firstSeenAt && (
             <div>
-              <dt className="text-xs uppercase tracking-wide text-slate-500">Cliente desde</dt>
-              <dd className="text-slate-800">{formatDate(profile.firstSeenAt.slice(0, 10))}</dd>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Cliente desde</dt>
+              <dd className="text-foreground">{formatDate(profile.firstSeenAt.slice(0, 10))}</dd>
             </div>
           )}
         </dl>
@@ -103,9 +103,9 @@ export default async function JugadorProfilePage({ params }: Props) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {statCards.map(([label, value]) => (
-          <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
+          <div key={label} className="card-premium rounded-xl p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
           </div>
         ))}
       </div>
@@ -114,25 +114,25 @@ export default async function JugadorProfilePage({ params }: Props) {
 
       <AbonadoCreditLoader playerId={profile.playerId} abonados={abonados} />
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900">Historial de reservas</h2>
+      <section className="card-premium rounded-xl p-6">
+        <h2 className="text-sm font-semibold text-foreground">Historial de reservas</h2>
         {history.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">Sin reservas registradas.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Sin reservas registradas.</p>
         ) : (
           <ul className="mt-4 divide-y divide-slate-100 text-sm">
             {history.map((b) => (
               <li key={b.id} className="flex items-center justify-between py-2.5">
                 <div>
-                  <p className="font-medium text-slate-800">
+                  <p className="font-medium text-foreground">
                     {formatDate(b.date)} · {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {b.courtName} · {TYPE_LABELS[b.type] ?? b.type}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-700">{formatARS(b.priceSnapshot)}</p>
-                  <p className="text-xs text-slate-500">{STATUS_LABELS[b.status] ?? b.status}</p>
+                  <p className="text-foreground">{formatARS(b.priceSnapshot)}</p>
+                  <p className="text-xs text-muted-foreground">{STATUS_LABELS[b.status] ?? b.status}</p>
                 </div>
               </li>
             ))}

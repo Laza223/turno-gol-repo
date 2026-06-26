@@ -52,16 +52,16 @@ function parsePage(raw: string | undefined): number {
 function Dt({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm text-slate-900">{children}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm text-foreground">{children}</dd>
     </div>
   )
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   )
@@ -99,21 +99,21 @@ export default async function SuperAdminTenantDetailPage({
         <div>
           <Link
             href="/super-admin/tenants"
-            className="text-xs text-slate-500 hover:text-slate-900 hover:underline"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
           >
             ← Volver a tenants
           </Link>
-          <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold text-slate-950">
+          <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold text-foreground">
             {tenant.name}
             <TenantStatusBadge status={tenant.status} />
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {tenant.slug} · {tenant.email}
           </p>
         </div>
       </div>
 
-      <nav aria-label="Secciones del tenant" className="flex gap-1 border-b border-slate-200">
+      <nav aria-label="Secciones del tenant" className="flex gap-1 border-b border-border">
         {TABS.map((t) => (
           <Link
             key={t}
@@ -121,8 +121,8 @@ export default async function SuperAdminTenantDetailPage({
             aria-current={tab === t ? 'page' : undefined}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors duration-150 ${
               tab === t
-                ? 'border-emerald-600 text-emerald-700'
-                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-900'
+                ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
+                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
             }`}
           >
             {TAB_LABELS[t]}
@@ -167,7 +167,7 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
           </Dt>
           {tenant.scheduledDeletionAt && (
             <Dt label="Eliminación programada">
-              <span className="text-red-600">{formatDateTimeArt(tenant.scheduledDeletionAt)}</span>
+              <span className="text-red-600 dark:text-red-400">{formatDateTimeArt(tenant.scheduledDeletionAt)}</span>
             </Dt>
           )}
           {tenant.description && <Dt label="Descripción">{tenant.description}</Dt>}
@@ -206,29 +206,29 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
 
       <Card title={`Canchas (${courts.length})`}>
         {courts.length === 0 ? (
-          <p className="text-sm text-slate-500">Sin canchas cargadas.</p>
+          <p className="text-sm text-muted-foreground">Sin canchas cargadas.</p>
         ) : (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <th className="py-2 pr-4">Nombre</th>
                 <th className="py-2 pr-4">Superficie</th>
                 <th className="py-2 pr-4 text-right">Capacidad</th>
                 <th className="py-2">Estado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm text-slate-900">
+            <tbody className="divide-y divide-slate-100 text-sm text-foreground">
               {courts.map((c) => (
                 <tr key={c.id}>
                   <td className="py-2 pr-4 font-medium">{c.name}</td>
-                  <td className="py-2 pr-4 text-slate-600">{c.surfaceType}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{c.surfaceType}</td>
                   <td className="py-2 pr-4 text-right tabular-nums">{c.capacity}</td>
                   <td className="py-2">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
                         c.status === 'online'
-                          ? 'bg-green-50 text-green-700 ring-green-600/20'
-                          : 'bg-slate-100 text-slate-600 ring-slate-500/20'
+                          ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-500/30'
+                          : 'bg-muted text-muted-foreground ring-slate-500/20'
                       }`}
                     >
                       {c.status}
@@ -243,11 +243,11 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
 
       <Card title={`Staff (${staff.length})`}>
         {staff.length === 0 ? (
-          <p className="text-sm text-slate-500">Sin staff vinculado.</p>
+          <p className="text-sm text-muted-foreground">Sin staff vinculado.</p>
         ) : (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <th className="py-2 pr-4">Nombre</th>
                 <th className="py-2 pr-4">Email</th>
                 <th className="py-2 pr-4">Rol</th>
@@ -255,16 +255,16 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
                 <th className="py-2">Último login</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm text-slate-900">
+            <tbody className="divide-y divide-slate-100 text-sm text-foreground">
               {staff.map((m) => (
                 <tr key={m.id}>
                   <td className="py-2 pr-4 font-medium">
                     {m.firstName} {m.lastName}
                   </td>
-                  <td className="py-2 pr-4 text-slate-600">{m.email}</td>
-                  <td className="py-2 pr-4 text-slate-600">{m.role}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{m.email}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{m.role}</td>
                   <td className="py-2 pr-4">{m.isActive ? 'Sí' : 'No'}</td>
-                  <td className="py-2 tabular-nums text-slate-600">
+                  <td className="py-2 tabular-nums text-muted-foreground">
                     {formatDateTimeArt(m.lastLoginAt)}
                   </td>
                 </tr>
@@ -284,7 +284,7 @@ function SuscripcionTab({ detail, plans }: { detail: TenantDetail; plans: PlanSu
   if (!sub) {
     return (
       <Card title="Suscripción">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           El complejo no tiene fila en tenant_subscriptions (todavía no inició la
           suscripción SaaS).
         </p>
@@ -304,7 +304,7 @@ function SuscripcionTab({ detail, plans }: { detail: TenantDetail; plans: PlanSu
           <Dt label="Plan">
             {sub.planName ?? sub.planId}
             {sub.priceMonthly != null && (
-              <span className="text-slate-500"> · {formatArs(sub.priceMonthly)}/mes</span>
+              <span className="text-muted-foreground"> · {formatArs(sub.priceMonthly)}/mes</span>
             )}
           </Dt>
           <Dt label="Ciclo">{sub.billingCycle === 'annual' ? 'Anual' : 'Mensual'}</Dt>
@@ -332,17 +332,17 @@ function SuscripcionTab({ detail, plans }: { detail: TenantDetail; plans: PlanSu
             <Dt label="Cancelada">
               {formatDateTimeArt(sub.canceledAt)}
               {sub.cancellationReason && (
-                <span className="text-slate-500"> — “{sub.cancellationReason}”</span>
+                <span className="text-muted-foreground"> — “{sub.cancellationReason}”</span>
               )}
             </Dt>
           )}
           {sub.scheduledDeletionAt && (
             <Dt label="Eliminación programada">
-              <span className="text-red-600">{formatDateTimeArt(sub.scheduledDeletionAt)}</span>
+              <span className="text-red-600 dark:text-red-400">{formatDateTimeArt(sub.scheduledDeletionAt)}</span>
             </Dt>
           )}
         </dl>
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-muted-foreground">
           No existe tabla de pagos SaaS en v1: el historial se reduce a los anclajes de
           la suscripción (último pago / fallo / dunning). Los eventos completos están en
           la pestaña Actividad (audit trail).
@@ -360,12 +360,12 @@ function ActividadTab({ tenantId, activity }: { tenantId: string; activity: Tena
     <div className="space-y-4">
       <Card title={`Audit trail (${activity.totalLogs})`}>
         {activity.logs.length === 0 ? (
-          <p className="text-sm text-slate-500">Sin eventos de auditoría.</p>
+          <p className="text-sm text-muted-foreground">Sin eventos de auditoría.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left">
               <thead>
-                <tr className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <th className="py-2 pr-4">Fecha</th>
                   <th className="py-2 pr-4">Acción</th>
                   <th className="py-2 pr-4">Actor</th>
@@ -373,18 +373,18 @@ function ActividadTab({ tenantId, activity }: { tenantId: string; activity: Tena
                   <th className="py-2">Metadata</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm text-slate-900">
+              <tbody className="divide-y divide-slate-100 text-sm text-foreground">
                 {activity.logs.map((log) => (
                   <tr key={log.id} className="align-top">
-                    <td className="whitespace-nowrap py-2 pr-4 tabular-nums text-slate-600">
+                    <td className="whitespace-nowrap py-2 pr-4 tabular-nums text-muted-foreground">
                       {formatDateTimeArt(log.createdAt)}
                     </td>
                     <td className="py-2 pr-4 font-medium">{log.action}</td>
-                    <td className="py-2 pr-4 text-slate-600">{log.actorType}</td>
-                    <td className="py-2 pr-4 text-slate-600">{log.resourceType}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{log.actorType}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{log.resourceType}</td>
                     <td className="max-w-md py-2">
                       {log.metadata ? (
-                        <code className="block truncate text-xs text-slate-500">
+                        <code className="block truncate text-xs text-muted-foreground">
                           {JSON.stringify(log.metadata)}
                         </code>
                       ) : (
@@ -402,31 +402,31 @@ function ActividadTab({ tenantId, activity }: { tenantId: string; activity: Tena
             aria-label="Paginación del audit trail"
             className="mt-4 flex items-center justify-between text-sm"
           >
-            <span className="text-slate-500">
+            <span className="text-muted-foreground">
               Página {activity.page} de {totalPages}
             </span>
             <div className="flex gap-2">
               {activity.page > 1 ? (
                 <Link
                   href={`/super-admin/tenants/${tenantId}?tab=actividad&actPage=${activity.page - 1}`}
-                  className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
                 >
                   Anterior
                 </Link>
               ) : (
-                <span className="rounded-md border border-slate-100 px-3 py-1.5 text-slate-300">
+                <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
                   Anterior
                 </span>
               )}
               {activity.page < totalPages ? (
                 <Link
                   href={`/super-admin/tenants/${tenantId}?tab=actividad&actPage=${activity.page + 1}`}
-                  className="rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
                 >
                   Siguiente
                 </Link>
               ) : (
-                <span className="rounded-md border border-slate-100 px-3 py-1.5 text-slate-300">
+                <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
                   Siguiente
                 </span>
               )}
@@ -437,11 +437,11 @@ function ActividadTab({ tenantId, activity }: { tenantId: string; activity: Tena
 
       <Card title="Últimas 10 reservas">
         {activity.recentBookings.length === 0 ? (
-          <p className="text-sm text-slate-500">Sin reservas.</p>
+          <p className="text-sm text-muted-foreground">Sin reservas.</p>
         ) : (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <th className="py-2 pr-4">Fecha</th>
                 <th className="py-2 pr-4">Horario</th>
                 <th className="py-2 pr-4">Cancha</th>
@@ -450,7 +450,7 @@ function ActividadTab({ tenantId, activity }: { tenantId: string; activity: Tena
                 <th className="py-2">Creada</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm text-slate-900">
+            <tbody className="divide-y divide-slate-100 text-sm text-foreground">
               {activity.recentBookings.map((b) => (
                 <tr key={b.id}>
                   {/* date es columna DATE (sin tz): se muestra tal cual, sin conversión ART. */}
@@ -458,12 +458,12 @@ function ActividadTab({ tenantId, activity }: { tenantId: string; activity: Tena
                   <td className="py-2 pr-4 tabular-nums">
                     {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
                   </td>
-                  <td className="py-2 pr-4 text-slate-600">{b.courtName ?? '—'}</td>
-                  <td className="py-2 pr-4 text-slate-600">{b.status}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{b.courtName ?? '—'}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{b.status}</td>
                   <td className="py-2 pr-4 text-right tabular-nums">
                     {formatArs(b.priceSnapshot)}
                   </td>
-                  <td className="py-2 tabular-nums text-slate-600">
+                  <td className="py-2 tabular-nums text-muted-foreground">
                     {formatDateTimeArt(b.createdAt)}
                   </td>
                 </tr>

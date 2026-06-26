@@ -77,10 +77,10 @@ function FormPane({
   formAction: (formData: FormData) => void
 }) {
   return (
-    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
       <Link
         href="/"
-        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-white hover:text-slate-900 transition-colors lg:hidden"
+        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Volver
@@ -113,12 +113,12 @@ function FormCard({
   const errs = state.status === 'error' ? state.fieldErrors : {}
 
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 shadow-xl shadow-slate-900/5 backdrop-blur-md">
+    <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <header className="mb-6 space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           Creá tu cuenta
         </h1>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Creá tu cuenta en menos de un minuto.
         </p>
       </header>
@@ -179,16 +179,16 @@ function FormCard({
           error={errs.confirmPassword}
         />
         {errs._form && (
-          <p role="alert" className="text-xs text-red-600">
+          <p role="alert" className="text-xs text-red-600 dark:text-red-400">
             {errs._form}
           </p>
         )}
         <SubmitButton />
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         ¿Ya tenés cuenta?{' '}
-        <Link href="/login" className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
+        <Link href="/login" className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline">
           Ingresar
         </Link>
       </p>
@@ -198,20 +198,20 @@ function FormCard({
 
 function ConfirmState({ email }: { email: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
+    <div className="rounded-2xl border border-border/60 bg-card/90 dark:bg-white/[0.04] dark:border-white/[0.08] p-8 text-center shadow-xl shadow-slate-900/5 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
-        <Mail className="h-6 w-6 text-emerald-700" aria-hidden />
+        <Mail className="h-6 w-6 text-emerald-700 dark:text-emerald-400" aria-hidden />
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+      <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
         Confirmá tu email
       </h1>
-      <p className="mt-3 text-sm text-slate-600">
-        Te enviamos un email a <strong className="text-slate-900">{email}</strong>.
+      <p className="mt-3 text-sm text-muted-foreground">
+        Te enviamos un email a <strong className="text-foreground">{email}</strong>.
         Hacé click en el enlace para activar tu cuenta; después entrás con tu contraseña.
       </p>
-      <p className="mt-6 text-xs text-slate-500">
+      <p className="mt-6 text-xs text-muted-foreground">
         ¿No llegó? Revisá spam. Podés volver a{' '}
-        <Link href="/register" className="font-semibold text-emerald-700 hover:underline">
+        <Link href="/register" className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline">
           registrarte
         </Link>
         .
@@ -222,15 +222,15 @@ function ConfirmState({ email }: { email: string }) {
 
 function ExistingState({ email }: { email: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
+    <div className="rounded-2xl border border-border/60 bg-card/90 dark:bg-white/[0.04] dark:border-white/[0.08] p-8 text-center shadow-xl shadow-slate-900/5 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
-        <CheckCircle2 className="h-6 w-6 text-emerald-700" aria-hidden />
+        <CheckCircle2 className="h-6 w-6 text-emerald-700 dark:text-emerald-400" aria-hidden />
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+      <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
         Ya tenés una cuenta
       </h1>
-      <p className="mt-3 text-sm text-slate-600">
-        Ya existe una cuenta con <strong className="text-slate-900">{email}</strong>.
+      <p className="mt-3 text-sm text-muted-foreground">
+        Ya existe una cuenta con <strong className="text-foreground">{email}</strong>.
         ¿Querés agregar otro complejo? Iniciá sesión y sumalo desde tu panel.
       </p>
       <Link
@@ -256,7 +256,7 @@ function Field(props: {
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={props.id} className="text-sm font-medium text-slate-900">
+      <label htmlFor={props.id} className="text-sm font-medium text-foreground">
         {props.label}
       </label>
       <input
@@ -268,14 +268,14 @@ function Field(props: {
         placeholder={props.placeholder}
         required
         aria-invalid={props.error ? 'true' : undefined}
-        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+        className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
       />
       {props.error ? (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {props.error}
         </p>
       ) : props.helper ? (
-        <p className="text-xs text-slate-500">{props.helper}</p>
+        <p className="text-xs text-muted-foreground">{props.helper}</p>
       ) : null}
     </div>
   )

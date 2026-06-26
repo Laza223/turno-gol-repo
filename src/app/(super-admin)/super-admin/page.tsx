@@ -7,6 +7,8 @@ import {
   UserPlus,
   Webhook,
 } from 'lucide-react'
+import { LayoutDashboard } from 'lucide-react'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import {
   getDashboardData,
@@ -55,9 +57,9 @@ function SectionCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <h2 className="flex items-center gap-2 border-b border-slate-100 px-6 py-4 text-base font-semibold text-slate-900">
-        <span className="text-violet-600">{icon}</span>
+    <section className="rounded-lg border border-border bg-card shadow-sm">
+      <h2 className="flex items-center gap-2 border-b border-border px-6 py-4 text-base font-semibold text-foreground">
+        <span className="text-violet-600 dark:text-violet-400">{icon}</span>
         {title}
       </h2>
       <div className="px-6 py-4">{children}</div>
@@ -66,7 +68,7 @@ function SectionCard({
 }
 
 function EmptyHint({ text }: { text: string }) {
-  return <p className="py-2 text-sm text-slate-500">{text}</p>
+  return <p className="py-2 text-sm text-muted-foreground">{text}</p>
 }
 
 export default async function SuperAdminDashboardPage() {
@@ -81,12 +83,11 @@ export default async function SuperAdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard global</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Métricas cross-tenant de la plataforma
-        </p>
-      </div>
+      <PageHeader
+        title="Dashboard global"
+        subtitle="Métricas cross-tenant de la plataforma"
+        icon={<LayoutDashboard className="h-6 w-6 text-violet-600 dark:text-violet-400" aria-hidden="true" />}
+      />
 
       {/* Cards de métricas */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -137,7 +138,7 @@ export default async function SuperAdminDashboardPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr className="text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <th className="py-2 pr-4 font-medium">Complejo</th>
                   <th className="py-2 pr-4 font-medium">Slug</th>
                   <th className="py-2 text-right font-medium">Días restantes</th>
@@ -145,9 +146,9 @@ export default async function SuperAdminDashboardPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {data.expiringTrials.map((trial) => (
-                  <tr key={trial.id} className="text-slate-900 hover:bg-slate-50">
+                  <tr key={trial.id} className="text-foreground hover:bg-accent">
                     <td className="py-2 pr-4 font-medium">{trial.name}</td>
-                    <td className="py-2 pr-4 text-slate-500">{trial.slug}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{trial.slug}</td>
                     <td className="py-2 text-right tabular-nums">
                       {daysRemaining(trial.trialEndsAt, now)}
                     </td>
@@ -167,13 +168,13 @@ export default async function SuperAdminDashboardPage() {
               {data.recentSignups.map((signup) => (
                 <li key={signup.id} className="flex items-center gap-3 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900">
+                    <p className="truncate text-sm font-medium text-foreground">
                       {signup.name}
                     </p>
-                    <p className="truncate text-xs text-slate-500">{signup.slug}</p>
+                    <p className="truncate text-xs text-muted-foreground">{signup.slug}</p>
                   </div>
                   <TenantStatusBadge status={signup.status} />
-                  <span className="text-xs tabular-nums text-slate-500">
+                  <span className="text-xs tabular-nums text-muted-foreground">
                     {formatDateArt(signup.createdAt)}
                   </span>
                 </li>
@@ -186,18 +187,18 @@ export default async function SuperAdminDashboardPage() {
         <SectionCard title="Colas de jobs (pg-boss)" icon={<ListChecks className="h-4 w-4" aria-hidden="true" />}>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr className="text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <th className="py-2 pr-4 font-medium">Cola</th>
                 <th className="py-2 text-right font-medium">Pendientes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {data.queues.map((entry) => (
-                <tr key={entry.queue} className="text-slate-900 hover:bg-slate-50">
+                <tr key={entry.queue} className="text-foreground hover:bg-accent">
                   <td className="py-1.5 pr-4">{entry.queue}</td>
                   <td className="py-1.5 text-right tabular-nums">
                     {entry.depth === null ? (
-                      <span className="text-xs text-red-600">no disponible</span>
+                      <span className="text-xs text-red-600 dark:text-red-400">no disponible</span>
                     ) : (
                       entry.depth
                     )}
@@ -211,7 +212,7 @@ export default async function SuperAdminDashboardPage() {
         {/* Webhooks MP recientes */}
         <SectionCard title="Webhooks MP recientes" icon={<Webhook className="h-4 w-4" aria-hidden="true" />}>
           {data.recentWebhooks.length === 0 ? (
-            <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
               <Inbox className="h-4 w-4" aria-hidden="true" />
               Sin webhooks registrados todavía.
             </div>
@@ -220,17 +221,17 @@ export default async function SuperAdminDashboardPage() {
               {data.recentWebhooks.map((wh) => (
                 <li key={wh.id} className="flex items-center gap-3 py-2">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-slate-900">{wh.eventType}</p>
-                    <p className="truncate text-xs text-slate-500">{wh.mpEventId}</p>
+                    <p className="truncate text-sm text-foreground">{wh.eventType}</p>
+                    <p className="truncate text-xs text-muted-foreground">{wh.mpEventId}</p>
                   </div>
-                  <span className="text-xs tabular-nums text-slate-500">
+                  <span className="text-xs tabular-nums text-muted-foreground">
                     {formatDateTimeArt(wh.processedAt)}
                   </span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-muted-foreground">
             Los webhooks que fallan hacen rollback y se reintentan — no
             persisten en <code className="text-[11px]">processed_webhooks</code>; acá se listan los
             últimos procesados.

@@ -43,9 +43,11 @@
 font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 ```
 
-**Display (excepción):** `Archivo` (variable, Google Fonts) vía `--font-archivo` →
-clase `font-display`. Uso restringido a la vista `/explorar` (hero, h1/h2, numeral de
-precio de card). Ver `pages/explorar.md`. El resto del sistema sigue en Inter.
+**Display:** `Archivo` (variable, Google Fonts) vía `--font-archivo` → clase
+`font-display`. Uso en hero/h1/h2 y **numerales clave** (precios, KPIs de dashboard,
+montos de caja/reportes) en todo el portal público Y el lado operativo (admin/super-admin).
+El cuerpo de texto sigue en Inter. _(Actualizado 2026-06-26 con el rediseño dark-premium:
+antes restringido a `/explorar`.)_
 
 ### Type Scale
 
@@ -297,8 +299,20 @@ import { Calendar, Clock, Users, CreditCard } from 'lucide-react'
 | Instant state changes (0ms) | 150ms transition minimum |
 | Mixing tailwind colors arbitrarily | Only palette colors from §1 |
 | Fixed heights on text containers | Let text wrap; use min-h |
-| Dark mode default | Light mode only (v1) |
-| Glassmorphism / heavy blur effects | Clean flat + subtle shadows |
+| Translucent glass on light surfaces (reads muddy) | Light = elevation + sombra en capas; glass solo en dark |
+| Neutralizar color semántico en dark (booking status, finanzas) | Preservar hue + agregar `dark:` sibling |
+| Inline hex en charts (no flipan con `.dark`) | Colores theme-aware vía hook/CSS vars |
+
+> **⚠️ Actualizado 2026-06-26 — sistema theme-adaptive dark-premium.** Las reglas históricas
+> "Dark mode default → Light mode only (v1)" y "Glassmorphism → clean flat" quedaron
+> **obsoletas**. El sistema ahora es **full-toggle** (Sistema/Claro/Oscuro vía `next-themes`,
+> `.dark` en `<html>`) y first-class en ambos temas. Lenguaje premium **adaptativo por tema**:
+> **dark = glass** (white-alpha + `backdrop-blur` + sombra profunda + glow emerald),
+> **light = elevación** (sombra suave en capas + glow emerald sutil; NO translucidez).
+> Primitivas: `.card-premium`/`.card-premium-interactive`, `.page-header-band`, `.icon-halo`
+> en `globals.css`; componentes `PageHeader`/`PremiumCard`/`StatCard` en `src/components/admin/`.
+> Excepción always-dark: landing B2B `para-complejos`. Ver
+> `docs/superpowers/specs/2026-06-26-admin-dark-premium-design.md`.
 
 - **PROHIBIDO** usar `bg-emerald-500` (#10B981) para texto sobre fondo blanco — falla WCAG AA (~2.97:1). Para texto/CTA en fondo claro usar siempre `emerald-600` (#059669) que cumple AA (4.5:1).
 - **PROHIBIDO** usar `bg-white` como fondo de página/body. `bg-white` se reserva para superficies elevadas (cards, modales, formularios). Body siempre `bg-slate-50`.

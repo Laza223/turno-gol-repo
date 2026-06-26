@@ -16,20 +16,20 @@ export default async function ResetPasswordPage() {
   const hasSession = !!data?.user
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative flex min-h-dvh items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="mb-8 flex justify-center">
           <Logo variant="vertical" className="w-32" />
         </div>
 
-        <div className="rounded-2xl border border-slate-200/60 bg-white/90 p-8 shadow-xl shadow-slate-900/5 backdrop-blur-md">
+        <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
           {hasSession ? (
             <>
               <header className="mb-6 space-y-1">
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+                <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
                   Nueva contraseña
                 </h1>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted-foreground">
                   Elegí una contraseña de al menos 8 caracteres.
                 </p>
               </header>
@@ -37,10 +37,10 @@ export default async function ResetPasswordPage() {
             </>
           ) : (
             <div className="text-center">
-              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                 Enlace expirado
               </h1>
-              <p className="mt-3 text-sm text-slate-600">
+              <p className="mt-3 text-sm text-muted-foreground">
                 El enlace para cambiar la contraseña no es válido o ya venció.
               </p>
               <Link

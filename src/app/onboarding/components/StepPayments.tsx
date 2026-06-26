@@ -20,12 +20,12 @@ export function StepPayments({ mpConnected }: StepPaymentsProps) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">MercadoPago</h2>
-          <p className="text-sm text-slate-600 mt-1">Cobro online</p>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">MercadoPago</h2>
+          <p className="text-sm text-muted-foreground mt-1">Cobro online</p>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-sm text-emerald-900 dark:text-emerald-100">
           <p className="font-medium">MercadoPago conectado exitosamente.</p>
-          <p className="text-emerald-800 mt-1">
+          <p className="text-emerald-800 dark:text-emerald-200 mt-1">
             Tus jugadores podrán pagar señas online al reservar.
           </p>
         </div>
@@ -43,11 +43,11 @@ export function StepPayments({ mpConnected }: StepPaymentsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">¿Cobrás seña?</h2>
-        <p className="text-sm text-slate-600 mt-1">Cobro online</p>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">¿Cobrás seña?</h2>
+        <p className="text-sm text-muted-foreground mt-1">Cobro online</p>
       </div>
 
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         Conectá tu cuenta de MercadoPago para cobrar señas online. El dinero va directo a tu
         cuenta, sin intermediarios.
       </p>
@@ -63,13 +63,13 @@ export function StepPayments({ mpConnected }: StepPaymentsProps) {
         <button
           onClick={handleSkip}
           disabled={isPending}
-          className="w-full h-11 border border-slate-200 bg-white text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-colors"
+          className="w-full h-11 border border-border bg-card text-foreground rounded-lg text-sm font-medium hover:bg-accent hover:border-border disabled:opacity-50 transition-colors"
         >
           {isPending ? 'Finalizando...' : 'Terminar sin seña'}
         </button>
       </div>
 
-      <p className="text-xs text-slate-500 text-center">
+      <p className="text-xs text-muted-foreground text-center">
         Podés conectar MercadoPago en cualquier momento desde Configuración.
       </p>
     </div>

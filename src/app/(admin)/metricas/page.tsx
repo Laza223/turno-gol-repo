@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
+import { ChartLine } from 'lucide-react'
 import { PinGate } from '@/components/pin-gate'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
@@ -24,12 +26,11 @@ export default async function MetricasPage() {
   return (
     <PinGate pinRequired={hasPin}>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Métricas</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Actividad del complejo en los últimos 30 días. Se actualiza cada minuto.
-          </p>
-        </div>
+        <PageHeader
+          title="Métricas"
+          subtitle="Actividad del complejo en los últimos 30 días. Se actualiza cada minuto."
+          icon={<ChartLine className="h-6 w-6" aria-hidden="true" />}
+        />
         <MetricsDashboardLoader canSeeSystem={canSeeSystem} />
       </div>
     </PinGate>

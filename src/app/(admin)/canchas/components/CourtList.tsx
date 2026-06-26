@@ -195,15 +195,15 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
     warningLines.push(`Hay ${impact.activeAbonados} abonado(s) activo(s) en esta cancha.`)
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 flex items-center justify-between gap-4">
+    <div className="card-premium rounded-lg p-4 flex items-center justify-between gap-4">
       <div className="min-w-0 space-y-0.5">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-foreground">{court.name}</span>
           <span
             className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
               currentStatus === 'online'
-                ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20'
-                : 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-200'
+                ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30'
+                : 'bg-muted text-muted-foreground ring-1 ring-inset ring-border'
             }`}
           >
             {currentStatus === 'online' ? 'Online' : 'Offline'}
@@ -218,7 +218,7 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
         <button
           type="button"
           onClick={() => onEdit(court)}
-          className="text-xs text-emerald-700 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-slate-50 transition-colors duration-150"
+          className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-accent transition-colors duration-150"
         >
           Editar
         </button>
@@ -226,7 +226,7 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
           type="button"
           onClick={handleToggleClick}
           disabled={isPending || loadingImpact}
-          className="text-xs border border-slate-200 px-2 py-1 rounded text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+          className="text-xs border border-border px-2 py-1 rounded text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
         >
           {isPending || loadingImpact ? '…' : currentStatus === 'online' ? 'Desactivar' : 'Activar'}
         </button>
@@ -241,7 +241,7 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
           <div className="space-y-2">
             <p>Una cancha offline no recibe reservas nuevas.</p>
             {warningLines.map((l, i) => (
-              <p key={i} className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+              <p key={i} className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
                 {l}
               </p>
             ))}

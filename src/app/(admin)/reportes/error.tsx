@@ -8,7 +8,7 @@ export default function ReportesError({ error, reset }: { error: Error; reset: (
   useEffect(() => { Sentry.captureException(error) }, [error])
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">Reportes</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Reportes</h1>
       <ErrorState
         variant="inline"
         title="Error al cargar el reporte"

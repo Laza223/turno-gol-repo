@@ -8,6 +8,7 @@ import { Building2, LayoutDashboard, LogOut, Menu, ShieldCheck, X } from 'lucide
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
+import { AdminThemeMenu } from '@/components/admin/AdminThemeMenu'
 
 /**
  * Shell del panel SuperAdmin — calcado estructural de `admin-layout-shell`
@@ -48,17 +49,17 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-5 border-b border-violet-900/60">
+      <div className="flex items-center justify-between px-4 py-5 border-b border-border">
         <div className="min-w-0">
           <Link href="/super-admin" className="block outline-none rounded-sm">
-            <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95" />
+            <Logo variant="horizontal" textClassName="text-foreground" />
           </Link>
           <div className="mt-1">
-            <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-violet-400">
+            <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               TurnoGol — SuperAdmin
             </p>
-            <p className="text-sm font-medium text-slate-200 truncate">{adminName}</p>
+            <p className="text-sm font-medium text-foreground truncate">{adminName}</p>
           </div>
         </div>
         {isMobile && (
@@ -66,7 +67,7 @@ function SidebarContent({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="ml-2 text-slate-400 hover:text-white hover:bg-slate-800"
+            className="ml-2 text-muted-foreground hover:text-foreground hover:bg-accent"
             aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />
@@ -90,8 +91,8 @@ function SidebarContent({
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-violet-600/20 text-violet-300 shadow-sm shadow-violet-950/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
+                  ? 'bg-violet-500/10 text-violet-700 shadow-sm dark:bg-violet-500/15 dark:text-violet-300 dark:shadow-violet-950/30'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
               {isActive && (
@@ -100,7 +101,7 @@ function SidebarContent({
               <Icon
                 className={cn(
                   'h-4 w-4 shrink-0 transition-colors',
-                  isActive ? 'text-violet-400' : 'text-slate-500 group-hover:text-slate-300',
+                  isActive ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground/70 group-hover:text-foreground',
                 )}
               />
               <span className="flex-1 truncate">{label}</span>
@@ -129,7 +130,7 @@ export function SuperAdminLayoutShell({
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen shell-bg">
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
@@ -140,14 +141,14 @@ export function SuperAdminLayoutShell({
       )}
 
       {/* Sidebar desktop — dark shell con acento violeta */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-violet-900/60 bg-slate-900 shadow-xl shadow-black/20">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/[0.04] dark:bg-card/80 dark:shadow-black/30">
         <SidebarContent adminName={adminName} pathname={pathname} />
       </aside>
 
       {/* Sidebar mobile */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-30 w-60 flex flex-col border-r border-violet-900/60 bg-slate-900 shadow-xl shadow-black/30 transition-transform duration-200 lg:hidden',
+          'fixed inset-y-0 left-0 z-30 w-60 flex flex-col border-r border-border bg-card backdrop-blur-xl shadow-xl shadow-black/10 dark:bg-card/90 dark:shadow-black/40 transition-transform duration-200 lg:hidden',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
         aria-hidden={!mobileOpen}
@@ -161,7 +162,7 @@ export function SuperAdminLayoutShell({
       </div>
 
       {/* Header */}
-      <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-slate-200 bg-white/95 backdrop-blur-sm shadow-sm shadow-slate-200/50 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
+      <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-border bg-card/80 backdrop-blur-xl shadow-sm shadow-black/[0.03] dark:shadow-black/20 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
         <Button
           variant="ghost"
           size="icon"
@@ -173,20 +174,21 @@ export function SuperAdminLayoutShell({
         </Button>
 
         {/* Identificador de modo — visible también en mobile */}
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/30">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
           SuperAdmin
         </span>
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-3">
-          <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="hidden sm:inline-flex items-center rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground">
             {userEmail}
           </span>
+          <AdminThemeMenu />
           <Button
             variant="ghost"
-            className="gap-2 text-slate-700 hover:text-slate-900"
+            className="gap-2 text-muted-foreground hover:text-foreground"
             onClick={handleSignOut}
             aria-label="Cerrar sesión"
           >
@@ -201,7 +203,7 @@ export function SuperAdminLayoutShell({
         <div className="pt-[calc(4rem+env(safe-area-inset-top))]">
           <main
             id="main-content"
-            className="bg-slate-50 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100vh-4rem)]"
+            className="content-area-gradient mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100vh-4rem)]"
           >
             {children}
           </main>

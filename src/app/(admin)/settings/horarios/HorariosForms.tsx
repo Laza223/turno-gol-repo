@@ -31,11 +31,11 @@ export function HorariosForm({ hours }: { hours: OpeningHours }) {
     <form action={formAction} onSubmit={() => setDidSubmit(true)} className="space-y-3">
       <div className="grid grid-cols-[8rem_1fr_1fr] items-center gap-x-4 gap-y-3">
         <div />
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Apertura</p>
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Cierre</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Apertura</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Cierre</p>
         {DAYS.map((day) => (
           <div key={day} className="contents">
-            <Label className="text-sm text-slate-700">{DAY_LABELS[day]}</Label>
+            <Label className="text-sm text-foreground">{DAY_LABELS[day]}</Label>
             <Input
               name={`${day}_open`}
               type="time"
@@ -56,10 +56,10 @@ export function HorariosForm({ hours }: { hours: OpeningHours }) {
       </div>
       <div aria-live="polite" className="min-h-[1.25rem]">
         {!state.success && (
-          <p role="alert" className="text-sm text-red-600">{state.error}</p>
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
         )}
         {didSubmit && state.success && (
-          <p role="status" className="text-sm text-emerald-700">Horarios guardados.</p>
+          <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">Horarios guardados.</p>
         )}
       </div>
     </form>
@@ -84,10 +84,10 @@ export function AddClosedDateForm({ minDate }: { minDate: string }) {
       </div>
       <div aria-live="polite" className="min-h-[1.25rem]">
         {!state.success && (
-          <p role="alert" className="text-sm text-red-600">{state.error}</p>
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
         )}
         {didSubmit && state.success && (
-          <p role="status" className="text-sm text-emerald-700">Día agregado.</p>
+          <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">Día agregado.</p>
         )}
       </div>
     </form>
@@ -105,12 +105,12 @@ export function RemoveClosedDateForm({ date }: { date: string }) {
         variant="ghost"
         size="sm"
         pendingLabel="Quitando…"
-        className="text-red-600 hover:text-red-700"
+        className="text-red-600 dark:text-red-400 hover:text-red-700"
       >
         Quitar
       </SubmitButton>
       {!state.success && (
-        <p role="alert" className="text-xs text-red-600">{state.error}</p>
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">{state.error}</p>
       )}
     </form>
   )

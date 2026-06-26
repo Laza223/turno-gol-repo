@@ -137,13 +137,13 @@ export function PinGate({ children, pinRequired = true }: PinGateProps) {
 
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow">
+      <div className="card-premium w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-            <Lock className="h-6 w-6 text-slate-500" aria-hidden="true" />
+          <div className="icon-halo flex h-12 w-12 items-center justify-center rounded-full ring-1 ring-inset ring-emerald-500/20 dark:ring-emerald-500/25">
+            <Lock className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h2 className="text-base font-semibold text-slate-900">Zona protegida</h2>
-          <p className="text-center text-sm text-slate-500">
+          <h2 className="text-base font-semibold text-foreground">Zona protegida</h2>
+          <p className="text-center text-sm text-muted-foreground">
             Ingresá el PIN de administrador para continuar.
           </p>
         </div>
@@ -165,24 +165,24 @@ export function PinGate({ children, pinRequired = true }: PinGateProps) {
               className="h-10 text-center text-lg tracking-widest"
             />
             {isLocked && (
-              <p className="text-xs font-medium text-red-600" role="alert">
+              <p className="text-xs font-medium text-red-600 dark:text-red-400" role="alert">
                 Bloqueado hasta {formatCountdown(msRemaining)}
               </p>
             )}
             {!isLocked && error && (
-              <p className="text-xs text-red-600" role="alert">
+              <p className="text-xs text-red-600 dark:text-red-400" role="alert">
                 {error}
               </p>
             )}
             {!isLocked && attemptsLeft !== undefined && attemptsLeft <= 2 && (
-              <p className="text-xs text-amber-700" role="status">
+              <p className="text-xs text-amber-700 dark:text-amber-400" role="status">
                 Te quedan {attemptsLeft} intentos antes del bloqueo.
               </p>
             )}
           </div>
           <Button
             type="submit"
-            className="w-full bg-emerald-600 hover:bg-emerald-500"
+            className="w-full bg-emerald-600 hover:bg-emerald-500 transition-transform active:scale-[0.98] motion-reduce:active:scale-100"
             disabled={pin.length < 4 || isLocked}
           >
             Confirmar

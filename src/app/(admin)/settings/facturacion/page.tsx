@@ -57,9 +57,9 @@ export default async function FacturacionPage() {
     <PinGate pinRequired={hasPin}>
       {authorized ? (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Configuración</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
-        <nav className="flex gap-1 border-b border-slate-200">
+        <nav className="flex gap-1 border-b border-border">
           {SETTINGS_TABS.map(({ href, label }) => {
             const active = href === '/settings/facturacion'
             return (
@@ -69,8 +69,8 @@ export default async function FacturacionPage() {
                 className={
                   'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
                   (active
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-900')
+                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
+                    : 'border-transparent text-muted-foreground hover:text-foreground')
                 }
               >
                 {label}
@@ -79,42 +79,42 @@ export default async function FacturacionPage() {
           })}
         </nav>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900">Suscripción</h2>
+        <section className="card-premium rounded-xl p-6">
+          <h2 className="text-base font-semibold text-foreground">Suscripción</h2>
           {sub ? (
             <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
               <div>
-                <dt className="text-slate-500">Plan</dt>
-                <dd className="font-medium text-slate-900">{sub.planName}</dd>
+                <dt className="text-muted-foreground">Plan</dt>
+                <dd className="font-medium text-foreground">{sub.planName}</dd>
               </div>
               <div>
-                <dt className="text-slate-500">Estado</dt>
-                <dd className="font-medium text-slate-900">{STATUS_LABELS[sub.status] ?? sub.status}</dd>
+                <dt className="text-muted-foreground">Estado</dt>
+                <dd className="font-medium text-foreground">{STATUS_LABELS[sub.status] ?? sub.status}</dd>
               </div>
               <div>
-                <dt className="text-slate-500">Próximo cobro</dt>
-                <dd className="font-medium text-slate-900 tabular-nums">{formatDate(sub.currentPeriodEnd)}</dd>
+                <dt className="text-muted-foreground">Próximo cobro</dt>
+                <dd className="font-medium text-foreground tabular-nums">{formatDate(sub.currentPeriodEnd)}</dd>
               </div>
             </dl>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-sm text-muted-foreground">
               Todavía no tenés una suscripción activa. Conectá MercadoPago para empezar a cobrar señas y activar tu plan.
             </p>
           )}
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card-premium rounded-xl p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
-                <CreditCard className="h-5 w-5 text-emerald-600" aria-hidden /> MercadoPago
+              <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <CreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden /> MercadoPago
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Conectá tu cuenta para cobrar las señas de las reservas online directamente.
               </p>
             </div>
             {mpConnected && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-500/30">
                 <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Conectado
               </span>
             )}

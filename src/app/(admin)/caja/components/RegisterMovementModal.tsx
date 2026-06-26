@@ -98,28 +98,28 @@ export function RegisterMovementModal({
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label htmlFor="cf-type" className="text-xs font-medium text-slate-700">Tipo</label>
+              <label htmlFor="cf-type" className="text-xs font-medium text-foreground">Tipo</label>
               <select id="cf-type" value={type}
                 onChange={(e) => { const t = e.target.value as CfType; setType(t); setCategory(CATEGORIES[t][0].value) }}
-                className="h-11 md:h-10 w-full rounded-md border border-slate-200 px-2 text-sm">
+                className="h-11 md:h-10 w-full rounded-md border border-border px-2 text-sm">
                 <option value="income">Ingreso</option>
                 <option value="expense">Gasto</option>
                 <option value="adjustment">Ajuste</option>
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="cf-category" className="text-xs font-medium text-slate-700">Categoría</label>
+              <label htmlFor="cf-category" className="text-xs font-medium text-foreground">Categoría</label>
               <select id="cf-category" value={category} onChange={(e) => setCategory(e.target.value)}
-                className="h-11 md:h-10 w-full rounded-md border border-slate-200 px-2 text-sm">
+                className="h-11 md:h-10 w-full rounded-md border border-border px-2 text-sm">
                 {CATEGORIES[type].map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label htmlFor="cf-method" className="text-xs font-medium text-slate-700">Método</label>
+              <label htmlFor="cf-method" className="text-xs font-medium text-foreground">Método</label>
               <select id="cf-method" value={method} onChange={(e) => setMethod(e.target.value)}
-                className="h-11 md:h-10 w-full rounded-md border border-slate-200 px-2 text-sm">
+                className="h-11 md:h-10 w-full rounded-md border border-border px-2 text-sm">
                 <option value="cash">Efectivo</option>
                 <option value="transfer">Transferencia</option>
                 <option value="mercadopago">MercadoPago</option>
@@ -127,23 +127,23 @@ export function RegisterMovementModal({
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="cf-amount" className="text-xs font-medium text-slate-700">Monto (pesos)</label>
+              <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">Monto (pesos)</label>
               <input id="cf-amount" type="number" min="0" step="0.01" value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
                 inputMode="decimal"
                 autoComplete="off"
-                className="h-11 md:h-10 w-full rounded-md border border-slate-200 px-3 text-sm tabular-nums" />
+                className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm tabular-nums" />
             </div>
           </div>
           <div className="space-y-1">
-            <label htmlFor="cf-desc" className="text-xs font-medium text-slate-700">Descripción</label>
+            <label htmlFor="cf-desc" className="text-xs font-medium text-foreground">Descripción</label>
             <textarea id="cf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-              className="w-full rounded-md border border-slate-200 px-3 py-2 min-h-[44px] md:min-h-0 text-sm" />
+              className="w-full rounded-md border border-border px-3 py-2 min-h-[44px] md:min-h-0 text-sm" />
           </div>
           {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
-              className="h-11 md:h-10 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">Cancelar</button>
+              className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>
             <button type="submit" disabled={isPending}
               className="h-11 md:h-10 rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
               {isPending ? 'Guardando…' : 'Guardar'}</button>

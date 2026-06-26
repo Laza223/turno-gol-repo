@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation'
+import { Trophy } from 'lucide-react'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -18,14 +20,11 @@ export default async function CanchasPage() {
 
   const content = (
     <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Canchas</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gestioná las canchas de {tenant.name}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Canchas"
+        subtitle={`Gestioná las canchas de ${tenant.name}`}
+        icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
+      />
 
       <CourtList initialCourts={courts} openingHours={tenant.openingHours} />
     </main>

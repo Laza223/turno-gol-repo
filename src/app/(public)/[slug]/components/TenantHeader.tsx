@@ -39,7 +39,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
   const amenities = activeAmenities(tenant.amenities)
 
   const chipClass =
-    'inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md motion-reduce:hover:translate-y-0'
+    'inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0'
 
   return (
     <div className="space-y-4">

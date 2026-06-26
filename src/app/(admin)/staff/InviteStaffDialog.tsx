@@ -110,7 +110,7 @@ export function InviteStaffDialog({
               autoComplete="email"
               className="h-10"
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Recibirán un email para activar su cuenta.
             </p>
           </div>
@@ -120,7 +120,7 @@ export function InviteStaffDialog({
             {STAFF_ROLES.map((role) => (
               <label
                 key={role}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 px-3 py-2 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-500/10"
               >
                 <input
                   type="radio"
@@ -130,10 +130,10 @@ export function InviteStaffDialog({
                   className="mt-0.5 h-4 w-4 accent-emerald-600"
                 />
                 <span className="space-y-0.5">
-                  <span className="block text-sm font-medium text-slate-900">
+                  <span className="block text-sm font-medium text-foreground">
                     {STAFF_ROLE_LABELS[role]}
                   </span>
-                  <span className="block text-xs text-slate-500">
+                  <span className="block text-xs text-muted-foreground">
                     {STAFF_ROLE_DESCRIPTIONS[role]}
                   </span>
                 </span>
@@ -144,7 +144,7 @@ export function InviteStaffDialog({
           {errorMessage && (
             <p
               role="alert"
-              className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-inset ring-red-600/20"
+              className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30"
             >
               {errorMessage}
             </p>

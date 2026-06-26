@@ -13,8 +13,8 @@ export default function Loading() {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-slate-100 px-6 py-3 flex gap-6">
+      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+        <div className="border-b border-border px-6 py-3 flex gap-6">
           <Skeleton className="h-4 w-20" />
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-4 w-16" />

@@ -95,7 +95,7 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
                 </DropdownMenuItem>
               ))}
               <DropdownMenuItem
-                className="cursor-pointer text-red-600 focus:text-red-600"
+                className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600"
                 disabled={isLastActiveAdmin}
                 onSelect={(e) => {
                   e.preventDefault()

@@ -5,5 +5,9 @@ import PortalShell from '@/components/site/PortalShell'
 // del mismo portal: el jugador queda con cabecera + navegación, no en una
 // tarjeta huérfana. El guard de sesión lo hace cada página.
 export default function ReservaLayout({ children }: { children: ReactNode }) {
-  return <PortalShell>{children}</PortalShell>
+  return (
+    <div className="dark">
+      <PortalShell>{children}</PortalShell>
+    </div>
+  )
 }

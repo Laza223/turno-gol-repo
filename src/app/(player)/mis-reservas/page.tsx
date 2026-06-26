@@ -62,20 +62,20 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_CLASSES: Record<string, string> = {
-  confirmed: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
-  pending_payment: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
-  completed: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20',
-  canceled_refunded: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20',
-  canceled_no_refund: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20',
-  no_show: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20',
+  confirmed: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
+  pending_payment: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20',
+  completed: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
+  canceled_refunded: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
+  canceled_no_refund: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
+  no_show: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20',
 }
 
 /** Color del bloque-fecha según estado (esmeralda activo, atenuado si cerrado). */
 const DATE_BLOCK_CLASSES: Record<string, string> = {
-  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
-  pending_payment: 'bg-amber-50 text-amber-700 ring-amber-600/15',
+  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
+  pending_payment: 'bg-amber-50 text-amber-700 ring-amber-600/15 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20',
 }
-const DATE_BLOCK_MUTED = 'bg-slate-50 text-slate-500 ring-slate-300/40'
+const DATE_BLOCK_MUTED = 'bg-slate-50 text-slate-500 ring-slate-300/40 dark:bg-muted dark:text-muted-foreground dark:ring-border'
 
 export default async function MisReservasPage({
   searchParams,
@@ -113,7 +113,7 @@ export default async function MisReservasPage({
     `flex-1 rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
       active
         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-        : 'text-slate-600 hover:text-slate-900'
+        : 'text-muted-foreground hover:text-foreground'
     }`
 
   return (
@@ -169,7 +169,7 @@ export default async function MisReservasPage({
       </section>
 
       {/* Tabs como segmented control premium */}
-      <div className="flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+      <div className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-sm">
         <a href="/mis-reservas?tab=proximos" className={tabClass(tab === 'proximos')}>
           Próximos
         </a>
@@ -180,15 +180,15 @@ export default async function MisReservasPage({
 
       {/* Booking list */}
       {bookings.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15">
+        <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-sm">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
             <CalendarX className="h-8 w-8" aria-hidden />
           </div>
           <div className="space-y-1">
-            <h2 className="font-display text-lg font-bold tracking-tight text-slate-900">
+            <h2 className="font-display text-lg font-bold tracking-tight text-foreground">
               {tab === 'proximos' ? 'Todavía no tenés turnos' : 'Historial vacío'}
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               {tab === 'proximos'
                 ? 'Reservá tu próxima cancha en segundos.'
                 : 'Acá van a aparecer tus partidos jugados.'}
@@ -210,7 +210,7 @@ export default async function MisReservasPage({
             return (
               <li
                 key={b.id}
-                className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
+                className="group rounded-2xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
               >
                 <div className="flex gap-4">
                   {/* Bloque-fecha */}
@@ -232,8 +232,8 @@ export default async function MisReservasPage({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">{b.court_name}</p>
-                        <p className="flex items-center gap-1 truncate text-xs text-slate-500">
+                        <p className="truncate text-sm font-semibold text-foreground">{b.court_name}</p>
+                        <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3 shrink-0 text-emerald-600/70" aria-hidden />
                           {b.tenant_name}
                         </p>
@@ -249,17 +249,17 @@ export default async function MisReservasPage({
 
                     <div className="mt-2.5 flex items-end justify-between gap-2">
                       <div className="space-y-0.5">
-                        <p className="text-sm text-slate-700 tabular-nums">
+                        <p className="text-sm text-foreground tabular-nums">
                           {b.time_start.slice(0, 5)}–{b.time_end.slice(0, 5)}
                         </p>
-                        <p className="font-display text-base font-bold text-emerald-700 tabular-nums">
+                        <p className="font-display text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
                           {formatARS(b.price_snapshot)}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-2">
                         {b.type === 'fixed' && (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/20">
+                          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
                             Turno fijo
                           </span>
                         )}
@@ -277,13 +277,13 @@ export default async function MisReservasPage({
                 </div>
 
                 {b.status === 'completed' && (
-                  <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-slate-100 pt-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border pt-2">
                     {!b.has_review && (
                       <LeaveReviewButton bookingId={b.id} tenantName={b.tenant_name} />
                     )}
                     <Link
                       href={`/${b.tenant_slug}`}
-                      className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-slate-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                      className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
                     >
                       <RotateCcw className="h-4 w-4" aria-hidden />
                       Reservar de nuevo

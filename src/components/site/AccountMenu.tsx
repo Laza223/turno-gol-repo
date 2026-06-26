@@ -22,7 +22,7 @@ type Props = {
 }
 
 // Touch-target 44px en mobile (WCAG 2.5.5), 36px en desktop.
-const itemClass = 'min-h-11 cursor-pointer gap-2 md:min-h-9'
+const itemClass = 'min-h-11 gap-2.5 md:min-h-9 w-full flex items-center transition-all duration-200'
 
 /**
  * Chip de avatar + nombre con menú desplegable de cuenta (estilo ecommerce).
@@ -58,41 +58,50 @@ export function AccountMenu({ firstName, lastName, email, avatarUrl, variant = '
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" sideOffset={8} className="w-60">
-        <div className="px-2 py-1.5">
-          <p className="truncate text-sm font-semibold text-foreground">
-            {firstName} {lastName}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">{email}</p>
+      <DropdownMenuContent align="end" sideOffset={8} className="w-72 p-2">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/20 border border-border/40 mb-1.5">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-500/10" />
+          ) : (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-sm">
+              {initials(firstName, lastName)}
+            </span>
+          )}
+          <div className="flex flex-col min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground leading-none mb-1">
+              {firstName} {lastName}
+            </p>
+            <p className="truncate text-xs text-muted-foreground leading-none">{email}</p>
+          </div>
         </div>
-        <div className="my-1 h-px bg-border" />
 
         <DropdownMenuItem asChild>
           <Link href="/mis-reservas" className={itemClass}>
-            <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden />
-            Mis reservas
+            <Calendar className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
+            <span className="group-hover:translate-x-0.5 transition-transform duration-200">Mis reservas</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/configuracion" className={itemClass}>
-            <Settings className="h-4 w-4 text-muted-foreground" aria-hidden />
-            Cuenta
+            <Settings className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
+            <span className="group-hover:translate-x-0.5 transition-transform duration-200">Cuenta</span>
           </Link>
         </DropdownMenuItem>
 
-        <div className="my-1 h-px bg-border" />
+        <div className="my-1.5 h-px bg-border" />
         <div className="px-2 py-1.5">
-          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Tema</p>
+          <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tema</p>
           <ThemeToggle />
         </div>
 
-        <div className="my-1 h-px bg-border" />
+        <div className="my-1.5 h-px bg-border" />
 
         <form action={signOutAction}>
           <DropdownMenuItem asChild>
             <button type="submit" className={cn(itemClass, 'w-full text-left')}>
-              <LogOut className="h-4 w-4 text-muted-foreground" aria-hidden />
-              Salir
+              <LogOut className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
+              <span className="group-hover:translate-x-0.5 transition-transform duration-200">Salir</span>
             </button>
           </DropdownMenuItem>
         </form>

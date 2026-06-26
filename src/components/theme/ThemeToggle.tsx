@@ -26,7 +26,7 @@ export default function ThemeToggle() {
     <div
       role="radiogroup"
       aria-label="Tema de la aplicación"
-      className="inline-flex gap-1 rounded-full border border-border bg-muted/40 p-1"
+      className="flex w-full gap-1 rounded-xl border border-border/60 bg-muted/20 p-1"
     >
       {OPTIONS.map(({ value, label, Icon }) => {
         const active = current === value
@@ -38,14 +38,14 @@ export default function ThemeToggle() {
             aria-checked={active}
             aria-label={label}
             onClick={() => setTheme(value)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 ${
               active
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-foreground shadow-sm scale-[1.01]'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >
-            <Icon className="h-3.5 w-3.5" aria-hidden />
-            {label}
+            <Icon className={`h-3.5 w-3.5 transition-all duration-200 ${active ? 'scale-110 text-emerald-500' : 'text-muted-foreground'}`} aria-hidden />
+            <span>{label}</span>
           </button>
         )
       })}

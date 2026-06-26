@@ -12,7 +12,7 @@ export default function Loading() {
       {/* Week table */}
       <div className="space-y-3">
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-slate-200 p-4 space-y-2">
+          <div key={i} className="rounded-lg border border-border p-4 space-y-2">
             <Skeleton className="h-5 w-32" />
             <div className="flex gap-2 flex-wrap">
               {Array.from({ length: 8 }).map((_, j) => (

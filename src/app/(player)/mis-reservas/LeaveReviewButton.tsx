@@ -93,7 +93,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
                 <Star
                   className={cn(
                     'h-8 w-8',
-                    n <= shown ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600',
+                    n <= shown ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground',
                   )}
                   aria-hidden
                 />

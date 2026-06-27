@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -447,55 +446,72 @@ function StatsBar() {
 }
 
 function ShowcaseStrip() {
+  const steps = [
+    { n: '01', t: 'Creá tu cuenta', d: 'Email, nombre y contraseña. Confirmás el email y listo.' },
+    { n: '02', t: 'Cargá tus canchas', d: 'Nombre, superficie, capacidad. En segundos.' },
+    { n: '03', t: 'Definí horarios y precios', d: 'Por franja, por día, como quieras.' },
+    { n: '04', t: 'Conectá MercadoPago', d: 'OAuth en un click. Empezás a cobrar señas.' },
+  ]
   return (
-    <section className="relative isolate overflow-hidden">
-      <Image
-        src={FEATURE_BG}
-        alt=""
-        aria-hidden
-        fill
-        sizes="100vw"
-        className="object-cover"
-      />
+    <section className="relative z-10 overflow-hidden py-20 sm:py-28">
       <div
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/40"
+        className="pointer-events-none absolute inset-0 z-[-1] opacity-[0.10] mix-blend-luminosity"
+        style={{
+          backgroundImage: `url('${FEATURE_BG}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          maskImage: 'linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent)',
+        }}
       />
-      <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-32">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
-            Onboarding
-          </p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            En 4 pasos estás recibiendo reservas online.
-          </h2>
-          <ol className="mt-10 space-y-5">
-            {[
-              { n: '01', t: 'Creá tu cuenta', d: 'Email, nombre y contraseña. Confirmás el email y listo.' },
-              { n: '02', t: 'Cargá tus canchas', d: 'Nombre, superficie, capacidad. En segundos.' },
-              { n: '03', t: 'Definí horarios y precios', d: 'Por franja, por día, como quieras.' },
-              { n: '04', t: 'Conectá MercadoPago', d: 'OAuth en un click. Empezás a cobrar señas.' },
-            ].map((step) => (
-              <li key={step.n} className="flex gap-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-sm font-bold text-emerald-400 ring-1 ring-inset ring-emerald-400/30">
-                  {step.n}
-                </span>
-                <div>
-                  <h3 className="text-base font-semibold text-white">{step.t}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{step.d}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
+      <div className="relative mx-auto grid max-w-[1240px] gap-12 px-6 lg:grid-cols-2 lg:items-center">
+        <Reveal>
+          <div>
+            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
+              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
+              Onboarding
+            </div>
+            <h2
+              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
+              style={{ fontSize: 'clamp(30px, 3.4vw, 44px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
+            >
+              En 4 pasos estás recibiendo reservas online.
+            </h2>
+            <ol className="mt-10 space-y-5">
+              {steps.map((step) => (
+                <li key={step.n} className="flex gap-4">
+                  <span
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] font-logo text-sm font-bold text-emerald-400"
+                    style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.3)', boxShadow: 'inset 0 0 16px rgba(16,185,129,.15)' }}
+                  >
+                    {step.n}
+                  </span>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-[#f8fafc]">{step.t}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-400">{step.d}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </Reveal>
 
-        <div className="relative">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-md">
+        <Reveal delay={120}>
+          <div
+            className="relative overflow-hidden p-6"
+            style={{
+              borderRadius: '20px',
+              background: 'linear-gradient(180deg, rgba(15,23,42,.78), rgba(2,6,23,.9))',
+              border: '1px solid rgba(255,255,255,.1)',
+              boxShadow: '0 0 60px rgba(16,185,129,.16), 0 40px 80px -40px rgba(0,0,0,.9)',
+            }}
+          >
             <div className="flex items-center gap-2 border-b border-white/10 pb-3 text-xs text-slate-400">
               <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-              <span className="ml-auto font-mono">app.turnogol.app/grilla</span>
+              <span className="ml-auto font-mono text-[11px] text-slate-500">app.turnogol.app/grilla</span>
             </div>
             <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
               {[...Array(20)].map((_, i) => {
@@ -505,7 +521,7 @@ function ShowcaseStrip() {
                   <div
                     key={i}
                     className={[
-                      'h-12 rounded-md flex items-center justify-center font-medium tabular-nums',
+                      'flex h-12 items-center justify-center rounded-md font-logo font-medium tabular-nums',
                       filled
                         ? 'bg-emerald-500/30 text-emerald-100 ring-1 ring-inset ring-emerald-400/40'
                         : next
@@ -513,8 +529,7 @@ function ShowcaseStrip() {
                           : 'bg-white/[0.03] text-slate-500 ring-1 ring-inset ring-white/5',
                     ].join(' ')}
                   >
-                    {(18 + Math.floor(i / 4)).toString().padStart(2, '0')}
-                    :{((i % 4) * 15).toString().padStart(2, '0')}
+                    {(18 + Math.floor(i / 4)).toString().padStart(2, '0')}:{((i % 4) * 15).toString().padStart(2, '0')}
                   </div>
                 )
               })}
@@ -527,7 +542,7 @@ function ShowcaseStrip() {
               </span>
             </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   )

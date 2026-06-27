@@ -221,6 +221,119 @@
   color: hsl(160 84% 55%);
 }
 
+/* ─── Banda hero del jugador (theme-adaptive) ──────────────────────────────
+   Puente visual con el home. Light = gradiente crema + tinte/glow emerald +
+   elevación suave (sin translucidez). Dark = gradiente slate-950 + sombra honda.
+   Inline-style no responde a `.dark`; por eso vive en CSS. La espejan
+   PlayerHeroBand y la banda inline de /mis-reservas. */
+.player-hero-band {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%);
+  border-color: rgba(16, 185, 129, 0.18);
+  box-shadow:
+    0 1px 2px rgba(2, 6, 23, 0.04),
+    0 22px 48px -30px rgba(16, 185, 129, 0.40);
+}
+.dark .player-hero-band {
+  background: linear-gradient(135deg, #07131d 0%, #020617 58%);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 70px -42px rgba(0, 0, 0, 0.9);
+}
+
+/* Grilla decorativa de la banda: líneas oscuras tenues en light, blancas en dark. */
+.player-hero-grid {
+  background-image:
+    linear-gradient(90deg, rgba(2, 6, 23, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(2, 6, 23, 0.05) 1px, transparent 1px);
+}
+.dark .player-hero-grid {
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+/* Texto con degradé esmeralda (titulares). Light = esmeraldas oscuros (contraste
+   sobre crema); dark = esmeraldas claros (brillo sobre slate-950). */
+.hero-accent-text {
+  background: linear-gradient(100deg, #059669, #10b981 50%, #047857);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.dark .hero-accent-text {
+  background: linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Avatar fallback (iniciales) de la banda de perfil. */
+.hero-avatar-fallback {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.22), rgba(255, 255, 255, 0.5));
+}
+.dark .hero-avatar-fallback {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
+}
+
+/* ─── Flujo /reserva (éxito / pendiente / error) theme-adaptive ─────────────
+   El shell se vuelve transparente en light (deja ver el campo del portal,
+   consistente con /mis-reservas) y slab #020617 en dark. */
+.reserva-shell {
+  background: transparent;
+}
+.dark .reserva-shell {
+  background: #020617;
+}
+
+/* Badge del ícono de éxito (glow esmeralda). */
+.reserva-success-badge {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.20), rgba(255, 255, 255, 0.55));
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.30);
+}
+.dark .reserva-success-badge {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 50px rgba(16, 185, 129, 0.45);
+}
+
+/* Tarjeta-comprobante (QR). Light = card blanca con elevación + tinte emerald;
+   dark = slab translúcido oscuro con glow. */
+.reserva-receipt-card {
+  background: linear-gradient(180deg, #ffffff, #f0fdf4);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  box-shadow:
+    0 1px 2px rgba(2, 6, 23, 0.04),
+    0 30px 60px -40px rgba(16, 185, 129, 0.35);
+}
+.dark .reserva-receipt-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 60px rgba(16, 185, 129, 0.12),
+    0 40px 80px -42px rgba(0, 0, 0, 0.9);
+}
+
+/* Glow blobs esmeralda de las bandas / shell. Opacidad fija se fundía con el
+   campo emerald-50 en light → más fuerte en light, original en dark. */
+.hero-glow-blob {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.42), transparent 70%);
+}
+.dark .hero-glow-blob {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.26), transparent 70%);
+}
+.reserva-glow-top {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.38), transparent 70%);
+}
+.dark .reserva-glow-top {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.22), transparent 70%);
+}
+.reserva-glow-bottom {
+  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.22), transparent 72%);
+}
+.dark .reserva-glow-bottom {
+  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.12), transparent 72%);
+}
+
 /* Skeleton shimmer */
 @keyframes shimmer {
   0% { background-position: -200% 0; }

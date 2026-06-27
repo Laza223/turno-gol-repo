@@ -21,57 +21,41 @@ export default function PlayerHeroBand({
   children?: ReactNode
 }) {
   return (
-    <section
-      className="relative isolate overflow-hidden rounded-3xl border border-white/[.08] px-6 py-7"
-      style={{
-        background: 'linear-gradient(135deg, #07131d 0%, #020617 58%)',
-        boxShadow: '0 30px 70px -42px rgba(0,0,0,.9)',
-      }}
-    >
+    <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-6 py-7">
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[-12%] top-[-60%] -z-10 h-[420px] w-[420px] rounded-full blur-[12px]"
-        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.26), transparent 70%)' }}
+        className="hero-glow-blob pointer-events-none absolute right-[-12%] top-[-60%] -z-10 h-[420px] w-[420px] rounded-full blur-[12px]"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
+        className="player-hero-grid pointer-events-none absolute inset-0 -z-10"
         style={{
-          backgroundImage:
-            'linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px)',
           backgroundSize: '38px 38px',
           WebkitMaskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
           maskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
         }}
       />
-      <div className="font-logo text-[12px] font-bold uppercase tracking-[.1em] text-emerald-400">
+      <div className="font-logo text-[12px] font-bold uppercase tracking-[.1em] text-emerald-600 dark:text-emerald-400">
         {eyebrow}
       </div>
       {title && (
         <h1
-          className="mt-2 font-display font-black italic text-white"
+          className="mt-2 font-display font-black italic text-slate-900 dark:text-white"
           style={{ fontSize: 'clamp(26px, 6vw, 36px)', lineHeight: '1', letterSpacing: '-0.03em' }}
         >
           {title}
           {accent && (
             <>
               {' '}
-              <span
-                style={{
-                  background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                }}
-              >
-                {accent}
-              </span>
+              <span className="hero-accent-text">{accent}</span>
             </>
           )}
         </h1>
       )}
       {subtitle && (
-        <p className="mt-2.5 text-[14px] leading-relaxed text-slate-400">{subtitle}</p>
+        <p className="mt-2.5 text-[14px] leading-relaxed text-slate-600 dark:text-slate-400">
+          {subtitle}
+        </p>
       )}
       {children}
     </section>

@@ -23,7 +23,6 @@ export const metadata = buildMetadata({
   path: '/para-complejos',
 })
 
-const HERO_BG = '/hero-bg.png'
 const FEATURE_BG =
   'https://images.unsplash.com/photo-1486286701208-1d58e9338013?q=80&w=2000&auto=format&fit=crop'
 
@@ -112,77 +111,243 @@ export default function ParaComplejosPage() {
 
 function Hero() {
   return (
-    <section className="relative isolate overflow-hidden">
-      {/* Background image */}
-      <Image
-        src={HERO_BG}
-        alt=""
-        aria-hidden
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover"
-      />
-      {/* Dark overlay + gradient */}
+    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 py-[60px] pb-[84px]">
+      {/* KIT-HEROBG */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-br from-slate-950/95 via-slate-950/80 to-emerald-900/70"
+        className="pointer-events-none absolute inset-0 z-0 opacity-30"
+        style={{
+          backgroundImage: "url('/hero-bg.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center 30%',
+          transform: 'scale(1.05)',
+          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
+        }}
       />
+      {/* KIT-GLOW-R */}
       <div
         aria-hidden
-        className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-slate-950 to-transparent"
+        className="pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-[8px] motion-reduce:animate-none"
+        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)' }}
+      />
+      {/* KIT-GLOW-L */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[-20%] left-[-10%] z-0 h-[620px] w-[620px] rounded-full"
+        style={{ background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)' }}
+      />
+      {/* KIT-PARTICLE x2 */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-[8%] top-[24%] z-0 h-[6px] w-[6px] animate-tg-float rounded-full bg-emerald-400 motion-reduce:hidden"
+        style={{ boxShadow: '0 0 16px 4px rgba(52,211,153,.6)' }}
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute bottom-[18%] right-[40%] z-0 h-[5px] w-[5px] rounded-full bg-emerald-300 motion-reduce:hidden"
+        style={{ boxShadow: '0 0 14px 3px rgba(110,231,183,.55)', animation: 'tg-float 10s ease-in-out infinite 0.8s' }}
       />
 
-      <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-20 sm:px-6 sm:pb-28 sm:pt-24 lg:px-8 lg:pb-32 lg:pt-28">
-        <div className="max-w-3xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200 backdrop-blur-sm">
+      <div className="relative z-10 mx-auto w-full max-w-[1240px] grid grid-cols-1 items-center gap-14 lg:grid-cols-[1.04fr_0.96fr]">
+        <div className="min-w-0">
+          {/* KIT-PILL-LIVE */}
+          <div
+            className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[13px] font-semibold text-[#6ee7b7] backdrop-blur-sm"
+            style={{ boxShadow: 'inset 0 0 30px rgba(16,185,129,.14)', whiteSpace: 'nowrap' }}
+          >
             <Zap className="h-3.5 w-3.5" aria-hidden />
             Para dueños y encargados
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl">
-            Tu complejo de fútbol,{' '}
-            <span className="bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-200 bg-clip-text text-transparent">
-              lleno todos los días
+
+          <h1
+            className="mt-[22px] font-display font-black italic text-[#f8fafc]"
+            style={{
+              fontSize: 'clamp(44px, 5.2vw, 74px)',
+              lineHeight: '0.95',
+              letterSpacing: '-0.035em',
+              textShadow: '0 12px 60px rgba(0,0,0,.5)',
+            }}
+          >
+            Tu complejo de fútbol,
+            <br />
+            <span
+              style={{
+                background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                color: 'transparent',
+              }}
+            >
+              lleno todos los días.
             </span>
-            .
           </h1>
-          <p className="mt-6 max-w-2xl text-lg text-slate-300 sm:text-xl">
+
+          <p className="mt-6 max-w-[540px] text-slate-400" style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}>
             La plataforma que reemplaza tu cuaderno y tu WhatsApp. Reservas online,
-            cobros automáticos con MercadoPago y la grilla en tiempo real. Hecho 100%
-            para complejos de fútbol argentinos.
+            cobros automáticos con MercadoPago y la grilla en tiempo real.{' '}
+            <span className="font-semibold text-slate-200">Hecho 100% para complejos de fútbol argentinos.</span>
           </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 text-sm font-semibold text-white shadow-xl shadow-emerald-500/30 hover:bg-emerald-400 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-emerald-500/40 transition-all duration-300"
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-600 px-7 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
+              style={{ boxShadow: '0 8px 30px rgba(16,185,129,.35)' }}
             >
               Empezar gratis
-              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+              <ArrowRight className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0" aria-hidden />
             </Link>
             <Link
               href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-lg border border-white/20 bg-white/5 px-6 text-sm font-semibold text-white backdrop-blur-sm hover:bg-white/10 transition-colors duration-150"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-7 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
               Ingresar
             </Link>
           </div>
-          <ul className="mt-10 flex flex-col gap-3 text-sm text-slate-300 sm:flex-row sm:gap-8">
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              Sin tarjeta de crédito
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              Configuración en menos de 2 minutos
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              Soporte por email
-            </li>
+
+          <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-slate-400">
+            {['Sin tarjeta de crédito', 'Configuración en menos de 2 minutos', 'Soporte por email'].map((t) => (
+              <li key={t} className="flex items-center gap-2 font-medium">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
+                {t}
+              </li>
+            ))}
           </ul>
         </div>
+
+        <PanelMockup />
       </div>
     </section>
+  )
+}
+
+const PANEL_SLOTS = [
+  { time: '18', state: 'occupied' },
+  { time: '19', state: 'free' },
+  { time: '20', state: 'occupied' },
+  { time: '21', state: 'new' },
+  { time: '22', state: 'occupied' },
+  { time: '23', state: 'free' },
+] as const
+
+function PanelMockup() {
+  return (
+    <div className="relative hidden min-w-0 lg:block" aria-hidden>
+      {/* Glow detrás */}
+      <div
+        className="pointer-events-none absolute inset-[6%_8%] rounded-[28px] blur-[30px]"
+        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.3), transparent 75%)' }}
+      />
+      {/* Card */}
+      <div
+        className="relative overflow-hidden"
+        style={{
+          borderRadius: '24px',
+          background: 'linear-gradient(180deg, rgba(15,23,42,.86), rgba(2,6,23,.92))',
+          border: '1px solid rgba(255,255,255,.1)',
+          boxShadow: '0 0 70px rgba(16,185,129,.21), 0 50px 90px -40px rgba(0,0,0,.95)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          animation: 'tg-float 9s ease-in-out infinite',
+        }}
+      >
+        {/* Header del panel */}
+        <div className="flex items-center justify-between border-b border-white/[.08] px-[22px] py-[16px]">
+          <div>
+            <div className="font-logo text-[11px] uppercase tracking-[.06em] text-slate-500">Panel · Hoy</div>
+            <div className="font-display font-bold text-[18px] text-[#f8fafc]">Grilla en vivo</div>
+          </div>
+          <div
+            className="inline-flex items-center gap-[7px] rounded-full px-3 py-[6px] text-[11px] font-bold uppercase tracking-[.08em] text-[#6ee7b7]"
+            style={{ background: 'rgba(2,6,23,.6)', border: '1px solid rgba(16,185,129,.45)' }}
+          >
+            <span className="relative flex h-[7px] w-[7px]">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-400" />
+            </span>
+            En vivo
+          </div>
+        </div>
+
+        <div className="p-[22px]">
+          {/* Slots */}
+          <div className="mb-[10px] flex items-center justify-between">
+            <span className="font-logo text-[12px] font-bold uppercase tracking-[.06em] text-slate-500">Cancha 1 · Turnos</span>
+            <span className="text-[12px] font-semibold text-emerald-400">2 libres</span>
+          </div>
+          <div className="grid grid-cols-3 gap-[9px]">
+            {PANEL_SLOTS.map(({ time, state }) => (
+              <div
+                key={time}
+                className="flex flex-col items-center gap-[2px] rounded-[12px] px-1 py-[11px]"
+                style={
+                  state === 'new'
+                    ? {
+                        background: 'linear-gradient(160deg, #10b981, #059669)',
+                        border: '1px solid #34d399',
+                        boxShadow: '0 0 22px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.3)',
+                      }
+                    : state === 'free'
+                      ? { background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.32)' }
+                      : { background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)', opacity: '0.55' }
+                }
+              >
+                <span
+                  className={`font-logo font-bold text-[15px] ${
+                    state === 'new' ? 'text-white' : state === 'free' ? 'text-[#6ee7b7]' : 'text-slate-500'
+                  }`}
+                >
+                  {time}:00
+                </span>
+                <span
+                  className={`text-[10px] uppercase tracking-[.04em] ${
+                    state === 'new' ? 'text-[#d1fae5]' : state === 'free' ? 'text-emerald-400' : 'text-slate-600'
+                  }`}
+                >
+                  {state === 'new' ? 'Nueva' : state === 'free' ? 'Libre' : 'Ocupado'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Fila caja del día */}
+          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/[.08] pt-[16px]">
+            <div>
+              <div className="font-logo text-[11px] uppercase tracking-[.05em] text-slate-500">Caja del día</div>
+              <div className="font-display font-bold text-[20px] text-[#f8fafc]">$184.500</div>
+            </div>
+            <div
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-[10px] text-[13px] font-semibold text-[#6ee7b7]"
+              style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.3)' }}
+            >
+              9 reservas hoy
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Toast "Nueva reserva online" */}
+      <div
+        className="absolute -left-[26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px]"
+        style={{
+          background: 'rgba(8,15,32,.88)',
+          border: '1px solid rgba(255,255,255,.12)',
+          boxShadow: '0 18px 40px -18px rgba(0,0,0,.9)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          animation: 'tg-float 7s ease-in-out infinite 1.4s',
+        }}
+      >
+        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-emerald-400" style={{ background: 'rgba(16,185,129,.18)' }}>
+          <Bell className="h-4 w-4" aria-hidden />
+        </span>
+        <div>
+          <div className="text-[13px] font-bold text-[#f1f5f9]">Nueva reserva online</div>
+          <div className="text-[11px] text-slate-500">hace 1 minuto</div>
+        </div>
+      </div>
+    </div>
   )
 }
 

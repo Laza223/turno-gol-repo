@@ -25,6 +25,8 @@ type SessionPayload = {
   }
 }
 
+let cachedSessionValue: PortalSessionContextValue | null = null
+
 /**
  * Hidrata la sesión del jugador client-side. El shell del portal renderiza el
  * estado anónimo en el HTML (lo que habilita ISR/estático en las rutas
@@ -33,25 +35,42 @@ type SessionPayload = {
  * y favoritos. Fail-open: cualquier error deja el portal en modo anónimo.
  */
 export function PortalSessionProvider({ children }: { children: ReactNode }) {
-  const [value, setValue] = useState<PortalSessionContextValue>({
-    session: null,
-    favoriteTenantIds: EMPTY_FAVORITES,
+  const [value, setValue] = useState<PortalSessionContextValue>(() => {
+    return cachedSessionValue ?? {
+      session: null,
+      favoriteTenantIds: EMPTY_FAVORITES,
+    }
   })
 
   useEffect(() => {
     let active = true
     fetch('/api/player/session', { cache: 'no-store' })
       .then(async (res) => {
-        if (!res.ok) return
+        if (!res.ok) {
+          if (active) {
+            const fallback = { session: null, favoriteTenantIds: EMPTY_FAVORITES }
+            cachedSessionValue = fallback
+            setValue(fallback)
+          }
+          return
+        }
         const json = (await res.json()) as SessionPayload
-        if (!active || !json.data?.session) return
-        setValue({
-          session: json.data.session,
-          favoriteTenantIds: new Set(json.data.favoriteTenantIds ?? []),
-        })
+        if (!active) return
+        
+        const newValue = {
+          session: json.data?.session ?? null,
+          favoriteTenantIds: new Set(json.data?.favoriteTenantIds ?? []),
+        }
+        cachedSessionValue = newValue
+        setValue(newValue)
       })
       .catch(() => {
         // Anónimo por defecto: el portal funciona igual sin sesión.
+        if (active) {
+          const fallback = { session: null, favoriteTenantIds: EMPTY_FAVORITES }
+          cachedSessionValue = fallback
+          setValue(fallback)
+        }
       })
     return () => {
       active = false

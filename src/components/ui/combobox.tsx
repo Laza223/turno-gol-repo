@@ -227,10 +227,10 @@ export default function Combobox({
             // (cerraría la lista en plena interacción).
             e.preventDefault()
           }}
-          className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg animate-in fade-in-0 zoom-in-95"
+          className="absolute z-50 mt-1.5 max-h-60 w-full overflow-auto rounded-xl border border-border bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur-md animate-in fade-in-0 zoom-in-95"
         >
           {visible.length === 0 ? (
-            <li role="presentation" className="px-3 py-2 text-sm text-slate-500">
+            <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">
               {emptyMessage}
             </li>
           ) : (
@@ -256,13 +256,13 @@ export default function Combobox({
                   lastPointer.current = { x: e.clientX, y: e.clientY }
                   if (moved && activeIndex !== i) setActiveIndex(i)
                 }}
-                className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm transition-colors ${
-                  i === activeIndex ? 'bg-slate-100 text-slate-900' : 'text-slate-700'
+                className={`flex cursor-pointer select-none items-center justify-between gap-3 px-2.5 py-2 text-sm rounded-lg outline-none transition-all duration-200 ${
+                  i === activeIndex ? 'bg-accent text-accent-foreground' : 'text-foreground/90'
                 }`}
               >
                 <span className="truncate">{o.label}</span>
                 {o.hint && (
-                  <span className="shrink-0 text-xs tabular-nums text-slate-500">{o.hint}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{o.hint}</span>
                 )}
               </li>
             ))

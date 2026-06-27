@@ -18,9 +18,9 @@ import {
 } from '@/modules/tenants/search.service'
 
 export const metadata = buildMetadata({
-  title: 'TurnoGol — Encontrá y reservá tu cancha de fútbol',
+  title: 'TurnoGol — Reservá tu cancha de fútbol al instante',
   description:
-    'Buscá complejos de fútbol cerca tuyo, mirá disponibilidad en tiempo real y reservá tu cancha online en segundos. Sin llamados, sin esperas.',
+    'Explorá complejos de fútbol en tu ciudad, compará disponibilidad en tiempo real y reservá tu cancha online. Confirmación inmediata, pago seguro con MercadoPago.',
   path: '/',
   titleAbsolute: true,
 })
@@ -50,31 +50,31 @@ const howItWorks = [
   {
     n: '01',
     icon: Search,
-    title: 'Buscá tu cancha',
+    title: 'Explorá complejos',
     description:
-      'Elegí ciudad, fecha y hora. Filtrá por superficie, precio o cercanía y encontrá el complejo ideal.',
+      'Elegí tu ciudad, fecha y horario. Filtrá por superficie, precio o cercanía y encontrá el complejo ideal para tu partido.',
   },
   {
     n: '02',
     icon: CalendarDays,
-    title: 'Elegí tu horario',
+    title: 'Compará disponibilidad',
     description:
-      'Mirá la disponibilidad en tiempo real y quedate con el turno que mejor te sirva. Cero esperas.',
+      'Visualizá la disponibilidad actualizada en tiempo real y elegí el horario que más te convenga. Sin intermediarios.',
   },
   {
     n: '03',
     icon: CheckCircle2,
-    title: 'Reservá y jugá',
+    title: 'Confirmá y jugá',
     description:
-      'Confirmá con seña online y listo: tu cancha queda asegurada. Solo te queda llevar la pelota.',
+      'Reservá con pago seguro a través de MercadoPago y tu cancha queda asegurada. Solo queda la pelota.',
   },
 ]
 
 const playerStats = [
-  { value: '+10.000', label: 'Turnos reservados' },
-  { value: '50+', label: 'Complejos disponibles' },
-  { value: '95%', label: 'Asistencia confirmada' },
-  { value: '<2 min', label: 'Para reservar tu turno' },
+  { value: '+10.000', label: 'Reservas completadas' },
+  { value: '50+', label: 'Complejos en la plataforma' },
+  { value: '95%', label: 'Tasa de asistencia' },
+  { value: '<2 min', label: 'Tiempo promedio de reserva' },
 ]
 
 export default async function HomePage() {
@@ -101,7 +101,7 @@ export default async function HomePage() {
 
 function Hero({ cities }: { cities: CityCount[] }) {
   return (
-    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 py-[60px] pb-[84px]">
+    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 pt-[120px] pb-[84px]">
       {/* Background Image */}
       <div
         aria-hidden
@@ -167,7 +167,7 @@ function Hero({ cities }: { cities: CityCount[] }) {
               textShadow: '0 12px 60px rgba(0,0,0,.5)',
             }}
           >
-            Tu cancha de Fútbol 5,
+            Reservá tu cancha
             <br />
             <span
               style={{
@@ -175,9 +175,12 @@ function Hero({ cities }: { cities: CityCount[] }) {
                 WebkitBackgroundClip: 'text',
                 backgroundClip: 'text',
                 color: 'transparent',
+                paddingRight: '0.15em',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone',
               }}
             >
-              lista en un toque.
+              al instante.
             </span>
           </h1>
 
@@ -186,9 +189,9 @@ function Hero({ cities }: { cities: CityCount[] }) {
             className="mt-6 max-w-[540px] text-slate-400"
             style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}
           >
-            Cero llamados, cero vueltas. Mirá qué hay libre ahora mismo y{' '}
-            <span className="font-semibold text-slate-200">clavá tu turno</span>{' '}
-            antes de que te lo ganen.
+            Explorá complejos verificados, compará horarios en tiempo real y{' '}
+            <span className="font-semibold text-slate-200">asegurá tu cancha</span>{' '}
+            con confirmación inmediata.
           </p>
 
           {/* Search form — vertical layout */}
@@ -206,7 +209,7 @@ function Hero({ cities }: { cities: CityCount[] }) {
 
           {/* Trust pills */}
           <div className="mt-6 flex flex-wrap items-center gap-5">
-            {['Sin llamados', 'Seña online segura', 'Confirmación al instante'].map((t) => (
+            {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map((t) => (
               <span key={t} className="inline-flex items-center gap-2 text-[13px] font-medium text-slate-400">
                 <svg
                   width="16"
@@ -477,7 +480,7 @@ function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[] }) {
             <div>
               <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
                 <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-                Cerca tuyo
+                Complejos verificados
               </div>
               <h2
                 className="mt-[14px] font-display font-black italic text-[#f8fafc]"
@@ -487,11 +490,10 @@ function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[] }) {
                   letterSpacing: '-0.025em',
                 }}
               >
-                Complejos destacados
+                Los mejor valorados
               </h2>
               <p className="mt-[14px] max-w-[540px] text-base leading-[1.55] text-slate-400">
-                Los mejor valorados de la plataforma. Mirá horarios reales y reservá online en
-                segundos.
+                Complejos con las mejores reseñas y disponibilidad en tiempo real. Elegí, reservá y jugá.
               </p>
             </div>
             <Link
@@ -539,7 +541,7 @@ function HowItWorks() {
           <div className="mx-auto mb-12 max-w-[620px] text-center">
             <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
               <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Reservar es fácil
+              Así de simple
               <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
             </div>
             <h2
@@ -550,10 +552,10 @@ function HowItWorks() {
                 letterSpacing: '-0.025em',
               }}
             >
-              Cómo funciona
+              Del buscador a la cancha
             </h2>
             <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              De buscar a jugar en tres pasos. Sin vueltas, sin llamados.
+              Tres pasos y tu cancha está asegurada. Reserva online, confirmación inmediata.
             </p>
           </div>
         </Reveal>
@@ -718,7 +720,7 @@ function OwnerBanner() {
 
                 <div className="min-w-0">
                   <div className="mb-2 font-logo text-xs font-bold uppercase tracking-[.1em] text-emerald-400">
-                    Para complejos
+                    Solución para complejos
                   </div>
                   <h2
                     className="font-display font-black italic text-[#f8fafc]"
@@ -728,11 +730,10 @@ function OwnerBanner() {
                       lineHeight: '1.02',
                     }}
                   >
-                    ¿Tenés un complejo de fútbol?
+                    Llevá tu complejo al siguiente nivel
                   </h2>
                   <p className="mt-3 max-w-[560px] text-base leading-[1.55] text-slate-400">
-                    Gestioná tus canchas, cobrá las señas online y llená tu agenda con jugadores
-                    que ya están buscando dónde jugar.
+                    Automatizá reservas, cobrá señas con MercadoPago y conectá con miles de jugadores activos. Tu complejo, vendiendo canchas 24/7.
                   </p>
                 </div>
               </div>

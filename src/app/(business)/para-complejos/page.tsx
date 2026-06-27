@@ -17,9 +17,9 @@ import { buildMetadata } from '@/lib/seo/metadata'
 import Reveal from '@/components/site/Reveal'
 
 export const metadata = buildMetadata({
-  title: 'TurnoGol para complejos — Gestión y reservas online para tu cancha',
+  title: 'TurnoGol para complejos — La plataforma que llena canchas',
   description:
-    'El software de gestión hecho para complejos de fútbol argentinos. Reservas online 24/7, cobros automáticos con MercadoPago y la grilla en tiempo real. Probá 30 días gratis, sin tarjeta.',
+    'Gestión integral para complejos de fútbol. Reservas online 24/7, cobros automáticos con MercadoPago, grilla en tiempo real y acceso a miles de jugadores. 30 días gratis.',
   path: '/para-complejos',
 })
 
@@ -31,45 +31,45 @@ const features = [
     icon: Calendar,
     title: 'Reservas online 24/7',
     description:
-      'Tus jugadores reservan desde el celular. Vos dormís, el complejo trabaja.',
+      'Tus canchas reciben reservas las 24 horas, los 7 días. Tu complejo genera ingresos incluso mientras dormís.',
   },
   {
     icon: CreditCard,
     title: 'Cobros automáticos con MercadoPago',
     description:
-      'Seña al confirmar la reserva. Sin perseguir pagos ni esperar transferencias.',
+      'La seña se cobra automáticamente al confirmar la reserva. Eliminá la persecución de pagos y las transferencias pendientes.',
   },
   {
     icon: LineChart,
     title: 'Dashboard en tiempo real',
     description:
-      'Caja, ocupación y reservas del día en una sola pantalla. Decidí con datos.',
+      'Facturación, ocupación y reservas del día en una sola vista. Tomá decisiones basadas en datos reales.',
   },
   {
     icon: Bell,
     title: 'Avisos al instante',
     description:
-      'Push al admin apenas entra una reserva online. En la madrugada se agenda para las 8 AM: no suena de noche.',
+      'Notificación instantánea con cada nueva reserva. Las reservas nocturnas se notifican a las 8 AM para no interrumpir tu descanso.',
   },
   {
     icon: Wallet,
     title: 'Caja unificada',
     description:
-      'Reservas, cantina y abonados en un único cierre diario. Cero planilla Excel.',
+      'Reservas, cantina y abonados unificados en un solo cierre diario. Olvidate de las planillas.',
   },
   {
     icon: Users,
     title: 'Abonados y partidos fijos',
     description:
-      'Lunes 21 hs, martes 22 hs… programado y cobrado solo. El cliente fiel paga primero.',
+      'Turnos fijos programados y cobrados automáticamente. Tus clientes recurrentes siempre tienen su horario asegurado.',
   },
 ]
 
 const stats = [
-  { value: '+10.000', label: 'Turnos gestionados' },
-  { value: '95%', label: 'Menos ausencias' },
-  { value: '50+', label: 'Complejos activos' },
-  { value: '<2 min', label: 'Onboarding promedio' },
+  { value: '+10.000', label: 'Reservas gestionadas' },
+  { value: '95%', label: 'Reducción de ausencias' },
+  { value: '50+', label: 'Complejos en la plataforma' },
+  { value: '<2 min', label: 'Tiempo de configuración' },
 ]
 
 const testimonials = [
@@ -111,7 +111,7 @@ export default function ParaComplejosPage() {
 
 function Hero() {
   return (
-    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 py-[60px] pb-[84px]">
+    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 pt-[120px] pb-[84px]">
       {/* KIT-HEROBG */}
       <div
         aria-hidden
@@ -169,7 +169,7 @@ function Hero() {
               textShadow: '0 12px 60px rgba(0,0,0,.5)',
             }}
           >
-            Tu complejo de fútbol,
+            Tu complejo, siempre lleno.
             <br />
             <span
               style={{
@@ -177,16 +177,19 @@ function Hero() {
                 WebkitBackgroundClip: 'text',
                 backgroundClip: 'text',
                 color: 'transparent',
+                paddingRight: '0.15em',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone',
               }}
             >
-              lleno todos los días.
+              Reservas que no paran.
             </span>
           </h1>
 
           <p className="mt-6 max-w-[540px] text-slate-400" style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}>
-            La plataforma que reemplaza tu cuaderno y tu WhatsApp. Reservas online,
-            cobros automáticos con MercadoPago y la grilla en tiempo real.{' '}
-            <span className="font-semibold text-slate-200">Hecho 100% para complejos de fútbol argentinos.</span>
+            La plataforma que automatiza reservas, elimina ausencias y maximiza tu ocupación.
+            Cobros con MercadoPago, grilla en tiempo real y acceso directo a miles de jugadores.{' '}
+            <span className="font-semibold text-slate-200">Diseñada específicamente para complejos de fútbol en Argentina.</span>
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -207,7 +210,7 @@ function Hero() {
           </div>
 
           <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-slate-400">
-            {['Sin tarjeta de crédito', 'Configuración en menos de 2 minutos', 'Soporte por email'].map((t) => (
+            {['Sin tarjeta de crédito', 'Configuración en menos de 2 minutos', 'Soporte dedicado'].map((t) => (
               <li key={t} className="flex items-center gap-2 font-medium">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
                 {t}
@@ -357,17 +360,17 @@ function Features() {
           <div className="mx-auto mb-12 max-w-[640px] text-center">
             <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
               <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Todo lo que necesitás
+              Funcionalidades que generan resultados
               <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
             </div>
             <h2
               className="mt-[14px] font-display font-black italic text-[#f8fafc]"
               style={{ fontSize: 'clamp(32px, 4vw, 50px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
             >
-              Pensado para llenar canchas, no planillas.
+              Cada función está diseñada para aumentar tu ocupación.
             </h2>
             <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Cada función arranca de un dolor real de tu complejo. Sin features que nunca usás.
+              Herramientas que nacieron de la operación diaria de complejos como el tuyo. Todo lo que necesitás, nada que sobre.
             </p>
           </div>
         </Reveal>
@@ -445,10 +448,10 @@ function StatsBar() {
 
 function ShowcaseStrip() {
   const steps = [
-    { n: '01', t: 'Creá tu cuenta', d: 'Email, nombre y contraseña. Confirmás el email y listo.' },
-    { n: '02', t: 'Cargá tus canchas', d: 'Nombre, superficie, capacidad. En segundos.' },
-    { n: '03', t: 'Definí horarios y precios', d: 'Por franja, por día, como quieras.' },
-    { n: '04', t: 'Conectá MercadoPago', d: 'OAuth en un click. Empezás a cobrar señas.' },
+    { n: '01', t: 'Creá tu cuenta', d: 'Email, nombre y contraseña. Confirmación por email y estás dentro.' },
+    { n: '02', t: 'Registrá tus canchas', d: 'Nombre, tipo de superficie y capacidad. En menos de un minuto.' },
+    { n: '03', t: 'Definí horarios y tarifas', d: 'Personalizá por franja horaria, por día o como mejor se adapte a tu operación.' },
+    { n: '04', t: 'Conectá MercadoPago', d: 'Integración en un click. Empezá a recibir señas automáticas.' },
   ]
   return (
     <section className="relative z-10 overflow-hidden py-20 sm:py-28">
@@ -468,13 +471,13 @@ function ShowcaseStrip() {
           <div>
             <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
               <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Onboarding
+              Configuración express
             </div>
             <h2
               className="mt-[14px] font-display font-black italic text-[#f8fafc]"
               style={{ fontSize: 'clamp(30px, 3.4vw, 44px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
             >
-              En 4 pasos estás recibiendo reservas online.
+              En 4 pasos tu complejo empieza a recibir reservas online.
             </h2>
             <ol className="mt-10 space-y-5">
               {steps.map((step) => (
@@ -554,14 +557,14 @@ function Testimonials() {
           <div className="mx-auto mb-12 max-w-[640px] text-center">
             <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
               <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Historias reales
+              Lo que dicen nuestros complejos
               <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
             </div>
             <h2
               className="mt-[14px] font-display font-black italic text-[#f8fafc]"
               style={{ fontSize: 'clamp(32px, 4vw, 50px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
             >
-              Complejos que ya cambiaron el cuaderno.
+              Resultados que hablan por sí solos.
             </h2>
           </div>
         </Reveal>
@@ -613,10 +616,10 @@ function FinalCta() {
             className="font-display font-black italic text-[#f8fafc]"
             style={{ fontSize: 'clamp(32px, 4vw, 52px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
           >
-            Tu próxima reserva online empieza hoy.
+            Tu complejo merece funcionar al máximo.
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
-            Probá TurnoGol 30 días gratis. Sin tarjeta. Sin permanencia. Si no te sirve, lo dejás.
+            Probá TurnoGol durante 30 días sin costo. Sin tarjeta de crédito, sin compromiso. Si no ves resultados, lo dejás.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'TurnoGol',
     short_name: 'TurnoGol',
-    description: 'Reservá tu cancha de fútbol en Argentina. Encontrá complejos y horarios disponibles cerca tuyo.',
+    description: 'La plataforma de reservas y gestión para complejos de fútbol en Argentina. Disponibilidad en tiempo real, reserva al instante.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

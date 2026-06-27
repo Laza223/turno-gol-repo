@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
+import Link from 'next/link'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { PricingRule } from '@/modules/courts/court.types'
 import {
@@ -196,9 +197,9 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
         Configurá los horarios de atención del complejo antes de cargar precios.{' '}
-        <a href="/settings/horarios" className="font-medium underline underline-offset-2">
+        <Link href="/settings/horarios" className="font-medium underline underline-offset-2">
           Ir a horarios
-        </a>
+        </Link>
       </div>
     )
   }

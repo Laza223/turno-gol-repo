@@ -1,0 +1,53 @@
+{
+  "projectId": "56adfd6f-1f52-4410-bf59-af42c0ee06e5",
+  "shape": "package",
+  "pkg": "turnogol",
+  "globalName": "TurnoGol",
+  "srcDir": "src/components/ui",
+  "tsconfig": ".design-sync/tsconfig.ds.json",
+  "cssEntry": ".design-sync/.cache/ds-tailwind.css",
+  "extraFonts": ".design-sync/fonts/fonts.css",
+  "docsDir": ".design-sync/groups",
+  "guidelinesGlob": "docs/spec/design-system/MASTER.md",
+  "readmeHeader": ".design-sync/conventions.md",
+  "componentSrcMap": {
+    "Button": "src/components/ui/button.tsx",
+    "Badge": "src/components/ui/badge.tsx",
+    "Input": "src/components/ui/input.tsx",
+    "Label": "src/components/ui/label.tsx",
+    "Skeleton": "src/components/ui/skeleton.tsx",
+    "Logo": "src/components/ui/logo.tsx",
+    "EmptyState": "src/components/ui/empty-state.tsx",
+    "ErrorState": "src/components/ui/error-state.tsx",
+    "SubmitButton": "src/components/ui/submit-button.tsx",
+    "ConfirmDialog": "src/components/ui/confirm-dialog.tsx",
+    "Combobox": "src/components/ui/combobox.tsx",
+    "Dialog": "src/components/ui/dialog.tsx",
+    "DropdownMenu": "src/components/ui/dropdown-menu.tsx",
+    "Toast": "src/components/ui/toast.tsx"
+  },
+  "dtsPropsFor": {
+    "Button": "  /** Visual style variant. */\n  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';\n  /** Size preset. `icon` is a square icon-only button. */\n  size?: 'default' | 'sm' | 'lg' | 'icon';\n  className?: string;\n  disabled?: boolean;\n  type?: 'button' | 'submit' | 'reset';\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;\n  children?: React.ReactNode;",
+    "Badge": "  /** Visual style variant. */\n  variant?: 'default' | 'secondary' | 'destructive' | 'success' | 'warning' | 'outline';\n  className?: string;\n  children?: React.ReactNode;",
+    "Input": "  type?: React.HTMLInputTypeAttribute;\n  placeholder?: string;\n  value?: string | number;\n  defaultValue?: string | number;\n  disabled?: boolean;\n  className?: string;\n  onChange?: React.ChangeEventHandler<HTMLInputElement>;",
+    "Label": "  htmlFor?: string;\n  className?: string;\n  children?: React.ReactNode;",
+    "Skeleton": "  /** Accessible label announced by screen readers. Defaults to \"Cargando…\". Pass aria-hidden for purely decorative skeletons. */\n  label?: string;\n  className?: string;",
+    "Logo": "  /** Layout. `horizontal`/`vertical` render the full \"TurnoGol\" wordmark; `icon`/`vector` render the \"TG\" monogram. */\n  variant?: 'vertical' | 'horizontal' | 'icon' | 'vector';\n  className?: string;\n  iconClassName?: string;\n  /** Tailwind text-color class for the wordmark. Defaults to \"text-slate-900\". */\n  textClassName?: string;",
+    "EmptyState": "  /** Lucide icon shown in a circular slot above the title. */\n  icon?: React.ComponentType<{ className?: string }>;\n  /** Decorative inline SVG; takes precedence over `icon`. */\n  illustration?: React.ReactNode;\n  title: string;\n  description?: string;\n  /** Call-to-action, typically a <Button> or link. */\n  action?: React.ReactNode;\n  className?: string;",
+    "ErrorState": "  /** `full` is a full-page error; `contained` (default) fills its parent; `inline` is a compact red box. */\n  variant?: 'full' | 'contained' | 'inline';\n  title: string;\n  description?: string;\n  /** Error reference code shown in small print. */\n  digest?: string;\n  onRetry?: () => void;\n  /** Retry button label. Defaults to \"Reintentar\". */\n  retryLabel?: string;\n  /** Secondary link target (e.g. home). */\n  secondaryHref?: string;\n  secondaryLabel?: string;\n  /** Lucide icon for the secondary link. */\n  secondaryIcon?: React.ComponentType<{ className?: string }>;",
+    "SubmitButton": "  children: React.ReactNode;\n  /** Label shown while the enclosing form's action is pending. Defaults to \"Guardando…\". */\n  pendingLabel?: string;\n  className?: string;\n  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';\n  size?: 'default' | 'sm' | 'lg' | 'icon';",
+    "ConfirmDialog": "  open: boolean;\n  onOpenChange: (open: boolean) => void;\n  title: string;\n  description?: React.ReactNode;\n  /** Extra fields rendered between the description and the footer. */\n  children?: React.ReactNode;\n  confirmLabel?: string;\n  cancelLabel?: string;\n  /** `destructive` makes the confirm button red. */\n  variant?: 'default' | 'destructive';\n  /** Type-to-confirm: confirm stays disabled until this exact phrase is typed. */\n  confirmationPhrase?: string;\n  /** Async handler. Return { success:false, error } to keep the dialog open and show the error; void or { success:true } closes it. */\n  onConfirm: () => Promise<{ success: boolean; error?: string } | void>;",
+    "Combobox": "  id: string;\n  options: { value: string; label: string; hint?: string }[];\n  value: string;\n  onChange: (value: string) => void;\n  placeholder?: string;\n  inputClassName?: string;\n  /** Empty-results message. Defaults to \"Sin resultados\". */\n  emptyMessage?: string;\n  leadingIcon?: React.ReactNode;\n  /** Accessible name for the listbox. */\n  listboxLabel?: string;\n  /** Adds a first option (value \"\") that clears the selection, like a \"Todas\". */\n  clearOptionLabel?: string;",
+    "Dialog": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  modal?: boolean;\n  /** Compose with DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose. */\n  children?: React.ReactNode;",
+    "DropdownMenu": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  modal?: boolean;\n  dir?: 'ltr' | 'rtl';\n  /** Compose with DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem. */\n  children?: React.ReactNode;",
+    "Toast": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  /** Visual style. */\n  variant?: 'default' | 'success' | 'destructive';\n  /** Auto-dismiss delay in ms. */\n  duration?: number;\n  className?: string;\n  /** Compose with ToastTitle, ToastDescription, ToastClose inside a ToastProvider + ToastViewport. */\n  children?: React.ReactNode;"
+  },
+  "overrides": {
+    "Dialog": { "cardMode": "single", "viewport": "520x380" },
+    "ConfirmDialog": { "cardMode": "single", "viewport": "520x440" },
+    "Toast": { "cardMode": "single", "viewport": "440x320" },
+    "DropdownMenu": { "cardMode": "single", "viewport": "380x320" },
+    "Combobox": { "cardMode": "single", "viewport": "440x200" },
+    "ErrorState": { "cardMode": "column", "viewport": "600x460" }
+  }
+}

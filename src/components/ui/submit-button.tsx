@@ -27,7 +27,7 @@ export function SubmitButton({
   return (
     <Button
       type="submit"
-      disabled={pending}
+      isLoading={pending}
       aria-busy={pending}
       className={className}
       variant={variant}

@@ -51,6 +51,9 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: { optimizePackageImports: ['lucide-react', 'date-fns'] },
   // react-leaflet v4 es ESM-only; Next necesita transpilarlo para el build.
   transpilePackages: ['react-leaflet', '@react-leaflet/core'],

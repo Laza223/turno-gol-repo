@@ -5,6 +5,7 @@ import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { createCourtAction, updateCourtAction } from '../actions'
 import { PricingGrid } from './PricingGrid'
+import { Button } from '@/components/ui/button'
 
 const SURFACE_OPTIONS = [
   { value: 'synthetic_grass', label: 'Césped sintético' },
@@ -174,13 +175,13 @@ export function CourtForm({ court, openingHours, onSaved, onCancel }: Props) {
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
-      <button
+      <Button
         type="submit"
-        disabled={isPending}
-        className="w-full h-11 bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-600/20 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none transition-all duration-200"
+        isLoading={isPending}
+        className="w-full h-11"
       >
-        {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear cancha'}
-      </button>
+        {isEdit ? 'Guardar cambios' : 'Crear cancha'}
+      </Button>
     </form>
   )
 }

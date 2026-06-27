@@ -3,7 +3,7 @@ import { ImageResponse } from 'next/og'
 export const runtime = 'edge'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
-export const alt = 'TurnoGol — Reservá tu cancha de fútbol'
+export const alt = 'TurnoGol — La plataforma de reservas para el fútbol argentino'
 
 export default function OpenGraphImage() {
   return new ImageResponse(
@@ -24,10 +24,10 @@ export default function OpenGraphImage() {
         <span style={{ color: "white", fontWeight: 900, fontSize: "60%", fontStyle: "italic" }}>TG</span>
         <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: -2 }}>TurnoGol</div>
         <div style={{ fontSize: 36, fontWeight: 500, marginTop: 24, opacity: 0.95 }}>
-          Reservá tu cancha de fútbol
+          La plataforma de reservas del fútbol argentino
         </div>
         <div style={{ fontSize: 24, fontWeight: 400, marginTop: 12, opacity: 0.85 }}>
-          Encontrá complejos en tu ciudad
+          Complejos verificados · Reserva online · Disponibilidad en tiempo real
         </div>
       </div>
     ),

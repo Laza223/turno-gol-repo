@@ -258,6 +258,9 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  padding-right: 0.15em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 .dark .hero-accent-text {
   background: linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981);

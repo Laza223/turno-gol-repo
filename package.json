@@ -79,6 +79,7 @@
     "nanoid": "^5.0",
     "next": "^14.2",
     "next-themes": "^0.4.6",
+    "nextjs-toploader": "^3.9.17",
     "pg-boss": "^9.0",
     "postgres": "^3.4",
     "react": "^18.3",

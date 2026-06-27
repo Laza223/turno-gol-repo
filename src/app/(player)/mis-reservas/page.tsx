@@ -145,18 +145,18 @@ export default async function MisReservasPage({
         <p className="mt-2.5 text-[14px] leading-relaxed text-slate-600 dark:text-slate-400 tabular-nums">
           {upcomingCount > 0
             ? `Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`
-            : 'Acá ves tus turnos próximos y tu historial.'}
+            : 'Consultá tus próximas reservas y tu historial de partidos.'}
         </p>
       </section>
 
       {/* Tabs como segmented control premium */}
       <div className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-sm">
-        <a href="/mis-reservas?tab=proximos" className={tabClass(tab === 'proximos')}>
+        <Link href="/mis-reservas?tab=proximos" className={tabClass(tab === 'proximos')}>
           Próximos
-        </a>
-        <a href="/mis-reservas?tab=historial" className={tabClass(tab === 'historial')}>
+        </Link>
+        <Link href="/mis-reservas?tab=historial" className={tabClass(tab === 'historial')}>
           Historial
-        </a>
+        </Link>
       </div>
 
       {/* Booking list */}
@@ -167,11 +167,11 @@ export default async function MisReservasPage({
           </div>
           <div className="space-y-1">
             <h2 className="font-display text-lg font-bold tracking-tight text-foreground">
-              {tab === 'proximos' ? 'Todavía no tenés turnos' : 'Historial vacío'}
+              {tab === 'proximos' ? 'Todavía no tenés reservas' : 'Historial vacío'}
             </h2>
             <p className="text-sm text-muted-foreground">
               {tab === 'proximos'
-                ? 'Reservá tu próxima cancha en segundos.'
+                ? 'Encontrá tu próxima cancha y reservá al instante.'
                 : 'Acá van a aparecer tus partidos jugados.'}
             </p>
           </div>

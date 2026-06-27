@@ -47,20 +47,20 @@ function ImagePane() {
           <h2 className="text-3xl font-extrabold tracking-tight text-white">
             Empezá hoy.
             <br />
-            Cobrá tu primera seña esta semana.
+            Tu primera reserva online puede llegar esta semana.
           </h2>
           <ul className="mt-8 space-y-3 text-sm text-slate-200">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              30 días gratis, sin tarjeta
+              30 días de prueba sin costo
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              MercadoPago integrado
+              Cobros automáticos con MercadoPago
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              Setup en menos de 2 minutos
+              Configuración en menos de 2 minutos
             </li>
           </ul>
         </div>
@@ -119,7 +119,7 @@ function FormCard({
           Creá tu cuenta
         </h1>
         <p className="text-sm text-muted-foreground">
-          Creá tu cuenta en menos de un minuto.
+          Registrá tu complejo y empezá a recibir reservas online.
         </p>
       </header>
 

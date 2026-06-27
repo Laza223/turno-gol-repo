@@ -2,10 +2,17 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Clock, MapPin, Search } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
+import DatePicker from '@/components/ui/date-picker'
 import { useNearestCity } from '@/hooks/use-nearest-city'
 import type { CityCount } from '@/modules/tenants/search.service'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 type Props = { cities: CityCount[]; layout?: 'horizontal' | 'vertical' }
 
@@ -112,7 +119,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
           </span>
-          Encontrá tu turno ideal
+          Buscá disponibilidad ahora
         </div>
 
         <div className="flex flex-col gap-4">
@@ -148,20 +155,14 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
               <label htmlFor="hero-date-v" className={labelClass}>
                 Fecha
               </label>
-              <div className="relative">
-                <CalendarDays
-                  className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
-                  aria-hidden
-                />
-                <input
-                  id="hero-date-v"
-                  type="date"
-                  value={date}
-                  min={today}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={fieldClass}
-                />
-              </div>
+              <DatePicker
+                id="hero-date-v"
+                value={date}
+                min={today}
+                onChange={setDate}
+                placeholder="dd/mm/aaaa"
+                className={fieldClass}
+              />
             </div>
             <div>
               <label htmlFor="hero-time-v" className={labelClass}>
@@ -172,19 +173,30 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                   className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
                   aria-hidden
                 />
-                <select
-                  id="hero-time-v"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className={`${fieldClass} appearance-none pr-8`}
-                >
-                  <option value="">Cualquier horario</option>
-                  {HOURS.map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      id="hero-time-v"
+                      className={`${fieldClass} flex items-center justify-between text-left pr-10`}
+                    >
+                      <span className={!time ? 'text-slate-500' : 'text-slate-900'}>
+                        {time || 'Cualquier horario'}
+                      </span>
+                      <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-slate-500" aria-hidden />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
+                    <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
+                      Cualquier horario
+                    </DropdownMenuItem>
+                    {HOURS.map((h) => (
+                      <DropdownMenuItem key={h} onSelect={() => setTime(h)} className="cursor-pointer">
+                        {h}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -226,7 +238,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
           </span>
-          Buscá tu próximo partido
+          Encontrá tu próxima cancha
         </div>
         <span className="text-[12.5px] font-semibold text-slate-500">+1.200 turnos libres hoy</span>
       </div>
@@ -265,20 +277,14 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
           <label htmlFor="hero-date" className={labelClass}>
             Fecha
           </label>
-          <div className="relative">
-            <CalendarDays
-              className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600 z-10"
-              aria-hidden
-            />
-            <input
-              id="hero-date"
-              type="date"
-              value={date}
-              min={today}
-              onChange={(e) => setDate(e.target.value)}
-              className={fieldClass}
-            />
-          </div>
+          <DatePicker
+            id="hero-date"
+            value={date}
+            min={today}
+            onChange={setDate}
+            placeholder="dd/mm/aaaa"
+            className={fieldClass}
+          />
         </div>
 
         {/* Hora */}
@@ -291,19 +297,30 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
               className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600 z-10"
               aria-hidden
             />
-            <select
-              id="hero-time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className={`${fieldClass} appearance-none pr-8`}
-            >
-              <option value="">Cualquier horario</option>
-              {HOURS.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-            </select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  id="hero-time"
+                  className={`${fieldClass} flex items-center justify-between text-left pr-10`}
+                >
+                  <span className={!time ? 'text-slate-500' : 'text-slate-900'}>
+                    {time || 'Cualquier horario'}
+                  </span>
+                  <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-slate-500" aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
+                <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
+                  Cualquier horario
+                </DropdownMenuItem>
+                {HOURS.map((h) => (
+                  <DropdownMenuItem key={h} onSelect={() => setTime(h)} className="cursor-pointer">
+                    {h}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

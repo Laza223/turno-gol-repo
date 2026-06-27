@@ -1,0 +1,13 @@
+/* Brand font CSS variables + base family. In the app these vars are injected by
+   next/font; here they back the font-sans / font-display / font-logo utilities.
+   The @font-face rules that load these families ship via .design-sync/fonts/fonts.css.
+   Prepended to globals.css to form the Tailwind compile input. */
+:root {
+  --font-inter: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-archivo: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-sora: 'Sora', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-inter);
+}

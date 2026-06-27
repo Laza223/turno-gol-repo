@@ -13,12 +13,12 @@ export default function EmptyResults({
       </div>
       <div className="space-y-1.5">
         <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
-          {avail ? 'Sin turnos a esa hora' : 'No hay resultados'}
+          {avail ? 'Sin disponibilidad en ese horario' : 'Sin resultados para tu búsqueda'}
         </h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
           {avail
-            ? `No hay complejos con turnos libres el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}. Probá otro horario.`
-            : 'No encontramos complejos con esos filtros. Probá ampliar la búsqueda.'}
+            ? `No encontramos complejos con disponibilidad el ${avail.date.split('-').reverse().join('/')} a las ${avail.time}. Probá con otro horario o fecha.`
+            : 'No encontramos complejos con los filtros seleccionados. Probá ajustando tu búsqueda.'}
         </p>
       </div>
       <Link

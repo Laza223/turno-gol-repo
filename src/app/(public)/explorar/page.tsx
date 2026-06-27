@@ -34,8 +34,8 @@ import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 // carga inicial sin filtros y el listado de ciudades salen de unstable_cache
 // (5 min) en vez de pegarle a la DB de búsqueda en cada visita.
 export const metadata = buildMetadata({
-  title: 'Explorá complejos de fútbol',
-  description: 'Encontrá canchas de fútbol y reservá online en tu ciudad. Filtrá por superficie, formato, servicios y precio.',
+  title: 'Complejos de fútbol con reserva online',
+  description: 'Descubrí complejos de fútbol en tu ciudad con disponibilidad en tiempo real. Filtrá por superficie, formato y precio. Reservá al instante.',
   path: '/explorar',
 })
 

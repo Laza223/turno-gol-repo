@@ -88,7 +88,13 @@
       "Bash(./node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to . \"src/app/\\(player\\)/perfil/page.tsx\" \"src/app/\\(player\\)/perfil/FavoritesList.tsx\" tests/unit/profile-favorites.test.tsx)",
       "Bash(./node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to . \"src/app/\\(player\\)/perfil/page.tsx\" \"src/app/\\(player\\)/perfil/ActivityStats.tsx\" src/modules/players/activity.service.ts tests/unit/profile-activity.test.tsx)",
       "Bash(./node_modules/.bin/eslint --no-eslintrc --config .eslintrc.json --resolve-plugins-relative-to . src/components/booking/WeekStrip.tsx src/components/booking/BookingGrid.tsx src/lib/booking/grid-cells.ts tests/unit/week-strip.test.tsx)",
-      "Bash(unzip -o TurnoGol-handoff.zip -d \"C:/Users/Lazar/AppData/Local/Temp/claude/C--Users-Lazar-Documents-github-TurnoGol/a89f68e9-d959-41e8-b06c-0339ca7ac35b/scratchpad/handoff\")"
+      "Bash(unzip -o TurnoGol-handoff.zip -d \"C:/Users/Lazar/AppData/Local/Temp/claude/C--Users-Lazar-Documents-github-TurnoGol/a89f68e9-d959-41e8-b06c-0339ca7ac35b/scratchpad/handoff\")",
+      "Bash(sed -i 's/- \\\\[ \\\\] T1:/- [x] T1:/' .superpowers/sdd/progress.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] T2:/- [x] T2:/' .superpowers/sdd/progress.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] T3:/- [x] T3:/' .superpowers/sdd/progress.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] T4:/- [x] T4:/' .superpowers/sdd/progress.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] T5 dashboard/- [x] T5 dashboard/' .superpowers/sdd/progress.md)",
+      "Bash(python -)"
     ]
   }
 }

@@ -1,0 +1,12 @@
+{
+  "//": "Build-only tsconfig for design-sync. The converter's tsconfigPathsPlugin reads paths+baseUrl directly (no extends resolution), so they are inlined here. baseUrl '..' = repo root.",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "jsx": "preserve",
+    "paths": {
+      "@/*": ["src/*"],
+      "next/link": [".design-sync/stubs/next-link.tsx"],
+      "@sentry/nextjs": [".design-sync/stubs/sentry.tsx"]
+    }
+  }
+}

@@ -2,8 +2,15 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Clock, MapPin, Search } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
+import DatePicker from '@/components/ui/date-picker'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import type { CityCount } from '@/modules/tenants/search.service'
 import { buildExplorarUrl } from './url'
 
@@ -151,17 +158,14 @@ export default function SearchBar({ cities }: Props) {
           <label htmlFor="exp-date" className={labelClass}>
             Fecha
           </label>
-          <div className="relative">
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" aria-hidden />
-            <input
-              id="exp-date"
-              type="date"
-              value={date}
-              min={today}
-              onChange={(e) => setDate(e.target.value)}
-              className={`${fieldClass} pr-3`}
-            />
-          </div>
+          <DatePicker
+            id="exp-date"
+            value={date}
+            min={today}
+            onChange={setDate}
+            placeholder="dd/mm/aaaa"
+            className={fieldClass}
+          />
         </div>
 
         {/* Hora */}
@@ -170,20 +174,31 @@ export default function SearchBar({ cities }: Props) {
             Hora
           </label>
           <div className="relative">
-            <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" aria-hidden />
-            <select
-              id="exp-time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className={`${fieldClass} appearance-none pr-8`}
-            >
-              <option value="">Cualquiera</option>
-              {HOURS.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-            </select>
+            <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600 z-10" aria-hidden />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  id="exp-time"
+                  className={`${fieldClass} flex items-center justify-between text-left pr-10`}
+                >
+                  <span className={!time ? 'text-muted-foreground/70' : 'text-foreground'}>
+                    {time || 'Cualquiera'}
+                  </span>
+                  <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-muted-foreground/70" aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
+                <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
+                  Cualquiera
+                </DropdownMenuItem>
+                {HOURS.map((h) => (
+                  <DropdownMenuItem key={h} onSelect={() => setTime(h)} className="cursor-pointer">
+                    {h}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

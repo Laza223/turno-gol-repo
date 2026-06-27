@@ -82,13 +82,13 @@ function ImagePane() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
             </span>
-            Acceso de jugadores
+            Tu cuenta TurnoGol
           </div>
           <h2
             className="mt-4 font-display font-black italic text-white"
             style={{ fontSize: 'clamp(32px, 3vw, 44px)', lineHeight: '1', letterSpacing: '-0.03em' }}
           >
-            Tu próxima cancha,
+            Tu próxima cancha
             <br />
             <span
               style={{
@@ -98,11 +98,11 @@ function ImagePane() {
                 color: 'transparent',
               }}
             >
-              a un toque.
+              te está esperando.
             </span>
           </h2>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
-            Entrá con tu email y seguí tus reservas. Sin contraseñas.
+            Accedé con tu email y gestioná todas tus reservas. Ingreso seguro, sin contraseña.
           </p>
         </div>
       </div>
@@ -133,12 +133,12 @@ function FormPane() {
         </div>
         <Suspense fallback={null}>
           <DeletedNotice />
+          <FormCard />
         </Suspense>
-        <FormCard />
         <p className="mt-6 text-center text-sm text-slate-400">
-          ¿Primera vez?{' '}
+          ¿Primera vez en TurnoGol?{' '}
           <Link href="/explorar" className="font-semibold text-emerald-300 transition-colors hover:text-emerald-200">
-            Reservá tu cancha en Explorar
+            Descubrí complejos y reservá tu cancha
           </Link>
         </p>
       </div>
@@ -179,7 +179,7 @@ function FormCard() {
     <div className="rounded-2xl p-8" style={cardStyle}>
       <header className="mb-6 space-y-1">
         <h1 className="font-display text-3xl font-black italic tracking-tight text-white">
-          Ingresá a tu{' '}
+          Accedé a tu{' '}
           <span
             style={{
               background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
@@ -191,7 +191,7 @@ function FormCard() {
             cuenta
           </span>
         </h1>
-        <p className="text-sm text-slate-400">Sin contraseñas: te mandamos un enlace de acceso por email.</p>
+        <p className="text-sm text-slate-400">Te enviamos un enlace seguro de acceso a tu email. Sin contraseñas que recordar.</p>
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>

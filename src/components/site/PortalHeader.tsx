@@ -22,7 +22,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
 
   if (variant === 'overlay') {
     return (
-      <header className="sticky top-0 z-50 w-full px-6 pt-[18px]">
+      <header className="fixed top-0 z-50 w-full px-6 pt-[18px]">
         <div className="mx-auto max-w-[1240px]">
           <div
             className="flex items-center justify-between gap-6"

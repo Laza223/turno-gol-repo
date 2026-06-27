@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { buildMetadata } from '@/lib/seo/metadata'
+import Reveal from '@/components/site/Reveal'
 
 export const metadata = buildMetadata({
   title: 'TurnoGol para complejos — Gestión y reservas online para tu cancha',
@@ -47,9 +48,9 @@ const features = [
   },
   {
     icon: Bell,
-    title: 'Recordatorios automáticos',
+    title: 'Avisos al instante',
     description:
-      'Email 24 hs antes del turno. Menos ausencias, más canchas llenas.',
+      'Push al admin apenas entra una reserva online. En la madrugada se agenda para las 8 AM: no suena de noche.',
   },
   {
     icon: Wallet,
@@ -353,32 +354,48 @@ function PanelMockup() {
 
 function Features() {
   return (
-    <section id="features" className="bg-slate-950 py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
-            Todo lo que necesitás
-          </p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
-            Pensado para llenar canchas, no para llenar planillas.
-          </h2>
-          <p className="mt-6 text-lg text-slate-400">
-            Cada función arranca de un dolor real de tu complejo. Sin features que nunca usás.
-          </p>
-        </div>
-
-        <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div
-              key={f.title}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40 hover:shadow-2xl hover:shadow-emerald-500/10"
-            >
-              <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-400/30 group-hover:bg-emerald-500/20 transition-colors">
-                <f.icon className="h-5 w-5" aria-hidden />
-              </div>
-              <h3 className="text-lg font-semibold text-white">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-400">{f.description}</p>
+    <section id="features" className="relative z-10 py-20 sm:py-28">
+      <div className="mx-auto max-w-[1240px] px-6">
+        <Reveal>
+          <div className="mx-auto mb-12 max-w-[640px] text-center">
+            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
+              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
+              Todo lo que necesitás
+              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
             </div>
+            <h2
+              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
+              style={{ fontSize: 'clamp(32px, 4vw, 50px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
+            >
+              Pensado para llenar canchas, no planillas.
+            </h2>
+            <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
+              Cada función arranca de un dolor real de tu complejo. Sin features que nunca usás.
+            </p>
+          </div>
+        </Reveal>
+        <div className="grid grid-cols-1 gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((f, i) => (
+            <Reveal key={f.title} delay={i * 60} className="h-full">
+              <div
+                className="group relative h-full overflow-hidden border border-white/[.09] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
+                style={{ borderRadius: '20px', background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))' }}
+              >
+                <div
+                  className="relative inline-flex h-[52px] w-[52px] items-center justify-center text-emerald-400"
+                  style={{
+                    borderRadius: '14px',
+                    background: 'rgba(16,185,129,.12)',
+                    border: '1px solid rgba(16,185,129,.3)',
+                    boxShadow: 'inset 0 0 20px rgba(16,185,129,.15)',
+                  }}
+                >
+                  <f.icon className="h-6 w-6" aria-hidden />
+                </div>
+                <h3 className="relative mt-5 font-display font-bold text-xl text-[#f8fafc]">{f.title}</h3>
+                <p className="relative mt-2.5 text-[14.5px] leading-[1.6] text-slate-400">{f.description}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>

@@ -1,114 +1,273 @@
-import Link from 'next/link'
-import {
-  ArrowRight,
-  Bell,
-  Calendar,
-  CheckCircle2,
-  CreditCard,
-  LineChart,
-  Quote,
-  Shield,
-  Star,
-  Users,
-  Wallet,
-  Zap,
-} from 'lucide-react'
-import { buildMetadata } from '@/lib/seo/metadata'
-import Reveal from '@/components/site/Reveal'
+# Landing `/para-complejos` dark-premium — Implementation Plan
 
-export const metadata = buildMetadata({
-  title: 'TurnoGol para complejos — Gestión y reservas online para tu cancha',
-  description:
-    'El software de gestión hecho para complejos de fútbol argentinos. Reservas online 24/7, cobros automáticos con MercadoPago y la grilla en tiempo real. Probá 30 días gratis, sin tarjeta.',
-  path: '/para-complejos',
-})
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-const FEATURE_BG =
-  'https://images.unsplash.com/photo-1486286701208-1d58e9338013?q=80&w=2000&auto=format&fit=crop'
+**Goal:** Llevar la landing B2B `/para-complejos` al mismo lenguaje visual dark-premium que la landing del jugador (`src/app/page.tsx`), conservando contenido, semántica B2B de auth y los contratos de test.
 
-const features = [
-  {
-    icon: Calendar,
-    title: 'Reservas online 24/7',
-    description:
-      'Tus jugadores reservan desde el celular. Vos dormís, el complejo trabaja.',
-  },
-  {
-    icon: CreditCard,
-    title: 'Cobros automáticos con MercadoPago',
-    description:
-      'Seña al confirmar la reserva. Sin perseguir pagos ni esperar transferencias.',
-  },
-  {
-    icon: LineChart,
-    title: 'Dashboard en tiempo real',
-    description:
-      'Caja, ocupación y reservas del día en una sola pantalla. Decidí con datos.',
-  },
-  {
-    icon: Bell,
-    title: 'Avisos al instante',
-    description:
-      'Push al admin apenas entra una reserva online. En la madrugada se agenda para las 8 AM: no suena de noche.',
-  },
-  {
-    icon: Wallet,
-    title: 'Caja unificada',
-    description:
-      'Reservas, cantina y abonados en un único cierre diario. Cero planilla Excel.',
-  },
-  {
-    icon: Users,
-    title: 'Abonados y partidos fijos',
-    description:
-      'Lunes 21 hs, martes 22 hs… programado y cobrado solo. El cliente fiel paga primero.',
-  },
-]
+**Architecture:** Restyle in-place de 4 archivos (layout business, BusinessHeader, BusinessFooter, page de para-complejos). Se reutiliza el componente `Reveal` y las clases/animaciones globales ya definidas (`tg-float`, `tg-drift`, `font-display`, `font-logo`). El "wow" del hero es un mockup flotante local nuevo (análogo a `BookingCardMockup` del jugador). DRY: un kit de snippets premium reusables (glow blob, partículas, eyebrow, chrome de card) evita duplicar markup.
 
-const stats = [
-  { value: '+10.000', label: 'Turnos gestionados' },
-  { value: '95%', label: 'Menos ausencias' },
-  { value: '50+', label: 'Complejos activos' },
-  { value: '<2 min', label: 'Onboarding promedio' },
-]
+**Tech Stack:** Next.js 14 (App Router, RSC), TypeScript strict, Tailwind CSS, lucide-react, `Reveal` (IntersectionObserver client component existente).
 
-const testimonials = [
-  {
-    name: 'Marcelo Pérez',
-    role: 'Dueño · Complejo San Martín',
-    city: 'Mendoza',
-    quote:
-      'Pasamos de un cuaderno a 6 canchas con reservas 24/7. Subimos la facturación 40% en tres meses sin contratar a nadie.',
-  },
-  {
-    name: 'Lucía Fernández',
-    role: 'Encargada · Predio La Pasión',
-    city: 'Córdoba',
-    quote:
-      'Las ausencias bajaron casi a cero gracias a la seña automática. Antes perdíamos 4 turnos por noche.',
-  },
-  {
-    name: 'Gonzalo Ramírez',
-    role: 'Dueño · Estadio Norte',
-    city: 'Buenos Aires',
-    quote:
-      'Cierro la caja en 30 segundos. La grilla en tiempo real me ahorra discusiones con el equipo.',
-  },
-]
+**Spec:** `docs/superpowers/specs/2026-06-26-para-complejos-dark-premium-design.md`
 
-export default function ParaComplejosPage() {
+**Fuente de verdad visual a copiar:** `src/app/page.tsx` (landing del jugador). Cuando el plan dice "patrón jugador L<n>", referencia esas líneas — copiar el snippet real de ahí, no reinventarlo.
+
+## Global Constraints
+
+- **Auth B2B (NUNCA cambiar):** `Ingresar` → `/login`; `Empezar gratis` → `/register`. Jamás `/ingresar` (es ruta de jugador / magic link).
+- **TypeScript strict, nunca `any`.** Correr `pnpm typecheck` después de cada cambio (regla CLAUDE.md).
+- **Lint verde:** `pnpm lint` después de cada cambio.
+- **Contrato unit `tests/unit/business-header.test.tsx`:** `BusinessHeader` debe exponer link accesible `Ingresar`→`/login`, `Empezar gratis`→`/register`, y **NO** un link `Explorar`.
+- **Contrato e2e `tests/e2e/landing.spec.ts`:** en `/para-complejos` debe existir un link con accessible name `/empezar gratis/i` cuyo `href` matchee `/register`.
+- **a11y / motion:** todo blob/partícula/float decorativo lleva `aria-hidden` y respeta `motion-reduce:` (paridad con el jugador). Un solo `<h1>` por página.
+- **No tocar:** rutas, otras superficies, auth, componentes del jugador (`PortalHeader`, `SiteFooter`) — no se reusan ni modifican.
+- **Commits:** frecuentes, uno por tarea. Mensaje en español, prefijo conventional. Footer `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+- **Verificación visual:** "tests" tradicionales no cubren lo visual; la verificación final es typecheck+lint+unit+e2e verdes y comparación de pantalla `/para-complejos` vs `/`.
+
+---
+
+## Style Kit (referencia — copiar de `src/app/page.tsx`)
+
+Snippets premium reusables. Cada tarea referencia estos por nombre. Copiar el snippet REAL desde las líneas indicadas del jugador para mantener paridad exacta de blur/opacidades/timing.
+
+- **KIT-BG:** fondo wrapper `#020617` + `text-slate-300`. Jugador L84-87.
+- **KIT-GLOW-R / KIT-GLOW-L:** glow blobs radiales (derecha con `animate-tg-drift`, izquierda estático). Jugador L118-129.
+- **KIT-PARTICLE:** partículas flotantes `animate-tg-float` con `boxShadow` esmeralda, `motion-reduce:hidden`. Jugador L130-143.
+- **KIT-HEROBG:** bg image con `maskImage` linear-gradient + `opacity-30`. Jugador L106-117.
+- **KIT-PILL-LIVE:** pill "en vivo" con punto `animate-ping`. Jugador L148-158.
+- **KIT-EYEBROW:** eyebrow `font-logo uppercase tracking` con barritas esmeralda. Jugador L478-481 (lado) / L540-544 (centrado).
+- **KIT-H2:** `h2 font-display font-black italic` con `clamp(34px,4vw,50px)`. Jugador L482-491.
+- **KIT-CARD:** chrome de card premium (`rounded-[20px]`, `border-white/[.09]`, `background: linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))`, hover `-translate-y-1` + ring esmeralda). Jugador L563-569.
+- **KIT-ICONCHIP:** chip de icono `52px` glow esmeralda. Jugador L577-587.
+- **KIT-CTA-PRIMARY:** botón esmeralda con `boxShadow: 0 8px 30px rgba(16,185,129,.35)`, hover `-translate-y-0.5`. Jugador L740-750.
+- **KIT-CTA-GHOST:** botón ghost `border-white/15 bg-white/5`. Jugador L497-500.
+
+---
+
+## File Structure
+
+| Archivo | Responsabilidad | Acción |
+|---|---|---|
+| `src/app/(business)/layout.tsx` | Wrapper B2B: fondo + header/main/footer | Modificar (bg `#020617`) |
+| `src/components/site/BusinessHeader.tsx` | Header B2B premium (pill overlay), links B2B | Reescribir markup, mismos links |
+| `src/components/site/BusinessFooter.tsx` | Footer B2B premium, links B2B | Reescribir markup, mismos links |
+| `src/app/(business)/para-complejos/page.tsx` | 6 secciones + mockup hero | Reescribir cada sección al kit |
+| `tests/unit/business-header.test.tsx` | Contrato links header | NO cambiar (debe seguir verde) |
+| `tests/e2e/landing.spec.ts` | Contrato CTA register | NO cambiar (debe seguir verde) |
+
+---
+
+## Task 1: Layout bg + BusinessHeader pill overlay premium
+
+**Files:**
+- Modify: `src/app/(business)/layout.tsx`
+- Modify (rewrite markup): `src/components/site/BusinessHeader.tsx`
+- Test (no editar, mantener verde): `tests/unit/business-header.test.tsx`
+
+**Interfaces:**
+- Produces: `BusinessHeader` (default export, sin props) con header overlay. `BusinessLayout` con fondo `#020617`.
+- Consumes: `Logo` de `@/components/ui/logo`; iconos `Building2`, `Star` de `lucide-react` (opcionales para anclas).
+
+- [ ] **Step 1: Confirmar el contrato unit actual falla-safe (correr antes de tocar)**
+
+Run: `pnpm test -- business-header`
+Expected: PASS (2 tests) — baseline verde antes del restyle.
+
+- [ ] **Step 2: Cambiar el fondo del layout business**
+
+En `src/app/(business)/layout.tsx`, reemplazar el `div` raíz:
+
+```tsx
+import type { ReactNode } from 'react'
+import BusinessHeader from '@/components/site/BusinessHeader'
+import BusinessFooter from '@/components/site/BusinessFooter'
+
+export default function BusinessLayout({ children }: { children: ReactNode }) {
   return (
-    <>
-      <Hero />
-      <Features />
-      <StatsBar />
-      <ShowcaseStrip />
-      <Testimonials />
-      <FinalCta />
-    </>
+    <div className="min-h-dvh text-slate-300" style={{ background: '#020617' }}>
+      <BusinessHeader />
+      <main id="main-content">{children}</main>
+      <BusinessFooter />
+    </div>
   )
 }
+```
 
+- [ ] **Step 3: Reescribir BusinessHeader al pill overlay premium (mismos links)**
+
+Reemplazar `src/components/site/BusinessHeader.tsx` completo:
+
+```tsx
+import Link from 'next/link'
+import { Logo } from '@/components/ui/logo'
+
+/**
+ * Cabecera B2B (para-complejos) — pill flotante dark-premium, mismo lenguaje
+ * visual que el header overlay del jugador, pero con links de staff:
+ * Ingresar → /login (password), Empezar gratis → /register. Sin nav de jugador.
+ */
+export default function BusinessHeader() {
+  return (
+    <header className="sticky top-0 z-50 w-full px-6 pt-[18px]">
+      <div className="mx-auto max-w-[1240px]">
+        <div
+          className="flex items-center justify-between gap-6"
+          style={{
+            padding: '12px 14px 12px 24px',
+            borderRadius: '9999px',
+            background: 'rgba(8,15,32,.62)',
+            backdropFilter: 'blur(18px) saturate(1.2)',
+            WebkitBackdropFilter: 'blur(18px) saturate(1.2)',
+            border: '1px solid rgba(255,255,255,.09)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 18px 50px -28px rgba(0,0,0,.9)',
+          }}
+        >
+          <Link
+            href="/"
+            aria-label="TurnoGol — inicio"
+            className="flex-shrink-0 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-full"
+          >
+            <Logo variant="horizontal" textClassName="text-white" />
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <a
+              href="#features"
+              className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
+            >
+              Funciones
+            </a>
+            <a
+              href="#testimonios"
+              className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
+            >
+              Testimonios
+            </a>
+            <span aria-hidden className="mx-1.5 h-[22px] w-px bg-white/10" />
+            <Link
+              href="/login"
+              className="hidden h-11 items-center rounded-full px-5 text-sm font-semibold text-slate-200 transition-colors hover:text-white sm:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+            >
+              Ingresar
+            </Link>
+            <Link
+              href="/register"
+              className="inline-flex h-11 items-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              style={{ boxShadow: '0 8px 30px rgba(16,185,129,.35)' }}
+            >
+              Empezar gratis
+            </Link>
+          </div>
+        </div>
+      </div>
+    </header>
+  )
+}
+```
+
+> NOTA: "Ingresar" tiene `hidden sm:inline-flex` igual que antes. El unit test rendea sin viewport (happy-dom) por lo que el elemento existe en el DOM aunque tenga `hidden` — `getByRole('link', { name: 'Ingresar' })` lo encuentra. No envolver "Ingresar" en condición que lo saque del DOM.
+
+- [ ] **Step 4: Verificar contrato unit verde**
+
+Run: `pnpm test -- business-header`
+Expected: PASS (2 tests). Si `Ingresar` no aparece, revisar que no esté removido del DOM (solo `hidden`, no condicional de render).
+
+- [ ] **Step 5: Typecheck + lint**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: sin errores nuevos. (Filtrar ruido de `TurnoGol-audit-f02/` si aparece — ver memoria del proyecto.)
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/app/\(business\)/layout.tsx src/components/site/BusinessHeader.tsx
+git commit -m "feat(b2b): header pill overlay + fondo #020617 en para-complejos
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 2: BusinessFooter premium
+
+**Files:**
+- Modify (rewrite markup): `src/components/site/BusinessFooter.tsx`
+
+**Interfaces:**
+- Produces: `BusinessFooter` (default export, sin props). Links B2B intactos: `/login`, `/register`, `mailto`, `/privacy`, `/terms`.
+
+- [ ] **Step 1: Reescribir BusinessFooter al look premium**
+
+Reemplazar `src/components/site/BusinessFooter.tsx` completo. Mismo set de links que hoy, fondo `#020617` con borde sutil y separador glow:
+
+```tsx
+import Link from 'next/link'
+import { Logo } from '@/components/ui/logo'
+
+const linkCls =
+  'transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded'
+
+export default function BusinessFooter() {
+  return (
+    <footer
+      className="relative border-t border-white/[.08] py-12"
+      style={{ background: '#020617' }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(16,185,129,.4), transparent)' }}
+      />
+      <div className="mx-auto flex max-w-[1240px] flex-col items-center justify-between gap-4 px-6 sm:flex-row">
+        <div className="flex items-center gap-2">
+          <Link href="/" aria-label="TurnoGol — inicio" className={linkCls}>
+            <Logo variant="horizontal" textClassName="text-white text-sm" iconClassName="h-7 w-7 bg-white/95" />
+          </Link>
+          <span className="text-xs text-slate-500">© {new Date().getFullYear()} · Argentina</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
+          <Link href="/login" className={linkCls}>Ingresar</Link>
+          <Link href="/register" className={linkCls}>Empezar gratis</Link>
+          <a href="mailto:hola@turnogol.app" className={linkCls}>Contacto</a>
+          <Link href="/privacy" className={linkCls}>Privacidad</Link>
+          <Link href="/terms" className={linkCls}>Términos</Link>
+        </div>
+      </div>
+    </footer>
+  )
+}
+```
+
+- [ ] **Step 2: Typecheck + lint**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: sin errores nuevos.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/components/site/BusinessFooter.tsx
+git commit -m "feat(b2b): footer premium en para-complejos
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 3: Hero + mockup flotante "Panel del complejo en vivo"
+
+**Files:**
+- Modify (rewrite `Hero`, add `PanelMockup`): `src/app/(business)/para-complejos/page.tsx`
+- Test (mantener verde): `tests/e2e/landing.spec.ts`
+
+**Interfaces:**
+- Consumes: `Link` de `next/link`; iconos `ArrowRight`, `CheckCircle2`, `Zap` de `lucide-react`.
+- Produces: función local `Hero()` (2 columnas) y `PanelMockup()` (decorativa, `aria-hidden`). El `page.tsx` ya importa `Image`/`Link`/iconos; ajustar imports a lo usado.
+
+- [ ] **Step 1: Reescribir imports y la función `Hero` del page**
+
+En `src/app/(business)/para-complejos/page.tsx`, reemplazar la función `Hero` actual (L113-187). Mantener el CTA `Empezar gratis` → `/register` (contrato e2e). Aplicar KIT-HEROBG, KIT-GLOW-R/L, KIT-PARTICLE, KIT-PILL-LIVE:
+
+```tsx
 function Hero() {
   return (
     <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 py-[60px] pb-[84px]">
@@ -221,7 +380,13 @@ function Hero() {
     </section>
   )
 }
+```
 
+- [ ] **Step 2: Agregar el componente `PanelMockup` (mockup flotante B2B)**
+
+Agregar debajo de `Hero` en el mismo archivo. Tarjeta glass con mini-grilla de turnos, fila de caja del día y toast flotante. Análogo a `BookingCardMockup` del jugador pero con lente "panel del complejo":
+
+```tsx
 const PANEL_SLOTS = [
   { time: '18', state: 'occupied' },
   { time: '19', state: 'free' },
@@ -241,7 +406,7 @@ function PanelMockup() {
       />
       {/* Card */}
       <div
-        className="relative overflow-hidden animate-[tg-float_9s_ease-in-out_infinite] motion-reduce:animate-none"
+        className="relative overflow-hidden"
         style={{
           borderRadius: '24px',
           background: 'linear-gradient(180deg, rgba(15,23,42,.86), rgba(2,6,23,.92))',
@@ -249,6 +414,7 @@ function PanelMockup() {
           boxShadow: '0 0 70px rgba(16,185,129,.21), 0 50px 90px -40px rgba(0,0,0,.95)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
+          animation: 'tg-float 9s ease-in-out infinite',
         }}
       >
         {/* Header del panel */}
@@ -262,7 +428,7 @@ function PanelMockup() {
             style={{ background: 'rgba(2,6,23,.6)', border: '1px solid rgba(16,185,129,.45)' }}
           >
             <span className="relative flex h-[7px] w-[7px]">
-              <span className="absolute inline-flex h-full w-full animate-ping motion-reduce:animate-none rounded-full bg-emerald-400 opacity-75" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-400" />
             </span>
             En vivo
@@ -328,13 +494,14 @@ function PanelMockup() {
 
       {/* Toast "Nueva reserva online" */}
       <div
-        className="absolute -left-[26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px] animate-[tg-float_7s_ease-in-out_infinite_1.4s] motion-reduce:animate-none"
+        className="absolute -left-[26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px]"
         style={{
           background: 'rgba(8,15,32,.88)',
           border: '1px solid rgba(255,255,255,.12)',
           boxShadow: '0 18px 40px -18px rgba(0,0,0,.9)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
+          animation: 'tg-float 7s ease-in-out infinite 1.4s',
         }}
       >
         <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-emerald-400" style={{ background: 'rgba(16,185,129,.18)' }}>
@@ -348,7 +515,62 @@ function PanelMockup() {
     </div>
   )
 }
+```
 
+- [ ] **Step 3: Ajustar imports del archivo**
+
+Asegurar que `lucide-react` importe lo usado por Hero/PanelMockup: `ArrowRight`, `Bell`, `CheckCircle2`, `Zap` (más los de otras secciones). Quitar imports que queden sin uso (ej. `Image` si el hero ya no usa `next/image` — el bg es un `div` con `backgroundImage`). `pnpm lint` lo marca.
+
+- [ ] **Step 4: Typecheck + lint**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: sin errores; sin imports sin usar.
+
+- [ ] **Step 5: Verificar contrato e2e (hero conserva CTA register)**
+
+Run: `pnpm test:e2e -- landing`
+Expected: PASS — en particular el test `/para-complejos tiene CTA "Empezar gratis" → /register`. (Requiere dev/preview server según config de Playwright.) Si no se puede correr e2e local, validar manualmente que existe `<Link href="/register">Empezar gratis</Link>` en el render.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/app/\(business\)/para-complejos/page.tsx
+git commit -m "feat(b2b): hero 2-col + mockup panel en vivo en para-complejos
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 4: Features premium + fix dato falso (24hs → Avisos al instante)
+
+**Files:**
+- Modify (`features` array + `Features` render): `src/app/(business)/para-complejos/page.tsx`
+
+**Interfaces:**
+- Consumes: `Reveal` de `@/components/site/Reveal`; iconos `Calendar`, `CreditCard`, `LineChart`, `Bell`, `Wallet`, `Users`.
+- Produces: `Features()` restyled; `features` array con card 4 corregida.
+
+- [ ] **Step 1: Importar `Reveal` y corregir el array `features`**
+
+Agregar `import Reveal from '@/components/site/Reveal'` (si no está). En el array `features` (L30-67), reemplazar **solo** la card 4 (la de `Bell` / "Recordatorios automáticos"):
+
+```tsx
+  {
+    icon: Bell,
+    title: 'Avisos al instante',
+    description:
+      'Push al admin apenas entra una reserva online. En la madrugada se agenda para las 8 AM: no suena de noche.',
+  },
+```
+
+Las otras 5 cards quedan igual (reservas 24/7, MercadoPago, dashboard, caja unificada, abonados/fijos).
+
+- [ ] **Step 2: Reescribir `Features` al kit premium**
+
+Reemplazar la función `Features` (L189-222) — eyebrow KIT-EYEBROW, KIT-H2, cards KIT-CARD + KIT-ICONCHIP, envueltas en `Reveal`:
+
+```tsx
 function Features() {
   return (
     <section id="features" className="relative z-10 py-20 sm:py-28">
@@ -399,7 +621,43 @@ function Features() {
     </section>
   )
 }
+```
 
+- [ ] **Step 3: Typecheck + lint**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: sin errores.
+
+- [ ] **Step 4: Verificar que el dato falso desapareció**
+
+Run: `grep -rn "24 hs\|Recordatorios automáticos" src/app/\(business\)/para-complejos/page.tsx`
+Expected: sin resultados.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/app/\(business\)/para-complejos/page.tsx
+git commit -m "feat(b2b): features premium; fix card 24hs (eliminado v1) -> Avisos push
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 5: StatsBar premium
+
+**Files:**
+- Modify (`StatsBar`): `src/app/(business)/para-complejos/page.tsx`
+
+**Interfaces:**
+- Consumes: array `stats` existente (sin cambios).
+- Produces: `StatsBar()` restyled (panel borde esmeralda + glow + números degradé).
+
+- [ ] **Step 1: Reescribir `StatsBar` al patrón del jugador (L603-651)**
+
+Reemplazar la función `StatsBar` (L224-241):
+
+```tsx
 function StatsBar() {
   return (
     <section className="relative z-10 py-6">
@@ -442,7 +700,38 @@ function StatsBar() {
     </section>
   )
 }
+```
 
+- [ ] **Step 2: Typecheck + lint**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: sin errores.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/app/\(business\)/para-complejos/page.tsx
+git commit -m "feat(b2b): stats bar premium en para-complejos
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 6: ShowcaseStrip premium (onboarding 4 pasos)
+
+**Files:**
+- Modify (`ShowcaseStrip`): `src/app/(business)/para-complejos/page.tsx`
+
+**Interfaces:**
+- Consumes: `Reveal`; bg image `FEATURE_BG` (constante existente) o `/bg-how-it-works.png` si se prefiere asset local.
+- Produces: `ShowcaseStrip()` restyled. Contenido (4 pasos wizard) intacto.
+
+- [ ] **Step 1: Reescribir `ShowcaseStrip`**
+
+Reemplazar la función `ShowcaseStrip` (L243-328). Mantener los 4 pasos. Columna izquierda con eyebrow + KIT-H2 + pasos en chip glow; derecha con la "ventana" premium (grid de turnos + badge "En vivo"). Envolver en `Reveal`:
+
+```tsx
 function ShowcaseStrip() {
   const steps = [
     { n: '01', t: 'Creá tu cuenta', d: 'Email, nombre y contraseña. Confirmás el email y listo.' },
@@ -545,7 +834,38 @@ function ShowcaseStrip() {
     </section>
   )
 }
+```
 
+- [ ] **Step 2: Typecheck + lint**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: sin errores. Si `FEATURE_BG` (unsplash remoto) molesta por CSP/perf, cambiar a un asset local (`/bg-how-it-works.png`) — decisión del implementador.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/app/\(business\)/para-complejos/page.tsx
+git commit -m "feat(b2b): showcase onboarding premium en para-complejos
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 7: Testimonials + FinalCta premium
+
+**Files:**
+- Modify (`Testimonials`, `FinalCta`): `src/app/(business)/para-complejos/page.tsx`
+
+**Interfaces:**
+- Consumes: `Reveal`; `testimonials` array (sin cambios); iconos `Quote`, `Star`, `Shield`, `ArrowRight`.
+- Produces: `Testimonials()` y `FinalCta()` restyled.
+
+- [ ] **Step 1: Reescribir `Testimonials`**
+
+Reemplazar la función `Testimonials` (L330-369) — eyebrow centrado + KIT-H2 + cards premium en `Reveal`:
+
+```tsx
 function Testimonials() {
   return (
     <section id="testimonios" className="relative z-10 py-20 sm:py-28">
@@ -578,7 +898,7 @@ function Testimonials() {
                     <Star key={s} className="h-4 w-4 fill-current" aria-hidden />
                   ))}
                 </div>
-                <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-slate-200">&quot;{t.quote}&quot;</blockquote>
+                <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-slate-200">“{t.quote}”</blockquote>
                 <figcaption className="mt-6 border-t border-white/10 pt-4">
                   <div className="text-sm font-semibold text-white">{t.name}</div>
                   <div className="text-xs text-slate-400">{t.role}</div>
@@ -592,7 +912,13 @@ function Testimonials() {
     </section>
   )
 }
+```
 
+- [ ] **Step 2: Reescribir `FinalCta`**
+
+Reemplazar la función `FinalCta` (L371-404) — glow radial + `Shield` + KIT-H2 + CTAs:
+
+```tsx
 function FinalCta() {
   return (
     <section className="relative z-10 overflow-hidden py-20 sm:py-28">
@@ -639,3 +965,76 @@ function FinalCta() {
     </section>
   )
 }
+```
+
+- [ ] **Step 3: Typecheck + lint**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: sin errores; sin imports sin usar (verificar `Image` ya removido si ninguna sección lo usa).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/app/\(business\)/para-complejos/page.tsx
+git commit -m "feat(b2b): testimonios + CTA final premium en para-complejos
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 8: Verificación integral + paridad visual
+
+**Files:**
+- Sin cambios de código salvo cleanup que surja.
+
+- [ ] **Step 1: Suite unit completa**
+
+Run: `pnpm test`
+Expected: PASS. En particular `business-header.test.tsx` verde.
+
+- [ ] **Step 2: e2e landing**
+
+Run: `pnpm test:e2e -- landing`
+Expected: PASS (5 tests). Confirma CTA register en `/para-complejos` + sin errores de consola.
+
+- [ ] **Step 3: Typecheck + lint finales**
+
+Run: `pnpm typecheck && pnpm lint`
+Expected: limpio.
+
+- [ ] **Step 4: Paridad visual (manual / screenshot)**
+
+Levantar dev (`pnpm dev`) y comparar `/para-complejos` contra `/`:
+- Mismo fondo `#020617`, mismo header pill, mismas fuentes display italic.
+- Hero con mockup flotante visible en desktop (`lg`), oculto en mobile.
+- Animaciones float/drift presentes; con `prefers-reduced-motion` quietas.
+- Card 4 dice "Avisos al instante", no "Recordatorios 24hs".
+
+Opcional: usar la skill `claude-in-chrome` o `verify` para captura comparativa.
+
+- [ ] **Step 5: Commit final (si hubo cleanup) y cierre**
+
+```bash
+git add -A
+git commit -m "chore(b2b): cleanup post-restyle para-complejos
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" || echo "nada que commitear"
+```
+
+---
+
+## Self-Review (cobertura del spec)
+
+- **§5.1 Fondo+layout** → Task 1 ✓
+- **§5.2 Header** → Task 1 ✓ (links B2B preservados, unit verde)
+- **§5.3 Hero + mockup** → Task 3 ✓ (e2e register preservado)
+- **§5.4 Features + fix 24hs** → Task 4 ✓ (grep verifica)
+- **§5.5 StatsBar** → Task 5 ✓
+- **§5.6 ShowcaseStrip** → Task 6 ✓
+- **§5.7 Testimonios** → Task 7 ✓
+- **§5.8 FinalCta** → Task 7 ✓
+- **§5.9 Footer** → Task 2 ✓
+- **§7 Testing (contratos verdes + visual)** → Task 8 ✓
+
+Sin placeholders. Tipos/nombres consistentes (`PanelMockup`, `PANEL_SLOTS`, `features`, `stats`, `testimonials`). Links B2B (`/login`, `/register`) consistentes en header, footer, hero y CTA final.

@@ -4,7 +4,7 @@ import BusinessFooter from '@/components/site/BusinessFooter'
 
 export default function BusinessLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-dvh bg-slate-950 text-slate-100">
+    <div className="min-h-dvh text-slate-300" style={{ background: '#020617' }}>
       <BusinessHeader />
       <main id="main-content">{children}</main>
       <BusinessFooter />

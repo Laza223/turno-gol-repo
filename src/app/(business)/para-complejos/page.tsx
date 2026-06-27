@@ -550,38 +550,44 @@ function ShowcaseStrip() {
 
 function Testimonials() {
   return (
-    <section id="testimonios" className="bg-slate-950 py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
-            Historias reales
-          </p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
-            Complejos que ya cambiaron el cuaderno.
-          </h2>
-        </div>
-
-        <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {testimonials.map((t) => (
-            <figure
-              key={t.name}
-              className="group relative flex flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
+    <section id="testimonios" className="relative z-10 py-20 sm:py-28">
+      <div className="mx-auto max-w-[1240px] px-6">
+        <Reveal>
+          <div className="mx-auto mb-12 max-w-[640px] text-center">
+            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
+              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
+              Historias reales
+              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
+            </div>
+            <h2
+              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
+              style={{ fontSize: 'clamp(32px, 4vw, 50px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
             >
-              <Quote className="absolute right-6 top-6 h-8 w-8 text-emerald-400/20" aria-hidden />
-              <div className="flex gap-0.5 text-amber-300">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-current" aria-hidden />
-                ))}
-              </div>
-              <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-slate-200">
-                “{t.quote}”
-              </blockquote>
-              <figcaption className="mt-6 border-t border-white/10 pt-4">
-                <div className="text-sm font-semibold text-white">{t.name}</div>
-                <div className="text-xs text-slate-400">{t.role}</div>
-                <div className="text-xs text-slate-500">{t.city}, Argentina</div>
-              </figcaption>
-            </figure>
+              Complejos que ya cambiaron el cuaderno.
+            </h2>
+          </div>
+        </Reveal>
+        <div className="grid grid-cols-1 gap-[22px] md:grid-cols-3">
+          {testimonials.map((t, i) => (
+            <Reveal key={t.name} delay={i * 70} className="h-full">
+              <figure
+                className="group relative flex h-full flex-col overflow-hidden border border-white/[.09] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
+                style={{ borderRadius: '20px', background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))' }}
+              >
+                <Quote className="absolute right-6 top-6 h-8 w-8 text-emerald-400/20" aria-hidden />
+                <div className="flex gap-0.5 text-amber-300">
+                  {[...Array(5)].map((_, s) => (
+                    <Star key={s} className="h-4 w-4 fill-current" aria-hidden />
+                  ))}
+                </div>
+                <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-slate-200">&quot;{t.quote}&quot;</blockquote>
+                <figcaption className="mt-6 border-t border-white/10 pt-4">
+                  <div className="text-sm font-semibold text-white">{t.name}</div>
+                  <div className="text-xs text-slate-400">{t.role}</div>
+                  <div className="text-xs text-slate-500">{t.city}, Argentina</div>
+                </figcaption>
+              </figure>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -591,34 +597,46 @@ function Testimonials() {
 
 function FinalCta() {
   return (
-    <section className="relative isolate overflow-hidden bg-slate-950">
+    <section className="relative z-10 overflow-hidden py-20 sm:py-28">
       <div
         aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.20),_transparent_60%)]"
+        className="pointer-events-none absolute inset-0 z-[-1]"
+        style={{ background: 'radial-gradient(ellipse at top, rgba(16,185,129,.20), transparent 60%)' }}
       />
-      <div className="relative mx-auto max-w-5xl px-4 py-24 text-center sm:px-6 sm:py-32 lg:px-8">
-        <Shield className="mx-auto mb-6 h-10 w-10 text-emerald-400" aria-hidden />
-        <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
-          Tu próxima reserva online empieza hoy.
-        </h2>
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
-          Probá TurnoGol 30 días gratis. Sin tarjeta. Sin permanencia. Si no te sirve, lo dejás.
-        </p>
-        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href="/register"
-            className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-8 text-sm font-semibold text-white shadow-xl shadow-emerald-500/30 hover:bg-emerald-400 hover:-translate-y-0.5 transition-all duration-300"
+      <div className="relative mx-auto max-w-[900px] px-6 text-center">
+        <Reveal>
+          <div
+            className="mx-auto mb-6 inline-flex h-14 w-14 items-center justify-center text-emerald-400"
+            style={{ borderRadius: '16px', background: 'rgba(16,185,129,.14)', border: '1px solid rgba(16,185,129,.35)', boxShadow: 'inset 0 0 24px rgba(16,185,129,.2)' }}
           >
-            Empezar gratis
-            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex h-12 items-center justify-center rounded-lg border border-white/20 px-8 text-sm font-semibold text-white hover:bg-white/5 transition-colors duration-150"
+            <Shield className="h-7 w-7" aria-hidden />
+          </div>
+          <h2
+            className="font-display font-black italic text-[#f8fafc]"
+            style={{ fontSize: 'clamp(32px, 4vw, 52px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
           >
-            Ingresar
-          </Link>
-        </div>
+            Tu próxima reserva online empieza hoy.
+          </h2>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
+            Probá TurnoGol 30 días gratis. Sin tarjeta. Sin permanencia. Si no te sirve, lo dejás.
+          </p>
+          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/register"
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-600 px-8 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
+              style={{ boxShadow: '0 8px 30px rgba(16,185,129,.35)' }}
+            >
+              Empezar gratis
+              <ArrowRight className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0" aria-hidden />
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-8 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              Ingresar
+            </Link>
+          </div>
+        </Reveal>
       </div>
     </section>
   )

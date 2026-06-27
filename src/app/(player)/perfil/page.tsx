@@ -104,21 +104,18 @@ export default async function PerfilPage({
               alt="Avatar"
               width={64}
               height={64}
-              className="h-16 w-16 rounded-full object-cover ring-1 ring-white/15"
+              className="h-16 w-16 rounded-full object-cover ring-1 ring-emerald-600/15 dark:ring-white/15"
             />
           ) : (
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-full font-display text-xl font-black italic text-emerald-200 ring-1 ring-emerald-400/30"
-              style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), rgba(2,6,23,.4))' }}
-            >
+            <div className="hero-avatar-fallback flex h-16 w-16 items-center justify-center rounded-full font-display text-xl font-black italic text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-200 dark:ring-emerald-400/30">
               {initials(player.firstName, player.lastName)}
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate font-display text-xl font-black italic tracking-tight text-white">
+            <p className="truncate font-display text-xl font-black italic tracking-tight text-slate-900 dark:text-white">
               {player.firstName} {player.lastName}
             </p>
-            <p className="truncate text-sm text-slate-400">{player.email}</p>
+            <p className="truncate text-sm text-slate-600 dark:text-slate-400">{player.email}</p>
           </div>
         </div>
       </PlayerHeroBand>

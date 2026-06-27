@@ -77,7 +77,7 @@ export default async function ReservaExitoPage({ params }: Props) {
     return (
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-          <p className="text-sm text-slate-400">No encontramos tu reserva.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">No encontramos tu reserva.</p>
           <Link href="/mis-reservas" className="mt-8 inline-flex h-12 items-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0">
             Ver mis reservas
           </Link>
@@ -116,59 +116,37 @@ export default async function ReservaExitoPage({ params }: Props) {
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
       <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
         <span aria-hidden className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden" />
-        <span
-          className="relative flex h-20 w-20 items-center justify-center rounded-full text-emerald-300"
-          style={{
-            background: 'radial-gradient(closest-side, rgba(16,185,129,.28), rgba(2,6,23,.4))',
-            border: '1px solid rgba(16,185,129,.4)',
-            boxShadow: '0 0 50px rgba(16,185,129,.45)',
-          }}
-        >
+        <span className="reserva-success-badge relative flex h-20 w-20 items-center justify-center rounded-full text-emerald-600 dark:text-emerald-300">
           <CheckCircle2 className="h-10 w-10" aria-hidden />
         </span>
       </div>
-      <h1 className="font-display text-3xl font-black italic tracking-tight text-white">
-        ¡Reserva{' '}
-        <span
-          style={{
-            background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-            color: 'transparent',
-          }}
-        >
-          confirmada!
-        </span>
+      <h1 className="font-display text-3xl font-black italic tracking-tight text-slate-900 dark:text-white">
+        ¡Reserva <span className="hero-accent-text">confirmada!</span>
       </h1>
-      <p className="mt-3 text-sm text-slate-400 tabular-nums">
-        <span className="font-semibold text-slate-200">{booking.tenantName}</span> · {booking.courtName}<br />
+      <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
+        <span className="font-semibold text-slate-800 dark:text-slate-200">{booking.tenantName}</span> · {booking.courtName}<br />
         {booking.date} · {booking.timeStart.slice(0, 5)}–{booking.timeEnd.slice(0, 5)}
       </p>
       {booking.depositStatus === 'not_required' ? (
-        <p className="mt-4 text-sm text-slate-400 tabular-nums">
-          Pagás <span className="font-semibold text-slate-200">${fmtArs(booking.priceSnapshot)}</span> al llegar al complejo.
+        <p className="mt-4 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
+          Pagás <span className="font-semibold text-slate-800 dark:text-slate-200">${fmtArs(booking.priceSnapshot)}</span> al llegar al complejo.
         </p>
       ) : (
-        <div className="mt-4 space-y-1 text-sm text-slate-400 tabular-nums">
-          <p>Seña pagada: <span className="font-semibold text-emerald-400">${fmtArs(booking.depositAmount)}</span></p>
-          <p>Resta abonar en el complejo: <span className="text-slate-200">${fmtArs(remainingAmount)}</span></p>
+        <div className="mt-4 space-y-1 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
+          <p>Seña pagada: <span className="font-semibold text-emerald-600 dark:text-emerald-400">${fmtArs(booking.depositAmount)}</span></p>
+          <p>Resta abonar en el complejo: <span className="text-slate-800 dark:text-slate-200">${fmtArs(remainingAmount)}</span></p>
         </div>
       )}
       <section
         aria-label="Comprobante para mostrar en el complejo"
-        className="mt-7 w-full overflow-hidden rounded-2xl p-5"
-        style={{
-          background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.85))',
-          border: '1px solid rgba(255,255,255,.1)',
-          boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -42px rgba(0,0,0,.9)',
-        }}
+        className="reserva-receipt-card mt-7 w-full overflow-hidden rounded-2xl p-5"
       >
         <div className="flex justify-center">
           <div className="rounded-xl bg-white p-3 shadow-lg">
             <BookingQR value={verifyUrl} label="Código QR de verificación de la reserva" />
           </div>
         </div>
-        <p className="mt-3 text-xs text-slate-400">
+        <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
           Mostrá este código al llegar: el complejo lo escanea y verifica tu reserva al instante.
         </p>
         <DownloadReceiptButton
@@ -212,7 +190,7 @@ export default async function ReservaExitoPage({ params }: Props) {
       </Link>
       <Link
         href="/explorar"
-        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-300 transition-colors hover:bg-white/5 hover:text-emerald-200"
+        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-300 dark:hover:bg-white/5 dark:hover:text-emerald-200"
       >
         Seguir explorando
       </Link>

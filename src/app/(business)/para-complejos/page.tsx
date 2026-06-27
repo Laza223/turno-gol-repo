@@ -405,18 +405,42 @@ function Features() {
 
 function StatsBar() {
   return (
-    <section className="border-y border-white/5 bg-slate-900/50">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px bg-white/5 sm:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-slate-900/50 px-4 py-8 text-center sm:px-6">
-            <div className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              {s.value}
-            </div>
-            <div className="mt-2 text-xs uppercase tracking-wide text-slate-400 sm:text-sm">
-              {s.label}
-            </div>
+    <section className="relative z-10 py-6">
+      <div className="mx-auto max-w-[1240px] px-6">
+        <div
+          className="relative overflow-hidden rounded-3xl border border-emerald-500/[.22] p-11"
+          style={{
+            background: 'linear-gradient(120deg, rgba(6,78,59,.55), rgba(2,6,23,.35) 55%, rgba(6,78,59,.4))',
+            boxShadow: '0 0 70px rgba(16,185,129,.165), inset 0 1px 0 rgba(255,255,255,.06)',
+          }}
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-[-40%] h-[400px] w-[700px] -translate-x-1/2 rounded-full blur-[20px]"
+            style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.3), transparent 72%)' }}
+          />
+          <div className="relative grid grid-cols-2 gap-6 sm:grid-cols-4">
+            {stats.map((s, i) => (
+              <div key={s.label} className={`text-center ${i > 0 ? 'border-l border-white/10' : ''}`}>
+                <div
+                  className="font-display font-black italic leading-none"
+                  style={{
+                    fontSize: 'clamp(36px, 4.6vw, 56px)',
+                    background: 'linear-gradient(180deg, #ffffff, #6ee7b7)',
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    color: 'transparent',
+                  }}
+                >
+                  {s.value}
+                </div>
+                <div className="mt-[10px] font-logo text-[12.5px] font-bold uppercase tracking-[.08em] text-slate-400">
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </section>
   )

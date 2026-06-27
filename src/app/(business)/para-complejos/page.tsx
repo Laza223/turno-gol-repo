@@ -241,7 +241,7 @@ function PanelMockup() {
       />
       {/* Card */}
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-hidden animate-[tg-float_9s_ease-in-out_infinite] motion-reduce:animate-none"
         style={{
           borderRadius: '24px',
           background: 'linear-gradient(180deg, rgba(15,23,42,.86), rgba(2,6,23,.92))',
@@ -249,7 +249,6 @@ function PanelMockup() {
           boxShadow: '0 0 70px rgba(16,185,129,.21), 0 50px 90px -40px rgba(0,0,0,.95)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          animation: 'tg-float 9s ease-in-out infinite',
         }}
       >
         {/* Header del panel */}
@@ -263,7 +262,7 @@ function PanelMockup() {
             style={{ background: 'rgba(2,6,23,.6)', border: '1px solid rgba(16,185,129,.45)' }}
           >
             <span className="relative flex h-[7px] w-[7px]">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="absolute inline-flex h-full w-full animate-ping motion-reduce:animate-none rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-400" />
             </span>
             En vivo
@@ -329,14 +328,13 @@ function PanelMockup() {
 
       {/* Toast "Nueva reserva online" */}
       <div
-        className="absolute -left-[26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px]"
+        className="absolute -left-[26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px] animate-[tg-float_7s_ease-in-out_infinite_1.4s] motion-reduce:animate-none"
         style={{
           background: 'rgba(8,15,32,.88)',
           border: '1px solid rgba(255,255,255,.12)',
           boxShadow: '0 18px 40px -18px rgba(0,0,0,.9)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
-          animation: 'tg-float 7s ease-in-out infinite 1.4s',
         }}
       >
         <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-emerald-400" style={{ background: 'rgba(16,185,129,.18)' }}>

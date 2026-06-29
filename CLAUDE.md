@@ -16,7 +16,8 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - `doc5` — Requisitos no funcionales (monolito Y1, 99.5% SLA, p95 <500ms)
 - `doc6` — Entidades y state machines (19 tablas + system_admins, Booking es la más crítica)
 - `doc7` — 9 flujos end-to-end con efectos secundarios detallados
-- `doc8` — ~42 user stories con Given/When/Then, edge cases, out-of-scope- `doc10` — Onboarding: wizard 4 pasos, Aha Moment = primera reserva online
+- `doc8` — ~42 user stories con Given/When/Then, edge cases, out-of-scope
+- `doc10` — Onboarding: wizard 4 pasos, Aha Moment = primera reserva online
 
 ### Capa Técnica
 - `doc11` — 12 ADRs (RLS, Magic Link, Resend, MercadoPago, pg-boss, monolito, AFIP out-of-scope, +18 declaración jurada). NOTA: ADR-002 (Magic Link) en migración — ver `docs/superpowers/specs/2026-06-16-auth-password-migration-design.md`.
@@ -73,7 +74,8 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - Tablas globales (sin tenant_id): tenants, players, staff_users, plans, price_versions, processed_webhooks
 - Tablas híbridas (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (solo el jugador, por `app.current_player_id`)
 - Tabla operacional: feature_flags (fila con tenant_id NULL = default global; con tenant_id = override por complejo)
-- Tabla del sistema (sin RLS, acceso super admin): system_admins- NOTA: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció (reviews, player_favorites, push_subscriptions, feature_flags). Specs desactualizados respecto al código.
+- Tabla del sistema (sin RLS, acceso super admin): system_admins
+- NOTA: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció (reviews, player_favorites, push_subscriptions, feature_flags). Specs desactualizados respecto al código.
 - Players son cross-tenant: un jugador reserva en N complejos
 - El JWT del admin tiene tenant_id; el del jugador tiene player_id (sin tenant_id)
 - **RLS dual en `bookings` y `player_tenant_relationships`**: policy para admin (por `app.current_tenant_id`), policy para jugador (por `app.current_player_id`). Policy Realtime SOLO en `bookings` (grilla admin). `player_tenant_relationships` no necesita Realtime en v1.

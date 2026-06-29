@@ -12,6 +12,15 @@
 --   GRANT turnogol_app TO authenticator;  -- (Supabase) o al rol que use el pool.
 -- ============================================================
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'turnogol_app') THEN
+    CREATE ROLE turnogol_app NOLOGIN;
+    GRANT turnogol_app TO authenticator;
+  END IF;
+END
+$$;
+
 -- audit_logs: solo INSERT (registro de auditoría inmutable).
 REVOKE UPDATE, DELETE ON audit_logs FROM turnogol_app;
 

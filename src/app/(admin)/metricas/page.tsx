@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { ChartLine } from 'lucide-react'
-import { PinGate } from '@/components/pin-gate'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -21,18 +20,14 @@ export default async function MetricasPage() {
   if (!tenant) redirect('/login')
 
   const canSeeSystem = (await getStaffRole(tenant.id, user.staffUserId)) === 'admin'
-  const hasPin = !!tenant.settings.staff_pin_hash
-
   return (
-    <PinGate pinRequired={hasPin}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title="Métricas"
           subtitle="Actividad del complejo en los últimos 30 días. Se actualiza cada minuto."
           icon={<ChartLine className="h-6 w-6" aria-hidden="true" />}
         />
         <MetricsDashboardLoader canSeeSystem={canSeeSystem} />
-      </div>
-    </PinGate>
+    </div>
   )
 }

@@ -1,14 +1,12 @@
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { PinGate } from '@/components/pin-gate'
 import { ReservasPolicyForm } from './ReservasPolicyForm'
 
 const SETTINGS_TABS = [
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
   { href: '/settings/facturacion', label: 'Facturación' },
-  { href: '/settings/pin', label: 'Seguridad' },
 ]
 
 export default async function ReservasPolicyPage() {
@@ -19,11 +17,9 @@ export default async function ReservasPolicyPage() {
   if (!tenant) redirect('/login')
 
   const s = tenant.settings
-  const hasPin = !!s.staff_pin_hash
 
   return (
-    <PinGate pinRequired={hasPin}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
         <nav className="flex gap-1 border-b border-border">
@@ -51,6 +47,5 @@ export default async function ReservasPolicyPage() {
           <ReservasPolicyForm s={s} />
         </div>
       </div>
-    </PinGate>
   )
 }

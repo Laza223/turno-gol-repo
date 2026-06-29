@@ -1,14 +1,12 @@
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { PinGate } from '@/components/pin-gate'
 import { AddClosedDateForm, HorariosForm, RemoveClosedDateForm } from './HorariosForms'
 
 const SETTINGS_TABS = [
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
   { href: '/settings/facturacion', label: 'Facturación' },
-  { href: '/settings/pin', label: 'Seguridad' },
 ]
 
 type OpeningHours = Record<string, { open: string; close: string }>
@@ -22,12 +20,10 @@ export default async function HorariosPage() {
 
   const hours = tenant.openingHours as OpeningHours
   const closedDates = (tenant.closedDates ?? []) as unknown as string[]
-  const hasPin = !!tenant.settings.staff_pin_hash
   const minDate = new Date().toISOString().split('T')[0] ?? ''
 
   return (
-    <PinGate pinRequired={hasPin}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
         <nav className="flex gap-1 border-b border-border">
@@ -81,6 +77,5 @@ export default async function HorariosPage() {
           <AddClosedDateForm minDate={minDate} />
         </div>
       </div>
-    </PinGate>
   )
 }

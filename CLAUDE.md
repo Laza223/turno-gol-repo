@@ -4,21 +4,19 @@ SaaS B2B de gestión para complejos de fútbol en Argentina. Competidor vertical
 
 ## Documentación
 
-La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son la fuente de verdad del proyecto. Están numerados del 1 al 20 y cubren todas las capas. El resto de `docs/` está organizado en subcarpetas (ver `docs/README.md` para el mapa completo): `business/` (planes originales de negocio/sistema/HU), `decisions/`, `operations/`, `qa/`, `audit/`, `planning/`, `superpowers/`, `archive/`.
+La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS unificado en doc4 §2) que son la fuente de verdad del proyecto. Numerados del 1 al 20 salvo doc9, cubren todas las capas. El resto de `docs/` está organizado en subcarpetas (ver `docs/README.md` para el mapa completo): `business/` (planes originales de negocio/sistema/HU), `decisions/`, `operations/`, `qa/`, `audit/`, `planning/`, `superpowers/`, `archive/`.
 
 ### Capa de Negocio
 - `doc1` — Problema y mercado objetivo (complejos de fútbol, Argentina)
 - `doc2` — Competitive teardown vs ATC Sports
-- `doc3` — 3 Personas: Marcelo (Owner = rol `admin`), Rodrigo (Empleado = rol `manager`/Encargado), Tomás (Jugador). Partidos abiertos ("Falta Uno") fuera de scope v1 — pendiente de eliminar del schema/código (ver Multi-tenancy).
+- `doc3` — 3 Personas: Marcelo (Owner = rol `admin`), Rodrigo (Empleado = rol `manager`/Encargado), Tomás (Jugador). Partidos abiertos ("Falta Uno") fuera de scope v1 — eliminados del schema/código (migr. 028).
 - `doc4` — Monetización: suscripción mensual por canchas (Predio/Complejo/Estadio), MercadoPago
 
 ### Capa Funcional
 - `doc5` — Requisitos no funcionales (monolito Y1, 99.5% SLA, p95 <500ms)
 - `doc6` — Entidades y state machines (19 tablas + system_admins, Booking es la más crítica)
 - `doc7` — 9 flujos end-to-end con efectos secundarios detallados
-- `doc8` — ~42 user stories con Given/When/Then, edge cases, out-of-scope
-- `doc9` — DEPRECADO. Lifecycle SaaS unificado en doc4 §2. No usar.
-- `doc10` — Onboarding: wizard 4 pasos, Aha Moment = primera reserva online
+- `doc8` — ~42 user stories con Given/When/Then, edge cases, out-of-scope- `doc10` — Onboarding: wizard 4 pasos, Aha Moment = primera reserva online
 
 ### Capa Técnica
 - `doc11` — 12 ADRs (RLS, Magic Link, Resend, MercadoPago, pg-boss, monolito, AFIP out-of-scope, +18 declaración jurada). NOTA: ADR-002 (Magic Link) en migración — ver `docs/superpowers/specs/2026-06-16-auth-password-migration-design.md`.
@@ -75,9 +73,7 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - Tablas globales (sin tenant_id): tenants, players, staff_users, plans, price_versions, processed_webhooks
 - Tablas híbridas (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (solo el jugador, por `app.current_player_id`)
 - Tabla operacional: feature_flags (fila con tenant_id NULL = default global; con tenant_id = override por complejo)
-- Tabla del sistema (sin RLS, acceso super admin): system_admins
-- ⚠️ Pendiente de eliminar (feature fuera de v1): `open_matches` + `open_match_players` y el enum `open_match_status` — todavía en el schema, hay que limpiarlos.
-- NOTA: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció (reviews, player_favorites, push_subscriptions, feature_flags). Specs desactualizados respecto al código.
+- Tabla del sistema (sin RLS, acceso super admin): system_admins- NOTA: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció (reviews, player_favorites, push_subscriptions, feature_flags). Specs desactualizados respecto al código.
 - Players son cross-tenant: un jugador reserva en N complejos
 - El JWT del admin tiene tenant_id; el del jugador tiene player_id (sin tenant_id)
 - **RLS dual en `bookings` y `player_tenant_relationships`**: policy para admin (por `app.current_tenant_id`), policy para jugador (por `app.current_player_id`). Policy Realtime SOLO en `bookings` (grilla admin). `player_tenant_relationships` no necesita Realtime en v1.
@@ -97,12 +93,12 @@ La carpeta `docs/spec/` contiene 19 documentos vigentes (doc9 deprecado) que son
 - Consentimiento v1: `players.agreed_to_terms_at` + `audit_logs`; NO existe tabla `consent_records` (se evalúa en v1.5)
 - Facturación AFIP: fuera de scope v1 (ADR-011), responsabilidad del complejo
 - Planes SaaS: Predio (1-3 canchas), Complejo (4-6), Estadio (7+). Sin límite de cantidad de staff.
-- `staff_role`: **2 roles** (Modelo ATC) — `admin` (dueño, acceso total, único que conecta MP/facturación/staff) y `manager` permisivo (encargado: grilla/reservas/caja, reportes, métricas, configuración general). Sin sistema de PIN. ⚠️ El enum en código todavía incluye `read_only` (eliminado por decisión) — pendiente de quitar.
+- `staff_role`: **2 roles** (Modelo ATC; migr. 029 quitó `read_only`) — `admin` (dueño, acceso total: Configuración, Equipo, MP/facturación, config de productos, métricas de sistema) y `manager` (Encargado: grilla, reservas, caja, jugadores). El manager NO accede a Configuración ni a gestión de Equipo. Guards: `requireOperatorStaff` (admin+manager) para operación; `requireAdminStaff`/`requireAdminStaffAction` (solo admin) para config/equipo. `/metricas` lo ve el manager pero sin las métricas de sistema. Sin sistema de PIN.
 - `court_status`: `online` | `offline` (no active/maintenance/inactive)
-- `deposit_mode`: configurable por complejo (on/off + porcentaje global). Sin modo garantía.
+- Seña: configurable por complejo vía `settings.requires_deposit` (on/off) + `settings.deposit_percentage` (porcentaje global, default 30). Sin modo garantía.
 - Duración de turno: 60 minutos fijo (constante global `SLOT_DURATION_MINUTES` en `src/shared/constants.ts`). El campo configurable `booking_duration_minutes` se eliminó (dead code, cambio #14).
 - **Día operativo** (`tenants.closes_next_day`, migr. 035): para complejos que cierran después de medianoche. Si `true`, un día de `opening_hours` cuyo `close <= open` (ej. open 08:00, close 02:00) cierra en la madrugada del día calendario siguiente; sin el flag ese cierre es inválido (cero slots). `bookings.date` = día OPERATIVO (no calendario): los slots post-medianoche pertenecen a la noche anterior, así caja/cierre/reportes agrupan la noche junta. El slot 23:00→00:00 se guarda con `time_end='24:00'` (TIME válido y `> '23:00'` → pasa `chk_time_valid`; `'00:00'` lo violaría). Helper único `src/shared/time/operating-day.ts` (`effectiveCloseMins`/`endLabelFromMins`/`normalizeRangeToOpenDay`), consumido por TODOS los generadores de slots (grilla admin, perfil público, semanal, búsqueda cross-tenant, `getAvailableSlots`).
-- Anticipación de reserva: default 6 días (como ATC).
+- Anticipación de reserva: `settings.booking_advance_days`, default 6 días (como ATC).
 - Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles, **un precio por franja** (`rule.price`). Turnos de 60 min fijos: no hay precio por duración (cambios #6/#13).
 - NO hay billetera virtual del jugador. Reembolsos se resuelven entre jugador y complejo.
 - **No-show = deuda (cambio #5, modelo ATC)**: marcar no-show captura la seña pagada (`deposit_status='captured'`) y suma `price_snapshot − seña` a `player_tenant_relationships.balance`; el jugador queda bloqueado para reservar online en ese complejo hasta saldarla. Se eliminó el ban temporal por días (`no_show_penalty` ya no existe en settings, migr. 034); los bans manuales (`tenant_player_bans`) siguen para otros motivos. Lógica en `handleNoShow` (`booking.cancellation.ts`), incremento atómico vía `addNoShowDebt`.

@@ -48,7 +48,7 @@
 - Reservas online con pago de seña vía MercadoPago
 - Gestión de turnos fijos (abonados) desde la grilla del admin
 - Reportes completos (mismo nivel para todos los planes)
-- Sin límite de staff (una sola cuenta admin por complejo con PIN para zonas sensibles)
+- Sin límite de staff (una sola cuenta admin por complejo con privilegios completos, el resto managers permisivos sin necesidad de PIN)
 
 ---
 

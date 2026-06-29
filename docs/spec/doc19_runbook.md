@@ -298,7 +298,7 @@ DIAGNÓSTICO Y ACCIÓN:
      → SELECT * FROM tenant_subscriptions WHERE tenant_id = '[id]'
        ORDER BY created_at DESC LIMIT 5;
      → SELECT * FROM payments WHERE tenant_id = '[id]'
-       AND type = 'subscription_payment' ORDER BY created_at DESC LIMIT 5;
+       AND type = 'full_payment' ORDER BY created_at DESC LIMIT 5;
 
   3. Verificar en MercadoPago
      → Buscar el pago en el dashboard de MP con el mp_payment_id
@@ -474,7 +474,7 @@ TurnoGol. Nuestra app sólo verifica JWTs emitidos por Supabase Auth.
 
 3. EFECTO:
    → Todas las sesiones activas (admin + jugador) quedan invalidadas. Los usuarios
-     deben re-login (magic link).
+     deben iniciar sesión nuevamente.
    → Comunicar PROACTIVAMENTE antes de rotar (banner in-app + email "renová tu sesión").
 
 4. JWT signing secret propiamente (el que firma los tokens emitidos por Supabase Auth):
@@ -540,7 +540,7 @@ TurnoGol. Nuestra app sólo verifica JWTs emitidos por Supabase Auth.
 |---|---|---|---|
 | Backup de DB | Automático (Supabase) | Supabase | Backup diario, retención 30 días |
 | Health check | Cada 1-5 min | UptimeRobot | Verifica que la app responde |
-| Expiración de bookings | Cada 1 min | pg-boss worker | Expira reservas `pending_payment` > 15 min |
+| Expiración de bookings | Cada 1 min | pg-boss worker | Expira reservas `pending_payment` > 6 min |
 | Envío de emails programados | Continuo | pg-boss worker | Procesa cola de notificaciones email |
 | Métricas de negocio | Cada 1 hora | pg-boss cron | Recolecta y loguea métricas hourly |
 
@@ -670,8 +670,9 @@ FROM pg_tables
 WHERE schemaname = 'public'
 AND tablename IN (
   'courts', 'bookings', 'abonados', 'payments', 'cash_flows',
-  'products', 'tenant_staff_members',
-  'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans'
+  'products', 'tenant_staff_members', 'daily_cash_closes',
+  'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans',
+  'push_subscriptions'
 );
 -- Todas deben tener rowsecurity = true
 
@@ -835,7 +836,7 @@ INFRAESTRUCTURA:
 SEGURIDAD:
   □ Todas las env vars de producción son diferentes a las de desarrollo
   □ Supabase service role key NO está expuesta al frontend
-  □ RLS activado en las 12 tablas aisladas
+  □ RLS activado en las 13 tablas aisladas
   □ Tests de isolation corren y pasan en CI
   □ HTTPS activo en todo el sitio
   □ Rate limiting configurado
@@ -990,7 +991,7 @@ PROBLEMA: Emails llegan a spam
 
 ```
 BACKUPS AUTOMÁTICOS (Supabase):
-  → Plan Pro: Point-in-Time Recovery (PITR) con retención de 7 días
+  → Plan Pro: Point-in-Time Recovery (PITR) con retención de 30 días
   → Plan Free: Backup diario con retención de 7 días
   → Los backups se ejecutan automáticamente — no requieren acción manual
 

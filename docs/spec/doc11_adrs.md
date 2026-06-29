@@ -1,5 +1,5 @@
-# DOC 11 — Architecture Decision Records (ADRs)
-## TurnoGol: Las 10 Decisiones que Definen la Arquitectura
+# DOC 11 — Decisiones Arquitectónicas (ADRs)
+## TurnoGol: Decisiones Arquitectónicas (ADRs 001-013)
 
 > **Propósito**: Documentar las decisiones de arquitectura con su contexto, alternativas evaluadas,
 > decisión tomada y consecuencias. Una ADR no se edita: si la decisión cambia, se crea una nueva
@@ -18,7 +18,7 @@
 | ID | Decisión | Estado | Fecha |
 |---|---|---|---|
 | ADR-001 | Tenant Isolation Model: RLS con tenant_id | ✅ Decidido | 2026-04-17 |
-| ADR-002 | Estrategia de Autenticación: Magic Link + OAuth | ✅ Decidido | 2026-04-17 |
+| ADR-002 | Autenticación Jugadores: Magic Link + OAuth (Staff: Deprecado) | ✅ Decidido | 2026-04-17 |
 | ADR-003 | Stack de Comunicaciones: Email con Resend | ✅ Decidido | 2026-04-17 |
 | ADR-004 | Gateway de Pagos: MercadoPago Checkout Pro + Suscripciones | ✅ Decidido | 2026-04-17 |
 | ADR-005 | Background Jobs / Queues: pg-boss sobre PostgreSQL | ✅ Decidido | 2026-04-17 |
@@ -29,6 +29,7 @@
 | ADR-010 | Feature Flags para Planes SaaS: DB-driven | ✅ Decidido | 2026-04-17 |
 | ADR-011 | Facturación electrónica (AFIP): Fuera de scope v1 | ✅ Decidido | 2026-04-18 |
 | ADR-012 | Verificación de edad +18: Declaración jurada digital | ✅ Decidido | 2026-04-18 |
+| ADR-013 | Autenticación de Staff: Email + Password (ADR-002 Deprecado) | ✅ Decidido | 2026-06-29 |
 
 ---
 
@@ -119,8 +120,8 @@ CREATE POLICY tenant_insert ON bookings
 - `tenants` — la propia tabla
 - `price_versions` — precios globales por plan
 
-**Tablas con `tenant_id` (aisladas, 12 tablas):**
-- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `products`, `tenant_staff_members`, `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`
+**Tablas con `tenant_id` (aisladas, 13 tablas):**
+- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `products`, `tenant_staff_members`, `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`, `push_subscriptions`
 
 ### Consecuencias
 
@@ -144,59 +145,53 @@ Revisitar si se cumplen CUALQUIERA de estas condiciones:
 
 ---
 
-## ADR-002: Estrategia de Autenticación
+## ADR-002: Estrategia de Autenticación Jugadores (B2C)
 
-**Estado**: ✅ Decidido
+**Estado**: ✅ Decidido (DEPRECADO para Staff - ver ADR-013)
 **Fecha**: 2026-04-17
 
 ### Contexto
 
 TurnoGol tiene dos tipos de usuarios con necesidades de autenticación radicalmente diferentes:
 
-1. **Staff del complejo (B2B)**: Marcelo (tech literacy 2.5/5) y su recepcionista Rodrigo. Acceden al panel admin. Necesitan sesiones largas, bajo fricción de login. El onboarding (Doc 10) establece que el magic link es crítico: "Olvidé mi contraseña" es la causa #1 de abandono en este segmento.
+1. **Staff del complejo (B2B)**: Marcelo (tech literacy 2.5/5) y su recepcionista Rodrigo. Acceden al panel admin. *Nota: Este segmento fue migrado a Email + Password por razones de seguridad y RLS (ver ADR-013).*
 
 2. **Jugadores (B2C)**: Agustín, Tomás (tech literacy 3.5-4/5). Reservan desde el celular. Esperan experiencia de app moderna. Sesión persistente (no quieren loguearse cada vez que reservan).
 
-El Doc 5 define: "JWT con refresh tokens. No guardamos passwords (magic link o OAuth)."
+El Doc 5 define: "JWT con refresh tokens. No guardamos passwords (magic link o OAuth) para jugadores."
 
 ### Opciones consideradas
 
 **Opción A: Magic Link por email (sin contraseña)**
 - El usuario ingresa su email → recibe un link de un solo uso → click → autenticado.
 - Pro: Zero fricción cognitiva. No hay "olvidé mi contraseña". No hay brute force de passwords.
-- Pro: El dueño del complejo ya entiende este patrón (email de verificación de servicios funciona parecido).
 - Con: Requiere acceso al email en el momento del login (puede ser lento si el email tarda).
 - Con: Si el email del jugador no recibe el magic link (spam, email incorrecto), no puede entrar.
 
 **Opción B: OAuth social (Google / Apple)**
 - Login con un click usando la cuenta de Google o Apple del usuario.
 - Pro: Máxima conveniencia para jugadores que ya tienen Google/Apple en su celular.
-- Pro: No se maneja ningún secreto de autenticación en nuestro lado.
-- Con: No todos los dueños de complejos usan Google (algunos usan Yahoo, Outlook).
 - Con: Apple Sign-In requiere Apple Developer account ($99 USD/año) y es obligatorio si se lanza app nativa en iOS.
 
 **Opción C: Email + contraseña tradicional**
 - El usuario elige un email y una contraseña, y la guarda.
 - Pro: Patrón universalmente entendido.
 - Con: Hay que gestionar hashing (bcrypt), reset de password, validación de fortaleza.
-- Con: El 80% de los usuarios de tech literacy 2-3 olvidan la contraseña en menos de 30 días.
-- Con: Superficie de ataque mayor (brute force, credential stuffing, passwords débiles).
 
 ### Decisión
 
-**Opción A + B combinadas: Magic Link como método primario, OAuth (Google) como método secundario.**
+**Opción A + B combinadas: Magic Link como método primario para jugadores, OAuth (Google) como método secundario.**
 
 **Distribución por tipo de usuario:**
 
 | Tipo de usuario | Método primario | Método secundario |
 |---|---|---|
-| Staff (admin, recepcionista) | Magic link por email | — |
+| Staff (admin, recepcionista) | *Email + Contraseña (ver ADR-013)* | — |
 | Jugador (B2C) | OAuth con Google | Magic link por email |
 
 Razones:
-1. **Staff con magic link**: Marcelo no quiere recordar otra contraseña. Usa el panel 1-2 veces por día. Un magic link válido por 15 minutos es suficiente. El refresh token de 30 días mantiene la sesión abierta — en la práctica, solo hace login una vez al mes.
-2. **Jugadores con OAuth primario**: Agustín y Tomás tienen Google en su celular. Un tap y están dentro. Para los que no quieren OAuth, magic link como fallback.
-3. **Sin contraseñas**: Eliminamos por completo el almacenamiento de secrets de autenticación. Nuestro sistema nunca maneja un password hash. Esto reduce la superficie de ataque y la complejidad operacional.
+1. **Jugadores con OAuth primario**: Agustín y Tomás tienen Google en su celular. Un tap y están dentro. Para los que no quieren OAuth, magic link como fallback.
+2. **Sin contraseñas para jugadores**: Eliminamos por completo el almacenamiento de secrets de autenticación para la base B2C. Nuestro de jugador no maneja un password hash. Esto reduce la superficie de ataque y la complejidad operacional.
 
 ### Implementación concreta
 
@@ -271,7 +266,7 @@ Revisitar si:
 El email es el canal principal de comunicación transaccional con dueños de complejos y jugadores. El sistema necesita enviar:
 
 - **Confirmaciones de reserva** al jugador (inmediato)
-- **Recordatorios de turno** al jugador (24hs/2hs antes)
+- **Recordatorios de turno** al jugador (eliminados en v1 — cambio #18; se reconstruyen con WhatsApp en v1.5)
 - **Alertas al admin** cuando entra una reserva online
 - **Comunicaciones de dunning** al dueño del complejo (cobro fallido)
 - **Notificaciones de trial/onboarding** (cadencia programada, Doc 4/10)
@@ -342,13 +337,12 @@ Evento de negocio (booking.confirmed)
 | Template | Variables | Trigger |
 |---|---|---|
 | `booking_confirmed` | `{player_name}`, `{court_name}`, `{date}`, `{time}`, `{complex_name}` | Reserva confirmada |
-| `booking_reminder` | `{player_name}`, `{court_name}`, `{time}`, `{complex_name}` | 24hs y 2hs antes |
 | `booking_canceled` | `{player_name}`, `{date}`, `{time}`, `{refund_status}` | Cancelación |
 | `admin_new_booking` | `{player_name}`, `{court_name}`, `{date}`, `{time}` | Nueva reserva online |
 | `dunning_payment_failed` | `{owner_name}`, `{plan_name}`, `{retry_date}` | Cobro SaaS fallido |
 | `trial_welcome` | `{owner_name}`, `{complex_name}` | Registro |
 | `trial_ending` | `{owner_name}`, `{days_left}` | Día 21, 28, 30 |
-| `deposit_expired` | `{player_name}`, `{court_name}`, `{date}`, `{time}` | Timeout 15min sin seña |
+| `deposit_expired` | `{player_name}`, `{court_name}`, `{date}`, `{time}` | Timeout 6min sin seña |
 | `magic_link` | `{user_name}`, `{login_url}`, `{expires_in}` | Login |
 
 ### Consecuencias
@@ -440,11 +434,11 @@ Razones:
      notification_url: "https://api.turnogol.app/webhooks/mercadopago",
      external_reference: booking_uuid,
      expires: true,
-     expiration_date_to: booking.created_at + 15 minutos
+     expiration_date_to: booking.created_at + 6 minutos
    }
 3. Jugador es redirigido a MP → paga → MP redirige de vuelta
 4. Webhook `payment.approved` → TurnoGol cambia booking a 'confirmed'
-5. Si timeout 15min sin pago → booking pasa a 'expired', slot liberado
+5. Si timeout 6min sin pago → booking pasa a 'expired', slot liberado
 ```
 
 **Suscripciones SaaS (Preapproval / Suscripción):**
@@ -516,10 +510,10 @@ Revisitar si:
 
 TurnoGol requiere procesamiento asincrónico para múltiples flujos críticos:
 
-- **Emails**: Envío de confirmaciones, recordatorios, alertas de dunning, magic links (no pueden bloquear el request del usuario).
+- **Emails**: Envío de confirmaciones, alertas de dunning, magic links (no pueden bloquear el request del usuario).
 - **Cron jobs**: Expiración de trials (diario), generación de slots de abonados (diario), auto-completar reservas sin marcar (+30min), data retention cleanup (semanal), dunning retries (diario).
 - **Webhooks de proceso**: Procesamiento de webhooks de MP (deben ser líderes en confiabilidad — si se pierde un webhook de pago, el tenant no se activa).
-- **Notificaciones programadas**: Reminder 24hs antes, reminder 2hs antes, trial day 7/14/21/28/30.
+- **Notificaciones programadas**: Trial day 7/14/21/28/30. (Recordatorios de turnos eliminados en v1 — cambio #18).
 
 El Doc 5 establece: "Background jobs para Email" como sistema de queues. La escala es modesta: ~5.000 emails/día en comunicaciones + ~24.000 booking-related events/día con 500 complejos.
 
@@ -581,7 +575,6 @@ const QUEUES = {
   'data-retention-cleanup': { cron: '0 4 * * 0' },  // domingos 04:00 ART
 
   // Notificaciones programadas
-  'booking-reminder':    { retryLimit: 2, retryDelay: 300 },
   'trial-notification':  { retryLimit: 2, retryDelay: 300 },
 };
 ```
@@ -600,14 +593,6 @@ await db.transaction(async (tx) => {
     player_id: playerId,
   }, { db: tx }); // usa la misma conexión transaccional
 
-  // 3. Programar el reminder para 24hs antes
-  await boss.send('booking-reminder', {
-    booking_id: bookingId,
-    type: '24h'
-  }, {
-    startAfter: subHours(booking.date_time_start, 24),
-    db: tx
-  });
 });
 // Si algo falla → rollback de TODO (reserva + jobs)
 ```
@@ -1459,3 +1444,50 @@ Razones:
 
 - La AAIP (Agencia de Acceso a la Información Pública) emite regulación específica que requiera verificación solución robusta (fecha de nacimiento con validación).
 - Se lanza una sección para menores con tutores (no planeado para v1).
+
+---
+
+## ADR-013: Autenticación de Staff: Email + Password
+
+**Estado**: ✅ Decidido (Reemplaza la estrategia de Magic Link para Staff definida en ADR-002)
+**Fecha**: 2026-06-29
+
+### Contexto
+
+En el diseño inicial (ADR-002), se decidió utilizar Magic Link para toda autenticación por email (B2C y B2B) para evitar el soporte de contraseñas olvidadas. Sin embargo, al implementar el modelo multi-tenant con aislamiento relacional RLS en Supabase/PostgreSQL y auditoría inmutable, surgieron varios inconvenientes con el uso de Magic Links para el Staff:
+
+1. **Seguridad y Control de Sesión**: Los Magic Links por email introducen dependencias externas que ralentizan el ingreso diario de los operarios en horas pico y exponen las cuentas a mayor riesgo si el email corporativo del complejo queda abierto en navegadores de mostrador.
+2. **Roles y Autorización Gating**: Con la eliminación de PINs (decisión #8) y la definición clara de roles (`admin` y `manager`), la autenticación debe ser robusta, instantánea y controlable a nivel backend mediante credenciales estáticas que puedan ser revocadas e invalidadas inmediatamente de forma determinista.
+3. **Fricción nula**: Para el staff del complejo, que trabaja 8-12 horas diarias frente a la grilla, ingresar una contraseña estática al inicio del turno es un flujo estándar y de nula fricción en comparación con tener que esperar el envío y apertura de un correo cada vez que expira la sesión en el mostrador.
+
+### Opciones consideradas
+
+**Opción A: Mantener Magic Link para todos (B2B y B2C)**
+- Con: Alta latencia y dependencia del proveedor de email en el acceso al panel admin en horas pico.
+- Con: Riesgo de seguridad en mostradores multi-usuario del complejo.
+- Con: Dificultad para forzar re-autenticaciones urgentes sin volver a disparar correos.
+
+**Opción B: Email + Contraseña tradicional para Staff, Magic Link para Jugadores**
+- Pro: Entrada instantánea para Marcelo y Rodrigo sin dependencia de emails de verificación.
+- Pro: Permite forzar el cierre de sesiones a nivel backend de forma determinista.
+- Pro: Mantiene el funnel de reservas B2C limpio de fricciones con Magic Link/OAuth.
+- Con: Requiere hashing (bcrypt) y gestión de restablecimiento de contraseñas para staff.
+
+### Decisión
+
+**Opción B: Implementar Email + Contraseña tradicional para Staff (B2B), manteniendo Magic Link/OAuth para Jugadores (B2C).**
+
+Razones:
+1. **Seguridad B2B**: Las contraseñas tradicionales permiten control estricto de sesiones simultáneas y políticas de expiración forzada requeridas por RLS.
+2. **Operación instantánea**: El recepcionista puede loguearse en 3 segundos sin abrir el correo del predio.
+3. **Separación de funnels**: El jugador sigue experimentando el flujo passwordless rápido, mientras que el administrador corporativo tiene un canal tradicional y seguro.
+
+### Consecuencias
+
+**Positivas:**
+- Mayor seguridad y auditoría en el panel de administración.
+- Mayor confiabilidad al no depender de la latencia de entrega de correos de Resend para el trabajo diario.
+- Facilidad para dar de baja a miembros de staff con invalidación inmediata de tokens de sesión.
+
+**Negativas:**
+- Requiere implementar un flujo de restablecimiento de contraseña para el staff (envío de email con token de reset y pantalla de nueva contraseña). Esto es manejado nativamente por Supabase Auth.

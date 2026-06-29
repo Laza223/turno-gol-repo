@@ -157,7 +157,7 @@ Response 200:
       "requires_deposit": true,
       "deposit_percentage": 30,
       "allow_online_booking": true,
-      "booking_advance_days": 14,
+      "booking_advance_days": 6,
       "accepts_mercadopago": true
     }
   }
@@ -211,8 +211,9 @@ Response 200:
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `POST` | `/api/auth/magic-link` | Ninguna | Enviar magic link por email |
-| `POST` | `/api/auth/verify` | Ninguna | Verificar token de magic link |
+| `POST` | `/api/auth/magic-link` | Ninguna | Enviar magic link por email (solo jugadores) |
+| `POST` | `/api/auth/login` | Ninguna | Login con email + password (solo staff) |
+| `POST` | `/api/auth/verify` | Ninguna | Verificar token de magic link (jugadores) |
 | `GET` | `/api/auth/callback` | Ninguna | OAuth callback (Google) |
 | `POST` | `/api/auth/refresh` | Refresh token | Renovar access token |
 | `POST` | `/api/auth/logout` | JWT | Cerrar sesión |
@@ -222,7 +223,8 @@ Response 200:
 
 ```
 Request:
-{ "email": "marcelo@complejo.com", "type": "staff" | "player" }
+{ "email": "agustin@gmail.com", "type": "player" }
+// Staff usa POST /api/auth/login con email+password, NO magic link.
 
 Response 200:
 { "data": { "message": "Revisá tu casilla de email." } }
@@ -278,13 +280,13 @@ Response 200 (jugador):
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/bookings` | admin | Listar reservas (filtros: date, court_id, status) |
-| `GET` | `/api/bookings/:id` | admin | Detalle de una reserva |
-| `POST` | `/api/bookings` | admin | Crear reserva manual |
-| `PATCH` | `/api/bookings/:id` | admin | Actualizar reserva (estado, notas) |
-| `POST` | `/api/bookings/:id/cancel` | admin | Cancelar reserva |
-| `POST` | `/api/bookings/:id/complete` | admin | Marcar como completada |
-| `POST` | `/api/bookings/:id/no-show` | admin | Marcar como no-show |
+| `GET` | `/api/bookings` | staff | Listar reservas (filtros: date, court_id, status) |
+| `GET` | `/api/bookings/:id` | staff | Detalle de una reserva |
+| `POST` | `/api/bookings` | staff | Crear reserva manual |
+| `PATCH` | `/api/bookings/:id` | staff | Actualizar reserva (estado, notas) |
+| `POST` | `/api/bookings/:id/cancel` | staff | Cancelar reserva |
+| `POST` | `/api/bookings/:id/complete` | staff | Marcar como completada |
+| `POST` | `/api/bookings/:id/no-show` | staff | Marcar como no-show |
 
 #### `GET /api/bookings?date=2026-04-17&status=confirmed`
 
@@ -352,8 +354,8 @@ Errors:
 ```
 Request:
 {
-  "reason": "Lluvia",           // requerido
-  "refund": true                // si aplicar reembolso de seña
+  "reason": "Lluvia",                    // requerido
+  "canceled_by": "complex" | "player"    // quién cancela; el servidor decide el reembolso según política
 }
 
 Response 200:
@@ -378,11 +380,11 @@ Errors:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/courts` | admin | Listar canchas del complejo |
-| `GET` | `/api/courts/:id` | admin | Detalle de cancha |
-| `POST` | `/api/courts` | admin | Crear cancha |
-| `PATCH` | `/api/courts/:id` | admin | Editar cancha |
-| `PATCH` | `/api/courts/:id/status` | admin | Activar/desactivar |
+| `GET` | `/api/courts` | staff | Listar canchas del complejo |
+| `GET` | `/api/courts/:id` | staff | Detalle de cancha |
+| `POST` | `/api/courts` | staff | Crear cancha |
+| `PATCH` | `/api/courts/:id` | staff | Editar cancha |
+| `PATCH` | `/api/courts/:id/status` | staff | Activar/desactivar |
 
 #### `POST /api/courts`
 
@@ -402,20 +404,20 @@ Request:
 }
 
 Errors:
-  403 PLAN_LIMIT_EXCEEDED → { "limit": 3, "current": 3, "upgrade_to": "estandar" }
+  403 PLAN_LIMIT_EXCEEDED → { "limit": 3, "current": 3, "upgrade_to": "complejo" }
 ```
 
 ### 5.3 Abonados
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/abonados` | admin | Listar abonados |
-| `GET` | `/api/abonados/:id` | admin | Detalle + próximas instancias |
-| `POST` | `/api/abonados` | admin | Crear abonado |
-| `PATCH` | `/api/abonados/:id` | admin | Editar datos |
-| `POST` | `/api/abonados/:id/pause` | admin | Pausar (elimina slots futuros) |
-| `POST` | `/api/abonados/:id/resume` | admin | Reanudar (regenera slots) |
-| `POST` | `/api/abonados/:id/cancel` | admin | Cancelar desde fecha |
+| `GET` | `/api/abonados` | staff | Listar abonados |
+| `GET` | `/api/abonados/:id` | staff | Detalle + próximas instancias |
+| `POST` | `/api/abonados` | staff | Crear abonado |
+| `PATCH` | `/api/abonados/:id` | staff | Editar datos |
+| `POST` | `/api/abonados/:id/pause` | staff | Pausar (elimina slots futuros) |
+| `POST` | `/api/abonados/:id/resume` | staff | Reanudar (regenera slots) |
+| `POST` | `/api/abonados/:id/cancel` | staff | Cancelar desde fecha |
 
 #### `POST /api/abonados`
 
@@ -457,9 +459,9 @@ Errors:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/cash-flows` | admin | Movimientos del día/período |
-| `GET` | `/api/cash-flows/summary` | admin | Resumen por categoría |
-| `POST` | `/api/cash-flows` | admin | Registrar movimiento |
+| `GET` | `/api/cash-flows` | staff | Movimientos del día/período |
+| `GET` | `/api/cash-flows/summary` | staff | Resumen por categoría |
+| `POST` | `/api/cash-flows` | staff | Registrar movimiento |
 
 #### `GET /api/cash-flows/summary?date=2026-04-17`
 
@@ -486,10 +488,10 @@ Response 200:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/products` | admin | Listar productos |
-| `POST` | `/api/products` | admin | Crear producto |
-| `PATCH` | `/api/products/:id` | admin | Editar producto |
-| `POST` | `/api/products/:id/sell` | admin | Registrar venta (→ cash_flow) |
+| `GET` | `/api/products` | staff | Listar productos |
+| `POST` | `/api/products` | staff | Crear producto |
+| `PATCH` | `/api/products/:id` | staff | Editar producto |
+| `POST` | `/api/products/:id/sell` | staff | Registrar venta (→ cash_flow) |
 
 ### 5.6 Configuración del Complejo
 
@@ -517,7 +519,7 @@ Request:
 
 Response 201:
 { "data": { "id": "uuid", "email": "rodrigo@email.com", "role": "admin", "status": "pending" } }
-// Se envía magic link de invitación al email
+// Se envía email con instrucciones de verificación
 
 Errors:
   409 CONFLICT → email ya tiene acceso a este complejo
@@ -540,16 +542,16 @@ Errors:
 Response 200:
 {
   "data": {
-    "plan": { "name": "Estándar", "slug": "estandar", "max_courts": 6 },
+    "plan": { "name": "Complejo", "slug": "complejo", "max_courts": 6 },
     "billing_cycle": "monthly",
     "status": "active",
     "current_period_start": "2026-04-01T00:00:00Z",
     "current_period_end": "2026-05-01T00:00:00Z",
-    "price_monthly": 8800000,
+    "price_monthly": 7400000,
     "pending_plan_change": null,
     "usage": {
       "courts": { "used": 4, "limit": 6 },
-      "staff": { "used": 2, "limit": 5 }
+      "staff": { "used": 2, "limit": null }
     }
   }
 }
@@ -559,7 +561,7 @@ Response 200:
 
 ```
 Request:
-{ "target_plan": "full" }
+{ "target_plan": "estadio" }
 
 Response 200:
 {
@@ -580,10 +582,10 @@ Response 200:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/reports/revenue` | admin | Ingresos por período |
-| `GET` | `/api/reports/occupancy` | admin | Tasa de ocupación por cancha |
-| `GET` | `/api/reports/players` | admin | Top jugadores, no-show rate |
-| `GET` | `/api/reports/export` | admin | Exportar datos (CSV/Excel según plan) |
+| `GET` | `/api/reports/revenue` | staff | Ingresos por período |
+| `GET` | `/api/reports/occupancy` | staff | Tasa de ocupación por cancha |
+| `GET` | `/api/reports/players` | staff | Top jugadores, no-show rate |
+| `GET` | `/api/reports/export` | staff | Exportar datos (CSV/Excel según plan) |
 
 #### `GET /api/reports/occupancy?from=2026-04-01&to=2026-04-30`
 
@@ -618,8 +620,8 @@ Response 200:
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/notifications` | admin | Historial de notificaciones |
-| `GET` | `/api/audit-logs` | admin | Historial de auditoría |
+| `GET` | `/api/notifications` | staff | Historial de notificaciones |
+| `GET` | `/api/audit-logs` | staff | Historial de auditoría |
 
 ---
 
@@ -655,11 +657,11 @@ Response 201 (con seña):
       "status": "pending_payment",
       "price_snapshot": 1200000,
       "deposit_amount": 360000,
-      "expires_at": "2026-04-17T18:45:00Z"    // 15 min timeout
+      "expires_at": "2026-04-17T18:36:00Z"    // 6 min timeout
     },
     "payment": {
       "mp_checkout_url": "https://www.mercadopago.com.ar/checkout/...",
-      "expires_in_seconds": 900
+      "expires_in_seconds": 360
     }
   }
 }
@@ -680,7 +682,7 @@ Response 201 (sin seña):
 Errors:
   409 SLOT_UNAVAILABLE → con suggested_alternatives
   403 PLAYER_BANNED → "No podés reservar en este complejo"
-  422 BOOKING_ADVANCE_EXCEEDED → "Solo se puede reservar hasta 14 días adelante"
+  422 BOOKING_ADVANCE_EXCEEDED → "Solo se puede reservar hasta 6 días adelante"
 ```
 
 #### `POST /api/player/bookings/:id/cancel`
@@ -776,7 +778,7 @@ Response 201:
     "message": "Te enviamos un email para acceder a tu cuenta."
   }
 }
-// Se envía magic link de bienvenida por email
+// Se envía email de verificación. El staff crea su contraseña en el primer acceso.
 ```
 
 ---

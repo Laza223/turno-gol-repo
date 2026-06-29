@@ -86,10 +86,9 @@ describe('Booking State Machine', () => {
       const result = transitionBookingStatus('pending_payment', 'PAYMENT_APPROVED');
       expect(result.status).toBe('confirmed');
       expect(result.sideEffects).toContain('SEND_EMAIL_CONFIRMATION');
-      expect(result.sideEffects).toContain('SCHEDULE_REMINDER_24H');
     });
 
-    it('pending_payment → expired (timeout 15 min)', () => {
+    it('pending_payment → expired (timeout 6 min)', () => {
       const result = transitionBookingStatus('pending_payment', 'PAYMENT_TIMEOUT');
       expect(result.status).toBe('expired');
       expect(result.sideEffects).toContain('RELEASE_SLOT');
@@ -196,11 +195,12 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestTenant, setTenantContext, resetTenantContext } from '../helpers/tenant';
 import { db } from '@/shared/db/client';
 
-// Las 12 tablas aisladas
+// Las 13 tablas aisladas
 const ISOLATED_TABLES = [
   'courts', 'bookings', 'abonados', 'payments', 'cash_flows',
   'products', 'tenant_staff_members', 'daily_cash_closes',
   'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans',
+  'push_subscriptions',
 ];
 
 describe('Cross-Tenant Isolation (BLOQUEANTE)', () => {
@@ -666,7 +666,7 @@ describe('Graceful Degradation', () => {
 ```typescript
 // tests/integration/billing-lifecycle.test.ts
 describe('SaaS Billing Lifecycle', () => {
-  it('Trial expira → tenant pasa a churned → acceso bloqueado', async () => {
+  it('Trial expira → tenant pasa a blocked → acceso bloqueado', async () => {
     const tenant = await createTestTenant({
       status: 'trialing',
       trial_ends_at: new Date(Date.now() - 1000), // ya expiró
@@ -676,7 +676,7 @@ describe('SaaS Billing Lifecycle', () => {
     await expireTrialsJob.execute();
 
     const updated = await getTenant(tenant.id);
-    expect(updated.status).toBe('churned');
+    expect(updated.status).toBe('blocked');
   });
 
   it('Cobro fallido → 3 reintentos → suspended', async () => {
@@ -845,7 +845,7 @@ export async function seedIsolationData(tenantId: string) {
   // Crear una cancha
   const court = await db.query(`
     INSERT INTO courts (tenant_id, name, surface_type, capacity, status, pricing)
-    VALUES ($1, 'Cancha Test', 'synthetic_grass', 10, 'active', $2)
+    VALUES ($1, 'Cancha Test', 'synthetic_grass', 10, 'online', $2)
     RETURNING id
   `, [tenantId, JSON.stringify(defaultPricing)]);
 
@@ -855,7 +855,7 @@ export async function seedIsolationData(tenantId: string) {
     VALUES ($1, $2, '2026-04-17', '21:00', '22:00', 'spontaneous', 'confirmed', 1200000)
   `, [tenantId, court.rows[0].id]);
 
-  // Crear registros mínimos en las 12 tablas aisladas
+  // Crear registros mínimos en las 13 tablas aisladas
   // (necesario para que los tests de isolation verifiquen CADA tabla)
   // ...
 }

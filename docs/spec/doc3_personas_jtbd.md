@@ -172,9 +172,15 @@
 > El usuario principal del B2C. Puede jugar de forma espontánea o tener un turno fijo.
 > Su experiencia en la app determina si las reservas online funcionan o mueren.
 
-### Perfil
-- **Nombre representativo**: Tomás, 26 años
-- **Situación**: Juega cuando puede. A veces con grupo fijo, a veces espontáneo.
+### Perfiles Representativos
+
+#### Tomás (Jugador Espontáneo)
+- **Perfil**: 26 años, juega cuando puede. Organiza partidos de ocasión con amigos de oficina o facultad.
+- **Situación**: Busca disponibilidad en tiempo real, reserva, paga la seña y va a jugar.
+
+#### Agustín (Jugador Abonado)
+- **Perfil**: 32 años, tiene un turno fijo semanal (todos los miércoles a las 20:00) con su grupo de amigos de fútbol desde hace años.
+- **Situación**: Valora la predictibilidad. Quiere ver su turno ya confirmado en la app y poder avisar o cancelar una fecha puntual si el grupo no llega a juntarse, sin tener que llamar al complejo.
 
 ### Variantes de comportamiento
 
@@ -183,7 +189,7 @@ El "jugador" no es un perfil monolítico. Tiene dos modos de uso:
 | Modo | Ejemplo | Cómo interactúa con TurnoGol |
 |---|---|---|
 | **Espontáneo** | Tomás quiere jugar el jueves, busca cancha | Busca disponibilidad → reserva → paga seña → juega |
-| **Abonado** (turno fijo) | Tomás tiene turno fijo los viernes con su grupo | Su turno ya está confirmado en "Mis turnos" → va y juega. Si un viernes no puede → avisa al complejo o cancela su instancia. (Sin recordatorio 24h en v1, cambio #18; se reconstruye con WhatsApp post-v1.) |
+| **Abonado** (turno fijo) | Agustín tiene turno fijo los miércoles con su grupo | Su turno ya está confirmado en "Mis turnos" → va y juega. Si un miércoles no puede → avisa al complejo o cancela su instancia. (Sin recordatorio 24h en v1, cambio #18; se reconstruye con WhatsApp post-v1.) |
 
 > [!NOTE]
 > **El "abonado" es un estado, no un tipo de usuario.** Un jugador puede ser abonado en un complejo

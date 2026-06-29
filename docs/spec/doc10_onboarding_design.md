@@ -251,9 +251,9 @@ DÍA 7
 
 ## 6. Decisiones de Diseño Clave
 
-### ¿Por qué magic link y no contraseña?
-- Marcelo tiene tech literacy 2.5/5. "Olvidé mi contraseña" es la causa #1 de abandono en este segmento.
-- Magic link: 1 click. Sin formulario. Sin recordar nada. Se autentican como ya lo hacen con WhatsApp Web.
+### ¿Por qué contraseña para Staff y Magic Link para Jugadores?
+- **Para el Staff (Marcelo/Rodrigo)**: Usamos email + contraseña por seguridad, control de accesos por roles (admin/manager) y estabilidad de sesión en la administración del complejo. Al ser su herramienta diaria, la memorización de la contraseña no representa una fricción en el funnel.
+- **Para los Jugadores (Tomás/Agustín)**: Usamos magic link por email y OAuth (Google/Apple) para minimizar la fricción en la reserva. En compras espontáneas, obligar a recordar contraseñas es la causa #1 de abandono. Magic link permite reservar en menos de 1 minuto sin fricción de registro.
 
 ### ¿Por qué 4 pasos y no 7?
 - Cada paso adicional pierde ~15% de completados.

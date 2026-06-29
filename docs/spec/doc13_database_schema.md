@@ -206,6 +206,13 @@ CREATE TABLE tenants (
 
   closed_dates    DATE[] DEFAULT '{}',           -- Feriados, vacaciones
 
+  -- Día operativo: si true, un día de opening_hours cuyo close <= open (ej.
+  -- open 08:00, close 02:00) cierra en la madrugada del día calendario
+  -- SIGUIENTE. Esos turnos pertenecen al MISMO día operativo (bookings.date =
+  -- la noche anterior). El slot 23:00→00:00 se guarda con time_end='24:00'
+  -- (TIME válido y > '23:00' → pasa chk_time_valid). Migración 035.
+  closes_next_day BOOLEAN NOT NULL DEFAULT false,
+
   -- Estado del tenant (state machine Doc 6 §1)
   status          tenant_status NOT NULL DEFAULT 'trialing',
   trial_ends_at   TIMESTAMPTZ,                   -- Solo si status = 'trialing'
@@ -481,7 +488,7 @@ CREATE TABLE courts (
   capacity        INTEGER NOT NULL,              -- Cantidad de jugadores (ej: format * 2)
   photos          TEXT[] DEFAULT '{}',           -- URLs en Supabase Storage
 
-  status          court_status NOT NULL DEFAULT 'active',
+  status          court_status NOT NULL DEFAULT 'online',
 
   -- Precios por franja horaria (JSONB flexible)
   pricing         JSONB NOT NULL DEFAULT '{
@@ -537,9 +544,12 @@ CREATE TABLE bookings (
   abonado_id      UUID REFERENCES abonados(id),  -- Populated si viene de turno fijo
   created_by_staff UUID REFERENCES staff_users(id), -- Quién la creó si fue manual
 
-  date            DATE NOT NULL,                 -- Fecha de la reserva (en timezone del complejo)
+  date            DATE NOT NULL,                 -- Día OPERATIVO (no calendario). Día operativo: un
+                                                 -- turno de madrugada (01:00) de un complejo con
+                                                 -- closes_next_day pertenece a la noche anterior.
   time_start      TIME NOT NULL,
-  time_end        TIME NOT NULL,
+  time_end        TIME NOT NULL,                 -- El slot 23:00→00:00 se guarda como '24:00'
+                                                 -- (TIME válido, > '23:00' → pasa chk_time_valid).
 
   type            booking_type NOT NULL DEFAULT 'spontaneous',
   status          booking_status NOT NULL DEFAULT 'pending_payment',
@@ -571,7 +581,8 @@ CREATE TABLE bookings (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   -- Constraints
-  CONSTRAINT chk_time_valid CHECK (time_end > time_start),
+  CONSTRAINT chk_time_valid CHECK (time_end > time_start),  -- '24:00' es TIME válido y > '23:00': el slot que cierra a medianoche pasa
+                                                            -- (día operativo, ver tenants.closes_next_day).
   CONSTRAINT chk_price_positive CHECK (price_snapshot >= 0),
   CONSTRAINT chk_deposit_non_negative CHECK (deposit_amount >= 0),
   -- Fix #13: Consistencia semántica entre payment_method y payment_id (Auditoría Opus 4.7 #2)
@@ -657,9 +668,6 @@ CREATE POLICY tenant_isolation_update ON bookings FOR UPDATE
   WITH CHECK (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 CREATE POLICY tenant_isolation_delete ON bookings FOR DELETE
   USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
-
--- Index para mp_preference_id (búsqueda por webhook de seña)
-CREATE INDEX idx_payments_mp_preference ON payments(mp_preference_id) WHERE mp_preference_id IS NOT NULL;
 
 COMMENT ON TABLE bookings IS 'Reservas de cancha. Entidad central del sistema.';
 COMMENT ON COLUMN bookings.price_snapshot IS 'Precio en centavos ARS al momento de crear. NUNCA se modifica después.';
@@ -782,6 +790,7 @@ CREATE INDEX idx_payments_player ON payments(player_id) WHERE player_id IS NOT N
 CREATE INDEX idx_payments_mp_id ON payments(mp_payment_id) WHERE mp_payment_id IS NOT NULL;
 CREATE INDEX idx_payments_tenant_status ON payments(tenant_id, status);
 CREATE INDEX idx_payments_tenant_created ON payments(tenant_id, created_at);
+CREATE INDEX idx_payments_mp_preference ON payments(mp_preference_id) WHERE mp_preference_id IS NOT NULL;
 
 -- RLS
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
@@ -861,7 +870,7 @@ CREATE POLICY tenant_isolation_update ON cash_flows FOR UPDATE
 CREATE POLICY tenant_isolation_delete ON cash_flows FOR DELETE
   USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 
-COMMENT ON TABLE cash_flows IS 'Movimientos de caja. Solo ingresos y ajustes (sin gastos — ver DECISIONES_SISTEMA.md P10.1).';
+COMMENT ON TABLE cash_flows IS 'Movimientos de caja. Ingresos, ajustes y egresos (gastos).';
 ```
 
 ### 3.6 `products` — Productos de cantina/stock
@@ -949,7 +958,7 @@ CREATE POLICY tenant_isolation_delete ON tenant_staff_members FOR DELETE
   USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
 ```
 
-### 3.10 `tenant_subscriptions` — Suscripción SaaS del complejo
+### 3.8 `tenant_subscriptions` — Suscripción SaaS del complejo
 
 ```sql
 -- ============================================================
@@ -1007,7 +1016,7 @@ CREATE POLICY tenant_isolation_delete ON tenant_subscriptions FOR DELETE
 COMMENT ON TABLE tenant_subscriptions IS 'Suscripción SaaS del complejo. 1:1 con tenants.';
 ```
 
-### 3.11 `notifications` — Notificaciones enviadas
+### 3.9 `notifications` — Notificaciones enviadas
 
 ```sql
 -- ============================================================
@@ -1208,11 +1217,10 @@ CREATE TABLE player_tenant_relationships (
   -- Métricas de comportamiento (actualizadas por triggers/jobs)
   bookings_count   INTEGER NOT NULL DEFAULT 0,      -- Total de reservas
   noshow_count     INTEGER NOT NULL DEFAULT 0,      -- Total de no-shows
+  balance          INTEGER NOT NULL DEFAULT 0       -- Saldo deudor en centavos ARS (no-show). CHECK >= 0
+                   CHECK (balance >= 0),
   last_booking_at  TIMESTAMPTZ,
   first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  -- Saldo deudor (Modelo ATC, cambio #5)
-  balance          INTEGER NOT NULL DEFAULT 0,      -- Centavos ARS. Si > 0, bloqueado para reservas online
 
   -- Estado de la relación
   status           TEXT NOT NULL DEFAULT 'active'   -- 'active' | 'blocked'
@@ -1264,7 +1272,7 @@ COMMENT ON TABLE player_tenant_relationships IS
   'Relación jugador ↔ complejo. Creada en primera reserva. Habilita historial, no-shows y lista negra por complejo.';
 ```
 
-### 3.14 `system_admins` — Administradores internos de TurnoGol
+### 3.13 `system_admins` — Administradores internos de TurnoGol
 
 ```sql
 -- ============================================================
@@ -1320,7 +1328,7 @@ COMMENT ON COLUMN system_admins.mfa_secret IS
   'TOTP secret encriptado en reposo (no en texto plano). Encriptar con pgsodium o a nivel de aplicación.';
 ```
 
-### 3.13 `daily_cash_closes` — Cierres de caja diarios
+### 3.14 `daily_cash_closes` — Cierres de caja diarios
 
 ```sql
 -- ============================================================
@@ -1547,12 +1555,33 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON tenant_subscriptions
 CREATE OR REPLACE FUNCTION enforce_booking_invariants_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- (1) price_snapshot es siempre inm utable (cualquier estado)
+  -- (1) price_snapshot es siempre inmutable (cualquier estado)
   IF OLD.price_snapshot != NEW.price_snapshot THEN
     RAISE EXCEPTION 'price_snapshot es inmutable después de la creación de la reserva.';
   END IF;
 
-  -- (2) Estados terminales: permiten SOLO cambio de notes_internal
+  -- (2) Permitir transición completed -> no_show dentro de 24 horas (corrección de asistencia)
+  IF OLD.status = 'completed' AND NEW.status = 'no_show' THEN
+    IF NOW() - OLD.updated_at > INTERVAL '24 hours' THEN
+      RAISE EXCEPTION 'La corrección de asistencia (completed -> no_show) solo está permitida dentro de las 24 horas de haber finalizado.';
+    END IF;
+    -- Asegurar que solo se cambia el status (y opcionalmente notes_internal/updated_at)
+    IF (
+      NEW.court_id       = OLD.court_id AND
+      NEW.player_id      IS NOT DISTINCT FROM OLD.player_id AND
+      NEW.date           = OLD.date AND
+      NEW.time_start     = OLD.time_start AND
+      NEW.time_end       = OLD.time_end AND
+      NEW.price_snapshot = OLD.price_snapshot AND
+      NEW.deposit_amount = OLD.deposit_amount
+    ) THEN
+      RETURN NEW;
+    ELSE
+      RAISE EXCEPTION 'Al corregir asistencia a no_show, no se pueden modificar otros campos de la reserva.';
+    END IF;
+  END IF;
+
+  -- (3) Estados terminales: permiten SOLO cambio de notes_internal
   IF OLD.status IN ('completed', 'no_show', 'expired', 'canceled_refunded', 'canceled_no_refund') THEN
     IF (
       NEW.status         = OLD.status AND
@@ -1592,7 +1621,7 @@ CREATE TRIGGER enforce_booking_invariants
 
 ---
 
-### 4.4 Guard de transición atómica — Anti-Race-Condition en bookings
+### 4.3 Guard de transición atómica — Anti-Race-Condition en bookings
 
 ```sql
 -- ============================================================

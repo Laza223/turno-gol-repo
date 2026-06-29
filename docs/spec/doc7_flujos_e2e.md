@@ -54,15 +54,15 @@
 
 ```
 PASO 1 — Registro de cuenta
-  ├── Input: email + nombre completo + celular
-  ├── Validación: email válido, celular con formato argentino (+54 9 ...)
-  ├── Acción: crear StaffUser con role='admin'
-  ├── Acción: enviar magic link al email
-  └── Output: pantalla "Revisá tu email"
+  ├── Input: email + password + nombre completo + celular
+  ├── Validación: email válido, password seguro (mínimo 8 caracteres), celular con formato argentino (+54 9 ...)
+  ├── Acción: crear StaffUser con role='admin' y contraseña hasheada
+  ├── Acción: enviar email de verificación de cuenta
+  └── Output: pantalla "Verificá tu cuenta"
 
 PASO 2 — Verificación de email
-  ├── Input: click en magic link (válido 15 minutos, un solo uso)
-  ├── Acción: verificar token → crear sesión JWT
+  ├── Input: click en link de confirmación de email (válido 15 minutos, un solo uso)
+  ├── Acción: verificar token → activar cuenta y crear sesión JWT
   └── Output: redirect a wizard de onboarding (paso 3)
 
 PASO 3 — Datos del complejo (wizard paso 1 de 4)
@@ -119,11 +119,11 @@ PASO 7 — Dashboard con checklist
 
 | Condición | Resultado |
 |---|---|
-| ¿El email ya existe como StaffUser? | Error: "Ya tenés una cuenta. ¿Querés agregar otro complejo?" |
+| ¿El email ya existe como StaffUser? | Error: "Ya tenés una cuenta. Iniciá sesión." |
 | ¿El slug del complejo ya existe? | Auto-generar variante: `complejo-san-martin` → `complejo-san-martin-2` |
 | ¿Salteó la configuración de MP? | El complejo funciona pero las reservas online son sin seña (cobro presencial) |
 | ¿Salteó crear canchas? | El complejo se crea pero no aparece en búsquedas hasta tener al menos 1 cancha activa |
-| ¿El magic link expiró (15 min)? | Botón "Reenviar link" en la pantalla de espera |
+| ¿El link de verificación expiró (15 min)? | Botón "Reenviar link" en la pantalla de espera |
 
 ### Estados intermedios
 
@@ -154,7 +154,7 @@ PASO 7 — Dashboard con checklist
 
 ### Edge cases explícitos
 
-1. **El dueño se registra y nunca verifica el email**: No se crea nada. El magic link expira a los 15 minutos. Puede pedir uno nuevo.
+1. **El dueño se registra y nunca verifica el email**: No se crea nada. El link de verificación expira a los 15 minutos. Puede pedir uno nuevo.
 2. **El dueño empieza el wizard en el celular y quiere seguir en la PC**: Al loguearse en otro dispositivo retoma donde quedó (el wizard guarda progreso en DB, no en localStorage).
 3. **Dos socios quieren registrar el mismo complejo**: El primero que lo registra es el admin. Puede invitar al segundo como admin desde Settings.
 4. **El dueño ya usa ATC Sports y quiere migrar**: v1 no tiene importación automática. El onboarding es desde cero. Documentar como feature futuro.
@@ -183,6 +183,12 @@ PASO 7 — Dashboard con checklist
 - El Tenant tiene `settings.allow_online_booking = true`
 - La cancha tiene status `online`
 - El slot solicitado está libre (sin bookings en status `confirmed` o `pending_payment` con overlap)
+
+> [!NOTE]
+> **Día operativo en la generación de slots**: la grilla de disponibilidad respeta el día operativo
+> del complejo. Si `tenants.closes_next_day = true`, los slots de madrugada (00:00, 01:00…) de los
+> días con `close <= open` se generan DESPUÉS de las 23:00 y se reservan contra el mismo día
+> operativo (`bookings.date` = la noche anterior). El slot 23:00→00:00 se guarda con `time_end='24:00'`.
 
 ### Happy Path — CON SEÑA (el complejo requiere depósito)
 
@@ -305,7 +311,7 @@ Al crear un Booking con status='pending_payment':
 - **Pago rechazado**: Booking en `pending_payment`. El jugador puede reintentar con otro medio de pago.
 - **Timeout**: Booking en `expired`. Slot liberado. Irrecuperable (tiene que hacer una reserva nueva).
 - **Slot ocupado (race condition)**: Booking NO creado. Mensaje amigable + alternativas.
-- **Abandono**: Si el jugador cierra la ventana antes de pagar → timeout en 15 minutos → `expired`.
+- **Abandono**: Si el jugador cierra la ventana antes de pagar → timeout en 6 minutos → `expired`.
 
 ### Efectos secundarios
 
@@ -394,8 +400,11 @@ PASO — Cobro presencial
 ```
 PASO 1 — Selección desde la grilla
   ├── El admin ve la grilla semanal con todas las canchas
+  ├── La grilla respeta el día operativo: si closes_next_day, las madrugadas
+  │   (00:00, 01:00…) se renderizan al final, después de las 23:00
   ├── Click en un slot libre → modal de "Nueva Reserva"
-  ├── Pre-cargado: cancha, fecha, hora inicio, hora fin
+  ├── Pre-cargado: cancha, fecha (día operativo), hora inicio, hora fin
+  │   (el slot 23:00→00:00 usa time_end='24:00')
   └── Output: modal abierto
 
 PASO 2 — Datos del jugador
@@ -488,7 +497,7 @@ La reserva manual no tiene estados intermedios significativos. Se confirma en el
 | Seña registrada por transferencia | 💰 CashFlow: income, category='booking', method='transfer' |
 | Link de pago enviado por email | 📩 Email al jugador con link de MP |
 | Cualquier booking creado | 📊 AuditLog: `booking.created` con actor=staff, actor_id=staff_user.id |
-| Booking con jugador | ⏰ Cron: recordatorio email 24hs antes (solo si jugador tiene email registrado) |
+| Booking con jugador | — (Sin recordatorios en v1, se delega a WhatsApp en v1.5) |
 
 ### Edge cases explícitos
 
@@ -546,7 +555,6 @@ PASO 2 — Procesamiento
   │     └── canceled_reason = motivo ingresado
   ├── SI había seña pagada (deposit_status = 'paid'):
   │     ├── Crear refund en MercadoPago (API de reembolso)
-  │     ├── Crear Payment con type='refund', amount=deposit_amount
   │     └── Actualizar deposit_status → 'refunded'
   ├── SI no había seña:
   │     └── Solo cambiar status (no hay plata que devolver)
@@ -560,7 +568,7 @@ PASO 2 — Procesamiento
 |---|---|
 | Booking cancelado | 📩 Email al jugador: "Tu turno del {fecha} {hora} fue cancelado. Tu seña de ${monto} se devuelve." |
 | Booking cancelado | 📩 Email al complejo: "Cancelación: {cancha} {fecha} {hora} — {jugador}. Slot liberado." |
-| Reembolso procesado | 💰 CashFlow: expense, category='booking', description='Reembolso seña' |
+| Reembolso procesado | 💰 Payment: refund, status='approved', type='refund', method='mercadopago', amount=deposit_amount |
 | Cualquier cancelación | 📊 AuditLog: `booking.canceled` con before_state + after_state |
 
 ---
@@ -591,7 +599,7 @@ PASO 2 — Procesamiento
   │     ├── canceled_by = 'player'
   │     ├── canceled_at = NOW()
   │     └── canceled_reason = motivo
-  ├── deposit_status permanece en 'paid' → la seña queda para el complejo ('captured')
+  ├── deposit_status permanece in 'paid' → la seña queda para el complejo ('captured')
   │     └── Actualizar deposit_status → 'captured'
   ├── NO se hace reembolso en MP
   ├── Liberar el slot
@@ -603,7 +611,7 @@ PASO 2 — Procesamiento
 | Evento | Efecto |
 |---|---|
 | Booking cancelado sin reembolso | 📩 Email al jugador: "Tu turno del {fecha} {hora} fue cancelado. La seña queda para el complejo según la política de cancelación." |
-| Seña capturada | 💰 CashFlow: income, category='booking', description='Seña capturada por cancelación tardía' (NO es expense: la plata ya estaba, solo cambia el motivo) |
+| Seña capturada | 💰 CashFlow: income, category='booking', description='Seña capturada por cancelación tardía' |
 
 ---
 
@@ -683,12 +691,12 @@ ESCENARIO A — El recepcionista marca "No vino" (antes de los 30 min post-turno
   ├── Panel admin → Grilla → Reserva pasada → Botón "No se presentó"
   ├── Confirmación: "¿Confirmar que {jugador} no se presentó?"
   ├── Actualizar Booking: status → 'no_show'
-  ├── Generar deuda (Modelo ATC, cambio #5):
+  ├── Generar deuda por no-show (Modelo ATC, cambio #5):
   │     ├── Si deposit_status = 'paid' → actualizar a 'captured' (retiene seña)
-  │     ├── Calcular deuda: amount_pending = max(0, price_snapshot - seña_capturada)
-  │     ├── Sumar amount_pending al balance del jugador en player_tenant_relationships
-  │     └── Si balance > 0, el jugador queda bloqueado para reservas online en este complejo.
-  └── Output: booking marcado como no_show y deuda registrada
+  │     ├── Incrementar noshow_count del jugador en player_tenant_relationships
+  │     ├── Sumar (price_snapshot − deposit_amount) a player_tenant_relationships.balance (atómico vía addNoShowDebt)
+  │     └── Si balance > 0 → jugador bloqueado para reservar online en este complejo hasta saldar la deuda
+  └── Output: booking marcado como no_show, deuda registrada
 
 ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
   ├── Job programado: buscar bookings con status='confirmed' AND time_end < NOW() - 30min
@@ -702,10 +710,10 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 | Condición | Resultado |
 |---|---|
 | `deposit_status = 'not_required'` y jugador cancela | Sin impacto financiero. Slot liberado. |
-| `deposit_status = 'paid'` y cancela en plazo | Refund vía API de MP + CashFlow de expense |
+| `deposit_status = 'paid'` y cancela en plazo | Refund vía API de MP |
 | `deposit_status = 'paid'` y cancela fuera de plazo | Sin refund. `deposit_status → 'captured'` |
 | Booking tiene `abonado_id` (turno fijo) | El admin decide: ¿el abonado pierde ese turno o se corre? (gestión manual) |
-| Jugador tiene deuda (balance > 0) | Bloqueado para reservar online en este complejo hasta saldar |
+| Jugador tiene ban activo | Bloqueado para reservar online en este complejo hasta que el ban expire o sea levantado |
 | Booking tipo 'block' | NO aplica lógica de penalidad ni reembolso (no hay jugador ni seña) |
 
 ### Edge cases explícitos (todas las variantes)
@@ -714,7 +722,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 2. **El jugador cancela una reserva de turno fijo (abonado)**: La instancia individual se cancela. El abonado sigue activo — la próxima semana se genera normalmente.
 3. **El admin cancela una reserva que está en `pending_payment`**: Se puede cancelar directamente (no hay seña que devolver). Status → `expired` (no `canceled`, porque nunca se confirmó).
 4. **El jugador quiere cancelar pero no tiene la app** (no está registrado, reserva manual): No puede cancelar online. Tiene que llamar/escribir al complejo → el admin cancela (variante 4C).
-5. **Se cae la luz en el complejo y nadie marca asistencia**: El sistema auto-completa todos los bookings como `completed` a los 30 minutos de terminado cada turno. El admin puede corregir después (cambiar a `no_show` desde el historial dentro de las 24hs).
+5. **Se cae la luz en el complejo y nadie marca asistencia**: El sistema auto-completa todos los bookings como `completed` a los 30 minutos de terminado cada turno. El admin puede corregir después (cambiar a `no_show` desde el historial dentro de las 24hs, habilitado por trigger de DB).
 6. **El jugador pagó seña y el complejo cierra inesperadamente**: El admin tiene que cancelar todas las reservas con reembolso (variante 4C masiva). No hay herramienta de cancelación masiva en v1 (edge case poco frecuente).
 7. **Cancelación de una reserva que ya pasó**: NO se puede cancelar un booking en status `completed` o `no_show` (estados finales inmutables, ver Doc 6).
 
@@ -889,7 +897,7 @@ DESCUENTO SEMANAL (manual, cuando el grupo viene a jugar):
     ├── Checkbox "Mantener saldo" (tildado por defecto, como ATC)
     ├── DESTILDAR → descuenta price_snapshot del credit_balance
     │     ├── setea bookings.credit_applied = price_snapshot
-    │     └── NO genera CashFlow (la plata ya entró al cargar el saldo) → evita doble conteo
+    │     └── NO genera CashFlow (la plata ya entró al cargar el saldo)
     ├── Re-TILDAR → devuelve el saldo (credit_applied → 0). Solo mientras la instancia está confirmed.
     └── Si el saldo no alcanza (credit_balance < price_snapshot) → ❌ "El saldo no alcanza"
 
@@ -914,7 +922,7 @@ INVARIANTE: credit_balance = Σ(abonado_payment) − Σ(credit_applied). CHECK >
 
 ---
 
-## FLUJO 5B: Gestión de Jugador y Cobro de Deuda (cambio #9)
+## FLUJO 5B: Gestión de Jugador y Control de Bans (cambio #9)
 
 - **URL**: Panel admin → Jugadores (`/jugadores`)
 - **Actor**: admin o manager (`requireOperatorStaff()`)
@@ -923,16 +931,15 @@ INVARIANTE: credit_balance = Σ(abonado_payment) − Σ(credit_applied). CHECK >
 ```
 LISTADO (/jugadores)
   ├── Búsqueda por nombre / teléfono / email
-  └── Orden: con deuda primero → última reserva → nombre. Badge rojo si balance > 0.
+  └── Orden: con ban activo primero → última reserva → nombre. Badge rojo si está baneado.
 
 FICHA (/jugadores/{playerId})
   ├── Datos de contacto + "cliente desde" (first_seen_at)
-  ├── Stats: reservas totales, completadas, ausencias, tasa de ausencia
-  ├── Deudas: muestra player_tenant_relationships.balance
-  │     └── "+ Registrar pago" (monto ≤ deuda + medio de pago)
-  │           ├── CashFlow income (entra a caja)
-  │           ├── balance -= monto (GREATEST(0, …); idempotente por idempotency key)
-  │           └── balance llega a 0 → el jugador puede reservar online de nuevo (cambio #5)
+  ├── Stats: reservas totales, completadas, ausencias (noshow_count), tasa de ausencia
+  ├── Bans: muestra historial de bans en este complejo
+  │     └── Acciones: "+ Crear Ban" (razón, duración) o "Levantar Ban" (activos)
+  │           ├── Crear/desactivar en tenant_player_bans
+  │           └── El jugador queda bloqueado o desbloqueado para reservar online
   ├── Abonados: abonos del jugador con su saldo a favor → "+ Cargar saldo" (ver Flujo 5)
   └── Historial: últimas reservas con estado
 ```
@@ -941,16 +948,14 @@ FICHA (/jugadores/{playerId})
 
 | Condición | Resultado |
 |---|---|
-| Pago > deuda pendiente | ❌ Rechazado ("El monto supera la deuda"). La deuda no es una billetera. |
-| Jugador sin deuda (balance = 0) | No se muestra el formulario de pago ("Sin deuda"). |
-| Caja del día ya cerrada | ❌ El cobro se rechaza: registrarlo como ajuste en Caja. |
+| Ban expirado o levantado | El jugador vuelve a estar habilitado para reservar online. |
 | Jugador no vinculado al complejo | 404 (no aparece en el módulo). |
 
 ### Efectos secundarios
 
 | Evento | Efecto |
 |---|---|
-| Pago de deuda registrado | 📊 AuditLog: `player.debt_payment` · CashFlow income en caja · balance reducido |
+| Ban manual creado/levantado | 📊 AuditLog: `player.ban_created` / `player.ban_lifted` |
 | Carga de saldo de abonado | 📊 AuditLog: `abonado.credit_loaded` · CashFlow `abonado_payment` |
 
 ---
@@ -1264,7 +1269,7 @@ DÍA 7 — SUSPENDED (admin solo lectura, jugadores siguen)
   │     └── Las reservas ya confirmadas se mantienen (no se cancelan)
   ├── Jugadores: siguen con acceso normal
   │     ├── Pueden ver sus reservas confirmadas
-  │     ├── Reciben recordatorios por email normalmente
+  │     ├── Reservas de jugadores se mantienen intactas
   │     └── NO se generan nuevas instancias de abonados
   ├── 📩 Email al dueño: "Tu acceso a TurnoGol fue limitado por falta de pago. 
   │    Regularizá tu situación para recuperar el acceso completo."
@@ -1298,7 +1303,7 @@ DÍA 97 — DELETED
 | Condición | Resultado |
 |---|---|
 | Cobro falla 1 vez | `past_due`. Acceso completo. Reintentos automáticos. |
-| 7 días sin pago | `suspended`. Admin solo lectura. Jugadores siguen viendo reservas y recibiendo recordatorios. |
+| 7 días sin pago | `suspended`. Admin solo lectura. Jugadores siguen viendo reservas. |
 | 14 días sin pago | `blocked`. Sin acceso para nadie. |
 | 90 días sin pago | `churned`. Datos archivados → eliminados a los 97 días. |
 | El dueño paga en cualquier momento del dunning | Status → `active` inmediatamente. Acceso restaurado. |
@@ -1343,7 +1348,7 @@ PAST_DUE ── retry 2 ──── retry 3 ──── SUSPENDED ────
 1. **El dueño cambia de tarjeta pero no notifica a TurnoGol**: Tiene que actualizar el medio de pago en MP. TurnoGol no gestiona medios de pago directamente.
 2. **El dueño paga la deuda el día 89** (justo antes del churn): Se reactiva todo. Los datos se mantienen. Status → `active`.
 3. **Durante la suspensión (día 7-14), los abonados del complejo**: NO se generan nuevas instancias rolling. Las instancias ya existentes se mantienen.
-4. **Un jugador tiene reserva y el complejo se suspende (día 7)**: La reserva se mantiene. El jugador puede ver su reserva y recibe recordatorios normalmente.
+4. **Un jugador tiene reserva y el complejo se suspende (día 7)**: La reserva se mantiene. El jugador puede ver su reserva normalmente.
 5. **Un jugador tiene reserva y el complejo se bloquea (día 14)**: La reserva se mantiene en DB pero el jugador ve "complejo no disponible". Si quiere cancelar → no puede hacerlo online.
 6. **El dueño tiene dos complejos y solo uno está en dunning**: Son independientes. Solo el complejo con deuda se suspende.
 7. **Falla el webhook de MP y el pago se acreditó pero TurnoGol no se enteró**: MP reintenta webhooks. Si después de 24hs sigue sin llegar → polling manual de la API de MP para verificar estado.
@@ -1367,7 +1372,7 @@ PAST_DUE ── retry 2 ──── retry 3 ──── SUSPENDED ────
 
 ### Precondiciones
 - Tenant con status `trialing` o `active`
-- StaffUser con rol `admin` (solo el admin puede cancelar, no otro admin sin PIN)
+- StaffUser con rol `admin` (solo el staff con rol 'admin' puede cancelar)
 - TenantSubscription con status `trialing` o `active`
 
 ### Happy Path

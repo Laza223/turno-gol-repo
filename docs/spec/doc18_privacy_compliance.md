@@ -52,7 +52,7 @@ TurnoGol opera en DOS roles bajo la Ley 25.326:
 | Dato | Tipo (Ley 25.326) | Origen | Finalidad | Base legal | Retención |
 |---|---|---|---|---|---|
 | Nombre y apellido | Dato personal | Registro / OAuth | Identificación en reservas | Ejecución de contrato | Mientras tenga cuenta activa + 90 días |
-| Email | Dato personal | Registro / OAuth | Autenticación (magic link), comunicaciones | Ejecución de contrato | Idem |
+| Email | Dato personal | Registro / OAuth | Autenticación (magic link jugadores, password staff), comunicaciones | Ejecución de contrato | Idem |
 | Teléfono celular | Dato personal | Registro (opcional) | Contacto secundario del jugador (mostrar al complejo) | Ejecución de contrato | Idem |
 | Historial de reservas | Dato personal | Uso del servicio | Gestión, historial del jugador | Ejecución de contrato | 12 meses activo, luego se anonimiza |
 | Historial de pagos | Dato personal | MercadoPago | Registro financiero | Obligación legal (facturación) | 5 años (normativa contable argentina) |
@@ -77,7 +77,7 @@ TurnoGol opera en DOS roles bajo la Ley 25.326:
 |---|---|
 | **Número de tarjeta de crédito/débito** | MercadoPago lo maneja bajo PCI DSS. Nosotros nunca vemos, tocamos ni almacenamos un número de tarjeta. |
 | **CVV** | Idem. |
-| **Contraseñas** | Usamos magic link y OAuth. No existe campo de password en nuestra DB. |
+| **Contraseñas** | Jugadores usan magic link/OAuth. Staff usa contraseñas hasheadas en Supabase Auth. Nunca en texto plano. |
 | **Datos biométricos** | No aplica a nuestro producto. |
 | **Datos de salud** | No aplica. |
 | **Datos de orientación sexual, religión, opinión política** | No aplica. Estos son "datos sensibles" bajo la Ley 25.326 y requieren consentimiento expreso y reforzado. No los recolectamos bajo ninguna circunstancia. |
@@ -227,7 +227,7 @@ IMPLEMENTACIÓN:
 
 1. El jugador envía email a privacidad@turnogol.app solicitando sus datos.
 
-2. Verificamos la identidad (enviando un magic link al email registrado).
+2. Verificamos la identidad (enviando un link de verificación al email registrado).
 
 3. Generamos un export JSON/CSV con:
    - Datos personales (nombre, email, teléfono)
@@ -346,8 +346,8 @@ Según la Disposición 11/2006 de la DNPDP, los datos se clasifican en niveles d
 
 | Requisito (Disp. 11/2006) | Implementación en TurnoGol | Referencia |
 |---|---|---|
-| **Control de acceso** | RLS con 6 capas de protección. Un único rol `admin` por tenant; zonas sensibles protegidas por PIN. | Doc 12 |
-| **Identificación y autenticación** | JWT con refresh token rotativo. Magic link + OAuth. Sin passwords. | Doc 11, ADR-002 |
+| **Control de acceso** | RLS con 6 capas de protección. Gating por rol (`admin` y `manager`); sin sistema de PIN. | Doc 12 |
+| **Identificación y autenticación** | JWT con refresh token rotativo. Magic link + OAuth (jugadores), password (staff). | Doc 11, ADR-013 |
 | **Registro de accesos** | Tabla `audit_logs` INSERT-only con actor, acción, recurso, timestamp. Retención 12 meses. | Doc 5 §6, Doc 13 |
 | **Cifrado en tránsito** | HTTPS obligatorio en toda la aplicación (Vercel SSL automático). | Doc 14 §9 |
 | **Cifrado at rest** | Supabase cifra la DB at rest con AES-256 (feature del plan Pro). | Supabase infra |
@@ -398,7 +398,7 @@ SOLUCIÓN:
 | **Datos del jugador activo** | Mientras tenga cuenta activa | Ejecución del servicio | — |
 | **Datos del jugador inactivo** (sin reservas en 12 meses) | 12 meses después de la última actividad | Período razonable de reactivación | Se envía email: "¿Seguís usando TurnoGol?" Si no responde en 30 días → anonimización. |
 | **Datos del tenant activo** | Mientras sea cliente | Ejecución del contrato | — |
-| **Datos del tenant churned** | 90 días post-churn | Período de reactivación (Doc 9) | Anonimización o eliminación completa. Comunicación previa al dueño (día 60 y 85). |
+| **Datos del tenant churned** | 90 días post-churn | Período de reactivación (Doc 4 §2/§9) | Anonimización o eliminación completa. Comunicación previa al dueño (día 60 y 85). |
 | **Historial de reservas** | 12 meses con datos personales, luego anonimizado | Reportes y uso razonable | Se elimina player_id, se mantiene estadística para el complejo. |
 | **Datos financieros** (pagos, facturas) | 5 años | Obligación contable argentina (Código de Comercio, Art. 67) | Destrucción segura. |
 | **Audit logs** | 12 meses | Razonabilidad operativa | Eliminación automática vía cron (data-retention-cleanup). |
@@ -468,7 +468,7 @@ async function dataRetentionCleanup() {
 
 | Tipo | Ejemplos | Consentimiento necesario | Opt-out posible |
 |---|---|---|---|
-| **Transaccional** | Confirmación de reserva, recordatorio, cancelación, magic link | Implícito (necesario para el servicio) | ❌ No (son parte del servicio contratado) |
+| **Transaccional** | Confirmación de reserva, cancelación, magic link/verificación | Implícito (necesario para el servicio) | ❌ No (son parte del servicio contratado) |
 | **Servicio** | Cambio de precio, vencimiento de trial, cobro fallido | Implícito (necesario para la relación comercial) | ❌ No, mientras sea cliente activo |
 | **Marketing** | Ofertas, nuevos complejos, partidos recomendados | Consentimiento explícito (checkbox opt-in) | ✅ Sí, en cada email + perfil |
 
@@ -632,7 +632,7 @@ Operativo:
 │                                                                │
 │  DATOS QUE NUNCA TOCAMOS:                                      │
 │    Tarjetas de crédito (→ MercadoPago PCI DSS)                │
-│    Contraseñas (→ magic link / OAuth)                         │
+│    Contraseñas en texto plano (→ hasheadas / magic link)      │
 │    Datos sensibles (salud, religión, etc.)                    │
 │                                                                │
 │  DERECHOS ARCO:                                                │

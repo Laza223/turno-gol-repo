@@ -77,21 +77,22 @@ para empezar a configurar mi complejo sin fricción.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en `turnogol.app/registrar`, cuando ingreso email válido + nombre completo + celular con formato argentino y hago click en "Crear cuenta", entonces se crea un StaffUser y recibo un magic link en mi email.
-- [ ] Dado que recibí el magic link, cuando hago click dentro de los 15 minutos, entonces quedo autenticado y soy redirigido al wizard de onboarding.
-- [ ] Dado que completé el registro, cuando inicio sesión, entonces mi rol es `admin` automáticamente.
+- [ ] Dado que estoy en `turnogol.app/registrar`, cuando ingreso email válido + password seguro + nombre completo + celular con formato argentino y hago click en "Crear cuenta", entonces se crea un StaffUser con contraseña hasheada y recibo un email de verificación de cuenta.
+- [ ] Dado que recibí el email de verificación, cuando hago click en el link de confirmación dentro de los 15 minutos, entonces mi cuenta se activa, quedo autenticado y soy redirigido al wizard de onboarding.
+- [ ] Dado que completé el registro, cuando inicio sesión con email y contraseña, entonces mi rol es `admin` automáticamente.
 
 ❌ Edge Cases
-- [ ] Si el email ya está registrado como StaffUser → mostrar: "Ya tenés una cuenta. ¿Querés agregar otro complejo?" con link a login.
+- [ ] Si el email ya está registrado como StaffUser → mostrar: "Ya tenés una cuenta. Iniciá sesión." con link a login.
 - [ ] Si el celular no tiene formato argentino válido (+54 9...) → error de validación inline sin recargar la página.
-- [ ] Si el magic link expiró (>15 minutos) → mostrar: "Este link expiró. Hacé click para recibir uno nuevo."
-- [ ] Si el magic link ya fue usado → mostrar: "Este link ya fue utilizado. Iniciá sesión."
+- [ ] Si la contraseña es menor a 8 caracteres → error "La contraseña debe tener al menos 8 caracteres".
+- [ ] Si el link de verificación expiró (>15 minutos) → mostrar: "Este link expiró. Hacé click para recibir uno nuevo."
+- [ ] Si el link de verificación ya fue usado → mostrar: "Este link ya fue utilizado. Iniciá sesión."
 - [ ] Si el email no llega en 30 segundos → mostrar botón "Reenviar email" + texto "Revisá tu carpeta de spam."
 
 🚫 Out of Scope
 - NO incluye registro con Google/Apple (eso es solo para jugadores, no para staff)
 - NO incluye verificación de identidad del dueño
-- NO incluye registro con contraseña (es magic link only)
+- NO incluye registro sin contraseña (el staff siempre tiene contraseña)
 
 **Dependencias**: Ninguna (es el primer flujo del sistema)
 **Bloquea**: US-ONB-002, US-ONB-003, US-ONB-004
@@ -115,8 +116,8 @@ para tener mi complejo operativo en menos de 20 minutos.
 
 ✅ Happy Path
 - [ ] Dado que estoy autenticado y no tengo un Tenant creado, cuando entro al panel, entonces soy redirigido automáticamente al wizard de onboarding (paso 1 de 4).
-- [ ] **Paso 1 (Datos del complejo)**: Dado que estoy en el paso 1, cuando ingreso nombre + dirección + ciudad + provincia, entonces se crea un Tenant con status=`trial`, trial_ends_at=NOW()+30 días, y un slug auto-generado desde el nombre.
-- [ ] **Paso 2 (Canchas)**: Dado que estoy en el paso 2, cuando creo al menos 1 cancha con nombre + tipo de superficie + capacidad, entonces se crea un Court con status=`active` y pricing pre-cargado según franja horaria.
+- [ ] **Paso 1 (Datos del complejo)**: Dado que estoy en el paso 1, cuando ingreso nombre + dirección + ciudad + provincia, entonces se crea un Tenant con status=`trialing`, trial_ends_at=NOW()+30 días, y un slug auto-generado desde el nombre.
+- [ ] **Paso 2 (Canchas)**: Dado que estoy en el paso 2, cuando creo al menos 1 cancha con nombre + tipo de superficie + capacidad, entonces se crea un Court con status=`online` y pricing pre-cargado según franja horaria.
 - [ ] **Paso 2 (Canchas)**: Los precios default son: mañana $8.000, tarde $10.000, noche $12.000 (weekday), mañana $10.000, noche $15.000 (weekend). Editables por el usuario.
 - [ ] **Paso 3 (Horarios)**: Dado que estoy en el paso 3, cuando veo los horarios pre-cargados (Lun-Dom 08:00-00:00), entonces puedo editarlos por día o dejar los default.
 - [ ] **Paso 4 (Seña)**: Dado que estoy en el paso 4, cuando elijo "Sí, cobrar seña", entonces soy redirigido al OAuth de MercadoPago para conectar mi cuenta.
@@ -332,7 +333,7 @@ para no hacer esperar a nadie y no cometer errores de superposición.
 - [ ] Si creo una reserva tipo `block` → no se notifica a nadie, no hay jugador, no hay CashFlow.
 - [ ] Si creo la reserva para un horario que ya pasó (hoy, hora pasada) → permitido, con label "Reserva retroactiva" en el audit log.
 - [ ] Si intento crear para una fecha anterior a hoy → error: "No se pueden crear reservas en fechas pasadas."
-- [ ] Si selecciono "Enviar link de pago por email" → se genera preferencia de MP, se envía email con link, booking queda en `pending_payment` con timer de 15 min.
+- [ ] Si selecciono "Enviar link de pago por email" → se genera preferencia de MP, se envía email con link, booking queda en `pending_payment` con timer de 6 min.
 - [ ] Si dos recepcionistas intentan crear en el mismo slot → el primero gana (SELECT FOR UPDATE). El segundo ve: "Este turno acaba de ser tomado."
 
 🚫 Out of Scope
@@ -473,39 +474,9 @@ para que otro jugador pueda reservar y el complejo no pierda turnos.
 
 ---
 
-## US-RES-006: Recordatorio de Reserva por Email
+## US-RES-006: [DEPRECADO - POSPUESTO PARA V1.5] Recordatorio de Reserva por Email
 
-**Epic**: Reservas
-**Persona**: Agustín (Jugador Abonado) + Tomás (Jugador Espontáneo)
-**Prioridad**: P0 — Bloqueante
-**Flujo relacionado**: Doc 7, Flujos 2 y 3 (efectos secundarios)
-
-**Historia**:
-Como Agustín o Tomás, que tengo un turno reservado,
-cuando faltan 24 horas y 2 horas para mi turno,
-quiero recibir un recordatorio por email,
-para no olvidarme y llegar a tiempo.
-
-**Criterios de Aceptación**:
-
-✅ Happy Path
-- [ ] Dado que tengo una reserva confirmada para mañana, cuando son las 09:00 ART del día anterior, entonces recibo un email: "Recordatorio: mañana tenés turno en {complejo}, {cancha} a las {hora}."
-- [ ] Dado que tengo una reserva confirmada en 2 horas, cuando el job de recordatorio se ejecuta, entonces recibo un email: "¡En 2 horas jugás! {cancha} en {complejo} a las {hora}. ¡Nos vemos!"
-- [ ] Dado que la reserva fue cancelada antes del recordatorio, cuando el job intenta enviar, entonces NO envía nada (verifica status antes de enviar).
-- [ ] El mensaje de email incluye: nombre del complejo, cancha, fecha, hora. Opcionalmente: dirección del complejo (en el recordatorio de 24hs).
-
-❌ Edge Cases
-- [ ] Si el jugador no tiene email registrado (reserva manual sin Player) → no se envía recordatorio.
-- [ ] Si el servicio de email falla → el mensaje se encola para retry (exponential backoff). No bloquea nada.
-- [ ] Si el jugador tiene muchas reservas el mismo día → recibe un recordatorio por cada una (no agrupar en v1).
-
-🚫 Out of Scope
-- NO incluye opción de cancelar desde el recordatorio (es un link separado)
-- NO incluye confirmación de lectura del email
-- NO incluye personalización del mensaje por parte del complejo
-
-**Dependencias**: US-RES-002 o US-RES-003, US-NOT-001
-**Bloquea**: Ninguna
+> **Nota**: Se eliminó del scope de la V1 según el cambio #18. Los recordatorios de reservas se reconstruirán utilizando WhatsApp en la V1.5.
 
 ---
 
@@ -527,8 +498,7 @@ para que la caja y las estadísticas se actualicen correctamente.
 ✅ Happy Path
 - [ ] Dado que una reserva confirmada tiene `time_end` en el pasado, cuando hago click en ella, entonces veo dos botones: "✅ Jugó" y "❌ No se presentó".
 - [ ] Dado que hago click en "✅ Jugó", entonces el booking pasa a status=`completed`. Estado final inmutable.
-- [ ] Dado que hago click en "❌ No se presentó", entonces el booking pasa a status=`no_show` y se evalúa la penalidad según `tenant.settings.no_show_penalty`.
-- [ ] Dado que el jugador acumula N no-shows según la configuración del complejo, cuando supera el umbral, entonces se crea un ban temporal en `tenant_player_bans`.
+- [ ] Dado que hago click en "❌ No se presentó", entonces el booking pasa a status=`no_show`, se incrementa el contador de ausencias del jugador y se genera la deuda correspondiente en `player_tenant_relationships.balance`.
 
 ❌ Edge Cases
 - [ ] Si nadie marca asistencia en los 30 minutos posteriores a `time_end` → el sistema auto-completa como `completed` (benefit of the doubt). AuditLog: `booking.auto_completed` con actor=system.
@@ -629,15 +599,15 @@ para tomar una decisión informada.
 **Historia**:
 Como Marcelo o Rodrigo,
 cuando necesito cancelar una reserva (mantenimiento, error, pedido del jugador),
-quiero elegir si devuelvo la seña o no, con motivo obligatorio,
-para mantener trazabilidad de por qué se canceló.
+quiero indicar quién cancela (el complejo o el jugador) y el motivo, y que el sistema decida automáticamente si corresponde reembolso según la política,
+para mantener trazabilidad y evitar decisiones financieras manuales.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que hago click en una reserva confirmada en la grilla, cuando elijo "Cancelar", entonces veo dos opciones: "Cancelar CON reembolso" y "Cancelar SIN reembolso".
-- [ ] Dado que elijo "Con reembolso" e ingreso un motivo, cuando confirmo, entonces se procesa refund de MP (si aplica) y booking.status → `canceled_refunded`, canceled_by = `admin`.
-- [ ] Dado que elijo "Sin reembolso" e ingreso un motivo (obligatorio), cuando confirmo, entonces booking.status → `canceled_no_refund`, canceled_by = `admin`.
+- [ ] Dado que hago click en una reserva confirmada en la grilla, cuando elijo "Cancelar", entonces veo: "¿Quién cancela?" con opciones "El complejo" y "El jugador", más un campo de motivo obligatorio.
+- [ ] Dado que selecciono "El complejo" (ej: mantenimiento, lluvia), cuando confirmo, entonces el **servidor** aplica reembolso automático (si había seña) → booking.status → `canceled_refunded`, canceled_by = `admin`.
+- [ ] Dado que selecciono "El jugador" (ej: el jugador llamó para cancelar), cuando confirmo, entonces el **servidor** evalúa la política horaria: si está en plazo → `canceled_refunded`; si está fuera de plazo → `canceled_no_refund`, deposit_status → `captured`.
 - [ ] Dado que la reserva fue cancelada por admin, entonces el jugador recibe email diferenciado: incluye "El complejo {nombre} canceló tu turno" + info de reembolso si aplica.
 - [ ] Dado que la cancelación se completó, entonces se registra AuditLog con: `booking.canceled_by_admin`, motivo, staff_user_id.
 
@@ -663,25 +633,24 @@ para mantener trazabilidad de por qué se canceló.
 **Historia**:
 Como Rodrigo,
 cuando un jugador no se presentó a su turno,
-quiero marcarlo como "no se presentó" para que se le genere una deuda automáticamente,
-para desincentivar los no-shows y bloquearle reservas futuras hasta que pague.
+quiero marcarlo como "no se presentó" para que se registre la deuda correspondiente y se le bloquee reservar online hasta saldarla,
+para desincentivar los no-shows y recuperar el dinero perdido.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
 - [ ] Dado que la hora de fin del turno ya pasó, cuando hago click en "No se presentó", entonces booking.status → `no_show`.
-- [ ] Dado que se marca como no_show, entonces se calcula la deuda: `amount_pending = max(0, price_snapshot - seña_capturada)`.
-- [ ] Dado que la deuda > 0, entonces se suma al `balance` del jugador en `player_tenant_relationships`.
-- [ ] Dado que el jugador tiene deuda (`balance > 0`), cuando intenta reservar online en ESTE complejo, entonces ve error: "Tenés una deuda pendiente de ${balance}. Contactá al complejo para saldarla y volver a reservar."
+- [ ] Dado que se marca como no_show, entonces se incrementa `noshow_count` en `player_tenant_relationships` y se suma `price_snapshot − deposit_amount` a `balance`.
+- [ ] Dado que `balance > 0`, cuando el jugador intenta reservar online en ESTE complejo, entonces ve error: "Tenés una deuda pendiente en este complejo. Contactá al complejo para regularizarla."
+- [ ] Dado que un admin cobra la deuda desde la ficha del jugador (Módulo Jugadores), entonces `balance` se reduce y si llega a 0 el jugador puede volver a reservar.
 
 ❌ Edge Cases
-- [ ] Si la reserva estaba 100% pagada → no se genera deuda (`balance` no cambia).
 - [ ] Si nadie marca en 30 minutos post-time_end → el sistema auto-completa como `completed` (NO como no_show). El admin tiene 24hs para corregir.
-- [ ] Si el jugador no tiene cuenta (reserva manual sin Player) → no se puede generar deuda. Se marca como no_show sin impacto.
+- [ ] Si el jugador no tiene cuenta (reserva manual sin Player) → no se puede generar un ban en el sistema. Se marca como no_show sin bloqueo.
 
 🚫 Out of Scope
-- NO incluye penalidad adicional más allá del precio del turno (no hay recargo).
-- NO incluye cobro automático de la deuda de la tarjeta.
+- NO incluye cobro online de la deuda (se cobra en persona en el mostrador).
+- NO incluye bans globales automáticos (el ban es solo para este complejo).
 
 **Dependencias**: US-RES-007
 **Bloquea**: Ninguna
@@ -873,7 +842,7 @@ para llevar el control de cuánto pagó cada abonado sin doble-contar la plata e
 
 ---
 
-## US-JUG-ADM-001: Módulo Jugadores y Cobro de Deuda (cambio #9)
+## US-JUG-ADM-001: Módulo Jugadores y Gestión de Bans (cambio #9)
 
 **Epic**: Abonados / Administración
 **Persona**: Marcelo (Dueño) / Rodrigo (Encargado)
@@ -883,24 +852,23 @@ para llevar el control de cuánto pagó cada abonado sin doble-contar la plata e
 **Historia**:
 Como Marcelo,
 quiero un módulo central "Jugadores" con la ficha de cada cliente vinculado al complejo,
-para ver su historial, cobrar deudas de no-show y cargar saldo de sus abonos en un solo lugar.
+para ver su historial, gestionar sus bans de no-show y cargar saldo de sus abonos en un solo lugar.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que entro a `/jugadores`, entonces veo solo jugadores vinculados al complejo (no invitados telefónicos), con buscador por nombre/teléfono/email y badge rojo si tienen deuda.
-- [ ] Dado que abro una ficha, entonces veo stats (reservas, ausencias, tasa), deudas, abonados con saldo, e historial de reservas.
-- [ ] Dado que el jugador tiene deuda, cuando registro un pago (≤ deuda), entonces se genera un CashFlow income y `player_tenant_relationships.balance` baja; al llegar a 0 puede volver a reservar online.
+- [ ] Dado que entro a `/jugadores`, entonces veo solo jugadores vinculados al complejo (no invitados telefónicos), con buscador por nombre/teléfono/email y badge rojo si tienen un ban activo.
+- [ ] Dado que abro una ficha, entonces veo stats (reservas, ausencias (noshow_count), tasa), bans activos/historial, abonados con saldo, e historial de reservas.
+- [ ] Dado que el jugador tiene un ban activo, cuando hago click en "Levantar ban", entonces se desactiva el registro en `tenant_player_bans` y el jugador queda habilitado para volver a reservar online.
 
 ❌ Edge Cases
-- [ ] Un pago mayor a la deuda se rechaza ("El monto supera la deuda").
-- [ ] Si el jugador no tiene deuda, no se ofrece registrar pago.
+- [ ] Si el jugador tiene ban activo, se ofrece el botón "Levantar ban"; si no, se ofrece la opción "+ Crear ban".
 - [ ] El módulo está protegido con `requireOperatorStaff()` (admin + manager).
 
 🚫 Out of Scope
 - NO crea perfiles automáticamente para invitados telefónicos (decisión #10 cancelada).
 
-**Dependencias**: US-ABO-005, cambio #5 (deuda por no-show)
+**Dependencias**: US-ABO-005, cambio #5 (ban temporal por no-show)
 **Bloquea**: Ninguna
 
 ---
@@ -1174,26 +1142,27 @@ para que el sistema aplique mis reglas automáticamente sin intervención manual
 **Historia**:
 Como Marcelo,
 cuando incorporo un nuevo empleado al complejo,
-quiero invitarlo como `admin` con su propio email,
-para que pueda operar el sistema completo. Las zonas sensibles (precios, suscripción, configuración) están protegidas con un PIN compartido que solo yo conozco.
+quiero invitarlo como `admin` o `manager` con su propio email,
+para que pueda operar el sistema según su rol. Las operaciones más sensibles (MercadoPago, facturación, staff) solo las puede hacer un admin, mientras que el manager realiza la operación diaria sin necesidad de PIN.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Staff → "+ Agregar", cuando ingreso email + nombre, entonces se envía magic link al email del nuevo admin.
-- [ ] Dado que el staff activa su cuenta, cuando ingresa al panel, entonces accede a todo el sistema. Las zonas sensibles (precios, suscripción, configuración) requieren ingreso de PIN de administrador.
+- [ ] Dado que estoy en Settings → Staff → "+ Agregar", cuando ingreso email + nombre + rol (`admin` / `manager`), entonces se envía un link de confirmación al email del nuevo staff.
+- [ ] Dado que el staff activa su cuenta y configura su contraseña, cuando ingresa al panel, entonces accede a las funcionalidades habilitadas para su rol.
+- [ ] Dado que el rol es `manager`, entonces el acceso a MercadoPago, gestión de staff, facturación y suscripción SaaS está bloqueado (gating a nivel aplicación).
+- [ ] Dado que el rol es `admin`, entonces el acceso es completo sin restricciones.
 - [ ] Dado que quiero desactivar un staff, cuando lo desactivo, entonces pierde acceso al panel inmediatamente y sus sesiones activas se invalidan.
-- [ ] Dado que quiero revocar el PIN de zonas sensibles (ej: un empleado se fue), cuando lo cambio en Settings → Seguridad, entonces todos los empleados deben recibir el nuevo PIN del dueño por canal privado.
 
 ❌ Edge Cases
-- [ ] Si el único admin se desactiva → error: "El complejo debe tener al menos un admin."
-- [ ] Si invito a un email que ya es staff de OTRO complejo → permitido. Cada complejo es independiente.
+- [ ] Si el único `admin` se desactiva o se cambia de rol a `manager` → error: "El complejo debe tener al menos un admin activo."
+- [ ] Si invito a un email que ya es staff de OTRO complejo → permitido. Cada complejo es independiente y el usuario puede tener roles distintos en cada complejo.
 - [ ] Si el staff nunca activó su cuenta → puedo reenviar la invitación o eliminarla.
 
 🚫 Out of Scope
-- NO incluye permisos granulares (ej: "puede ver caja pero no cerrarla")
-- NO incluye horarios de acceso (ej: "solo puede entrar de 17 a 00")
-- NO incluye log de actividad por staff (eso está en AuditLog general)
+- NO incluye permisos granulares a medida por usuario (se usan los 2 roles fijos).
+- NO incluye horarios de acceso (ej: "solo puede entrar de 17 a 00").
+- NO incluye log de actividad por staff en pantalla (pero sí se guarda en AuditLog en DB).
 
 **Dependencias**: US-ONB-001
 **Bloquea**: Ninguna
@@ -1439,10 +1408,8 @@ para que las notificaciones lleguen de forma confiable.
 - [ ] Dado que un evento dispara una notificación (ver tabla de eventos abajo), cuando el mensaje se encola, entonces se envía via el servicio de email en <30 segundos.
 - [ ] Dado que el email se envió, entonces se registra en tabla `notifications` con: tipo, destinatario, contenido, status (sent/failed), timestamp.
 - [ ] Los emails usan templates HTML con branding de TurnoGol:
-  - Magic link de autenticación
+  - Magic link de autenticación (jugadores) / Verificación (staff)
   - Confirmación de reserva (al jugador + al complejo)
-  - Recordatorio 24hs antes del turno
-  - Recordatorio 2hs antes del turno
   - Cancelación (por jugador / por admin)
   - Expiración de reserva por timeout
   - Confirmación de abonado (alta / pausa / reactivación / cancelación)
@@ -1495,7 +1462,7 @@ para tomar la decisión de suscribirme antes de perder el acceso.
 
 ❌ Edge Cases
 - [ ] Si el trial venció y no me suscribí → acceso en solo lectura por 60 días (BLOCKED), luego CHURNED día 91, DELETED día 98.
-- [ ] Si el staff que ve el banner no tiene PIN de admin → el botón dice "Contactá al administrador" (no puede suscribirse sin PIN).
+- [ ] Si el staff que ve el banner tiene el rol `manager` → el botón de suscripción está deshabilitado y dice "Suscripción restringida a administrador".
 
 🚫 Out of Scope
 - NO incluye countdown en tiempo real (se actualiza al cargar la página)
@@ -1591,7 +1558,7 @@ para tener acceso completo sin interrupciones después del trial.
 
 **Epic**: SaaS Lifecycle
 **Persona**: Sistema
-**Prioridad**: P0 — Bloqueante
+**Prioridad**: P2 — Deseable
 **Flujo relacionado**: Doc 7, Flujo 8
 
 **Historia**:
@@ -1698,7 +1665,7 @@ para seguir operando sin tener que cancelar y re-suscribirme.
 
 **Epic**: SaaS Lifecycle
 **Persona**: Marcelo (Dueño)
-**Prioridad**: P0 — Bloqueante
+**Prioridad**: P2 — Deseable
 **Flujo relacionado**: Doc 7, Flujo 9
 
 **Historia**:
@@ -1742,9 +1709,9 @@ para irme sin sorpresas y poder volver si cambio de opinión.
 | Epic | Código | Stories | Prioridad |
 |---|---|---|---|
 | Onboarding | ONB | 5 | P0 |
-| Reservas | RES | 7 | P0 |
+| Reservas | RES | 6 | P0 |
 | Cancelaciones | CAN | 4 | P0-P1 |
-| Abonados | ABO | 4 | P1 |
+| Abonados | ABO | 5 | P1 |
 | Caja y Pagos | CAJ | 5 | P0-P2 |
 | Administración | ADM | 5 | P0-P2 |
 | App del Jugador | JUG | 4 | P0-P3 |
@@ -1754,29 +1721,30 @@ para irme sin sorpresas y poder volver si cambio de opinión.
 
 ## Mapa de Prioridades para Sprint Planning
 
-### 🔴 P0 — Sin esto no se puede lanzar (22 stories)
+### 🔴 P0 — Sin esto no se puede lanzar (23 stories)
 
 ```
 ONB-001  Registro                    ONB-002  Wizard
 ONB-004  MercadoPago                 ONB-005  Página pública
 RES-001  Grilla admin                RES-002  Reserva manual
 RES-003  Reserva online (seña)       RES-004  Reserva online (sin seña)
-RES-005  Timer expiración            RES-006  Recordatorio email
-RES-007  Completar reserva           CAN-001  Cancelar en plazo
-CAN-002  Cancelar fuera plazo        CAN-003  Admin cancela
-CAJ-001  Pago manual                 CAJ-002  Vista caja
-ADM-001  CRUD canchas                ADM-002  Políticas
-ADM-003  Staff                       ADM-005  Horarios/feriados
-JUG-001  Autenticación               JUG-002  Mis reservas
-NOT-001  Emails transaccionales      SAS-001  Suscripción
+RES-005  Timer expiración            RES-007  Completar reserva
+CAN-001  Cancelar en plazo           CAN-002  Cancelar fuera plazo
+CAN-003  Admin cancela               CAJ-001  Pago manual
+CAJ-002  Vista caja                  ADM-001  CRUD canchas
+ADM-002  Políticas                   ADM-003  Staff
+ADM-005  Horarios/feriados           JUG-001  Autenticación
+JUG-002  Mis reservas                NOT-001  Emails transaccionales
+SAS-001  Suscripción
 ```
 
-### 🟡 P1 — Importante, puede ir en sprints 2-3 (11 stories)
+### 🟡 P1 — Importante, puede ir en sprints 2-3 (15 stories)
 
 ```
-ONB-003  Checklist                   CAN-004  No-show penalidad
+ONB-003  Checklist                   CAN-004  Ban no-show
 ABO-001  Crear abonado               ABO-002  Generación rolling
 ABO-003  Pausar/reactivar            ABO-004  Cancelar abonado
+ABO-005  Saldo a favor               JUG-ADM-001 Módulo jugadores (bans)
 CAJ-003  Cierre de caja              CAJ-005  Reportes
 JUG-003  Buscar canchas              NOT-002  Banner trial
 NOT-003  Notificaciones internas     SAS-003  Dunning
@@ -1800,10 +1768,10 @@ JUG-004  Complejo favorito
 
 | Persona | Stories donde es protagonista |
 |---|---|
-| **Marcelo** (Dueño) | ONB-001,002,003,004 · ADM-001,002,003,004,005 · ABO-001,003,004 · CAJ-002,003,005 · SAS-001,003,004,005 · NOT-002 |
-| **Rodrigo** (Recepcionista) | RES-001,002,007 · CAJ-001,002,003,004 · CAN-003,004 · ADM-003 · NOT-003 |
-| **Agustín** (Abonado) | RES-006 · JUG-001,002 · CAN-001 |
-| **Tomás** (Espontáneo) | ONB-005 · RES-003,004,006 · JUG-001,002,003,004 · CAN-001,002 |
+| **Marcelo** (Dueño) | ONB-001,002,003,004 · ADM-001,002,003,004,005 · ABO-001,003,004,005 · CAJ-002,003,005 · SAS-001,003,004,005 · NOT-002 |
+| **Rodrigo** (Recepcionista) | RES-001,002,007 · CAJ-001,002,003,004 · CAN-003,004 · ADM-003 · NOT-003 · JUG-ADM-001 |
+| **Agustín** (Abonado) | JUG-001,002 · CAN-001 |
+| **Tomás** (Espontáneo) | ONB-005 · RES-003,004 · JUG-001,002,003,004 · CAN-001,002 |
 | **Sistema** (Jobs) | RES-005 · ABO-002 · NOT-001 · SAS-002,003 |
 
 ---

@@ -444,7 +444,7 @@ async function expireTrials() {
   for (const tenant of expiredTrials) {
     // Para cada tenant, setea el contexto y opera
     await systemDb.query("SET LOCAL app.current_tenant_id = $1", [tenant.id]);
-    await systemDb.query("UPDATE tenants SET status = 'churned' WHERE id = $1", [tenant.id]);
+    await systemDb.query("UPDATE tenants SET status = 'blocked' WHERE id = $1", [tenant.id]);
     // Encolar notificaciones, etc.
   }
 }
@@ -583,10 +583,14 @@ Cuando Agustín consulta "mis reservas", ve reservas de TODOS los complejos:
 
 SELECT b.*, c.name as court_name, t.name as complex_name
 FROM bookings b
-JOIN courts c ON c.id = b.court_id
+JOIN public_courts_summary c ON c.id = b.court_id
 JOIN tenants t ON t.id = b.tenant_id
 WHERE b.player_id = $player_id  -- filtrado por jugador, no por tenant
 ORDER BY b.date DESC, b.time_start DESC;
+
+-- NOTA: Para obtener court_name, el jugador hace JOIN contra la view 
+-- public_courts_summary (sin RLS) en vez de contra la tabla courts (con RLS por tenant), 
+-- ya que courts no tiene policy para jugadores y devolvería 0 filas sin contexto de tenant.
 ```
 
 > > [!IMPORTANT]

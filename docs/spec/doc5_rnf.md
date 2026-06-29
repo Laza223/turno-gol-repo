@@ -213,7 +213,6 @@ SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 - `plans` — planes de suscripción SaaS (globales)
 - `price_versions` — historial de precios para inflación ARS
 - `processed_webhooks` — idempotencia de webhooks de MercadoPago
-- `player_tenant_relationships` — relación jugador ↔ complejo (RLS dual: staff + player)
 
 > [!NOTE]
 > **`players` y `staff_users` son globales pero tienen RLS relacional (Fix #5 — Auditoría Opus 4.7).**

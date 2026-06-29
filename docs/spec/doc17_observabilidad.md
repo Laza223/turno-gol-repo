@@ -119,7 +119,7 @@ Cada evento que cambia el estado del sistema genera un log `info`. Estos logs so
 |---|---|---|
 | `booking.created` | `booking_id`, `court_id`, `type`, `method` (manual/online), `price` | Reserva creada |
 | `booking.confirmed` | `booking_id`, `payment_id`, `deposit_amount` | Pago aprobado → confirmada |
-| `booking.expired` | `booking_id`, `reason` (timeout/admin) | Timeout de 15 min sin pago |
+| `booking.expired` | `booking_id`, `reason` (timeout/admin) | Timeout de 6 min sin pago |
 | `booking.canceled` | `booking_id`, `canceled_by`, `refund_amount`, `within_policy` | Cancelación |
 | `booking.completed` | `booking_id` | Marcada como jugada |
 | `booking.no_show` | `booking_id`, `penalty_applied` | Marcada como no-show |

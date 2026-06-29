@@ -148,10 +148,22 @@ updated_at        timestamp     UTC
 > Esto replica el modelo de ATC Sports donde el admin configura el precio por cada combinación de franja en una grilla.
 
 > [!NOTE]
-> **Horarios que cruzan medianoche**: si un complejo abre de 08:00 a 02:00 del día siguiente,
-> se usa la convención de "día operativo". El `opening_hours` del Tenant define el cierre como
-> `"close": "02:00"`. Si `close < open`, se entiende que cierra al día calendario siguiente.
-> Las reservas se almacenan con la fecha del día operativo (no del día calendario).
+> **Horarios que cruzan medianoche (día operativo)**: si un complejo abre de 08:00 a 02:00 del
+> día siguiente, se usa la convención de "día operativo", habilitada por el flag explícito
+> `tenants.closes_next_day = true`. El `opening_hours` del Tenant define el cierre como
+> `"close": "02:00"`; con el flag prendido, un día cuyo `close <= open` se interpreta como la
+> madrugada del día calendario siguiente (sin el flag, ese cierre es inválido → cero slots).
+> Un global flag basta para horarios mixtos: un día con `close > open` (ej. `23:00`) queda
+> same-day aunque el flag esté prendido.
+>
+> Consecuencias de almacenamiento:
+> - **`bookings.date` = día OPERATIVO, no calendario**. Un turno a la 01:00 del martes calendario
+>   que pertenece al lunes operativo se guarda con `date = lunes`. Así `daily_cash_closes.date`,
+>   caja y reportes agrupan toda la noche junta.
+> - El slot 23:00→00:00 se almacena como `time_start='23:00'`, `time_end='24:00'`. Postgres acepta
+>   `'24:00'` como TIME válido y `'24:00' > '23:00'`, así que pasa `chk_time_valid`. Los slots
+>   post-medianoche (00:00→01:00, 01:00→02:00) usan horas de pared normales.
+> - La grilla del admin renderiza las madrugadas DESPUÉS de las 23:00 (al final), no al principio.
 
 ### Atributos derivados (NO guardar en DB)
 - `price_for(datetime)` = evalúa `pricing` contra el horario para retornar el precio correcto
@@ -286,23 +298,24 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | `confirmed` | `canceled_no_refund` | Admin cancela con cargo | Sin reembolso |
 | `confirmed` | `canceled_refunded` | Admin cancela sin cargo | Reembolso si había seña, email disculpa |
 | `confirmed` | `completed` | Auto-complete: 30 min después de `time_end` si nadie marcó (job cada 30 min) | CashFlow income registrado |
-| `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Deuda (cambio #5): captura seña (`deposit_status='captured'`) + suma `price_snapshot − seña` a `player_tenant_relationships.balance`; el jugador queda bloqueado para reservar online hasta saldarla |
+| `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Deuda por no-show (cambio #5, modelo ATC): captura seña (`deposit_status='captured'`) y suma `price_snapshot − deposit_amount` a `player_tenant_relationships.balance`. Si `balance > 0`, el jugador queda bloqueado para reservar online en este complejo hasta saldar la deuda. Lógica en `handleNoShow` (`booking.cancellation.ts`). |
 | `completed` | — | — | Estado final inmutable |
 | `expired` | — | — | Estado final |
 | `no_show` | — | — | Estado final inmutable |
 
 > [!NOTE]
-> **Estados terminales inmutables**: `completed`, `no_show` y `expired` son finales. NO hay
-> transición `completed → no_show` (un trigger de DB bloquea todo UPDATE post-terminal).
-> Cualquier ajuste contable posterior al cierre de caja (p. ej. categoría `no_show_correction`)
-> se registra como un `CashFlow` `adjustment` NUEVO: la caja cerrada es inmutable.
+> **Estados terminales**: `completed`, `no_show` y `expired` son finales con una excepción:
+> la transición `completed → no_show` está **permitida dentro de las 24 horas** posteriores
+> al auto-complete (corrección de asistencia, habilitada por trigger `enforce_booking_invariants_fn`).
+> Pasadas las 24h, `completed` es inmutable. `no_show` y `expired` son siempre inmutables.
+> Cualquier ajuste contable posterior al cierre de caja se registra como un `CashFlow` `adjustment` NUEVO.
 
 ### Invariantes de la Reserva
 
 1. **No pueden existir dos reservas en estado `confirmed` o `pending_payment` en la misma cancha con overlap de horario** (DB constraint de exclusión con `btree_gist`).
 2. **`price_snapshot` nunca se modifica después de la creación**.
 3. **Una reserva en estado `no_show` es completamente inmutable** (no se puede volver a `completed`).
-4. **`time_end` debe ser mayor a `time_start`** (validación obligatoria). Si cruza medianoche, se aplica convención de día operativo.
+4. **`time_end` debe ser mayor a `time_start`** (`chk_time_valid`, validación obligatoria). El slot que termina en la medianoche calendario se guarda con `time_end='24:00'` — un TIME válido y `> '23:00'`, por lo que satisface el constraint (no se usa `'00:00'`, que lo violaría). Día operativo: ver la nota de "Horarios que cruzan medianoche".
 5. **`date` debe ser mayor o igual a hoy** al crear (se admiten reservas retroactivas del mismo día operativo).
 
 ### Tipos de booking
@@ -405,7 +418,7 @@ El abonado lleva un `credit_balance` (centavos ARS) que copia el modelo de ATC S
 - **Descuento semanal MANUAL ("Mantener saldo")**: en el detalle del booking `fixed` (instancia confirmada) hay un checkbox **"Mantener saldo"** (tildado por defecto). Al **destildarlo**, se descuenta `price_snapshot` del `credit_balance` y se marca `booking.credit_applied` para esa instancia. **NO genera un CashFlow nuevo** (la plata ya entró al cargar el saldo): evita doble contabilización. Re-tildar devuelve el saldo (solo mientras la instancia está `confirmed`).
 - **Invariante**: `credit_balance = Σ(cash_flows.amount WHERE abonado_id, category='abonado_payment') − Σ(bookings.credit_applied WHERE abonado_id)`. El recálculo desde estas fuentes hace la operación idempotente ante reintentos. CHECK `credit_balance >= 0`.
 - El saldo vive en el **abonado**, no en el jugador: un jugador con 2 abonados tiene 2 saldos independientes que no se transfieren.
-- Separado de `player_tenant_relationships.balance` (deuda por no-show, cambio #5).
+- Separado del mecanismo de deuda por no-show (`player_tenant_relationships.balance`, cambio #5).
 
 ---
 
@@ -426,6 +439,8 @@ preferred_area    string?       Ciudad/zona preferida
 status            enum          'active' | 'banned' | 'anonymized'
 agreed_to_terms_at timestamp?   Timestamp de aceptación de TyC y declaración jurada +18 (ADR-012)
 terms_version     string?       Versión de TyC aceptada (ej: '2026-04')
+ban_reason        string?       Motivo del ban global (si status='banned') o 'LEY_25326_DATA_DELETION' (si status='anonymized')
+ban_until         timestamp?    Fecha de expiración del ban global (NULL = permanente)
 created_at        timestamp     UTC
 last_login_at     timestamp?    UTC
 ```
@@ -459,20 +474,21 @@ id                UUID          PK
 player_id         UUID          FK → players
 tenant_id         UUID          FK → tenants
 status            enum          'active' | 'blocked'
-balance           integer       DEFAULT 0. Saldo deudor en centavos ARS. Si > 0, jugador bloqueado para reservar online.
 first_seen_at     timestamp     Primera reserva en este complejo
 bookings_count    integer       Total de reservas (actualizado por triggers)
 noshow_count      integer       Total de no-shows (actualizado por triggers)
 last_booking_at   timestamp?    Última reserva en este complejo
+balance           integer       Saldo deudor en centavos ARS (no-show). Si > 0, jugador bloqueado para reservar online. CHECK >= 0
 data_consent_at   timestamp     Consent de datos Ley 25.326 (set en primera reserva)
 created_at        timestamp     UTC
 ```
 
 > [!NOTE]
 > Los contadores `bookings_count` y `noshow_count` se actualizan por triggers en INSERT/UPDATE
-> de bookings. **`balance`**: cuando el admin marca no-show, se suma el monto adeudado.
-> Si `balance > 0`, el jugador NO puede reservar online en ese complejo hasta que el admin
-> registre el pago y baje el saldo a 0.
+> de bookings. `balance` se incrementa atómicamente al marcar un no-show (`addNoShowDebt`):
+> suma `price_snapshot − deposit_amount` del booking. Si `balance > 0`, el jugador queda
+> bloqueado para reservar online en este complejo hasta que un admin cobre la deuda
+> (desde la ficha del jugador, Módulo Jugadores `/jugadores`).
 > `data_consent_at` es evidencia de consent por-complejo para Ley 25.326.
 
 ---

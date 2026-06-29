@@ -78,7 +78,7 @@
                               │                              │
                               │  ┌────────────────────────┐  │
                               │  │  Auth (GoTrue)          │  │
-                              │  │  • Magic link           │  │
+                              │  │  • Magic link/Password  │  │
                               │  │  • Google OAuth         │  │
                               │  │  • JWT issuance         │  │
                               │  └────────────────────────┘  │
@@ -169,7 +169,7 @@
 │                     INFRASTRUCTURE LAYER                        │
 │                                                                 │
 │  PostgreSQL (Supabase)    → DB + RLS + pg-boss                  │
-│  Supabase Auth            → JWT, magic link, OAuth              │
+│  Supabase Auth            → JWT, password, magic link, OAuth    │
 │  Supabase Realtime        → postgres_changes → SSE              │
 │  Supabase Storage         → Files (logos, fotos, exports)       │
 └─────────────────────────────────────────────────────────────────┘
@@ -333,7 +333,6 @@ turnogol/
 │   │   │   ├── email.templates.ts
 │   │   │   └── templates/
 │   │   │       ├── booking-confirmed.ts
-│   │   │       ├── booking-reminder.ts
 │   │   │       ├── trial-welcome.ts
 │   │   │       ├── dunning-payment-failed.ts
 │   │   │       └── ...
@@ -378,8 +377,7 @@ turnogol/
 │   │   │       ├── generate-abonado-slots.worker.ts
 │   │   │       ├── auto-complete-bookings.worker.ts
 │   │   │       ├── dunning-retry.worker.ts
-│   │   │       ├── data-retention-cleanup.worker.ts
-│   │   │       └── booking-reminder.worker.ts
+│   │   │       └── data-retention-cleanup.worker.ts
 │   │   │
 │   │   ├── lib/
 │   │   │   ├── supabase/
@@ -534,8 +532,7 @@ FLUJO DE DEPENDENCIAS (unidireccional):
     "class-variance-authority": "^0.7",
     "clsx": "^2.1",
     "tailwind-merge": "^2.3",
-    // Iconos: la librería la define el design system (MASTER.md)
-    // Default recomendado: @phosphor-icons/react, fallback: @heroicons/react
+    // Iconos: lucide-react (definido en doc20, master design system)
 
     // Utilidades
     "date-fns": "^3.6",               // Manipulación de fechas
@@ -625,7 +622,7 @@ FLUJO DE DEPENDENCIAS (unidireccional):
    │
    │     // a. Verificar que la cancha existe y está activa
    │     const court = await tx.select().from(courts).where(eq(courts.id, data.courtId))
-   │     if (!court || court.status !== 'active') → throw CourtNotFoundError
+   │     if (!court || court.status !== 'online') → throw CourtNotFoundError
    │
    │     // b. Verificar disponibilidad con lock exclusivo
    │     const conflict = await tx.execute(sql`
@@ -952,10 +949,10 @@ En producción, el worker se inicia junto con la app o como un proceso separado 
 
 | Área | Medida | Implementación |
 |---|---|---|
-| **Autenticación** | Sin passwords | Supabase Auth (magic link + OAuth) |
+| **Autenticación** | Staff: email+password (ADR-013). Jugadores: Magic Link/OAuth. | Supabase Auth |
 | **JWT** | Access 1h, Refresh 30d rotativo | Supabase Auth config |
 | **HTTPS** | Obligatorio | Vercel SSL automático |
-| **Tenant Isolation** | RLS en 12 tablas | Doc 12 — 6 capas de protección |
+| **Tenant Isolation** | RLS en 13 tablas | Doc 12 — 6 capas de protección (incluye `push_subscriptions`) |
 | **Input Validation** | Todos los inputs | Zod schemas en cada endpoint |
 | **SQL Injection** | Queries parametrizadas | Drizzle ORM (nunca concatenar SQL) |
 | **XSS** | CSP headers | next.config.js headers |
@@ -1143,8 +1140,8 @@ Con 10-20 clientes activos de TurnoGol ($160-320 USD/mes en MRR al precio más b
 | Worker para pg-boss (Railway/Fly) | Basic | $10-20 |
 | **Total** | | **$206-366/mes** |
 
-**Comparación con revenue**: Con 500 complejos al precio más bajo ($55.000 ARS/mes = ~$55 USD):
-MRR estimado = 500 × $55 = **$27.500 USD/mes**. Infra = 0.7-1.3% del MRR. **Margen excelente.**
+**Comparación con revenue**: Con 500 complejos al precio más bajo ($47.000 ARS/mes = ~$47 USD):
+MRR estimado = 500 × $47 = **$23.500 USD/mes**. Infra = 0.8-1.5% del MRR. **Margen excelente.**
 
 ---
 

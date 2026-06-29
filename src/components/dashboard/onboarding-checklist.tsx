@@ -19,7 +19,6 @@ const ITEMS: ChecklistItem[] = [
   { key: 'complexData',          label: 'Datos del complejo completados' },
   { key: 'hasCourts',            label: 'Al menos una cancha configurada',    href: '/canchas' },
   { key: 'hasSchedule',          label: 'Horarios definidos',                 href: '/settings/horarios' },
-  { key: 'pinConfigured',        label: 'PIN de seguridad configurado',       href: '/settings/pin' },
   { key: 'mpConnected',          label: 'MercadoPago conectado',              href: '/settings/facturacion' },
   { key: 'publicLinkShared',     label: 'Link público compartido',            action: 'copy-link' },
   { key: 'firstBookingReceived', label: 'Primera reserva online recibida' },

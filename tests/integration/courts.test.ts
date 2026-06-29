@@ -65,6 +65,31 @@ describe('createCourt', () => {
     expect(court.surfaceType).toBe('synthetic_grass')
     expect(court.format).toBe(5)
     expect(court.capacity).toBe(10) // derivado = format × 2
+    // Cambio #16: atributos por cancha con sus defaults (techada=false, luz=true).
+    expect(court.isCovered).toBe(false)
+    expect(court.hasLighting).toBe(true)
+  })
+
+  it('persiste is_covered/has_lighting cuando se pasan explícitos (cambio #16)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+
+    const court = await withTenantContext(tenant.id, (tx) =>
+      createCourt(
+        tenant.id,
+        { ...COURT_INPUT, isCovered: true, hasLighting: false },
+        tx,
+      ),
+    )
+
+    expect(court.isCovered).toBe(true)
+    expect(court.hasLighting).toBe(false)
+
+    // Durable en la fila, no solo en el objeto retornado.
+    const rows = await sql<{ is_covered: boolean; has_lighting: boolean }[]>`
+      SELECT is_covered, has_lighting FROM courts WHERE id = ${court.id}
+    `
+    expect(rows[0]).toEqual({ is_covered: true, has_lighting: false })
   })
 })
 

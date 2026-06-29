@@ -10,7 +10,7 @@ function makeSchema(isProd: boolean) {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-    PIN_COOKIE_SECRET: minLen(16, 'PIN_COOKIE_SECRET'),
+    IMPERSONATION_COOKIE_SECRET: minLen(16, 'IMPERSONATION_COOKIE_SECRET'),
     ENCRYPTION_KEY: minLen(32, 'ENCRYPTION_KEY'),
     MP_CLIENT_ID: z.string().min(1),
     MP_CLIENT_SECRET: z.string().min(1),

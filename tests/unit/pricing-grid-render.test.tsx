@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PricingGrid } from '@/app/(admin)/canchas/components/PricingGrid'
 import type { PricingRule } from '@/modules/courts/court.types'
@@ -40,5 +40,28 @@ describe('PricingGrid render', () => {
     expect(lastCall).toEqual([
       { days: [...DAYS], from: '08:00', to: '12:00', price: 1000000 },
     ])
+  })
+
+  // Núcleo de #13: editar una celda re-emite reglas comprimidas con el nuevo
+  // precio. Sin esto, los tests de render pasaban aunque el editor de celda
+  // estuviera roto (toda la grilla de precios sería decorativa).
+  it('editar una celda re-emite las reglas con el precio nuevo', () => {
+    const onChange = vi.fn()
+    render(<PricingGrid openingHours={OPENING} initialRules={RULES} onChange={onChange} />)
+    onChange.mockClear() // descartar la emisión de montaje
+
+    // Click abre el editor de la celda Lun 08:00; click puro (sin pointerdown)
+    // no dispara la rama de arrastre → openEditor.
+    fireEvent.click(screen.getByRole('button', { name: /Lun 08:00/ }))
+    const input = screen.getByLabelText('Precio Lun 08:00') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '20000' } }) // $20.000 → 2.000.000 centavos
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onChange).toHaveBeenCalled()
+    const rules = onChange.mock.calls.at(-1)?.[0] as Array<{ price: number }>
+    // La celda editada produce una regla nueva con el precio cargado.
+    expect(rules.some((r) => r.price === 2000000)).toBe(true)
+    // El resto sigue al precio original.
+    expect(rules.some((r) => r.price === 1000000)).toBe(true)
   })
 })

@@ -17,10 +17,6 @@ vi.mock('next/navigation', () => ({
 }))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
-// checkPinSessionAction llama cookies() de next/headers, que lanza fuera de un
-// request de Next.js. El PIN es un boundary de auth (no lógica de DB),
-// se mockea igual que extractAuthUser. Los tests de pin tienen su propio suite.
-vi.mock('@/app/(admin)/actions/pin', () => ({ checkPinSessionAction: vi.fn() }))
 
 const inviteUserByEmail = vi.fn()
 const updateUserById = vi.fn()
@@ -30,7 +26,6 @@ vi.mock('@/lib/supabase/admin', () => ({
 
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { checkPinSessionAction } from '@/app/(admin)/actions/pin'
 import {
   deactivateStaffAction,
   inviteStaffAction,
@@ -54,7 +49,6 @@ beforeAll(async () => {
 })
 beforeEach(async () => {
   vi.clearAllMocks()
-  vi.mocked(checkPinSessionAction).mockResolvedValue(true)
   inviteUserByEmail.mockResolvedValue({ data: { user: { id: 'new-auth-id' } }, error: null })
   updateUserById.mockResolvedValue({ data: {}, error: null })
   await cleanupAll()

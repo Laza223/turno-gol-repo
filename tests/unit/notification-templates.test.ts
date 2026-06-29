@@ -72,6 +72,9 @@ describe('renderBookingCanceled', () => {
       reason: 'Lluvia',
     })
     expect(html).toContain('Lluvia')
+    // Ancla el assert negativo de abajo: 'Motivo' es la etiqueta real de la fila.
+    // Sin esto, si la etiqueta cambiara, el par positivo/negativo daría falso verde.
+    expect(html).toContain('Motivo')
   })
 
   it('html omits reason row when absent', () => {
@@ -106,12 +109,22 @@ describe('renderBookingCanceledByComplex', () => {
 
   it('html confirms refund when refundConfirmed is true', () => {
     const { html } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: true })
-    expect(html.toLowerCase()).toContain('reembolso')
+    // Exacto (no lowercase 'reembolso' suelto): alinea con el assert negativo,
+    // así el par no puede dar verde si la línea cambia de forma.
+    expect(html).toContain('Reembolso confirmado')
   })
 
   it('html omits refund line when refundConfirmed is false', () => {
     const { html } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: false })
     expect(html).not.toContain('Reembolso confirmado')
+  })
+
+  it('text incluye la nota de reembolso solo cuando refundConfirmed es true', () => {
+    const yes = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: true })
+    const no = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: false })
+    expect(yes.text).toBeTruthy()
+    expect(yes.text!).toContain('Reembolso confirmado')
+    expect(no.text ?? '').not.toContain('Reembolso confirmado')
   })
 })
 
@@ -138,6 +151,8 @@ describe('renderNoShowDebtCreated', () => {
     expect(html).toContain('$15.000')
     expect(html).toContain('Av. Libertador 1200')
     expect(html.toLowerCase()).toContain('regularizar')
+    // Regla de negocio del cambio #5/#20: el mail debe avisar el bloqueo online.
+    expect(html.toLowerCase()).toContain('no vas a poder reservar')
   })
 
   it('text is defined and includes the debt amount', () => {
@@ -293,6 +308,26 @@ describe('renderTemplate dispatcher', () => {
     const result = renderTemplate('booking_confirmed', CONFIRMED_DATA)
     expect(result.subject).toContain('Cancha 5')
     expect(result.html).toContain('Tomás')
+  })
+
+  // Los 2 templates nuevos (#20) estaban registrados pero el dispatcher nunca se
+  // probaba con ellos: un mapeo mal cableado en RENDERERS pasaría desapercibido.
+  it('routes booking_canceled_by_complex to its renderer', () => {
+    const result = renderTemplate('booking_canceled_by_complex', {
+      ...CONFIRMED_DATA,
+      refundConfirmed: true,
+    })
+    expect(result.subject).toContain('Complejo Norte')
+    expect(result.html).toContain('Reembolso confirmado')
+  })
+
+  it('routes no_show_debt_created to its renderer', () => {
+    const result = renderTemplate('no_show_debt_created', {
+      ...CONFIRMED_DATA,
+      debtAmount: '$15.000',
+    })
+    expect(result.subject.toLowerCase()).toContain('deuda')
+    expect(result.html).toContain('$15.000')
   })
 })
 

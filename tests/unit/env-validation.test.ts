@@ -8,7 +8,7 @@ describe('validateServerEnv', () => {
     NEXT_PUBLIC_SUPABASE_URL: 'https://x.supabase.co',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: 'a'.repeat(40),
     SUPABASE_SERVICE_ROLE_KEY: 'a'.repeat(40),
-    PIN_COOKIE_SECRET: 'a'.repeat(32),
+    IMPERSONATION_COOKIE_SECRET: 'a'.repeat(32),
     ENCRYPTION_KEY: 'a'.repeat(32),
     MP_CLIENT_ID: 'mp-id',
     MP_CLIENT_SECRET: 'mp-secret',
@@ -26,8 +26,8 @@ describe('validateServerEnv', () => {
     expect(() => validateServerEnv({ ...baseValid, NODE_ENV: 'production' })).not.toThrow()
   })
 
-  it('fails when PIN_COOKIE_SECRET < 16', () => {
-    expect(() => validateServerEnv({ ...baseValid, PIN_COOKIE_SECRET: 'short' })).toThrow(/PIN_COOKIE_SECRET/)
+  it('fails when IMPERSONATION_COOKIE_SECRET < 16', () => {
+    expect(() => validateServerEnv({ ...baseValid, IMPERSONATION_COOKIE_SECRET: 'short' })).toThrow(/IMPERSONATION_COOKIE_SECRET/)
   })
 
   it('fails when MP_WEBHOOK_SECRET missing in production', () => {

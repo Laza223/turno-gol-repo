@@ -13,8 +13,8 @@
  *   #4  Edge — reenviar invitación: 2nd admin inactive → dropdown → "Reenviar invitación"
  *              → success toast. May fail in CI if Resend rate-limits; skipped if env flag off.
  *
- * The /staff page is PinGate-gated. We pre-set the tenant PIN to "1234" and inject the
- * signed pin-cookie via `buildPinCookie()` from `@/modules/auth/pin` so we skip the UI gate.
+ * The /staff page is admin-only (requireAdminStaff). The adminStorageState
+ * fixture already provides an authenticated admin session — no extra gate.
  *
  * ISOLATION: each test allocates a fresh email (timestamp suffix). Cleanup deletes
  * staff_users + tenant_staff_members rows in `finally`.
@@ -23,11 +23,9 @@
 import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
-import { hashPin, buildPinCookie, COOKIE_NAME } from '@/modules/auth/pin'
 import { randomUUID } from 'node:crypto'
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
-const E2E_PIN = '1234'
 
 function makeServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -38,20 +36,6 @@ function makeServiceClient() {
     )
   }
   return createClient(url, key, { auth: { persistSession: false } })
-}
-
-async function ensureTenantHasPin(supabase: ReturnType<typeof makeServiceClient>): Promise<void> {
-  const hash = await hashPin(E2E_PIN)
-  // jsonb_set merges the staff_pin_hash into the existing settings JSONB.
-  const { error } = await supabase.rpc('exec_sql', {
-    sql_text: `UPDATE tenants SET settings = jsonb_set(settings, '{staff_pin_hash}', to_jsonb('${hash.replace(/'/g, "''")}'::text)) WHERE id = '${TENANT_ID}'`,
-  })
-  if (error) {
-    // Fallback: fetch + update locally
-    const { data } = await supabase.from('tenants').select('settings').eq('id', TENANT_ID).single()
-    const newSettings = { ...(data?.settings ?? {}), staff_pin_hash: hash }
-    await supabase.from('tenants').update({ settings: newSettings }).eq('id', TENANT_ID)
-  }
 }
 
 async function deleteStaffByEmail(
@@ -70,32 +54,17 @@ async function deleteStaffByEmail(
 
 type AppCookie = Parameters<BrowserContext['addCookies']>[0][number]
 
-async function addCookiesIncludingPin(page: Page, storageStateJson: string): Promise<void> {
+async function addAdminCookies(page: Page, storageStateJson: string): Promise<void> {
   const cookies = (JSON.parse(storageStateJson).cookies ?? []) as AppCookie[]
-  cookies.push({
-    name: COOKIE_NAME,
-    value: buildPinCookie(),
-    domain: 'localhost',
-    path: '/',
-    expires: -1,
-    httpOnly: false,
-    secure: false,
-    sameSite: 'Lax',
-  })
   await page.context().addCookies(cookies)
 }
 
 test.describe('Staff CRUD', () => {
-  test.beforeAll(async () => {
-    const supabase = makeServiceClient()
-    await ensureTenantHasPin(supabase)
-  })
-
   test('#1 happy — invite admin shows new inactive row', async ({ page, adminStorageState }) => {
     const supabase = makeServiceClient()
     const email = `e2e-staff-invite-${Date.now()}@turnogol.test`
 
-    await addCookiesIncludingPin(page, adminStorageState)
+    await addAdminCookies(page, adminStorageState)
     try {
       await page.goto('/staff')
       await page.getByRole('button', { name: /Agregar miembro del equipo/i }).click()
@@ -119,7 +88,7 @@ test.describe('Staff CRUD', () => {
     const staffUserId = randomUUID()
     const memberId = randomUUID()
 
-    await addCookiesIncludingPin(page, adminStorageState)
+    await addAdminCookies(page, adminStorageState)
     try {
       // Pre-link a 2nd admin via service-role
       await supabase.from('staff_users').insert({
@@ -163,7 +132,7 @@ test.describe('Staff CRUD', () => {
     page,
     adminStorageState,
   }) => {
-    await addCookiesIncludingPin(page, adminStorageState)
+    await addAdminCookies(page, adminStorageState)
     await page.goto('/staff')
 
     // The current user row is marked with "(vos)". The dropdown button is only rendered
@@ -182,7 +151,7 @@ test.describe('Staff CRUD', () => {
     const email = `e2e-staff-resend-${Date.now()}@turnogol.test`
     const staffUserId = randomUUID()
 
-    await addCookiesIncludingPin(page, adminStorageState)
+    await addAdminCookies(page, adminStorageState)
     try {
       await supabase.from('staff_users').insert({
         id: staffUserId,

@@ -27,7 +27,7 @@ const BASE_ENTRY = {
 }
 
 beforeEach(() => {
-  process.env.PIN_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+  process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
 })
 
 afterEach(() => {

@@ -1,6 +1,4 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 
@@ -30,19 +28,5 @@ describe('SubmitButton (#20)', () => {
     const btn = screen.getByRole('button') as HTMLButtonElement
     expect(btn.disabled).toBe(true)
     expect(btn.textContent).toBe('Procesando…')
-  })
-})
-
-describe('settings/pin usa submit con pending state (#20)', () => {
-  // La page se refactoreó a un client component (PinForm) con su propio
-  // SubmitButton basado en useFormStatus; el guard verifica ese archivo.
-  const src = readFileSync(
-    join(process.cwd(), 'src/app/(admin)/settings/pin/PinForm.tsx'),
-    'utf8',
-  )
-  it('el submit usa useFormStatus y se deshabilita mientras corre la action', () => {
-    expect(src).toContain('useFormStatus')
-    expect(src).toContain('<SubmitButton')
-    expect(src).toContain('disabled={pending}')
   })
 })

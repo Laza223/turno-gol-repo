@@ -11,7 +11,7 @@ const SYSTEM_ADMIN_ID = '22222222-2222-4222-8222-222222222222'
 const NOW = 1_750_000_000_000
 
 beforeEach(() => {
-  process.env.PIN_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+  process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
 })
 
 describe('buildImpersonationCookie / verifyImpersonationCookie', () => {
@@ -67,20 +67,20 @@ describe('buildImpersonationCookie / verifyImpersonationCookie', () => {
   })
 
   it('una cookie firmada con OTRO secreto no verifica (anti-forja)', () => {
-    process.env.PIN_COOKIE_SECRET = 'attacker-secret-also-16-chars-xx'
+    process.env.IMPERSONATION_COOKIE_SECRET = 'attacker-secret-also-16-chars-xx'
     const forged = buildImpersonationCookie(
       { tenantId: TENANT_ID, systemAdminId: SYSTEM_ADMIN_ID },
       NOW,
     )
-    process.env.PIN_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+    process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
     expect(verifyImpersonationCookie(forged, NOW + 1000)).toBeNull()
   })
 
   it('lanza si falta el secreto', () => {
-    delete process.env.PIN_COOKIE_SECRET
+    delete process.env.IMPERSONATION_COOKIE_SECRET
     expect(() =>
       buildImpersonationCookie({ tenantId: TENANT_ID, systemAdminId: SYSTEM_ADMIN_ID }, NOW),
-    ).toThrow(/PIN_COOKIE_SECRET/)
+    ).toThrow(/IMPERSONATION_COOKIE_SECRET/)
   })
 })
 

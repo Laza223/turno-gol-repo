@@ -19,7 +19,6 @@ const h = vi.hoisted(() => {
     extractAuthUser: vi.fn(),
     getStaffTenant: vi.fn(),
     adminRateLimited: vi.fn(),
-    checkPinSessionAction: vi.fn(),
     inviteUserByEmail: vi.fn(),
     updateUserById: vi.fn(),
     listUsers: vi.fn(),
@@ -53,7 +52,6 @@ vi.mock('@/lib/supabase/admin', () => ({
     },
   }),
 }))
-vi.mock('@/app/(admin)/actions/pin', () => ({ checkPinSessionAction: h.checkPinSessionAction }))
 
 import { inviteStaffAction } from '@/app/(admin)/staff/actions'
 
@@ -80,7 +78,6 @@ beforeEach(() => {
   })
   h.getStaffTenant.mockResolvedValue({ id: 'tenant-1', status: 'active', settings: {} })
   h.adminRateLimited.mockResolvedValue(null)
-  h.checkPinSessionAction.mockResolvedValue(true)
   h.txLimit.mockResolvedValue([])
   h.actorLimit.mockResolvedValue([{ role: 'admin' }])
   h.updateUserById.mockResolvedValue({ data: {}, error: null })

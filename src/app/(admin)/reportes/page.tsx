@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { Download, BarChart3 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
-import { PinGate } from '@/components/pin-gate'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getRevenueReport } from '@/modules/reports/report.service'
@@ -115,9 +114,7 @@ export default async function ReportesPage({
     { label: 'Reservas', value: String(report.bookingCount), change: null },
   ]
 
-  const hasPin = !!tenant.settings.staff_pin_hash
-
-  const content = (
+  return (
     <div className="space-y-6">
       {/* Header + month navigation */}
       <PageHeader
@@ -266,6 +263,4 @@ export default async function ReportesPage({
       )}
     </div>
   )
-
-  return <PinGate pinRequired={hasPin}>{content}</PinGate>
 }

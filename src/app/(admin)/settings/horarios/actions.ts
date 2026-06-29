@@ -33,25 +33,32 @@ export async function updateHorariosAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const raw = Object.fromEntries(
-    DAYS.map((day) => [
-      day,
-      {
-        open: formData.get(`${day}_open`) as string,
-        close: formData.get(`${day}_close`) as string,
-      },
-    ]),
-  )
+  const raw = {
+    ...Object.fromEntries(
+      DAYS.map((day) => [
+        day,
+        {
+          open: formData.get(`${day}_open`) as string,
+          close: formData.get(`${day}_close`) as string,
+        },
+      ]),
+    ),
+    // Checkbox nativo: presente = 'on'. Día operativo (cierre post-medianoche).
+    closesNextDay: formData.get('closes_next_day') === 'on',
+  }
 
   const parsed = horariosSchema.safeParse(raw)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Horarios inválidos.' }
   }
 
+  // closesNextDay vive en su columna, NO dentro de opening_hours.
+  const { closesNextDay, ...openingHours } = parsed.data
+
   await withTenantContext(tenant.id, async (tx) => {
     await tx
       .update(tenants)
-      .set({ openingHours: parsed.data, updatedAt: new Date() })
+      .set({ openingHours, closesNextDay, updatedAt: new Date() })
       .where(eq(tenants.id, tenant.id))
   })
 

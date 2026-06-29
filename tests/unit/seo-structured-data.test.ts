@@ -29,6 +29,7 @@ const FIXTURE_TENANT: PublicTenant = {
     sun: { open: '08:00', close: '23:00', closed: true },  // closed → filtered
   },
   closedDates: [],
+  closesNextDay: false,
   status: 'active',
   timezone: 'America/Argentina/Buenos_Aires',
   allowOnlineBooking: true,

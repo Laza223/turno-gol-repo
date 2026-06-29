@@ -24,6 +24,7 @@ const NOW = { nowDateStr: '2026-06-10', nowMins: 10 * 60 }
 const cfg = (overrides: Partial<Parameters<typeof tenantMatchesRequestedSlot>[0]> = {}) => ({
   openingHours: hours(),
   closedDates: [] as string[],
+  closesNextDay: false,
   durationMins: 60,
   bookingAdvanceDays: 6,
   ...overrides,
@@ -66,6 +67,19 @@ describe('tenantMatchesRequestedSlot', () => {
   it('treats close 00:00 as midnight: the 23:00 slot exists', () => {
     const c = cfg({ openingHours: hours({ thu: day('08:00', '00:00') }) })
     expect(tenantMatchesRequestedSlot(c, DATE, '23:00', NOW)).toBe(true)
+  })
+
+  it('día operativo: con closesNextDay existen los slots de madrugada (01:00)', () => {
+    const c = cfg({
+      openingHours: hours({ thu: day('18:00', '02:00') }),
+      closesNextDay: true,
+    })
+    expect(tenantMatchesRequestedSlot(c, DATE, '01:00', NOW)).toBe(true)
+    // 02:00 es el cierre: ya no entra un slot de 60'.
+    expect(tenantMatchesRequestedSlot(c, DATE, '02:00', NOW)).toBe(false)
+    // Sin el flag, la madrugada no existe.
+    const noFlag = cfg({ openingHours: hours({ thu: day('18:00', '02:00') }) })
+    expect(tenantMatchesRequestedSlot(noFlag, DATE, '01:00', NOW)).toBe(false)
   })
 
   it('rejects a slot that would end after closing time', () => {

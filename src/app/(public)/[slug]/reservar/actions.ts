@@ -11,6 +11,7 @@ import { tenants } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce } from '@/shared/rate-limit'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
+import { endLabelFromMins } from '@/shared/time/operating-day'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import {
@@ -79,7 +80,9 @@ const BLOCKED = ['deleted', 'blocked', 'canceled', 'churned', 'suspended']
 function addMins(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number)
   const total = (h! * 60 + (m ?? 0)) + mins
-  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+  // El slot que termina en la medianoche calendario se guarda '24:00' (> '23:00'
+  // → pasa chk_time_valid); las madrugadas vuelven a 01:00, 02:00…
+  return endLabelFromMins(total)
 }
 
 export async function createBookingAndCheckout(formData: FormData): Promise<void> {

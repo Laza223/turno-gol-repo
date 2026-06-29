@@ -5,6 +5,7 @@ import type {
   PaymentMethodValue,
 } from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
+import { effectiveCloseMins } from '@/shared/time/operating-day'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,10 +68,16 @@ export function mondayOf(dateStr: string): string {
   return addDays(dateStr, -((d.getUTCDay() + 6) % 7))
 }
 
-export function generateTimeSlots(openHhmm: string, closeHhmm: string): string[] {
+export function generateTimeSlots(
+  openHhmm: string,
+  closeHhmm: string,
+  closesNextDay = false,
+): string[] {
   const openMins = timeToMins(openHhmm)
-  let closeMins = timeToMins(closeHhmm)
-  if (closeMins === 0) closeMins = 24 * 60
+  // Día operativo: con closesNextDay un cierre post-medianoche (02:00) corre a
+  // 26:00, así el loop emite ...23:00, 00:00, 01:00 EN ORDEN (las madrugadas
+  // quedan al final de la grilla, no al principio). minsToTime envuelve %24.
+  const closeMins = effectiveCloseMins(openHhmm, closeHhmm, closesNextDay)
   const slots: string[] = []
   for (let t = openMins; t < closeMins; t += 60) {
     slots.push(minsToTime(t))

@@ -103,6 +103,7 @@ function renderGrid(opts?: {
       tenantId="tenant-1"
       openingHours={OPENING}
       closedDates={[]}
+      closesNextDay={false}
     />,
   )
 }

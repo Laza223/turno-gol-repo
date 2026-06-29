@@ -89,6 +89,7 @@ export default async function GrillaPage({
         tenantId={tenant.id}
         openingHours={tenant.openingHours}
         closedDates={tenant.closedDates ?? []}
+        closesNextDay={tenant.closesNextDay}
       />
     </main>
   )

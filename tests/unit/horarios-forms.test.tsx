@@ -32,7 +32,7 @@ afterEach(() => cleanup())
 describe('HorariosForms — feedback (#19)', () => {
   it('HorariosForm muestra el error que devuelve la action', () => {
     formState.mockReturnValue({ success: false, error: 'Formato HH:MM' })
-    render(<HorariosForm hours={{}} />)
+    render(<HorariosForm hours={{}} closesNextDay={false} />)
     expect(screen.getByRole('alert').textContent).toContain('Formato HH:MM')
   })
 
@@ -50,7 +50,7 @@ describe('HorariosForms — feedback (#19)', () => {
 
   it('sin error no renderiza ninguna alerta', () => {
     formState.mockReturnValue({ success: true })
-    render(<HorariosForm hours={{}} />)
+    render(<HorariosForm hours={{}} closesNextDay={false} />)
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })

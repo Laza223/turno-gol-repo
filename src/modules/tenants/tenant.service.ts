@@ -97,6 +97,7 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     settings: t.settings as TenantSettings,
     openingHours: t.openingHours as OpeningHours,
     closedDates: t.closedDates as string[] | null,
+    closesNextDay: t.closesNextDay,
     mpConnectedAt: t.mpConnectedAt,
   }
 }

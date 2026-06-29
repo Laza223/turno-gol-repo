@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { endLabelFromMins } from '@/shared/time/operating-day'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import BookingSummary from './components/BookingSummary'
 import LoginGate from './components/LoginGate'
@@ -24,9 +25,9 @@ type Props = {
 function addMinsToHHMM(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number)
   const total = (h! * 60 + (m ?? 0)) + mins
-  const hh = Math.floor(total / 60) % 24
-  const mm = total % 60
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+  // El slot que termina en la medianoche calendario se guarda '24:00' (> '23:00'
+  // → pasa chk_time_valid); las madrugadas vuelven a 01:00, 02:00…
+  return endLabelFromMins(total)
 }
 
 function InvalidState({ slug, message }: { slug: string; message: string }) {

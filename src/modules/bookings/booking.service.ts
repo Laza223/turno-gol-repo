@@ -38,6 +38,11 @@ import {
 } from './booking.errors'
 import { addDays, artTodayStr } from '@/shared/dates/art'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import {
+  effectiveCloseMins,
+  endLabelFromMins,
+  normalizeRangeToOpenDay,
+} from '@/shared/time/operating-day'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rowToBookingRow } from './booking.mappers'
 import { calcDepositCents } from './deposit'
@@ -100,6 +105,36 @@ function assertSlotDuration(timeStart: string, timeEnd: string): void {
       `Los turnos son de ${SLOT_DURATION_MINUTES} minutos.`,
     )
   }
+}
+
+/**
+ * Día operativo: ¿este slot ocurre FÍSICAMENTE el día calendario siguiente?
+ * Un turno de madrugada (timeStart < apertura) en un complejo con
+ * closes_next_day pertenece a HOY operativo (bookings.date) pero sucede mañana,
+ * así que su hora de pared ya pasó hoy sin estar vencido. Lee las horas del
+ * tenant (global, sin RLS) para decidirlo.
+ */
+async function slotIsPhysicallyNextDay(
+  tenantId: string,
+  dateStr: string,
+  timeStart: string,
+  tx: DbTx,
+): Promise<boolean> {
+  const rows = await tx
+    .select({
+      openingHours: tenants.openingHours,
+      closesNextDay: tenants.closesNextDay,
+    })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1)
+  const tenant = rows[0]
+  if (!tenant || !tenant.closesNextDay) return false
+  const [y, mo, d] = dateStr.split('-').map(Number)
+  const dayKey = DAY_KEYS[new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1)).getUTCDay()]!
+  const dayHours = (tenant.openingHours as OpeningHours)[dayKey as keyof OpeningHours]
+  const openMins = timeToMins(dayHours?.open ?? '08:00')
+  return timeToMins(timeStart.slice(0, 5)) < openMins
 }
 
 function isExclusionViolation(err: unknown): boolean {
@@ -287,7 +322,18 @@ async function createOnlineBookingImpl(
   if (input.date === todayStr) {
     const slotStartMs = artDateAt(input.date, input.timeStart).getTime()
     if (slotStartMs <= Date.now()) {
-      throw new BookingDateOutOfRangeError('past_slot')
+      // Día operativo: un slot de madrugada del día operativo de hoy ocurre
+      // físicamente mañana, así que no está vencido aunque su hora de pared ya
+      // pasó. Solo entonces toleramos el slot "pasado".
+      const physicallyTomorrow = await slotIsPhysicallyNextDay(
+        tenantId,
+        input.date,
+        input.timeStart,
+        tx,
+      )
+      if (!physicallyTomorrow) {
+        throw new BookingDateOutOfRangeError('past_slot')
+      }
     }
   }
   if (input.maxAdvanceDays !== undefined && input.date > addDays(todayStr, input.maxAdvanceDays)) {
@@ -619,25 +665,37 @@ export type GenerateSlotsInput = {
   openHhmm: string
   closeHhmm: string
   closedDay: boolean
+  // Día operativo: cuando true, un cierre post-medianoche (close <= open) corre
+  // a la madrugada del día siguiente y genera los slots 00:00, 01:00… al final.
+  closesNextDay?: boolean
   occupied: Array<{ timeStartMins: number; timeEndMins: number }>
 }
 
 export function generateSlots(p: GenerateSlotsInput): AvailableSlot[] {
   if (p.closedDay) return []
+  const closesNextDay = p.closesNextDay ?? false
   const openMins = timeToMins(p.openHhmm)
-  let closeMins = timeToMins(p.closeHhmm)
-  if (closeMins === 0) closeMins = 24 * 60
+  const closeMins = effectiveCloseMins(p.openHhmm, p.closeHhmm, closesNextDay)
+  // Las reservas post-medianoche se guardan con la hora de pared chica (00:00,
+  // 01:00) pero el día operativo en bookings.date; las llevamos al eje continuo
+  // (≥1440) para que solapen con los slots de madrugada.
+  const occupied = p.occupied.map((b) => {
+    const n = normalizeRangeToOpenDay(b.timeStartMins, b.timeEndMins, openMins, closesNextDay)
+    return { timeStartMins: n.startMins, timeEndMins: n.endMins }
+  })
   // Tarea #6: turnos de 60 min fijos.
   const lastStart = closeMins - SLOT_DURATION_MINUTES
 
   const slots: AvailableSlot[] = []
   for (let start = openMins; start <= lastStart; start += SLOT_DURATION_MINUTES) {
     const slotEnd = start + SLOT_DURATION_MINUTES
-    const overlaps = p.occupied.some(
+    const overlaps = occupied.some(
       (b) => start < b.timeEndMins && slotEnd > b.timeStartMins,
     )
     const timeStart = minsToTime(start)
-    const timeEnd = minsToTime(slotEnd)
+    // El slot que termina en la medianoche calendario se etiqueta '24:00'
+    // (> '23:00' → pasa chk_time_valid); las madrugadas vuelven a 01:00, 02:00…
+    const timeEnd = endLabelFromMins(slotEnd)
     const price = priceForSlot(p.pricing, p.dayKey, timeStart)
     slots.push({
       timeStart,
@@ -693,6 +751,7 @@ export async function getAvailableSlots(
     .select({
       openingHours: tenants.openingHours,
       closedDates: tenants.closedDates,
+      closesNextDay: tenants.closesNextDay,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
@@ -737,6 +796,7 @@ export async function getAvailableSlots(
     openHhmm: dayHours?.open ?? '08:00',
     closeHhmm: dayHours?.close ?? '23:00',
     closedDay,
+    closesNextDay: tenant.closesNextDay ?? false,
     occupied,
   })
 }

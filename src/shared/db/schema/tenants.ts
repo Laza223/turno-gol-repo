@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   date,
   index,
   integer,
@@ -46,6 +47,12 @@ export const tenants = pgTable(
     ),
 
     closedDates: date('closed_dates').array().default(sql`'{}'::date[]`),
+
+    // Día operativo: cuando true, el `close` de un día que sea <= `open` (ej.
+    // open 08:00, close 02:00) se interpreta como la madrugada del día siguiente.
+    // Esos turnos pertenecen al MISMO día operativo (bookings.date = la noche
+    // anterior) y el slot 23:00→00:00 se guarda con time_end='24:00'.
+    closesNextDay: boolean('closes_next_day').notNull().default(false),
 
     status: tenantStatusEnum('status').notNull().default('trialing'),
     trialEndsAt: timestamp('trial_ends_at', { withTimezone: true, mode: 'date' }),

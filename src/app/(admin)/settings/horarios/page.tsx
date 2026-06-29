@@ -52,7 +52,7 @@ export default async function HorariosPage() {
 
         <div className="card-premium rounded-lg p-6">
           <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>
-          <HorariosForm hours={hours} />
+          <HorariosForm hours={hours} closesNextDay={tenant.closesNextDay} />
         </div>
 
         <div className="card-premium rounded-lg p-6">

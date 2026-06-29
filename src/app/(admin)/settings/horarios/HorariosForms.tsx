@@ -23,7 +23,13 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 type OpeningHours = Record<string, { open: string; close: string }>
 
 /** Form de horarios de apertura (#19): consume el HorariosActionResult. */
-export function HorariosForm({ hours }: { hours: OpeningHours }) {
+export function HorariosForm({
+  hours,
+  closesNextDay,
+}: {
+  hours: OpeningHours
+  closesNextDay: boolean
+}) {
   const [state, formAction] = useFormState(updateHorariosAction, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
 
@@ -51,6 +57,24 @@ export function HorariosForm({ hours }: { hours: OpeningHours }) {
           </div>
         ))}
       </div>
+
+      {/* Día operativo: complejos que cierran después de medianoche. */}
+      <label className="flex items-start gap-3 rounded-md border border-border p-3">
+        <input
+          type="checkbox"
+          name="closes_next_day"
+          defaultChecked={closesNextDay}
+          className="mt-0.5 h-4 w-4 accent-emerald-600"
+        />
+        <span className="text-sm">
+          <span className="font-medium text-foreground">Cierra después de medianoche</span>
+          <span className="block text-muted-foreground">
+            Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás
+            02:00). Esos turnos cuentan como parte de la misma jornada (el día anterior).
+          </span>
+        </span>
+      </label>
+
       <div className="pt-2">
         <SubmitButton className="bg-emerald-600 hover:bg-emerald-500">Guardar horarios</SubmitButton>
       </div>

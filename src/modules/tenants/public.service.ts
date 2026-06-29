@@ -3,6 +3,10 @@ import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts } from '@/shared/db/schema'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { track, withSpan } from '@/shared/observability'
+import {
+  effectiveCloseMins,
+  normalizeRangeToOpenDay,
+} from '@/shared/time/operating-day'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -21,6 +25,7 @@ export type PublicTenant = {
   whatsapp: string | null
   openingHours: OpeningHours
   closedDates: string[]
+  closesNextDay: boolean
   status: string
   timezone: string
   allowOnlineBooking: boolean
@@ -102,6 +107,8 @@ export type GenerateSlotsParams = {
   openHhmm: string
   closeHhmm: string
   closedDay: boolean
+  // Día operativo: cierre post-medianoche → slots 00:00, 01:00… al final.
+  closesNextDay?: boolean
   courtBookings: BookingRange[]
   durationMins: number
   date: string       // YYYY-MM-DD
@@ -142,10 +149,17 @@ export function getPriceForSlot(
 export function generateSlots(p: GenerateSlotsParams): Slot[] {
   if (p.closedDay) return []
 
+  const closesNextDay = p.closesNextDay ?? false
   const openMins = timeToMins(p.openHhmm)
-  // "00:00" means midnight = end of day (24:00)
-  let closeMins = timeToMins(p.closeHhmm)
-  if (closeMins === 0) closeMins = 24 * 60
+  // Día operativo: "00:00" = medianoche (24:00); con closesNextDay un cierre
+  // post-medianoche corre a 25:00/26:00 y las madrugadas quedan al final.
+  const closeMins = effectiveCloseMins(p.openHhmm, p.closeHhmm, closesNextDay)
+  // Reservas de madrugada (00:00, 01:00) se guardan con hora de pared chica;
+  // las llevamos al eje continuo (≥1440) para que solapen con sus slots.
+  const courtBookings = p.courtBookings.map((b) => {
+    const n = normalizeRangeToOpenDay(b.timeStartMins, b.timeEndMins, openMins, closesNextDay)
+    return { ...b, timeStartMins: n.startMins, timeEndMins: n.endMins }
+  })
 
   const lastStart = closeMins - p.durationMins
   const isPastDate = p.date < p.nowDateStr
@@ -157,10 +171,13 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
     const timeStr = minsToTime(start)
 
     let status: SlotStatus
+    // start está en el eje continuo: un slot de madrugada (start ≥ 1440) supera
+    // a nowMins de hoy, así que NO se marca pasado aunque su hora de pared ya
+    // pasó (ocurre físicamente mañana, mismo día operativo).
     if (isPastDate || (isToday && start < p.nowMins)) {
       status = 'past'
     } else {
-      const overlapping = p.courtBookings.find(
+      const overlapping = courtBookings.find(
         (b) =>
           b.courtId === p.courtId &&
           start < b.timeEndMins &&
@@ -228,6 +245,7 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
       whatsapp: true,
       openingHours: true,
       closedDates: true,
+      closesNextDay: true,
       status: true,
       timezone: true,
       settings: true,
@@ -255,6 +273,7 @@ export async function getPublicTenant(slug: string): Promise<PublicTenant | null
     whatsapp: row.whatsapp,
     openingHours: row.openingHours as OpeningHours,
     closedDates: (row.closedDates ?? []) as string[],
+    closesNextDay: row.closesNextDay ?? false,
     status: row.status,
     timezone: row.timezone,
     allowOnlineBooking: s.allow_online_booking ?? true,
@@ -400,6 +419,7 @@ async function getPublicAvailabilityImpl(
       openHhmm: dayHours?.open ?? '08:00',
       closeHhmm: dayHours?.close ?? '23:00',
       closedDay,
+      closesNextDay: tenant.closesNextDay,
       courtBookings: bookingRanges,
       durationMins,
       date: dateStr,
@@ -503,6 +523,7 @@ export async function getPublicWeeklyAvailability(
         openHhmm: dayHours?.open ?? '08:00',
         closeHhmm: dayHours?.close ?? '23:00',
         closedDay,
+        closesNextDay: tenant.closesNextDay,
         courtBookings,
         durationMins,
         date: dateStr,

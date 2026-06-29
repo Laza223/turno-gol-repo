@@ -135,7 +135,7 @@ describe('generateSlots', () => {
   })
 
   describe('bordes de horario', () => {
-    it('cierre a medianoche (00:00) genera el último slot terminando en 00:00', () => {
+    it('cierre a medianoche (00:00) genera el último slot terminando en 24:00', () => {
       const slots = generateSlots({
         pricing: PRICING,
         dayKey: 'mon',
@@ -145,7 +145,59 @@ describe('generateSlots', () => {
         occupied: [],
       })
       expect(slots.map((s) => s.timeStart)).toEqual(['22:00', '23:00'])
-      expect(slots[slots.length - 1]?.timeEnd).toBe('00:00')
+      // El slot 23:00→medianoche se etiqueta '24:00' (> '23:00' → pasa
+      // chk_time_valid; antes daba '00:00' y la reserva del slot 23:00 fallaba).
+      expect(slots[slots.length - 1]?.timeEnd).toBe('24:00')
+    })
+
+    it('día operativo: con closesNextDay genera las madrugadas DESPUÉS de las 23:00', () => {
+      // Abre 20:00, cierra 02:00 del día siguiente. Slots: 20,21,22,23,00,01.
+      const slots = generateSlots({
+        pricing: PRICING,
+        dayKey: 'mon',
+        openHhmm: '20:00',
+        closeHhmm: '02:00',
+        closedDay: false,
+        closesNextDay: true,
+        occupied: [],
+      })
+      expect(slots.map((s) => s.timeStart)).toEqual([
+        '20:00', '21:00', '22:00', '23:00', '00:00', '01:00',
+      ])
+      // El slot 23:00 termina en 24:00; las madrugadas vuelven a wall-clock.
+      expect(slots.find((s) => s.timeStart === '23:00')?.timeEnd).toBe('24:00')
+      expect(slots.find((s) => s.timeStart === '00:00')?.timeEnd).toBe('01:00')
+      expect(slots.find((s) => s.timeStart === '01:00')?.timeEnd).toBe('02:00')
+    })
+
+    it('día operativo: una reserva de madrugada (00:00–01:00) marca ocupado su slot', () => {
+      const slots = generateSlots({
+        pricing: PRICING,
+        dayKey: 'mon',
+        openHhmm: '20:00',
+        closeHhmm: '02:00',
+        closedDay: false,
+        closesNextDay: true,
+        // Guardada con la hora de pared chica (00:00→01:00).
+        occupied: [{ timeStartMins: 0, timeEndMins: 60 }],
+      })
+      const taken = slots.filter((s) => !s.available).map((s) => s.timeStart)
+      expect(taken).toEqual(['00:00'])
+      // El 23:00 (justo antes) y el 01:00 (justo después) siguen libres.
+      expect(slots.find((s) => s.timeStart === '23:00')?.available).toBe(true)
+      expect(slots.find((s) => s.timeStart === '01:00')?.available).toBe(true)
+    })
+
+    it('sin el flag, un cierre post-medianoche no genera slots', () => {
+      const slots = generateSlots({
+        pricing: PRICING,
+        dayKey: 'mon',
+        openHhmm: '20:00',
+        closeHhmm: '02:00',
+        closedDay: false,
+        occupied: [],
+      })
+      expect(slots).toHaveLength(0)
     })
 
     it('descarta el tramo final que no completa una duración entera', () => {

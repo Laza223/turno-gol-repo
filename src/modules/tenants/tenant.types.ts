@@ -65,6 +65,7 @@ export type UpdateTenantInput = Partial<{
   email: string
   openingHours: OpeningHours
   closedDates: string[]
+  closesNextDay: boolean
 }>
 
 export type UpdateTenantSettingsInput = Partial<
@@ -98,5 +99,6 @@ export type TenantRow = {
   settings: TenantSettings
   openingHours: OpeningHours
   closedDates: string[] | null
+  closesNextDay: boolean
   mpConnectedAt: Date | null
 }

@@ -54,6 +54,7 @@ type Props = {
   tenantId: string
   openingHours: OpeningHours
   closedDates: string[]
+  closesNextDay: boolean
 }
 
 export function BookingGrid({
@@ -63,6 +64,7 @@ export function BookingGrid({
   tenantId,
   openingHours,
   closedDates,
+  closesNextDay,
 }: Props) {
   const router = useRouter()
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
@@ -95,8 +97,8 @@ export function BookingGrid({
   const closeHhmm = dayHours?.close ?? '23:00'
 
   const slots = useMemo(
-    () => (closedToday ? [] : generateTimeSlots(openHhmm, closeHhmm)),
-    [openHhmm, closeHhmm, closedToday],
+    () => (closedToday ? [] : generateTimeSlots(openHhmm, closeHhmm, closesNextDay)),
+    [openHhmm, closeHhmm, closedToday, closesNextDay],
   )
 
   const bookingsByKey = useMemo(() => buildBookingsIndex(bookings), [bookings])
@@ -111,9 +113,13 @@ export function BookingGrid({
       if (!artNow.date) return false
       if (date < artNow.date) return true
       if (date > artNow.date) return false
+      // Día operativo: un slot de madrugada (slotTime < apertura, con
+      // closesNextDay) ocurre FÍSICAMENTE mañana, así que en el día operativo de
+      // hoy todavía es futuro aunque su hora de pared sea menor que "ahora".
+      if (closesNextDay && slotTime < openHhmm) return false
       return slotTime < artNow.time
     },
-    [artNow, date],
+    [artNow, date, closesNextDay, openHhmm],
   )
 
   const nowTopRem = useMemo(() => {

@@ -22,6 +22,7 @@ const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 export type TenantSlotConfig = {
   openingHours: OpeningHours
   closedDates: string[]
+  closesNextDay: boolean
   durationMins: number
   bookingAdvanceDays: number
 }
@@ -58,6 +59,7 @@ export function tenantMatchesRequestedSlot(
     openHhmm: dayHours?.open ?? '08:00',
     closeHhmm: dayHours?.close ?? '23:00',
     closedDay,
+    closesNextDay: cfg.closesNextDay,
     courtBookings: [],
     durationMins: cfg.durationMins,
     date,
@@ -142,6 +144,7 @@ async function loadAvailableTenantIds({
       id: tenants.id,
       openingHours: tenants.openingHours,
       closedDates: tenants.closedDates,
+      closesNextDay: tenants.closesNextDay,
       settings: tenants.settings,
     })
     .from(tenants)
@@ -163,6 +166,7 @@ async function loadAvailableTenantIds({
       {
         openingHours: row.openingHours as OpeningHours,
         closedDates: (row.closedDates ?? []) as string[],
+        closesNextDay: row.closesNextDay ?? false,
         durationMins,
         bookingAdvanceDays: s.booking_advance_days ?? 6,
       },
@@ -295,6 +299,7 @@ async function loadFreeSlotPillsByTenant({
       id: tenants.id,
       openingHours: tenants.openingHours,
       closedDates: tenants.closedDates,
+      closesNextDay: tenants.closesNextDay,
       settings: tenants.settings,
     })
     .from(tenants)
@@ -326,6 +331,7 @@ async function loadFreeSlotPillsByTenant({
       openHhmm: dayHours?.open ?? '08:00',
       closeHhmm: dayHours?.close ?? '23:00',
       closedDay,
+      closesNextDay: (row.closesNextDay ?? false) as boolean,
       courtBookings: [],
       durationMins,
       date,

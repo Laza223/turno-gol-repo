@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { effectiveCloseMins } from '@/shared/time/operating-day'
 
 /** HH:MM en formato 24h (00:00–23:59). */
 export const TIME_HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -39,9 +40,17 @@ export function closeMinutes(hhmm: string): number {
  * Regla del BLOCKER (triage_fixes #4): el cierre debe ser estrictamente
  * posterior a la apertura. Si close <= open, generateSlots produce CERO slots y
  * la cancha queda silenciosamente no disponible para reservar online.
+ *
+ * Día operativo: con `closesNextDay`, un cierre <= apertura (ej. 08:00→02:00) se
+ * interpreta como la madrugada del día siguiente y pasa a ser válido. Un cierre
+ * 00:00 siempre cuenta como medianoche (fin del día), con o sin el flag.
  */
-export function isValidDayRange(open: string, close: string): boolean {
-  return closeMinutes(close) > openMinutes(open)
+export function isValidDayRange(
+  open: string,
+  close: string,
+  closesNextDay = false,
+): boolean {
+  return effectiveCloseMins(open, close, closesNextDay) > openMinutes(open)
 }
 
 const hhmmField = z.string().regex(TIME_HHMM_RE, 'Formato HH:MM')
@@ -52,9 +61,13 @@ export const horariosDaySchema = z.object({
 })
 
 /**
- * Schema de los 7 días de apertura/cierre. Además del formato HH:MM por campo,
- * valida que cada día tenga cierre posterior a la apertura (BLOCKER #4) con un
- * mensaje que identifica el día.
+ * Schema de los 7 días de apertura/cierre + el flag de día operativo. Además del
+ * formato HH:MM por campo, valida que cada día tenga cierre posterior a la
+ * apertura (BLOCKER #4) con un mensaje que identifica el día. Cuando
+ * `closesNextDay` está prendido, un cierre <= apertura es válido (madrugada).
+ *
+ * `closesNextDay` NO va dentro de opening_hours: vive en la columna
+ * tenants.closes_next_day. El caller separa ambos antes de persistir.
  */
 export const horariosSchema = z
   .object({
@@ -65,11 +78,12 @@ export const horariosSchema = z
     fri: horariosDaySchema,
     sat: horariosDaySchema,
     sun: horariosDaySchema,
+    closesNextDay: z.boolean().default(false),
   })
-  .superRefine((days, ctx) => {
+  .superRefine((data, ctx) => {
     for (const { key, label } of WEEK_DAYS) {
-      const day = days[key]
-      if (!isValidDayRange(day.open, day.close)) {
+      const day = data[key]
+      if (!isValidDayRange(day.open, day.close, data.closesNextDay)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [key, 'close'],

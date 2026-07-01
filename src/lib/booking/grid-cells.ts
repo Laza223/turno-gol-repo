@@ -45,12 +45,12 @@ export const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as con
 // Pure helpers
 // ---------------------------------------------------------------------------
 
-export function timeToMins(hhmm: string): number {
+function timeToMins(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
   return (h ?? 0) * 60 + (m ?? 0)
 }
 
-export function minsToTime(mins: number): string {
+function minsToTime(mins: number): string {
   const h = Math.floor(mins / 60) % 24
   const m = mins % 60
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`

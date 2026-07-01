@@ -2,10 +2,13 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'node:crypto'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { getStaffRole } from '@/modules/staff/staff.service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Conectar MercadoPago es Configuración/facturación: solo admin (audit_report.md
+// 3-04/3-08/3-17) — un manager podría re-vincular el MP del tenant.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) {
@@ -15,6 +18,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) {
     return NextResponse.redirect(new URL('/onboarding', req.url))
+  }
+
+  const role = await getStaffRole(tenant.id, user.staffUserId)
+  if (role !== 'admin') {
+    return NextResponse.redirect(new URL('/dashboard?error=mp_forbidden', req.url))
   }
 
   const clientId = process.env.MP_CLIENT_ID

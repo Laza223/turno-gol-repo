@@ -26,13 +26,6 @@ export class BookingNotInConfirmedError extends Error {
   }
 }
 
-export class DepositFlowNotImplementedError extends Error {
-  constructor() {
-    super('Online booking with deposit is not implemented (deferred to P10)')
-    this.name = 'DepositFlowNotImplementedError'
-  }
-}
-
 export class PriceUnavailableError extends Error {
   constructor() {
     super('Price could not be calculated for this slot')

@@ -60,7 +60,7 @@ export function isHourActive(day: OpeningHoursDay | undefined, hour: number): bo
 }
 
 /** Horas (slot-start) activas para un día puntual, ascendente. */
-export function activeHoursForDay(openingHours: OpeningHours, day: DayKey): number[] {
+function activeHoursForDay(openingHours: OpeningHours, day: DayKey): number[] {
   const d = openingHours[day]
   if (!d || d.closed) return []
   const lo = openHour(d.open)

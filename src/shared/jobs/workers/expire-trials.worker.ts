@@ -3,7 +3,7 @@ import { getSql } from '@/shared/db/client'
 import { QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
-export async function runExpireTrials(): Promise<void> {
+async function runExpireTrials(): Promise<void> {
   const sql = getSql()
   // Move trialing tenants whose trial_ends_at has passed to 'blocked'.
   // Also update the linked tenant_subscription to keep status in sync.

@@ -6,7 +6,7 @@ import {
 import type { DbTx } from './client'
 
 /** Sentinel UUID for system-originated audit rows (cron jobs, webhooks). */
-export const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
+const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
 
 /**
  * Si la request está impersonando (cookie tg_sa_impersonate válida), toda

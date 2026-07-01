@@ -21,7 +21,7 @@ import { enforce } from '@/shared/rate-limit/apply'
  *      = nadie pasa (fail-closed).
  */
 
-export type SystemAdminRow = {
+type SystemAdminRow = {
   id: string
   email: string
   firstName: string
@@ -52,8 +52,11 @@ function parseAllowlist(raw: string | undefined): string[] {
 /**
  * Núcleo compartido de ambos guards. null = cualquiera de los 3 chequeos
  * falló; los callers NO diferencian el motivo (no filtrar que la ruta existe).
+ * Exportado para Route Handlers de /api/admin/* que necesitan el triple
+ * chequeo pero no encajan en el patrón redirect (páginas) ni ok/error
+ * (Server Actions) de los dos guards de abajo.
  */
-async function resolveSystemAdmin(): Promise<SystemAdminAuth | null> {
+export async function resolveSystemAdmin(): Promise<SystemAdminAuth | null> {
   // 1) Claim JWT. Identidad REAL: mientras se impersona, la cookie hace que
   //    extractAuthUser devuelva un staff sintético; el guard de SuperAdmin debe
   //    seguir viendo al system_admin para no auto-bloquearse (poder volver al

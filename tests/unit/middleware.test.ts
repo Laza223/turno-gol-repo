@@ -22,10 +22,15 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
+// El rol real se lee de tenant_staff_members (getStaffRole), nunca de
+// user.role (hardcodeado a 'admin' para todo el staff, ver StaffUser).
+vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
+
 import { createClient } from '@/lib/supabase/server'
 import { withAuth } from '@/shared/middleware/with-auth'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { withRole } from '@/shared/middleware/with-role'
+import { getStaffRole } from '@/modules/staff/staff.service'
 import type { StaffUser } from '@/modules/auth/types'
 import type { DbTx } from '@/shared/db/client'
 
@@ -118,16 +123,39 @@ describe('withTenant', () => {
 })
 
 describe('withRole', () => {
+  beforeEach(() => {
+    vi.mocked(getStaffRole).mockReset()
+  })
+
   it('rejects role mismatch → 403 ROLE_REQUIRED', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
     const handler = withRole('admin', async () => NextResponse.json({ ok: true }))
-    const fakeUser = {
+    const fakeUser: StaffUser = {
       type: 'staff',
       id: 'x',
       email: 'e',
-      staffUserId: null,
+      staffUserId: 'staff-1',
       tenantId: 't',
-      role: 'wrong',
-    } as unknown as StaffUser
+      role: 'admin',
+    }
+    const fakeTx = {} as DbTx
+    const res = await handler(makeRequest(), fakeUser, fakeTx)
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error.code).toBe('ROLE_REQUIRED')
+  })
+
+  it('rejects membresía inactiva (rol null) → 403 ROLE_REQUIRED', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue(null)
+    const handler = withRole('admin', async () => NextResponse.json({ ok: true }))
+    const fakeUser: StaffUser = {
+      type: 'staff',
+      id: 'x',
+      email: 'e',
+      staffUserId: 'staff-1',
+      tenantId: 't',
+      role: 'admin',
+    }
     const fakeTx = {} as DbTx
     const res = await handler(makeRequest(), fakeUser, fakeTx)
     expect(res.status).toBe(403)
@@ -136,6 +164,7 @@ describe('withRole', () => {
   })
 
   it('passes when role matches', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
     const handler = withRole('admin', async (_req, user) =>
       NextResponse.json({ role: user.role }),
     )
@@ -143,7 +172,7 @@ describe('withRole', () => {
       type: 'staff',
       id: 'x',
       email: 'e',
-      staffUserId: null,
+      staffUserId: 'staff-1',
       tenantId: 't',
       role: 'admin',
     }

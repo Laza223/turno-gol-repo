@@ -61,7 +61,6 @@
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0",
     "@radix-ui/react-dropdown-menu": "^2.0",
-    "@radix-ui/react-select": "^2.0",
     "@radix-ui/react-toast": "^1.1",
     "@sentry/nextjs": "^7.110",
     "@supabase/ssr": "^0.3",
@@ -76,7 +75,6 @@
     "leaflet": "1.9.4",
     "lucide-react": "^1.11.0",
     "mercadopago": "^2.0",
-    "nanoid": "^5.0",
     "next": "^14.2",
     "next-themes": "^0.4.6",
     "nextjs-toploader": "^3.9.17",
@@ -118,7 +116,6 @@
     "supabase": "^1.150",
     "tailwindcss": "^3.4",
     "tailwindcss-animate": "^1.0",
-    "tslib": "^2.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.4",
     "vitest": "^1.6"

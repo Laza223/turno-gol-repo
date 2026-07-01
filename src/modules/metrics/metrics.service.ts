@@ -8,7 +8,7 @@ export const METRICS_WINDOW_DAYS = 30
 // that was confirmed at some point. Excludes `pending_payment` (never
 // confirmed) and `expired` (abandoned checkout) so the series reflects demand,
 // not abandoned funnels.
-export const COUNTED_BOOKING_STATUSES = [
+const COUNTED_BOOKING_STATUSES = [
   'confirmed',
   'completed',
   'no_show',

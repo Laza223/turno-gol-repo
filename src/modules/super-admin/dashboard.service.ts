@@ -21,14 +21,14 @@ import { getQueueDepths, type QueueDepthEntry } from '@/shared/jobs/queue-stats'
 
 export type TenantStatus = (typeof tenantStatusEnum.enumValues)[number]
 
-export type ExpiringTrial = {
+type ExpiringTrial = {
   id: string
   name: string
   slug: string
   trialEndsAt: Date
 }
 
-export type RecentSignup = {
+type RecentSignup = {
   id: string
   name: string
   slug: string
@@ -36,7 +36,7 @@ export type RecentSignup = {
   createdAt: Date
 }
 
-export type RecentWebhook = {
+type RecentWebhook = {
   id: string
   mpEventId: string
   eventType: string

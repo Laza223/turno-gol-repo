@@ -6,14 +6,14 @@ const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 // Cambio #17: los 8 formatos de fútbol en Argentina (Fútbol 4 al 11).
 const VALID_FORMATS = [4, 5, 6, 7, 8, 9, 10, 11] as const
 
-export const pricingRuleSchema = z.object({
+const pricingRuleSchema = z.object({
   days: z.array(z.enum(DAY_KEYS)).min(1, 'Al menos un día requerido'),
   from: z.string().regex(HHMM_RE, 'Formato HH:MM requerido'),
   to: z.string().regex(HHMM_OR_MIDNIGHT_RE, 'Formato HH:MM requerido (00:00 = medianoche)'),
   price: z.number().int().positive('Precio debe ser positivo'),
 })
 
-export const courtPricingSchema = z.object({
+const courtPricingSchema = z.object({
   rules: z.array(pricingRuleSchema).min(1, 'Al menos una regla de precio requerida'),
 })
 

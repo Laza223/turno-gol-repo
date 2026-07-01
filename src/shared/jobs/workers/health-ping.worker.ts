@@ -103,7 +103,7 @@ async function pingMercadoPago(): Promise<PingResult> {
  * dependency is reported, not raised — otherwise the job would land in the DLQ
  * and double-alert.
  */
-export async function runHealthPing(): Promise<PingResult[]> {
+async function runHealthPing(): Promise<PingResult[]> {
   const results = await Promise.all([
     pingDb(),
     pingPgBoss(),

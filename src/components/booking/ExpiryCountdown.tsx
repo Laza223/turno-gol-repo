@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import { formatRemaining } from './format-remaining'
 
-export { formatRemaining }
-
 export default function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
   const [now, setNow] = useState(() => Date.now())
 

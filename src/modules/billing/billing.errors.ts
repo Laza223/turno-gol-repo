@@ -15,17 +15,6 @@ export class InvalidTransitionError extends Error {
   }
 }
 
-export class PreapprovalCreationError extends Error {
-  readonly code = 'PREAPPROVAL_CREATION_FAILED'
-  constructor(
-    public readonly tenantId: string,
-    public readonly cause: unknown,
-  ) {
-    super(`Failed to create MP preapproval for tenant ${tenantId}`)
-    this.name = 'PreapprovalCreationError'
-  }
-}
-
 export class DowngradeBlockedError extends Error {
   readonly code = 'DOWNGRADE_BLOCKED'
   constructor(

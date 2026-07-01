@@ -57,7 +57,7 @@ export type PublicCourtCard = {
 // 'occupied' = reserva espontánea, 'fixed' = turno fijo/abonado, 'blocked' = bloqueado por el admin
 export type SlotStatus = 'free' | 'occupied' | 'fixed' | 'blocked' | 'past'
 
-export type PublicBookingType = 'spontaneous' | 'fixed' | 'block'
+type PublicBookingType = 'spontaneous' | 'fixed' | 'block'
 
 export type Slot = {
   time: string
@@ -66,7 +66,7 @@ export type Slot = {
   price: number | null
 }
 
-export type PublicCourt = {
+type PublicCourt = {
   id: string
   name: string
   surfaceType: string
@@ -93,7 +93,7 @@ type PricingRule = {
 
 export type CourtPricingData = { rules: PricingRule[] }
 
-export type BookingRange = {
+type BookingRange = {
   courtId: string
   timeStartMins: number
   timeEndMins: number
@@ -433,7 +433,7 @@ async function getPublicAvailabilityImpl(
 
 // ─── Weekly availability ──────────────────────────────────────────────────────
 
-export type WeeklyDay = { date: string; courts: PublicCourt[] }
+type WeeklyDay = { date: string; courts: PublicCourt[] }
 export type WeeklyAvailabilityResponse = { startDate: string; days: WeeklyDay[] }
 
 function addDaysStr(dateStr: string, n: number): string {

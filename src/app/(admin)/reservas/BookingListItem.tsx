@@ -53,7 +53,7 @@ const STATUS_VISUALS: Record<string, ItemVisual> = {
 
 const FALLBACK_VISUAL = STATUS_VISUALS.completed!
 
-export function itemVisual(booking: Pick<ReservaListRow, 'status' | 'type'>): ItemVisual {
+function itemVisual(booking: Pick<ReservaListRow, 'status' | 'type'>): ItemVisual {
   if (booking.type === 'block') {
     return {
       accent: 'bg-slate-400',
@@ -64,7 +64,7 @@ export function itemVisual(booking: Pick<ReservaListRow, 'status' | 'type'>): It
   return STATUS_VISUALS[booking.status] ?? FALLBACK_VISUAL
 }
 
-export function depositText(booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount'>): string {
+function depositText(booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount'>): string {
   if (booking.depositAmount <= 0) return 'Sin seña'
   switch (booking.depositStatus) {
     case 'paid':
@@ -79,7 +79,7 @@ export function depositText(booking: Pick<ReservaListRow, 'depositStatus' | 'dep
   }
 }
 
-export function clientName(booking: Pick<ReservaListRow, 'playerName' | 'guestName' | 'type'>): string {
+function clientName(booking: Pick<ReservaListRow, 'playerName' | 'guestName' | 'type'>): string {
   if (booking.type === 'block') return 'Bloqueo'
   return booking.playerName ?? booking.guestName ?? 'Sin nombre'
 }

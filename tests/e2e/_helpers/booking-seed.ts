@@ -18,7 +18,6 @@ import { makeServiceClient } from './player-seed'
 export {
   E2E_TENANT_ID,
   E2E_COURT_ID,
-  E2E_DEPOSIT_COURT_ID,
   makeServiceClient,
 } from './player-seed'
 

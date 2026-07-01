@@ -21,7 +21,7 @@ import {
 } from './actions'
 import { hasQuickActions } from './quick-actions-helpers'
 
-export type QuickActionsBooking = {
+type QuickActionsBooking = {
   id: string
   status: string
   type: string

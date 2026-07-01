@@ -20,7 +20,3 @@ export const STAFF_ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
 // Al invitar, el rol arranca en Encargado: sumar un admin con acceso total
 // debe ser una decisión explícita, no el default.
 export const DEFAULT_INVITE_ROLE: StaffRole = 'manager'
-
-export function isStaffRole(value: unknown): value is StaffRole {
-  return typeof value === 'string' && (STAFF_ROLES as readonly string[]).includes(value)
-}

@@ -8,17 +8,6 @@ const uuid = z.string().regex(UUID_RE, 'UUID inválido')
 const dateStr = z.string().regex(DATE_RE, 'Formato YYYY-MM-DD requerido')
 const hhmm = z.string().regex(HHMM_RE, 'Formato HH:MM requerido')
 
-export const createOnlineBookingSchema = z.object({
-  playerId: uuid,
-  courtId: uuid,
-  date: dateStr,
-  timeStart: hhmm,
-  timeEnd: hhmm,
-  requiresDeposit: z.boolean(),
-  depositPercentage: z.number().int().min(0).max(100),
-  notesPlayer: z.string().max(1000).optional(),
-})
-
 export const createManualBookingSchema = z
   .object({
     courtId: uuid,
@@ -54,23 +43,6 @@ export const createManualBookingSchema = z
         'Reserva manual: no combinar un jugador registrado con datos de invitado.',
     },
   )
-
-export const completeBookingSchema = z.object({
-  bookingId: uuid,
-})
-
-export const markNoShowSchema = z.object({
-  bookingId: uuid,
-})
-
-export const expirePendingBookingSchema = z.object({
-  bookingId: uuid,
-})
-
-export const getAvailableSlotsSchema = z.object({
-  courtId: uuid,
-  date: dateStr,
-})
 
 // ── Output (response) contracts — doc15 §2 ────────────────────────────────────
 // Mirror `BookingRow` (booking.types.ts) as serialized over the wire: Date fields

@@ -1,21 +1,8 @@
 import { NextResponse } from 'next/server'
 import { and, count, eq, lt, or, sql } from 'drizzle-orm'
-import { badRequest, businessRule, conflict, validationError } from '@/shared/api-error'
-import { validatedJson } from '@/shared/api-output'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
-import {
-  createManualBooking,
-  getAvailableSlots,
-} from '@/modules/bookings/booking.service'
-import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
-import {
-  BookingValidationError,
-  CourtOfflineError,
-  PriceUnavailableError,
-  SlotTakenError,
-} from '@/modules/bookings/booking.errors'
 import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -132,70 +119,3 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
     },
   })
 })
-
-export const POST = withTenant(async (req: NextRequest, user, tx) => {
-  const throttled = await guard('adminCrud', user.tenantId!)
-  if (throttled) return throttled
-
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
-  }
-
-  const parsed = createManualBookingSchema.safeParse(body)
-  if (!parsed.success) {
-    return validationError(parsed.error, { status: 422 })
-  }
-
-  const tenantId = user.tenantId!
-  const staffUserId = user.staffUserId!
-
-  try {
-    const booking = await createManualBooking(
-      tenantId,
-      { ...parsed.data, staffUserId },
-      tx,
-    )
-    return validatedJson(bookingResponseSchema, { data: booking }, 'POST /api/bookings', {
-      status: 201,
-    })
-  } catch (err) {
-    if (err instanceof BookingValidationError) {
-      return businessRule(err.message)
-    }
-    if (err instanceof SlotTakenError) {
-      const alternatives = await getSuggestedAlternatives(
-        tenantId,
-        parsed.data.courtId,
-        parsed.data.date,
-        tx,
-      )
-      return conflict('Este turno acaba de ser tomado por otro jugador.', {
-        code: 'SLOT_UNAVAILABLE',
-        details: { suggested_alternatives: alternatives },
-      })
-    }
-    if (err instanceof CourtOfflineError) {
-      return businessRule('La cancha no está disponible.')
-    }
-    if (err instanceof PriceUnavailableError) {
-      return businessRule('No hay precio configurado para este horario.')
-    }
-    throw err
-  }
-})
-
-async function getSuggestedAlternatives(
-  tenantId: string,
-  courtId: string,
-  date: string,
-  tx: Parameters<typeof createManualBooking>[2],
-) {
-  const slots = await getAvailableSlots(tenantId, courtId, date, tx)
-  return slots
-    .filter((s) => s.available)
-    .slice(0, 3)
-    .map((s) => ({ time_start: s.timeStart, time_end: s.timeEnd, price: s.price }))
-}

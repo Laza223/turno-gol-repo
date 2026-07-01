@@ -35,31 +35,6 @@ const reviewItemResponseSchema = z
   })
   .strict()
 
-const ratingSummaryResponseSchema = z
-  .object({
-    average: z.number(),
-    count: z.number().int(),
-  })
-  .strict()
-
-// Proyección pública: sin playerId/bookingId (UUIDs internos — Ley 25.326).
-const publicReviewItemResponseSchema = z
-  .object({
-    id: uuid,
-    rating: z.number().int(),
-    comment: z.string().nullable(),
-    createdAt: z.string(),
-  })
-  .strict()
-
-export const reviewsPageResponseSchema = z
-  .object({
-    reviews: z.array(publicReviewItemResponseSchema),
-    total: z.number().int(),
-    summary: ratingSummaryResponseSchema,
-  })
-  .strict()
-
 export const createReviewResponseSchema = z
   .object({ data: reviewItemResponseSchema })
   .strict()

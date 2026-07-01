@@ -2,7 +2,9 @@ import type { NextRequest, NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { StaffUser } from '@/modules/auth/types'
 import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'
-import { forbidden, notFound, unauthorized } from '@/shared/api-error'
+import { forbidden, unauthorized } from '@/shared/api-error'
+import { getStaffRole } from '@/modules/staff/staff.service'
+import type { StaffRole } from '@/modules/staff/roles'
 
 /**
  * Tenant lifecycle gating per doc4 §2 (P18).
@@ -21,13 +23,46 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 const BILLING_REACTIVATE_ALLOWED = new Set(['canceled', 'churned'])
 
+// Default: cualquier miembro de staff activo (admin o manager). Pasar
+// `{ roles: ['admin'] }` en rutas de configuración/facturación restringe a admin.
+const ALL_STAFF_ROLES: readonly StaffRole[] = ['admin', 'manager']
+
 export type TenantHandler = (
   req: NextRequest,
   user: StaffUser,
   tx: DbTx,
 ) => Promise<NextResponse> | NextResponse
 
-export function withTenant(handler: TenantHandler): (req: NextRequest) => Promise<NextResponse> {
+export type WithTenantOptions = {
+  roles?: readonly StaffRole[]
+}
+
+/**
+ * Revalida el rol real contra `tenant_staff_members` (nunca el JWT: el claim
+ * `role` viene hardcodeado a 'admin' para todo el staff). `null` cubre tanto
+ * "rol equivocado" como "membresía desactivada" — un staff dado de baja
+ * (`is_active=false`) queda bloqueado acá igual que ya bloquean
+ * requireOperatorStaff/requireAdminStaff en los Server Actions.
+ */
+async function checkStaffRole(
+  user: StaffUser,
+  roles: readonly StaffRole[],
+): Promise<NextResponse | null> {
+  if (!user.staffUserId || !user.tenantId) {
+    return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
+  }
+  const role = await getStaffRole(user.tenantId, user.staffUserId)
+  if (!role || !roles.includes(role)) {
+    return forbidden('Tu rol no permite realizar esta acción.', { code: 'ROLE_NOT_ALLOWED' })
+  }
+  return null
+}
+
+export function withTenant(
+  handler: TenantHandler,
+  options?: WithTenantOptions,
+): (req: NextRequest) => Promise<NextResponse> {
+  const roles = options?.roles ?? ALL_STAFF_ROLES
   return async (req) => {
     const user = await extractAuthUser()
     if (!user) {
@@ -39,6 +74,8 @@ export function withTenant(handler: TenantHandler): (req: NextRequest) => Promis
     if (!user.tenantId) {
       return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
     }
+    const roleRejection = await checkStaffRole(user, roles)
+    if (roleRejection) return roleRejection
     const sql = getSql()
     const rows = await sql<{ status: string }[]>`
       SELECT status FROM tenants WHERE id = ${user.tenantId} LIMIT 1
@@ -71,7 +108,9 @@ export function withTenant(handler: TenantHandler): (req: NextRequest) => Promis
  */
 export function withBillingTenant(
   handler: TenantHandler,
+  options?: WithTenantOptions,
 ): (req: NextRequest) => Promise<NextResponse> {
+  const roles = options?.roles ?? ALL_STAFF_ROLES
   return async (req) => {
     const user = await extractAuthUser()
     if (!user) {
@@ -83,6 +122,8 @@ export function withBillingTenant(
     if (!user.tenantId) {
       return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
     }
+    const roleRejection = await checkStaffRole(user, roles)
+    if (roleRejection) return roleRejection
     const sql = getSql()
     const rows = await sql<{ status: string }[]>`
       SELECT status FROM tenants WHERE id = ${user.tenantId} LIMIT 1
@@ -108,45 +149,5 @@ export function withBillingTenant(
       })
     }
     return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
-  }
-}
-
-// ─── Public-by-slug variant (no auth) ───────────────────────────────
-// Used by /api/public/complex/[slug] and similar.
-
-export type PublicTenantHandler = (
-  req: NextRequest,
-  tenantId: string,
-  tx: DbTx,
-) => Promise<NextResponse> | NextResponse
-
-export type RouteContext<P> = { params: P }
-
-export function withPublicTenant(
-  handler: PublicTenantHandler,
-): (req: NextRequest, ctx: RouteContext<{ slug: string }>) => Promise<NextResponse> {
-  return async (req, ctx) => {
-    const slug = ctx.params.slug
-    if (!slug) {
-      return notFound('El complejo no existe.')
-    }
-    const sql = getSql()
-    const rows = await sql<{ id: string; status: string }[]>`
-      SELECT id, status FROM tenants WHERE slug = ${slug} LIMIT 1
-    `
-    if (rows.length === 0) {
-      return notFound('El complejo no existe.')
-    }
-    const { id: tenantId, status } = rows[0]
-    if (BLOCKED_TENANT_STATUSES.has(status)) {
-      return notFound('El complejo no existe.')
-    }
-    if (READ_ONLY_TENANT_STATUSES.has(status) && !READ_METHODS.has(req.method)) {
-      // Public players can still book on suspended tenants per doc4 §2 — the
-      // restriction is admin-side. But for write methods on public endpoints
-      // (cancel by player, etc.) keep them open: doc4 §2 says players still
-      // see and cancel. Allow.
-    }
-    return withTenantContext(tenantId, async (tx) => handler(req, tenantId, tx))
   }
 }

@@ -48,7 +48,7 @@ export type TenantListFilters = {
   pageSize: number
 }
 
-export type TenantListRow = {
+type TenantListRow = {
   id: string
   name: string
   slug: string
@@ -353,7 +353,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
 
 // ─── Actividad (audit trail + últimos bookings) ──────────────────────────────
 
-export type AuditLogRow = {
+type AuditLogRow = {
   id: string
   action: string
   actorType: 'staff' | 'player' | 'system'
@@ -364,7 +364,7 @@ export type AuditLogRow = {
   createdAt: Date
 }
 
-export type RecentBookingRow = {
+type RecentBookingRow = {
   id: string
   date: Date
   timeStart: string

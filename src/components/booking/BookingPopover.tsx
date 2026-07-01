@@ -20,7 +20,7 @@ function formatArs(cents: number): string {
   }).format(cents / 100)
 }
 
-export function depositLabel(booking: GridBooking): string {
+function depositLabel(booking: GridBooking): string {
   const amount = booking.depositAmount ?? 0
   switch (booking.depositStatus) {
     case 'paid':

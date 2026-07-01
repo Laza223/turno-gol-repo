@@ -21,13 +21,6 @@ export class MpGatewayError extends Error {
   }
 }
 
-export class WebhookSignatureError extends Error {
-  constructor() {
-    super('Invalid webhook signature')
-    this.name = 'WebhookSignatureError'
-  }
-}
-
 export class TenantMpNotConnectedError extends Error {
   constructor(tenantId: string) {
     super(`Tenant ${tenantId} has no MercadoPago account connected`)

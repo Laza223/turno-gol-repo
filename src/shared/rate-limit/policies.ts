@@ -1,4 +1,4 @@
-export type KeyBy = 'email' | 'ip' | 'tenant' | 'player'
+type KeyBy = 'email' | 'ip' | 'tenant' | 'player'
 
 export type Policy = {
   limit: number

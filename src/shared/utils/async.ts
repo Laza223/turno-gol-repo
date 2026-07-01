@@ -10,7 +10,7 @@
  */
 
 /** Error thrown by {@link withTimeout} when the deadline elapses. */
-export class TimeoutError extends Error {
+class TimeoutError extends Error {
   constructor(message = 'La operación tardó demasiado') {
     super(message)
     this.name = 'TimeoutError'

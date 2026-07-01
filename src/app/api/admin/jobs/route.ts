@@ -1,5 +1,5 @@
 import { enforce, rateLimit429 } from '@/shared/rate-limit'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { getQueueDepths } from '@/shared/jobs/queue-stats'
 import { forbidden } from '@/shared/api-error'
 
@@ -14,12 +14,15 @@ export const runtime = 'nodejs'
  * dashboard).
  */
 export async function GET(): Promise<Response> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'system_admin') {
+  // Triple chequeo (claim JWT + fila activa en system_admins + allowlist),
+  // no solo el claim JWT: un super-admin revocado con sesión viva no debe
+  // seguir viendo esto (audit_report.md Capa 5, C5-G3).
+  const auth = await resolveSystemAdmin()
+  if (!auth) {
     return forbidden('Solo el super admin puede acceder a este recurso.')
   }
   // adminCrud bucket keyed by the super-admin id (no tenant context here).
-  const rl = await enforce('adminCrud', user.systemAdminId)
+  const rl = await enforce('adminCrud', auth.user.systemAdminId)
   if (!rl.ok) return rateLimit429(rl)
 
   const queues = await getQueueDepths()

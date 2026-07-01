@@ -482,37 +482,3 @@ export async function createRefund(
   return { refundPaymentId: inserted[0]!.id }
 }
 
-/**
- * Read helper for the route layer: given an MP payment id, fetch tenant +
- * payment id from the DB if a row exists. Used for resolving tenant context
- * before calling `processWebhook`. Returns null if no payment row exists yet
- * (the route must then resolve via gateway.getPaymentStatus + booking lookup).
- */
-export async function findTenantByMpPaymentId(
-  mpPaymentId: string,
-  tx: DbTx,
-): Promise<{ tenantId: string } | null> {
-  const rows = await tx
-    .select({ tenantId: payments.tenantId })
-    .from(payments)
-    .where(eq(payments.mpPaymentId, mpPaymentId))
-    .limit(1)
-  return rows[0] ?? null
-}
-
-/**
- * Read helper: given a booking id, fetch tenant id. Used by the webhook route
- * after `gateway.getPaymentStatus` returns `external_reference=bookingId`.
- */
-export async function findTenantByBookingId(
-  bookingId: string,
-  tx: DbTx,
-): Promise<{ tenantId: string } | null> {
-  const rows = await tx
-    .select({ tenantId: bookings.tenantId })
-    .from(bookings)
-    .where(eq(bookings.id, bookingId))
-    .limit(1)
-  return rows[0] ?? null
-}
-

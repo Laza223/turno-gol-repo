@@ -1,11 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validation/primitives'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
@@ -42,13 +40,6 @@ export type AbonadoActionResult =
   | { success: true; abonado: AbonadoRow; slotsGenerated?: number; conflictDates?: string[] }
   | { success: false; error: string }
 
-async function requireStaffTenant() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  return { user, tenant }
-}
-
 export async function createAbonadoAction(
   input: CreateAbonadoInput,
 ): Promise<AbonadoActionResult> {
@@ -56,8 +47,9 @@ export async function createAbonadoAction(
   if (!parsed.success) {
     return { success: false, error: 'Datos inválidos.' }
   }
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -86,8 +78,9 @@ export async function createAbonadoAction(
 export async function pauseAbonadoAction(id: string): Promise<AbonadoActionResult> {
   const parsedId = uuid.safeParse(id)
   if (!parsedId.success) return { success: false, error: 'ID inválido.' }
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -111,8 +104,9 @@ export async function pauseAbonadoAction(id: string): Promise<AbonadoActionResul
 export async function reactivateAbonadoAction(id: string): Promise<AbonadoActionResult> {
   const parsedId = uuid.safeParse(id)
   if (!parsedId.success) return { success: false, error: 'ID inválido.' }
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -148,8 +142,9 @@ export async function cancelAbonadoAction(
 ): Promise<AbonadoActionResult> {
   const parsed = z.object({ id: uuid, fromDate: dateStr }).safeParse({ id, fromDate })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
-  const { user, tenant } = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }

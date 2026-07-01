@@ -60,6 +60,18 @@ export async function loginAction(
     return { status: 'error', message: GENERIC }
   }
 
+  // Un jugador (passwordless por diseño) puede haber fijado una password vía
+  // "olvidé mi contraseña" (ese flujo no filtra por tipo de cuenta) e intentar
+  // entrar por acá. provisionAndRouteStaff no chequea is_player: sin este
+  // corte crearía una fila espuria en staff_users (audit_report.md 3-10).
+  // Mismo criterio que extractRealAuthUser (auth.middleware.ts).
+  const meta = result.user.app_metadata ?? {}
+  const userMeta = result.user.user_metadata ?? {}
+  if (meta.is_player === true || userMeta.is_player === true) {
+    await createClient().auth.signOut()
+    return { status: 'error', message: GENERIC }
+  }
+
   // Cambio forzado (contraseña temporal del SuperAdmin): atajo que evita un render
   // del layout. El enforcement real vive también en el layout admin (R8).
   if (result.user.app_metadata?.force_password_change === true) {

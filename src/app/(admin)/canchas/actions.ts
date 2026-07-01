@@ -1,10 +1,8 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { and, eq, inArray, sql as dsql } from 'drizzle-orm'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaffAction, requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
@@ -27,16 +25,12 @@ function formBool(v: FormDataEntryValue | null): boolean | undefined {
   return v === 'true' || v === 'on' || v === '1'
 }
 
-async function requireStaffTenant() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  return tenant
-}
-
+// Crear cancha (nombre/precio/formato) es Configuración: solo admin
+// (audit_report.md 3-18).
 export async function createCourtAction(formData: FormData): Promise<CourtActionResult> {
-  const tenant = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -92,12 +86,15 @@ export async function createCourtAction(formData: FormData): Promise<CourtAction
   return result
 }
 
+// Editar cancha (nombre/precio/formato) es Configuración: solo admin
+// (audit_report.md 3-18).
 export async function updateCourtAction(
   courtId: string,
   formData: FormData,
 ): Promise<CourtActionResult> {
-  const tenant = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -147,12 +144,15 @@ export async function updateCourtAction(
   return result
 }
 
+// Activar/desactivar (lluvia, mantenimiento) es operativo: admin + manager
+// (audit_report.md 3-18, decisión revisada 2026-07-01).
 export async function toggleCourtStatusAction(
   courtId: string,
   status: 'online' | 'offline',
 ): Promise<CourtActionResult> {
-  const tenant = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
@@ -171,11 +171,13 @@ export type CourtDeactivationImpactResult =
   | { success: true; futureBookings: number; activeAbonados: number }
   | { success: false; error: string }
 
+// Preview del impacto de desactivar: mismo nivel que el toggle que dispara.
 export async function getCourtDeactivationImpactAction(
   courtId: string,
 ): Promise<CourtDeactivationImpactResult> {
-  const tenant = await requireStaffTenant()
-  if (!tenant) return { success: false, error: 'Tenant no encontrado' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }

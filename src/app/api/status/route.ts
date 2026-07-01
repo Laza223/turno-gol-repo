@@ -1,9 +1,15 @@
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { getRedis } from '@/shared/rate-limit/client'
+import { captureException } from '@/lib/sentry'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+// Público y sin auth (uptime monitor externo, doc17/doc19): el detalle de la
+// excepción NUNCA sale en la respuesta (audit_report.md 3-13) — se loguea acá
+// para diagnóstico interno y el caller solo recibe este texto genérico.
+const GENERIC_CHECK_ERROR = 'No se pudo verificar.'
 
 type CheckStatus = 'ok' | 'degraded' | 'down'
 
@@ -22,7 +28,8 @@ async function checkDb(): Promise<Check> {
     await sql`SELECT 1`
     return { name: 'database', status: 'ok', latencyMs: Date.now() - t0 }
   } catch (err) {
-    return { name: 'database', status: 'down', error: (err as Error).message }
+    captureException(err)
+    return { name: 'database', status: 'down', error: GENERIC_CHECK_ERROR }
   }
 }
 
@@ -42,7 +49,8 @@ async function checkPgBoss(): Promise<Check> {
     }
     return { name: 'pg-boss', status: 'ok', latencyMs: Date.now() - t0 }
   } catch (err) {
-    return { name: 'pg-boss', status: 'down', error: (err as Error).message }
+    captureException(err)
+    return { name: 'pg-boss', status: 'down', error: GENERIC_CHECK_ERROR }
   }
 }
 
@@ -59,7 +67,8 @@ async function checkUpstash(): Promise<Check> {
     await redis.ping()
     return { name: 'upstash', status: 'ok', latencyMs: Date.now() - t0 }
   } catch (err) {
-    return { name: 'upstash', status: 'down', error: (err as Error).message }
+    captureException(err)
+    return { name: 'upstash', status: 'down', error: GENERIC_CHECK_ERROR }
   }
 }
 

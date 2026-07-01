@@ -94,7 +94,12 @@
       "Bash(sed -i 's/- \\\\[ \\\\] T3:/- [x] T3:/' .superpowers/sdd/progress.md)",
       "Bash(sed -i 's/- \\\\[ \\\\] T4:/- [x] T4:/' .superpowers/sdd/progress.md)",
       "Bash(sed -i 's/- \\\\[ \\\\] T5 dashboard/- [x] T5 dashboard/' .superpowers/sdd/progress.md)",
-      "Bash(python -)"
+      "Bash(python -)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(Invoke-WebRequest -Uri https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 -OutFile install.ps1)",
+      "Bash(powershell.exe -Command \"Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1' -OutFile 'install.ps1'; Write-Host 'Downloaded'\")",
+      "Bash(powershell.exe *)"
     ]
   }
 }

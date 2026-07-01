@@ -45,9 +45,10 @@ const SURFACE_LABELS: Record<string, string> = {
 type Props = {
   initialCourts: CourtRow[]
   openingHours: OpeningHours
+  isAdmin: boolean
 }
 
-export function CourtList({ initialCourts, openingHours }: Props) {
+export function CourtList({ initialCourts, openingHours, isAdmin }: Props) {
   const [courts, setCourts] = useState<CourtRow[]>(initialCourts)
   const [showForm, setShowForm] = useState(false)
   const [editingCourt, setEditingCourt] = useState<CourtRow | null>(null)
@@ -94,35 +95,43 @@ export function CourtList({ initialCourts, openingHours }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
-        >
-          + Nueva cancha
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
+          >
+            + Nueva cancha
+          </button>
+        </div>
+      )}
 
       {courts.length === 0 ? (
         <EmptyState
           icon={LayoutGrid}
           title="Sin canchas todavía"
-          description="Creá la primera para aparecer en búsquedas públicas."
+          description={
+            isAdmin
+              ? 'Creá la primera para aparecer en búsquedas públicas.'
+              : 'Todavía no hay canchas cargadas. Pedile al administrador que cree la primera.'
+          }
           action={
-            <button
-              type="button"
-              onClick={openCreate}
-              className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
-            >
-              + Nueva cancha
-            </button>
+            isAdmin ? (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
+              >
+                + Nueva cancha
+              </button>
+            ) : undefined
           }
         />
       ) : (
         <div className="space-y-3">
           {courts.map((court) => (
-            <CourtCard key={court.id} court={court} onEdit={openEdit} />
+            <CourtCard key={court.id} court={court} onEdit={openEdit} isAdmin={isAdmin} />
           ))}
         </div>
       )}
@@ -130,7 +139,15 @@ export function CourtList({ initialCourts, openingHours }: Props) {
   )
 }
 
-function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRow) => void }) {
+function CourtCard({
+  court,
+  onEdit,
+  isAdmin,
+}: {
+  court: CourtRow
+  onEdit: (court: CourtRow) => void
+  isAdmin: boolean
+}) {
   const [isPending, startTransition] = useTransition()
   const [currentStatus, setCurrentStatus] = useState<'online' | 'offline'>(court.status)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -215,13 +232,15 @@ function CourtCard({ court, onEdit }: { court: CourtRow; onEdit: (court: CourtRo
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          type="button"
-          onClick={() => onEdit(court)}
-          className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-accent transition-colors duration-150"
-        >
-          Editar
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => onEdit(court)}
+            className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-accent transition-colors duration-150"
+          >
+            Editar
+          </button>
+        )}
         <button
           type="button"
           onClick={handleToggleClick}

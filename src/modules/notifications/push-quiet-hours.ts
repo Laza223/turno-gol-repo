@@ -14,7 +14,7 @@
 import { PUSH_SEND_SEND_OPTIONS } from '@/shared/jobs/definitions'
 
 /** Hora local (inclusive) a partir de la cual el push se entrega en el momento. */
-export const QUIET_HOURS_END = 8
+const QUIET_HOURS_END = 8
 
 type ZonedParts = {
   year: number

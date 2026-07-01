@@ -28,11 +28,6 @@ const dateFormatter = new Intl.DateTimeFormat('es-AR', {
   month: 'long',
 })
 
-const dateShortFormatter = new Intl.DateTimeFormat('es-AR', {
-  day: 'numeric',
-  month: 'short',
-})
-
 /** Capitaliza solo la primera letra (no cada palabra, como hace `text-transform: capitalize`). */
 export function capitalizeFirst(value: string): string {
   return value.length === 0 ? value : value.charAt(0).toUpperCase() + value.slice(1)
@@ -44,14 +39,8 @@ export function formatDateLong(value: Date | string): string {
   return capitalizeFirst(dateFormatter.format(d))
 }
 
-/** Date | "YYYY-MM-DD" → "2 jun". */
-export function formatDateShort(value: Date | string): string {
-  const d = typeof value === 'string' ? parseDateOnly(value) : value
-  return dateShortFormatter.format(d)
-}
-
 /** Parsea "YYYY-MM-DD" como fecha local (evita el shift UTC de new Date(str)). */
-export function parseDateOnly(value: string): Date {
+function parseDateOnly(value: string): Date {
   const [y, m, day] = value.split('-').map(Number)
   return new Date(y ?? 1970, (m ?? 1) - 1, day ?? 1)
 }

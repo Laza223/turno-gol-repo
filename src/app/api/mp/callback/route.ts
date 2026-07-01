@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { encrypt } from '@/lib/crypto/encrypt'
 import { connectMercadoPago, completeOnboarding } from '@/modules/tenants/tenant.service'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getStaffRole } from '@/modules/staff/staff.service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,6 +62,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(
       new URL('/onboarding?error=mp_invalid_state', req.url),
     )
+  }
+
+  // El `state` firmado solo prueba que ESTE navegador inició un oauth-start
+  // válido (protege contra CSRF), pero no prueba identidad ni rol — si el link
+  // de callback llegara a filtrarse (queda en logs/Referer/historial, ver nota
+  // de anti-replay abajo), cualquiera con la URL podría completar la conexión
+  // de MP del tenant. Revalidamos acá que quien la completa es un admin
+  // autenticado de ESE mismo tenant (audit_report.md 3-15).
+  const user = await extractAuthUser()
+  if (!user || user.type !== 'staff' || !user.staffUserId || user.tenantId !== tenantId) {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
+  const role = await getStaffRole(tenantId, user.staffUserId)
+  if (role !== 'admin') {
+    return NextResponse.redirect(new URL('/dashboard?error=mp_forbidden', req.url))
   }
 
   // Anti-replay (#10): el state va por la URL de redirect de MP (queda en logs,

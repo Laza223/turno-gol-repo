@@ -16,7 +16,7 @@ const STATUS_STYLES: Record<TenantStatus, string> = {
   deleted: 'bg-muted text-muted-foreground ring-slate-500/20',
 }
 
-export const STATUS_LABELS: Record<TenantStatus, string> = {
+const STATUS_LABELS: Record<TenantStatus, string> = {
   trialing: 'Trial',
   active: 'Activo',
   past_due: 'Moroso',

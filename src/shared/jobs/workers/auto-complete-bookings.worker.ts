@@ -4,7 +4,7 @@ import { autoCompleteOverdueBookings } from '@/modules/bookings/booking.service'
 import { QUEUE_AUTO_COMPLETE } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
-export async function runAutoCompleteBookings(): Promise<void> {
+async function runAutoCompleteBookings(): Promise<void> {
   const db = getDb()
   const completed = await db.transaction(async (tx) => {
     return autoCompleteOverdueBookings(tx)

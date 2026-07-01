@@ -103,7 +103,7 @@ export type CreateSaasUpgradePreferenceInput = {
  * Used by the MP webhook dispatcher to route the resulting payment back to
  * `billing.handleUpgradePayment`.
  */
-export const SAAS_UPGRADE_REF_PREFIX = 'saas-upgrade:'
+const SAAS_UPGRADE_REF_PREFIX = 'saas-upgrade:'
 
 export function buildSaasUpgradeRef(tenantId: string, targetPlanId: string): string {
   return `${SAAS_UPGRADE_REF_PREFIX}${tenantId}:${targetPlanId}`

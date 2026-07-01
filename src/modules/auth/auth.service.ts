@@ -3,8 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSql } from '@/shared/db/client'
 import { track } from '@/shared/observability'
-import { extractAuthUser } from './auth.middleware'
-import type { AuthUser } from './types'
 
 export type SignInResult = { ok: true } | { ok: false; error: string }
 
@@ -110,15 +108,6 @@ export async function signUpStaff(
   return { ok: true }
 }
 
-export async function signOut(): Promise<void> {
-  const supabase = createClient()
-  await supabase.auth.signOut()
-}
-
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  return extractAuthUser()
-}
-
 export type StaffTenantRow = {
   tenantId: string
   tenantName: string
@@ -158,7 +147,7 @@ export async function setStaffTenantClaim(
   if (error) throw new Error(`Failed to set tenant claim: ${error.message}`)
 }
 
-export async function getOrCreateStaffUser(
+async function getOrCreateStaffUser(
   email: string,
   firstName: string,
   lastName: string,

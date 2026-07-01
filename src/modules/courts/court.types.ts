@@ -16,7 +16,7 @@ export type CourtRow = {
   tenantId: string
   name: string
   description: string | null
-  surfaceType: string
+  surfaceType: SurfaceType
   isCovered: boolean
   hasLighting: boolean
   // Cambio #17: format = Fútbol N (4..11). capacity = jugadores totales = format × 2.

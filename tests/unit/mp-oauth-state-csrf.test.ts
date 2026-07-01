@@ -10,6 +10,14 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
   completeOnboarding: vi.fn(async () => {}),
 }))
 
+// El callback ahora revalida sesión + rol (audit_report.md 3-15): sin esto
+// extractAuthUser tocaría Supabase real. Default: admin autenticado del mismo
+// tenant que el state — los tests de CSRF/expiry reactivan la sesión ANTES de
+// llegar a los checks que ya existían, así que este mock no cambia lo que esos
+// tests verifican.
+vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
+vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
+
 // Mock encryption so we don't need ENCRYPTION_KEY env. The wrapper is
 // identifiable (`enc(...)`) so tests can prove tokens are encrypted BEFORE they
 // reach persistence — storing plaintext MP tokens is the regression we guard.
@@ -36,10 +44,20 @@ global.fetch = fetchMock as unknown as typeof global.fetch
 
 import { GET as mpCallback } from '@/app/api/mp/callback/route'
 import { connectMercadoPago, completeOnboarding } from '@/modules/tenants/tenant.service'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getStaffRole } from '@/modules/staff/staff.service'
 
 const SECRET = 'test-mp-client-secret-1234567890'
 const TENANT = 'tenant-xyz-abc'
 const APP_URL = 'https://app.test.local'
+const ADMIN_USER = {
+  type: 'staff' as const,
+  id: 'u1',
+  email: 'admin@test.local',
+  staffUserId: 'staff-1',
+  tenantId: TENANT,
+  role: 'admin' as const,
+}
 
 function makeState(tenantId: string, secret: string, ts?: number): string {
   const payload = Buffer.from(`${tenantId}:${ts ?? Date.now()}`, 'utf8').toString('base64url')
@@ -61,6 +79,8 @@ beforeEach(() => {
   fetchMock.mockClear()
   vi.mocked(connectMercadoPago).mockClear()
   vi.mocked(completeOnboarding).mockClear()
+  vi.mocked(extractAuthUser).mockReset().mockResolvedValue(ADMIN_USER as never)
+  vi.mocked(getStaffRole).mockReset().mockResolvedValue('admin')
 })
 
 describe('MP OAuth callback — happy path side effects (B6.6)', () => {
@@ -256,6 +276,58 @@ describe('MP OAuth callback state expiry (replay protection, #10)', () => {
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(connectMercadoPago).not.toHaveBeenCalled()
+  })
+})
+
+describe('MP OAuth callback — sesión/rol revalidados (audit_report.md 3-15)', () => {
+  it('sin sesión de staff → redirect a /login, sin exchange ni persistencia', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(null)
+    const state = makeState(TENANT, SECRET)
+    const req = new NextRequest(
+      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/\/login$/)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(connectMercadoPago).not.toHaveBeenCalled()
+  })
+
+  it('staff autenticado de OTRO tenant (state ajeno) → redirect a /login, no conecta el MP de ese tenant', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue({
+      ...ADMIN_USER,
+      tenantId: 'otro-tenant',
+    } as never)
+    const state = makeState(TENANT, SECRET)
+    const req = new NextRequest(
+      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/\/login$/)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(connectMercadoPago).not.toHaveBeenCalled()
+  })
+
+  it('manager (Encargado) del tenant correcto → redirect mp_forbidden, no conecta MP', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
+    const state = makeState(TENANT, SECRET)
+    const req = new NextRequest(
+      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/mp_forbidden/)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(connectMercadoPago).not.toHaveBeenCalled()
+  })
+
+  it('membresía inactiva (rol null) → redirect mp_forbidden, no conecta MP', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue(null)
+    const state = makeState(TENANT, SECRET)
+    const req = new NextRequest(
+      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
+    )
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/mp_forbidden/)
     expect(connectMercadoPago).not.toHaveBeenCalled()
   })
 })

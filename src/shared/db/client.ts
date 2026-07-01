@@ -5,7 +5,7 @@ import * as schema from './schema'
 
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
-export type AppRole = 'authenticated' | 'anon' | 'service_role' | 'turnogol_app'
+type AppRole = 'authenticated' | 'anon' | 'service_role' | 'turnogol_app'
 
 const ALLOWED_ROLES: ReadonlySet<AppRole> = new Set<AppRole>([
   'authenticated',
@@ -192,23 +192,6 @@ export async function withContextRollback<T>(
     if (!(e instanceof RollbackSignal)) throw e
   }
   if (captureErr) throw captureErr
-  return captured!
-}
-
-export async function withRollback<T>(
-  fn: (tx: TransactionSql) => Promise<T>,
-): Promise<T> {
-  const sql = getSql()
-  let captured: T
-  try {
-    await sql.begin(async (tx) => {
-      captured = await fn(tx)
-      throw new RollbackSignal()
-    })
-  } catch (e) {
-    if (e instanceof RollbackSignal) return captured!
-    throw e
-  }
   return captured!
 }
 

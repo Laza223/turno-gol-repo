@@ -56,9 +56,10 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: 'Confirmado',
   pending_payment: 'Pago pendiente',
   completed: 'Completado',
-  canceled_refunded: 'Cancelado',
-  canceled_no_refund: 'Cancelado',
+  canceled_refunded: 'Cancelado (con reembolso)',
+  canceled_no_refund: 'Cancelado (sin reembolso)',
   no_show: 'Ausente',
+  expired: 'Expirado',
 }
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -68,6 +69,7 @@ const STATUS_CLASSES: Record<string, string> = {
   canceled_refunded: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
   canceled_no_refund: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
   no_show: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20',
+  expired: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
 }
 
 /** Color del bloque-fecha según estado (esmeralda activo, atenuado si cerrado). */

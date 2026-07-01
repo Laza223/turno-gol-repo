@@ -1,4 +1,4 @@
-export type PaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
+type PaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
 
 export type CourtReport = {
   courtId: string

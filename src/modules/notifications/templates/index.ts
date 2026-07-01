@@ -1,23 +1,5 @@
 export type EmailContent = { subject: string; html: string; text?: string }
 
-export type { BookingConfirmedData } from './booking-confirmed'
-export type { BookingCanceledData } from './booking-canceled'
-export type { BookingCanceledByComplexData } from './booking-canceled-by-complex'
-export type { NoShowDebtCreatedData } from './no-show-debt-created'
-export type { AdminNewBookingData } from './admin-new-booking'
-export type { TrialWelcomeData } from './trial-welcome'
-export type { TrialEndingData } from './trial-ending'
-export type { DunningPaymentFailedData } from './dunning-payment-failed'
-export type { DepositExpiredData } from './deposit-expired'
-export type { AdminTransferExpiredData } from './admin-transfer-expired'
-export type { AdminLatePaymentData } from './admin-late-payment'
-export type { SubscriptionActivatedData } from './subscription-activated'
-export type { SubscriptionRenewedData } from './subscription-renewed'
-export type { SubscriptionCanceledData } from './subscription-canceled'
-export type { SubscriptionSuspendedData } from './subscription-suspended'
-export type { SubscriptionBlockedData } from './subscription-blocked'
-export type { TenantDeletionWarningData } from './tenant-deletion-warning'
-
 import { renderBookingConfirmed, type BookingConfirmedData } from './booking-confirmed'
 import { renderBookingCanceled, type BookingCanceledData } from './booking-canceled'
 import { renderBookingCanceledByComplex, type BookingCanceledByComplexData } from './booking-canceled-by-complex'
@@ -48,12 +30,6 @@ export {
   renderDepositExpired,
   renderAdminTransferExpired,
   renderAdminLatePayment,
-  renderSubscriptionActivated,
-  renderSubscriptionRenewed,
-  renderSubscriptionCanceled,
-  renderSubscriptionSuspended,
-  renderSubscriptionBlocked,
-  renderTenantDeletionWarning,
 }
 
 type TemplateDataMap = {

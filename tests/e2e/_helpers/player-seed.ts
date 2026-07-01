@@ -15,12 +15,9 @@ import { randomUUID } from 'node:crypto'
 
 export const E2E_PLAYER_ID = '00000000-0000-4000-8000-000000000020'
 export const E2E_PLAYER_EMAIL = 'e2e-player@turnogol.test'
-export const E2E_PLAYER_AUTH_USER_ID = '00000000-0000-4000-8000-000000000021'
 export const E2E_TENANT_ID = '00000000-0000-4000-8000-000000000001'
-export const E2E_DEPOSIT_TENANT_ID = '00000000-0000-4000-8000-000000000030'
+const E2E_DEPOSIT_TENANT_ID = '00000000-0000-4000-8000-000000000030'
 export const E2E_COURT_ID = '00000000-0000-4000-8000-000000000010'
-/** Court belonging to the deposit tenant (mirrors seed-e2e.ts depositCourtId). */
-export const E2E_DEPOSIT_COURT_ID = '00000000-0000-4000-8000-000000000031'
 
 // ─── Service-role client factory ─────────────────────────────────────────────
 

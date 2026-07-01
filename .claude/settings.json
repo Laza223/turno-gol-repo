@@ -1,4 +1,8 @@
 {
+  "startupCommands": [
+    "/caveman ultra",
+    "/superpowers:brainstorming"
+  ],
   "permissions": {
     "allow": [
       "Read",

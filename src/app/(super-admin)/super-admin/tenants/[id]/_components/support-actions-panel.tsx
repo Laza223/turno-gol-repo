@@ -37,7 +37,7 @@ export type SupportPanelSettings = {
   auto_complete_minutes: number
 }
 
-export type SupportPanelPlan = { id: string; name: string; priceMonthly: number }
+type SupportPanelPlan = { id: string; name: string; priceMonthly: number }
 
 type Props = {
   tenantId: string

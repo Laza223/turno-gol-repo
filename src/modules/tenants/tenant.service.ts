@@ -131,13 +131,6 @@ export async function getTenantById(tenantId: string): Promise<TenantRow | null>
   return rowToTenantRow(rows[0])
 }
 
-export async function getTenantBySlug(slug: string): Promise<TenantRow | null> {
-  const db = getDb()
-  const rows = await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1)
-  if (!rows.length) return null
-  return rowToTenantRow(rows[0])
-}
-
 export async function updateTenant(
   tenantId: string,
   data: UpdateTenantInput,

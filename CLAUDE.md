@@ -113,6 +113,25 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - DB columns de cancelación: `canceled_reason`, `canceled_by`, `canceled_at` (sin doble L)
 - Middleware SET LOCAL: `app.current_tenant_id` para admin, `app.current_player_id` para jugador
 
+## Modo Auditoría (Método Karpathy)
+
+### Criterios de calidad de un hallazgo:
+- Archivo exacto + línea
+- Evidencia: qué dice el código vs qué debería decir
+- Severidad: 🔴 crítico / 🟡 medio / 🟢 bajo
+- Solución propuesta
+- Si es decisión de negocio: NO aplicar, solo reportar como "REQUIERE INPUT"
+
+### Verificación obligatoria después de cada fix:
+- `pnpm typecheck`
+- `pnpm lint`
+- Si fallan: revertir el cambio y registrar el intento fallido
+
+### Reglas de acciones:
+SIEMPRE: citar archivo/línea, correr typecheck, registrar en PROGRESS.md
+PREGUNTAR: decisiones de negocio, eliminar código, cambiar estructura
+NUNCA: commits, modificar migraciones, inventar nombres, asumir sin preguntar
+
 ## Compact Instructions
 Al resumir la conversación, preservar:
 - Cambios de API pública y su razón

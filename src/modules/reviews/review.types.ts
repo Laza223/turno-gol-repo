@@ -15,7 +15,7 @@ export type RatingSummary = {
 }
 
 // Proyección pública: NO expone UUIDs internos (playerId/bookingId) — Ley 25.326.
-export type PublicReviewItem = {
+type PublicReviewItem = {
   id: string
   rating: number
   comment: string | null

@@ -1,18 +1,19 @@
-import { redirect } from 'next/navigation'
 import { Trophy } from 'lucide-react'
+import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { CourtList } from './components/CourtList'
 
+// Ver canchas + activar/desactivar es operativo (admin+manager); crear/editar
+// (precio, nombre, formato) sigue admin-only (audit_report.md 3-18, decisión
+// revisada 2026-07-01: el manager necesita poder apagar una cancha por lluvia
+// o mantenimiento sin depender del admin).
 export default async function CanchasPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/onboarding')
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/dashboard')
+  const { tenant, role } = auth
 
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
 
@@ -24,7 +25,11 @@ export default async function CanchasPage() {
         icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
       />
 
-      <CourtList initialCourts={courts} openingHours={tenant.openingHours} />
+      <CourtList
+        initialCourts={courts}
+        openingHours={tenant.openingHours}
+        isAdmin={role === 'admin'}
+      />
     </main>
   )
 }

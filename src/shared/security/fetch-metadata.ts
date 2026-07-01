@@ -18,7 +18,7 @@
  * cancellations (admin + player booking lifecycle). Webhooks and OAuth/auth
  * callbacks are deliberately excluded — they are legitimately cross-site.
  */
-export const SENSITIVE_MUTATION_PREFIXES = [
+const SENSITIVE_MUTATION_PREFIXES = [
   '/api/billing',
   '/api/bookings',
   '/api/player/bookings',

@@ -1,21 +1,9 @@
 import { z } from 'zod'
 import { computeMpMockEnabled } from './mock-mp'
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const uuid = z.string().regex(UUID_RE, 'UUID inválido')
-
 const MP_ID_RE = /^\d{1,32}$/
 // Mock payment ids (only accepted when MP_MOCK_MODE=1): MOCK-(APPROVED|REJECTED)-<uuid>
 const MOCK_MP_ID_RE = /^MOCK-(APPROVED|REJECTED)-[0-9a-fA-F-]{36}$/
-
-export const createDepositPaymentSchema = z.object({
-  bookingId: uuid,
-})
-
-export const refundSchema = z.object({
-  paymentId: uuid,
-  amount: z.number().int().positive().optional(),
-})
 
 /**
  * MP IPN/webhook v2 payload. The top-level `id` is the **event id** (idempotency
@@ -45,8 +33,6 @@ export const webhookPayloadSchema = z.object({
   api_version: z.string().optional(),
   live_mode: z.boolean().optional(),
 })
-
-export type WebhookPayload = z.infer<typeof webhookPayloadSchema>
 
 // ── Output (response) contracts — doc15 §2 ────────────────────────────────────
 // The MP webhook ACKs with a tiny body: `{ ok: true }`, plus `ignored` for

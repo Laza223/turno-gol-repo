@@ -8,6 +8,7 @@ import { SubscriptionNotFoundError } from '@/modules/billing/billing.errors'
 
 export const dynamic = 'force-dynamic'
 
+// Facturación: solo admin (audit_report.md 3-07/3-16).
 export const GET = withTenant(async (_req: NextRequest, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
@@ -21,4 +22,4 @@ export const GET = withTenant(async (_req: NextRequest, user, tx) => {
     }
     throw err
   }
-})
+}, { roles: ['admin'] })

@@ -22,6 +22,12 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/(admin)/dashboard/actions.ts',
   // GET with no query params; tenantId comes from session via withTenant.
   'src/app/api/billing/subscription/route.ts',
+  // Grilla admin (F5 audit): GET-only tras borrar el POST duplicado de
+  // reservas/actions.ts (Capa 5, Shadow API). Query params (date/court_id/
+  // status/cursor/limit) son todos opcionales y de solo lectura; van a un
+  // sql`` parametrizado de Drizzle (sin riesgo de inyección) o un cast
+  // ::booking_status que falla limpio en la DB si el valor es inválido.
+  'src/app/api/bookings/route.ts',
   // Pure session-driven trigger; no user-supplied input from request.
   'src/app/api/mp/oauth-start/route.ts',
   // GET with no input; returns global cities list.

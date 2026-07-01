@@ -2,9 +2,9 @@ import { z } from 'zod'
 import { effectiveCloseMins } from '@/shared/time/operating-day'
 
 /** HH:MM en formato 24h (00:00–23:59). */
-export const TIME_HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+const TIME_HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 
-export const WEEK_DAYS = [
+const WEEK_DAYS = [
   { key: 'mon', label: 'Lunes' },
   { key: 'tue', label: 'Martes' },
   { key: 'wed', label: 'Miércoles' },
@@ -13,8 +13,6 @@ export const WEEK_DAYS = [
   { key: 'sat', label: 'Sábado' },
   { key: 'sun', label: 'Domingo' },
 ] as const
-
-export type WeekDayKey = (typeof WEEK_DAYS)[number]['key']
 
 function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
@@ -55,7 +53,7 @@ export function isValidDayRange(
 
 const hhmmField = z.string().regex(TIME_HHMM_RE, 'Formato HH:MM')
 
-export const horariosDaySchema = z.object({
+const horariosDaySchema = z.object({
   open: hhmmField,
   close: hhmmField,
 })
@@ -92,5 +90,3 @@ export const horariosSchema = z
       }
     }
   })
-
-export type HorariosInput = z.infer<typeof horariosSchema>

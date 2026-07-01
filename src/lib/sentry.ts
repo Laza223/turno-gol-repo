@@ -1,10 +1,1 @@
-export {
-  captureException,
-  captureMessage,
-  setTag,
-  setTags,
-  setUser,
-  setContext,
-  withScope,
-  startSpan,
-} from '@sentry/nextjs'
+export { captureException, captureMessage } from '@sentry/nextjs'

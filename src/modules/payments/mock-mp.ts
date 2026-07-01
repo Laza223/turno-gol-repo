@@ -43,7 +43,7 @@ export function buildMockEventId(bookingId: string, outcome: MockOutcome): strin
   return `mock-evt-${outcome}-${bookingId}`
 }
 
-export function mockCheckoutInitPoint(appUrl: string, bookingId: string, prefId: string): string {
+function mockCheckoutInitPoint(appUrl: string, bookingId: string, prefId: string): string {
   return `${appUrl}/mock-mp/checkout?booking=${bookingId}&pref=${encodeURIComponent(prefId)}`
 }
 

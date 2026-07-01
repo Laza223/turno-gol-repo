@@ -31,7 +31,7 @@ function makeCourt(id: string): CourtRow {
     tenantId: 'tenant1',
     name: `Cancha ${id}`,
     description: null,
-    surfaceType: 'cesped',
+    surfaceType: 'synthetic_grass',
     isCovered: false,
     hasLighting: true,
     format: 5,

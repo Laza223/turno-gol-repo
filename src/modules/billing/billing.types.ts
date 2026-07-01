@@ -37,32 +37,6 @@ export type SubscriptionState = {
   lastPaymentAt: Date | null
 }
 
-export type CreatePreapprovalInput = {
-  tenantId: string
-  payerEmail: string
-  /** Centavos ARS. */
-  amount: number
-  frequency: BillingCycle
-  planId: string
-  reason: string
-  /** Where MP redirects the payer after approval. */
-  returnUrl: string
-  /** MP webhook URL (`/api/webhooks/mercadopago?tenant=<id>`). */
-  notificationUrl: string
-}
-
-export type PreapprovalResult = {
-  preapprovalId: string
-  initPoint: string
-}
-
-export type ProrationResult = {
-  /** Centavos ARS — one-off charge to bridge the upgrade. */
-  amount: number
-  daysRemaining: number
-  daysInPeriod: number
-}
-
 export type SubscribeResult = {
   checkoutUrl: string
   preapprovalId: string

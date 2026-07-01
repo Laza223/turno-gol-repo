@@ -6,7 +6,7 @@
 
 export type SurfaceKey = 'synthetic_grass' | 'natural_grass' | 'cement' | 'tile'
 
-export const SURFACE_LABELS: Record<SurfaceKey, string> = {
+const SURFACE_LABELS: Record<SurfaceKey, string> = {
   synthetic_grass: 'Sintético',
   natural_grass: 'Césped natural',
   cement: 'Cemento',

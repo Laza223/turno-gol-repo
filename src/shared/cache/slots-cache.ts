@@ -38,7 +38,7 @@ export interface SlotsCacheStore {
 let _store: SlotsCacheStore | null = null
 let _resolved = false
 
-export function getSlotsCacheStore(): SlotsCacheStore | null {
+function getSlotsCacheStore(): SlotsCacheStore | null {
   if (_resolved) return _store
   _resolved = true
   const url = process.env.UPSTASH_REDIS_REST_URL

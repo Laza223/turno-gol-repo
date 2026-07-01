@@ -32,7 +32,7 @@ export default defineConfig({
     {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 5'] },
-      testMatch: /mobile\/.*\.spec\.ts$/,
+      testMatch: [/mobile\/.*\.spec\.ts$/, /capture-screenshots\.spec\.ts$/],
     },
     {
       name: 'axe-audit',

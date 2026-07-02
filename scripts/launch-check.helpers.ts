@@ -100,3 +100,44 @@ export function e2eBypassDisabledCheck(value: string | undefined): CheckResult {
   }
   return { ok: true }
 }
+
+/**
+ * MP-WEBHOOK-001: fails if MP_MOCK_MODE=1 at the moment of a production
+ * launch. That flag routes every MP webhook through the inline mock gateway
+ * (mock-mp.ts) instead of real payment processing — safe for local/E2E/
+ * staging, catastrophic if it ever reaches prod.
+ *
+ * Pure (no I/O): safe to import from tests.
+ */
+export function mpMockModeDisabledCheck(value: string | undefined): CheckResult {
+  if (value === '1') {
+    return {
+      ok: false,
+      error:
+        'MP_MOCK_MODE=1 routes every MercadoPago webhook through the inline mock gateway ' +
+        '(no real payment processing) — it must NEVER be set when deploying to production',
+    }
+  }
+  return { ok: true }
+}
+
+/**
+ * MP-WEBHOOK-001: fails if MP_WEBHOOK_TEST_BYPASS_SECRET is configured at the
+ * moment of a production launch. That var is a staging-only credential
+ * consumed by scripts/replay-mp-webhook.ts + webhook-auth.ts's non-production
+ * signature fallback — it has no legitimate value in production and reduces
+ * the attack surface if simply never present there.
+ *
+ * Pure (no I/O): safe to import from tests.
+ */
+export function webhookTestBypassSecretAbsentCheck(value: string | undefined): CheckResult {
+  if (value) {
+    return {
+      ok: false,
+      error:
+        'MP_WEBHOOK_TEST_BYPASS_SECRET is set — this is a staging-only credential for ' +
+        'scripts/replay-mp-webhook.ts and must never be configured in production',
+    }
+  }
+  return { ok: true }
+}

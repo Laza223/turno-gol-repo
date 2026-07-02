@@ -23,6 +23,24 @@ describe('computeMpMockEnabled — guard de NODE_ENV', () => {
     expect(computeMpMockEnabled(env({ MP_MOCK_MODE: '1', NODE_ENV: 'production' }))).toBe(false)
   })
 
+  it('NUNCA habilita el mock en production real de Vercel (VERCEL_ENV=production)', () => {
+    expect(
+      computeMpMockEnabled(
+        env({ MP_MOCK_MODE: '1', NODE_ENV: 'production', VERCEL_ENV: 'production' }),
+      ),
+    ).toBe(false)
+  })
+
+  it('habilita el mock en un Preview deploy de Vercel (NODE_ENV=production pero VERCEL_ENV=preview)', () => {
+    // Vercel fija NODE_ENV=production en TODO build desplegado, Preview incluido
+    // (ver scripts/seed-staging.ts) — VERCEL_ENV=preview es la única señal confiable.
+    expect(
+      computeMpMockEnabled(
+        env({ MP_MOCK_MODE: '1', NODE_ENV: 'production', VERCEL_ENV: 'preview' }),
+      ),
+    ).toBe(true)
+  })
+
   it('queda deshabilitado si MP_MOCK_MODE no es exactamente "1"', () => {
     expect(computeMpMockEnabled(env({ NODE_ENV: 'development' }))).toBe(false)
     expect(computeMpMockEnabled(env({ MP_MOCK_MODE: '0', NODE_ENV: 'development' }))).toBe(false)

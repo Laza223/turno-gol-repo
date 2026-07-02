@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
+import { MP_MOCK_ENABLED, isNonProductionRuntime } from '@/modules/payments/mock-mp'
 
 /**
  * Validates Mercado Pago webhook signatures via HMAC SHA-256.
@@ -12,7 +12,13 @@ import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
  * Behavior:
  *   - MP_MOCK_ENABLED → bypass validation (E2E/Local dev without ngrok).
  *   - missing headers/env → fail closed (unless not production and no secret).
- *   - valid HMAC → return true (timing-safe compare).
+ *   - valid HMAC against MP_WEBHOOK_SECRET → return true (timing-safe compare).
+ *   - invalid against MP_WEBHOOK_SECRET, but isNonProductionRuntime() AND
+ *     MP_WEBHOOK_TEST_BYPASS_SECRET is set → retry the SAME HMAC check against
+ *     that secret (MP-WEBHOOK-001: lets scripts/replay-mp-webhook.ts sign
+ *     fixtures without ever needing the real MP_WEBHOOK_SECRET). Still a real
+ *     signature check, not a skip — and hard-gated so a leaked value can never
+ *     validate anything in production, same pattern as MP_MOCK_ENABLED above.
  */
 export function verifyWebhookSignature(
   xSignature: string | null,
@@ -39,6 +45,17 @@ export function verifyWebhookSignature(
 
   const manifest = `id:${dataId.toLowerCase()};request-id:${xRequestId};ts:${ts};`
 
+  if (matchesHmac(secret, manifest, v1)) return true
+
+  const testSecret = process.env.MP_WEBHOOK_TEST_BYPASS_SECRET
+  if (testSecret && isNonProductionRuntime()) {
+    return matchesHmac(testSecret, manifest, v1)
+  }
+
+  return false
+}
+
+function matchesHmac(secret: string, manifest: string, v1: string): boolean {
   const expectedSignature = createHmac('sha256', secret)
     .update(manifest)
     .digest('hex')

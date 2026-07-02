@@ -3,6 +3,8 @@ import {
   ENCRYPTION_KEY_PLACEHOLDER,
   encryptionKeyStrengthCheck,
   e2eBypassDisabledCheck,
+  mpMockModeDisabledCheck,
+  webhookTestBypassSecretAbsentCheck,
 } from '../../scripts/launch-check.helpers'
 
 describe('encryptionKeyStrengthCheck', () => {
@@ -71,5 +73,37 @@ describe('e2eBypassDisabledCheck', () => {
   it('accepts "0" and other non-"1" values', () => {
     expect(e2eBypassDisabledCheck('0').ok).toBe(true)
     expect(e2eBypassDisabledCheck('false').ok).toBe(true)
+  })
+})
+
+describe('mpMockModeDisabledCheck (MP-WEBHOOK-001)', () => {
+  it('rejects MP_MOCK_MODE=1 (the inline mock gateway must never reach prod)', () => {
+    const r = mpMockModeDisabledCheck('1')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/mock/i)
+  })
+
+  it('accepts undefined (not set — correct for production)', () => {
+    expect(mpMockModeDisabledCheck(undefined).ok).toBe(true)
+  })
+
+  it('accepts "0" and other non-"1" values', () => {
+    expect(mpMockModeDisabledCheck('0').ok).toBe(true)
+  })
+})
+
+describe('webhookTestBypassSecretAbsentCheck (MP-WEBHOOK-001)', () => {
+  it('rejects any non-empty value (staging-only credential must never reach prod)', () => {
+    const r = webhookTestBypassSecretAbsentCheck('some-staging-secret')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/bypass|staging/i)
+  })
+
+  it('accepts undefined (not set — correct for production)', () => {
+    expect(webhookTestBypassSecretAbsentCheck(undefined).ok).toBe(true)
+  })
+
+  it('accepts empty string', () => {
+    expect(webhookTestBypassSecretAbsentCheck('').ok).toBe(true)
   })
 })

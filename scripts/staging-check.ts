@@ -131,6 +131,30 @@ async function migrationsAppliedCheck(): Promise<boolean> {
 }
 
 /**
+ * MP-WEBHOOK-001: fails if this staging deploy has no
+ * MP_WEBHOOK_TEST_BYPASS_SECRET configured — scripts/replay-mp-webhook.ts
+ * can't sign fixtures against it without one, so the harness would be
+ * silently unusable here. Skipped when MP_MOCK_MODE=1: in that mode
+ * verifyWebhookSignature() short-circuits on MP_MOCK_ENABLED before ever
+ * looking at the bypass secret (see webhook-auth.ts), so there is nothing
+ * for this env var to gate.
+ */
+async function webhookHarnessSecretCheck(): Promise<boolean> {
+  if (process.env.MP_MOCK_MODE === '1') {
+    console.log('(MP_MOCK_MODE=1 — signature check short-circuits, skipping bypass-secret check)')
+    return true
+  }
+  if (!process.env.MP_WEBHOOK_TEST_BYPASS_SECRET) {
+    console.error(
+      'MP_WEBHOOK_TEST_BYPASS_SECRET not set — scripts/replay-mp-webhook.ts cannot sign ' +
+        'fixtures against this staging deploy (see MP-WEBHOOK-001)',
+    )
+    return false
+  }
+  return true
+}
+
+/**
  * Same probe as launch-check.ts's mpCredentialsProbe. Skipped when
  * MP_MOCK_MODE=1 (staging commonly mocks MP to avoid real charges) — in
  * that mode MP_CLIENT_ID/SECRET are unused, so there's nothing to verify.
@@ -192,6 +216,7 @@ const steps: Step[] = [
   },
   { name: 'migrations applied', check: migrationsAppliedCheck, fatal: true },
   { name: 'bypassrls role check', check: bypassRlsCheck, fatal: true },
+  { name: 'webhook harness secret present', check: webhookHarnessSecretCheck, fatal: true },
   { name: 'mp credentials probe', check: mpCredentialsProbe, fatal: false },
   { name: '/api/status healthy', check: statusCheck, fatal: true },
 ]

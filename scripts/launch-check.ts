@@ -2,7 +2,13 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 
 import { execSync } from 'node:child_process'
-import { encryptionKeyStrengthCheck, e2eBypassDisabledCheck, REQUIRED_ENV } from './launch-check.helpers'
+import {
+  encryptionKeyStrengthCheck,
+  e2eBypassDisabledCheck,
+  mpMockModeDisabledCheck,
+  webhookTestBypassSecretAbsentCheck,
+  REQUIRED_ENV,
+} from './launch-check.helpers'
 
 type Step = {
   name: string
@@ -173,6 +179,24 @@ const steps: Step[] = [
   },
   { name: 'bypassrls role check',      check: bypassRlsCheck,                                                                       fatal: true  },
   { name: 'worker bypassrls role check', check: workerBypassRlsCheck,                                                               fatal: true  },
+  {
+    name: 'mp mock mode disabled',
+    check: async () => {
+      const r = mpMockModeDisabledCheck(process.env.MP_MOCK_MODE)
+      if (!r.ok) console.error(r.error)
+      return r.ok
+    },
+    fatal: true,
+  },
+  {
+    name: 'webhook test bypass secret absent',
+    check: async () => {
+      const r = webhookTestBypassSecretAbsentCheck(process.env.MP_WEBHOOK_TEST_BYPASS_SECRET)
+      if (!r.ok) console.error(r.error)
+      return r.ok
+    },
+    fatal: true,
+  },
   {
     name: 'encryption-key strength',
     check: async () => {

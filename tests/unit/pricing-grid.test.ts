@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildTemplateGrid,
   compressGridToRules,
+  describeRules,
   expandRulesToGrid,
   countEmptyCells,
-  formatArs,
   getOperativeHours,
   isHourActive,
   parsePesosToCents,
   type PriceGrid,
 } from '@/modules/courts/pricing-grid'
+import { formatDayList } from '@/shared/time/week-days'
 import type { PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours, OpeningHoursDay } from '@/modules/tenants/tenant.types'
 
@@ -163,18 +165,109 @@ describe('countEmptyCells', () => {
 })
 
 describe('formato de pesos', () => {
-  it('formatArs usa separador de miles argentino', () => {
-    expect(formatArs(3500000)).toBe('$35.000')
-    expect(formatArs(1500000)).toBe('$15.000')
-    expect(formatArs(100000)).toBe('$1.000')
-    expect(formatArs(50000)).toBe('$500')
-  })
-
+  // El formatArs local murió (P0.2): la vista usa el de src/lib/format (Intl es-AR).
   it('parsePesosToCents acepta formato con puntos y símbolo', () => {
     expect(parsePesosToCents('35.000')).toBe(3500000)
     expect(parsePesosToCents('$35.000')).toBe(3500000)
     expect(parsePesosToCents('35000')).toBe(3500000)
     expect(parsePesosToCents('')).toBeNull()
     expect(parsePesosToCents('abc')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Plantilla rápida (pages/horarios-precios.md §3.2)
+// ---------------------------------------------------------------------------
+
+describe('buildTemplateGrid', () => {
+  it('uniform: llena todas las celdas activas con un precio', () => {
+    const oh = uniformHours('08:00', '10:00') // slots 8,9 por día
+    const grid = buildTemplateGrid(oh, { mode: 'uniform', price: 2000000 })
+    for (const d of DAYS) {
+      expect(grid[d]).toEqual({ 8: 2000000, 9: 2000000 })
+    }
+    expect(countEmptyCells(grid, oh)).toBe(0)
+  })
+
+  it('weekSplit: lun-jue precio de semana, vie-dom precio de finde', () => {
+    const oh = uniformHours('08:00', '09:00') // slot 8
+    const grid = buildTemplateGrid(oh, {
+      mode: 'weekSplit',
+      weekPrice: 1600000,
+      weekendPrice: 2200000,
+    })
+    expect(grid.mon[8]).toBe(1600000)
+    expect(grid.thu[8]).toBe(1600000)
+    expect(grid.fri[8]).toBe(2200000)
+    expect(grid.sun[8]).toBe(2200000)
+  })
+
+  it('dayNight: antes del corte precio de día, desde el corte precio de noche', () => {
+    const oh = uniformHours('16:00', '20:00') // slots 16..19
+    const grid = buildTemplateGrid(oh, {
+      mode: 'dayNight',
+      cutHour: 18,
+      dayPrice: 1600000,
+      nightPrice: 2200000,
+    })
+    expect(grid.mon).toEqual({ 16: 1600000, 17: 1600000, 18: 2200000, 19: 2200000 })
+  })
+
+  it('respeta ventanas por día y días cerrados', () => {
+    const oh: OpeningHours = {
+      ...uniformHours('08:00', '10:00'),
+      sat: day('09:00', '10:00'), // solo slot 9
+      sun: day('08:00', '10:00', true), // cerrado
+    }
+    const grid = buildTemplateGrid(oh, { mode: 'uniform', price: 1000 })
+    expect(grid.sat).toEqual({ 9: 1000 })
+    expect(grid.sun).toEqual({})
+  })
+
+  it('uniform comprimido produce UNA regla para toda la semana', () => {
+    const oh = uniformHours('08:00', '23:00')
+    const grid = buildTemplateGrid(oh, { mode: 'uniform', price: 2000000 })
+    expect(compressGridToRules(grid, oh)).toEqual([
+      { days: [...DAYS], from: '08:00', to: '23:00', price: 2000000 },
+    ])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Resumen legible (pages/horarios-precios.md §3.3)
+// ---------------------------------------------------------------------------
+
+describe('formatDayList', () => {
+  it('colapsa corridas consecutivas', () => {
+    expect(formatDayList(['mon', 'tue', 'wed', 'thu'])).toBe('Lun a Jue')
+    expect(formatDayList(['fri', 'sat', 'sun'])).toBe('Vie a Dom')
+  })
+
+  it('pares y sueltos se unen con "y"', () => {
+    expect(formatDayList(['sat', 'sun'])).toBe('Sáb y Dom')
+    expect(formatDayList(['mon', 'wed', 'fri'])).toBe('Lun, Mié y Vie')
+    expect(formatDayList(['tue'])).toBe('Mar')
+  })
+
+  it('los 7 días → "Todos los días" (y el orden de entrada no importa)', () => {
+    expect(formatDayList(['sun', 'sat', 'fri', 'thu', 'wed', 'tue', 'mon'])).toBe('Todos los días')
+  })
+
+  it('ignora claves desconocidas y duplicados', () => {
+    expect(formatDayList(['mon', 'mon', 'xxx'])).toBe('Lun')
+    expect(formatDayList([])).toBe('')
+  })
+})
+
+describe('describeRules', () => {
+  it('regla → días colapsados + rango con en-dash + precio', () => {
+    const rules: PricingRule[] = [
+      { days: ['mon', 'tue', 'wed', 'thu'], from: '08:00', to: '18:00', price: 800000 },
+      { days: ['fri', 'sat', 'sun'], from: '08:00', to: '00:00', price: 1500000 },
+    ]
+    expect(describeRules(rules)).toEqual([
+      { daysLabel: 'Lun a Jue', rangeLabel: '08:00–18:00', price: 800000 },
+      { daysLabel: 'Vie a Dom', rangeLabel: '08:00–00:00', price: 1500000 },
+    ])
   })
 })

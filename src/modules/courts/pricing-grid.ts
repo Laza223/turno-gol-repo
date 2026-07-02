@@ -10,20 +10,12 @@
 //  - Guardar = comprimir celdas consecutivas con mismo precio en reglas JSONB.
 
 import type { OpeningHours, OpeningHoursDay } from '@/modules/tenants/tenant.types'
+import { DAY_KEYS, DAY_LABELS, formatDayList, type DayKey } from '@/shared/time/week-days'
 import type { PricingRule } from './court.types'
 
-export const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
-export type DayKey = (typeof DAY_KEYS)[number]
-
-export const DAY_LABELS: Record<DayKey, string> = {
-  mon: 'Lun',
-  tue: 'Mar',
-  wed: 'Mié',
-  thu: 'Jue',
-  fri: 'Vie',
-  sat: 'Sáb',
-  sun: 'Dom',
-}
+// Re-export para los consumidores históricos (PricingGrid, tests).
+export { DAY_KEYS, DAY_LABELS }
+export type { DayKey }
 
 // grid[day][hour] = precio en centavos. Clave ausente = celda vacía (sin precio).
 export type PriceGrid = Record<DayKey, Record<number, number>>
@@ -172,17 +164,70 @@ export function compressGridToRules(
     .map((g) => ({ days: g.days, from: g.from, to: g.to, price: g.price }))
 }
 
-/** Centavos → "$35.000" (separador de miles argentino, sin decimales). */
-export function formatArs(cents: number): string {
-  const pesos = Math.round(cents / 100)
-  return '$' + String(pesos).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-}
-
 /** "35.000" / "35000" / "$35.000" → 3500000 centavos. null si no hay dígitos. */
 export function parsePesosToCents(input: string): number | null {
   const digits = input.replace(/[^\d]/g, '')
   if (digits === '') return null
   return Number(digits) * 100
+}
+
+// ---------------------------------------------------------------------------
+// Plantilla rápida (rediseño 2026-07-02, pages/horarios-precios.md §3.2):
+// generadores que llenan TODAS las celdas activas de una vez. No son editores
+// bidireccionales — aplicar pisa la grilla; el estado real vive en las reglas.
+// ---------------------------------------------------------------------------
+
+export type PricingTemplate =
+  | { mode: 'uniform'; price: number }
+  // Split argentino real: el viernes se cobra como finde (matchea el default histórico).
+  | { mode: 'weekSplit'; weekPrice: number; weekendPrice: number }
+  // Corte único para todos los días: [apertura, cutHour) = día, [cutHour, cierre) = noche.
+  | { mode: 'dayNight'; cutHour: number; dayPrice: number; nightPrice: number }
+
+const WEEK_DAYS: readonly DayKey[] = ['mon', 'tue', 'wed', 'thu']
+
+/** Llena todas las celdas activas según la plantilla. Respeta ventanas y días cerrados. */
+export function buildTemplateGrid(
+  openingHours: OpeningHours,
+  template: PricingTemplate,
+): PriceGrid {
+  const grid = {} as PriceGrid
+  for (const day of DAY_KEYS) {
+    grid[day] = {}
+    for (const hour of activeHoursForDay(openingHours, day)) {
+      let price: number
+      switch (template.mode) {
+        case 'uniform':
+          price = template.price
+          break
+        case 'weekSplit':
+          price = WEEK_DAYS.includes(day) ? template.weekPrice : template.weekendPrice
+          break
+        case 'dayNight':
+          price = hour < template.cutHour ? template.dayPrice : template.nightPrice
+          break
+      }
+      grid[day][hour] = price
+    }
+  }
+  return grid
+}
+
+export type RuleDescription = {
+  /** "Lun a Jue", "Sáb y Dom", "Todos los días". */
+  daysLabel: string
+  /** "08:00–18:00" (en-dash, §8.3). Cierre '00:00' = medianoche. */
+  rangeLabel: string
+  price: number
+}
+
+/** Reglas → filas legibles para el resumen (verificación sin leer la matriz). */
+export function describeRules(rules: PricingRule[]): RuleDescription[] {
+  return rules.map((r) => ({
+    daysLabel: formatDayList(r.days),
+    rangeLabel: `${r.from}–${r.to}`,
+    price: r.price,
+  }))
 }
 
 /** Cuántas celdas activas siguen sin precio (bloquean el guardado). */

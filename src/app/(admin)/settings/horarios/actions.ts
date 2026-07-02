@@ -32,6 +32,8 @@ export async function updateHorariosAction(
         {
           open: formData.get(`${day}_open`) as string,
           close: formData.get(`${day}_close`) as string,
+          // Hidden input presente solo si el día está cerrado (valor 'on').
+          closed: formData.get(`${day}_closed`) === 'on',
         },
       ]),
     ),

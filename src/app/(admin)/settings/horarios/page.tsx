@@ -2,14 +2,13 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { AddClosedDateForm, HorariosForm, RemoveClosedDateForm } from './HorariosForms'
+import type { LooseOpeningHours } from './horarios-lib'
 
 const SETTINGS_TABS = [
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
   { href: '/settings/facturacion', label: 'Facturación' },
 ]
-
-type OpeningHours = Record<string, { open: string; close: string }>
 
 export default async function HorariosPage() {
   const user = await extractAuthUser()
@@ -18,7 +17,7 @@ export default async function HorariosPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const hours = tenant.openingHours as OpeningHours
+  const hours = tenant.openingHours as LooseOpeningHours
   const closedDates = (tenant.closedDates ?? []) as unknown as string[]
   const minDate = new Date().toISOString().split('T')[0] ?? ''
 

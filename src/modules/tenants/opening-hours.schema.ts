@@ -53,9 +53,13 @@ export function isValidDayRange(
 
 const hhmmField = z.string().regex(TIME_HHMM_RE, 'Formato HH:MM')
 
+// `closed` viaja con cada día (rediseño 2026-07-02, pages/horarios-precios.md §2.3).
+// Antes el schema lo despojaba: un domingo cerrado en el wizard de onboarding se
+// perdía silenciosamente al guardar desde /settings/horarios.
 const horariosDaySchema = z.object({
   open: hhmmField,
   close: hhmmField,
+  closed: z.boolean().default(false),
 })
 
 /**
@@ -79,8 +83,12 @@ export const horariosSchema = z
     closesNextDay: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
+    let openDays = 0
     for (const { key, label } of WEEK_DAYS) {
       const day = data[key]
+      // Día cerrado: sus horas quedan como recuerdo para cuando se reabra — no se validan.
+      if (day.closed) continue
+      openDays++
       if (!isValidDayRange(day.open, day.close, data.closesNextDay)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -88,5 +96,12 @@ export const horariosSchema = z
           message: `${label}: el horario de cierre debe ser posterior al de apertura.`,
         })
       }
+    }
+    if (openDays === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [],
+        message: 'Abrí al menos un día de la semana.',
+      })
     }
   })

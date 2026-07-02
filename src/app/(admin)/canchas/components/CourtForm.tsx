@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useCallback, useState, useTransition } from 'react'
 import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import {
+  countEmptyCells,
+  expandRulesToGrid,
+} from '@/modules/courts/pricing-grid'
 import { createCourtAction, updateCourtAction } from '../actions'
-import { PricingGrid } from './PricingGrid'
+import { PricingSection, type CourtPricingSource } from './PricingSection'
 import { Button } from '@/components/ui/button'
 
 const SURFACE_OPTIONS = [
@@ -16,35 +20,16 @@ const SURFACE_OPTIONS = [
 
 const CAPACITY_OPTIONS = [5, 7, 8, 9, 11] as const
 
-const DEFAULT_RULES: PricingRule[] = [
-  {
-    days: ['mon', 'tue', 'wed', 'thu'],
-    from: '08:00',
-    to: '18:00',
-    price: 800000,
-  },
-  {
-    days: ['mon', 'tue', 'wed', 'thu'],
-    from: '18:00',
-    to: '23:00',
-    price: 1200000,
-  },
-  {
-    days: ['fri', 'sat', 'sun'],
-    from: '08:00',
-    to: '23:00',
-    price: 1500000,
-  },
-]
-
 type Props = {
   court: CourtRow | null
   openingHours: OpeningHours
+  /** Otras canchas del complejo, para "Copiar precios de otra cancha". */
+  otherCourts: CourtPricingSource[]
   onSaved: (court: CourtRow) => void
   onCancel: () => void
 }
 
-export function CourtForm({ court, openingHours, onSaved, onCancel }: Props) {
+export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel }: Props) {
   const isEdit = court !== null
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -52,11 +37,35 @@ export function CourtForm({ court, openingHours, onSaved, onCancel }: Props) {
   const [name, setName] = useState(court?.name ?? '')
   const [surfaceType, setSurfaceType] = useState<string>(court?.surfaceType ?? 'synthetic_grass')
   const [capacity, setCapacity] = useState<number>(court?.capacity ?? 5)
-  const [rules, setRules] = useState<PricingRule[]>(court?.pricing.rules ?? DEFAULT_RULES)
+  // Cancha nueva arranca SIN precios (spec §3.3): los DEFAULT_RULES con precios
+  // inventados podían irse a producción sin que nadie los tocara.
+  const initialRules = court?.pricing.rules ?? []
+  const [rules, setRules] = useState<PricingRule[]>(initialRules)
+  const [emptyCount, setEmptyCount] = useState<number>(() =>
+    countEmptyCells(expandRulesToGrid(initialRules, openingHours), openingHours),
+  )
+
+  const handleRulesChange = useCallback(
+    (nextRules: PricingRule[], meta: { emptyCount: number }) => {
+      setRules(nextRules)
+      setEmptyCount(meta.emptyCount)
+    },
+    [],
+  )
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    // Gate client-side (el server valida cobertura igual, de backstop): guardar
+    // con huecos dejaría horas operativas sin precio → irreservables online.
+    if (emptyCount > 0) {
+      setError(
+        `No se puede guardar: falta${emptyCount === 1 ? '' : 'n'} ${emptyCount} horario${
+          emptyCount === 1 ? '' : 's'
+        } sin precio. Cargalo${emptyCount === 1 ? '' : 's'} con la plantilla o con «Ajustar por hora».`,
+      )
+      return
+    }
     const formData = new FormData(e.currentTarget)
     formData.set('pricing', JSON.stringify({ rules }))
 
@@ -157,23 +166,28 @@ export function CourtForm({ court, openingHours, onSaved, onCancel }: Props) {
         </div>
       </div>
 
-      {/* Pricing grid */}
+      {/* Precios: plantilla rápida + resumen + ajuste fino (spec §3) */}
       <div className="space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Precios por hora</h3>
+          <h3 className="text-sm font-semibold text-foreground">Precios</h3>
           <p className="text-xs text-muted-foreground">
-            Cargá el precio de cada turno. Los precios se ingresan en pesos (se guardan en centavos).
+            Los precios se ingresan en pesos, por turno de una hora.
           </p>
         </div>
 
-        <PricingGrid
+        <PricingSection
           openingHours={openingHours}
-          initialRules={court?.pricing.rules ?? DEFAULT_RULES}
-          onChange={setRules}
+          initialRules={initialRules}
+          otherCourts={otherCourts}
+          onRulesChange={handleRulesChange}
         />
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
 
       <Button
         type="submit"

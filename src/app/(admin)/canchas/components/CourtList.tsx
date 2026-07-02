@@ -87,6 +87,9 @@ export function CourtList({ initialCourts, openingHours, isAdmin }: Props) {
       <CourtForm
         court={editingCourt}
         openingHours={openingHours}
+        otherCourts={courts
+          .filter((c) => c.id !== editingCourt?.id)
+          .map((c) => ({ id: c.id, name: c.name, rules: c.pricing.rules }))}
         onSaved={handleCourtSaved}
         onCancel={closeForm}
       />

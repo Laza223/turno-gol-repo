@@ -84,4 +84,28 @@ describe('horariosSchema', () => {
     expect(parsed.success).toBe(true)
     if (parsed.success) expect(parsed.data.closesNextDay).toBe(false)
   })
+
+  // Rediseño 2026-07-02 (pages/horarios-precios.md §2.3): `closed` viaja con
+  // cada día — antes el schema lo despojaba y el flag del onboarding se perdía.
+  it('conserva closed y no valida las horas de un día cerrado', () => {
+    const parsed = horariosSchema.safeParse(
+      week({ sun: { open: '18:00', close: '02:00', closed: true } as never }),
+    )
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.sun.closed).toBe(true)
+      expect(parsed.data.mon.closed).toBe(false) // default
+    }
+  })
+
+  it('rechaza la semana con los 7 días cerrados', () => {
+    const allClosed = Object.fromEntries(
+      Object.entries(week()).map(([k, v]) => [k, { ...(v as object), closed: true }]),
+    )
+    const result = horariosSchema.safeParse(allClosed)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toMatch(/al menos un día/i)
+    }
+  })
 })

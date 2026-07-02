@@ -590,7 +590,10 @@ Cerrados 2026-07-02: CTA fuera de AA (token `--primary` dual), token `--info`, r
 (spec nueva `pages/grilla.md`: estados §2.6, densidad, colapso de madrugada, scroll-to-now, pulso
 Realtime §5.3, tooltips §7.4, vocabulario §8.5), rediseño de Inicio (spec nueva
 `pages/dashboard.md`: KPIs semáforo §2.5, "Revenue hoy" → "Caja de hoy", checklist compacta
-Zeigarnik, próximos turnos).
+Zeigarnik, próximos turnos), rediseño de horarios y precios (spec nueva
+`pages/horarios-precios.md`: horario general + excepciones por día con toggle Cerrado —fix del
+schema que despojaba `closed`—, plantilla rápida de precios en 3 modos + copiar de otra cancha +
+resumen legible, matriz plegada como ajuste fino, muerte de DEFAULT_RULES y del `formatArs` local).
 
 ---
 

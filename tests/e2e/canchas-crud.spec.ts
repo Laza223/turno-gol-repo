@@ -3,12 +3,12 @@
  *
  * Happy path + 3 edge cases for the admin canchas UI:
  *   #1  Happy — create court: /canchas → "+ Nueva cancha" → fill name/surface/capacity →
- *              submit → new court appears with Online badge.
+ *              quick template "Un precio" → Aplicar → submit → new court appears with Online badge.
  *   #2  Edge — deactivate with future bookings (staged): service-role INSERT court + future booking →
  *              /canchas → "Desactivar" → dialog shows "Hay 1 reserva(s) futura(s)" → confirm →
  *              badge becomes Offline.
- *   #3  Edge — pricing coverage gap: "+ Nueva cancha" → set pricing rule with gap vs opening hours →
- *              submit → error "Precios sin cubrir".
+ *   #3  Edge — pricing coverage gap: apply template → fine-tune grid → empty one cell →
+ *              submit → client-side gate "No se puede guardar: falta 1 horario sin precio".
  *   #4  Edge — optimistic rollback on activate failure: service-role INSERT an offline court, then
  *              mock the Server Action response via network intercept so toggleCourtStatusAction
  *              returns an error → "Activar" click → UI briefly goes Online then rolls back to Offline
@@ -146,8 +146,11 @@ test.describe('canchas — happy: create court', () => {
         await page.getByPlaceholder('Ej: Cancha 1').fill(courtName)
 
         // Keep default surface (Césped sintético) and capacity.
-        // The default pricing rules cover the opening hours of the E2E tenant —
-        // DEFAULT_RULES in CourtForm covers Mon–Thu 08–18, Mon–Thu 18–23, Fri–Sun 08–23.
+        // Prices: a new court starts EMPTY (no more fake DEFAULT_RULES). Use the
+        // quick template — "Un precio" is the default mode — and apply it to the
+        // whole week so every operative hour is covered.
+        await page.getByLabel('Precio por turno').fill('10000')
+        await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
 
         // Submit.
         await page.getByRole('button', { name: 'Crear cancha' }).click()
@@ -272,21 +275,25 @@ test.describe('canchas — edge: pricing coverage gap', () => {
         // Fill a unique name.
         await page.getByPlaceholder('Ej: Cancha 1').fill(`E2E Gap ${randomUUID().slice(0, 8)}`)
 
-        // The PricingGrid loads with DEFAULT_RULES covering every operative hour.
-        // Empty one operative cell (Mon 22:00) to leave a coverage gap: click it to
-        // open the inline editor, clear the value, commit with Enter.
+        // Cover the whole week with the quick template first…
+        await page.getByLabel('Precio por turno').fill('10000')
+        await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
+
+        // …then open the fine-tune grid and empty one operative cell (Mon 22:00)
+        // to leave a coverage gap: click it to open the inline editor, clear the
+        // value, commit with Enter.
+        await page.getByRole('button', { name: 'Ajustar por hora' }).click()
         await page.getByRole('button', { name: /^Lun 22:00/ }).click()
         const cellEditor = page.getByLabel('Precio Lun 22:00')
         await cellEditor.fill('')
         await cellEditor.press('Enter')
 
-        // The cell now reads "sin precio" → the compressed rules leave Mon 22:00
-        // uncovered, so the Server Action must reject with "Precios sin cubrir".
-        // Submit the form.
+        // The cell now reads "sin precio" → submitting must hit the client-side
+        // gate (spec §3.3); validatePricingRulesCoverage stays as server backstop.
         await page.getByRole('button', { name: 'Crear cancha' }).click()
 
-        // The action should return the "Precios sin cubrir" error.
-        await expect(page.getByText(/Precios sin cubrir/i)).toBeVisible({ timeout: 10_000 })
+        // The gate error is shown ("No se puede guardar: falta 1 horario sin precio…").
+        await expect(page.getByText(/No se puede guardar/i)).toBeVisible({ timeout: 10_000 })
 
         // The form stays open (no redirect to court list).
         await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()

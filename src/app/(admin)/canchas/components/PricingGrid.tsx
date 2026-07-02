@@ -2,18 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
-import Link from 'next/link'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import type { PricingRule } from '@/modules/courts/court.types'
+import { formatArs } from '@/lib/format'
 import {
   DAY_KEYS,
   DAY_LABELS,
   type DayKey,
   type PriceGrid,
-  compressGridToRules,
-  countEmptyCells,
-  expandRulesToGrid,
-  formatArs,
   getOperativeHours,
   hourLabel,
   isHourActive,
@@ -21,11 +16,12 @@ import {
 } from '@/modules/courts/pricing-grid'
 import { Button } from '@/components/ui/button'
 
+// Controlada (pages/horarios-precios.md §3.3): el estado vive en el
+// contenedor (PricingSection), que comprime a reglas y muestra el resumen.
 type Props = {
   openingHours: OpeningHours
-  initialRules: PricingRule[]
-  /** Recibe las reglas comprimidas en cada cambio de la grilla. */
-  onChange: (rules: PricingRule[]) => void
+  grid: PriceGrid
+  onGridChange: (next: PriceGrid) => void
 }
 
 const cellKey = (day: DayKey, hour: number) => `${day}:${hour}`
@@ -52,11 +48,10 @@ function heatStyle(price: number, min: number, max: number, isDark: boolean): Re
   }
 }
 
-export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
+export function PricingGrid({ openingHours, grid, onGridChange }: Props) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const hours = useMemo(() => getOperativeHours(openingHours), [openingHours])
-  const [grid, setGrid] = useState<PriceGrid>(() => expandRulesToGrid(initialRules, openingHours))
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [anchor, setAnchor] = useState<string | null>(null)
@@ -68,11 +63,6 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
 
   const draggingRef = useRef(false)
   const dragMovedRef = useRef(false)
-
-  // Empuja reglas comprimidas al padre cada vez que cambia la grilla.
-  useEffect(() => {
-    onChange(compressGridToRules(grid, openingHours))
-  }, [grid, openingHours, onChange])
 
   // Soltar el mouse en cualquier lado termina el arrastre.
   useEffect(() => {
@@ -95,21 +85,17 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
     return { min, max }
   }, [grid])
 
-  const emptyCount = useMemo(() => countEmptyCells(grid, openingHours), [grid, openingHours])
-
   function setCells(keys: string[], cents: number | null) {
-    setGrid((prev) => {
-      const next: PriceGrid = { ...prev }
-      for (const key of keys) {
-        const { day, hour } = parseCellKey(key)
-        if (!isHourActive(openingHours[day], hour)) continue
-        const dayCells = { ...(next[day] ?? {}) }
-        if (cents == null) delete dayCells[hour]
-        else dayCells[hour] = cents
-        next[day] = dayCells
-      }
-      return next
-    })
+    const next: PriceGrid = { ...grid }
+    for (const key of keys) {
+      const { day, hour } = parseCellKey(key)
+      if (!isHourActive(openingHours[day], hour)) continue
+      const dayCells = { ...(next[day] ?? {}) }
+      if (cents == null) delete dayCells[hour]
+      else dayCells[hour] = cents
+      next[day] = dayCells
+    }
+    onGridChange(next)
   }
 
   function rectCells(a: string, b: string): string[] {
@@ -192,16 +178,9 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
   const showBulkBar = selectMode || selected.size >= 2
   const dayCount = DAY_KEYS.length
 
-  if (hours.length === 0) {
-    return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-        Configurá los horarios de atención del complejo antes de cargar precios.{' '}
-        <Link href="/settings/horarios" className="font-medium underline underline-offset-2">
-          Ir a horarios
-        </Link>
-      </div>
-    )
-  }
+  // Sin horas operativas no hay nada que editar; PricingSection ya muestra el
+  // aviso con link a /settings/horarios antes de llegar acá.
+  if (hours.length === 0) return null
 
   return (
     <div className="space-y-3">
@@ -375,17 +354,6 @@ export function PricingGrid({ openingHours, initialRules, onChange }: Props) {
         </table>
       </div>
 
-      {/* Estado */}
-      {emptyCount > 0 ? (
-        <p className="text-xs text-amber-700 dark:text-amber-300">
-          Faltan {emptyCount} celda{emptyCount === 1 ? '' : 's'} con precio. Completalas antes de
-          guardar (toda hora operativa necesita un precio).
-        </p>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Todas las horas operativas tienen precio. Al guardar se comprimen en reglas automáticamente.
-        </p>
-      )}
     </div>
   )
 }

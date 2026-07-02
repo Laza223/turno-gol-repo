@@ -610,8 +610,14 @@ El campo `court_formats` ya existe en la tabla `tenants` como denormalización p
 - **Ahora**: Agregar 2 templates obligatorios:
 
 
-#### Impacto en c�digo
-- [x] src/modules/notifications/templates/booking-canceled-by-complex.ts � Crear template siguiendo el patr�n exacto de los existentes
-- [x] src/modules/notifications/templates/no-show-debt-created.ts � Crear template
-- [x] src/modules/notifications/templates/index.ts � Registrar ambos templates
-- [x] Tests � Agregar snapshots o tests b�sicos de renderizado para los 2 nuevos templates
+#### Impacto en código
+- [x] src/modules/notifications/templates/booking-canceled-by-complex.ts — Crear template siguiendo el patrón exacto de los existentes
+- [x] src/modules/notifications/templates/no-show-debt-created.ts — Crear template
+- [x] src/modules/notifications/templates/index.ts — Registrar ambos templates
+- [x] Tests — Agregar snapshots o tests básicos de renderizado para los 2 nuevos templates
+
+## 🎯 Auditorías de Arquitectura (Post-Launch con Fable)
+- [ ] **Máquina de Estados y Plata Perdida (Business Logic)**: Analizar todo el ciclo de vida de una reserva (desde click hasta cancela/reembolso) para buscar *Estados Zombie*. (Ej: pagos exitosos pero cancha libre, o cancha bloqueada sin ingreso de plata).
+- [ ] **Cuellos de Botella de Base de Datos (Performance)**: Analizar queries pesadas de Supabase (especialmente las de disponibilidad cruzada) y políticas RLS para sugerir Índices (Indexes) correctos antes de escalar masivamente.
+- [ ] **Ataques de Manipulación de Tiempo (Timezones)**: Auditar vulnerabilidades relacionadas a zonas horarias alteradas (reservar en el pasado, o fuera del horario comercial del club para saltar validaciones).
+- [ ] **Inconsistencia de Estado UI/Server**: Mapear desfasajes estructurales entre lo que asume el Frontend (tipos de React/Next.js) y lo que realmente escupe el Backend/Supabase.

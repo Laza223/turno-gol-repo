@@ -74,7 +74,7 @@ Ver `turnogol-launch-addendum-dia0.md` para la estrategia actualizada de Staging
 
 Cumple done-criterion MASTER_PLAN B11 ("backup restaurado exitosamente al menos 1 vez").
 
-- [ ] Drill ejecutado en los últimos 90 días siguiendo `docs/doc19_runbook.md` §10.6.
+- [ ] Drill ejecutado en los últimos 90 días siguiendo `docs/spec/doc19_runbook.md` §10.6.
   - Evidencia: `docs/audit/backup-drills/YYYY-MM-DD.md` con counts, screenshots, RTO/RPO medidos.
 - [ ] Supabase plan: PITR habilitado (Pro+).
 

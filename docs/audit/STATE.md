@@ -102,7 +102,7 @@
 - **B9: race-abonado-vs-individual flaky bajo orden específico de suite** → 🔍 INVESTIGADO (B10 + B11): pasa 2/2 aislado; falla en suite completa por data bleed cross-test, NO regresión. Fix de hermeticidad deferido — P2 pre-existente
 - **F0-surfaced: `daily-close-idempotency.test.ts` (B8.4) falla contra test-DB local con estado residual** → 🔍 CONFIRMADO pre-existente (falla idéntica en main 687cccd sin cambios F0). Espera DB limpia (`balance=1000000`); residual `cash_flows` de corridas previas lo rompe. CI (contenedor limpio/job) verde. Misma clase de hermeticidad que race-abonado. P2 backlog: agregar truncate/cleanup por-test o bootstrap fresco. NO bloquea — F0 no toca cash/DB
 - **B11: ENCRYPTION_KEY key versioning** → v1.5 (trigger: si primera rotación real expone fricción operativa de v1)
-- **B11: Supabase staging project dedicado** → v1.5 (trigger: 10+ clientes o requisito contractual)
+- **B11: Supabase staging project dedicado** → ~~v1.5~~ **REQUERIDO desde v1.0** (decisión revertida commit `2a49379` 2026-07-02 — Vercel Preview compartiendo DB con prod quedó deprecado por riesgo de seguridad; ver `turnogol-launch-addendum-dia0.md` STAGING-001 y `docs/operations/LAUNCH.md` §Staging strategy). Provisioning real del proyecto Supabase de staging todavía pendiente — sin project ref/credenciales en el repo (`.env.staging.example` solo template)
 - **B11: CI stress test job (manual_dispatch)** → backlog nice-to-have
 - **F0/F1: `lucide-react` pinned a `^1.11.0`** (release 2021; línea mantenida es 0.4xx, semver invertido) → **F1 lo evaluó y mantuvo diferido**: F1 done-criteria no requiere upgrade; tocaría 42 archivos con riesgo de breaking API. Trigger para re-evaluar: CVE en versión vieja, o necesidad de icono no disponible. `optimizePackageImports` (F0) ya hace tree-shake efectivo
 - **F0: shared baseline 150KB** (Sentry SDK pesado en chunk común) → **F12 mitigated parcial**: T2 filter desregistra Replay runtime pero Sentry 7.x bundlea bytes igual (chunk 8380 conserva 4× refs `Replay`); upgrade Sentry 8.x para `lazyLoadIntegration` real → backlog v1.5
@@ -161,7 +161,7 @@
    - Re-aplicar migration 014 push_subscriptions en DB local → verificar integration full-green.
    - **GitHub branch protection rule:** marcar `e2e-tests` como required check en `main` (UI manual, no automatizable).
 
-3. **Producción staging spin-up** (B11 backlog v1.5 — trigger: 10+ clientes o requisito contractual).
+3. **Producción staging spin-up** — ~~B11 backlog v1.5~~ **REQUERIDO desde v1.0** (decisión revertida, ver Addendum Día 0 STAGING-001 + `docs/operations/LAUNCH.md` §Staging strategy). Proyecto Supabase de staging separado todavía no provisionado — bloquea el cierre real (ejecución, no solo documentación) de RESTORE-001, ver `docs/audit/backup-drills/2026-07-02-drill.md`.
 
 4. **Anuncio v1.0 a primeros clientes piloto** (Marcelo + Rodrigo personas doc3).
 

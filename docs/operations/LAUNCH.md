@@ -65,25 +65,10 @@
 
 ## Staging strategy (v1)
 
-**Decisión (B11):** v1 usa **Vercel Preview Deployments** como staging. NO hay
-Supabase staging project separado.
-
-- Cada PR a `main` genera un preview deployment automático en Vercel.
-- El preview usa las **mismas** env vars que prod (mismo `DATABASE_URL`,
-  mismas keys MP, etc.). Excepción: `NEXT_PUBLIC_APP_URL` apunta al preview URL.
-- E2E + integration + isolation tests corren en CI antes del merge (`.github/workflows/ci.yml`).
-- Tras merge a `main`: `deploy.yml` deploya a Vercel production.
-
-**Riesgo aceptado v1:** el preview lee/escribe la misma DB de prod. Compensación:
-- CI integration usa DB ephemeral (Postgres GitHub Action service), no toca prod.
-- Pruebas manuales en preview deben usar tenants/users de testeo conocidos
-  (no datos reales de clientes).
-- El stress test corre LOCAL contra Supabase local, nunca contra prod.
-
-**Trigger v1.5 (Supabase staging dedicado):**
-- 10+ clientes en prod (riesgo de "preview toca prod" crece), o
-- Feature flags + tests destructivos en preview, o
-- Requerimiento contractual de aislamiento staging/prod.
+**[DEPRECADO por Addendum Launch-First Día 0]**
+La decisión (B11) de usar Vercel Preview compartiendo base de datos con producción fue revertida por motivos de seguridad.
+Staging **REQUIERE** su propia base de datos Supabase dedicada.
+Ver `turnogol-launch-addendum-dia0.md` para la estrategia actualizada de Staging.
 
 ## Backup restore drill
 

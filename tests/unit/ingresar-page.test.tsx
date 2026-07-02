@@ -47,7 +47,7 @@ describe('IngresarPage — acceso jugador', () => {
 
   it('ofrece reservar en Explorar para primera vez', () => {
     render(<IngresarPage />)
-    const link = screen.getByRole('link', { name: /explorar/i })
+    const link = screen.getByRole('link', { name: /Descubrí complejos/i })
     expect(link.getAttribute('href')).toBe('/explorar')
   })
 })

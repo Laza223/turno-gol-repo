@@ -239,23 +239,23 @@ describe('BookingGrid — popover de detalle', () => {
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
-  it('hover abre el popover y mouseLeave lo cierra', () => {
+  it('hover abre el popover y mouseLeave lo cierra', async () => {
     renderGrid({ bookings: [paid] })
     const wrapper = screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ })
       .parentElement as HTMLElement
 
     fireEvent.mouseEnter(wrapper)
-    expect(screen.getByRole('tooltip')).toBeTruthy()
+    expect(await screen.findByRole('tooltip')).toBeTruthy()
 
     fireEvent.mouseLeave(wrapper)
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
-  it('Escape cierra el popover sin perder el foco', () => {
+  it('Escape cierra el popover sin perder el foco', async () => {
     renderGrid({ bookings: [paid] })
     const slot = screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ })
     fireEvent.focus(slot)
-    expect(screen.getByRole('tooltip')).toBeTruthy()
+    expect(await screen.findByRole('tooltip')).toBeTruthy()
 
     fireEvent.keyDown(slot, { key: 'Escape' })
     expect(screen.queryByRole('tooltip')).toBeNull()

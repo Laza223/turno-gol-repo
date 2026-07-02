@@ -2,15 +2,20 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthUser } from '@/modules/auth/types'
 
 // Only the auth boundary is mocked; getBoss() hits the real local pg-boss.
-vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
+vi.mock('@/modules/auth/auth.middleware', () => ({
+  extractAuthUser: vi.fn(),
+  extractRealAuthUser: vi.fn(),
+}))
 
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { extractAuthUser, extractRealAuthUser } from '@/modules/auth/auth.middleware'
 import { stopBoss } from '@/shared/jobs/boss'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
 import { GET as getJobs } from '@/app/api/admin/jobs/route'
 
-const asUser = (user: AuthUser | null) =>
+const asUser = (user: AuthUser | null) => {
   vi.mocked(extractAuthUser).mockResolvedValue(user)
+  vi.mocked(extractRealAuthUser).mockResolvedValue(user)
+}
 
 beforeEach(() => {
   vi.clearAllMocks()

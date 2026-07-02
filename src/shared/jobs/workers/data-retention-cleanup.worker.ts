@@ -1,6 +1,6 @@
 import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
-import { getDb, getSql } from '@/shared/db/client'
+import { getSql, withTenantContext } from '@/shared/db/client'
 import { QUEUE_DATA_RETENTION } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
@@ -20,7 +20,6 @@ import { logger } from '@/shared/lib/logger'
 
 export async function runDataRetentionCleanup(): Promise<void> {
   const sql = getSql()
-  const db = getDb()
 
   const targets = await sql<{ id: string }[]>`
     SELECT id FROM tenants
@@ -35,7 +34,10 @@ export async function runDataRetentionCleanup(): Promise<void> {
 
   for (const tenantId of ids) {
     try {
-      await db.transaction(async (tx) => {
+      // Every DELETE below hits an RLS+tenant-scoped table (Fable 5 P0) — must
+      // run through withTenantContext, not the bare app pool, or each DELETE
+      // matches 0 rows and the "wipe" silently does nothing.
+      await withTenantContext(tenantId, async (tx) => {
         // Disable user-level triggers + FK enforcement for this tx so we can
         // wipe rows that are otherwise immutable (terminal bookings, daily
         // cash closes) and break the bookings ↔ payments circular FK.

@@ -1,5 +1,6 @@
 import { getBoss, stopBoss } from './boss'
 import { registerAllWorkers } from './workers'
+import { assertWorkerDbVisibility } from '@/shared/db/client'
 import { logger } from '@/shared/lib/logger'
 
 /**
@@ -8,6 +9,9 @@ import { logger } from '@/shared/lib/logger'
  * webhook processing keeps running through web restarts.
  */
 async function main(): Promise<void> {
+  // Fail fast (Fable 5 P0) if the worker DB role can't see across tenants —
+  // otherwise every cron below just silently processes 0 rows forever.
+  await assertWorkerDbVisibility()
   const boss = await getBoss()
   await registerAllWorkers(boss)
   logger.info('running. Ctrl+C to stop.', { module: 'workers' })

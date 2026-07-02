@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql as drizzleSql } from 'drizzle-orm'
 import { notifications } from '@/shared/db/schema'
-import { getSql, getDb } from '@/shared/db/client'
+import { getWorkerSql, getWorkerDb } from '@/shared/db/client'
 import type { DbTx } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import {
@@ -108,10 +108,10 @@ export async function dispatchEmail(notificationId: string): Promise<void> {
   await boss.send(QUEUE_SEND_EMAIL, data, SEND_EMAIL_SEND_OPTIONS)
 }
 
-// ─── Worker helpers (getSql() → service-role, no RLS) ─────────────────────────
+// ─── Worker helpers (getWorkerSql()/getWorkerDb() → service-role, no RLS) ──────
 
 export async function getNotificationById(id: string): Promise<NotificationRow | null> {
-  const db = getDb()
+  const db = getWorkerDb()
   const rows = await db
     .select()
     .from(notifications)
@@ -135,7 +135,7 @@ export async function claimNotificationForSend(
   id: string,
   expectedAttemptCount: number,
 ): Promise<boolean> {
-  const sql = getSql()
+  const sql = getWorkerSql()
   const rows = await sql<{ id: string }[]>`
     UPDATE notifications
     SET status = 'sending', attempt_count = attempt_count + 1
@@ -148,7 +148,7 @@ export async function claimNotificationForSend(
 }
 
 export async function markNotificationSent(id: string): Promise<void> {
-  const db = getDb()
+  const db = getWorkerDb()
   await db
     .update(notifications)
     .set({ status: 'sent', sentAt: new Date() })
@@ -156,7 +156,7 @@ export async function markNotificationSent(id: string): Promise<void> {
 }
 
 export async function markNotificationFailed(id: string, error: string): Promise<void> {
-  const db = getDb()
+  const db = getWorkerDb()
   await db
     .update(notifications)
     .set({ status: 'failed', lastError: error })
@@ -168,7 +168,7 @@ export async function updateNotificationLastError(
   error: string,
   newAttemptCount: number,
 ): Promise<void> {
-  const db = getDb()
+  const db = getWorkerDb()
   await db
     .update(notifications)
     .set({ status: 'queued', lastError: error, attemptCount: newAttemptCount })
@@ -180,7 +180,7 @@ export async function resolveRecipientEmail(
   recipientId: string,
   tenantId: string | null,
 ): Promise<string> {
-  const sql = getSql()
+  const sql = getWorkerSql()
 
   if (recipientType === 'player') {
     const rows = await sql<{ email: string }[]>`

@@ -35,6 +35,18 @@ function mapStatus(raw: string | undefined): MpPaymentStatus {
 const MP_ID_RE = /^\d{1,32}$/
 
 /**
+ * MP payment_type_id values that settle as `in_process` for 24-48h instead of
+ * instantly (Rapipago/PagoFácil vouchers, ATM cash network, CBU transfer).
+ * Excluded from booking-deposit preferences so v1 only accepts instant
+ * payments (cards, account_money) — see createPreference below.
+ */
+const DEPOSIT_EXCLUDED_PAYMENT_TYPES = [
+  { id: 'ticket' },
+  { id: 'atm' },
+  { id: 'bank_transfer' },
+]
+
+/**
  * Explicit per-call timeout for getPaymentStatus (deposit-confirmation polling).
  * The SDK client already defaults to 8s, but pinning it on the call keeps the
  * bound from silently changing if the client default is ever edited — a slow MP
@@ -98,6 +110,14 @@ export class MercadoPagoGateway implements PaymentGateway {
           notification_url: input.notificationUrl,
           expires: true,
           expiration_date_to: input.expiresAt.toISOString(),
+          // Fable 5 P0: a booking deposit only has a 6min hold — deferred
+          // methods (ticket=Rapipago/PagoFácil, atm, bank_transfer=CBU) settle
+          // in 24-48h and land as `in_process`, long after the hold already
+          // freed the slot. Excluding them here (not "managing a 48h window")
+          // makes in_process rare instead of routine for this flow.
+          payment_methods: {
+            excluded_payment_types: DEPOSIT_EXCLUDED_PAYMENT_TYPES,
+          },
         },
         }),
       )

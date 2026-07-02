@@ -1,10 +1,13 @@
 import type PgBoss from 'pg-boss'
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
 async function runExpireTrials(): Promise<void> {
-  const sql = getSql()
+  // tenant_subscriptions UPDATE below touches many tenants at once — a single
+  // statement can't be scoped to one app.current_tenant_id (Fable 5 P0), so
+  // this needs the service-role pool.
+  const sql = getWorkerSql()
   // Move trialing tenants whose trial_ends_at has passed to 'blocked'.
   // Also update the linked tenant_subscription to keep status in sync.
   const expired = await sql<{ id: string; name: string }[]>`

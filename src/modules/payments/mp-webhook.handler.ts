@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
-import { getDb, getSql, withTenantContext } from '@/shared/db/client'
+import { getDb, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from './mp-oauth'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
@@ -173,25 +173,27 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   if (confirmedBookingId) {
     const bookingId = confirmedBookingId
     try {
-      // Re-fetch booking context post-commit (no shared scope with withTenantContext above).
-      // Service-role getSql() bypasses RLS — booking already exists + committed.
-      const notifSql = getSql()
-      const bookingCtxRows = await notifSql<{
+      // Re-fetch booking context post-commit (no shared scope with withTenantContext
+      // above, its tx already closed) — job.tenantId is known, so this reopens a
+      // short tenant-scoped tx rather than reaching for the service-role pool.
+      const bookingCtxRows = await withTenantContext(job.tenantId, (tx) =>
+        tx.execute(sql`
+          SELECT c.name AS court_name,
+                 b.date::text AS date,
+                 b.time_start AS time_start,
+                 b.time_end AS time_end
+          FROM bookings b
+          JOIN courts c ON c.id = b.court_id
+          WHERE b.id = ${bookingId}
+          LIMIT 1
+        `),
+      )
+      const ctx = (bookingCtxRows as unknown as Array<{
         court_name: string
         date: string
         time_start: string
         time_end: string
-      }[]>`
-        SELECT c.name AS court_name,
-               b.date::text AS date,
-               b.time_start AS time_start,
-               b.time_end AS time_end
-        FROM bookings b
-        JOIN courts c ON c.id = b.court_id
-        WHERE b.id = ${bookingId}
-        LIMIT 1
-      `
-      const ctx = bookingCtxRows[0]
+      }>)[0]
       const ymd = ctx?.date?.slice(0, 10) ?? ''
       const dateLabel = ctx?.date
         ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('es-AR', {

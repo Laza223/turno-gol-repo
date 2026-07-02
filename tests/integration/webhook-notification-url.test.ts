@@ -12,7 +12,6 @@ import {
   closeSql,
   getSql,
   withPlayerContext,
-  withTenantContext,
 } from '@/shared/db/client'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { createDepositPayment } from '@/modules/payments/payment.service'
@@ -104,9 +103,7 @@ describe('createDepositPayment — notification URL', () => {
       return originalCreate(input)
     }
 
-    await withTenantContext(tenant.id, (tx) =>
-      createDepositPayment(booking.id, gateway, tx, APP_URL),
-    )
+    await createDepositPayment(booking.id, gateway, tenant.id, APP_URL)
 
     // Primary assertion: notification URL must point at the real handler
     expect(capturedInput).not.toBeNull()

@@ -430,9 +430,7 @@ describe('createDepositPayment — booking-payment consistency (Fix #13)', () =>
 
     const gateway = new MockGateway()
 
-    const pref = await withTenantContext(tenant.id, (tx) =>
-      createDepositPayment(bookingId, gateway, tx, 'https://app.test'),
-    )
+    const pref = await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
 
     expect(pref.preferenceId).toMatch(/^mp-pref-/)
     expect(pref.initPoint).toContain(bookingId)
@@ -651,9 +649,7 @@ describe('createDepositPayment / createRefund — guards', () => {
     const gateway = new MockGateway()
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        createDepositPayment(bookingId, gateway, tx, 'https://app.test'),
-      ),
+      createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test'),
     ).rejects.toBeInstanceOf(BookingNotPendingPaymentError)
 
     // Sin efectos: ni preferencia en MP ni payment row.

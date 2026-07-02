@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/shared/db/client', () => ({
-  getSql: vi.fn(),
+  getWorkerSql: vi.fn(),
 }))
 
 vi.mock('@/lib/web-push', () => ({
@@ -18,14 +18,14 @@ vi.mock('@/shared/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { sendPushNotification } from '@/lib/web-push'
 import { track } from '@/shared/observability'
 import { handlePushSendJob } from '@/shared/jobs/workers/push.worker'
 import type { Job } from 'pg-boss'
 import type { PushSendJobData } from '@/shared/jobs/definitions'
 
-const mockGetSql = getSql as ReturnType<typeof vi.fn>
+const mockGetSql = getWorkerSql as ReturnType<typeof vi.fn>
 const mockSendPush = sendPushNotification as ReturnType<typeof vi.fn>
 const mockTrack = track as unknown as { notification: ReturnType<typeof vi.fn> }
 
@@ -56,7 +56,7 @@ function makeSqlStub(selectRows: unknown[]) {
     if (callCount === 1) return selectRows
     return []
   })
-  return fn as unknown as ReturnType<typeof getSql>
+  return fn as unknown as ReturnType<typeof getWorkerSql>
 }
 
 beforeEach(() => {

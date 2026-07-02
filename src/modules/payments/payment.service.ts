@@ -1,9 +1,10 @@
 import { eq, sql } from 'drizzle-orm'
 import { bookings, payments } from '@/shared/db/schema'
-import type { DbTx } from '@/shared/db/client'
+import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import type { BookingRow } from '@/modules/bookings/booking.types'
+import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import type { PaymentGateway } from './mp-gateway'
 import type {
   CreatePreferenceInput,
@@ -30,89 +31,126 @@ const TERMINAL_BOOKING_STATUSES = [
   'completed',
 ] as const
 
-const DEPOSIT_TIMER_MINUTES = 15
+/**
+ * The MP checkout must close BEFORE the DB hold (`DEFAULT_EXPIRY_SECONDS`,
+ * jobs/definitions.ts) fires and frees the slot — otherwise a player can pay
+ * on a still-open MP page for a slot TurnoGol already gave away (Fable 5 P0:
+ * TTLs were unified from two independent constants, one of them longer than
+ * the hold). Buffer keeps a safety margin; the floor guards a late retry
+ * (close to the hold's own deadline) from getting a past `expiration_date_to`,
+ * which MP rejects outright.
+ */
+const MP_PREFERENCE_SAFETY_BUFFER_SECONDS = 60
+const MP_PREFERENCE_MIN_WINDOW_SECONDS = 30
 
 /**
- * Pre-checkout (Pilar B + Fix #13).
+ * Pre-checkout (Pilar B + Fix #13 + Saga fix, Fable 5 P0).
  *
- * Inside the same tx:
- *   1. Lock booking. Assert pending_payment + deposit_amount > 0.
- *   2. Create MP preference (gateway).
- *   3. INSERT payments row (status=pending, mp_preference_id, type='deposit').
- *   4. UPDATE bookings.payment_method='mercadopago', payment_id=<inserted>.
- *      `chk_booking_payment_consistency` validates this combination on commit.
+ * MP is called BETWEEN two short transactions, never from inside one — the
+ * previous version held the booking's row lock + a DB connection open for
+ * the full MP round trip:
+ *   1. tx1: lock booking, assert pending_payment + deposit_amount > 0, INSERT
+ *      the payments row (status=pending, mp_preference_id=NULL) and UPDATE
+ *      bookings.payment_method/payment_id — the "intent" is durable before MP
+ *      is ever called. `chk_booking_payment_consistency` only requires
+ *      payment_id IS NOT NULL for payment_method='mercadopago', so this is
+ *      valid before the preference exists.
+ *   2. Create MP preference (gateway) — no open tx.
+ *   3. tx2: UPDATE the same payments row with the resulting mp_preference_id.
+ *
+ * If step 2 throws, tx1 already committed: the booking keeps its pending
+ * payment row (mp_preference_id=NULL) and the player can retry — same
+ * tolerated shape as re-invoking this function today (no UNIQUE on
+ * booking_id, a retry just creates another row).
  *
  * Caller redirects player to `initPoint`.
  */
 export async function createDepositPayment(
   bookingId: string,
   gateway: PaymentGateway,
-  tx: DbTx,
+  tenantId: string,
   appUrl: string,
 ): Promise<PreferenceResult> {
   track.payment('payment.deposit.create', { bookingId })
 
-  const lockRows = await tx.execute(sql`
-    SELECT id, tenant_id AS "tenantId", player_id AS "playerId",
-           deposit_amount AS "depositAmount", status, created_at AS "createdAt"
-    FROM bookings
-    WHERE id = ${bookingId}
-    FOR UPDATE
-  `)
-  const booking = (lockRows as unknown as Array<{
-    id: string
-    tenantId: string
-    playerId: string | null
-    depositAmount: number
-    status: string
-    createdAt: Date
-  }>)[0]
-  if (!booking) throw new PaymentNotFoundError(bookingId)
-  if (booking.status !== 'pending_payment') {
-    throw new BookingNotPendingPaymentError(bookingId)
-  }
-  if (booking.depositAmount <= 0) {
-    throw new BookingNotPendingPaymentError(bookingId)
-  }
+  const { depositAmount, createdAt, paymentId } = await withTenantContext(
+    tenantId,
+    async (tx) => {
+      const lockRows = await tx.execute(sql`
+        SELECT id, player_id AS "playerId",
+               deposit_amount AS "depositAmount", status, created_at AS "createdAt"
+        FROM bookings
+        WHERE id = ${bookingId}
+        FOR UPDATE
+      `)
+      const booking = (lockRows as unknown as Array<{
+        id: string
+        playerId: string | null
+        depositAmount: number
+        status: string
+        createdAt: Date
+      }>)[0]
+      if (!booking) throw new PaymentNotFoundError(bookingId)
+      if (booking.status !== 'pending_payment') {
+        throw new BookingNotPendingPaymentError(bookingId)
+      }
+      if (booking.depositAmount <= 0) {
+        throw new BookingNotPendingPaymentError(bookingId)
+      }
 
+      const inserted = await tx
+        .insert(payments)
+        .values({
+          tenantId,
+          bookingId,
+          playerId: booking.playerId,
+          amount: booking.depositAmount,
+          currency: 'ARS',
+          type: 'deposit',
+          method: 'mercadopago',
+          status: 'pending',
+          description: `Seña reserva ${bookingId.slice(0, 8)}`,
+        })
+        .returning({ id: payments.id })
+      const insertedPaymentId = inserted[0]!.id
+
+      await tx
+        .update(bookings)
+        .set({ paymentMethod: 'mercadopago', paymentId: insertedPaymentId, updatedAt: new Date() })
+        .where(eq(bookings.id, bookingId))
+
+      return {
+        depositAmount: booking.depositAmount,
+        createdAt: booking.createdAt,
+        paymentId: insertedPaymentId,
+      }
+    },
+  )
+
+  const holdExpiresAtMs = new Date(createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000
+  const preferredExpiresAtMs = holdExpiresAtMs - MP_PREFERENCE_SAFETY_BUFFER_SECONDS * 1000
   const expiresAt = new Date(
-    new Date(booking.createdAt).getTime() + DEPOSIT_TIMER_MINUTES * 60 * 1000,
+    Math.max(preferredExpiresAtMs, Date.now() + MP_PREFERENCE_MIN_WINDOW_SECONDS * 1000),
   )
 
   const preferenceInput: CreatePreferenceInput = {
     bookingId,
-    amount: booking.depositAmount,
+    amount: depositAmount,
     description: `Seña reserva ${bookingId.slice(0, 8)}`,
     successUrl: `${appUrl}/reserva/${bookingId}/exito`,
     failureUrl: `${appUrl}/reserva/${bookingId}/error`,
     pendingUrl: `${appUrl}/reserva/${bookingId}/pendiente`,
-    notificationUrl: `${appUrl}/api/webhooks/mercadopago?tenant=${booking.tenantId}`,
+    notificationUrl: `${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`,
     expiresAt,
   }
   const preference = await gateway.createPreference(preferenceInput)
 
-  const inserted = await tx
-    .insert(payments)
-    .values({
-      tenantId: booking.tenantId,
-      bookingId,
-      playerId: booking.playerId,
-      amount: booking.depositAmount,
-      currency: 'ARS',
-      type: 'deposit',
-      method: 'mercadopago',
-      status: 'pending',
-      mpPreferenceId: preference.preferenceId,
-      description: preferenceInput.description,
-    })
-    .returning({ id: payments.id })
-
-  const paymentId = inserted[0]!.id
-
-  await tx
-    .update(bookings)
-    .set({ paymentMethod: 'mercadopago', paymentId, updatedAt: new Date() })
-    .where(eq(bookings.id, bookingId))
+  await withTenantContext(tenantId, async (tx) => {
+    await tx
+      .update(payments)
+      .set({ mpPreferenceId: preference.preferenceId })
+      .where(eq(payments.id, paymentId))
+  })
 
   return preference
 }
@@ -338,13 +376,17 @@ function formatArs(cents: number): string {
 }
 
 /**
- * In-process path (Fix #1, Fase 1 audit).
+ * In-process path (Fix #1, Fase 1 audit; narrowed by Fable 5 P0).
  *
- * MP returns `in_process` for CBU/transferencia (24-48h). The booking stays in
- * `pending_payment`; the payment row reflects the limbo. The future expiry job
- * (background-jobs phase, currently unwired) MUST check
- *   `WHERE EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'in_process')`
- * to choose 48h cutoff vs the default 15min.
+ * `createPreference` excludes deferred payment types (ticket/atm/bank_transfer)
+ * so this branch should be rare now, not the routine outcome of paying by
+ * CBU/transferencia. No 48h grace window is implemented: the booking still
+ * expires on the normal hold timer (`DEFAULT_EXPIRY_SECONDS`) like any other
+ * pending payment — `hasInProcess` in booking.expiry.ts only changes the
+ * notification copy, not the deadline. If MP still returns `in_process` for
+ * some edge case (e.g. a card under manual review), it just records the
+ * limbo state; a later webhook resolves it via the normal approved/rejected
+ * paths.
  */
 async function handleInProcess(
   info: GatewayPaymentInfo,

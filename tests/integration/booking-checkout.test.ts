@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { sql as drizzleSql } from 'drizzle-orm'
-import { closeSql, getSql, withPlayerContext, withTenantContext } from '@/shared/db/client'
+import { closeSql, getSql, withPlayerContext } from '@/shared/db/client'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
@@ -40,9 +40,7 @@ describe('booking + deposit checkout', () => {
     expect(booking.depositAmount).toBe(300000)
 
     const gateway = new MockGateway()
-    const pref = await withTenantContext(tenant.id, (tx) =>
-      createDepositPayment(booking.id, gateway, tx, 'http://localhost:3000'),
-    )
+    const pref = await createDepositPayment(booking.id, gateway, tenant.id, 'http://localhost:3000')
     expect(pref.initPoint).toBeTruthy()
 
     const payRows = await sql<{ status: string; type: string }[]>`

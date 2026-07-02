@@ -1,5 +1,5 @@
 import type PgBoss from 'pg-boss'
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { QUEUE_SEND_EMAIL } from '../definitions'
 import {
   claimNotificationForSend,
@@ -66,7 +66,7 @@ export async function processSingleNotification(notif: NotificationRow): Promise
  * Called by the cron worker. Also usable in integration tests.
  */
 export async function processQueuedNotifications(): Promise<void> {
-  const sql = getSql()
+  const sql = getWorkerSql()
   // Fetch up to 50 queued notifications (attempt_count ≤ 3 → includes final attempt)
   const rows = await sql<{ id: string }[]>`
     SELECT id FROM notifications

@@ -44,6 +44,8 @@
     "seed:system-admin": "tsx scripts/seed-system-admin.ts",
     "stress:bookings": "tsx scripts/stress-test.ts",
     "launch:check": "tsx scripts/launch-check.ts",
+    "staging:check": "tsx scripts/staging-check.ts",
+    "staging:seed": "tsx scripts/seed-staging.ts",
     "db:push": "drizzle-kit push:pg",
     "db:migrate": "drizzle-kit push:pg",
     "db:generate": "drizzle-kit generate:pg",

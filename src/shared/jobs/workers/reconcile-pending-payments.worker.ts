@@ -1,5 +1,5 @@
 import type PgBoss from 'pg-boss'
-import { getSql, withTenantContext } from '@/shared/db/client'
+import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
@@ -23,7 +23,10 @@ type StuckBooking = {
  * dispatchPaymentInfo flow — the booking gets confirmed instead of expiring.
  */
 export async function reconcilePendingPayments(): Promise<number> {
-  const sql = getSql()
+  // Cross-tenant scan (Fable 5 P0): needs the service-role pool, otherwise a
+  // restricted app role sees 0 stuck bookings under RLS. The per-row mutation
+  // below already opens its own tenant-scoped tx via `withTenantContext`.
+  const sql = getWorkerSql()
 
   const stuck = await sql<StuckBooking[]>`
     SELECT

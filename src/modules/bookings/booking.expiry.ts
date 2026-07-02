@@ -1,4 +1,4 @@
-import { getSql, getDb } from '@/shared/db/client'
+import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import { scheduleBookingExpiry } from '@/shared/jobs/schedule-expiry'
 import {
@@ -32,7 +32,9 @@ type ExpiryState = {
 }
 
 async function loadExpiryState(bookingId: string): Promise<ExpiryState | null> {
-  const dbSql = getSql()
+  // Tenant isn't known until this lookup returns it (Fable 5 P0) — the
+  // service-role pool is the only one that can see the row under RLS.
+  const dbSql = getWorkerSql()
   const rows = await dbSql<
     {
       status: string
@@ -95,12 +97,13 @@ export async function expirePendingBookingWithPolicy(
     return 'rescheduled'
   }
 
-  const db = getDb()
   const dateFmt = fmtDate(state.date)
   const timeStartFmt = state.timeStart.slice(0, 5)
   const notifIds: string[] = []
 
-  const won = await db.transaction(async (tx) => {
+  // Tenant is known now (from loadExpiryState) — mutate through the
+  // regular, RLS-scoped pool instead of the service-role one (Fable 5 P0).
+  const won = await withTenantContext(state.tenantId, async (tx) => {
     const result = await expirePendingBooking(bookingId, tx)
     if (!result.won) return false
 
@@ -162,7 +165,8 @@ export async function expirePendingBookingWithPolicy(
  * same race-safe policy, so overlap with a live job is harmless.
  */
 export async function sweepExpiredPendingBookings(): Promise<number> {
-  const dbSql = getSql()
+  // Cross-tenant scan (Fable 5 P0) — same service-role pool as loadExpiryState.
+  const dbSql = getWorkerSql()
   const rows = await dbSql<{ id: string }[]>`
     SELECT b.id
     FROM bookings b

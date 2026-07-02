@@ -9,7 +9,7 @@
  *   dispatchEmail). pg-boss send is at-least-once; the worker is idempotent.
  */
 
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import {
   PUSH_SEND_SEND_OPTIONS,
@@ -27,7 +27,7 @@ export async function notifyAdminPush(
   tenantId: string,
   payload: AdminPushPayload,
 ): Promise<{ enqueued: number }> {
-  const sql = getSql()
+  const sql = getWorkerSql()
   const subs = await sql<{ id: string }[]>`
     SELECT id FROM push_subscriptions WHERE tenant_id = ${tenantId}
   `
@@ -65,7 +65,7 @@ export async function notifyStaffPush(
   staffUserId: string,
   payload: AdminPushPayload,
 ): Promise<{ enqueued: number }> {
-  const sql = getSql()
+  const sql = getWorkerSql()
   const subs = await sql<{ id: string }[]>`
     SELECT id FROM push_subscriptions
     WHERE tenant_id = ${tenantId} AND staff_user_id = ${staffUserId}

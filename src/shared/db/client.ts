@@ -69,6 +69,12 @@ export async function closeSql(): Promise<void> {
     _db = null
     globalForDb.__turnogolSql = undefined
   }
+  if (_workerSql) {
+    await _workerSql.end({ timeout: 5 })
+    _workerSql = null
+    _workerDb = null
+    globalForWorkerDb.__turnogolWorkerSql = undefined
+  }
 }
 
 // ─── Drizzle wrapper ────────────────────────────────────────────────
@@ -83,6 +89,72 @@ export function getDb(): Db {
   if (_db) return _db
   _db = drizzle(getSql(), { schema })
   return _db
+}
+
+// ─── Worker (service-role) pool ──────────────────────────────────────
+// Background jobs run system-wide sweeps across tenants (dunning, expiry,
+// retention, reconciliation) — reads/writes that RLS can't scope to a single
+// `app.current_tenant_id`. `getSql()`/`getDb()` use DATABASE_URL, which in
+// production is a restricted role by design (`bypassRlsCheck` in
+// launch-check.ts fails the deploy otherwise) — that pool would silently see
+// 0 rows for a cross-tenant scan. `WORKER_DATABASE_URL` points at a role with
+// BYPASSRLS reserved for exactly this ("Background jobs usan rol de servicio
+// separado", CLAUDE.md). Falls back to DATABASE_URL for local/test, where the
+// default role already bypasses RLS. Mutations that touch a SINGLE known
+// tenant should still go through `withTenantContext` on the regular pool —
+// only cross-tenant reads/writes belong here.
+const globalForWorkerDb = globalThis as unknown as { __turnogolWorkerSql?: Sql }
+
+let _workerSql: Sql | null = null
+
+export function getWorkerSql(): Sql {
+  if (_workerSql) return _workerSql
+  if (globalForWorkerDb.__turnogolWorkerSql) {
+    _workerSql = globalForWorkerDb.__turnogolWorkerSql
+    return _workerSql
+  }
+  const url = process.env.WORKER_DATABASE_URL ?? process.env.DATABASE_URL ?? DEFAULT_URL
+  _workerSql = postgres(url, {
+    max: resolvePoolMax(),
+    prepare: false,
+    onnotice: () => {},
+  })
+  if (process.env.NODE_ENV !== 'production') {
+    globalForWorkerDb.__turnogolWorkerSql = _workerSql
+  }
+  return _workerSql
+}
+
+let _workerDb: Db | null = null
+
+export function getWorkerDb(): Db {
+  if (_workerDb) return _workerDb
+  _workerDb = drizzle(getWorkerSql(), { schema })
+  return _workerDb
+}
+
+/**
+ * Boot-time visibility assertion (Fable 5 P0): fails fast if the worker pool
+ * can't actually see across tenants, instead of every cron silently
+ * processing 0 rows forever. Checks the connected role's BYPASSRLS attribute
+ * directly rather than probing a specific table, so it doesn't depend on
+ * seed data existing.
+ */
+export async function assertWorkerDbVisibility(): Promise<void> {
+  const sql = getWorkerSql()
+  const rows = await sql<{ rolname: string; bypass: boolean }[]>`
+    SELECT rolname, rolbypassrls AS bypass
+    FROM pg_roles
+    WHERE rolname = current_user
+  `
+  const row = rows[0]
+  if (!row || !row.bypass) {
+    throw new Error(
+      `Worker DB role '${row?.rolname ?? 'unknown'}' does not have BYPASSRLS — ` +
+        'background jobs would silently see 0 rows for cross-tenant scans. ' +
+        'Set WORKER_DATABASE_URL to a role with BYPASSRLS.',
+    )
+  }
 }
 
 /**

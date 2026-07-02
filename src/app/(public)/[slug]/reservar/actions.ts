@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { eq, sql } from 'drizzle-orm'
 import { signInWithPlayerMagicLink } from '@/modules/auth/auth.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { getDb, withPlayerContext, withTenantContext } from '@/shared/db/client'
+import { getDb, withPlayerContext } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce } from '@/shared/rate-limit'
@@ -161,9 +161,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       } else {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
         const gateway = resolveTenantGateway(tenant!.id, tenant!.mpAccessToken)
-        const pref = await withTenantContext(tenant!.id, (tx) =>
-          createDepositPayment(booking.id, gateway, tx, appUrl),
-        )
+        const pref = await createDepositPayment(booking.id, gateway, tenant!.id, appUrl)
         redirectTo = pref.initPoint
       }
     }
@@ -227,9 +225,7 @@ export async function retryDepositPaymentAction(formData: FormData): Promise<voi
   // Re-invoking createDepositPayment is safe: payments has no UNIQUE on
   // (booking_id, type); a second pending row is allowed and bookings.payment_id
   // will be updated to the newer payment row.
-  const pref = await withTenantContext(tenantId, (tx) =>
-    createDepositPayment(bookingId, gateway, tx, appUrl),
-  )
+  const pref = await createDepositPayment(bookingId, gateway, tenantId, appUrl)
 
   redirect(pref.initPoint)
 }

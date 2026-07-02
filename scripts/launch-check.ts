@@ -2,7 +2,7 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 
 import { execSync } from 'node:child_process'
-import { encryptionKeyStrengthCheck, e2eBypassDisabledCheck } from './launch-check.helpers'
+import { encryptionKeyStrengthCheck, e2eBypassDisabledCheck, REQUIRED_ENV } from './launch-check.helpers'
 
 type Step = {
   name: string
@@ -10,24 +10,6 @@ type Step = {
   check?: () => Promise<boolean>
   fatal: boolean
 }
-
-const REQUIRED_ENV = [
-  'DATABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'MP_CLIENT_ID',
-  'MP_CLIENT_SECRET',
-  'MP_WEBHOOK_SECRET',
-  'ENCRYPTION_KEY',
-  'IMPERSONATION_COOKIE_SECRET',
-  'RESEND_API_KEY',
-  'SENTRY_DSN',
-  'NEXT_PUBLIC_SENTRY_DSN',
-  'UPSTASH_REDIS_REST_URL',
-  'UPSTASH_REDIS_REST_TOKEN',
-  'NEXT_PUBLIC_APP_URL',
-] as const
 
 function envCheck(): boolean {
   const missing = REQUIRED_ENV.filter((k) => !process.env[k])
@@ -83,6 +65,46 @@ async function bypassRlsCheck(): Promise<boolean> {
     if (row.bypass) {
       console.error(
         `current_user '${row.rolname}' has BYPASSRLS=true — RLS would be ignored in production`,
+      )
+      return false
+    }
+    return true
+  } finally {
+    await sql.end()
+  }
+}
+
+/**
+ * Fails if the DB role used by background jobs (current_user from
+ * WORKER_DATABASE_URL, falling back to DATABASE_URL) does NOT have BYPASSRLS.
+ * Workers run cross-tenant sweeps (dunning, retention, expiry) that can't be
+ * scoped to a single `app.current_tenant_id` — under the app's restricted
+ * role (enforced by `bypassRlsCheck` above) those sweeps would silently
+ * process 0 rows in production (Fable 5 P0: DSN dual).
+ */
+async function workerBypassRlsCheck(): Promise<boolean> {
+  const url = process.env.WORKER_DATABASE_URL ?? process.env.DATABASE_URL
+  if (!url) {
+    console.error('WORKER_DATABASE_URL/DATABASE_URL not set; cannot probe worker BYPASSRLS')
+    return false
+  }
+  const postgres = (await import('postgres')).default
+  const sql = postgres(url, { max: 1 })
+  try {
+    const rows = await sql<{ rolname: string; bypass: boolean }[]>`
+      SELECT rolname, rolbypassrls AS bypass
+      FROM pg_roles
+      WHERE rolname = current_user
+    `
+    const row = rows[0]
+    if (!row) {
+      console.error('Could not resolve current_user in pg_roles for the worker DSN')
+      return false
+    }
+    if (!row.bypass) {
+      console.error(
+        `Worker DB role '${row.rolname}' does NOT have BYPASSRLS — cross-tenant ` +
+          'background sweeps would silently see 0 rows. Set WORKER_DATABASE_URL to a role with BYPASSRLS.',
       )
       return false
     }
@@ -150,6 +172,7 @@ const steps: Step[] = [
     fatal: true,
   },
   { name: 'bypassrls role check',      check: bypassRlsCheck,                                                                       fatal: true  },
+  { name: 'worker bypassrls role check', check: workerBypassRlsCheck,                                                               fatal: true  },
   {
     name: 'encryption-key strength',
     check: async () => {

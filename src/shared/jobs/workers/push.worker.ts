@@ -1,6 +1,6 @@
 import type PgBoss from 'pg-boss'
 import type { Job } from 'pg-boss'
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { sendPushNotification } from '@/lib/web-push'
 import { logger } from '@/shared/lib/logger'
 import { track } from '@/shared/observability'
@@ -8,7 +8,10 @@ import { QUEUE_PUSH_SEND, type PushSendJobData } from '../definitions'
 
 export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void> {
   const { subscription_id, payload } = job.data
-  const sql = getSql()
+  // Only subscription_id is known here (no tenant in the job payload) — the
+  // lookup can't set app.current_tenant_id before it knows which tenant this
+  // row belongs to, so it needs the service-role pool (Fable 5 P0).
+  const sql = getWorkerSql()
   const rows = await sql<{
     id: string
     endpoint: string

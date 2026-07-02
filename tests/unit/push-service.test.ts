@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mocks must be hoisted before imports.
 vi.mock('@/shared/db/client', () => ({
-  getSql: vi.fn(),
+  getWorkerSql: vi.fn(),
 }))
 
 vi.mock('@/shared/jobs/boss', () => ({
@@ -13,12 +13,12 @@ vi.mock('@/shared/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { notifyAdminPush, notifyStaffPush } from '@/modules/notifications/push.service'
 import { QUEUE_PUSH_SEND } from '@/shared/jobs/definitions'
 
-const mockSql = getSql as ReturnType<typeof vi.fn>
+const mockSql = getWorkerSql as ReturnType<typeof vi.fn>
 const mockGetBoss = getBoss as ReturnType<typeof vi.fn>
 
 function makeBossStub() {
@@ -28,7 +28,7 @@ function makeBossStub() {
 function makeSqlStub(rows: Array<{ id: string }>) {
   // postgres tagged template returns rows directly
   const fn = vi.fn().mockResolvedValue(rows)
-  return fn as unknown as ReturnType<typeof getSql>
+  return fn as unknown as ReturnType<typeof getWorkerSql>
 }
 
 beforeEach(() => {

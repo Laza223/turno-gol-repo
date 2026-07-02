@@ -17,6 +17,29 @@ export const ENCRYPTION_KEY_PLACEHOLDER =
 export type CheckResult = { ok: true } | { ok: false; error: string }
 
 /**
+ * Env vars the app needs to boot in a real (non-local) environment. Shared
+ * between launch-check.ts (pre-deploy CI gate) and staging-check.ts
+ * (post-deploy staging verification) so the two lists can't drift apart.
+ */
+export const REQUIRED_ENV = [
+  'DATABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'MP_CLIENT_ID',
+  'MP_CLIENT_SECRET',
+  'MP_WEBHOOK_SECRET',
+  'ENCRYPTION_KEY',
+  'IMPERSONATION_COOKIE_SECRET',
+  'RESEND_API_KEY',
+  'SENTRY_DSN',
+  'NEXT_PUBLIC_SENTRY_DSN',
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
+  'NEXT_PUBLIC_APP_URL',
+] as const
+
+/**
  * Validates that ENCRYPTION_KEY is suitable for production use:
  * - defined (not undefined/empty)
  * - at least 64 chars (32 bytes hex-encoded)

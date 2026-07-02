@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'Cómo TurnoGol recolecta, usa y protege tus datos personales (Ley 25.326).',
 }
 
-export default function PrivacyPage() {
+export default function PrivacidadPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-10 space-y-2">
@@ -258,8 +258,8 @@ export default function PrivacyPage() {
           Si modificamos esta política te lo informaremos por email (al menos 30 días antes para
           cambios sustanciales) y publicaremos la fecha de actualización al inicio de este documento.
           La versión vigente está siempre disponible en{' '}
-          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/privacy">
-            turnogol.app/privacy
+          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/privacidad">
+            turnogol.app/privacidad
           </Link>
           .
         </p>

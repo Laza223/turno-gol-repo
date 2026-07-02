@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
 
-import PrivacyPage, { metadata as privacyMetadata } from '@/app/(public)/privacy/page'
-import TermsPage, { metadata as termsMetadata } from '@/app/(public)/terms/page'
+import PrivacidadPage, { metadata as privacyMetadata } from '@/app/(public)/privacidad/page'
+import TerminosPage, { metadata as termsMetadata } from '@/app/(public)/terminos/page'
 import SiteFooter from '@/components/site/SiteFooter'
 
 /**
@@ -70,12 +70,12 @@ describe('privacy page', () => {
   })
 
   it('renders a React element tree', () => {
-    const tree = PrivacyPage()
+    const tree = PrivacidadPage()
     expect(isValidElement(tree)).toBe(true)
   })
 
   it('mentions key compliance concepts in the rendered text', () => {
-    const text = collectText(PrivacyPage())
+    const text = collectText(PrivacidadPage())
     expect(text).toMatch(/ARCO/)
     expect(text).toMatch(/AAIP/)
     expect(text).toMatch(/MercadoPago/)
@@ -84,7 +84,7 @@ describe('privacy page', () => {
   })
 
   it('exposes the data-export endpoint', () => {
-    const text = collectText(PrivacyPage())
+    const text = collectText(PrivacidadPage())
     expect(text).toMatch(/\/api\/player\/data-export/)
   })
 })
@@ -96,12 +96,12 @@ describe('terms page', () => {
   })
 
   it('renders a React element tree', () => {
-    const tree = TermsPage()
+    const tree = TerminosPage()
     expect(isValidElement(tree)).toBe(true)
   })
 
   it('mentions the core legal concepts in the rendered text', () => {
-    const text = collectText(TermsPage())
+    const text = collectText(TerminosPage())
     expect(text).toMatch(/intermediario/i)
     expect(text).toMatch(/MercadoPago/)
     expect(text).toMatch(/mayor(es)? de 18/i)
@@ -111,12 +111,12 @@ describe('terms page', () => {
 })
 
 describe('SiteFooter (legal links)', () => {
-  it('renders links to /privacy and /terms', () => {
+  it('renders links to /privacidad and /terminos', () => {
     const tree = SiteFooter()
     expect(isValidElement(tree)).toBe(true)
     const hrefs = collectHrefs(tree)
-    expect(hrefs).toContain('/privacy')
-    expect(hrefs).toContain('/terms')
+    expect(hrefs).toContain('/privacidad')
+    expect(hrefs).toContain('/terminos')
   })
 
   it('renders the expected anchor labels', () => {

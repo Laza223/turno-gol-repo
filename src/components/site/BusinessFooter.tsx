@@ -26,8 +26,8 @@ export default function BusinessFooter() {
           <Link href="/login" className={linkCls}>Ingresar</Link>
           <Link href="/register" className={linkCls}>Empezar gratis</Link>
           <a href="mailto:hola@turnogol.app" className={linkCls}>Contacto</a>
-          <Link href="/privacy" className={linkCls}>Privacidad</Link>
-          <Link href="/terms" className={linkCls}>Términos</Link>
+          <Link href="/privacidad" className={linkCls}>Privacidad</Link>
+          <Link href="/terminos" className={linkCls}>Términos</Link>
         </div>
       </div>
     </footer>

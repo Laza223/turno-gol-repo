@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'Términos de uso de la plataforma TurnoGol.',
 }
 
-export default function TermsPage() {
+export default function TerminosPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-10 space-y-2">
@@ -217,8 +217,8 @@ export default function TermsPage() {
         </p>
         <p>
           La versión vigente está siempre disponible en{' '}
-          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/terms">
-            turnogol.app/terms
+          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/terminos">
+            turnogol.app/terminos
           </Link>
           . Para consultas, escribinos a{' '}
           <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">

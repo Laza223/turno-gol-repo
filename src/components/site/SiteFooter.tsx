@@ -13,8 +13,8 @@ export default function SiteFooter() {
           <Link href="/explorar" className="hover:text-white transition-colors">Explorar</Link>
           <Link href="/ingresar" className="hover:text-white transition-colors">Ingresar</Link>
           <a href="mailto:hola@turnogol.app" className="hover:text-white transition-colors">Contacto</a>
-          <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
-          <Link href="/terms" className="hover:text-white transition-colors">Términos</Link>
+          <Link href="/privacidad" className="hover:text-white transition-colors">Privacidad</Link>
+          <Link href="/terminos" className="hover:text-white transition-colors">Términos</Link>
         </div>
       </div>
     </footer>

@@ -128,3 +128,18 @@ export class BookingDateOutOfRangeError extends Error {
     this.name = 'BookingDateOutOfRangeError'
   }
 }
+
+// INV-ABUSE-001: tope duro de holds (pending_payment) simultáneos sin pagar
+// por jugador+tenant — defensa de Denial-of-Inventory del portal público.
+export class TooManyActiveHoldsError extends Error {
+  constructor(
+    public readonly playerId: string,
+    public readonly tenantId: string,
+    public readonly activeCount: number,
+  ) {
+    super(
+      `Player ${playerId} already has ${activeCount} active pending_payment holds in tenant ${tenantId}`,
+    )
+    this.name = 'TooManyActiveHoldsError'
+  }
+}

@@ -1,4 +1,4 @@
-type KeyBy = 'email' | 'ip' | 'tenant' | 'player'
+type KeyBy = 'email' | 'ip' | 'tenant' | 'player' | 'ip_tenant'
 
 export type Policy = {
   limit: number
@@ -25,6 +25,17 @@ export const POLICIES = {
   // Polling endpoint for deposit payment confirmation (every ~3s = 20 req/min).
   // playerBooking (20/60s) has zero headroom; a dedicated bucket gives 3x slack.
   bookingStatus:      { limit: 60,  window: '60 s', keyBy: 'player', failMode: 'open'   },
+  // INV-ABUSE-001 (Denial of Inventory): un mismo origen no debería crear
+  // muchos holds (bookings pending_payment) por minuto EN UN MISMO TENANT,
+  // sin importar cuántas cuentas de jugador use — playerBooking (20/60s por
+  // player) no cubre el caso de múltiples cuentas desde la misma IP. Key
+  // compuesta (ip, tenant): una key solo-IP permitía sostener ~60 holds
+  // indefinidos contra UN tenant chico (10 req/60s × 360s de TTL de hold) sin
+  // romper el límite — hallazgo de security review. Bajado a 5/60s tras ese
+  // hallazgo. La key real (`${ip}:${slug}`) la arma el caller en actions.ts.
+  // Fail open: ante outage de Upstash, no se bloquea el negocio (mismo
+  // criterio que playerBooking/publicAvailability).
+  publicBookingCreate: { limit: 5,   window: '60 s', keyBy: 'ip_tenant', failMode: 'open'   },
   // PIN brute-force defense (B6): 4-digit PIN = 10k combinations. 5 attempts
   // per 5 minutes per tenant — exhaustive search would need ~7 days. Fail
   // closed: if Upstash is down, deny new attempts (prefer false locks over

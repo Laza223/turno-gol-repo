@@ -134,6 +134,11 @@ export default async function ReservarPage({ params, searchParams }: Props) {
           Tenés un saldo pendiente con este complejo. Regularizá tu deuda con el complejo para volver a reservar online.
         </p>
       )}
+      {searchParams.error === 'too_many_holds' && (
+        <p role="alert" className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-300 ring-1 ring-inset ring-amber-500/30">
+          Ya tenés reservas pendientes de pago en este complejo. Completá o esperá a que venzan antes de reservar otra.
+        </p>
+      )}
       {searchParams.error === 'rate_limited' && (
         <p role="alert" className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-300 ring-1 ring-inset ring-amber-500/30">
           Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.

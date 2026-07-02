@@ -35,9 +35,10 @@ import {
   PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
+  TooManyActiveHoldsError,
 } from './booking.errors'
 import { addDays, artTodayStr } from '@/shared/dates/art'
-import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { MAX_ACTIVE_HOLDS_PER_PLAYER, SLOT_DURATION_MINUTES } from '@/shared/constants'
 import {
   effectiveCloseMins,
   endLabelFromMins,
@@ -373,6 +374,29 @@ async function createOnlineBookingImpl(
       tenantId,
       blockState.balance,
     )
+  }
+
+  // INV-ABUSE-001: tope duro de holds activos (pending_payment) sin pagar
+  // por jugador+tenant. Advisory lock (mismo patrón que
+  // autoCompleteOverdueBookings) serializa intentos concurrentes del MISMO
+  // jugador+tenant dentro de la tx, cerrando la ventana entre el COUNT y el
+  // INSERT — sin esto, dos requests simultáneas podrían colar N+1 holds.
+  const holdLockKey = `hold_limit:${tenantId}:${input.playerId}`
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${holdLockKey}))`)
+  const activeHoldsRows = (await tx.execute(sql`
+    SELECT COUNT(*)::int AS count
+    FROM bookings
+    WHERE tenant_id = ${tenantId}
+      AND player_id = ${input.playerId}
+      AND status = 'pending_payment'
+  `)) as unknown as Array<{ count: number }>
+  const activeHoldsCount = activeHoldsRows[0]?.count ?? 0
+  if (activeHoldsCount >= MAX_ACTIVE_HOLDS_PER_PLAYER) {
+    track.booking('booking.online.create.too_many_holds', {
+      tenantId,
+      playerId: input.playerId,
+    })
+    throw new TooManyActiveHoldsError(input.playerId, tenantId, activeHoldsCount)
   }
 
   const court = await lockCourtOrThrow(input.courtId, tx)

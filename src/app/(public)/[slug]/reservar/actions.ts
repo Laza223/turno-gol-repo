@@ -9,7 +9,7 @@ import { sanitizeNext } from '@/lib/safe-redirect'
 import { getDb, withPlayerContext } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { enforce } from '@/shared/rate-limit'
+import { enforce, parseClientIp } from '@/shared/rate-limit'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { endLabelFromMins } from '@/shared/time/operating-day'
 import { createDepositPayment } from '@/modules/payments/payment.service'
@@ -22,6 +22,7 @@ import {
   PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
+  TooManyActiveHoldsError,
 } from '@/modules/bookings/booking.errors'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
@@ -100,6 +101,15 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect(`/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`)
 
+  // publicBookingCreate (5/60s por ip+tenant): defensa de Denial-of-Inventory —
+  // cubre el caso de múltiples cuentas de jugador desde el mismo origen contra
+  // EL MISMO tenant, que playerBooking (por player_id) no ve. Key compuesta
+  // (no solo IP) para no compartir bucket entre tenants distintos desde la
+  // misma IP. INV-ABUSE-001 (hardening post security-review).
+  const ip = parseClientIp(headers())
+  const ipRl = await enforce('publicBookingCreate', `${ip}:${slug}`)
+  if (!ipRl.ok) redirect(`${backTo}&error=rate_limited`)
+
   // playerBooking (20/60s per player): caps online-booking + MP-preference spam
   // from a single authenticated player (the public booking path, separate from
   // the /api/player/bookings route which is already guarded).
@@ -171,6 +181,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
     if (err instanceof PlayerBannedError) redirect(`${backTo}&error=banned`)
     if (err instanceof PlayerHasOutstandingBalanceError) redirect(`${backTo}&error=debt`)
+    if (err instanceof TooManyActiveHoldsError) redirect(`${backTo}&error=too_many_holds`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError) redirect(`${backTo}&error=unavailable`)
     throw err
   }

@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { addDays, mondayOf } from '@/lib/booking/grid-cells'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const
 
@@ -18,7 +19,8 @@ type Props = {
 /**
  * Navegación semanal de la grilla: 7 píldoras (lunes a domingo de la semana
  * del día seleccionado) + chevrons que saltan de a 7 días. El día actual
- * queda marcado aunque no esté seleccionado.
+ * queda marcado aunque no esté seleccionado. Chevrons icon-only → tooltip
+ * obligatorio (MASTER §7.4).
  */
 export function WeekStrip({ date, todayArt, onNavigate }: Props) {
   const days = useMemo(() => {
@@ -29,16 +31,24 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
     })
   }, [date])
 
+  const chevronClass =
+    'flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+
   return (
     <div className="flex items-center gap-1.5">
-      <button
-        type="button"
-        onClick={() => onNavigate(addDays(date, -7))}
-        aria-label="Semana anterior"
-        className="flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition-colors duration-150 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        <ChevronLeft aria-hidden className="h-4 w-4" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => onNavigate(addDays(date, -7))}
+            aria-label="Semana anterior"
+            className={chevronClass}
+          >
+            <ChevronLeft aria-hidden className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Semana anterior</TooltipContent>
+      </Tooltip>
 
       {/* En mobile los 7 días no entran con touch targets de 44px: la tira
           scrollea internamente (nunca la página). */}
@@ -55,12 +65,13 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                 aria-current={selected ? 'date' : undefined}
                 className={cn(
                   'flex h-12 min-w-11 flex-col items-center justify-center rounded-lg px-2 transition-colors duration-150',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   selected
-                    ? 'bg-emerald-600 text-white'
+                    ? // Token primary: emerald-700+blanco en light, emerald-500+slate-950 en dark (§2.4).
+                      'bg-primary text-primary-foreground'
                     : isToday
-                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-400'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
+                      ? 'bg-primary/10 text-emerald-800 ring-1 ring-inset ring-primary/50 hover:bg-primary/15 dark:text-emerald-300'
+                      : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
                 <span className="text-[10px] font-medium uppercase leading-none">
@@ -75,14 +86,19 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
         })}
       </ul>
 
-      <button
-        type="button"
-        onClick={() => onNavigate(addDays(date, 7))}
-        aria-label="Semana siguiente"
-        className="flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition-colors duration-150 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        <ChevronRight aria-hidden className="h-4 w-4" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => onNavigate(addDays(date, 7))}
+            aria-label="Semana siguiente"
+            className={chevronClass}
+          >
+            <ChevronRight aria-hidden className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Semana siguiente</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

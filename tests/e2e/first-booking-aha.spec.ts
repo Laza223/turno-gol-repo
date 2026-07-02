@@ -58,9 +58,13 @@ test.describe('aha moment — first online booking', () => {
       await page.goto('/dashboard')
       await expect(page).toHaveURL(/\/dashboard/)
 
-      // The checklist item "Primera reserva online recibida" should be visible
-      // and rendered as completed (CheckCircle2 icon instead of Circle, text
-      // gets line-through + text-slate-400 class when done=true).
+      // The completed items are folded behind the "N pasos completados" toggle
+      // (pages/dashboard.md §4 — pending stays visible, done collapses).
+      // Expand it, then assert the item is rendered as completed.
+      const doneToggle = page.getByRole('button', { name: /pasos? completados?/i })
+      await expect(doneToggle).toBeVisible({ timeout: 10_000 })
+      await doneToggle.click()
+
       const checklistItem = page.getByText(/primera reserva online recibida/i)
       await expect(checklistItem).toBeVisible({ timeout: 10_000 })
     } finally {

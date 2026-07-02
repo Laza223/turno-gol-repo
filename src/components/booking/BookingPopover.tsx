@@ -61,43 +61,42 @@ export function BookingPopover({ booking, courtName, id, side, align }: Props) {
       id={id}
       role="tooltip"
       className={cn(
-        'absolute z-[25] w-60 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg',
-        'dark:border-slate-700 dark:bg-slate-800',
+        'absolute z-[25] w-60 rounded-lg border border-border bg-popover p-3 text-left shadow-lg',
         'animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none',
         side === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1',
         align === 'left' ? 'left-0' : 'right-0',
       )}
     >
-      <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground dark:text-slate-100">
-        <User aria-hidden className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-popover-foreground">
+        <User aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
         <span className="truncate">{name ?? (isBlock ? 'Bloqueo' : 'Sin nombre')}</span>
       </p>
-      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground dark:text-slate-400">
-        <CalendarClock aria-hidden className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <CalendarClock aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
         <span className="tabular-nums">
           {courtName} · {booking.timeStart}–{booking.timeEnd}
         </span>
       </p>
       {!isBlock && (
-        <dl className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-xs dark:border-slate-700">
+        <dl className="mt-2 space-y-1 border-t border-border pt-2 text-xs">
           <div className="flex items-center justify-between gap-2">
-            <dt className="text-muted-foreground dark:text-slate-400">Precio</dt>
-            <dd className="font-medium tabular-nums text-foreground dark:text-slate-100">
+            <dt className="text-muted-foreground">Precio</dt>
+            <dd className="font-medium tabular-nums text-popover-foreground">
               {formatArs(booking.priceSnapshot)}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <dt className="flex items-center gap-1 text-muted-foreground dark:text-slate-400">
-              <Banknote aria-hidden className="h-3.5 w-3.5 text-slate-400" />
+            <dt className="flex items-center gap-1 text-muted-foreground">
+              <Banknote aria-hidden className="h-3.5 w-3.5 text-muted-foreground/70" />
               Pago
             </dt>
-            <dd className="font-medium text-foreground dark:text-slate-100">
+            <dd className="font-medium text-popover-foreground">
               {booking.paymentMethod ? PAYMENT_LABELS[booking.paymentMethod] : '—'}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <dt className="text-muted-foreground dark:text-slate-400">Seña</dt>
-            <dd className="font-medium text-foreground dark:text-slate-100">{depositLabel(booking)}</dd>
+            <dt className="text-muted-foreground">Seña</dt>
+            <dd className="font-medium text-popover-foreground">{depositLabel(booking)}</dd>
           </div>
         </dl>
       )}

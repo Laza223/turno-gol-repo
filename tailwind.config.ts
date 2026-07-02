@@ -65,6 +65,10 @@ const config: Config = {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
         },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -89,12 +93,19 @@ const config: Config = {
           '50%': { transform: 'translate3d(3%,-2%,0)' },
           '100%': { transform: 'translate3d(0,0,0)' },
         },
+        // Pulso de atención Realtime (MASTER §5.3 / pages/grilla.md §7): un
+        // solo ring emerald que se disipa. box-shadow only → sin layout shift.
+        'slot-pulse': {
+          '0%': { boxShadow: '0 0 0 0 hsl(160 84% 39% / 0.65)' },
+          '100%': { boxShadow: '0 0 0 10px hsl(160 84% 39% / 0)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'tg-float': 'tg-float 8s ease-in-out infinite',
         'tg-drift': 'tg-drift 18s ease-in-out infinite',
+        'slot-pulse': 'slot-pulse 600ms ease-out 1',
       },
     },
   },

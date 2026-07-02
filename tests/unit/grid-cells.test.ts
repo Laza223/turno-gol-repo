@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildBookingsIndex,
   computeCells,
+  countCollapsibleLeading,
   generateTimeSlots,
 } from '@/lib/booking/grid-cells'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -150,5 +151,53 @@ describe('computeCells', () => {
     const index = buildBookingsIndex([first, second])
 
     expect(index.get('court1:10:00')?.id).toBe('first')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// countCollapsibleLeading — banda "Sin actividad" (pages/grilla.md §5)
+// ---------------------------------------------------------------------------
+
+describe('countCollapsibleLeading', () => {
+  /** isPast estilo grilla: pasado = slot estrictamente anterior a `now`. */
+  const pastBefore = (now: string) => (slot: string) => slot < now
+
+  function cellsFor(slots: string[], bookings: GridBooking[]) {
+    return computeCells(slots, courts, buildBookingsIndex(bookings))
+  }
+
+  it('colapsa la corrida inicial pasada y libre, dejando visible el slot en curso', () => {
+    // now 15:30 → 08..15 pasados; 15:00 está transcurriendo → queda visible.
+    const slots = generateTimeSlots('08:00', '23:00')
+    const cells = cellsFor(slots, [])
+    expect(countCollapsibleLeading(slots, courts, cells, pastBefore('15:30'))).toBe(7)
+  })
+
+  it('una reserva pasada corta el colapso (lo jugado/ausente queda visible)', () => {
+    const slots = generateTimeSlots('08:00', '23:00')
+    const cells = cellsFor(slots, [
+      makeBooking({ courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00', status: 'completed' }),
+    ])
+    // Solo 08:00 y 09:00 son colapsables: 10:00 tiene una Jugada.
+    expect(countCollapsibleLeading(slots, courts, cells, pastBefore('15:30'))).toBe(2)
+  })
+
+  it('menos de 2 filas colapsables → no colapsa', () => {
+    const slots = generateTimeSlots('08:00', '23:00')
+    const cells = cellsFor(slots, [])
+    // now 09:30: 08:00 pasado, 09:00 en curso → colapsable = 1 → 0.
+    expect(countCollapsibleLeading(slots, courts, cells, pastBefore('09:30'))).toBe(0)
+  })
+
+  it('día futuro (nada pasado) → 0', () => {
+    const slots = generateTimeSlots('08:00', '23:00')
+    const cells = cellsFor(slots, [])
+    expect(countCollapsibleLeading(slots, courts, cells, () => false)).toBe(0)
+  })
+
+  it('día entero pasado y vacío → nunca colapsa todas las filas', () => {
+    const slots = generateTimeSlots('08:00', '23:00')
+    const cells = cellsFor(slots, [])
+    expect(countCollapsibleLeading(slots, courts, cells, () => true)).toBe(slots.length - 1)
   })
 })

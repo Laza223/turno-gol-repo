@@ -31,9 +31,6 @@ const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 // - Avoids collisions with "today" tests running concurrently.
 const TARGET_DATE = tomorrowDateIsoArt()
 
-// En-dash (U+2013) as rendered by BookingCard: `{timeStart}–{booking.timeEnd}`
-const EN_DASH = '–'
-
 // ── Service-role client factory ──────────────────────────────────────────────
 function makeServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -159,10 +156,10 @@ test.describe('grilla realtime — multi-browser <2s', () => {
         }
 
         // Admin B should see the booking appear via Realtime in <2s.
-        // BookingCard renders: `{timeStart}–{booking.timeEnd}` (en-dash U+2013)
-        // Both timeStart and timeEnd are .slice(0, 5) in normalizeRealtimeRow,
-        // so displayed as `10:00–11:00`.
-        await expect(pageB.getByText(`10:00${EN_DASH}11:00`)).toBeVisible({ timeout: 2000 })
+        // BookingCard no longer renders the time range in the cell (the sticky
+        // hour axis is the single source — pages/grilla.md §3); the cell shows
+        // the guest name, so we assert on that.
+        await expect(pageB.getByText('E2E Api Guest')).toBeVisible({ timeout: 2000 })
         expect(Date.now() - t0).toBeLessThan(2000)
       } finally {
         await ctxA.close()
@@ -220,7 +217,8 @@ test.describe('grilla realtime — catch-up after disconnect', () => {
 
         // After reconnect the hook fires fetchFromApi() on re-SUBSCRIBE (seconds)
         // or falls back to the 30s polling interval. Allow 35s for either path.
-        await expect(page.getByText(`14:00${EN_DASH}15:00`)).toBeVisible({ timeout: 35_000 })
+        // Cells render the guest name (not the time range — pages/grilla.md §3).
+        await expect(page.getByText('E2E Guest')).toBeVisible({ timeout: 35_000 })
       } finally {
         await context.close()
         await deleteBookingServiceRole(supabase, bookingId)
@@ -254,8 +252,9 @@ test.describe('grilla — mobile usable (375px)', () => {
         })
 
         // Touch target: free interactive slots must be ≥44px tall.
-        // BookingCard free cells have `style={{ height: \`${rowSpan * 56}px\` }}` (rowSpan=1 → 56px).
-        // The aria-label is `Reservar turno ${timeStart}` — we grab the first one.
+        // Grid rows are 3.25rem (52px) comfortable / 2.75rem (44px) compact
+        // (pages/grilla.md §4) — both satisfy the 44px minimum.
+        // The aria-label is `Reservar turno ${timeStart} en ${courtName}` — first one.
         const cell = page.getByRole('button', { name: /Reservar turno/i }).first()
         await expect(cell).toBeVisible({ timeout: 10_000 })
         const box = await cell.boundingBox()

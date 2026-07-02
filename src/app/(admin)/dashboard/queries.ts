@@ -1,12 +1,45 @@
-import { and, count, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, count, eq, gt, isNull, sql } from 'drizzle-orm'
 import { withTenantContext } from '@/shared/db/client'
-import { abonados, bookings, courts } from '@/shared/db/schema'
-import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import {
+  bookings,
+  courts,
+  players,
+  playerTenantRelationships,
+} from '@/shared/db/schema'
+import { getDaySummary } from '@/modules/cashflow/cashflow.service'
+import { todayART } from '@/shared/time/art-date'
+import { DAY_KEYS } from '@/lib/booking/grid-cells'
+import type { OpeningHours, TenantSettings } from '@/modules/tenants/tenant.types'
+import type {
+  BookingStatus,
+  BookingType,
+  DepositStatus,
+} from '@/modules/bookings/booking.types'
+import {
+  daySlotsFor,
+  occupancyForDay,
+  pendingDeposits,
+  playedCount,
+  upcomingForDay,
+  type DayBookingRow,
+  type DayOccupancy,
+} from './dashboard-lib'
 
-export interface DashboardMetrics {
-  bookingsToday: number
-  revenueTodayCents: number
-  activeAbonados: number
+export interface DashboardData {
+  /** Día ART — la MISMA fecha para caja y reservas (pages/dashboard.md §9). */
+  date: string
+  /** Hora ART 'HH:MM' al momento del render (para relativos "en X min"). */
+  nowHhmm: string
+  caja: { incomeCents: number; expenseCents: number; balanceCents: number }
+  occupancy: DayOccupancy
+  /** true si hoy no hay oferta (closed_dates, día cerrado o sin horario válido). */
+  dayIsClosed: boolean
+  pendingDeposits: { count: number; amountCents: number }
+  debts: { players: number; totalCents: number }
+  upcoming: DayBookingRow[]
+  playedToday: number
+  openHhmm: string
+  closesNextDay: boolean
 }
 
 export interface ChecklistState {
@@ -19,47 +52,117 @@ export interface ChecklistState {
   firstBookingReceived: boolean
 }
 
-function todayInArgentina(): Date {
-  const str = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-  })
-  return new Date(str)
+interface DashboardTenant {
+  id: string
+  openingHours: OpeningHours
+  closedDates: string[] | null
+  closesNextDay: boolean
 }
 
-export async function getDashboardMetrics(tenantId: string): Promise<DashboardMetrics> {
-  return withTenantContext(tenantId, async (tx) => {
-    const today = todayInArgentina()
+/** Hora ART 'HH:MM' (offset fijo UTC−3, mismo criterio que artDateOf). */
+function nowArtHhmm(): string {
+  return new Date(Date.now() - 3 * 3600_000).toISOString().slice(11, 16)
+}
 
-    const [bookingsRow, revenueRow, abonadosRow] = await Promise.all([
-      tx
-        .select({ value: count() })
-        .from(bookings)
-        .where(and(eq(bookings.tenantId, tenantId), eq(bookings.date, today)))
-        .then((r) => r[0]),
+export async function getDashboardData(tenant: DashboardTenant): Promise<DashboardData> {
+  const date = todayART()
+  const nowHhmm = nowArtHhmm()
+
+  const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!
+  const openHhmm = tenant.openingHours[dayKey]?.open ?? '00:00'
+  const slots = daySlotsFor(
+    date,
+    tenant.openingHours,
+    tenant.closedDates ?? [],
+    tenant.closesNextDay,
+  )
+
+  return withTenantContext(tenant.id, async (tx) => {
+    const [summary, bookingRows, courtRows, debtRow] = await Promise.all([
+      getDaySummary(tenant.id, date, tx),
 
       tx
-        .select({ value: sql<string>`COALESCE(SUM(${bookings.priceSnapshot}), 0)` })
+        .select({
+          id: bookings.id,
+          timeStart: bookings.timeStart,
+          timeEnd: bookings.timeEnd,
+          status: bookings.status,
+          type: bookings.type,
+          guestName: bookings.guestName,
+          priceSnapshot: bookings.priceSnapshot,
+          depositStatus: bookings.depositStatus,
+          depositAmount: bookings.depositAmount,
+          courtName: courts.name,
+          playerFirstName: players.firstName,
+          playerLastName: players.lastName,
+        })
         .from(bookings)
+        .leftJoin(courts, eq(bookings.courtId, courts.id))
+        .leftJoin(players, eq(bookings.playerId, players.id))
         .where(
           and(
-            eq(bookings.tenantId, tenantId),
-            eq(bookings.date, today),
-            inArray(bookings.status, ['confirmed', 'completed']),
+            eq(bookings.tenantId, tenant.id),
+            sql`${bookings.date} = ${date}::date`,
+            sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+          ),
+        ),
+
+      tx
+        .select({ status: courts.status })
+        .from(courts)
+        .where(eq(courts.tenantId, tenant.id)),
+
+      tx
+        .select({
+          players: count(),
+          totalCents: sql<string>`COALESCE(SUM(${playerTenantRelationships.balance}), 0)`,
+        })
+        .from(playerTenantRelationships)
+        .where(
+          and(
+            eq(playerTenantRelationships.tenantId, tenant.id),
+            gt(playerTenantRelationships.balance, 0),
           ),
         )
         .then((r) => r[0]),
-
-      tx
-        .select({ value: count() })
-        .from(abonados)
-        .where(and(eq(abonados.tenantId, tenantId), eq(abonados.status, 'active')))
-        .then((r) => r[0]),
     ])
 
+    const rows: DayBookingRow[] = bookingRows.map((r) => ({
+      id: r.id,
+      courtName: r.courtName ?? 'Cancha',
+      timeStart: r.timeStart.slice(0, 5),
+      timeEnd: r.timeEnd.slice(0, 5),
+      status: r.status as BookingStatus,
+      type: r.type as BookingType,
+      depositStatus: r.depositStatus as DepositStatus,
+      depositAmount: r.depositAmount,
+      guestName: r.guestName ?? null,
+      playerFirstName: r.playerFirstName ?? null,
+      playerLastName: r.playerLastName ?? null,
+      priceSnapshot: r.priceSnapshot,
+    }))
+
+    const courtsOnline = courtRows.filter((c) => c.status === 'online').length
+
     return {
-      bookingsToday: Number(bookingsRow?.value ?? 0),
-      revenueTodayCents: Number(revenueRow?.value ?? 0),
-      activeAbonados: Number(abonadosRow?.value ?? 0),
+      date,
+      nowHhmm,
+      caja: {
+        incomeCents: summary.totalIncome + summary.totalAdjustments,
+        expenseCents: summary.totalExpense,
+        balanceCents: summary.balance,
+      },
+      occupancy: occupancyForDay(rows, slots.length, courtsOnline),
+      dayIsClosed: slots.length === 0,
+      pendingDeposits: pendingDeposits(rows),
+      debts: {
+        players: Number(debtRow?.players ?? 0),
+        totalCents: Number(debtRow?.totalCents ?? 0),
+      },
+      upcoming: upcomingForDay(rows, nowHhmm, openHhmm, tenant.closesNextDay),
+      playedToday: playedCount(rows),
+      openHhmm,
+      closesNextDay: tenant.closesNextDay,
     }
   })
 }

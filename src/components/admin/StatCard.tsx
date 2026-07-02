@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-type Accent = 'emerald' | 'violet' | 'amber' | 'sky'
+type Accent = 'emerald' | 'violet' | 'amber' | 'sky' | 'red' | 'slate'
 
 interface DeltaProps {
   label: string
@@ -25,6 +25,8 @@ const ACCENT: Record<Accent, string> = {
   violet: 'bg-violet-500/10 text-violet-600 ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-400 dark:ring-violet-500/25',
   amber: 'bg-amber-500/10 text-amber-600 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400 dark:ring-amber-500/25',
   sky: 'bg-sky-500/10 text-sky-600 ring-sky-500/20 dark:bg-sky-500/15 dark:text-sky-400 dark:ring-sky-500/25',
+  red: 'bg-red-500/10 text-red-600 ring-red-500/20 dark:bg-red-500/15 dark:text-red-400 dark:ring-red-500/25',
+  slate: 'bg-slate-500/10 text-slate-600 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-400 dark:ring-slate-500/25',
 }
 
 const DELTA: Record<DeltaProps['direction'], string> = {

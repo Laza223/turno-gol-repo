@@ -132,12 +132,12 @@ describe('BookingGrid — layout CSS Grid', () => {
     expect(dialog.textContent).toContain('Cancha 1')
   })
 
-  it('una reserva confirmada muestra nombre y estado "Reservado"', () => {
+  it('una reserva confirmada muestra nombre y estado "Confirmada"', () => {
     renderGrid({ bookings: [booking({})] })
     // within(grid): la leyenda de abajo repite los nombres de estado.
     const grid = within(screen.getByTestId('booking-grid'))
     expect(grid.getByText('Tomás García')).toBeTruthy()
-    expect(grid.getByText('Reservado')).toBeTruthy()
+    expect(grid.getByText('Confirmada')).toBeTruthy()
     // El slot ocupado no ofrece botón de reservar.
     expect(
       screen.queryByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' }),

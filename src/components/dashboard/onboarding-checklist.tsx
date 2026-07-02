@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, Circle, Copy, ExternalLink } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
@@ -30,11 +30,19 @@ interface OnboardingChecklistProps {
   appUrl: string
 }
 
+/**
+ * Checklist de setup compacta (pages/dashboard.md §4, Zeigarnik §9): los pasos
+ * PENDIENTES quedan siempre visibles con su CTA; los completados se pliegan a
+ * una fila-toggle para que el setup no entierre los KPIs del día.
+ */
 export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChecklistProps) {
-  const completed = ITEMS.filter((i) => state[i.key]).length
+  const pendingItems = ITEMS.filter((i) => !state[i.key])
+  const doneItems = ITEMS.filter((i) => state[i.key])
+  const completed = doneItems.length
   const total = ITEMS.length
   const pct = Math.round((completed / total) * 100)
   const [minimized, setMinimized] = useState(completed === total)
+  const [showDone, setShowDone] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
@@ -104,23 +112,79 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
     )
   }
 
+  function renderItem({ key, label, href, action }: ChecklistItem) {
+    const done = state[key]
+    return (
+      <li key={key} className="flex items-center gap-3 py-2.5">
+        {done ? (
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+        ) : (
+          <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" aria-hidden="true" />
+        )}
+        <span
+          className={cn(
+            'flex-1 text-sm',
+            done ? 'text-muted-foreground line-through' : 'text-foreground',
+          )}
+        >
+          {label}
+        </span>
+
+        {!done && action === 'copy-link' && (
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyLink}
+              className="h-8 text-xs"
+            >
+              <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              {copied ? 'Copiado!' : 'Copiar link'}
+            </Button>
+            {shareError && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="max-w-[12rem] text-right text-xs text-red-600 dark:text-red-400"
+              >
+                {shareError}
+              </p>
+            )}
+          </div>
+        )}
+
+        {!done && href && (
+          <a
+            href={href}
+            className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+          >
+            Configurar
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+          </a>
+        )}
+
+        {!done && key === 'firstBookingReceived' && state.publicLinkShared && (
+          <p className="text-xs text-muted-foreground">Compartí tu link para recibir reservas.</p>
+        )}
+      </li>
+    )
+  }
+
   return (
     <div className="card-premium rounded-2xl">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Progreso de configuración</h2>
+          <h2 className="text-sm font-semibold text-foreground">Configuración del complejo</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{completed} de {total} completados</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <span className="text-xs font-medium tabular-nums text-muted-foreground">{pct}%</span>
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
+              style={{ width: `${pct}%` }}
+            />
           </div>
+          <span className="text-xs font-medium tabular-nums text-muted-foreground">{pct}%</span>
           {completed === total && (
             <Button
               variant="ghost"
@@ -134,65 +198,33 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
         </div>
       </div>
 
-      <ul className="divide-y divide-border px-6">
-        {ITEMS.map(({ key, label, href, action }) => {
-          const done = state[key]
-          return (
-            <li key={key} className="flex items-center gap-3 py-3">
-              {done ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-              ) : (
-                <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" aria-hidden="true" />
-              )}
-              <span
-                className={cn(
-                  'flex-1 text-sm',
-                  done ? 'text-muted-foreground line-through' : 'text-foreground',
-                )}
-              >
-                {label}
-              </span>
-
-              {!done && action === 'copy-link' && (
-                <div className="flex flex-col items-end gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyLink}
-                    className="h-8 text-xs"
-                  >
-                    <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                    {copied ? 'Copiado!' : 'Copiar link'}
-                  </Button>
-                  {shareError && (
-                    <p
-                      role="status"
-                      aria-live="polite"
-                      className="max-w-[12rem] text-right text-xs text-red-600 dark:text-red-400"
-                    >
-                      {shareError}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {!done && href && (
-                <a
-                  href={href}
-                  className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
-                >
-                  Configurar
-                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                </a>
-              )}
-
-              {!done && key === 'firstBookingReceived' && state.publicLinkShared && (
-                <p className="text-xs text-muted-foreground">Compartí tu link para recibir reservas.</p>
-              )}
-            </li>
-          )
-        })}
+      {/* Pendientes: siempre visibles, cada uno con su acción (Zeigarnik). */}
+      <ul className="divide-y divide-border px-5">
+        {pendingItems.map(renderItem)}
       </ul>
+
+      {/* Completados: plegados — lo hecho no ocupa lugar. */}
+      {doneItems.length > 0 && (
+        <div className="border-t border-border px-5">
+          <button
+            type="button"
+            onClick={() => setShowDone((v) => !v)}
+            aria-expanded={showDone}
+            className="flex w-full items-center gap-2 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronDown
+              className={cn('h-4 w-4 transition-transform duration-200', showDone && 'rotate-180')}
+              aria-hidden="true"
+            />
+            {doneItems.length} {doneItems.length === 1 ? 'paso completado' : 'pasos completados'}
+          </button>
+          {showDone && (
+            <ul className="divide-y divide-border border-t border-border">
+              {doneItems.map(renderItem)}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   )
 }

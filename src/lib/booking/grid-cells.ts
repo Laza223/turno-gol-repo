@@ -86,6 +86,44 @@ export function generateTimeSlots(
 }
 
 // ---------------------------------------------------------------------------
+// countCollapsibleLeading — madrugada muerta (pages/grilla.md §5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Cuántos slots INICIALES se pueden colapsar en la banda "Sin actividad":
+ * la corrida inicial de slots pasados donde TODAS las canchas están libres.
+ *
+ * - El slot en curso (empezado pero no terminado) nunca se colapsa: si la
+ *   corrida termina porque el siguiente slot todavía no es pasado, el último
+ *   de la corrida es el que está transcurriendo → queda visible.
+ * - Un slot pasado con reserva (Jugada/Ausente/bloqueo) corta la corrida:
+ *   lo pendiente de revisión no se esconde.
+ * - Mínimo 2 filas para que la banda pague su propio alto; nunca se colapsa
+ *   el día entero.
+ */
+export function countCollapsibleLeading(
+  slots: string[],
+  courts: Pick<CourtRow, 'id'>[],
+  cells: Map<string, CellState>,
+  isPast: (slotTime: string) => boolean,
+): number {
+  let run = 0
+  for (const slot of slots) {
+    if (!isPast(slot)) break
+    const allFree = courts.every((c) => cells.get(`${c.id}:${slot}`)?.kind === 'free')
+    if (!allFree) break
+    run++
+  }
+  if (run === 0) return 0
+
+  const nextIsPast = run < slots.length && isPast(slots[run]!)
+  const collapsible = nextIsPast ? run : run - 1
+
+  if (collapsible < 2) return 0
+  return Math.min(collapsible, slots.length - 1)
+}
+
+// ---------------------------------------------------------------------------
 // Index builder — O(N) single pass; key = `${courtId}:${HH:MM}`
 // ---------------------------------------------------------------------------
 

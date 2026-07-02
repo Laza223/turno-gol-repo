@@ -14,8 +14,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
 
-    --primary: 161 94% 30%;           /* emerald-600 #059669 — CTA / action color */
-    --primary-foreground: 0 0% 100%;  /* white */
+    --primary: 163 94% 24%;           /* emerald-700 #047857 — CTA fill, AA vs white (5.5:1 — MASTER §2.4) */
+    --primary-foreground: 0 0% 100%;  /* white — 5.5:1 on emerald-700 */
 
     --secondary: 214 32% 85%;         /* slate-300ish — nested surfaces */
     --secondary-foreground: 222 47% 11%; /* slate-900 */
@@ -40,6 +40,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 32 95% 44%;            /* amber-600 #D97706 */
     --warning-foreground: 0 0% 100%;
+    --info: 221 83% 53%;              /* blue-600 #2563EB — informativo neutro (MASTER §2.2) */
+    --info-foreground: 0 0% 100%;     /* white — 5.2:1 on blue-600 */
 
     /* Layout shell — field texture overlay */
     --shell-bg: 221 32% 14%;          /* slate-900 #1E2535 — dark shell bg */
@@ -64,8 +66,8 @@
     --popover: 222 33% 9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 161 94% 30%;            /* emerald-600 (CTA, igual que light) */
-    --primary-foreground: 0 0% 100%;
+    --primary: 160 84% 39%;            /* emerald-500 #10b981 — CTA fill dark, AA vs slate-950 (7.9:1 — MASTER §2.4) */
+    --primary-foreground: 224 71% 4%;  /* slate-950 — 7.9:1 on emerald-500 */
 
     --secondary: 217 33% 14%;          /* nested surface */
     --secondary-foreground: 210 40% 98%;
@@ -87,6 +89,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;             /* amber más vivo para dark */
     --warning-foreground: 0 0% 100%;
+    --info: 217 91% 60%;               /* blue-500 #3B82F6 */
+    --info-foreground: 224 71% 4%;     /* slate-950 — 5.5:1 on blue-500 */
   }
 }
 
@@ -335,6 +339,18 @@
 }
 .dark .reserva-glow-bottom {
   background: radial-gradient(closest-side, rgba(5, 150, 105, 0.12), transparent 72%);
+}
+
+/* ─── Slot bloqueado de la grilla (pages/grilla.md §2) ─────────────────────
+   Rayado diagonal sobre --muted: señal no-cromática de "no disponible a
+   propósito". Los tokens flipan solos con .dark. */
+.slot-blocked-stripes {
+  background-color: hsl(var(--muted) / 0.35);
+  background-image: repeating-linear-gradient(
+    135deg,
+    hsl(var(--muted)) 0 6px,
+    transparent 6px 12px
+  );
 }
 
 /* Skeleton shimmer */

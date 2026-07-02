@@ -80,7 +80,9 @@ export default async function GrillaPage({
   }))
 
   return (
-    <main className="max-w-full px-4 py-8 space-y-6">
+    // py-4 (no py-8): densidad admin — la grilla es la vista de trabajo, el
+    // aire vertical de cortesía es scroll extra (MASTER §12).
+    <main className="max-w-full px-4 py-4 space-y-4">
       <BookingGrid
         key={dateStr}
         courts={courts}

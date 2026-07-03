@@ -9,9 +9,9 @@ const badgeVariants = cva(
       variant: {
         default: 'border-transparent bg-foreground text-background hover:bg-foreground/80',
         secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive: 'border-transparent bg-red-600 text-white hover:bg-red-600/80',
-        success: 'border-transparent bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 hover:bg-emerald-100',
-        warning: 'border-transparent bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
+        destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        success: 'border-transparent bg-success/10 text-success ring-1 ring-inset ring-success/25 hover:bg-success/15 dark:bg-success/15 dark:ring-success/40 dark:hover:bg-success/20',
+        warning: 'border-transparent bg-warning/10 text-warning ring-1 ring-inset ring-warning/25 dark:bg-warning/15 dark:ring-warning/40',
         outline: 'text-foreground border-border',
       },
     },

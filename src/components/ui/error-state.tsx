@@ -38,12 +38,12 @@ export function ErrorState({
 
   if (variant === 'inline') {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-        <p className="text-sm text-red-700">{title}{description ? `. ${description}` : ''}</p>
+      <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 dark:border-destructive/30 dark:bg-destructive/15">
+        <p className="text-sm text-destructive">{title}{description ? `. ${description}` : ''}</p>
         {onRetry ? (
           <button
             onClick={onRetry}
-            className="mt-3 text-sm font-medium text-red-700 underline hover:no-underline"
+            className="mt-3 text-sm font-medium text-destructive underline hover:no-underline"
             type="button"
           >
             {retryLabel}
@@ -59,8 +59,8 @@ export function ErrorState({
     return (
       <div className={wrapper}>
         <div className={cn('w-full max-w-md rounded-xl border border-border bg-card p-8 text-center', cardShadow)}>
-          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 ring-1 ring-inset ring-red-600/20">
-            <AlertTriangle className="h-7 w-7 text-red-600" aria-hidden="true" />
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-inset ring-destructive/20 dark:bg-destructive/15">
+            <AlertTriangle className="h-7 w-7 text-destructive" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
           {description ? (
@@ -101,8 +101,8 @@ export function ErrorState({
   return (
     <main className={wrapper}>
       <div className={cn('w-full max-w-md rounded-xl border border-border bg-card p-8 text-center', cardShadow)}>
-        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 ring-1 ring-inset ring-red-600/20">
-          <AlertTriangle className="h-7 w-7 text-red-600" aria-hidden="true" />
+        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-inset ring-destructive/20 dark:bg-destructive/15">
+          <AlertTriangle className="h-7 w-7 text-destructive" aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
         {description ? (

@@ -3,7 +3,7 @@ import PortalShell from '@/components/site/PortalShell'
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="dark">
+    <div>
       <PortalShell>{children}</PortalShell>
     </div>
   )

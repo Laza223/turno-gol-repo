@@ -11,6 +11,7 @@ import {
   publicUrl,
   keyFromPublicUrl,
 } from '@/shared/storage/r2'
+import { tenantImageKindSchema } from './perfil.schema'
 
 export type TenantImageActionResult =
   | { success: true; url: string }
@@ -35,6 +36,9 @@ export async function setTenantImageAction(
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
+
+  const parsedKind = tenantImageKindSchema.safeParse(kind)
+  if (!parsedKind.success) return { success: false, error: 'Tipo de imagen inválido' }
 
   if (!isR2Configured()) {
     console.warn('[storage] R2 no configurado — upload deshabilitado en este entorno')
@@ -74,6 +78,9 @@ export async function removeTenantImageAction(
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
+
+  const parsedKind = tenantImageKindSchema.safeParse(kind)
+  if (!parsedKind.success) return { success: false, error: 'Tipo de imagen inválido' }
 
   if (!isR2Configured()) {
     console.warn('[storage] R2 no configurado — borrado deshabilitado en este entorno')

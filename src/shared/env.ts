@@ -26,6 +26,11 @@ function makeSchema(isProd: boolean) {
     // Opcional en ambos modos: el guard es fail-closed (sin la var, nadie pasa
     // requireSystemAdmin) y su ausencia no debe romper el arranque de la app.
     SYSTEM_ADMIN_EMAILS: z.string().optional(),
+    R2_ACCOUNT_ID: isProd ? z.string().min(1) : z.string().min(1).optional(),
+    R2_ACCESS_KEY_ID: isProd ? z.string().min(1) : z.string().min(1).optional(),
+    R2_SECRET_ACCESS_KEY: isProd ? z.string().min(1) : z.string().min(1).optional(),
+    R2_BUCKET: isProd ? z.string().min(1) : z.string().min(1).optional(),
+    R2_PUBLIC_BASE_URL: isProd ? z.string().url() : z.string().url().optional(),
   })
 }
 

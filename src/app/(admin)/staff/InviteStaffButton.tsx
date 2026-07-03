@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { UserPlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import type { StaffActionResult } from './actions'
 
 type InviteAction = (formData: FormData) => Promise<StaffActionResult>
@@ -16,14 +15,25 @@ const InviteStaffDialog = dynamic(
   { ssr: false },
 )
 
-export function InviteStaffButton({ inviteAction }: { inviteAction: InviteAction }) {
+export function InviteStaffButton({
+  inviteAction,
+  label = 'Agregar miembro del equipo',
+}: {
+  inviteAction: InviteAction
+  /** Override para el empty state ("Invitar al primer miembro"), evita 2 botones con el mismo nombre accesible. */
+  label?: string
+}) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button className="bg-emerald-600 hover:bg-emerald-500" onClick={() => setOpen(true)}>
-        <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
-        Agregar miembro del equipo
-      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+      >
+        <UserPlus className="h-4 w-4" aria-hidden="true" />
+        {label}
+      </button>
       {open && <InviteStaffDialog inviteAction={inviteAction} onClose={() => setOpen(false)} />}
     </>
   )

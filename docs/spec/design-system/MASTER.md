@@ -625,7 +625,14 @@ aforo, skeleton con silueta real sobre el mismo contenedor que la página; **deu
 `tests/e2e/canchas-crud.spec.ts` ancla las cards por esa clase (`div.rounded-lg`); mismo lock de
 e2e mantiene el CTA en `"+ Nueva cancha"` con el `+` literal en vez del sentence-case de
 Abonados/Reservas — ambos quedan REQUIERE INPUT en `pages/canchas.md` §7 para migrar el test antes
-de corregir el estilo).
+de corregir el estilo), rediseño de Staff/Equipo (spec nueva `pages/staff.md`: badge de rol
+`StaffRoleBadge` —admin como único acento emerald del listado §2.3 (sin mapeo declarado en §2.5/
+§2.6, resuelto por analogía), encargado neutro— y `StaffStatusBadge` (Activo/Inactivo,
+success/muted) vía `status-visual.tsx` nuevo, CTA a `bg-primary` con `<button>` raw en vez del
+primitive `Button` sin migrar (P0 §13.1), prop `label` en `InviteStaffButton` para diferenciar el
+CTA del header del CTA del empty state, tabla a densidad `p-3`/`divide-border`/`hover:bg-accent/50`
+(antes `px-6 py-4`/`divide-slate-100`), empty state a `EmptyState` con CTA (antes ícono `Mail`
+mudo), `Tooltip` en el trigger icon-only del menú de acciones, `loading.tsx` con silueta real).
 
 ---
 

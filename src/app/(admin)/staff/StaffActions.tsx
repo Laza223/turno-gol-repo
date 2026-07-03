@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole } from '@/modules/staff/roles'
 import { deactivateStaffAction, resendInviteAction, updateStaffRoleAction } from './actions'
@@ -75,11 +76,16 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Opciones">
-            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Opciones">
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Opciones</TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end">
           {member.isActive ? (
             <>

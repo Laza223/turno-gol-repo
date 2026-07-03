@@ -60,11 +60,20 @@ export async function setTenantImageAction(
   const bytes = new Uint8Array(await file.arrayBuffer())
   const key = `${tenant.id}/${kind}-${crypto.randomUUID()}.webp`
 
-  await putImage(key, bytes, 'image/webp')
-  await deletePreviousIfOwned(typeof previousUrl === 'string' ? previousUrl : null, tenant.id)
+  try {
+    await putImage(key, bytes, 'image/webp')
+  } catch {
+    return { success: false, error: 'No se pudo subir la imagen' }
+  }
 
   const url = publicUrl(key)
-  await updateTenant(tenant.id, kind === 'logo' ? { logoUrl: url } : { coverUrl: url })
+
+  try {
+    await deletePreviousIfOwned(typeof previousUrl === 'string' ? previousUrl : null, tenant.id)
+    await updateTenant(tenant.id, kind === 'logo' ? { logoUrl: url } : { coverUrl: url })
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'No se pudo guardar la imagen' }
+  }
 
   revalidatePath('/settings/perfil')
   revalidatePath(`/${tenant.slug}`)

@@ -21,6 +21,7 @@ vi.mock('@/shared/storage/r2', () => ({
   keyFromPublicUrl: vi.fn((url: string) => url.replace('https://media.turnogol.com/', '')),
 }))
 
+import { revalidatePath } from 'next/cache'
 import { setTenantImageAction, removeTenantImageAction } from '@/app/(admin)/settings/perfil/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant, updateTenant } from '@/modules/tenants/tenant.service'
@@ -29,7 +30,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { isR2Configured, putImage, deleteImage } from '@/shared/storage/r2'
 
 const STAFF_USER = { type: 'staff', staffUserId: 'staff-1' }
-const TENANT = { id: 'tenant-1' }
+const TENANT = { id: 'tenant-1', slug: 'demo' }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -60,7 +61,7 @@ describe('setTenantImageAction — admin', () => {
     vi.mocked(getStaffRole).mockResolvedValue('admin')
   })
 
-  it('sube el archivo y actualiza logoUrl', async () => {
+  it('sube el archivo y actualiza logoUrl, y revalida perfil admin + perfil público', async () => {
     const res = await setTenantImageAction('logo', fakeFormData())
     expect(res.success).toBe(true)
     expect(vi.mocked(putImage)).toHaveBeenCalledTimes(1)
@@ -70,6 +71,8 @@ describe('setTenantImageAction — admin', () => {
       'tenant-1',
       expect.objectContaining({ logoUrl: expect.stringContaining('tenant-1/logo-') }),
     )
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/perfil')
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
   })
 
   it('borra el objeto anterior si se pasa previousUrl', async () => {
@@ -85,6 +88,20 @@ describe('setTenantImageAction — admin', () => {
     const res = await setTenantImageAction('logo', fakeFormData())
     expect(res).toEqual({ success: false, error: 'Storage no configurado en este entorno' })
     expect(vi.mocked(putImage)).not.toHaveBeenCalled()
+  })
+
+  it('devuelve error controlado (sin throw) si putImage falla por caída de R2', async () => {
+    vi.mocked(putImage).mockRejectedValueOnce(new Error('R2 unreachable'))
+    const res = await setTenantImageAction('logo', fakeFormData())
+    expect(res).toEqual({ success: false, error: 'No se pudo subir la imagen' })
+    expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+  })
+
+  it('devuelve error controlado (sin throw) si updateTenant falla tras subir a R2', async () => {
+    vi.mocked(updateTenant).mockRejectedValueOnce(new Error('DB down'))
+    const res = await setTenantImageAction('logo', fakeFormData())
+    expect(res.success).toBe(false)
+    expect(res.success === false && res.error).toBe('DB down')
   })
 })
 

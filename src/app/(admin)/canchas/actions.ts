@@ -11,6 +11,7 @@ import {
   toggleStatus,
   getCourtCountAndLimit,
   validatePricingRulesCoverage,
+  getCourtById,
   appendCourtPhoto,
   removeCourtPhoto,
   reorderCourtPhotos,
@@ -270,6 +271,7 @@ export async function uploadCourtPhotoAction(
     )
     if (photos === null) return { success: false, error: 'Cancha no encontrada' }
     revalidatePath('/canchas')
+    revalidatePath(`/${tenant.slug}`)
     return { success: true, photos }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'No se pudo guardar la foto' }
@@ -297,14 +299,22 @@ export async function removeCourtPhotoAction(
     return { success: false, error: 'Imagen inválida' }
   }
 
-  const photos = await withTenantContext(tenant.id, (tx) =>
-    removeCourtPhoto(courtId, tenant.id, url, tx),
-  )
+  const photos = await withTenantContext(tenant.id, async (tx) => {
+    const court = await getCourtById(courtId, tenant.id, tx)
+    if (!court) return null
+    // La key ya pasó el chequeo de prefijo tenant.id, pero eso no alcanza:
+    // podría ser una URL válida de OTRO recurso del mismo tenant (ej. logo).
+    // Solo se borra si de verdad está en las fotos de ESTA cancha.
+    if (!court.photos.includes(url)) return 'NOT_OWNED' as const
+    return removeCourtPhoto(courtId, tenant.id, url, tx)
+  })
   if (photos === null) return { success: false, error: 'Cancha no encontrada' }
+  if (photos === 'NOT_OWNED') return { success: false, error: 'Imagen inválida' }
 
   await deleteImage(key)
 
   revalidatePath('/canchas')
+  revalidatePath(`/${tenant.slug}`)
   return { success: true, photos }
 }
 
@@ -325,6 +335,7 @@ export async function reorderCourtPhotosAction(
     )
     if (photos === null) return { success: false, error: 'Cancha no encontrada' }
     revalidatePath('/canchas')
+    revalidatePath(`/${tenant.slug}`)
     return { success: true, photos }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'No se pudo reordenar' }

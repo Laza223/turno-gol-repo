@@ -4,11 +4,21 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { chipClass } from '../caja-lib'
 import { createCashFlowAction } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { toast } from '@/hooks/use-toast'
 
 type CfType = 'income' | 'adjustment' | 'expense'
+
+const TYPES: { value: CfType; label: string }[] = [
+  { value: 'income', label: 'Ingreso' },
+  { value: 'expense', label: 'Gasto' },
+  { value: 'adjustment', label: 'Ajuste' },
+]
+
+// abonado_payment NO se ofrece manual: rompería el invariante de credit_balance
+// (solo lo crea el módulo Abonados; el schema del server también lo bloquea).
 const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
   income: [
     { value: 'booking', label: 'Reserva' },
@@ -21,6 +31,13 @@ const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
     { value: 'other', label: 'Otro' },
   ],
 }
+
+const METHODS = [
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'transfer', label: 'Transferencia' },
+  { value: 'mercadopago', label: 'MercadoPago' },
+  { value: 'other', label: 'Otro' },
+] as const
 
 export function RegisterMovementModal({
   open,
@@ -47,6 +64,13 @@ export function RegisterMovementModal({
     setType('income'); setCategory('booking'); setMethod('cash')
     setAmountPesos(''); setDescription(''); setError(null)
     setIdempotencyKey(crypto.randomUUID())
+  }
+
+  // Cambiar de tipo re-selecciona la primera categoría válida del combo
+  // (contrato VALID_COMBOS del service: una categoría del tipo anterior es 400).
+  function selectType(t: CfType) {
+    setType(t)
+    setCategory(CATEGORIES[t][0]!.value)
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -96,44 +120,65 @@ export function RegisterMovementModal({
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Agregar movimiento</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label htmlFor="cf-type" className="text-xs font-medium text-foreground">Tipo</label>
-              <select id="cf-type" value={type}
-                onChange={(e) => { const t = e.target.value as CfType; setType(t); setCategory(CATEGORIES[t][0].value) }}
-                className="h-11 md:h-10 w-full rounded-md border border-border px-2 text-sm">
-                <option value="income">Ingreso</option>
-                <option value="expense">Gasto</option>
-                <option value="adjustment">Ajuste</option>
-              </select>
+          {/* Chips en vez de selects (§7): 1 tap por decisión, opciones visibles. */}
+          <fieldset>
+            <legend className="mb-1.5 text-xs font-medium text-foreground">Tipo</legend>
+            <div className="grid grid-cols-3 gap-2">
+              {TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  disabled={isPending}
+                  aria-pressed={type === t.value}
+                  onClick={() => selectType(t.value)}
+                  className={chipClass(type === t.value)}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
-            <div className="space-y-1">
-              <label htmlFor="cf-category" className="text-xs font-medium text-foreground">Categoría</label>
-              <select id="cf-category" value={category} onChange={(e) => setCategory(e.target.value)}
-                className="h-11 md:h-10 w-full rounded-md border border-border px-2 text-sm">
-                {CATEGORIES[type].map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+          </fieldset>
+          <fieldset>
+            <legend className="mb-1.5 text-xs font-medium text-foreground">Categoría</legend>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES[type].map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  disabled={isPending}
+                  aria-pressed={category === c.value}
+                  onClick={() => setCategory(c.value)}
+                  className={chipClass(category === c.value)}
+                >
+                  {c.label}
+                </button>
+              ))}
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label htmlFor="cf-method" className="text-xs font-medium text-foreground">Método</label>
-              <select id="cf-method" value={method} onChange={(e) => setMethod(e.target.value)}
-                className="h-11 md:h-10 w-full rounded-md border border-border px-2 text-sm">
-                <option value="cash">Efectivo</option>
-                <option value="transfer">Transferencia</option>
-                <option value="mercadopago">MercadoPago</option>
-                <option value="other">Otro</option>
-              </select>
+          </fieldset>
+          <fieldset>
+            <legend className="mb-1.5 text-xs font-medium text-foreground">Método</legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {METHODS.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  disabled={isPending}
+                  aria-pressed={method === m.value}
+                  onClick={() => setMethod(m.value)}
+                  className={chipClass(method === m.value)}
+                >
+                  {m.label}
+                </button>
+              ))}
             </div>
-            <div className="space-y-1">
-              <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">Monto (pesos)</label>
-              <input id="cf-amount" type="number" min="0" step="0.01" value={amountPesos}
-                onChange={(e) => setAmountPesos(e.target.value)}
-                inputMode="decimal"
-                autoComplete="off"
-                className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm tabular-nums" />
-            </div>
+          </fieldset>
+          <div className="space-y-1">
+            <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">Monto (pesos)</label>
+            <input id="cf-amount" type="number" min="0" step="0.01" value={amountPesos}
+              onChange={(e) => setAmountPesos(e.target.value)}
+              inputMode="decimal"
+              autoComplete="off"
+              className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm tabular-nums" />
           </div>
           <div className="space-y-1">
             <label htmlFor="cf-desc" className="text-xs font-medium text-foreground">Descripción</label>
@@ -145,7 +190,7 @@ export function RegisterMovementModal({
             <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
               className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>
             <button type="submit" disabled={isPending}
-              className="h-11 md:h-10 rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+              className="h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
               {isPending ? 'Guardando…' : 'Guardar'}</button>
           </div>
         </form>

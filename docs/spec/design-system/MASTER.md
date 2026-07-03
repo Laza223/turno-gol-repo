@@ -581,10 +581,9 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 7. **Onboarding wizard**: doble indicador de progreso (barra + segmentos) — dejar uno; primera impresión sin marca (considerar banda/texture sutil del sistema).
 
 ### P2 — polish
-8. Coachmark de primera visita a Caja ("Cerrar caja") → §7.2 (la grilla ya tiene su hint `tg-hint-*`).
-9. Teléfonos sin formato (`+541100000000` en página de complejo) → §8.4.
-10. Foto stock del login staff con marcas visibles (pelotas Nike) — reemplazar por foto propia/sin trademark.
-11. Docs `doc20`/`pages/*`: actualizar referencias cruzadas a esta v2 (player-area §0–1 superado, explorar hero adaptativo).
+8. Teléfonos sin formato (`+541100000000` en página de complejo) → §8.4.
+9. Foto stock del login staff con marcas visibles (pelotas Nike) — reemplazar por foto propia/sin trademark.
+10. Docs `doc20`/`pages/*`: actualizar referencias cruzadas a esta v2 (player-area §0–1 superado, explorar hero adaptativo).
 
 Cerrados 2026-07-02: CTA fuera de AA (token `--primary` dual), token `--info`, rediseño de grilla
 (spec nueva `pages/grilla.md`: estados §2.6, densidad, colapso de madrugada, scroll-to-now, pulso
@@ -593,7 +592,12 @@ Realtime §5.3, tooltips §7.4, vocabulario §8.5), rediseño de Inicio (spec nu
 Zeigarnik, próximos turnos), rediseño de horarios y precios (spec nueva
 `pages/horarios-precios.md`: horario general + excepciones por día con toggle Cerrado —fix del
 schema que despojaba `closed`—, plantilla rápida de precios en 3 modos + copiar de otra cancha +
-resumen legible, matriz plegada como ajuste fino, muerte de DEFAULT_RULES y del `formatArs` local).
+resumen legible, matriz plegada como ajuste fino, muerte de DEFAULT_RULES y del `formatArs` local),
+rediseño de Caja (spec nueva `pages/caja.md`: KPIs a `StatCard` con delta `tone` para métricas
+invertidas, cierre peak-end §9 —diálogo no-destructivo + CierreCard verde—, coachmark de primera
+visita `tg-hint-caja-cierre` [ex P2.8], chips en vez de selects en el modal de movimiento,
+`formatArsContable` único §8.2 —mueren 3 `formatARS` locales—, hora 24h forzada `hourCycle h23`,
+fecha humana en vez de ISO, label de `abonado_payment` que llegaba crudo a la UI).
 
 ---
 

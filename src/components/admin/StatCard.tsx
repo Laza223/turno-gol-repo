@@ -6,6 +6,9 @@ type Accent = 'emerald' | 'violet' | 'amber' | 'sky' | 'red' | 'slate'
 interface DeltaProps {
   label: string
   direction: 'up' | 'down' | 'neutral'
+  /** Color semántico independiente del glifo: para métricas invertidas (egresos)
+   * donde subir (↑) es malo (rojo). Sin tone, deriva del direction (compat). */
+  tone?: 'positive' | 'negative' | 'neutral'
 }
 
 interface StatCardProps {
@@ -29,10 +32,16 @@ const ACCENT: Record<Accent, string> = {
   slate: 'bg-slate-500/10 text-slate-600 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-400 dark:ring-slate-500/25',
 }
 
-const DELTA: Record<DeltaProps['direction'], string> = {
-  up: 'text-emerald-600 dark:text-emerald-400',
-  down: 'text-red-600 dark:text-red-400',
+const DELTA_TONE: Record<NonNullable<DeltaProps['tone']>, string> = {
+  positive: 'text-emerald-600 dark:text-emerald-400',
+  negative: 'text-red-600 dark:text-red-400',
   neutral: 'text-muted-foreground',
+}
+
+const DEFAULT_TONE: Record<DeltaProps['direction'], NonNullable<DeltaProps['tone']>> = {
+  up: 'positive',
+  down: 'negative',
+  neutral: 'neutral',
 }
 
 const DELTA_GLYPH: Record<DeltaProps['direction'], string> = {
@@ -75,7 +84,12 @@ export function StatCard({
       </p>
       <div className="mt-1.5 flex items-center gap-2">
         {delta && (
-          <span className={cn('text-xs font-semibold tabular-nums', DELTA[delta.direction])}>
+          <span
+            className={cn(
+              'text-xs font-semibold tabular-nums',
+              DELTA_TONE[delta.tone ?? DEFAULT_TONE[delta.direction]],
+            )}
+          >
             {DELTA_GLYPH[delta.direction]} {delta.label}
           </span>
         )}

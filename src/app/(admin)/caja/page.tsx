@@ -1,95 +1,77 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Receipt, Banknote } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  ArrowRightLeft,
+  ArrowUpFromLine,
+  Banknote,
+  Coins,
+  CreditCard,
+  Receipt,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
+import { StatCard } from '@/components/admin/StatCard'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows, getDayComparisons } from '@/modules/cashflow/cashflow.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
+import { formatArsContable } from '@/lib/format'
 import { CajaActions } from './components/CajaActions'
+import { CajaCierreHint } from './components/CajaCierreHint'
 import { CanteenQuickSale } from './components/CanteenQuickSale'
+import { CierreCard } from './components/CierreCard'
 import { artDateOf } from '@/shared/time/art-date'
+import {
+  addDays,
+  buildDelta,
+  cajaDateLabel,
+  categoryLabel,
+  formatTimeArt,
+  methodBreakdown,
+  signedArs,
+  CATEGORY_BADGE,
+  METHOD_LABELS,
+  type MethodKey,
+} from './caja-lib'
 
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
-    centavos / 100,
-  )
-}
-
-function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr + 'T00:00:00Z')
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-
-// "vs ayer +$1.500" / "vs prom. semanal −$800". Para egresos (invert) subir es malo.
-function DeltaLine({
-  label,
-  current,
-  reference,
-  invert = false,
-}: {
-  label: string
-  current: number
-  reference: number
-  invert?: boolean
-}) {
-  const delta = current - reference
-  const color =
-    delta === 0
-      ? 'text-muted-foreground'
-      : (delta > 0) !== invert
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : 'text-red-600 dark:text-red-400'
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : ''
+// Monto con signo y color SIEMPRE (§2.5): egresos −rojo; ingresos/ajustes
+// +emerald. En una tabla mayormente verde, el gasto es el distinto que salta.
+function SignedAmount({ type, amount }: { type: string; amount: number }) {
+  const isExpense = type === 'expense'
   return (
-    <p className="text-xs text-muted-foreground">
-      {label}{' '}
-      <span className={`font-medium tabular-nums ${color}`}>
-        {sign}
-        {formatARS(Math.abs(delta))}
-      </span>
-    </p>
+    <span
+      className={`font-medium tabular-nums ${
+        isExpense
+          ? 'text-red-700 dark:text-red-400'
+          : 'text-emerald-700 dark:text-emerald-400'
+      }`}
+    >
+      {isExpense ? '−' : '+'}
+      {formatArsContable(amount)}
+    </span>
   )
-}
-
-// Labels en español para los ENUMs de cash_flows (evita mostrar los valores
-// crudos "income"/"booking"/"cash" en la UI). Mismo criterio que RegisterMovementModal.
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
-  other: 'Otro',
-}
-
-// 'other' es ambiguo sin el tipo: como ingreso es "Otro ingreso", como ajuste es "Ajuste".
-function categoryLabel(type: string, category: string): string {
-  if (category === 'booking') return 'Reserva'
-  if (category === 'product_sale') return 'Cantina/Bar'
-  if (category === 'operating_expense') return 'Gasto operativo'
-  if (category === 'no_show_correction') return 'Corrección por ausencia'
-  if (category === 'other') return type === 'adjustment' ? 'Ajuste' : 'Otro ingreso'
-  return category
-}
-
-const CATEGORY_BADGE: Record<string, string> = {
-  booking: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20 dark:ring-emerald-500/30',
-  product_sale: 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-600/20 dark:ring-sky-500/30',
-  operating_expense: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
-  no_show_correction: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',
-  other: 'bg-muted text-foreground ring-slate-500/20',
 }
 
 function CategoryBadge({ type, category }: { type: string; category: string }) {
+  const badge = CATEGORY_BADGE[category as keyof typeof CATEGORY_BADGE] ?? CATEGORY_BADGE.fallback
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${CATEGORY_BADGE[category] ?? CATEGORY_BADGE.other}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${badge}`}
     >
       {categoryLabel(type, category)}
     </span>
   )
+}
+
+const METHOD_ICON: Record<MethodKey, LucideIcon> = {
+  cash: Banknote,
+  transfer: ArrowRightLeft,
+  mercadopago: CreditCard,
+  other: Coins,
 }
 
 export default async function CajaPage({ searchParams }: { searchParams: { date?: string } }) {
@@ -113,232 +95,221 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
     return { summary: s, cashFlows: cf, comparisons: comp }
   })
 
-  const prevDay = addDays(date, -1)
-  const nextDay = addDays(date, 1)
+  const ingresos = summary.totalIncome + summary.totalAdjustments
+  const methods = methodBreakdown(summary.byMethod)
+  const isToday = date === today
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
-        title={`Caja — ${date}`}
+        title="Caja"
+        subtitle={cajaDateLabel(date, today)}
         icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
         actions={
           <>
-            {summary.isClosed && (
-              <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-foreground ring-1 ring-inset ring-slate-500/20">
-                Caja cerrada
-              </span>
-            )}
-            <div className="flex items-center rounded-md border border-border bg-card overflow-hidden">
-            <Link
-              href={`/caja?date=${prevDay}`}
-              className="px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors border-r border-border"
+            <nav
+              aria-label="Cambiar de día"
+              className="flex items-center overflow-hidden rounded-lg border border-border bg-card"
             >
-              ← Anterior
-            </Link>
-            <Link
-              href="/caja"
-              className="px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors border-r border-border"
-            >
-              Hoy
-            </Link>
-            <Link
-              href={`/caja?date=${nextDay}`}
-              className="px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-            >
-              Siguiente →
-            </Link>
-          </div>
+              <Link
+                href={`/caja?date=${addDays(date, -1)}`}
+                className="border-r border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+              >
+                ← Anterior
+              </Link>
+              <Link
+                href="/caja"
+                aria-current={isToday ? 'date' : undefined}
+                className={`border-r border-border px-3 py-2 text-sm transition-colors hover:bg-accent ${
+                  isToday
+                    ? 'font-semibold text-emerald-700 dark:text-emerald-400'
+                    : 'text-foreground'
+                }`}
+              >
+                Hoy
+              </Link>
+              <Link
+                href={`/caja?date=${addDays(date, 1)}`}
+                className="px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+              >
+                Siguiente →
+              </Link>
+            </nav>
             <CajaActions
               date={date}
-              totalIncome={summary.totalIncome + summary.totalAdjustments}
+              totalIncome={ingresos}
               totalExpense={summary.totalExpense}
               balance={summary.balance}
+              cashTotal={summary.byMethod.cash ?? 0}
               isClosed={summary.isClosed}
             />
           </>
         }
       />
 
-      {/* Resumen del día: saldo neto destacado (primero en mobile), ingresos y egresos
-          con comparativa vs ayer y vs promedio diario de la última semana. */}
+      {!summary.isClosed && <CajaCierreHint />}
+
+      {/* Peak-end (§5): el cierre abre la vista — recibo verde e inmutable. */}
+      {summary.isClosed && summary.close && <CierreCard close={summary.close} />}
+
+      {/* KPIs (§3): orden aritmético Ingresos − Egresos = Saldo en desktop;
+          en mobile el saldo (la pregunta №1) va primero y a lo ancho. */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <div className="col-span-2 order-first lg:order-last lg:col-span-1 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-500/10 p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Saldo neto del día</p>
-          <p className={`text-3xl font-bold tabular-nums ${summary.balance < 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-800 dark:text-emerald-300'}`}>
-            {formatARS(summary.balance)}
-          </p>
-          <div className="mt-2 space-y-0.5">
-            <DeltaLine label="vs ayer" current={summary.balance} reference={comparisons.yesterday.balance} />
-            <DeltaLine label="vs prom. semanal" current={summary.balance} reference={comparisons.weekAvg.balance} />
-          </div>
-        </div>
-        <div className="card-premium rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">Ingresos</p>
-          <p className="text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-            {formatARS(summary.totalIncome + summary.totalAdjustments)}
-          </p>
-          <div className="mt-2 space-y-0.5">
-            <DeltaLine
-              label="vs ayer"
-              current={summary.totalIncome + summary.totalAdjustments}
-              reference={comparisons.yesterday.totalIncome}
-            />
-            <DeltaLine
-              label="vs prom. semanal"
-              current={summary.totalIncome + summary.totalAdjustments}
-              reference={comparisons.weekAvg.totalIncome}
-            />
-          </div>
-        </div>
-        <div className="card-premium rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">Egresos</p>
-          <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">{formatARS(summary.totalExpense)}</p>
-          <div className="mt-2 space-y-0.5">
-            <DeltaLine
-              label="vs ayer"
-              current={summary.totalExpense}
-              reference={comparisons.yesterday.totalExpense}
-              invert
-            />
-            <DeltaLine
-              label="vs prom. semanal"
-              current={summary.totalExpense}
-              reference={comparisons.weekAvg.totalExpense}
-              invert
-            />
-          </div>
-        </div>
+        <StatCard
+          label="Ingresos"
+          value={formatArsContable(ingresos)}
+          icon={<ArrowDownToLine className="h-5 w-5" aria-hidden="true" />}
+          accent="emerald"
+          delta={buildDelta(ingresos, comparisons.yesterday.totalIncome, 'vs ayer') ?? undefined}
+          sub={
+            ingresos === 0 && comparisons.weekAvg.totalIncome === 0
+              ? undefined
+              : `vs prom. semanal ${signedArs(ingresos - comparisons.weekAvg.totalIncome)}`
+          }
+        />
+        <StatCard
+          label="Egresos"
+          value={formatArsContable(summary.totalExpense)}
+          icon={<ArrowUpFromLine className="h-5 w-5" aria-hidden="true" />}
+          accent="red"
+          delta={
+            buildDelta(summary.totalExpense, comparisons.yesterday.totalExpense, 'vs ayer', {
+              invert: true,
+            }) ?? undefined
+          }
+          sub={
+            summary.totalExpense === 0 && comparisons.weekAvg.totalExpense === 0
+              ? undefined
+              : `vs prom. semanal ${signedArs(summary.totalExpense - comparisons.weekAvg.totalExpense)}`
+          }
+        />
+        <StatCard
+          label="Saldo neto del día"
+          value={
+            summary.balance < 0 ? (
+              <span className="text-red-700 dark:text-red-400">
+                −{formatArsContable(-summary.balance)}
+              </span>
+            ) : (
+              formatArsContable(summary.balance)
+            )
+          }
+          icon={<Wallet className="h-5 w-5" aria-hidden="true" />}
+          accent="emerald"
+          delta={buildDelta(summary.balance, comparisons.yesterday.balance, 'vs ayer') ?? undefined}
+          sub={
+            summary.balance === 0 && comparisons.weekAvg.balance === 0
+              ? undefined
+              : `vs prom. semanal ${signedArs(summary.balance - comparisons.weekAvg.balance)}`
+          }
+          className="order-first col-span-2 ring-1 ring-emerald-600/20 dark:ring-emerald-500/25 lg:order-none lg:col-span-1"
+        />
       </div>
 
-      {/* Cierre guardado: el registro inmutable que generó "Cerrar caja" */}
-      {summary.isClosed && summary.close && (
-        <div className="rounded-lg border border-border bg-muted/40 p-4 shadow-sm">
-          <h2 className="text-sm font-medium text-foreground">
-            Cierre del día —{' '}
-            {summary.close.closedAt.toLocaleTimeString('es-AR', {
-              hour: '2-digit',
-              minute: '2-digit',
-              timeZone: 'America/Argentina/Buenos_Aires',
-            })}{' '}
-            hs
-          </h2>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-            <div>
-              <dt className="text-muted-foreground">Ingresos</dt>
-              <dd className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
-                {formatARS(summary.close.totalIncome + summary.close.totalAdjustments)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Egresos</dt>
-              <dd className="font-medium tabular-nums text-red-700 dark:text-red-400">−{formatARS(summary.close.totalExpense)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Saldo neto</dt>
-              <dd className="font-semibold tabular-nums text-foreground">{formatARS(summary.close.balance)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Efectivo contado</dt>
-              <dd className="font-medium tabular-nums text-foreground">
-                {formatARS(summary.close.declaredCash)}
-                {summary.close.diffAmount !== 0 && (
-                  <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                    (dif. {formatARS(summary.close.diffAmount)})
-                  </span>
-                )}
-              </dd>
-            </div>
-          </dl>
-          {summary.close.note && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              <span className="text-muted-foreground">Nota:</span> {summary.close.note}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Cantina/Bar: venta rápida de productos pre-cargados (oculta con caja cerrada) */}
+      {/* Cantina/Bar: venta rápida con un toque (oculta con caja cerrada) */}
       {!summary.isClosed && (
         <CanteenQuickSale date={date} products={tenant.settings.canteen_products ?? []} />
       )}
 
-      {/* By method */}
-      {Object.keys(summary.byMethod).length > 0 && (
-        <div className="card-premium rounded-lg p-4">
-          <h2 className="text-sm font-medium text-foreground mb-3">Desglose por método</h2>
-          <div className="space-y-1">
-            {Object.entries(summary.byMethod).map(([method, total]) => (
-              <div key={method} className="flex justify-between text-sm">
-                <span>{METHOD_LABELS[method] ?? method}</span>
-                <span>{formatARS(total ?? 0)}</span>
-              </div>
-            ))}
+      {/* Desglose por método (§4): la referencia del arqueo. */}
+      {methods.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground">Desglose por método</h2>
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              Neto del día: ingresos menos gastos por método.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {methods.map(({ key, label, total }) => {
+              const Icon = METHOD_ICON[key]
+              return (
+                <div key={key} className="flex items-center gap-2.5">
+                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="truncate text-sm font-semibold tabular-nums text-foreground">
+                      {total < 0 ? `−${formatArsContable(-total)}` : formatArsContable(total)}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Movements list */}
+      {/* Movimientos del día */}
       <div className="rounded-lg border border-border bg-card shadow-sm">
-        <div className="border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="border-b border-border px-4 py-3">
           <h2 className="font-medium text-foreground">Movimientos del día</h2>
         </div>
         {cashFlows.length === 0 ? (
-          <EmptyState
-            icon={Receipt}
-            title="Sin movimientos"
-            description="No hay movimientos registrados para este día."
-          />
+          summary.isClosed ? (
+            <EmptyState icon={Receipt} title="Este día no tuvo movimientos." />
+          ) : (
+            <EmptyState
+              icon={Receipt}
+              title="Sin movimientos por ahora"
+              description="Los cobros de reservas se registran solos. Las ventas de cantina y los gastos se cargan desde los botones de arriba."
+            />
+          )
         ) : (
           <>
             {/* Mobile: cards apiladas (el admin mira la caja desde el celular en la barra) */}
-            <ul className="divide-y divide-slate-100 sm:hidden">
+            <ul className="divide-y divide-border sm:hidden">
               {cashFlows.map((cf) => (
                 <li key={cf.id} className="flex items-start justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
                     <CategoryBadge type={cf.type} category={cf.category} />
                     <p className="mt-1 truncate text-sm text-foreground">{cf.description}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {METHOD_LABELS[cf.method] ?? cf.method} ·{' '}
-                      {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                    <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+                      {formatTimeArt(cf.occurredAt)} · {METHOD_LABELS[cf.method] ?? cf.method}
                     </p>
                   </div>
-                  <p
-                    className={`shrink-0 text-sm font-semibold tabular-nums ${cf.type === 'expense' ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}
-                  >
-                    {cf.type === 'expense' ? '−' : ''}
-                    {formatARS(cf.amount)}
+                  <p className="shrink-0 text-sm">
+                    <SignedAmount type={cf.type} amount={cf.amount} />
                   </p>
                 </li>
               ))}
             </ul>
-            {/* Desktop: tabla */}
+            {/* Desktop: tabla densa §6.6 — diario cronológico, monto a la derecha */}
             <div className="hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-left">
-                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Categoría</th>
-                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Método</th>
-                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Descripción</th>
-                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide text-right">Monto</th>
-                    <th className="p-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Hora</th>
+                  <tr className="border-b border-border text-left">
+                    <th className="p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Hora
+                    </th>
+                    <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Descripción
+                    </th>
+                    <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Categoría
+                    </th>
+                    <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Método
+                    </th>
+                    <th className="p-2.5 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Monto
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {cashFlows.map((cf) => (
-                    <tr key={cf.id} className="hover:bg-accent transition-colors">
-                      <td className="p-3">
+                    <tr key={cf.id} className="transition-colors hover:bg-accent/50">
+                      <td className="p-2.5 pl-4 tabular-nums text-muted-foreground">
+                        {formatTimeArt(cf.occurredAt)}
+                      </td>
+                      <td className="max-w-xs truncate p-2.5 text-foreground">{cf.description}</td>
+                      <td className="p-2.5">
                         <CategoryBadge type={cf.type} category={cf.category} />
                       </td>
-                      <td className="p-3 text-foreground">{METHOD_LABELS[cf.method] ?? cf.method}</td>
-                      <td className="p-3 max-w-xs truncate text-foreground">{cf.description}</td>
-                      <td
-                        className={`p-3 text-right font-medium tabular-nums ${cf.type === 'expense' ? 'text-red-700 dark:text-red-400' : 'text-foreground'}`}
-                      >
-                        {cf.type === 'expense' ? '−' : ''}
-                        {formatARS(cf.amount)}
+                      <td className="p-2.5 text-foreground">
+                        {METHOD_LABELS[cf.method] ?? cf.method}
                       </td>
-                      <td className="p-3 tabular-nums text-muted-foreground">
-                        {cf.occurredAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                      <td className="p-2.5 pr-4 text-right">
+                        <SignedAmount type={cf.type} amount={cf.amount} />
                       </td>
                     </tr>
                   ))}

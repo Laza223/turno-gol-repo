@@ -5,16 +5,12 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { formatArs } from '@/lib/format'
+import { chipClass } from '../caja-lib'
 import { createCashFlowAction, saveCanteenProductsAction } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenProduct } from '@/modules/tenants/tenant.types'
-
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
-    centavos / 100,
-  )
-}
 
 // Sugerencias para el primer uso: el admin ajusta nombres y precios antes de guardar.
 const SUGGESTED: Array<{ name: string; pricePesos: string }> = [
@@ -65,7 +61,7 @@ export function CanteenQuickSale({
           <button
             type="button"
             onClick={() => setEditorOpen(true)}
-            className="mt-3 h-11 rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+            className="mt-3 h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Configurar productos
           </button>
@@ -77,10 +73,10 @@ export function CanteenQuickSale({
               key={p.id}
               type="button"
               onClick={() => setSale(p)}
-              className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left hover:border-emerald-400 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors"
+              className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-emerald-400 hover:bg-emerald-600/5 active:bg-emerald-600/10 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10 dark:active:bg-emerald-500/15"
             >
               <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
-              <span className="block text-sm tabular-nums text-muted-foreground">{formatARS(p.price)}</span>
+              <span className="block text-sm tabular-nums text-muted-foreground">{formatArs(p.price)}</span>
             </button>
           ))}
         </div>
@@ -152,7 +148,7 @@ function QuickSaleDialog({
         if (res.success) {
           toast({
             title: 'Venta registrada',
-            description: `${qty === 1 ? product.name : `${product.name} x${qty}`} — ${formatARS(total)}`,
+            description: `${qty === 1 ? product.name : `${product.name} x${qty}`} — ${formatArs(total)}`,
             variant: 'success',
           })
           setLastProductId(null)
@@ -209,11 +205,7 @@ function QuickSaleDialog({
                   onClick={() => setMethod(m.value)}
                   disabled={isPending}
                   aria-pressed={method === m.value}
-                  className={`h-11 rounded-md border px-1 text-xs font-medium transition-colors ${
-                    method === m.value
-                      ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                      : 'border-border bg-card text-muted-foreground hover:bg-accent'
-                  }`}
+                  className={chipClass(method === m.value)}
                 >
                   {m.label}
                 </button>
@@ -227,7 +219,7 @@ function QuickSaleDialog({
             disabled={isPending}
             className="h-12 w-full rounded-md bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
           >
-            {isPending ? 'Registrando…' : `Registrar venta — ${formatARS(total)}`}
+            {isPending ? 'Registrando…' : `Registrar venta — ${formatArs(total)}`}
           </button>
         </div>
       </DialogContent>

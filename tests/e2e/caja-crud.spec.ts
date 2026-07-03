@@ -156,11 +156,10 @@ test.describe('caja — happy: register movement', () => {
         await expect(page.getByRole('dialog')).toBeVisible()
         await expect(page.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
 
-        // Fill the form fields.
-        await page.locator('#cf-type').selectOption('income')
-        // After selecting income the category options update; pick "Otro".
-        await page.locator('#cf-category').selectOption('other')
-        await page.locator('#cf-method').selectOption('cash')
+        // Chips (pages/caja.md §7): "Ingreso" y "Efectivo" ya vienen
+        // seleccionados por defecto; solo se elige la categoría "Otro ingreso".
+        const dialog = page.getByRole('dialog')
+        await dialog.getByRole('button', { name: 'Otro ingreso' }).click()
         await page.locator('#cf-amount').fill('1000')
         await page.locator('#cf-desc').fill('Pago E2E test movimiento')
 

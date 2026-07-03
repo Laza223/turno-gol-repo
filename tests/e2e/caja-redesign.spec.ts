@@ -59,9 +59,13 @@ test.describe('Caja redesign', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
 
-    await dialog.getByLabel('Tipo').selectOption('expense')
+    // Chips (pages/caja.md §7): elegir tipo "Gasto" con un tap.
+    await dialog.getByRole('button', { name: 'Gasto', exact: true }).click()
     // La categoría se auto-selecciona en "Gasto operativo" (única válida).
-    await expect(dialog.getByLabel('Categoría')).toHaveValue('operating_expense')
+    await expect(dialog.getByRole('button', { name: 'Gasto operativo' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await dialog.getByLabel('Monto (pesos)').fill('1234')
     await dialog.getByLabel('Descripción').fill(description)
     await dialog.getByRole('button', { name: 'Guardar' }).click()

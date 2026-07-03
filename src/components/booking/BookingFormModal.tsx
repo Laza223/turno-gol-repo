@@ -6,6 +6,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Loader2 } from 'lucide-react'
 import { createBookingAction } from '@/app/(admin)/reservas/actions'
 import { toast } from '@/hooks/use-toast'
+import { PhoneInput } from '@/components/ui/phone-input'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 
 type Slot = {
@@ -232,24 +233,12 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                   />
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="guestPhone"
-                    className="block text-sm font-medium text-foreground mb-1"
-                  >
-                    Teléfono <span className="text-muted-foreground">(opcional)</span>
-                  </label>
-                  <input
-                    id="guestPhone"
-                    name="guestPhone"
-                    type="tel"
-                    maxLength={50}
-                    inputMode="tel"
-                    autoComplete="tel"
-                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    placeholder="Ej: 11-1234-5678"
-                  />
-                </div>
+                <PhoneInput
+                  id="guestPhone"
+                  name="guestPhone"
+                  label="Teléfono (opcional)"
+                  placeholder="11 1234-5678"
+                />
               </>
             )}
 

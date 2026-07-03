@@ -31,7 +31,7 @@ export function ErrorState({
   secondaryIcon: SecondaryIcon,
 }: ErrorStateProps) {
   const wrapper = {
-    full: 'flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-12',
+    full: 'flex min-h-dvh items-center justify-center bg-muted/50 px-4 py-12',
     contained: 'flex min-h-[60vh] items-center justify-center px-4 py-12',
     inline: '',
   }[variant]
@@ -58,16 +58,16 @@ export function ErrorState({
   if (variant === 'contained') {
     return (
       <div className={wrapper}>
-        <div className={cn('w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center', cardShadow)}>
+        <div className={cn('w-full max-w-md rounded-xl border border-border bg-card p-8 text-center', cardShadow)}>
           <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 ring-1 ring-inset ring-red-600/20">
             <AlertTriangle className="h-7 w-7 text-red-600" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
           {description ? (
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">{description}</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
           ) : null}
           {digest ? (
-            <p className="mt-3 text-xs text-slate-400">
+            <p className="mt-3 text-xs text-muted-foreground/60">
               Código de referencia:{' '}
               <span className="font-mono tabular-nums">{digest}</span>
             </p>
@@ -77,7 +77,7 @@ export function ErrorState({
               <button
                 type="button"
                 onClick={onRetry}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />
                 {retryLabel}
@@ -86,7 +86,7 @@ export function ErrorState({
             {secondaryHref && secondaryLabel ? (
               <Link
                 href={secondaryHref}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {SecondaryIcon ? <SecondaryIcon className="h-4 w-4" aria-hidden="true" /> : null}
                 {secondaryLabel}
@@ -100,16 +100,16 @@ export function ErrorState({
 
   return (
     <main className={wrapper}>
-      <div className={cn('w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center', cardShadow)}>
+      <div className={cn('w-full max-w-md rounded-xl border border-border bg-card p-8 text-center', cardShadow)}>
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 ring-1 ring-inset ring-red-600/20">
           <AlertTriangle className="h-7 w-7 text-red-600" aria-hidden="true" />
         </div>
-        <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
         {description ? (
-          <p className="mt-2 text-sm leading-relaxed text-slate-500">{description}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
         {digest ? (
-          <p className="mt-3 text-xs text-slate-400">
+          <p className="mt-3 text-xs text-muted-foreground/60">
             Código de referencia:{' '}
             <span className="font-mono tabular-nums">{digest}</span>
           </p>
@@ -119,7 +119,7 @@ export function ErrorState({
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               {retryLabel}
@@ -128,7 +128,7 @@ export function ErrorState({
           {secondaryHref && secondaryLabel ? (
             <Link
               href={secondaryHref}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               {SecondaryIcon ? <SecondaryIcon className="h-4 w-4" aria-hidden="true" /> : null}
               {secondaryLabel}

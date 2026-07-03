@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { updateProfileAction, type UpdateProfileResult } from './actions'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 type DefaultValues = {
   firstName: string
@@ -72,20 +73,12 @@ export function ProfileForm({ defaultValues }: Props) {
         </div>
       </div>
 
-      <div className="space-y-1">
-        <label htmlFor="phone" className="text-sm font-medium text-foreground">
-          Teléfono
-        </label>
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          inputMode="tel"
-          defaultValue={defaultValues.phone}
-          autoComplete="tel"
-          className="w-full h-11 px-3 border border-border bg-background rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
-        />
-      </div>
+      <PhoneInput
+        id="phone"
+        name="phone"
+        label="Teléfono"
+        defaultValue={defaultValues.phone}
+      />
 
       <div className="space-y-1">
         <label htmlFor="preferred_area" className="text-sm font-medium text-foreground">

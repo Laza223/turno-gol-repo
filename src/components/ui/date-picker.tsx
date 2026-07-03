@@ -124,13 +124,13 @@ export default function DatePicker({
         id={id}
         onClick={() => setOpen(!open)}
         className={cn(
-          'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-sm text-left flex items-center justify-between transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500',
+          'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-sm text-left flex items-center justify-between transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
           className,
           'pl-10 pr-10', // Enforce icon paddings
           !value && 'text-muted-foreground/70'
         )}
       >
-        <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600 z-10" aria-hidden />
+        <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10" aria-hidden />
         <span className="truncate">{formattedDisplay || placeholder}</span>
         {value && (
           <button
@@ -198,7 +198,7 @@ export default function DatePicker({
                   className={cn(
                     'text-xs py-1.5 font-medium rounded-lg transition-all duration-150',
                     isSelected
-                      ? 'bg-emerald-600 text-white shadow-sm font-semibold'
+                      ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
                       : 'hover:bg-accent hover:text-accent-foreground text-foreground/90',
                     isDisabled && 'opacity-25 pointer-events-none'
                   )}

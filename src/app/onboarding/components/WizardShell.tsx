@@ -33,7 +33,7 @@ export function WizardShell({ currentStep, wide = false, children }: Props) {
     <div className="grid min-h-dvh lg:grid-cols-[380px_1fr]">
       {/* Rail de marca: superficie always-dark (como el pane de register), no
           vista de tarea — por eso colores literales y no tokens theme-adaptive. */}
-      <aside className="relative hidden overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 lg:flex lg:flex-col lg:justify-between lg:p-10">
+      <aside className="sticky top-0 self-start h-dvh relative hidden overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 lg:flex lg:flex-col lg:justify-between lg:p-10">
         <div aria-hidden className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
         <div aria-hidden className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-emerald-400/5 blur-3xl" />
 

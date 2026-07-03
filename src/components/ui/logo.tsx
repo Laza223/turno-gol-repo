@@ -7,7 +7,7 @@ interface LogoProps {
   textClassName?: string
 }
 
-export function Logo({ variant = 'horizontal', className, textClassName = "text-slate-900" }: LogoProps) {
+export function Logo({ variant = 'horizontal', className, textClassName = "text-foreground" }: LogoProps) {
   if (variant === 'vector' || variant === 'icon') {
     return (
       <span className={cn("font-display text-2xl uppercase italic font-black tracking-tighter", textClassName, className)}>

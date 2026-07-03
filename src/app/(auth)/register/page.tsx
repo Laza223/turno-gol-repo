@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react'
 import { registerAction, type RegisterState } from './actions'
 import { Logo } from '@/components/ui/logo'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 const HERO_IMG =
   'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=2000&auto=format&fit=crop'
@@ -149,15 +150,11 @@ function FormCard({
           placeholder="vos@complejo.com"
           error={errs.email}
         />
-        <Field
+        <PhoneInput
           id="phone"
           name="phone"
           label="Celular"
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="+54 9 11 1234-5678"
-          helper="Formato argentino con prefijo +54 9"
+          placeholder="11 1234-5678"
           error={errs.phone}
         />
         <Field

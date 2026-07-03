@@ -72,8 +72,8 @@ export function ConfirmDialog({
 
   const confirmClasses =
     variant === 'destructive'
-      ? 'bg-red-600 hover:bg-red-700 text-white'
-      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+      ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+      : 'bg-primary hover:bg-primary/90 text-primary-foreground'
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -82,12 +82,12 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         {description ? (
-          <div className="text-sm leading-relaxed text-slate-600">{description}</div>
+          <div className="text-sm leading-relaxed text-muted-foreground">{description}</div>
         ) : null}
         {children}
         {confirmationPhrase ? (
           <div className="space-y-1">
-            <label htmlFor="confirm-phrase" className="text-xs font-medium text-slate-700">
+            <label htmlFor="confirm-phrase" className="text-xs font-medium text-foreground">
               Escribí <span className="font-mono font-semibold">{confirmationPhrase}</span> para confirmar
             </label>
             <input
@@ -96,12 +96,12 @@ export function ConfirmDialog({
               autoComplete="off"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="h-10 w-full rounded-md border border-border bg-card text-foreground px-3 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         ) : null}
         {error ? (
-          <p role="alert" className="text-xs text-red-600">
+          <p role="alert" className="text-xs text-destructive">
             {error}
           </p>
         ) : null}
@@ -110,7 +110,7 @@ export function ConfirmDialog({
             type="button"
             disabled={isPending}
             onClick={() => handleOpenChange(false)}
-            className="h-10 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+            className="h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {cancelLabel}
           </button>
@@ -118,7 +118,7 @@ export function ConfirmDialog({
             type="button"
             disabled={confirmDisabled}
             onClick={handleConfirm}
-            className={`inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${confirmClasses}`}
+            className={`inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${confirmClasses}`}
           >
             {isPending ? 'Procesando…' : confirmLabel}
           </button>

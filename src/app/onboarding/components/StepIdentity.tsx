@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { createTenantAction } from '../actions'
 import { generateSlug } from '@/modules/tenants/tenant.utils'
 import { fieldClass, labelClass } from './wizard-styles'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 const PROVINCES = [
   'Buenos Aires',
@@ -134,21 +135,12 @@ export function StepIdentity() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="identity-phone" className={labelClass}>
-              Teléfono <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <input
-              id="identity-phone"
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="Ej: +54 9 11 1234-5678"
-              required
-              className={fieldClass}
-            />
-          </div>
+          <PhoneInput
+            id="identity-phone"
+            name="phone"
+            label="Teléfono"
+            required
+          />
           <div>
             <label htmlFor="identity-email" className={labelClass}>
               Email de contacto <span className="text-red-500 dark:text-red-400">*</span>

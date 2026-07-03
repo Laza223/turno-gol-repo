@@ -5,39 +5,39 @@ import path from 'node:path'
 const projectRoot = path.resolve(__dirname, '..', '..')
 
 describe('inputMode coverage (regression guard)', () => {
-  it('StepIdentity phone input has inputMode="tel"', () => {
+  it('PhoneInput component has inputMode="tel"', () => {
+    const file = readFileSync(
+      path.join(projectRoot, 'src/components/ui/phone-input.tsx'),
+      'utf8',
+    )
+    const phoneTypeIdx = file.indexOf('type="tel"')
+    expect(phoneTypeIdx).toBeGreaterThan(-1)
+    const windowAround = file.slice(phoneTypeIdx, phoneTypeIdx + 200)
+    expect(windowAround).toMatch(/inputMode="tel"/)
+  })
+
+  it('StepIdentity uses PhoneInput component', () => {
     const file = readFileSync(
       path.join(projectRoot, 'src/app/onboarding/components/StepIdentity.tsx'),
       'utf8',
     )
-    // Look for the phone input block (type="tel" + inputMode="tel" within ~5 lines)
-    const phoneTypeIdx = file.indexOf('type="tel"')
-    expect(phoneTypeIdx).toBeGreaterThan(-1)
-    const windowAround = file.slice(phoneTypeIdx, phoneTypeIdx + 200)
-    expect(windowAround).toMatch(/inputMode="tel"/)
+    expect(file).toMatch(/<PhoneInput/)
   })
 
-  it('register page Field phone has inputMode="tel"', () => {
+  it('register page uses PhoneInput component', () => {
     const file = readFileSync(
       path.join(projectRoot, 'src/app/(auth)/register/page.tsx'),
       'utf8',
     )
-    // The Field call site: type="tel" + inputMode="tel"
-    expect(file).toMatch(/type="tel"\s*\n\s*inputMode="tel"/)
-    // The Field component itself: forwards inputMode prop
-    expect(file).toMatch(/inputMode\?:/)
-    expect(file).toMatch(/inputMode=\{props\.inputMode\}/)
+    expect(file).toMatch(/<PhoneInput/)
   })
 
-  it('ProfileForm phone input has inputMode="tel"', () => {
+  it('ProfileForm uses PhoneInput component', () => {
     const file = readFileSync(
       path.join(projectRoot, 'src/app/(player)/perfil/ProfileForm.tsx'),
       'utf8',
     )
-    const phoneTypeIdx = file.indexOf('type="tel"')
-    expect(phoneTypeIdx).toBeGreaterThan(-1)
-    const windowAround = file.slice(phoneTypeIdx, phoneTypeIdx + 200)
-    expect(windowAround).toMatch(/inputMode="tel"/)
+    expect(file).toMatch(/<PhoneInput/)
   })
 
   it('settings/reservas form: all type="number" inputs have inputMode', () => {
@@ -46,9 +46,6 @@ describe('inputMode coverage (regression guard)', () => {
       path.join(projectRoot, 'src/app/(admin)/settings/reservas/ReservasPolicyForm.tsx'),
       'utf8',
     )
-    // Capture each block starting at type="number"
-    // (Tarea #5: se eliminaron los inputs de penalidad por ausencia; quedan
-    // depositPercentage y cancellationHoursBefore.)
     const typeNumberMatches = Array.from(file.matchAll(/type="number"/g))
     expect(typeNumberMatches.length).toBeGreaterThanOrEqual(2)
 

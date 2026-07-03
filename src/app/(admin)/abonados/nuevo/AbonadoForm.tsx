@@ -3,6 +3,7 @@
 import { useTransition, useState } from 'react'
 import { submitNewAbonado, previewAbonadoSlotsAction, type NewAbonadoState, type PreviewAbonadoSlotsInput } from './actions'
 import { Badge } from '@/components/ui/badge'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 const DAYS = [
   { value: '1', label: 'Lunes' }, { value: '2', label: 'Martes' }, { value: '3', label: 'Miércoles' },
@@ -206,7 +207,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
             <legend className="text-sm font-semibold text-foreground">Cliente</legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className={labelCls}><span className={labelSpan}>Nombre y apellido</span><input name="contactName" required className={field} /></label>
-              <label className={labelCls}><span className={labelSpan}>Teléfono</span><input name="contactPhone" required className={field} /></label>
+              <PhoneInput id="contactPhone" name="contactPhone" label="Teléfono" required />
             </div>
           </fieldset>
 

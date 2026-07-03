@@ -104,7 +104,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     expect(lastPayload()).toMatchObject({
       type: 'spontaneous',
       guestName: 'Juan',
-      guestPhone: '11-1234-5678',
+      guestPhone: '+54 11-1234-5678',
     })
   })
 

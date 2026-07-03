@@ -5,6 +5,7 @@ import { AddClosedDateForm, HorariosForm, RemoveClosedDateForm } from './Horario
 import type { LooseOpeningHours } from './horarios-lib'
 
 const SETTINGS_TABS = [
+  { href: '/settings/perfil', label: 'Perfil' },
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
   { href: '/settings/facturacion', label: 'Facturación' },

@@ -6,6 +6,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
 
 const SETTINGS_TABS = [
+  { href: '/settings/perfil', label: 'Perfil' },
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
   { href: '/settings/facturacion', label: 'Facturación' },

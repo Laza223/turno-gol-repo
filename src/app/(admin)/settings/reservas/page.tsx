@@ -4,6 +4,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { ReservasPolicyForm } from './ReservasPolicyForm'
 
 const SETTINGS_TABS = [
+  { href: '/settings/perfil', label: 'Perfil' },
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
   { href: '/settings/facturacion', label: 'Facturación' },

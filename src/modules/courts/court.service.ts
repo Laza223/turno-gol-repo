@@ -187,3 +187,76 @@ export function nextPlanSlug(current: string | null): string {
   if (current === 'complejo') return 'estadio'
   return 'estadio'
 }
+
+async function getCourtPhotos(courtId: string, tenantId: string, tx: DbTx): Promise<string[] | null> {
+  const rows = await tx
+    .select({ photos: courts.photos })
+    .from(courts)
+    .where(and(eq(courts.id, courtId), eq(courts.tenantId, tenantId)))
+    .limit(1)
+  if (!rows.length) return null
+  return (rows[0]!.photos as string[]) ?? []
+}
+
+const MAX_COURT_PHOTOS = 6
+
+/** Agrega `url` al final de `courts.photos`. Rechaza al superar 6 fotos. */
+export async function appendCourtPhoto(
+  courtId: string,
+  tenantId: string,
+  url: string,
+  tx: DbTx,
+): Promise<string[] | null> {
+  const current = await getCourtPhotos(courtId, tenantId, tx)
+  if (current === null) return null
+  if (current.length >= MAX_COURT_PHOTOS) {
+    throw new Error(`No se pueden cargar más de ${MAX_COURT_PHOTOS} fotos por cancha`)
+  }
+  const next = [...current, url]
+  const rows = await tx
+    .update(courts)
+    .set({ photos: next, updatedAt: new Date() })
+    .where(and(eq(courts.id, courtId), eq(courts.tenantId, tenantId)))
+    .returning({ photos: courts.photos })
+  return (rows[0]?.photos as string[]) ?? null
+}
+
+/** Quita `url` de `courts.photos`. No falla si `url` no estaba presente. */
+export async function removeCourtPhoto(
+  courtId: string,
+  tenantId: string,
+  url: string,
+  tx: DbTx,
+): Promise<string[] | null> {
+  const current = await getCourtPhotos(courtId, tenantId, tx)
+  if (current === null) return null
+  const next = current.filter((p) => p !== url)
+  const rows = await tx
+    .update(courts)
+    .set({ photos: next, updatedAt: new Date() })
+    .where(and(eq(courts.id, courtId), eq(courts.tenantId, tenantId)))
+    .returning({ photos: courts.photos })
+  return (rows[0]?.photos as string[]) ?? null
+}
+
+/** Persiste un nuevo orden de `courts.photos`. Rechaza si el conjunto no coincide con el actual (anti-injection de urls ajenas). */
+export async function reorderCourtPhotos(
+  courtId: string,
+  tenantId: string,
+  urls: string[],
+  tx: DbTx,
+): Promise<string[] | null> {
+  const current = await getCourtPhotos(courtId, tenantId, tx)
+  if (current === null) return null
+  const sameSet =
+    current.length === urls.length && [...current].sort().join('|') === [...urls].sort().join('|')
+  if (!sameSet) {
+    throw new Error('El nuevo orden no coincide con las fotos existentes')
+  }
+  const rows = await tx
+    .update(courts)
+    .set({ photos: urls, updatedAt: new Date() })
+    .where(and(eq(courts.id, courtId), eq(courts.tenantId, tenantId)))
+    .returning({ photos: courts.photos })
+  return (rows[0]?.photos as string[]) ?? null
+}

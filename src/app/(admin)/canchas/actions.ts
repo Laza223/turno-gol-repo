@@ -284,6 +284,11 @@ export async function removeCourtPhotoAction(
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
+  if (!isR2Configured()) {
+    console.warn('[storage] R2 no configurado — borrado deshabilitado en este entorno')
+    return { success: false, error: 'Storage no configurado en este entorno' }
+  }
+
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
@@ -297,7 +302,7 @@ export async function removeCourtPhotoAction(
   )
   if (photos === null) return { success: false, error: 'Cancha no encontrada' }
 
-  if (isR2Configured()) await deleteImage(key)
+  await deleteImage(key)
 
   revalidatePath('/canchas')
   return { success: true, photos }

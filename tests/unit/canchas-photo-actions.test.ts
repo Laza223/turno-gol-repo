@@ -98,6 +98,17 @@ describe('removeCourtPhotoAction', () => {
     expect(res.success).toBe(true)
     expect(vi.mocked(deleteImage)).toHaveBeenCalledWith('tenant-1/courts/court-1/x.webp')
   })
+
+  it('rechaza sin R2 configurado (dev sin credenciales)', async () => {
+    vi.mocked(isR2Configured).mockReturnValue(false)
+    const res = await removeCourtPhotoAction(
+      'court-1',
+      'https://media.turnogol.com/tenant-1/courts/court-1/x.webp',
+    )
+    expect(res).toEqual({ success: false, error: 'Storage no configurado en este entorno' })
+    expect(vi.mocked(deleteImage)).not.toHaveBeenCalled()
+    expect(vi.mocked(removeCourtPhoto)).not.toHaveBeenCalled()
+  })
 })
 
 describe('reorderCourtPhotosAction', () => {

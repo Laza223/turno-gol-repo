@@ -11,7 +11,17 @@ import {
   toggleStatus,
   getCourtCountAndLimit,
   validatePricingRulesCoverage,
+  appendCourtPhoto,
+  removeCourtPhoto,
+  reorderCourtPhotos,
 } from '@/modules/courts/court.service'
+import {
+  isR2Configured,
+  putImage,
+  deleteImage,
+  publicUrl,
+  keyFromPublicUrl,
+} from '@/shared/storage/r2'
 import { createCourtSchema, updateCourtSchema } from '@/modules/courts/court.schema'
 import { bookings, abonados } from '@/shared/db/schema'
 
@@ -209,4 +219,109 @@ export async function getCourtDeactivationImpactAction(
       activeAbonados: a?.n ?? 0,
     }
   })
+}
+
+export type CourtPhotoActionResult =
+  | { success: true; photos: string[] }
+  | { success: false; error: string }
+
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024
+
+// Fotos de cancha son Configuración (misma cancha = solo admin, ver
+// createCourtAction/updateCourtAction arriba).
+export async function uploadCourtPhotoAction(
+  courtId: string,
+  formData: FormData,
+): Promise<CourtPhotoActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  if (!isR2Configured()) {
+    console.warn('[storage] R2 no configurado — upload deshabilitado en este entorno')
+    return { success: false, error: 'Storage no configurado en este entorno' }
+  }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const file = formData.get('file')
+  if (!(file instanceof Blob) || file.size === 0) {
+    return { success: false, error: 'Archivo inválido' }
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { success: false, error: 'La imagen no puede superar 2MB' }
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const key = `${tenant.id}/courts/${courtId}/${crypto.randomUUID()}.webp`
+
+  try {
+    await putImage(key, bytes, 'image/webp')
+  } catch {
+    return { success: false, error: 'No se pudo subir la imagen' }
+  }
+
+  const url = publicUrl(key)
+
+  try {
+    const photos = await withTenantContext(tenant.id, (tx) =>
+      appendCourtPhoto(courtId, tenant.id, url, tx),
+    )
+    if (photos === null) return { success: false, error: 'Cancha no encontrada' }
+    revalidatePath('/canchas')
+    return { success: true, photos }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'No se pudo guardar la foto' }
+  }
+}
+
+export async function removeCourtPhotoAction(
+  courtId: string,
+  url: string,
+): Promise<CourtPhotoActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const key = keyFromPublicUrl(url)
+  if (!key || !key.startsWith(`${tenant.id}/`)) {
+    return { success: false, error: 'Imagen inválida' }
+  }
+
+  const photos = await withTenantContext(tenant.id, (tx) =>
+    removeCourtPhoto(courtId, tenant.id, url, tx),
+  )
+  if (photos === null) return { success: false, error: 'Cancha no encontrada' }
+
+  if (isR2Configured()) await deleteImage(key)
+
+  revalidatePath('/canchas')
+  return { success: true, photos }
+}
+
+export async function reorderCourtPhotosAction(
+  courtId: string,
+  urls: string[],
+): Promise<CourtPhotoActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    const photos = await withTenantContext(tenant.id, (tx) =>
+      reorderCourtPhotos(courtId, tenant.id, urls, tx),
+    )
+    if (photos === null) return { success: false, error: 'Cancha no encontrada' }
+    revalidatePath('/canchas')
+    return { success: true, photos }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'No se pudo reordenar' }
+  }
 }

@@ -63,6 +63,7 @@
     "lighthouse:public": "tsx scripts/lighthouse-public.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
     "@radix-ui/react-dialog": "^1.0",
     "@radix-ui/react-dropdown-menu": "^2.0",
     "@radix-ui/react-toast": "^1.1",

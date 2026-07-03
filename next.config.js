@@ -31,7 +31,7 @@ const securityHeaders = [
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' *.supabase.co images.unsplash.com *.tile.openstreetmap.org data: blob:",
+      "img-src 'self' *.supabase.co images.unsplash.com *.tile.openstreetmap.org media.turnogol.com data: blob:",
       "font-src 'self'",
       connectSrc,
       "frame-src *.mercadopago.com",
@@ -62,6 +62,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: 'media.turnogol.com' },
     ],
   },
   async headers() {

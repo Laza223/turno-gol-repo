@@ -53,6 +53,27 @@ export function isValidDayRange(
 
 const hhmmField = z.string().regex(TIME_HHMM_RE, 'Formato HH:MM')
 
+/**
+ * Contrato FormData del form de horarios (settings y wizard de onboarding):
+ * `${day}_open` / `${day}_close` + hidden `${day}_closed` ('on' solo si cerrado)
+ * + checkbox `closes_next_day`. Devuelve el input crudo para `horariosSchema`.
+ */
+export function horariosFormDataToInput(formData: FormData): Record<string, unknown> {
+  return {
+    ...Object.fromEntries(
+      WEEK_DAYS.map(({ key }) => [
+        key,
+        {
+          open: formData.get(`${key}_open`) as string,
+          close: formData.get(`${key}_close`) as string,
+          closed: formData.get(`${key}_closed`) === 'on',
+        },
+      ]),
+    ),
+    closesNextDay: formData.get('closes_next_day') === 'on',
+  }
+}
+
 // `closed` viaja con cada día (rediseño 2026-07-02, pages/horarios-precios.md §2.3).
 // Antes el schema lo despojaba: un domingo cerrado en el wizard de onboarding se
 // perdía silenciosamente al guardar desde /settings/horarios.

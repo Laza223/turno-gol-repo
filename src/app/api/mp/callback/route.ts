@@ -2,7 +2,12 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { encrypt } from '@/lib/crypto/encrypt'
-import { connectMercadoPago, completeOnboarding } from '@/modules/tenants/tenant.service'
+import {
+  connectMercadoPago,
+  completeOnboarding,
+  getTenantById,
+  updateTenantSettings,
+} from '@/modules/tenants/tenant.service'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffRole } from '@/modules/staff/staff.service'
 
@@ -129,7 +134,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     mpPublicKey: tokenData.public_key,
   })
 
+  // Flujo wizard vs reconexión (pages/onboarding.md §6.3): llegar acá desde el
+  // paso "¿Cobrás seña?" es la elección explícita "Sí" → se activa la seña y el
+  // wizard cierra en su momento peak-end. Una reconexión posterior NO toca
+  // requires_deposit (respeta lo que el admin haya configurado).
+  const tenant = await getTenantById(tenantId)
+  const onboardingDone = tenant?.settings.onboarding_completed === true
+  if (onboardingDone) {
+    return NextResponse.redirect(new URL('/settings/facturacion', req.url))
+  }
+
+  await updateTenantSettings(tenantId, { requires_deposit: true })
   await completeOnboarding(tenantId)
 
-  return NextResponse.redirect(new URL('/dashboard', req.url))
+  return NextResponse.redirect(new URL('/onboarding/listo', req.url))
 }

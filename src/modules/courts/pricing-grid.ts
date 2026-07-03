@@ -213,6 +213,67 @@ export function buildTemplateGrid(
   return grid
 }
 
+function hhmmToMins(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return (h ?? 0) * 60 + (m ?? 0)
+}
+
+/**
+ * Precio uniforme directo desde los horarios de apertura (wizard de onboarding,
+ * pages/onboarding.md §5.2). A diferencia de buildTemplateGrid+compress, no pasa
+ * por celdas de hora entera: usa los minutos exactos de open/close y soporta
+ * madrugada (`closesNextDay`), que la grilla todavía no modela.
+ *
+ * - Día abierto normal → una regla [open, close). Cierre '00:00' = medianoche.
+ * - Madrugada (flag y close <= open, close ≠ '00:00') → dos reglas: [open, 00:00)
+ *   del día + [00:00, close) del día calendario SIGUIENTE — calculatePrice busca
+ *   por día calendario, así el turno de la 01:00 del sábado (noche del viernes)
+ *   lo cubre la regla del sábado.
+ * - Sin el flag, un cierre <= apertura no genera slots → tampoco reglas.
+ * - Rangos idénticos se fusionan por días. Sin días abiertos → [].
+ */
+export function uniformRulesFromOpeningHours(
+  openingHours: OpeningHours,
+  closesNextDay: boolean,
+  priceCents: number,
+): PricingRule[] {
+  type Range = { from: string; to: string; days: DayKey[] }
+  const groups = new Map<string, Range>()
+
+  function push(day: DayKey, from: string, to: string) {
+    const key = `${from}|${to}`
+    const g = groups.get(key)
+    if (g) {
+      if (!g.days.includes(day)) g.days.push(day)
+    } else {
+      groups.set(key, { from, to, days: [day] })
+    }
+  }
+
+  DAY_KEYS.forEach((day, i) => {
+    const d = openingHours[day]
+    if (!d || d.closed) return
+    const openM = hhmmToMins(d.open)
+    const closeM = hhmmToMins(d.close)
+    if (d.close === '00:00' || closeM > openM) {
+      push(day, d.open, d.close)
+      return
+    }
+    if (!closesNextDay) return
+    push(day, d.open, '00:00')
+    push(DAY_KEYS[(i + 1) % DAY_KEYS.length]!, '00:00', d.close)
+  })
+
+  const closeMins = (hhmm: string) => (hhmm === '00:00' ? 24 * 60 : hhmmToMins(hhmm))
+  return Array.from(groups.values())
+    .map((g) => ({
+      ...g,
+      days: [...g.days].sort((a, b) => DAY_KEYS.indexOf(a) - DAY_KEYS.indexOf(b)),
+    }))
+    .sort((a, b) => hhmmToMins(a.from) - hhmmToMins(b.from) || closeMins(a.to) - closeMins(b.to))
+    .map((g) => ({ days: g.days, from: g.from, to: g.to, price: priceCents }))
+}
+
 export type RuleDescription = {
   /** "Lun a Jue", "Sáb y Dom", "Todos los días". */
   daysLabel: string

@@ -8,6 +8,7 @@ import {
   getOperativeHours,
   isHourActive,
   parsePesosToCents,
+  uniformRulesFromOpeningHours,
   type PriceGrid,
 } from '@/modules/courts/pricing-grid'
 import { formatDayList } from '@/shared/time/week-days'
@@ -230,6 +231,79 @@ describe('buildTemplateGrid', () => {
     expect(compressGridToRules(grid, oh)).toEqual([
       { days: [...DAYS], from: '08:00', to: '23:00', price: 2000000 },
     ])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Precio uniforme desde horarios (wizard de onboarding, pages/onboarding.md §5.2)
+// ---------------------------------------------------------------------------
+
+describe('uniformRulesFromOpeningHours', () => {
+  it('semana uniforme → UNA regla con los 7 días y minutos exactos', () => {
+    const oh = uniformHours('08:30', '23:00')
+    expect(uniformRulesFromOpeningHours(oh, false, 2000000)).toEqual([
+      { days: [...DAYS], from: '08:30', to: '23:00', price: 2000000 },
+    ])
+  })
+
+  it("cierre '00:00' cuenta como medianoche (regla válida hasta fin de día)", () => {
+    const oh = uniformHours('08:00', '00:00')
+    expect(uniformRulesFromOpeningHours(oh, false, 1500000)).toEqual([
+      { days: [...DAYS], from: '08:00', to: '00:00', price: 1500000 },
+    ])
+  })
+
+  it('saltea días cerrados y agrupa ventanas distintas en reglas separadas', () => {
+    const oh: OpeningHours = {
+      ...uniformHours('08:00', '00:00'),
+      sat: day('09:00', '23:00'),
+      sun: day('08:00', '00:00', true),
+    }
+    expect(uniformRulesFromOpeningHours(oh, false, 1000)).toEqual([
+      { days: ['mon', 'tue', 'wed', 'thu', 'fri'], from: '08:00', to: '00:00', price: 1000 },
+      { days: ['sat'], from: '09:00', to: '23:00', price: 1000 },
+    ])
+  })
+
+  it('madrugada con flag: parte en [open,00:00) del día + [00:00,close) del día siguiente', () => {
+    const oh: OpeningHours = {
+      ...uniformHours('08:00', '23:00'),
+      fri: day('08:00', '01:00'),
+      sat: day('09:00', '01:00'),
+    }
+    expect(uniformRulesFromOpeningHours(oh, true, 2000000)).toEqual([
+      // sáb y dom reciben la madrugada de la noche anterior (día calendario).
+      { days: ['sat', 'sun'], from: '00:00', to: '01:00', price: 2000000 },
+      { days: ['mon', 'tue', 'wed', 'thu', 'sun'], from: '08:00', to: '23:00', price: 2000000 },
+      { days: ['fri'], from: '08:00', to: '00:00', price: 2000000 },
+      { days: ['sat'], from: '09:00', to: '00:00', price: 2000000 },
+    ])
+  })
+
+  it('madrugada SIN flag: el día no genera reglas (coherente con cero slots)', () => {
+    const oh: OpeningHours = {
+      ...uniformHours('08:00', '23:00'),
+      fri: day('08:00', '01:00'),
+    }
+    const rules = uniformRulesFromOpeningHours(oh, false, 1000)
+    expect(rules).toEqual([
+      { days: ['mon', 'tue', 'wed', 'thu', 'sat', 'sun'], from: '08:00', to: '23:00', price: 1000 },
+    ])
+  })
+
+  it('todos los días cerrados → sin reglas', () => {
+    const oh = Object.fromEntries(DAYS.map((d) => [d, day('08:00', '23:00', true)])) as OpeningHours
+    expect(uniformRulesFromOpeningHours(oh, false, 1000)).toEqual([])
+  })
+
+  it('las reglas generadas pasan la cobertura server-side en días normales', () => {
+    const oh: OpeningHours = {
+      ...uniformHours('08:00', '00:00'),
+      sun: day('09:00', '22:00'),
+    }
+    const rules = uniformRulesFromOpeningHours(oh, false, 2000000)
+    const grid = expandRulesToGrid(rules, oh)
+    expect(countEmptyCells(grid, oh)).toBe(0)
   })
 })
 

@@ -45,7 +45,7 @@ afterAll(async () => {
 })
 
 describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo', () => {
-  it('persiste tokens MP cifrados, marca onboarding y redirige a /dashboard', async () => {
+  it('persiste tokens MP cifrados, activa la seña, marca onboarding y redirige a /onboarding/listo', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
 
@@ -65,10 +65,10 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
 
     const res = await mpCallback(req)
 
-    // Redirect to dashboard.
+    // Redirect al cierre peak-end del wizard (pages/onboarding.md §6.3).
     expect(res.status).toBeGreaterThanOrEqual(300)
     expect(res.status).toBeLessThan(400)
-    expect(res.headers.get('location')).toMatch(/\/dashboard$/)
+    expect(res.headers.get('location')).toMatch(/\/onboarding\/listo$/)
 
     // Tokens persisted ENCRYPTED — ciphertext on disk must not equal plaintext,
     // and must round-trip through decrypt to the values MP returned.
@@ -80,10 +80,12 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
         mp_public_key: string | null
         mp_connected_at: Date | null
         onboarding_completed: boolean | null
+        requires_deposit: boolean | null
       }[]
     >`
       SELECT mp_access_token, mp_refresh_token, mp_user_id, mp_public_key, mp_connected_at,
-             (settings->>'onboarding_completed')::boolean AS onboarding_completed
+             (settings->>'onboarding_completed')::boolean AS onboarding_completed,
+             (settings->>'requires_deposit')::boolean AS requires_deposit
       FROM tenants WHERE id = ${tenant.id}
     `
     const row = rows[0]!
@@ -98,6 +100,9 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
 
     // Onboarding flipped to complete (the Aha-moment gate, doc10).
     expect(row.onboarding_completed).toBe(true)
+    // Conectar MP desde el wizard = elección explícita "Sí, cobrar seña":
+    // la seña queda activa (pages/onboarding.md §6.3).
+    expect(row.requires_deposit).toBe(true)
   })
 
   it('si MP rechaza el token (400) no persiste credenciales y redirige a mp_token_failed', async () => {

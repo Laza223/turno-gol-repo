@@ -228,26 +228,20 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await freshAdminPage.locator('#identity-email').fill('ux-audit-tenant@turnogol.test')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
-    // Step 2: courts info
-    await expect(freshAdminPage.getByText(/paso 2 de 4/i)).toBeVisible({ timeout: 15000 })
+    // Step 2: horarios (general + excepciones; defaults saneados → Continuar directo)
+    await expect(freshAdminPage.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 15000 })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_2')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
-    // Step 3: schedule
-    await expect(freshAdminPage.getByText(/paso 3 de 4/i)).toBeVisible({ timeout: 15000 })
-
-    // Fix default hours validation issue (midnight/early morning close times fail the validation check close > open)
-    const rows = freshAdminPage.locator('tbody tr')
-    for (let i = 0; i < 6; i++) {
-      await rows.nth(i).locator('input[type="time"]').nth(1).fill('23:00')
-    }
-
+    // Step 3: canchas inline (nombre precargado; solo falta el precio)
+    await expect(freshAdminPage.getByText(/paso 3 de 4/i).first()).toBeVisible({ timeout: 15000 })
+    await freshAdminPage.getByPlaceholder(/20\.000/).fill('20.000')
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_3')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
-    // Step 4: MP credentials
+    // Step 4: señas (cards de decisión)
     try {
-      await expect(freshAdminPage.getByText(/paso 4 de 4/i)).toBeVisible({ timeout: 15000 })
+      await expect(freshAdminPage.getByText(/paso 4 de 4/i).first()).toBeVisible({ timeout: 15000 })
     } catch (err) {
       console.log("=== STEP 4 VISIBILITY FAILURE DETAILS ===")
       console.log("Current URL:", freshAdminPage.url())
@@ -256,9 +250,13 @@ test.describe('UX Audit Screenshot Capturer', () => {
       throw err
     }
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_4')
-    await freshAdminPage.getByRole('button', { name: /terminar sin seña/i }).click()
+    await freshAdminPage.getByText(/sin seña por ahora/i).click()
+    await freshAdminPage.getByRole('button', { name: /terminar y ver mi complejo/i }).click()
 
-    // Onboarding redirects to dashboard (which is empty)
+    // Cierre peak-end del wizard → panel
+    await expect(freshAdminPage).toHaveURL(/\/onboarding\/listo/, { timeout: 20000 })
+    await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_listo')
+    await freshAdminPage.getByRole('link', { name: /ir a mi panel/i }).click()
     await expect(freshAdminPage).toHaveURL(/\/dashboard/, { timeout: 20000 })
     await takeShot(freshAdminPage, 'special_states', 'dashboard_vacio')
 

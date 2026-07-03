@@ -36,7 +36,7 @@ test.describe('onboarding', () => {
 
     test('has link to login for existing users', async ({ page }) => {
       await page.goto('/register')
-      const loginLink = page.getByRole('link', { name: /inici[áa] sesi[óo]n/i })
+      const loginLink = page.getByRole('link', { name: /^ingresar$/i })
       await expect(loginLink).toBeVisible()
       await expect(loginLink).toHaveAttribute('href', '/login')
     })
@@ -52,18 +52,18 @@ test.describe('onboarding', () => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
-      // Fresh admin always lands on /onboarding step 1
-      await expect(page.getByText(/paso \d+ de 4/i)).toBeVisible()
+      // Fresh admin always lands on /onboarding step 1. El label de progreso
+      // existe en el rail desktop y en el header mobile (uno visible por
+      // viewport) → .first().
+      await expect(page.getByText(/paso \d+ de 4/i).first()).toBeVisible()
     })
 
-    test('wizard shows progress stepper', async ({ page, freshAdminStorageState }) => {
+    test('wizard shows single progress indicator with goal gradient', async ({ page, freshAdminStorageState }) => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
-      // Progress indicator
-      await expect(page.getByText(/paso \d+ de 4/i)).toBeVisible()
-      // Percentage indicator
-      await expect(page.getByText(/%/)).toBeVisible()
+      // "Paso 1 de 4 · 25%": la cuenta arranca regalada (MASTER §9).
+      await expect(page.getByText(/paso 1 de 4 · 25\s?%/i).first()).toBeVisible()
     })
   })
 
@@ -82,35 +82,48 @@ test.describe('onboarding', () => {
       await expect(page.getByRole('button', { name: /continuar/i })).toBeVisible()
     })
 
-    test('completes full 4-step wizard and lands on /dashboard', async ({ page, freshAdminStorageState }) => {
+    test('completes full 4-step wizard and lands on /onboarding/listo', async ({ page, freshAdminStorageState }) => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
       await expect(page).toHaveURL(/\/onboarding/)
 
-      // Step 1: complex identity — fill required fields
-      // Labels use className without for/htmlFor, so locate by placeholder
+      // Step 1: identidad del complejo
       await expect(page.getByRole('heading', { name: /tu complejo/i })).toBeVisible({ timeout: 10_000 })
       await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard E2E')
       await page.getByPlaceholder(/av\. corrientes/i).fill('Av. Test 123')
       await page.getByPlaceholder(/luj[aá]n/i).fill('Buenos Aires')
       await page.locator('select[name="province"]').selectOption({ index: 1 })
       await page.getByPlaceholder(/\+54 9 11/i).fill('+5491100000000')
-      await page.getByPlaceholder(/admin@complejo\.com/i).fill('wizard-e2e@turnogol.test')
+      await page.getByPlaceholder(/hola@complejo\.com/i).fill('wizard-e2e@turnogol.test')
       await page.getByRole('button', { name: /continuar/i }).click()
 
-      // Step 2: courts info-only — just continue
-      await expect(page.getByText(/paso 2 de 4/i)).toBeVisible({ timeout: 10_000 })
+      // Step 2: horarios (general + excepciones). Los defaults llegan saneados
+      // (cierres de madrugada → 00:00), así que Continuar sin tocar nada es
+      // válido — antes fallaba con "cierre posterior a apertura".
+      await expect(page.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 10_000 })
+      // exact: los rows de días también dicen "· horario general" (strict mode)
+      await expect(page.getByText('Horario general', { exact: true })).toBeVisible()
       await page.getByRole('button', { name: /continuar/i }).click()
 
-      // Step 3: schedule (pre-filled defaults)
-      await expect(page.getByText(/paso 3 de 4/i)).toBeVisible({ timeout: 10_000 })
-      await page.getByRole('button', { name: /continuar/i }).click()
+      // Step 3: canchas inline — nombre precargado, solo falta el precio
+      await expect(page.getByText(/paso 3 de 4/i).first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: /tus canchas/i })).toBeVisible()
+      await page.getByPlaceholder(/20\.000/).fill('20.000')
+      await page.getByRole('button', { name: /^continuar$/i }).click()
 
-      // Step 4: skip MP ("Terminar sin seña" button)
-      await expect(page.getByText(/paso 4 de 4/i)).toBeVisible({ timeout: 10_000 })
-      await page.getByRole('button', { name: /terminar sin seña/i }).click()
+      // Step 4: señas — elegir "Sin seña por ahora" cambia el CTA primario
+      await expect(page.getByText(/paso 4 de 4/i).first()).toBeVisible({ timeout: 10_000 })
+      await page.getByText(/sin seña por ahora/i).click()
+      await page.getByRole('button', { name: /terminar y ver mi complejo/i }).click()
 
-      // Landed on /dashboard
+      // Cierre peak-end: link público + compartir (el Aha Moment empieza acá)
+      await expect(page).toHaveURL(/\/onboarding\/listo/, { timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: /tu complejo está online/i })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('button', { name: /copiar link/i })).toBeVisible()
+
+      // "Ir a mi panel" aterriza en el dashboard con el tenant creado y sus
+      // canchas listas (la checklist ya arranca con canchas + horarios hechos)
+      await page.getByRole('link', { name: /ir a mi panel/i }).click()
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
       await expect(page.getByText(/Complejo Wizard E2E/i).first()).toBeVisible({ timeout: 10_000 })
     })

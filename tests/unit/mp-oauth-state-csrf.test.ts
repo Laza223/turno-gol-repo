@@ -8,6 +8,10 @@ import { NextRequest } from 'next/server'
 vi.mock('@/modules/tenants/tenant.service', () => ({
   connectMercadoPago: vi.fn(async () => {}),
   completeOnboarding: vi.fn(async () => {}),
+  // Default: tenant en pleno wizard (onboarding incompleto) → el callback activa
+  // la seña y cierra en /onboarding/listo. El caso "reconexión" lo overridea.
+  getTenantById: vi.fn(async () => ({ id: 'tenant-xyz-abc', settings: {} })),
+  updateTenantSettings: vi.fn(async () => {}),
 }))
 
 // El callback ahora revalida sesión + rol (audit_report.md 3-15): sin esto
@@ -43,7 +47,12 @@ const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(
 global.fetch = fetchMock as unknown as typeof global.fetch
 
 import { GET as mpCallback } from '@/app/api/mp/callback/route'
-import { connectMercadoPago, completeOnboarding } from '@/modules/tenants/tenant.service'
+import {
+  connectMercadoPago,
+  completeOnboarding,
+  getTenantById,
+  updateTenantSettings,
+} from '@/modules/tenants/tenant.service'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffRole } from '@/modules/staff/staff.service'
 
@@ -79,6 +88,10 @@ beforeEach(() => {
   fetchMock.mockClear()
   vi.mocked(connectMercadoPago).mockClear()
   vi.mocked(completeOnboarding).mockClear()
+  vi.mocked(updateTenantSettings).mockClear()
+  vi.mocked(getTenantById)
+    .mockReset()
+    .mockResolvedValue({ id: TENANT, settings: {} } as never)
   vi.mocked(extractAuthUser).mockReset().mockResolvedValue(ADMIN_USER as never)
   vi.mocked(getStaffRole).mockReset().mockResolvedValue('admin')
 })
@@ -89,7 +102,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
   // fetch count, so neither would catch: wrong tenantId extracted from payload,
   // tokens persisted in plaintext, user_id not stringified, or onboarding never
   // completed. We now assert the full observable side effect.
-  it('persiste tokens ENCRIPTADOS para el tenant correcto, completa onboarding y redirige a /dashboard', async () => {
+  it('persiste tokens ENCRIPTADOS, activa la seña, completa onboarding y redirige a /onboarding/listo', async () => {
     const state = makeState(TENANT, SECRET)
     const req = new NextRequest(
       `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
@@ -97,10 +110,10 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
 
     const res = await mpCallback(req)
 
-    // Redirect to dashboard.
+    // Redirect al cierre peak-end del wizard (pages/onboarding.md §6.3).
     expect(res.status).toBeGreaterThanOrEqual(300)
     expect(res.status).toBeLessThan(400)
-    expect(res.headers.get('location')).toMatch(/\/dashboard$/)
+    expect(res.headers.get('location')).toMatch(/\/onboarding\/listo$/)
 
     // Tokens stored under the tenant decoded from the SIGNED payload, encrypted.
     expect(connectMercadoPago).toHaveBeenCalledTimes(1)
@@ -110,9 +123,30 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
       mpUserId: '1',
       mpPublicKey: 'pk',
     })
+    // Conectar desde el wizard = elección "Sí, cobrar seña" → seña activa.
+    expect(updateTenantSettings).toHaveBeenCalledWith(TENANT, { requires_deposit: true })
     // Onboarding flips to complete for that same tenant.
     expect(completeOnboarding).toHaveBeenCalledTimes(1)
     expect(completeOnboarding).toHaveBeenCalledWith(TENANT)
+  })
+
+  it('reconexión (onboarding ya completo): NO toca la seña y redirige a facturación', async () => {
+    vi.mocked(getTenantById).mockResolvedValue({
+      id: TENANT,
+      settings: { onboarding_completed: true },
+    } as never)
+    const state = makeState(TENANT, SECRET)
+    const req = new NextRequest(
+      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
+    )
+
+    const res = await mpCallback(req)
+
+    expect(res.headers.get('location')).toMatch(/\/settings\/facturacion$/)
+    expect(connectMercadoPago).toHaveBeenCalledTimes(1)
+    // Respeta la config del admin: reconectar MP no re-activa la seña.
+    expect(updateTenantSettings).not.toHaveBeenCalled()
+    expect(completeOnboarding).not.toHaveBeenCalled()
   })
 
   it('intercambia el code en el endpoint de MP con grant_type y credenciales correctas', async () => {
@@ -240,7 +274,7 @@ describe('MP OAuth callback state expiry (replay protection, #10)', () => {
       `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
     )
     const res = await mpCallback(req)
-    expect(res.headers.get('location')).toMatch(/\/dashboard$/)
+    expect(res.headers.get('location')).toMatch(/\/onboarding\/listo$/)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 

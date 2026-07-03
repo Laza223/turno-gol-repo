@@ -578,7 +578,6 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 4. **Icon-only mudos en Reservas**: toggles de vista sin tooltip → §7.4 (el `Tooltip` de `ui/` ya existe; la grilla ya lo usa).
 5. **Landing mobile**: header desborda a la derecha (Ingresar cortado), valor de fecha trunca ("01/0..."), toast "1 error" → §6.3, §6.7.
 6. **Coherencia de journey de tema**: `(public)/layout.tsx` fuerza dark con `<div className="dark">` (además `color-scheme` queda light → controles nativos/scrollbars inconsistentes), mientras `(player)` y `reserva/` son theme-adaptive. Un jugador en light salta dark→light dentro del mismo flujo. **REQUIERE INPUT (decisión de producto):** (a) público theme-adaptive completo [recomendada: el rediseño 2026-06-26 ya pagó el costo], o (b) público always-dark como identidad — entonces usar `forcedTheme` de next-themes y asumir el salto. Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
-7. **Onboarding wizard**: doble indicador de progreso (barra + segmentos) — dejar uno; primera impresión sin marca (considerar banda/texture sutil del sistema).
 
 ### P2 — polish
 8. Teléfonos sin formato (`+541100000000` en página de complejo) → §8.4.
@@ -597,7 +596,13 @@ rediseño de Caja (spec nueva `pages/caja.md`: KPIs a `StatCard` con delta `tone
 invertidas, cierre peak-end §9 —diálogo no-destructivo + CierreCard verde—, coachmark de primera
 visita `tg-hint-caja-cierre` [ex P2.8], chips en vez de selects en el modal de movimiento,
 `formatArsContable` único §8.2 —mueren 3 `formatARS` locales—, hora 24h forzada `hourCycle h23`,
-fecha humana en vez de ISO, label de `abonado_payment` que llegaba crudo a la UI).
+fecha humana en vez de ISO, label de `abonado_payment` que llegaba crudo a la UI), rediseño del
+onboarding wizard [ex P1.7] (spec nueva `pages/onboarding.md`: rail de marca con lista de pasos =
+indicador único §9, creación de canchas + precios inline —doc10 siempre lo pidió—, horarios
+general+excepciones compartidos con settings via `ScheduleFields`, `horariosSchema` canónico en el
+wizard —muere el scheduleSchema local que rechazaba sus propios defaults—, cierre peak-end
+`/onboarding/listo` con WhatsApp share, el callback MP activa `requires_deposit` solo en flujo
+wizard, placeholders que caben §6.3 y preview de URL veraz `/c/slug`).
 
 ---
 

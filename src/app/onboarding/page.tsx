@@ -2,14 +2,21 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { resolveStaffTenants } from '@/modules/auth/auth.service'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { StepIdentity } from './components/StepIdentity'
-import { StepCourts } from './components/StepCourts'
-import { StepSchedule } from './components/StepSchedule'
-import { StepPayments } from './components/StepPayments'
+import { listCourts } from '@/modules/courts/court.service'
+import { withTenantContext } from '@/shared/db/client'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
-import { Logo } from '@/components/ui/logo'
+import type { CourtRow } from '@/modules/courts/court.types'
+import { WizardShell } from './components/WizardShell'
+import { StepIdentity } from './components/StepIdentity'
+import { StepSchedule } from './components/StepSchedule'
+import { StepCourts } from './components/StepCourts'
+import { StepPayments } from './components/StepPayments'
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string }
+}) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff') redirect('/login')
   if (!user.staffUserId) redirect('/login')
@@ -24,56 +31,36 @@ export default async function OnboardingPage() {
     if (tenantData) {
       const settings = tenantData.settings as TenantSettings
       if (settings.onboarding_completed) redirect('/dashboard')
-      currentStep = (settings.onboarding_step ?? 1) + 1
+      currentStep = Math.min((settings.onboarding_step ?? 1) + 1, 4)
     }
   }
 
+  // El paso Canchas lista las ya creadas (revisita con "Volver"): permite
+  // continuar sin drafts nuevos y evita duplicados por doble envío.
+  let existingCourts: CourtRow[] = []
+  if (currentStep === 3 && tenantData) {
+    const tenantId = tenantData.id
+    existingCourts = await withTenantContext(tenantId, (tx) => listCourts(tenantId, tx))
+  }
+
   return (
-    <div className="min-h-screen bg-muted/40 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo header */}
-        <div className="mb-6 flex items-center justify-center">
-          <Logo variant="horizontal" textClassName="text-foreground" iconClassName="bg-card border-border shadow-sm" />
-        </div>
-
-        <div className="card-premium rounded-2xl p-8">
-          {/* Stepper */}
-          <div className="mb-8">
-            <div className="flex justify-between text-xs font-medium text-muted-foreground mb-3">
-              <span>Paso {currentStep} de 4</span>
-              <span className="tabular-nums text-emerald-700 dark:text-emerald-400">{Math.round((currentStep / 4) * 100)}%</span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${(currentStep / 4) * 100}%` }}
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-2">
-              {[1, 2, 3, 4].map((n) => (
-                <div
-                  key={n}
-                  className={
-                    n <= currentStep
-                      ? 'flex-1 h-1 rounded-full bg-emerald-500'
-                      : 'flex-1 h-1 rounded-full bg-slate-200'
-                  }
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Step content */}
-          {currentStep === 1 && <StepIdentity />}
-          {currentStep === 2 && <StepCourts />}
-          {currentStep === 3 && tenantData && (
-            <StepSchedule openingHours={tenantData.openingHours} />
-          )}
-          {currentStep === 4 && (
-            <StepPayments mpConnected={!!tenantData?.mpConnectedAt} />
-          )}
-        </div>
+    <WizardShell currentStep={currentStep} wide={currentStep === 3}>
+      <div className="card-premium rounded-2xl p-6 md:p-8">
+        {currentStep === 1 && <StepIdentity />}
+        {currentStep === 2 && tenantData && (
+          <StepSchedule
+            hours={tenantData.openingHours}
+            closesNextDay={tenantData.closesNextDay}
+          />
+        )}
+        {currentStep === 3 && tenantData && <StepCourts existingCourts={existingCourts} />}
+        {currentStep === 4 && tenantData && (
+          <StepPayments
+            mpConnected={!!tenantData.mpConnectedAt}
+            mpError={searchParams?.error ?? null}
+          />
+        )}
       </div>
-    </div>
+    </WizardShell>
   )
 }

@@ -6,13 +6,11 @@ import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
-import { horariosSchema } from '@/modules/tenants/opening-hours.schema'
+import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/opening-hours.schema'
 
 export type HorariosActionResult =
   | { success: true }
   | { success: false; error: string }
-
-const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
 export async function updateHorariosAction(
   _prevState: HorariosActionResult,
@@ -25,23 +23,7 @@ export async function updateHorariosAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const raw = {
-    ...Object.fromEntries(
-      DAYS.map((day) => [
-        day,
-        {
-          open: formData.get(`${day}_open`) as string,
-          close: formData.get(`${day}_close`) as string,
-          // Hidden input presente solo si el día está cerrado (valor 'on').
-          closed: formData.get(`${day}_closed`) === 'on',
-        },
-      ]),
-    ),
-    // Checkbox nativo: presente = 'on'. Día operativo (cierre post-medianoche).
-    closesNextDay: formData.get('closes_next_day') === 'on',
-  }
-
-  const parsed = horariosSchema.safeParse(raw)
+  const parsed = horariosSchema.safeParse(horariosFormDataToInput(formData))
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Horarios inválidos.' }
   }

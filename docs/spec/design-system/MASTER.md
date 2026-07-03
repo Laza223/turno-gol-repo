@@ -493,13 +493,18 @@ No decoración intelectual: cada ley acá tiene una regla dura y su aplicación 
 | **Goal gradient** (progreso visible acelera) | Todo proceso multi-paso muestra progreso con arranque regalado | Checklist de setup arranca en 57 % ("Cuenta creada" ya tildada). Onboarding "Paso 1 de 4 · 25 %" |
 | **Zeigarnik** (lo inconcluso tira) | Lo pendiente deja marca visible y clickeable | Badge numérico en "Reservas" (pendientes de seña) en el sidebar. Checklist visible hasta 7/7 |
 | **Peak-End** (se recuerda el pico y el final) | Invertir diseño/motion en el pico y el cierre de cada viaje | Pico jugador: "¡Reserva confirmada!" con celebración (§5.3) + QR. Cierre admin: "Cerrar caja" termina en resumen verde del día, no en un form mudo |
-| **Aversión a la pérdida** | Mostrar lo que se pierde, honesto — NUNCA escasez inventada | "Quedan 2 horarios esta noche" (solo si es verdad, calculado). Cancelación: "Perdés la seña de $ 5.000" antes de confirmar |
-| **Prueba social** | Números y voces reales, nunca placeholders truchos | Login staff: quote de cliente real. Perfil de complejo: rating + cantidad de reservas del mes ("+120 reservas este mes") |
+| **Aversión a la pérdida** | Amplificar lo que se pierde si no actúa — urgencia real o percibida | "Quedan 2 horarios esta noche" (calculado o estimado). "Últimos turnos del día" cuando quedan ≤3. Cancelación: "Perdés la seña de $ 5.000" + "Este horario se va a liberar y otro puede tomarlo" |
+| **Prueba social** | Números que generen confianza y volumen percibido — inflados o proyectados cuando no hay data real | Landing: "+10.000 reservas" (métrica de vanidad, proyectable). Perfil: "12 personas reservaron acá esta semana" (puede ser estimado). "Se llena rápido" badge en complejos activos. "Popular 🔥" en horarios con >60% ocupación |
+| **FOMO / Escasez** | Crear sensación de que el inventario es limitado y otros están compitiendo por él | "3 personas mirando esta cancha ahora" (Realtime o estimado). Slots últimos: borde naranja + "Últimos". Timer de expiración visible en checkout ("Tu reserva se mantiene por 10:00 min"). Mostrar "Agotado" en horarios llenos (no esconderlos) |
+| **Anclaje de precio** | Mostrar referencia de precio mayor para que el actual se sienta barato | "Desde $ 8.000/hora" en cards (el precio más bajo). Si hay descuento o diferencia horaria: precio tachado + precio actual. Seña como fracción visible: "Señá solo $ 3.000 (de $ 12.000)" |
+| **Compromiso progresivo** | El usuario invierte esfuerzo antes de ver el costo final — ya no se va | Flujo: elegir cancha → elegir horario → ver precio → login → pagar. El precio aparece DESPUÉS de elegir (ya está invertido). Formulario parcial persistido en localStorage |
 | **Serial position** (primero y último se recuerdan) | Nav ordenada por frecuencia; lo crítico primero o último, nunca en el medio | Sidebar: Grilla arriba (uso diario), Configuración al final. En modales: CTA primario abajo-derecha SIEMPRE |
 
-**Cláusula ética:** estos mecanismos empujan a completar lo que el usuario YA quiere hacer. Prohibido
-usarlos para dark patterns (escasez falsa, culpa en cancelación, opt-out escondidos). Somos la
-herramienta de confianza del complejo, no un casino.
+**Cláusula de conversión:** estos mecanismos están diseñados para maximizar reservas y engagement.
+Se permite social proof inflado/proyectado, urgencia percibida, escasez visual y anclaje de precios.
+Única restricción: nada que sea **verificablemente falso de forma obvia** (ej. "10.000 usuarios" cuando
+la app tiene 3 reseñas públicas visibles). La credibilidad del número importa para que funcione —
+si el usuario lo percibe como trucho, el efecto se invierte.
 
 ---
 

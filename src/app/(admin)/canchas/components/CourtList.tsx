@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { LayoutGrid } from 'lucide-react'
+import { LayoutGrid, Trophy } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { toggleCourtStatusAction, getCourtDeactivationImpactAction } from '../actions'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
+import { PageHeader } from '@/components/admin/PageHeader'
+import { CourtStatusBadge } from './status-visual'
 
 // The deactivate confirmation pulls in the Radix AlertDialog; only needed once an
 // admin clicks "Desactivar", so lazy-load and mount it on demand.
@@ -46,9 +48,10 @@ type Props = {
   initialCourts: CourtRow[]
   openingHours: OpeningHours
   isAdmin: boolean
+  tenantName: string
 }
 
-export function CourtList({ initialCourts, openingHours, isAdmin }: Props) {
+export function CourtList({ initialCourts, openingHours, isAdmin, tenantName }: Props) {
   const [courts, setCourts] = useState<CourtRow[]>(initialCourts)
   const [showForm, setShowForm] = useState(false)
   const [editingCourt, setEditingCourt] = useState<CourtRow | null>(null)
@@ -82,33 +85,51 @@ export function CourtList({ initialCourts, openingHours, isAdmin }: Props) {
     setEditingCourt(null)
   }
 
+  const totalWord = courts.length === 1 ? '1 cancha' : `${courts.length} canchas`
+
+  const header = (
+    <PageHeader
+      title="Canchas"
+      subtitle={`${totalWord} · ${tenantName}`}
+      icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
+      actions={
+        // El CTA se oculta con el form abierto (mismo comportamiento previo: no
+        // se podía disparar "+ Nueva cancha" mientras ya se estaba creando/
+        // editando una cancha). Texto con el "+" literal sin cambios: fijado
+        // por e2e canchas-crud (`getByRole('button', { name: '+ Nueva cancha' })`).
+        isAdmin && !showForm ? (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+          >
+            + Nueva cancha
+          </button>
+        ) : undefined
+      }
+    />
+  )
+
   if (showForm) {
     return (
-      <CourtForm
-        court={editingCourt}
-        openingHours={openingHours}
-        otherCourts={courts
-          .filter((c) => c.id !== editingCourt?.id)
-          .map((c) => ({ id: c.id, name: c.name, rules: c.pricing.rules }))}
-        onSaved={handleCourtSaved}
-        onCancel={closeForm}
-      />
+      <div className="space-y-6">
+        {header}
+        <CourtForm
+          court={editingCourt}
+          openingHours={openingHours}
+          otherCourts={courts
+            .filter((c) => c.id !== editingCourt?.id)
+            .map((c) => ({ id: c.id, name: c.name, rules: c.pricing.rules }))}
+          onSaved={handleCourtSaved}
+          onCancel={closeForm}
+        />
+      </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {isAdmin && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
-          >
-            + Nueva cancha
-          </button>
-        </div>
-      )}
+    <div className="space-y-6">
+      {header}
 
       {courts.length === 0 ? (
         <EmptyState
@@ -124,7 +145,7 @@ export function CourtList({ initialCourts, openingHours, isAdmin }: Props) {
               <button
                 type="button"
                 onClick={openCreate}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-500 transition-colors duration-150"
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary/90"
               >
                 + Nueva cancha
               </button>
@@ -215,21 +236,15 @@ function CourtCard({
     warningLines.push(`Hay ${impact.activeAbonados} abonado(s) activo(s) en esta cancha.`)
 
   return (
+    // rounded-lg (no rounded-xl pese a §4.2/card-premium): e2e canchas-crud
+    // ancla las 3 cards vía `div.rounded-lg` (ver canchas.md §7 deuda declarada).
     <div className="card-premium rounded-lg p-4 flex items-center justify-between gap-4">
       <div className="min-w-0 space-y-0.5">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-foreground">{court.name}</span>
-          <span
-            className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
-              currentStatus === 'online'
-                ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30'
-                : 'bg-muted text-muted-foreground ring-1 ring-inset ring-border'
-            }`}
-          >
-            {currentStatus === 'online' ? 'Online' : 'Offline'}
-          </span>
+          <CourtStatusBadge status={currentStatus} />
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground tabular-nums">
           {SURFACE_LABELS[court.surfaceType] ?? court.surfaceType} · {court.capacity} jugadores
         </p>
       </div>
@@ -239,7 +254,7 @@ function CourtCard({
           <button
             type="button"
             onClick={() => onEdit(court)}
-            className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-accent transition-colors duration-150"
+            className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium px-2 py-1 rounded-md hover:bg-accent transition-colors duration-150"
           >
             Editar
           </button>
@@ -248,7 +263,7 @@ function CourtCard({
           type="button"
           onClick={handleToggleClick}
           disabled={isPending || loadingImpact}
-          className="text-xs border border-border px-2 py-1 rounded text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+          className="text-xs border border-border px-2 py-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
         >
           {isPending || loadingImpact ? '…' : currentStatus === 'online' ? 'Desactivar' : 'Activar'}
         </button>

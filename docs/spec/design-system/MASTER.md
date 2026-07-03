@@ -615,7 +615,17 @@ Cerrados 2026-07-03: rediseño de Abonados (spec nueva `pages/abonados.md`: badg
 columnas de precio, "Pausar"/"Reactivar" a `text-amber-700`/`text-emerald-700` con par `dark:`
 —antes `yellow-700` sin dark y `green-700` fuera de la paleta de marca—, CTA y píldoras a
 `bg-primary` + ícono `UserPlus` + sentence case "Nuevo abonado", `PageHeader` con subtítulo
-contextual, empty state consciente del filtro activo, skeleton con silueta real).
+contextual, empty state consciente del filtro activo, skeleton con silueta real), rediseño del
+listado de Canchas (spec nueva `pages/canchas.md`: badge de estado ícono+texto §6.5 vía
+`status-visual.tsx` —reemplaza el hue `green-*` genérico por el verde de marca—, `PageHeader` con
+CTA "+ Nueva cancha" movido al header (subtítulo con conteo, se oculta con el form abierto), CTA/
+empty-state a `bg-primary`/`rounded-lg`, botones secundarios a `rounded-md`, `tabular-nums` en
+aforo, skeleton con silueta real sobre el mismo contenedor que la página; **deuda declarada**:
+`CourtCard` queda en `rounded-lg` en vez de `rounded-xl` —`card-premium` pide `rounded-xl`— porque
+`tests/e2e/canchas-crud.spec.ts` ancla las cards por esa clase (`div.rounded-lg`); mismo lock de
+e2e mantiene el CTA en `"+ Nueva cancha"` con el `+` literal en vez del sentence-case de
+Abonados/Reservas — ambos quedan REQUIERE INPUT en `pages/canchas.md` §7 para migrar el test antes
+de corregir el estilo).
 
 ---
 

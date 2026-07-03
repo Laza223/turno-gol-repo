@@ -13,7 +13,8 @@
 **Proyecto:** TurnoGol — SaaS B2B2C para complejos de fútbol (Argentina)
 **Stack:** Next.js 14 · TypeScript · shadcn/ui · Tailwind CSS · Lucide · next-themes
 **Versión:** 2.1 — 2026-07-03 (§9: la cláusula ética se reemplaza por la cláusula de agresividad
-comercial — marketing a fondo, límite único en claims verificables falsos)
+comercial — marketing a fondo, límite único en claims verificables falsos; incorpora las tácticas
+FOMO/Escasez, Anclaje de precio y Compromiso progresivo de `737091a` con ejemplos calculables)
 **Anterior:** 2.0 — 2026-07-02 (reescritura: tokens duales light/dark reales, contraste re-verificado,
 formato es-AR, Guided UX, psicología aplicada, dos personalidades)
 **Reemplaza:** v1 (2026-04-27) + nota dark-premium (2026-06-26)
@@ -496,7 +497,10 @@ No decoración intelectual: cada ley acá tiene una regla dura y su aplicación 
 | **Zeigarnik** (lo inconcluso tira) | Lo pendiente deja marca visible y clickeable | Badge numérico en "Reservas" (pendientes de seña) en el sidebar. Checklist visible hasta 7/7 |
 | **Peak-End** (se recuerda el pico y el final) | Invertir diseño/motion en el pico y el cierre de cada viaje | Pico jugador: "¡Reserva confirmada!" con celebración (§5.3) + QR. Cierre admin: "Cerrar caja" termina en resumen verde del día, no en un form mudo |
 | **Aversión a la pérdida** | Mostrar lo que se pierde con máxima crudeza; el dato sale de la DB | "Quedan 2 horarios esta noche" calculado en vivo y destacado. Cancelación: "Perdés la seña de $ 5.000" antes de confirmar |
-| **Prueba social** | Protagonista y repetida; todo número aguanta verificación | Perfil de complejo: rating + "+120 reservas este mes" (calculado). Actividad en vivo ("hoy se reservaron N turnos en tu zona") si el dato es real |
+| **Prueba social** | Protagonista y repetida; todo número aguanta verificación | Perfil de complejo: rating + "+120 reservas este mes" (calculado). "Se llena rápido" / badge "Popular" (ícono `Flame`) en horarios con >60 % de ocupación real. "12 personas reservaron acá esta semana" calculado |
+| **FOMO / Escasez** | El inventario limitado se muestra a fondo — la competencia por el turno es real y se hace sentir | "3 personas están mirando esta cancha" solo vía Realtime/contador real. Últimos slots: tinte `warning` + "Últimos 2". Timer del hold visible en el checkout ("Tu turno queda reservado 15:00" — el TTL real). "Agotado" visible en horarios llenos, nunca esconderlos: el lleno vende |
+| **Anclaje de precio** | Referencia mayor real para que el precio actual se sienta oportunidad | "Desde $ 8.000" en cards (el precio real más bajo). Franja pico vs. valle: "$ 10.000 · a las 15:00 sale $ 8.000". Seña como fracción visible: "Señá solo $ 3.000 (de $ 12.000)" |
+| **Compromiso progresivo** | Cada paso invertido sube el costo de abandonar | Flujo: cancha → horario → resumen → login → pago: el login llega DESPUÉS de elegir turno (LoginGate del checkout, ya implementado). El precio se muestra desde la grilla (§12: cero sorpresas) — el compromiso se construye con pasos, no ocultando el costo |
 | **Serial position** (primero y último se recuerdan) | Nav ordenada por frecuencia; lo crítico primero o último, nunca en el medio | Sidebar: Grilla arriba (uso diario), Configuración al final. En modales: CTA primario abajo-derecha SIEMPRE |
 
 **Cláusula de agresividad comercial** (v2.1, reemplaza a la cláusula ética v2.0): en el lado

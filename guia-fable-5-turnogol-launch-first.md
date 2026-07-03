@@ -201,7 +201,7 @@ Texto para pegar al inicio de sesiones con Antigravity/Claude Code:
 
 ```text
 Regla de costo obligatoria:
-- No lances subagentes automáticamente.
+- No lances subagentes automáticamente sin pedirme aprobación.
 - No lances tareas paralelas sin pedirme aprobación.
 - Si necesitás subagentes, primero proponé: cantidad, modelo, objetivo, archivos, costo aproximado y criterio de corte.
 - Por defecto, toda exploración, lectura masiva, implementación y tests van con Sonnet.

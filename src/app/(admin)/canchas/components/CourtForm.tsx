@@ -18,7 +18,7 @@ const SURFACE_OPTIONS = [
   { value: 'tile', label: 'Baldosa' },
 ] as const
 
-const CAPACITY_OPTIONS = [5, 7, 8, 9, 11] as const
+const FORMAT_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11] as const
 
 type Props = {
   court: CourtRow | null
@@ -36,7 +36,7 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
 
   const [name, setName] = useState(court?.name ?? '')
   const [surfaceType, setSurfaceType] = useState<string>(court?.surfaceType ?? 'synthetic_grass')
-  const [capacity, setCapacity] = useState<number>(court?.capacity ?? 5)
+  const [format, setFormat] = useState<number>(court?.format ?? 5)
   // Cancha nueva arranca SIN precios (spec §3.3): los DEFAULT_RULES con precios
   // inventados podían irse a producción sin que nadie los tocara.
   const initialRules = court?.pricing.rules ?? []
@@ -89,7 +89,8 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
         }),
         name,
         surfaceType,
-        capacity,
+        format,
+        capacity: format * 2,
         status: court?.status ?? 'online',
         description: court?.description ?? null,
         pricing: { rules },
@@ -149,17 +150,17 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
 
         <div>
           <label className="block text-sm font-medium mb-1">
-            Capacidad <span className="text-red-500">*</span>
+            Formato <span className="text-red-500">*</span>
           </label>
           <select
-            name="capacity"
-            value={capacity}
-            onChange={(e) => setCapacity(Number(e.target.value))}
+            name="format"
+            value={format}
+            onChange={(e) => setFormat(Number(e.target.value))}
             className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
-            {CAPACITY_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                {c} jugadores
+            {FORMAT_OPTIONS.map((f) => (
+              <option key={f} value={f}>
+                Fútbol {f}
               </option>
             ))}
           </select>

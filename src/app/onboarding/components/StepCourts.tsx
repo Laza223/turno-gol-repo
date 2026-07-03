@@ -16,7 +16,7 @@ import {
 import { fieldClass, labelClass } from './wizard-styles'
 
 // Mismas opciones que el form de /canchas (consistencia > completitud).
-const FORMATS = [5, 7, 8, 9, 11] as const
+const FORMATS = [4, 5, 6, 7, 8, 9, 10, 11] as const
 
 const SURFACE_OPTIONS = [
   { value: 'synthetic_grass', label: 'Césped sintético' },

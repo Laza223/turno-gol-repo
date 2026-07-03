@@ -87,6 +87,7 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     name: t.name,
     description: t.description,
     logoUrl: t.logoUrl,
+    coverUrl: t.coverUrl,
     address: t.address,
     city: t.city,
     province: t.province,

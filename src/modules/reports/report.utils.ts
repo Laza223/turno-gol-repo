@@ -2,6 +2,30 @@ import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { MethodReport } from './report.types'
 import { capitalizeFirst } from '@/lib/format'
 
+export type TrendDelta = { direction: 'up' | 'down'; label: string }
+
+/**
+ * % de cambio de `prev` a `current`, listo para `StatCard.delta` (§6.4). `null`
+ * cuando no hay período previo comparable (`prev === 0`) — evita un "↑ Infinity%".
+ */
+export function computeDelta(current: number, prev: number, suffix = 'vs mes ant.'): TrendDelta | null {
+  if (prev === 0) return null
+  const pct = Math.round(((current - prev) / prev) * 100)
+  return { direction: pct >= 0 ? 'up' : 'down', label: `${Math.abs(pct)}% ${suffix}` }
+}
+
+const METHOD_LABELS: Record<MethodReport['method'], string> = {
+  cash: 'Efectivo',
+  transfer: 'Transferencia',
+  mercadopago: 'MercadoPago',
+  other: 'Otro',
+}
+
+/** Nombre es-AR de un método de pago (§8.1 — cero anglicismos en UI). */
+export function formatMethodLabel(method: MethodReport['method']): string {
+  return METHOD_LABELS[method]
+}
+
 // Matches getUTCDay() — 0=Sunday, 1=Monday, ..., 6=Saturday
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = (typeof DAY_KEYS)[number]

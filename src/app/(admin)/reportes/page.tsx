@@ -1,30 +1,30 @@
+import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
-import { Download, BarChart3 } from 'lucide-react'
+import Link from 'next/link'
+import { BarChart3, CalendarCheck, Download, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { EmptyState } from '@/components/ui/empty-state'
+import { StatCard } from '@/components/admin/StatCard'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getRevenueReport } from '@/modules/reports/report.service'
 import {
+  computeDelta,
+  formatMethodLabel,
   getMonthBounds,
   prevMonthStr,
   nextMonthStr,
   formatMonthLabel,
   isReportEmpty,
 } from '@/modules/reports/report.utils'
+import { formatArsContable } from '@/lib/format'
+import { OccupancyChart, TrendChart } from './ReportCharts'
 
-function formatARS(cents: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
-}
-
-function pctBadge(current: number, prev: number): string | null {
-  if (prev === 0) return null
-  const delta = Math.round(((current - prev) / prev) * 100)
-  return delta >= 0 ? `↑ ${delta}%` : `↓ ${Math.abs(delta)}%`
+/** Formato contable con signo (§2.5/§8.2): negativos en `−$ X,00` + `text-destructive`. */
+function signedArsContable(cents: number): ReactNode {
+  if (cents < 0) {
+    return <span className="text-destructive">{'−'}{formatArsContable(-cents)}</span>
+  }
+  return formatArsContable(cents)
 }
 
 function currentMonthStr(): string {
@@ -36,32 +36,36 @@ function isValidMonth(s: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(s)
 }
 
-function EmptyReportIllustration() {
+/** "Primera-vez espectral" (§7.2 MASTER, nombrada explícitamente para esta vista). */
+function GhostKpis() {
+  const ghosts = [
+    { label: 'Ingresos', value: '$ 85.000,00', icon: <TrendingUp className="h-4 w-4" aria-hidden="true" />, accent: 'emerald' as const },
+    { label: 'Ajustes', value: '$ 0,00', icon: <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />, accent: 'slate' as const },
+    { label: 'Balance', value: '$ 85.000,00', icon: <Wallet className="h-4 w-4" aria-hidden="true" />, accent: 'emerald' as const },
+    { label: 'Reservas', value: '32', icon: <CalendarCheck className="h-4 w-4" aria-hidden="true" />, accent: 'slate' as const },
+  ]
+
   return (
-    <svg width="160" height="100" viewBox="0 0 160 100" fill="none" aria-hidden="true">
-      <rect x="8" y="8" width="144" height="84" rx="8" className="fill-slate-50 dark:fill-slate-800" />
-      <line
-        x1="24"
-        y1="76"
-        x2="136"
-        y2="76"
-        className="stroke-slate-200 dark:stroke-slate-700"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <rect x="32" y="52" width="14" height="24" rx="2" className="fill-emerald-200 dark:fill-emerald-700" />
-      <rect x="56" y="40" width="14" height="36" rx="2" className="fill-emerald-300 dark:fill-emerald-600" />
-      <rect x="80" y="58" width="14" height="18" rx="2" className="fill-emerald-200 dark:fill-emerald-700" />
-      <rect x="104" y="30" width="14" height="46" rx="2" className="fill-emerald-400 dark:fill-emerald-500" />
-      <path
-        d="M32 46 C 56 28, 84 42, 126 20"
-        className="stroke-emerald-500 dark:stroke-emerald-400"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeDasharray="4 5"
-        fill="none"
-      />
-    </svg>
+    <div className="card-premium rounded-lg p-5">
+      <p className="text-sm font-medium text-muted-foreground">
+        <span aria-hidden="true">✦ </span>Así se verá tu mes cuando cargues reservas
+      </p>
+      <div
+        className="mt-4 grid grid-cols-2 gap-4 opacity-50 select-none sm:grid-cols-4"
+        aria-hidden="true"
+      >
+        {ghosts.map((g) => (
+          <StatCard key={g.label} label={g.label} value={g.value} icon={g.icon} accent={g.accent} className="pointer-events-none" />
+        ))}
+      </div>
+      <p className="mt-4 text-sm text-muted-foreground">Todavía no hay movimientos en este período.</p>
+      <Link
+        href="/grilla"
+        className="mt-2 inline-block text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
+      >
+        Cargá tu primera reserva desde la grilla
+      </Link>
+    </div>
   )
 }
 
@@ -99,20 +103,8 @@ export default async function ReportesPage({
   const csvFrom = from.toISOString().split('T')[0]
   const csvTo = new Date(to.getTime() - 86400000).toISOString().split('T')[0]
 
-  const kpis = [
-    {
-      label: 'Ingresos',
-      value: formatARS(report.income),
-      change: report.prevPeriod ? pctBadge(report.income, report.prevPeriod.income) : null,
-    },
-    { label: 'Ajustes', value: formatARS(report.adjustment), change: null },
-    {
-      label: 'Balance',
-      value: formatARS(report.balance),
-      change: report.prevPeriod ? pctBadge(report.balance, report.prevPeriod.balance) : null,
-    },
-    { label: 'Reservas', value: String(report.bookingCount), change: null },
-  ]
+  const incomeDelta = report.prevPeriod ? computeDelta(report.income, report.prevPeriod.income) : null
+  const balanceDelta = report.prevPeriod ? computeDelta(report.balance, report.prevPeriod.balance) : null
 
   return (
     <div className="space-y-6">
@@ -122,68 +114,78 @@ export default async function ReportesPage({
         icon={<BarChart3 className="h-6 w-6" aria-hidden="true" />}
         actions={
           <div className="flex items-center gap-2">
-          <form method="get" action="/reportes">
-            <input type="hidden" name="month" value={prev} />
-            <button
-              type="submit"
-              className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
-              aria-label="Mes anterior"
-            >
-              ←
-            </button>
-          </form>
+            <form method="get" action="/reportes">
+              <input type="hidden" name="month" value={prev} />
+              <button
+                type="submit"
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                aria-label="Mes anterior"
+              >
+                ←
+              </button>
+            </form>
 
-          <span className="min-w-[11rem] text-center text-sm font-medium text-foreground">
-            {formatMonthLabel(month)}
-          </span>
+            <span className="min-w-[11rem] text-center text-sm font-medium text-foreground">
+              {formatMonthLabel(month)}
+            </span>
 
-          <form method="get" action="/reportes">
-            <input type="hidden" name="month" value={next} />
-            <button
-              type="submit"
-              disabled={next > currentMonthStr()}
-              className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Mes siguiente"
-            >
-              →
-            </button>
-          </form>
+            <form method="get" action="/reportes">
+              <input type="hidden" name="month" value={next} />
+              <button
+                type="submit"
+                disabled={next > currentMonthStr()}
+                className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Mes siguiente"
+              >
+                →
+              </button>
+            </form>
           </div>
         }
       />
 
       {isEmpty ? (
-        <EmptyState
-          illustration={<EmptyReportIllustration />}
-          title="Sin movimientos en este período"
-          description="Cuando tu complejo registre reservas y cobros, acá vas a ver los ingresos del mes, el balance, la ocupación de cada cancha y los métodos de pago más usados."
-        />
+        <GhostKpis />
       ) : (
         <>
           {/* KPI cards */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {kpis.map(({ label, value, change }) => (
-              <div
-                key={label}
-                className="card-premium rounded-lg p-4"
-              >
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {label}
-                </p>
-                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{value}</p>
-                {change && (
-                  <p
-                    className={
-                      'mt-0.5 text-xs ' +
-                      (change.startsWith('↑') ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')
-                    }
-                  >
-                    {change} vs mes ant.
-                  </p>
-                )}
-              </div>
-            ))}
+            <StatCard
+              label="Ingresos"
+              value={formatArsContable(report.income)}
+              icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
+              accent="emerald"
+              delta={incomeDelta ?? undefined}
+            />
+            <StatCard
+              label="Ajustes"
+              value={signedArsContable(report.adjustment)}
+              icon={<SlidersHorizontal className="h-4 w-4" aria-hidden="true" />}
+              accent="slate"
+            />
+            <StatCard
+              label="Balance"
+              value={signedArsContable(report.balance)}
+              icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
+              accent={report.balance >= 0 ? 'emerald' : 'red'}
+              delta={balanceDelta ?? undefined}
+              className={report.balance >= 0 ? 'ring-1 ring-emerald-600/20' : undefined}
+            />
+            <StatCard
+              label="Reservas"
+              value={report.bookingCount.toLocaleString('es-AR')}
+              icon={<CalendarCheck className="h-4 w-4" aria-hidden="true" />}
+              accent="slate"
+            />
           </div>
+
+          {/* Tendencia mensual */}
+          {report.prevPeriod && (
+            <TrendChart current={{ income: report.income, balance: report.balance }} prev={report.prevPeriod} />
+          )}
+
+          {/* Ocupación por cancha */}
+          {report.byCourt.length > 0 && <OccupancyChart byCourt={report.byCourt} />}
 
           {/* By court */}
           {report.byCourt.length > 0 && (
@@ -200,12 +202,12 @@ export default async function ReportesPage({
                     <th className="px-6 py-3 text-right">Ocupación</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {report.byCourt.map((c) => (
-                    <tr key={c.courtId} className="border-b border-slate-50 last:border-0">
+                    <tr key={c.courtId}>
                       <td className="px-6 py-3 text-foreground">{c.courtName}</td>
                       <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                        {formatARS(c.income)}
+                        {formatArsContable(c.income)}
                       </td>
                       <td className="px-6 py-3 text-right tabular-nums text-foreground">
                         {c.bookingCount}
@@ -233,12 +235,12 @@ export default async function ReportesPage({
                     <th className="px-6 py-3 text-right">Total</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {report.byMethod.map((m) => (
-                    <tr key={m.method} className="border-b border-slate-50 last:border-0">
-                      <td className="px-6 py-3 capitalize text-foreground">{m.method}</td>
+                    <tr key={m.method}>
+                      <td className="px-6 py-3 text-foreground">{formatMethodLabel(m.method)}</td>
                       <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                        {formatARS(m.total)}
+                        {formatArsContable(m.total)}
                       </td>
                     </tr>
                   ))}

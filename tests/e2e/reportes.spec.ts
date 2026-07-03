@@ -91,21 +91,24 @@ test.describe('Reportes', () => {
       await expect(page.getByRole('paragraph').filter({ hasText: 'Reservas' })).toBeVisible()
       // "Por cancha" table appears when there's at least one booking
       await expect(page.getByRole('heading', { name: /Por cancha/i })).toBeVisible()
-      // Cancha E2E 1 row should appear
-      await expect(page.getByText('Cancha E2E 1')).toBeVisible()
+      // Cancha E2E 1 row should appear in the "Por cancha" table. Scoped to a
+      // table cell: the occupancy chart also renders the court name as an
+      // SVG axis tick, and a plain getByText would match both (strict mode).
+      await expect(page.getByRole('cell', { name: 'Cancha E2E 1' })).toBeVisible()
     } finally {
       await supabase.from('cash_flows').delete().eq('id', cashflowId)
       await supabase.from('bookings').delete().eq('id', bookingId)
     }
   })
 
-  test('#2 edge — empty month shows "Sin movimientos"', async ({
+  test('#2 edge — empty month shows the ghost-KPI empty state', async ({
     page,
     adminStorageState,
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
     await page.goto('/reportes?month=2019-01')
-    await expect(page.getByText('Sin movimientos en este período')).toBeVisible()
+    await expect(page.getByText('Así se verá tu mes cuando cargues reservas')).toBeVisible()
+    await expect(page.getByText('Todavía no hay movimientos en este período.')).toBeVisible()
   })
 
   test('#3 edge — month nav navigates and next button gates future months', async ({

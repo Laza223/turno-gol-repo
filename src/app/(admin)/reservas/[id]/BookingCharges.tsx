@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { addBookingChargeAction } from '../actions'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { toast } from '@/hooks/use-toast'
+import { formatArs } from '@/lib/format'
 import type { BookingChargeRow } from '../queries'
 
 type Props = {
@@ -23,12 +24,10 @@ const METHOD_LABELS: Record<string, string> = {
   other: 'Otro',
 }
 
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-  }).format(centavos / 100)
+const DEPOSIT_STATUS_LABELS: Record<string, string> = {
+  pending: 'pendiente',
+  refunded: 'reembolsada',
+  not_required: 'no requerida',
 }
 
 export default function BookingCharges({
@@ -98,7 +97,7 @@ export default function BookingCharges({
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex items-center justify-between">
           <dt className="text-muted-foreground">Precio del turno</dt>
-          <dd className="font-semibold text-foreground">{formatARS(priceSnapshot)}</dd>
+          <dd className="font-semibold text-foreground">{formatArs(priceSnapshot)}</dd>
         </div>
         {depositAmount > 0 && (
           <div className="flex items-center justify-between">
@@ -107,10 +106,12 @@ export default function BookingCharges({
               {depositCounted > 0 ? (
                 <span className="text-emerald-600 dark:text-emerald-400">✓ pagada</span>
               ) : (
-                <span className="text-muted-foreground">({depositStatus})</span>
+                <span className="text-muted-foreground">
+                  ({DEPOSIT_STATUS_LABELS[depositStatus] ?? depositStatus})
+                </span>
               )}
             </dt>
-            <dd className="text-foreground">{formatARS(depositAmount)}</dd>
+            <dd className="text-foreground">{formatArs(depositAmount)}</dd>
           </div>
         )}
         {charges.map((c) => (
@@ -119,19 +120,19 @@ export default function BookingCharges({
               Cobro · {METHOD_LABELS[c.method] ?? c.method}
               {c.description && c.description !== 'Cobro de turno' ? ` · ${c.description}` : ''}
             </dt>
-            <dd className="text-foreground">{formatARS(c.amount)}</dd>
+            <dd className="text-foreground">{formatArs(c.amount)}</dd>
           </div>
         ))}
-        <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+        <div className="flex items-center justify-between border-t border-border pt-2">
           <dt className="font-medium text-foreground">Pagado</dt>
-          <dd className="font-semibold text-foreground">{formatARS(totalPaid)}</dd>
+          <dd className="font-semibold text-foreground">{formatArs(totalPaid)}</dd>
         </div>
         <div className="flex items-center justify-between">
           <dt className="font-medium text-foreground">Saldo pendiente</dt>
           <dd
             className={`font-semibold ${isPaidInFull ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
           >
-            {isPaidInFull ? 'Pagado completo' : formatARS(pendingAmount)}
+            {isPaidInFull ? 'Pagado completo' : formatArs(pendingAmount)}
           </dd>
         </div>
       </dl>
@@ -188,7 +189,7 @@ export default function BookingCharges({
               type="button"
               disabled={pending}
               onClick={onSubmit}
-              className="h-9 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+              className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
               Registrar cobro
             </button>

@@ -122,8 +122,8 @@ test.describe('reservas — happy: mark completed', () => {
         // Click "Marcar completada".
         await page.getByRole('button', { name: 'Marcar completada' }).click()
 
-        // After router.refresh() the status badge should update to "Completada".
-        await expect(page.getByText('Completada')).toBeVisible({ timeout: 10_000 })
+        // After router.refresh() the status badge should update to "Jugada" (§8.5).
+        await expect(page.getByText('Jugada')).toBeVisible({ timeout: 10_000 })
 
         // The action buttons must disappear (BookingActions returns null when status != 'confirmed').
         await expect(page.getByRole('button', { name: 'Marcar completada' })).not.toBeVisible()
@@ -350,7 +350,7 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
         await page.goto('/reservas')
         const article = page.getByRole('article', { name: /E2E Reservas Guest/ })
         await expect(article).toBeVisible({ timeout: 15_000 })
-        await expect(article.getByText('Pago pendiente')).toBeVisible()
+        await expect(article.getByText('Esperando seña')).toBeVisible()
 
         // Marker that survives RSC refreshes but dies on a full page load.
         await page.evaluate(() => {
@@ -362,7 +362,7 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
         // After the server action + router.refresh() the same article re-renders
         // with the new status — no navigation, no reload.
         await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })
-        await expect(article.getByText('Pago pendiente')).not.toBeVisible()
+        await expect(article.getByText('Esperando seña')).not.toBeVisible()
         const marker = await page.evaluate(
           () => (window as unknown as Record<string, unknown>).__e2eNoReload,
         )

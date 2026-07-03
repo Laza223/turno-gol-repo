@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarX, CalendarCheck } from 'lucide-react'
+import { CalendarX, CalendarCheck, CalendarDays } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -113,11 +113,10 @@ export default async function ReservasPage({ searchParams }: Props) {
       ? groupBy(rows, (r) => r.courtName)
       : groupBy(rows, (r) => r.date)
 
-  const totalToday = countFor(counts, '')
+  const total = countFor(counts, '')
+  const reservaWord = total === 1 ? '1 reserva' : `${total} reservas`
   const headerSubtitle =
-    scope === 'hoy'
-      ? `${formatDateLong(today)} · ${totalToday === 1 ? '1 reserva' : `${totalToday} reservas`}`
-      : undefined
+    scope === 'hoy' ? `${formatDateLong(today)} · ${reservaWord}` : reservaWord
 
   return (
     <div className="space-y-5">
@@ -128,8 +127,9 @@ export default async function ReservasPage({ searchParams }: Props) {
         actions={
           <Link
             href="/grilla"
-            className="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-[0.98] motion-reduce:active:scale-100"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
             Ir a la grilla
           </Link>
         }
@@ -169,7 +169,7 @@ export default async function ReservasPage({ searchParams }: Props) {
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                 active
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',
               )}
             >
@@ -177,7 +177,7 @@ export default async function ReservasPage({ searchParams }: Props) {
               <span
                 className={cn(
                   'rounded-full px-1.5 py-px text-[11px] font-semibold tabular-nums',
-                  active ? 'bg-emerald-700 text-emerald-50' : 'bg-muted text-muted-foreground',
+                  active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
                 )}
               >
                 {count}
@@ -197,6 +197,15 @@ export default async function ReservasPage({ searchParams }: Props) {
               : scope === 'hoy'
                 ? 'No hay reservas para hoy con los filtros seleccionados.'
                 : 'No hay reservas para los filtros seleccionados.'
+          }
+          action={
+            <Link
+              href="/grilla"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <CalendarDays className="h-4 w-4" aria-hidden="true" />
+              Cargar una reserva
+            </Link>
           }
         />
       ) : (

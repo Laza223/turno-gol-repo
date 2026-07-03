@@ -4,65 +4,8 @@ import { cn } from '@/lib/utils'
 import { formatArs, formatTime } from '@/lib/format'
 import { QuickActions } from './QuickActions'
 import { hasQuickActions } from './quick-actions-helpers'
+import { reservaStatusVisual, ReservaStatusBadge } from './status-visual'
 import type { ReservaListRow } from './queries'
-
-type ItemVisual = { accent: string; badge: string; label: string }
-
-/**
- * Mismo lenguaje visual que la grilla (BookingCard.slotVisual): acento lateral
- * 500/600 como señal no-cromática + texto 700/800 sobre fondo 50 (AA). Acá el
- * estado va en badge porque la lista filtra por estado, no por tipo.
- */
-const STATUS_VISUALS: Record<string, ItemVisual> = {
-  pending_payment: {
-    accent: 'bg-amber-500',
-    badge: 'bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30',
-    label: 'Pago pendiente',
-  },
-  confirmed: {
-    accent: 'bg-blue-600',
-    badge: 'bg-blue-50 text-blue-800 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/30',
-    label: 'Confirmada',
-  },
-  completed: {
-    accent: 'bg-slate-300',
-    badge: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-400/30',
-    label: 'Completada',
-  },
-  no_show: {
-    accent: 'bg-red-500',
-    badge: 'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/30',
-    label: 'Ausente',
-  },
-  canceled_refunded: {
-    accent: 'bg-slate-300',
-    badge: 'bg-slate-100 text-slate-500 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-400 dark:ring-slate-400/30',
-    label: 'Cancelada',
-  },
-  canceled_no_refund: {
-    accent: 'bg-slate-300',
-    badge: 'bg-slate-100 text-slate-500 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-400 dark:ring-slate-400/30',
-    label: 'Cancelada',
-  },
-  expired: {
-    accent: 'bg-slate-300',
-    badge: 'bg-slate-100 text-slate-500 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-400 dark:ring-slate-400/30',
-    label: 'Expirada',
-  },
-}
-
-const FALLBACK_VISUAL = STATUS_VISUALS.completed!
-
-function itemVisual(booking: Pick<ReservaListRow, 'status' | 'type'>): ItemVisual {
-  if (booking.type === 'block') {
-    return {
-      accent: 'bg-slate-400',
-      badge: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-400/30',
-      label: 'Bloqueo',
-    }
-  }
-  return STATUS_VISUALS[booking.status] ?? FALLBACK_VISUAL
-}
 
 function depositText(booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount'>): string {
   if (booking.depositAmount <= 0) return 'Sin seña'
@@ -91,7 +34,7 @@ type Props = {
 }
 
 export function BookingListItem({ booking, compact = false }: Props) {
-  const visual = itemVisual(booking)
+  const visual = reservaStatusVisual(booking)
   const name = clientName(booking)
   const isBlock = booking.type === 'block'
   const isAbonado = !isBlock && booking.type === 'fixed'
@@ -109,6 +52,8 @@ export function BookingListItem({ booking, compact = false }: Props) {
 
   const withActions = hasQuickActions(booking)
 
+  // QuickActions ya se posiciona (z-10) contra el Link estirado de la fila
+  // (Fitts: la fila entera navega al detalle, menos donde hay otro control).
   const quickActions = withActions && (
     <QuickActions
       booking={{
@@ -129,17 +74,19 @@ export function BookingListItem({ booking, compact = false }: Props) {
         <article
           aria-label={ariaLabel}
           className={cn(
-            'relative flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-1.5 shadow-sm transition-colors hover:border-emerald-500/30',
+            'group relative flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-1.5 shadow-sm transition-colors hover:bg-accent/50',
             withActions && 'pr-12 sm:pr-3',
           )}
         >
-          <span aria-hidden className={cn('h-6 w-1 shrink-0 rounded-full', visual.accent)} />
           <Link
             href={`/reservas/${booking.id}`}
-            className="shrink-0 text-xs font-semibold tabular-nums text-foreground hover:text-emerald-700 dark:hover:text-emerald-400 hover:underline sm:w-24"
-          >
+            aria-label={ariaLabel}
+            className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          />
+          <span aria-hidden className={cn('h-6 w-1 shrink-0 rounded-full', visual.accent)} />
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400 sm:w-24">
             {timeRange}
-          </Link>
+          </span>
           <p className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm font-medium text-foreground">
             {isBlock && <Ban aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
             {name}
@@ -147,14 +94,7 @@ export function BookingListItem({ booking, compact = false }: Props) {
           <span className="hidden max-w-[9rem] truncate text-xs text-muted-foreground md:block">
             {booking.courtName}
           </span>
-          <span
-            className={cn(
-              'hidden shrink-0 items-center rounded-full px-1.5 py-px text-[11px] font-medium ring-1 ring-inset sm:inline-flex',
-              visual.badge,
-            )}
-          >
-            {visual.label}
-          </span>
+          <ReservaStatusBadge visual={visual} className="hidden sm:inline-flex" />
           {!isBlock && (
             <p className="hidden shrink-0 text-xs font-semibold tabular-nums text-foreground sm:block sm:w-20 sm:text-right">
               {formatArs(booking.priceSnapshot)}
@@ -171,21 +111,23 @@ export function BookingListItem({ booking, compact = false }: Props) {
       <article
         aria-label={ariaLabel}
         className={cn(
-          'relative flex gap-3 rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-emerald-500/30',
+          'group relative flex gap-3 rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:bg-accent/50',
           // En mobile el menú contextual vive arriba a la derecha (absoluto):
           // reservamos lugar para que no pise el contenido.
           withActions && 'pr-12 sm:pr-3',
         )}
       >
+        <Link
+          href={`/reservas/${booking.id}`}
+          aria-label={ariaLabel}
+          className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        />
         <span aria-hidden className={cn('w-1 shrink-0 self-stretch rounded-full', visual.accent)} />
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <div className="shrink-0 sm:w-28">
-            <Link
-              href={`/reservas/${booking.id}`}
-              className="text-sm font-semibold tabular-nums text-foreground hover:text-emerald-700 dark:hover:text-emerald-400 hover:underline"
-            >
+            <span className="text-sm font-semibold tabular-nums text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
               {timeRange}
-            </Link>
+            </span>
           </div>
 
           <div className="min-w-0 flex-1">
@@ -200,9 +142,7 @@ export function BookingListItem({ booking, compact = false }: Props) {
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', visual.badge)}>
-              {visual.label}
-            </span>
+            <ReservaStatusBadge visual={visual} />
             {isAbonado && (
               <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/30">
                 Abonado

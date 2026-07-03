@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toggleAbonadoCreditAction } from '../actions'
 import { toast } from '@/hooks/use-toast'
+import { formatArs } from '@/lib/format'
 
 type Props = {
   bookingId: string
@@ -15,14 +16,6 @@ type Props = {
   abonadoCreditBalance: number
   /** Estado del booking: el descuento solo se opera en 'confirmed'. */
   status: string
-}
-
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-  }).format(centavos / 100)
 }
 
 export default function AbonadoCharges({
@@ -65,16 +58,16 @@ export default function AbonadoCharges({
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex items-center justify-between">
           <dt className="text-muted-foreground">Saldo disponible</dt>
-          <dd className="font-semibold text-foreground">{formatARS(abonadoCreditBalance)}</dd>
+          <dd className="font-semibold text-foreground">{formatArs(abonadoCreditBalance)}</dd>
         </div>
         <div className="flex items-center justify-between">
           <dt className="text-muted-foreground">Precio de la sesión</dt>
-          <dd className="text-foreground">{formatARS(priceSnapshot)}</dd>
+          <dd className="text-foreground">{formatArs(priceSnapshot)}</dd>
         </div>
         {creditApplied > 0 && (
-          <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+          <div className="flex items-center justify-between border-t border-border pt-2">
             <dt className="font-medium text-foreground">Descontado de esta sesión</dt>
-            <dd className="font-semibold text-emerald-600 dark:text-emerald-400">−{formatARS(creditApplied)}</dd>
+            <dd className="font-semibold text-emerald-600 dark:text-emerald-400">−{formatArs(creditApplied)}</dd>
           </div>
         )}
       </dl>
@@ -90,7 +83,7 @@ export default function AbonadoCharges({
         <span>
           Mantener saldo{' '}
           <span className="text-muted-foreground">
-            (destildá para descontar {formatARS(priceSnapshot)} del saldo)
+            (destildá para descontar {formatArs(priceSnapshot)} del saldo)
           </span>
         </span>
       </label>

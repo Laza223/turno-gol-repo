@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import {
   cancelBookingAction,
@@ -133,14 +134,14 @@ export function QuickActions({ booking, label }: Props) {
 
   return (
     <>
-      {/* Desktop: botones inline. */}
-      <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+      {/* Desktop: botones inline. z-10: encima del Link estirado de la fila. */}
+      <div className="relative z-10 hidden shrink-0 items-center gap-1.5 sm:flex">
         {isPendingPayment ? (
           <button
             type="button"
             disabled={pending}
             onClick={() => run(() => confirmDepositPaymentAction(booking.id), 'Pago confirmado')}
-            className={cn(inlineBtn, 'bg-emerald-600 text-white hover:bg-emerald-700')}
+            className={cn(inlineBtn, 'bg-primary text-primary-foreground hover:bg-primary/90')}
           >
             Confirmar pago
           </button>
@@ -162,7 +163,7 @@ export function QuickActions({ booking, label }: Props) {
               className={cn(
                 inlineBtn,
                 noShowArmed
-                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  ? 'bg-destructive text-white hover:bg-destructive/90'
                   : 'border border-border bg-card text-foreground hover:bg-accent',
               )}
             >
@@ -180,16 +181,21 @@ export function QuickActions({ booking, label }: Props) {
         )}
       </div>
 
-      {/* Mobile: menú contextual, sin botones siempre visibles. */}
-      <div className="absolute right-1.5 top-1.5 sm:hidden">
+      {/* Mobile: menú contextual, sin botones siempre visibles. z-10: encima del Link estirado de la fila. */}
+      <div className="absolute right-1.5 top-1.5 z-10 sm:hidden">
         <DropdownMenu>
-          <DropdownMenuTrigger
-            disabled={pending}
-            aria-label={`Acciones para ${label}`}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
-          >
-            <MoreVertical aria-hidden className="h-5 w-5" />
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger
+                disabled={pending}
+                aria-label={`Acciones para ${label}`}
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+              >
+                <MoreVertical aria-hidden className="h-5 w-5" />
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Acciones</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent align="end">
             {isPendingPayment ? (
               <DropdownMenuItem

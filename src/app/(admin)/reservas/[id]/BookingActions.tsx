@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { completeBookingAction, markNoShowAction, cancelBookingAction } from '../actions'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
+import { formatArs } from '@/lib/format'
 
 type CancellationType = 'complejo' | 'jugador'
 
@@ -20,10 +21,6 @@ type Props = {
   timeStart: string
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
-}
-
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(centavos / 100)
 }
 
 // ART = UTC-3. Mismo cálculo que el server (artDateAt) para que el preview de
@@ -98,10 +95,10 @@ export default function BookingActions({
     } else if (willRefund) {
       refundPreview =
         paymentMethod === 'mercadopago'
-          ? `Se reembolsará la seña de ${formatARS(depositAmount)} vía MercadoPago.`
-          : `Coordiná el reembolso de ${formatARS(depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+          ? `Se reembolsará la seña de ${formatArs(depositAmount)} vía MercadoPago.`
+          : `Coordiná el reembolso de ${formatArs(depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
     } else {
-      refundPreview = `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatARS(depositAmount)} queda para el complejo (sin reembolso).`
+      refundPreview = `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
     }
   }
 
@@ -112,7 +109,7 @@ export default function BookingActions({
           type="button"
           disabled={pending}
           onClick={() => runDirect(() => completeBookingAction(bookingId))}
-          className="h-9 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+          className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
           Marcar completada
         </button>

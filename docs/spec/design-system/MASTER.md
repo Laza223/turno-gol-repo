@@ -575,7 +575,6 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 
 ### P1 — vistas
 3. **Reportes**: KPIs con formato propio (no `StatCard`), vacío gigante sin empty state didáctico ni ejemplo espectral → §6.4, §7.2.
-4. **Icon-only mudos en Reservas**: toggles de vista sin tooltip → §7.4 (el `Tooltip` de `ui/` ya existe; la grilla ya lo usa).
 5. **Landing mobile**: header desborda a la derecha (Ingresar cortado), valor de fecha trunca ("01/0..."), toast "1 error" → §6.3, §6.7.
 6. **Coherencia de journey de tema**: `(public)/layout.tsx` fuerza dark con `<div className="dark">` (además `color-scheme` queda light → controles nativos/scrollbars inconsistentes), mientras `(player)` y `reserva/` son theme-adaptive. Un jugador en light salta dark→light dentro del mismo flujo. **REQUIERE INPUT (decisión de producto):** (a) público theme-adaptive completo [recomendada: el rediseño 2026-06-26 ya pagó el costo], o (b) público always-dark como identidad — entonces usar `forcedTheme` de next-themes y asumir el salto. Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
 
@@ -602,7 +601,13 @@ indicador único §9, creación de canchas + precios inline —doc10 siempre lo 
 general+excepciones compartidos con settings via `ScheduleFields`, `horariosSchema` canónico en el
 wizard —muere el scheduleSchema local que rechazaba sus propios defaults—, cierre peak-end
 `/onboarding/listo` con WhatsApp share, el callback MP activa `requires_deposit` solo en flujo
-wizard, placeholders que caben §6.3 y preview de URL veraz `/c/slug`).
+wizard, placeholders que caben §6.3 y preview de URL veraz `/c/slug`), rediseño de Reservas
+(spec nueva `pages/reservas.md`: tooltips en toggles de vista y menú contextual [cierra P1.4],
+badge de estado único ícono+texto §6.5/§8.5 compartido entre lista y detalle
+(`status-visual.tsx`, muere el `STATUS_VISUALS`/`STATUS_LABELS` duplicado), fila completa
+clickeable con Link estirado (Fitts) + `hover:bg-accent/50`, CTA y píldoras a `bg-primary`,
+empty state con CTA "Cargar una reserva", `formatArs`/`formatDateLong` únicos —mueren 4
+`formatARS`/`formatDate` locales en `[id]/*`—, skeleton con silueta real).
 
 ---
 

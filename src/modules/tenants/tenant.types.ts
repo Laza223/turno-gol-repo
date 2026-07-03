@@ -56,6 +56,8 @@ export type CreateTenantInput = {
 export type UpdateTenantInput = Partial<{
   name: string
   description: string
+  logoUrl: string | null
+  coverUrl: string | null
   address: string
   city: string
   province: string
@@ -88,6 +90,7 @@ export type TenantRow = {
   name: string
   description: string | null
   logoUrl: string | null
+  coverUrl: string | null
   address: string
   city: string
   province: string

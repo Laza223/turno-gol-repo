@@ -10,6 +10,12 @@ import {
 import { createCourtAction, updateCourtAction } from '../actions'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
 import { Button } from '@/components/ui/button'
+import { ImageUploader } from '@/components/ui/image-uploader'
+import {
+  uploadCourtPhotoAction,
+  removeCourtPhotoAction,
+  reorderCourtPhotosAction,
+} from '../actions'
 
 const SURFACE_OPTIONS = [
   { value: 'synthetic_grass', label: 'Césped sintético' },
@@ -45,6 +51,8 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
     countEmptyCells(expandRulesToGrid(initialRules, openingHours), openingHours),
   )
 
+  const [photos, setPhotos] = useState<string[]>(court?.photos ?? [])
+
   const handleRulesChange = useCallback(
     (nextRules: PricingRule[], meta: { emptyCount: number }) => {
       setRules(nextRules)
@@ -52,6 +60,29 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
     },
     [],
   )
+
+  async function handlePhotoUpload(blob: Blob) {
+    if (!court) return
+    const fd = new FormData()
+    fd.set('file', blob, 'photo.webp')
+    const result = await uploadCourtPhotoAction(court.id, fd)
+    if (result.success) setPhotos(result.photos)
+    else setError(result.error)
+  }
+
+  async function handlePhotoRemove(url: string) {
+    if (!court) return
+    const result = await removeCourtPhotoAction(court.id, url)
+    if (result.success) setPhotos(result.photos)
+    else setError(result.error)
+  }
+
+  async function handlePhotoReorder(urls: string[]) {
+    if (!court) return
+    const result = await reorderCourtPhotosAction(court.id, urls)
+    if (result.success) setPhotos(result.photos)
+    else setError(result.error)
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -183,6 +214,26 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
           onRulesChange={handleRulesChange}
         />
       </div>
+
+      {isEdit && (
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Fotos</h3>
+            <p className="text-xs text-muted-foreground">
+              La primera foto es la que se ve en la card de la cancha. Hasta 6.
+            </p>
+          </div>
+          <ImageUploader
+            preset="court"
+            value={photos}
+            max={6}
+            onUpload={handlePhotoUpload}
+            onRemove={handlePhotoRemove}
+            onReorder={handlePhotoReorder}
+            emptyLabel="Agregar foto"
+          />
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

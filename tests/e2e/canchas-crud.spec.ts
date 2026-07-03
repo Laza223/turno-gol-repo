@@ -370,3 +370,42 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
     },
   )
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// TEST 5 — Smoke: edit court shows photos section
+// ════════════════════════════════════════════════════════════════════════════
+test.describe('canchas — smoke: edit court photos section', () => {
+  test(
+    'existing court edit form renders Fotos section (images only in edit mode)',
+    async ({ browser, adminStorageState }) => {
+      const supabase = makeServiceClient()
+      const courtId = randomUUID()
+      const courtName = `E2E Cancha Photos ${courtId.slice(0, 8)}`
+
+      const context = await browser.newContext()
+      try {
+        // Insert a test court via service-role.
+        await insertCourt(supabase, { id: courtId, name: courtName })
+
+        await context.addCookies(JSON.parse(adminStorageState).cookies)
+        const page = await context.newPage()
+
+        await page.goto('/canchas')
+        await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
+          timeout: 15_000,
+        })
+
+        // Find the court card and open the edit form by clicking "Editar".
+        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+        await expect(courtCard).toBeVisible({ timeout: 10_000 })
+        await courtCard.getByRole('button', { name: /editar/i }).click()
+
+        // Verify the Fotos section is visible (smoke test: section only renders in edit mode).
+        await expect(page.getByText('Fotos')).toBeVisible({ timeout: 10_000 })
+      } finally {
+        await context.close()
+        await deleteCourt(supabase, courtId)
+      }
+    },
+  )
+})

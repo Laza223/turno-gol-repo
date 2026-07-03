@@ -20,6 +20,11 @@ describe('validateServerEnv', () => {
     VAPID_PRIVATE_KEY: 'a'.repeat(40),
     VAPID_SUBJECT: 'mailto:contact@turnogol.app',
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'a'.repeat(80),
+    R2_ACCOUNT_ID: 'test-account-id',
+    R2_ACCESS_KEY_ID: 'test-access-key',
+    R2_SECRET_ACCESS_KEY: 'test-secret-key',
+    R2_BUCKET: 'test-bucket',
+    R2_PUBLIC_BASE_URL: 'https://media.example.com',
   }
 
   it('passes with all required vars', () => {

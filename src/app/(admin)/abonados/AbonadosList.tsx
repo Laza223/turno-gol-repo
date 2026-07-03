@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
-import { Users } from 'lucide-react'
+import { UserPlus, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
 import { pauseAbonadoAction, reactivateAbonadoAction, cancelAbonadoAction } from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Badge } from '@/components/ui/badge'
+import { formatArs } from '@/lib/format'
+import { AbonadoStatusBadge } from './status-visual'
 import { toast } from '@/hooks/use-toast'
 
 // The pause/reactivate/cancel dialogs pull in the Radix-backed ConfirmDialog and
@@ -23,12 +24,6 @@ const AbonadoDialogs = dynamic(
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
-    centavos / 100,
-  )
-}
-
 /** Returns today in ART (UTC-3) as YYYY-MM-DD */
 function todayART(): string {
   const d = new Date(new Date().getTime() - 3 * 60 * 60 * 1000)
@@ -39,18 +34,6 @@ function todayART(): string {
 function defaultCancelDate(): string {
   const d = new Date(new Date().getTime() - 3 * 60 * 60 * 1000 + 7 * 24 * 60 * 60 * 1000)
   return d.toISOString().slice(0, 10)
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Activo',
-  paused: 'Pausado',
-  canceled: 'Cancelado',
-}
-
-const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'secondary'> = {
-  active: 'success',
-  paused: 'warning',
-  canceled: 'secondary',
 }
 
 type DialogKind = 'pause' | 'reactivate' | 'cancel' | null
@@ -79,21 +62,28 @@ function defaultRowState(): RowState {
 
 type Props = {
   abonados: AbonadoRow[]
+  /** Etiqueta del filtro activo (ej. "activos"), para un empty state que explique el vacío. */
+  filterLabel?: string
 }
 
-export function AbonadosList({ abonados }: Props) {
+export function AbonadosList({ abonados, filterLabel }: Props) {
   if (abonados.length === 0) {
     return (
       <EmptyState
         icon={Users}
-        title="Sin abonados registrados"
-        description="Creá el primer abonado para que aparezca acá."
+        title={filterLabel ? `Sin abonados ${filterLabel}` : 'Sin abonados registrados'}
+        description={
+          filterLabel
+            ? 'No hay abonados con este estado. Probá otro filtro o cargá uno nuevo.'
+            : 'Creá el primer abonado para que aparezca acá.'
+        }
         action={
           <Link
             href="/abonados/nuevo"
-            className="inline-flex h-10 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
+            className="inline-flex h-10 items-center gap-2 justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            + Nuevo Abonado
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            Nuevo abonado
           </Link>
         }
       />
@@ -101,16 +91,16 @@ export function AbonadosList({ abonados }: Props) {
   }
 
   return (
-    <div className="rounded-lg border">
+    <div className="rounded-lg border bg-card">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-muted-foreground">
-            <th className="p-3">Día / Horario</th>
-            <th className="p-3">Contacto</th>
-            <th className="p-3">Precio por turno</th>
-            <th className="p-3">Precio mensual</th>
-            <th className="p-3">Estado</th>
-            <th className="p-3">Acciones</th>
+          <tr className="border-b border-border text-left">
+            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Día / horario</th>
+            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Contacto</th>
+            <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio por turno</th>
+            <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio mensual</th>
+            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</th>
+            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -206,29 +196,27 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
 
   return (
     <>
-      <tr className="border-b last:border-0">
-        <td className="p-3 font-medium">
+      <tr className="border-b border-border last:border-0 transition-colors hover:bg-accent/50">
+        <td className="p-3 font-medium tabular-nums">
           {DAY_NAMES[a.dayOfWeek]} {a.timeStart}–{a.timeEnd}
         </td>
         <td className="p-3">
           <div>{a.contactName}</div>
           <div className="text-muted-foreground text-xs">{a.contactPhone}</div>
         </td>
-        <td className="p-3">{formatARS(a.pricePerSession)}</td>
-        <td className="p-3">{formatARS(a.monthlyPrice)}</td>
+        <td className="p-3 text-right tabular-nums">{formatArs(a.pricePerSession)}</td>
+        <td className="p-3 text-right tabular-nums">{formatArs(a.monthlyPrice)}</td>
         <td className="p-3">
-          <Badge variant={STATUS_VARIANT[a.status] ?? 'secondary'}>
-            {STATUS_LABELS[a.status] ?? a.status}
-          </Badge>
+          <AbonadoStatusBadge status={a.status} />
         </td>
-        <td className="p-3 space-x-2">
+        <td className="p-3 space-x-3">
           {isActive && (
             <>
               <button
                 type="button"
                 disabled={isPending}
                 onClick={() => openDialog('pause')}
-                className="text-xs text-yellow-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Pausar
               </button>
@@ -236,7 +224,7 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
                 type="button"
                 disabled={isPending}
                 onClick={() => openDialog('cancel')}
-                className="text-xs text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>
@@ -248,7 +236,7 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
                 type="button"
                 disabled={isPending}
                 onClick={() => void openReactivate()}
-                className="text-xs text-green-700 dark:text-green-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Reactivar
               </button>
@@ -256,7 +244,7 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
                 type="button"
                 disabled={isPending}
                 onClick={() => openDialog('cancel')}
-                className="text-xs text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Users } from 'lucide-react'
+import { UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -36,17 +36,23 @@ export default async function AbonadosPage({
     getAbonados(tenant.id, { status: statusFilter }, tx),
   )
 
+  const total = abonados.length
+  const totalWord = total === 1 ? '1 abonado' : `${total} abonados`
+  const headerSubtitle = statusFilter ? `${totalWord} · ${STATUS_LABELS[statusFilter].toLowerCase()}` : totalWord
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
         title="Abonados"
+        subtitle={headerSubtitle}
         icon={<Users className="h-6 w-6" aria-hidden="true" />}
         actions={
           <a
             href="/abonados/nuevo"
-            className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
           >
-            + Nuevo Abonado
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            Nuevo abonado
           </a>
         }
       />
@@ -56,7 +62,7 @@ export default async function AbonadosPage({
           href="/abonados"
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
             !statusFilter
-              ? 'bg-foreground text-background shadow-sm'
+              ? 'bg-primary text-primary-foreground shadow-sm'
               : 'bg-muted text-foreground hover:bg-accent'
           }`}
         >
@@ -68,7 +74,7 @@ export default async function AbonadosPage({
             href={`/abonados?status=${s}`}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               statusFilter === s
-                ? 'bg-foreground text-background shadow-sm'
+                ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'bg-muted text-foreground hover:bg-accent'
             }`}
           >
@@ -77,7 +83,7 @@ export default async function AbonadosPage({
         ))}
       </div>
 
-      <AbonadosList abonados={abonados} />
+      <AbonadosList abonados={abonados} filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined} />
     </div>
   )
 }

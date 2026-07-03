@@ -609,6 +609,14 @@ clickeable con Link estirado (Fitts) + `hover:bg-accent/50`, CTA y píldoras a `
 empty state con CTA "Cargar una reserva", `formatArs`/`formatDateLong` únicos —mueren 4
 `formatARS`/`formatDate` locales en `[id]/*`—, skeleton con silueta real).
 
+Cerrados 2026-07-03: rediseño de Abonados (spec nueva `pages/abonados.md`: badge de estado
+ícono+texto §6.5 vía `status-visual.tsx` —reemplaza `ui/Badge` + `STATUS_VARIANT` sin ícono—,
+`formatArs` único —muere `formatARS` local—, hover `bg-accent/50` + `tabular-nums`/right-align en
+columnas de precio, "Pausar"/"Reactivar" a `text-amber-700`/`text-emerald-700` con par `dark:`
+—antes `yellow-700` sin dark y `green-700` fuera de la paleta de marca—, CTA y píldoras a
+`bg-primary` + ícono `UserPlus` + sentence case "Nuevo abonado", `PageHeader` con subtítulo
+contextual, empty state consciente del filtro activo, skeleton con silueta real).
+
 ---
 
 *Mantenimiento: este archivo se versiona con cada cambio de reglas (no de deuda). Cambios de

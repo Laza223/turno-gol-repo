@@ -75,6 +75,11 @@ export async function removeTenantImageAction(
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
+  if (!isR2Configured()) {
+    console.warn('[storage] R2 no configurado — borrado deshabilitado en este entorno')
+    return { success: false, error: 'Storage no configurado en este entorno' }
+  }
+
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
@@ -83,7 +88,7 @@ export async function removeTenantImageAction(
     return { success: false, error: 'Imagen inválida' }
   }
 
-  if (isR2Configured()) await deleteImage(key)
+  await deleteImage(key)
   await updateTenant(tenant.id, kind === 'logo' ? { logoUrl: null } : { coverUrl: null })
 
   revalidatePath('/settings/perfil')

@@ -109,4 +109,16 @@ describe('removeTenantImageAction', () => {
     expect(res.success).toBe(false)
     expect(vi.mocked(deleteImage)).not.toHaveBeenCalled()
   })
+
+  it('rechaza sin R2 configurado (dev sin credenciales)', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+    vi.mocked(isR2Configured).mockReturnValue(false)
+    const res = await removeTenantImageAction(
+      'logo',
+      'https://media.turnogol.com/tenant-1/logo-old.webp',
+    )
+    expect(res).toEqual({ success: false, error: 'Storage no configurado en este entorno' })
+    expect(vi.mocked(deleteImage)).not.toHaveBeenCalled()
+    expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+  })
 })

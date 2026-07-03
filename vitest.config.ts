@@ -3,7 +3,7 @@ import path from 'path'
 
 export default defineConfig({
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     globals: true,
     // No escanear worktrees anidados (.worktrees / .claude/worktrees): tienen
     // copias stale de los tests que rompen el run del árbol principal.

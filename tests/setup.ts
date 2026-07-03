@@ -3,6 +3,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { afterEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import '@testing-library/jest-dom'
 
 const envTest = path.resolve(process.cwd(), '.env.test')
 if (existsSync(envTest)) {

@@ -12,7 +12,9 @@
 
 **Proyecto:** TurnoGol — SaaS B2B2C para complejos de fútbol (Argentina)
 **Stack:** Next.js 14 · TypeScript · shadcn/ui · Tailwind CSS · Lucide · next-themes
-**Versión:** 2.0 — 2026-07-02 (reescritura: tokens duales light/dark reales, contraste re-verificado,
+**Versión:** 2.1 — 2026-07-03 (§9: la cláusula ética se reemplaza por la cláusula de agresividad
+comercial — marketing a fondo, límite único en claims verificables falsos)
+**Anterior:** 2.0 — 2026-07-02 (reescritura: tokens duales light/dark reales, contraste re-verificado,
 formato es-AR, Guided UX, psicología aplicada, dos personalidades)
 **Reemplaza:** v1 (2026-04-27) + nota dark-premium (2026-06-26)
 
@@ -493,18 +495,22 @@ No decoración intelectual: cada ley acá tiene una regla dura y su aplicación 
 | **Goal gradient** (progreso visible acelera) | Todo proceso multi-paso muestra progreso con arranque regalado | Checklist de setup arranca en 57 % ("Cuenta creada" ya tildada). Onboarding "Paso 1 de 4 · 25 %" |
 | **Zeigarnik** (lo inconcluso tira) | Lo pendiente deja marca visible y clickeable | Badge numérico en "Reservas" (pendientes de seña) en el sidebar. Checklist visible hasta 7/7 |
 | **Peak-End** (se recuerda el pico y el final) | Invertir diseño/motion en el pico y el cierre de cada viaje | Pico jugador: "¡Reserva confirmada!" con celebración (§5.3) + QR. Cierre admin: "Cerrar caja" termina en resumen verde del día, no en un form mudo |
-| **Aversión a la pérdida** | Amplificar lo que se pierde si no actúa — urgencia real o percibida | "Quedan 2 horarios esta noche" (calculado o estimado). "Últimos turnos del día" cuando quedan ≤3. Cancelación: "Perdés la seña de $ 5.000" + "Este horario se va a liberar y otro puede tomarlo" |
-| **Prueba social** | Números que generen confianza y volumen percibido — inflados o proyectados cuando no hay data real | Landing: "+10.000 reservas" (métrica de vanidad, proyectable). Perfil: "12 personas reservaron acá esta semana" (puede ser estimado). "Se llena rápido" badge en complejos activos. "Popular 🔥" en horarios con >60% ocupación |
-| **FOMO / Escasez** | Crear sensación de que el inventario es limitado y otros están compitiendo por él | "3 personas mirando esta cancha ahora" (Realtime o estimado). Slots últimos: borde naranja + "Últimos". Timer de expiración visible en checkout ("Tu reserva se mantiene por 10:00 min"). Mostrar "Agotado" en horarios llenos (no esconderlos) |
-| **Anclaje de precio** | Mostrar referencia de precio mayor para que el actual se sienta barato | "Desde $ 8.000/hora" en cards (el precio más bajo). Si hay descuento o diferencia horaria: precio tachado + precio actual. Seña como fracción visible: "Señá solo $ 3.000 (de $ 12.000)" |
-| **Compromiso progresivo** | El usuario invierte esfuerzo antes de ver el costo final — ya no se va | Flujo: elegir cancha → elegir horario → ver precio → login → pagar. El precio aparece DESPUÉS de elegir (ya está invertido). Formulario parcial persistido en localStorage |
+| **Aversión a la pérdida** | Mostrar lo que se pierde con máxima crudeza; el dato sale de la DB | "Quedan 2 horarios esta noche" calculado en vivo y destacado. Cancelación: "Perdés la seña de $ 5.000" antes de confirmar |
+| **Prueba social** | Protagonista y repetida; todo número aguanta verificación | Perfil de complejo: rating + "+120 reservas este mes" (calculado). Actividad en vivo ("hoy se reservaron N turnos en tu zona") si el dato es real |
 | **Serial position** (primero y último se recuerdan) | Nav ordenada por frecuencia; lo crítico primero o último, nunca en el medio | Sidebar: Grilla arriba (uso diario), Configuración al final. En modales: CTA primario abajo-derecha SIEMPRE |
 
-**Cláusula de conversión:** estos mecanismos están diseñados para maximizar reservas y engagement.
-Se permite social proof inflado/proyectado, urgencia percibida, escasez visual y anclaje de precios.
-Única restricción: nada que sea **verificablemente falso de forma obvia** (ej. "10.000 usuarios" cuando
-la app tiene 3 reseñas públicas visibles). La credibilidad del número importa para que funcione —
-si el usuario lo percibe como trucho, el efecto se invierte.
+**Cláusula de agresividad comercial** (v2.1, reemplaza a la cláusula ética v2.0): en el lado
+jugador el sistema juega a fondo — urgencia y escasez protagonistas, FOMO, aversión a la pérdida
+explícita, prueba social omnipresente, anclas de precio, defaults pro-conversión. Ninguna táctica
+está prohibida por categoría. La única restricción dura es de eficacia y de ley: **ningún claim
+verificable puede ser falso.** Un dato que el jugador puede contrastar y descubrir trucho
+(contador que no baja, urgencia que se resetea, "+10.000 reservas" que cualquier complejo
+desmiente) invierte el efecto — mata la confianza para pagar señas, que es LA métrica de éxito
+del lado jugador (§1) — y es publicidad engañosa bajo Ley 24.240 y Decreto 274/2019: el estándar
+legal es veracidad, no "que no sea obvio"; la mentira discreta multa igual, solo que más tarde.
+Puffery no verificable ("la previa arranca acá") es libre. Escasez y urgencia: siempre calculadas
+de datos reales — la escasez real bien gritada es más agresiva que la inventada, porque aguanta
+screenshots, reviews y segundas visitas.
 
 ---
 
@@ -539,7 +545,7 @@ si el usuario lo percibe como trucho, el efecto se invierte.
 | Hex inline en charts (no flipan con `.dark`) | `useChartTheme` / CSS vars |
 | Tour modal de bienvenida multi-paso | Guided UX en contexto (§7) |
 | Toast "1 error" / errores mudos | Qué falló + qué hacer (§6.7) |
-| Escasez inventada, culpa, dark patterns | Cláusula ética §9 |
+| Claims verificables falsos (contadores truchos, urgencia que se resetea) | Agresividad total sí, mentira comprobable no (cláusula §9) |
 | Animación decorativa en vistas de tarea | Presupuesto §5.2 |
 | `bg-white` como fondo de página | `bg-background` (el fondo NO es blanco en ningún tema) |
 | `text-black` / `bg-black` | Tokens (`foreground`, `slate-950` vía token) |
@@ -590,6 +596,9 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 6. **Coherencia de journey de tema**: RESUELTA la parte de vistas (opción (a) aplicada: público + landing + checkout theme-adaptive, rediseño 2026-07-03). Residuo: `tests/e2e/theme-toggle.spec.ts` #2 todavía espera un wrapper `div.dark` always-dark en `/explorar` que ya no existe — actualizar el spec (REQUIERE INPUT de QA). Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
 
 ### P2 — polish
+7. **Landing**: los números de prueba social ("+10.000 reservas", "+1.200 turnos libres hoy", "50+
+   complejos") son claims verificables sin respaldo → bajo la cláusula §9 v2.1 se calculan de datos
+   reales o se reformulan como puffery no cuantificado. No blanqueados por el cambio de cláusula.
 8. Teléfonos sin formato (`+541100000000` en página de complejo) → §8.4.
 9. Foto stock del login staff con marcas visibles (pelotas Nike) — reemplazar por foto propia/sin trademark.
 10. Docs `doc20`/`pages/*`: actualizar referencias cruzadas a esta v2 (player-area §0–1 superado, explorar hero adaptativo).

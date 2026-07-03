@@ -1,7 +1,19 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { sql } from 'drizzle-orm'
-import { CalendarX, Compass, MapPin, RotateCcw } from 'lucide-react'
+import {
+  CalendarX,
+  CheckCheck,
+  CheckCircle2,
+  Clock,
+  Compass,
+  MapPin,
+  RotateCcw,
+  UserX,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react'
+import { formatArs } from '@/lib/format'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { CancelBookingButton } from './CancelBookingButton'
@@ -46,12 +58,6 @@ function dateParts(dateStr: string): { weekday: string; day: string; month: stri
   }
 }
 
-function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
-    centavos / 100,
-  )
-}
-
 const STATUS_LABELS: Record<string, string> = {
   confirmed: 'Confirmado',
   pending_payment: 'Pago pendiente',
@@ -60,6 +66,18 @@ const STATUS_LABELS: Record<string, string> = {
   canceled_no_refund: 'Cancelado (sin reembolso)',
   no_show: 'Ausente',
   expired: 'Expirado',
+}
+
+// §6.5: estado = color + ícono + texto, nunca color solo. Los textos son
+// contrato e2e (player-bookings.spec) — el ícono suma, no reemplaza.
+const STATUS_ICONS: Record<string, LucideIcon> = {
+  confirmed: CheckCircle2,
+  pending_payment: Clock,
+  completed: CheckCheck,
+  canceled_refunded: XCircle,
+  canceled_no_refund: XCircle,
+  no_show: UserX,
+  expired: XCircle,
 }
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -114,7 +132,7 @@ export default async function MisReservasPage({
   const tabClass = (active: boolean) =>
     `flex-1 rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
       active
-        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+        ? 'bg-primary text-primary-foreground shadow-md shadow-emerald-600/25 dark:shadow-emerald-500/25'
         : 'text-muted-foreground hover:text-foreground'
     }`
 
@@ -179,7 +197,7 @@ export default async function MisReservasPage({
           </div>
           <Link
             href="/explorar"
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
           >
             <Compass className="h-4 w-4" aria-hidden />
             Explorar complejos
@@ -221,13 +239,19 @@ export default async function MisReservasPage({
                           {b.tenant_name}
                         </p>
                       </div>
-                      <span
-                        className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          STATUS_CLASSES[b.status] ?? STATUS_CLASSES.completed
-                        }`}
-                      >
-                        {STATUS_LABELS[b.status] ?? b.status}
-                      </span>
+                      {(() => {
+                        const StatusIcon = STATUS_ICONS[b.status]
+                        return (
+                          <span
+                            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                              STATUS_CLASSES[b.status] ?? STATUS_CLASSES.completed
+                            }`}
+                          >
+                            {StatusIcon && <StatusIcon className="h-3 w-3" aria-hidden />}
+                            {STATUS_LABELS[b.status] ?? b.status}
+                          </span>
+                        )
+                      })()}
                     </div>
 
                     <div className="mt-2.5 flex items-end justify-between gap-2">
@@ -236,7 +260,7 @@ export default async function MisReservasPage({
                           {b.time_start.slice(0, 5)}–{b.time_end.slice(0, 5)}
                         </p>
                         <p className="font-display text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                          {formatARS(b.price_snapshot)}
+                          {formatArs(b.price_snapshot)}
                         </p>
                       </div>
 

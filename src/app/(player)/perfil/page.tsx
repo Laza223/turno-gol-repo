@@ -129,7 +129,7 @@ export default async function PerfilPage({
             aria-current={tab === t.key ? 'page' : undefined}
             className={`flex-1 rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
               tab === t.key
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                ? 'bg-primary text-primary-foreground shadow-md shadow-emerald-600/25 dark:shadow-emerald-500/25'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >

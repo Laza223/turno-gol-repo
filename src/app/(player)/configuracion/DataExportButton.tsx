@@ -58,7 +58,7 @@ export function DataExportButton() {
         type="button"
         onClick={handleDownload}
         disabled={status === 'loading'}
-        className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-md shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/30 active:scale-[0.98] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:hover:translate-y-0"
+        className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg hover:shadow-emerald-600/30 active:scale-[0.98] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:hover:translate-y-0 dark:shadow-emerald-500/25"
       >
         {status === 'loading' ? 'Generando...' : 'Descargar mis datos'}
       </button>

@@ -121,7 +121,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
             type="button"
             onClick={submit}
             disabled={pending}
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-60"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-[background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 motion-reduce:active:scale-100"
           >
             {pending ? 'Enviando…' : 'Publicar reseña'}
           </button>

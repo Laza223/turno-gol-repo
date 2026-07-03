@@ -101,7 +101,7 @@ export default function ExplorarMap({
                 </div>
                 <Link
                   href={`/${t.slug}`}
-                  className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-emerald-600 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                  className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   Ver complejo
                 </Link>

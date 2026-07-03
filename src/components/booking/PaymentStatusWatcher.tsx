@@ -123,7 +123,7 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Tu pago fue acreditado.</p>
         <Link
           href="/mis-reservas"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0"
+          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
         >
           Ver mis reservas
         </Link>
@@ -143,7 +143,7 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         </p>
         <Link
           href="/"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0"
+          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
         >
           Reservar de nuevo
         </Link>
@@ -160,7 +160,7 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         <h1 className="font-display text-2xl font-black italic tracking-tight text-slate-900 dark:text-white">Reserva cancelada</h1>
         <Link
           href="/mis-reservas"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0"
+          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
         >
           Ver mis reservas
         </Link>
@@ -185,7 +185,7 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         </p>
         <Link
           href="/mis-reservas"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0"
+          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
         >
           Ver mis reservas
         </Link>

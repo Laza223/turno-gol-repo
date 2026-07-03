@@ -105,7 +105,7 @@ export default function BookingSuccessExtras(props: Props) {
         <button
           type="button"
           onClick={shareWhatsApp}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-700 motion-reduce:hover:translate-y-0"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-800 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:bg-green-600 dark:hover:bg-green-500"
         >
           <MessageCircle className="h-4 w-4" aria-hidden />
           Compartir

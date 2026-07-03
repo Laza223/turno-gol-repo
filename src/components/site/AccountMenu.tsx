@@ -31,7 +31,7 @@ const itemClass = 'min-h-11 gap-2.5 md:min-h-9 w-full flex items-center transiti
 export function AccountMenu({ firstName, lastName, email, avatarUrl, variant = 'solid' }: Props) {
   const chip =
     variant === 'overlay'
-      ? 'bg-white/15 hover:bg-white/25 ring-white/25 text-white'
+      ? 'bg-foreground/[.06] hover:bg-foreground/[.1] ring-border text-foreground dark:bg-white/15 dark:hover:bg-white/25 dark:ring-white/25 dark:text-white'
       : 'bg-card hover:bg-accent ring-border text-foreground'
 
   return (

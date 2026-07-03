@@ -32,7 +32,7 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
               onClick={() => setActive(i)}
               aria-pressed={isActive}
               className={`flex min-w-[68px] snap-start flex-col items-center rounded-xl border px-3 py-2 text-xs transition-colors ${
-                isActive ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-border bg-card text-muted-foreground hover:bg-accent'
+                isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-accent'
               }`}
             >
               <span className="font-semibold capitalize">{dow}</span>

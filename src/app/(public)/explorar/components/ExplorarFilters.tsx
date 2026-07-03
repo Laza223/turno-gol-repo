@@ -240,7 +240,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
         <button
           type="button"
           onClick={apply}
-          className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 active:scale-[0.99] motion-reduce:active:scale-100"
+          className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
         >
           Aplicar filtros
         </button>

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Clock, MapPin, Search, ChevronDown } from 'lucide-react'
+import { Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import { useNearestCity } from '@/hooks/use-nearest-city'
@@ -95,26 +95,22 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
         : ''
 
   const fieldClass =
-    'h-[62px] w-full rounded-xl border border-slate-200 bg-white pl-11 pr-3 text-base text-slate-900 shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-[62px] w-full rounded-xl border border-border bg-background pl-11 pr-3 text-base text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
-  const labelClass = 'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-[.05em] text-slate-500'
+  // La fecha nativa necesita más ancho útil en la grilla de 2 col a 375px:
+  // menos padding + fuente apenas menor para que "dd/mm/aaaa" no trunque (§13.5).
+  const dateFieldClass = fieldClass.replace('pl-11 pr-3 text-base', 'pl-10 pr-2 text-[15px]')
+
+  const labelClass = 'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-[.05em] text-muted-foreground'
 
   if (layout === 'vertical') {
     return (
       <form
         onSubmit={onSubmit}
         aria-label="Buscar canchas de fútbol"
-        style={{
-          position: 'relative',
-          padding: '28px',
-          borderRadius: '22px',
-          background: 'linear-gradient(180deg, rgba(255,255,255,.98), rgba(241,245,249,.95))',
-          border: '1px solid rgba(255,255,255,.85)',
-          boxShadow:
-            '0 0 70px rgba(16,185,129,.30), 0 40px 80px -34px rgba(0,0,0,.9), inset 0 1px 0 #ffffff',
-        }}
+        className="search-card relative rounded-[22px] p-5 sm:p-7"
       >
-        <div className="mb-4 flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.045em] text-emerald-700">
+        <div className="mb-4 flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.045em] text-emerald-800 dark:text-emerald-300">
           <span className="relative flex h-[9px] w-[9px] shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
@@ -143,14 +139,14 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
               aria-describedby="hero-city-v-status"
               leadingIcon={
                 <MapPin
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400"
                   aria-hidden
                 />
               }
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-[1.15fr_1fr] gap-3 sm:gap-4">
             <div>
               <label htmlFor="hero-date-v" className={labelClass}>
                 Fecha
@@ -161,7 +157,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                 min={today}
                 onChange={setDate}
                 placeholder="dd/mm/aaaa"
-                className={fieldClass}
+                className={dateFieldClass}
               />
             </div>
             <div>
@@ -170,7 +166,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
               </label>
               <div className="relative">
                 <Clock
-                  className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
+                  className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400"
                   aria-hidden
                 />
                 <DropdownMenu>
@@ -180,7 +176,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                       id="hero-time-v"
                       className={`${fieldClass} flex items-center justify-between text-left pr-10`}
                     >
-                      <span className={!time ? 'text-slate-500' : 'text-slate-900'}>
+                      <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
                         {time || 'Cualquier horario'}
                       </span>
                       <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-slate-500" aria-hidden />
@@ -203,14 +199,14 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
 
           <button
             type="submit"
-            className="inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 text-base font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 active:scale-[0.99] motion-reduce:hover:translate-y-0"
+            className="inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-7 text-base font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] motion-reduce:hover:translate-y-0 dark:shadow-emerald-500/25 dark:hover:shadow-emerald-500/30"
           >
             <Search className="h-[19px] w-[19px]" aria-hidden />
             Buscar canchas
           </button>
         </div>
 
-        <p id="hero-city-v-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-slate-500">
+        <p id="hero-city-v-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-muted-foreground">
           {geoMessage}
         </p>
       </form>
@@ -221,26 +217,18 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
     <form
       onSubmit={onSubmit}
       aria-label="Buscar canchas de fútbol"
-      style={{
-        position: 'relative',
-        padding: '34px',
-        borderRadius: '24px',
-        background: 'linear-gradient(180deg, rgba(255,255,255,.98), rgba(241,245,249,.95))',
-        border: '1px solid rgba(255,255,255,.85)',
-        boxShadow:
-          '0 0 70px rgba(16,185,129,.30), 0 44px 90px -34px rgba(0,0,0,.9), inset 0 1px 0 #ffffff',
-      }}
+      className="search-card relative rounded-3xl p-6 sm:p-[34px]"
     >
       {/* Card header */}
       <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.045em] text-emerald-700">
+        <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.045em] text-emerald-800 dark:text-emerald-300">
           <span className="relative flex h-[9px] w-[9px] shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
           </span>
           Encontrá tu próxima cancha
         </div>
-        <span className="text-[12.5px] font-semibold text-slate-500">+1.200 turnos libres hoy</span>
+        <span className="text-[12.5px] font-semibold text-muted-foreground">+1.200 turnos libres hoy</span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.05fr_1.05fr_auto] lg:items-end">
@@ -265,7 +253,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
             aria-describedby="hero-city-status"
             leadingIcon={
               <MapPin
-                className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600"
+                className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400"
                 aria-hidden
               />
             }
@@ -283,7 +271,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
             min={today}
             onChange={setDate}
             placeholder="dd/mm/aaaa"
-            className={fieldClass}
+            className={dateFieldClass}
           />
         </div>
 
@@ -294,7 +282,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
           </label>
           <div className="relative">
             <Clock
-              className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-600 z-10"
+              className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400 z-10"
               aria-hidden
             />
             <DropdownMenu>
@@ -327,14 +315,14 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
         {/* Buscar */}
         <button
           type="submit"
-          className="inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 text-base font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 active:scale-[0.99] motion-reduce:hover:translate-y-0"
+          className="inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-7 text-base font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] motion-reduce:hover:translate-y-0 dark:shadow-emerald-500/25 dark:hover:shadow-emerald-500/30"
         >
           <Search className="h-[19px] w-[19px]" aria-hidden />
           Buscar canchas
         </button>
       </div>
 
-      <p id="hero-city-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-slate-500">
+      <p id="hero-city-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-muted-foreground">
         {geoMessage}
       </p>
     </form>

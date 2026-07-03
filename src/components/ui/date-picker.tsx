@@ -44,7 +44,7 @@ export default function DatePicker({
   // Determinar en qué mes/año arrancar la visualización del calendario
   const [viewDate, setViewDate] = useState(() => {
     if (value) {
-      const [y, m, d] = value.split('-').map(Number)
+      const [y, m] = value.split('-').map(Number)
       return new Date(y, m - 1, 1)
     }
     return new Date()
@@ -53,7 +53,7 @@ export default function DatePicker({
   // Sincronizar mes visible con el value seleccionado si cambia externamente
   useEffect(() => {
     if (value) {
-      const [y, m, d] = value.split('-').map(Number)
+      const [y, m] = value.split('-').map(Number)
       setViewDate(new Date(y, m - 1, 1))
     }
   }, [value])
@@ -126,26 +126,27 @@ export default function DatePicker({
         className={cn(
           'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-sm text-left flex items-center justify-between transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
           className,
-          'pl-10 pr-10', // Enforce icon paddings
+          // Paddings de íconos: pr-8 (no 10) para que "dd/mm/aaaa" quepa en
+          // columnas angostas de mobile sin truncar (§13.5).
+          'pl-10 pr-8',
           !value && 'text-muted-foreground/70'
         )}
       >
         <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10" aria-hidden />
         <span className="truncate">{formattedDisplay || placeholder}</span>
-        {value && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onChange('')
-            }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors p-1 rounded-full hover:bg-muted/40"
-            aria-label="Limpiar fecha"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
       </button>
+      {/* Fuera del trigger: <button> dentro de <button> es HTML inválido y
+          rompía la hidratación (el "1 error" del dev overlay en la landing). */}
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-muted-foreground/60 transition-colors hover:bg-muted/40 hover:text-foreground"
+          aria-label="Limpiar fecha"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       {open && (
         <div className="absolute z-50 mt-1.5 w-[280px] rounded-2xl border border-border bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-md animate-in fade-in-0 zoom-in-95">

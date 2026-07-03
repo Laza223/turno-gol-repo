@@ -1,67 +1,39 @@
 import type { CityCount } from '@/modules/tenants/search.service'
+import PitchLines from '@/components/public/PitchLines'
 import SearchBar from './SearchBar'
 
 /**
- * Banda hero de /explorar: banda oscura premium (puente visual con el home)
- * que enmarca el titular y el form de búsqueda (tarjeta blanca glassmorphism).
+ * Banda hero de /explorar — identidad "Matchday" theme-adaptive (MASTER §4.3 +
+ * pages/explorar.md reinterpretado): light = banda clara crema/emerald con
+ * líneas de cal (mediodía de partido); dark = slab nocturno con la misma
+ * cancha en white-alpha. Receta `.player-hero-band` (compartida con el resto
+ * del portal del jugador).
  */
 export default function SearchBand({ cities }: { cities: CityCount[] }) {
   return (
-    <section
-      className="relative isolate z-30 rounded-3xl border border-white/[.08] px-5 py-7 sm:px-9 sm:py-9"
-      style={{
-        background: 'linear-gradient(135deg, #07131d 0%, #020617 58%)',
-        boxShadow: '0 30px 70px -42px rgba(0,0,0,.9)',
-      }}
-    >
-      {/* Contenedor de fondo con overflow-hidden para evitar que los blobs decorativos desborden la pantalla horizontalmente */}
+    <section className="player-hero-band relative isolate z-30 overflow-hidden rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
-        {/* Glow blob */}
+        {/* Líneas de cal — la firma de la vista */}
+        <div className="absolute inset-y-0 right-[-8%] w-[72%] text-emerald-600/[.16] dark:text-white/[.05]">
+          <PitchLines className="h-full w-full" />
+        </div>
+        {/* Glow nocturno (solo dark) */}
         <div
           aria-hidden
-          className="absolute right-[-10%] top-[-70%] h-[480px] w-[480px] rounded-full blur-[12px]"
-          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.26), transparent 70%)' }}
-        />
-        {/* Grid pattern */}
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              'linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px)',
-            backgroundSize: '38px 38px',
-            WebkitMaskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
-            maskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
-          }}
+          className="hero-glow-blob absolute right-[-10%] top-[-70%] hidden h-[480px] w-[480px] rounded-full blur-[12px] dark:block"
         />
       </div>
 
       <div className="mb-6 max-w-2xl">
-        <div className="inline-flex items-center gap-2.5 font-logo text-[12.5px] font-bold uppercase tracking-[.1em] text-emerald-400">
-          <span className="relative flex h-[9px] w-[9px]">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
-          </span>
+        <div className="live-pill inline-flex items-center gap-2.5 rounded-full px-3.5 py-1.5 font-logo text-[12px] font-bold uppercase tracking-[.1em]">
+          <span aria-hidden className="inline-flex h-[8px] w-[8px] rounded-full bg-emerald-500 dark:bg-emerald-400" />
           Disponibilidad en tiempo real
         </div>
         <h1
-          className="mt-[14px] font-display font-black italic text-white"
+          className="mt-[14px] font-display font-black italic text-foreground"
           style={{ fontSize: 'clamp(30px, 4vw, 46px)', lineHeight: '1', letterSpacing: '-0.03em' }}
         >
-          Encontrá tu cancha{' '}
-          <span
-            style={{
-              background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              color: 'transparent',
-              paddingRight: '0.15em',
-              boxDecorationBreak: 'clone',
-              WebkitBoxDecorationBreak: 'clone',
-            }}
-          >
-            ideal
-          </span>
+          Encontrá tu cancha <span className="hero-accent-text">ideal</span>
         </h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
           Filtrá por formato, superficie, servicios y precio. Consultá disponibilidad en tiempo real y reservá al instante.

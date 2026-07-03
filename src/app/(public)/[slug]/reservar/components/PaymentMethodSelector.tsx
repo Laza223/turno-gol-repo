@@ -54,22 +54,25 @@ const METHOD_DEFS: Record<PayMethod, MethodDef> = {
     label: 'MercadoPago',
     description: 'Pagás la seña online ahora',
     icon: <MercadoPagoIcon />,
-    iconClass: 'bg-sky-500/15 text-sky-300',
-    checkedClass: 'peer-checked:border-sky-400 peer-checked:ring-sky-400',
+    iconClass: 'bg-sky-600/10 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+    checkedClass:
+      'peer-checked:border-sky-600 peer-checked:ring-sky-600 dark:peer-checked:border-sky-400 dark:peer-checked:ring-sky-400',
   },
   cash: {
     label: 'Efectivo',
     description: 'Pagás al llegar al complejo',
     icon: <CashIcon />,
-    iconClass: 'bg-emerald-500/15 text-emerald-300',
-    checkedClass: 'peer-checked:border-emerald-400 peer-checked:ring-emerald-400',
+    iconClass: 'bg-emerald-600/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    checkedClass:
+      'peer-checked:border-emerald-600 peer-checked:ring-emerald-600 dark:peer-checked:border-emerald-400 dark:peer-checked:ring-emerald-400',
   },
   transfer: {
     label: 'Transferencia',
     description: 'Coordinás los datos con el complejo',
     icon: <TransferIcon />,
-    iconClass: 'bg-blue-500/15 text-blue-300',
-    checkedClass: 'peer-checked:border-blue-400 peer-checked:ring-blue-400',
+    iconClass: 'bg-blue-600/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+    checkedClass:
+      'peer-checked:border-blue-600 peer-checked:ring-blue-600 dark:peer-checked:border-blue-400 dark:peer-checked:ring-blue-400',
   },
 }
 
@@ -86,7 +89,7 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
 
   return (
     <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-white">Método de pago</legend>
+      <legend className="text-sm font-semibold text-foreground">Método de pago</legend>
       <div className={`grid grid-cols-1 gap-2 ${methods.length > 1 ? 'sm:grid-cols-2' : ''}`}>
         {methods.map((m, i) => {
           const def = METHOD_DEFS[m]
@@ -100,14 +103,14 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
                 className="peer sr-only"
               />
               <span
-                className={`flex items-center gap-3 rounded-xl border border-white/10 bg-white/[.04] p-3 transition-colors hover:bg-white/[.07] peer-checked:ring-1 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-500 ${def.checkedClass}`}
+                className={`flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-accent peer-checked:ring-1 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-500 dark:border-white/10 dark:bg-white/[.04] dark:hover:bg-white/[.07] ${def.checkedClass}`}
               >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${def.iconClass}`}>
                   {def.icon}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-white">{def.label}</span>
-                  <span className="block text-xs text-slate-400">{def.description}</span>
+                  <span className="block text-sm font-semibold text-foreground">{def.label}</span>
+                  <span className="block text-xs text-muted-foreground">{def.description}</span>
                 </span>
               </span>
             </label>
@@ -115,7 +118,7 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
         })}
       </div>
       {depositOnly && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Este complejo pide seña online para confirmar la reserva.
         </p>
       )}

@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, MapPin, Zap } from 'lucide-react'
@@ -8,6 +6,11 @@ import { formatFromPrice } from '@/lib/format'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import RatingStars from '@/components/public/RatingStars'
 
+/**
+ * Card de complejo destacado de la landing. Theme-adaptive vía recetas
+ * (`card-premium` + `mockup-cover`): light = elevación, dark = glass+glow.
+ * El lift/glow de hover lo da CSS (`card-premium-interactive`) — sin JS.
+ */
 export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCard }) {
   const fromPrice = formatFromPrice(tenant.fromPriceCents)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
@@ -16,100 +19,68 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
   return (
     <Link
       href={`/${tenant.slug}`}
-      className="group block overflow-hidden border border-white/[.09] transition-[transform,box-shadow,border-color] duration-[180ms] hover:-translate-y-[6px] hover:border-emerald-500/40 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020617]"
-      style={{
-        borderRadius: '20px',
-        background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.82))',
-        boxShadow: '0 24px 50px -34px rgba(0,0,0,.9)',
-      }}
-      onMouseEnter={(e) => {
-        ;(e.currentTarget as HTMLElement).style.boxShadow =
-          '0 30px 60px -30px rgba(0,0,0,.95), 0 0 40px -6px rgba(16,185,129,.35)'
-      }}
-      onMouseLeave={(e) => {
-        ;(e.currentTarget as HTMLElement).style.boxShadow = '0 24px 50px -34px rgba(0,0,0,.9)'
-      }}
+      className="card-premium card-premium-interactive group block cursor-pointer overflow-hidden rounded-[20px] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {/* Cover */}
-      <div
-        className="relative h-[168px] overflow-hidden"
-        style={{
-          background:
-            'radial-gradient(130% 130% at 78% 0%, rgba(16,185,129,.45), transparent 58%), linear-gradient(140deg, #065f46, #022c22)',
-        }}
-      >
-        {/* Grid pattern */}
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              'linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }}
-        />
-        {/* Ghost initials */}
+      <div className="mockup-cover relative h-[168px] overflow-hidden">
+        {/* Retícula decorativa */}
+        <div aria-hidden className="player-hero-grid absolute inset-0 bg-[length:28px_28px]" />
+        {/* Iniciales fantasma */}
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-[14px] left-5 font-display font-black italic leading-none text-white/[.14]"
+          className="pointer-events-none absolute bottom-[14px] left-5 font-display font-black italic leading-none text-emerald-950/[.12] dark:text-white/[.14]"
           style={{ fontSize: '56px', letterSpacing: '-0.04em' }}
         >
           {initials}
         </span>
 
-        {/* Cover photo when available */}
+        {/* Foto de portada si existe */}
         {tenant.coverUrl && (
           <Image
             src={tenant.coverUrl}
             alt={`Cancha de ${tenant.name}`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover opacity-80 transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+            className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100 dark:opacity-80"
           />
         )}
 
-        {/* "Reserva online" badge */}
+        {/* Badge "Reserva online" */}
         {tenant.allowOnlineBooking && (
           <div className="absolute left-[14px] top-[14px]">
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-500 px-[10px] py-[5px] text-xs font-semibold text-white shadow-lg">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-[10px] py-[5px] text-xs font-semibold text-primary-foreground shadow-lg">
               <Zap className="h-3 w-3" aria-hidden />
               Reserva online
             </span>
           </div>
         )}
 
-        {/* Rating badge */}
+        {/* Badge de rating */}
         {tenant.reviewCount > 0 && (
-          <div
-            className="absolute right-[14px] top-[14px] inline-flex items-center gap-1 rounded-full px-[10px] py-[5px] backdrop-blur-sm"
-            style={{
-              background: 'rgba(2,6,23,.62)',
-              border: '1px solid rgba(255,255,255,.14)',
-            }}
-          >
+          <div className="absolute right-[14px] top-[14px] inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-[10px] py-[5px] backdrop-blur-sm dark:border-white/[.14] dark:bg-slate-950/[.62]">
             <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />
           </div>
         )}
       </div>
 
-      {/* Body */}
+      {/* Cuerpo */}
       <div className="p-[18px_20px_20px]">
-        <h3 className="font-display font-bold text-[18px] text-[#f8fafc]">{tenant.name}</h3>
-        <div className="mt-[6px] flex items-center gap-[6px] text-[13px] text-slate-400">
-          <MapPin className="h-[14px] w-[14px] shrink-0 text-emerald-500" aria-hidden />
+        <h3 className="font-display text-[18px] font-bold text-foreground">{tenant.name}</h3>
+        <div className="mt-[6px] flex items-center gap-[6px] text-[13px] text-muted-foreground">
+          <MapPin className="h-[14px] w-[14px] shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
           <span className="truncate">
             {tenant.address ? `${tenant.address} · ` : ''}
             {tenant.city}
           </span>
         </div>
 
-        {/* Amenity tags */}
+        {/* Chips de servicios */}
         {amenities.length > 0 && (
           <div className="mt-[14px] flex flex-wrap gap-[7px]">
             {amenities.map((key) => (
               <span
                 key={key}
-                className="whitespace-nowrap rounded-[8px] border border-white/[.08] bg-white/[.05] px-[10px] py-[4px] text-xs font-semibold text-slate-300"
+                className="whitespace-nowrap rounded-lg border border-border bg-muted/60 px-[10px] py-[4px] text-xs font-semibold text-muted-foreground dark:border-white/[.08] dark:bg-white/[.05] dark:text-slate-300"
               >
                 {AMENITIES[key].label}
               </span>
@@ -117,21 +88,21 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
           </div>
         )}
 
-        {/* Footer */}
-        <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/[.08] pt-[16px]">
+        {/* Pie */}
+        <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/[.08]">
           <div>
             {fromPrice && (
               <>
-                <span className="text-xs text-slate-500">Desde </span>
-                <span className="font-display font-bold text-[17px] text-[#f8fafc]">
+                <span className="text-xs text-muted-foreground">Desde </span>
+                <span className="font-display text-[17px] font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
                   {fromPrice}
                 </span>
               </>
             )}
           </div>
-          <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[13.5px] font-bold text-emerald-400">
+          <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[13.5px] font-bold text-emerald-700 dark:text-emerald-400">
             Ver turnos
-            <ArrowRight className="h-[15px] w-[15px]" aria-hidden />
+            <ArrowRight className="h-[15px] w-[15px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0" aria-hidden />
           </span>
         </div>
       </div>

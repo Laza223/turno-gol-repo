@@ -21,40 +21,32 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
   const { session } = usePortalSession()
 
   if (variant === 'overlay') {
+    // Pill flotante theme-adaptive (receta .overlay-nav). Paddings/gaps con
+    // cascada mobile-first: a 375px el CTA "Ingresar" no debe desbordar
+    // (deuda MASTER §13.5).
     return (
-      <header className="fixed top-0 z-50 w-full px-6 pt-[18px]">
+      <header className="fixed top-0 z-50 w-full px-3 pt-3.5 sm:px-6 sm:pt-[18px]">
         <div className="mx-auto max-w-[1240px]">
-          <div
-            className="flex items-center justify-between gap-6"
-            style={{
-              padding: '12px 14px 12px 24px',
-              borderRadius: '9999px',
-              background: 'rgba(8,15,32,.62)',
-              backdropFilter: 'blur(18px) saturate(1.2)',
-              WebkitBackdropFilter: 'blur(18px) saturate(1.2)',
-              border: '1px solid rgba(255,255,255,.09)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06), 0 18px 50px -28px rgba(0,0,0,.9)',
-            }}
-          >
+          <div className="overlay-nav flex items-center justify-between gap-2 rounded-full py-2 pl-4 pr-2 sm:gap-6 sm:py-3 sm:pl-6 sm:pr-3.5">
             <Link href="/" aria-label="TurnoGol — inicio" className="flex-shrink-0 transition-opacity hover:opacity-90">
-              <Logo variant="horizontal" textClassName="text-white" />
+              <Logo variant="horizontal" textClassName="text-foreground" />
             </Link>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               <Link
                 href="/explorar"
-                className="inline-flex items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white"
+                className="inline-flex items-center gap-2 rounded-full px-3 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/[.05] hover:text-foreground sm:px-4"
               >
                 <Search className="h-[17px] w-[17px]" aria-hidden />
                 Explorar
               </Link>
               <Link
                 href="/para-complejos"
-                className="hidden items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
+                className="hidden items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/[.05] hover:text-foreground sm:inline-flex"
               >
                 <Building2 className="h-[17px] w-[17px]" aria-hidden />
                 Para complejos
               </Link>
-              <span aria-hidden className="mx-1.5 h-[22px] w-px bg-white/10" />
+              <span aria-hidden className="mx-1 hidden h-[22px] w-px bg-border sm:mx-1.5 sm:block dark:bg-white/10" />
               {session ? (
                 <AccountMenu
                   firstName={session.firstName}
@@ -66,7 +58,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
               ) : (
                 <Link
                   href="/ingresar"
-                  className="inline-flex h-11 items-center rounded-full border border-white/20 bg-white/5 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 active:scale-95"
+                  className="inline-flex h-11 items-center rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent active:scale-95 sm:px-6 dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10"
                 >
                   Ingresar
                 </Link>
@@ -120,7 +112,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
               </Link>
               <Link
                 href="/ingresar"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-emerald-600 px-4 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Ingresar</span>

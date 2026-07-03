@@ -259,7 +259,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       {view === 'map' && (
         <Link
           href={listHref}
-          className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-semibold text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden"
+          className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 motion-reduce:active:scale-100 lg:hidden dark:shadow-emerald-500/25"
         >
           <List className="h-4 w-4" aria-hidden /> Ver lista
         </Link>

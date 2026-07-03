@@ -22,7 +22,7 @@ function toggleCsv(list: string[], value: string): string | undefined {
 }
 
 const chipBase =
-  'inline-flex h-11 md:h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
+  'inline-flex h-11 md:h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
 const chipOn = 'border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
 const chipOff = 'border-border bg-card text-muted-foreground hover:bg-accent'
 
@@ -100,7 +100,7 @@ export default function QuickFilters() {
             <SlidersHorizontal className="h-4 w-4" aria-hidden />
             Todos los filtros
             {activeCount > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1 text-xs font-semibold text-white tabular-nums">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground tabular-nums">
                 {activeCount}
               </span>
             )}

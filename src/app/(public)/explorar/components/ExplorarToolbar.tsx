@@ -89,7 +89,7 @@ export default function ExplorarToolbar({ total }: Props) {
             type="button"
             onClick={() => setView('list')}
             aria-pressed={view === 'list'}
-            className={`${toggleBase} ${view === 'list' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-accent'}`}
+            className={`${toggleBase} ${view === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
           >
             <List className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Lista</span>
@@ -98,7 +98,7 @@ export default function ExplorarToolbar({ total }: Props) {
             type="button"
             onClick={() => setView('map')}
             aria-pressed={view === 'map'}
-            className={`${toggleBase} border-l border-border ${view === 'map' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-accent'}`}
+            className={`${toggleBase} border-l border-border ${view === 'map' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
           >
             <MapIcon className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Mapa</span>

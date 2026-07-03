@@ -39,7 +39,7 @@ export default function TenantCard({
   )
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 active:scale-[0.99] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:hover:shadow-emerald-500/[.15]">
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
         {allPhotos.length > 0 ? (
           <TenantCardCarousel photos={allPhotos} name={tenant.name} href={`/${tenant.slug}`} />
@@ -131,7 +131,7 @@ export default function TenantCard({
                 key={s.time}
                 href={`/${tenant.slug}/reservar?court=${s.courtId}&date=${slotPills.date}&time=${s.time}&dur=${s.durationMins}`}
                 aria-label={`Reservar a las ${s.time}`}
-                className="inline-flex items-center rounded-md bg-emerald-700 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 tabular-nums"
+                className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold tabular-nums text-primary-foreground shadow-sm transition-[background-color,transform] hover:bg-primary/90 active:scale-95 motion-reduce:active:scale-100"
               >
                 {s.time}
               </Link>
@@ -158,7 +158,7 @@ export default function TenantCard({
           {fromPrice && (
             <p className="flex items-baseline gap-1 text-right">
               <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">desde</span>
-              <span className="font-display text-xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
+              <span className="font-display text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
                 {fromPrice}
               </span>
               <span className="text-xs text-muted-foreground">/turno</span>

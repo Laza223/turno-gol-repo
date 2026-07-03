@@ -3,13 +3,14 @@ import { buildMetadata } from '@/lib/seo/metadata'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildOrganization, buildWebSite } from '@/lib/seo/structured-data'
 import Link from 'next/link'
-import { ArrowRight, Building2, CalendarDays, CheckCircle2, Search } from 'lucide-react'
+import { ArrowRight, Building2, CalendarDays, CheckCircle2, Check, MapPin, Search, Star } from 'lucide-react'
 import SiteNav from '@/components/site/SiteNav'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 import SiteFooter from '@/components/site/SiteFooter'
 import HeroSearch from '@/components/site/HeroSearch'
 import FeaturedComplexCard from '@/components/site/FeaturedComplexCard'
 import Reveal from '@/components/site/Reveal'
+import PitchLines from '@/components/public/PitchLines'
 import {
   listPublicCities,
   searchPublicTenants,
@@ -81,10 +82,7 @@ export default async function HomePage() {
   const [cities, featured] = await Promise.all([loadCities(), loadFeatured()])
 
   return (
-    <div
-      className="min-h-dvh text-slate-300"
-      style={{ background: '#020617' }}
-    >
+    <div className="landing-hero min-h-dvh text-foreground">
       <JsonLd data={[buildOrganization(), buildWebSite()]} />
       <PortalSessionProvider>
         <SiteNav variant="overlay" />
@@ -101,11 +99,11 @@ export default async function HomePage() {
 
 function Hero({ cities }: { cities: CityCount[] }) {
   return (
-    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 pt-[120px] pb-[84px]">
-      {/* Background Image */}
+    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-4 pt-[110px] pb-[64px] sm:px-6 sm:pt-[120px] sm:pb-[84px]">
+      {/* Ambiente dark: foto nocturna (solo dark — sobre el clima claro ensucia) */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 opacity-30"
+        className="pointer-events-none absolute inset-0 z-0 hidden opacity-30 dark:block"
         style={{
           backgroundImage: "url('/bg-hero-2.png')",
           backgroundSize: 'cover',
@@ -115,122 +113,83 @@ function Hero({ cities }: { cities: CityCount[] }) {
           WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
         }}
       />
-      {/* Right glow blob */}
+      {/* Ambiente light: líneas de cal (firma "Matchday") */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-[-12%] z-0 h-[68%] text-emerald-600/[.14] dark:hidden">
+        <PitchLines className="h-full w-full" />
+      </div>
+      {/* Glow blobs */}
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-[8px] motion-reduce:animate-none"
-        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)' }}
+        className="hero-glow-blob pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-[8px] motion-reduce:animate-none"
       />
-      {/* Left glow blob */}
       <div
         aria-hidden
-        className="pointer-events-none absolute bottom-[-20%] left-[-10%] z-0 h-[620px] w-[620px] rounded-full"
-        style={{ background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)' }}
+        className="hero-glow-blob pointer-events-none absolute bottom-[-20%] left-[-10%] z-0 h-[620px] w-[620px] rounded-full opacity-50"
       />
-      {/* Floating particles */}
+      {/* Partículas flotantes (ambiente nocturno) */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-[8%] top-[24%] z-0 h-[6px] w-[6px] animate-tg-float rounded-full bg-emerald-400 motion-reduce:hidden"
-        style={{ boxShadow: '0 0 16px 4px rgba(52,211,153,.6)' }}
+        className="hero-particle pointer-events-none absolute left-[8%] top-[24%] z-0 hidden h-[6px] w-[6px] animate-tg-float rounded-full motion-reduce:!hidden dark:block"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute bottom-[18%] right-[40%] z-0 h-[5px] w-[5px] rounded-full bg-emerald-300 motion-reduce:hidden"
-        style={{
-          boxShadow: '0 0 14px 3px rgba(110,231,183,.55)',
-          animation: 'tg-float 10s ease-in-out infinite 0.8s',
-        }}
+        className="hero-particle pointer-events-none absolute bottom-[18%] right-[40%] z-0 hidden h-[5px] w-[5px] rounded-full motion-reduce:!hidden dark:block"
+        style={{ animation: 'tg-float 10s ease-in-out infinite 0.8s' }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-[1240px] grid grid-cols-1 items-center gap-14 lg:grid-cols-[1.04fr_0.96fr]">
-        {/* Left column */}
+      <div className="relative z-10 mx-auto grid w-full max-w-[1240px] grid-cols-1 items-center gap-14 lg:grid-cols-[1.04fr_0.96fr]">
+        {/* Columna izquierda */}
         <div className="min-w-0">
-          {/* Live status pill */}
-          <div
-            className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[13px] font-semibold text-[#6ee7b7] backdrop-blur-sm"
-            style={{ boxShadow: 'inset 0 0 30px rgba(16,185,129,.14)', whiteSpace: 'nowrap' }}
-          >
+          {/* Pill de estado en vivo */}
+          <div className="live-pill inline-flex items-center gap-2.5 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold">
             <span className="relative flex h-[9px] w-[9px] shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
               <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
             </span>
             Disponibilidad en tiempo real
           </div>
 
-          {/* Heading */}
+          {/* Titular */}
           <h1
-            className="mt-[22px] font-display font-black italic text-[#f8fafc]"
+            className="mt-[22px] font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.5)]"
             style={{
-              fontSize: 'clamp(46px, 5.2vw, 78px)',
+              fontSize: 'clamp(42px, 5.2vw, 78px)',
               lineHeight: '0.95',
               letterSpacing: '-0.035em',
-              textShadow: '0 12px 60px rgba(0,0,0,.5)',
             }}
           >
             Reservá tu cancha
             <br />
-            <span
-              style={{
-                background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                color: 'transparent',
-                paddingRight: '0.15em',
-                boxDecorationBreak: 'clone',
-                WebkitBoxDecorationBreak: 'clone',
-              }}
-            >
-              al instante.
-            </span>
+            <span className="hero-accent-text">al instante.</span>
           </h1>
 
-          {/* Subtitle */}
+          {/* Subtítulo */}
           <p
-            className="mt-6 max-w-[540px] text-slate-400"
+            className="mt-6 max-w-[540px] text-muted-foreground"
             style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}
           >
             Explorá complejos verificados, compará horarios en tiempo real y{' '}
-            <span className="font-semibold text-slate-200">asegurá tu cancha</span>{' '}
+            <span className="font-semibold text-foreground">asegurá tu cancha</span>{' '}
             con confirmación inmediata.
           </p>
 
-          {/* Search form — vertical layout */}
+          {/* Buscador */}
           <div className="relative mt-8 max-w-[560px]">
-            <div
-              aria-hidden
-              className="absolute -inset-px rounded-3xl opacity-85 blur-[11px]"
-              style={{
-                background:
-                  'linear-gradient(120deg, rgba(16,185,129,.4), transparent 42%, transparent 60%, rgba(52,211,153,.32))',
-              }}
-            />
             <HeroSearch cities={cities} layout="vertical" />
           </div>
 
-          {/* Trust pills */}
-          <div className="mt-6 flex flex-wrap items-center gap-5">
+          {/* Pills de confianza */}
+          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2.5">
             {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map((t) => (
-              <span key={t} className="inline-flex items-center gap-2 text-[13px] font-medium text-slate-400">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
+              <span key={t} className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+                <Check className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" strokeWidth={2.4} aria-hidden />
                 {t}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Right column: decorative booking card */}
+        {/* Columna derecha: mockup de reserva */}
         <BookingCardMockup />
       </div>
     </section>
@@ -246,222 +205,125 @@ const BOOKING_SLOTS = [
   { time: '23:00', state: 'occupied' },
 ] as const
 
+const SLOT_CLASSES: Record<(typeof BOOKING_SLOTS)[number]['state'], { box: string; time: string; label: string }> = {
+  selected: {
+    box: 'border border-emerald-500 bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-lg shadow-emerald-600/40 dark:from-emerald-500 dark:to-emerald-600 dark:shadow-emerald-500/40',
+    time: 'text-white dark:text-slate-950',
+    label: 'text-emerald-100 dark:text-emerald-950',
+  },
+  free: {
+    box: 'border border-emerald-600/30 bg-emerald-600/[.07] dark:border-emerald-500/30 dark:bg-emerald-500/[.08]',
+    time: 'text-emerald-800 dark:text-emerald-300',
+    label: 'text-emerald-700 dark:text-emerald-400',
+  },
+  occupied: {
+    box: 'border border-border bg-muted/50 opacity-60 dark:border-white/[.06] dark:bg-white/[.03]',
+    time: 'text-muted-foreground line-through',
+    label: 'text-muted-foreground/70',
+  },
+}
+
 function BookingCardMockup() {
   return (
     <div className="relative hidden min-w-0 lg:block" aria-hidden>
-      {/* Glow behind card */}
-      <div
-        className="pointer-events-none absolute inset-[6%_8%] rounded-[28px] blur-[30px]"
-        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.3), transparent 75%)' }}
-      />
+      {/* Glow detrás de la card */}
+      <div className="hero-glow-blob pointer-events-none absolute inset-[6%_8%] rounded-[28px] blur-[30px]" />
 
-      {/* Main card */}
+      {/* Card principal */}
       <div
-        className="relative overflow-hidden"
-        style={{
-          borderRadius: '24px',
-          background: 'linear-gradient(180deg, rgba(15,23,42,.86), rgba(2,6,23,.92))',
-          border: '1px solid rgba(255,255,255,.1)',
-          boxShadow:
-            '0 0 70px rgba(16,185,129,.21), 0 50px 90px -40px rgba(0,0,0,.95)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          animation: 'tg-float 9s ease-in-out infinite',
-        }}
+        className="mockup-card relative overflow-hidden rounded-3xl"
+        style={{ animation: 'tg-float 9s ease-in-out infinite' }}
       >
         {/* Cover */}
-        <div
-          className="relative h-[132px] overflow-hidden"
-          style={{
-            background:
-              'radial-gradient(120% 140% at 80% 0%, rgba(16,185,129,.42), rgba(5,150,105,.12) 45%, rgba(2,6,23,0) 75%), linear-gradient(135deg, #064e3b, #022c22)',
-          }}
-        >
+        <div className="mockup-cover relative h-[132px] overflow-hidden">
           <div
-            className="absolute inset-0"
+            className="player-hero-grid absolute inset-0 bg-[length:30px_30px]"
             style={{
-              backgroundImage:
-                'linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px)',
-              backgroundSize: '30px 30px',
               WebkitMaskImage: 'linear-gradient(180deg, #000, transparent)',
               maskImage: 'linear-gradient(180deg, #000, transparent)',
             }}
           />
           <span
-            className="absolute left-[22px] top-1/2 -translate-y-1/2 font-display font-black italic text-white/[.16]"
+            className="absolute left-[22px] top-1/2 -translate-y-1/2 font-display font-black italic text-emerald-950/[.14] dark:text-white/[.16]"
             style={{ fontSize: '46px', letterSpacing: '-0.04em' }}
           >
             LC
           </span>
-          {/* En vivo badge */}
-          <div
-            className="absolute right-4 top-4 inline-flex items-center gap-[7px] rounded-full px-3 py-[6px] text-[11px] font-bold uppercase tracking-[.08em] text-[#6ee7b7]"
-            style={{
-              background: 'rgba(2,6,23,.6)',
-              border: '1px solid rgba(16,185,129,.45)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-            }}
-          >
+          {/* Badge "En vivo" */}
+          <div className="live-pill absolute right-4 top-4 inline-flex items-center gap-[7px] rounded-full px-3 py-[6px] text-[11px] font-bold uppercase tracking-[.08em]">
             <span className="relative flex h-[7px] w-[7px]">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
+              <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-500 dark:bg-emerald-400" />
             </span>
             En vivo
           </div>
         </div>
 
-        {/* Body */}
+        {/* Cuerpo */}
         <div className="p-[22px]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-display font-bold text-[19px] text-[#f8fafc]">La Catedral F5</div>
-              <div className="mt-[5px] flex items-center gap-[6px] text-[13px] text-slate-400">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
+              <div className="font-display text-[19px] font-bold text-foreground">La Catedral F5</div>
+              <div className="mt-[5px] flex items-center gap-[6px] text-[13px] text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" strokeWidth={2} aria-hidden />
                 Palermo · a 1,2 km
               </div>
             </div>
-            <div
-              className="inline-flex shrink-0 items-center gap-[5px] rounded-full px-[10px] py-[5px] text-[13px] font-bold text-[#6ee7b7]"
-              style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.3)' }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="#34d399" stroke="none">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01z" />
-              </svg>
+            <div className="inline-flex shrink-0 items-center gap-[5px] rounded-full border border-emerald-600/25 bg-emerald-600/10 px-[10px] py-[5px] text-[13px] font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/[.12] dark:text-emerald-300">
+              <Star className="h-[13px] w-[13px] fill-current" strokeWidth={0} aria-hidden />
               4,9
             </div>
           </div>
 
-          {/* Slots header */}
+          {/* Header de slots */}
           <div className="mb-[10px] mt-[18px] flex items-center justify-between">
-            <span className="font-logo text-[12px] font-bold uppercase tracking-[.06em] text-slate-500">
+            <span className="font-logo text-[12px] font-bold uppercase tracking-[.06em] text-muted-foreground">
               Turnos · Hoy
             </span>
-            <span className="text-[12px] font-semibold text-emerald-400">4 libres</span>
+            <span className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">4 libres</span>
           </div>
 
-          {/* Slots grid */}
+          {/* Grilla de slots */}
           <div className="grid grid-cols-3 gap-[9px]">
-            {BOOKING_SLOTS.map(({ time, state }) => (
-              <div
-                key={time}
-                className="flex flex-col items-center gap-[2px] rounded-[12px] px-1 py-[11px]"
-                style={
-                  state === 'selected'
-                    ? {
-                      background: 'linear-gradient(160deg, #10b981, #059669)',
-                      border: '1px solid #34d399',
-                      boxShadow:
-                        '0 0 22px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.3)',
-                    }
-                    : state === 'free'
-                      ? {
-                        background: 'rgba(16,185,129,.08)',
-                        border: '1px solid rgba(16,185,129,.32)',
-                      }
-                      : {
-                        background: 'rgba(255,255,255,.03)',
-                        border: '1px solid rgba(255,255,255,.06)',
-                        opacity: '0.55',
-                      }
-                }
-              >
-                <span
-                  className={`font-logo font-bold text-[15px] ${state === 'selected'
-                    ? 'text-white'
-                    : state === 'free'
-                      ? 'text-[#6ee7b7]'
-                      : 'text-slate-500 line-through'
-                    }`}
-                >
-                  {time}
-                </span>
-                <span
-                  className={`text-[10px] uppercase tracking-[.04em] ${state === 'selected'
-                    ? 'text-[#d1fae5]'
-                    : state === 'free'
-                      ? 'text-emerald-400'
-                      : 'text-slate-600'
-                    }`}
-                >
-                  {state === 'selected' ? 'Elegido' : state === 'free' ? 'Libre' : 'Ocupado'}
-                </span>
-              </div>
-            ))}
+            {BOOKING_SLOTS.map(({ time, state }) => {
+              const c = SLOT_CLASSES[state]
+              return (
+                <div key={time} className={`flex flex-col items-center gap-[2px] rounded-xl px-1 py-[11px] ${c.box}`}>
+                  <span className={`font-logo text-[15px] font-bold tabular-nums ${c.time}`}>{time}</span>
+                  <span className={`text-[10px] uppercase tracking-[.04em] ${c.label}`}>
+                    {state === 'selected' ? 'Elegido' : state === 'free' ? 'Libre' : 'Ocupado'}
+                  </span>
+                </div>
+              )
+            })}
           </div>
 
-          {/* Card footer */}
-          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/[.08] pt-[16px]">
+          {/* Pie de card */}
+          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/[.08]">
             <div>
-              <div className="font-logo text-[11px] uppercase tracking-[.05em] text-slate-500">Seña</div>
-              <div className="font-display font-bold text-[20px] text-[#f8fafc]">$8.000</div>
+              <div className="font-logo text-[11px] uppercase tracking-[.05em] text-muted-foreground">Seña</div>
+              <div className="font-display text-[20px] font-bold tabular-nums text-foreground">$ 8.000</div>
             </div>
-            <div
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-[10px] text-[13.5px] font-semibold text-white"
-              style={{ background: '#059669', boxShadow: '0 4px 20px rgba(16,185,129,.4)' }}
-            >
+            <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-[10px] text-[13.5px] font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 dark:shadow-emerald-500/30">
               Reservar 21:00
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
+              <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.4} aria-hidden />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Floating "Turno confirmado" toast */}
+      {/* Toast flotante "Turno confirmado" — cuelga del borde inferior para no
+          tapar el precio/CTA del mockup */}
       <div
-        className="absolute -left-[26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px]"
-        style={{
-          background: 'rgba(8,15,32,.88)',
-          border: '1px solid rgba(255,255,255,.12)',
-          boxShadow: '0 18px 40px -18px rgba(0,0,0,.9)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          animation: 'tg-float 7s ease-in-out infinite 1.4s',
-        }}
+        className="overlay-nav absolute -bottom-4 -left-[26px] inline-flex items-center gap-[9px] rounded-[14px] px-3.5 py-2.5"
+        style={{ animation: 'tg-float 7s ease-in-out infinite 1.4s' }}
       >
-        <span
-          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-emerald-400"
-          style={{ background: 'rgba(16,185,129,.18)' }}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
+        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-emerald-600/15 text-emerald-700 dark:bg-emerald-500/[.18] dark:text-emerald-400">
+          <Check className="h-4 w-4" strokeWidth={2.6} aria-hidden />
         </span>
         <div>
-          <div className="text-[13px] font-bold text-[#f1f5f9]">Turno confirmado</div>
-          <div className="text-[11px] text-slate-500">hace 2 minutos</div>
+          <div className="text-[13px] font-bold text-foreground">Turno confirmado</div>
+          <div className="text-[11px] text-muted-foreground">hace 2 minutos</div>
         </div>
       </div>
     </div>
@@ -470,20 +332,17 @@ function BookingCardMockup() {
 
 function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[] }) {
   return (
-    <section
-      id="cerca"
-      className="relative z-10 py-10 sm:py-16 scroll-mt-[90px]"
-    >
-      <div className="mx-auto max-w-[1240px] px-6">
+    <section id="cerca" className="relative z-10 scroll-mt-[90px] py-10 sm:py-16">
+      <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
         <Reveal>
           <div className="mb-[34px] flex flex-wrap items-end justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-                <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
+              <div className="inline-flex items-center gap-[9px] whitespace-nowrap font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-800 dark:text-emerald-400">
+                <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-700 dark:bg-emerald-400" />
                 Complejos verificados
               </div>
               <h2
-                className="mt-[14px] font-display font-black italic text-[#f8fafc]"
+                className="mt-[14px] font-display font-black italic text-foreground"
                 style={{
                   fontSize: 'clamp(34px, 4vw, 50px)',
                   lineHeight: '1',
@@ -492,13 +351,13 @@ function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[] }) {
               >
                 Los mejor valorados
               </h2>
-              <p className="mt-[14px] max-w-[540px] text-base leading-[1.55] text-slate-400">
+              <p className="mt-[14px] max-w-[540px] text-base leading-[1.55] text-muted-foreground">
                 Complejos con las mejores reseñas y disponibilidad en tiempo real. Elegí, reservá y jugá.
               </p>
             </div>
             <Link
               href="/explorar"
-              className="group inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              className="group inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent active:scale-[0.98] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
             >
               Ver todos
               <ArrowRight
@@ -522,11 +381,11 @@ function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[] }) {
 
 function HowItWorks() {
   return (
-    <section className="relative z-10 py-20 sm:py-24 overflow-hidden">
-      {/* Background Image */}
+    <section className="relative z-10 overflow-hidden py-20 sm:py-24">
+      {/* Foto de ambiente: solo dark */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[-1] opacity-[0.12] mix-blend-luminosity"
+        className="pointer-events-none absolute inset-0 z-[-1] hidden opacity-[0.12] mix-blend-luminosity dark:block"
         style={{
           backgroundImage: "url('/bg-how-it-works.png')",
           backgroundSize: 'cover',
@@ -536,16 +395,16 @@ function HowItWorks() {
           WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
         }}
       />
-      <div className="mx-auto max-w-[1240px] px-6">
+      <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
         <Reveal>
           <div className="mx-auto mb-12 max-w-[620px] text-center">
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
+            <div className="inline-flex items-center gap-[9px] whitespace-nowrap font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-800 dark:text-emerald-400">
+              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-700 dark:bg-emerald-400" />
               Así de simple
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
+              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-700 dark:bg-emerald-400" />
             </div>
             <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
+              className="mt-[14px] font-display font-black italic text-foreground"
               style={{
                 fontSize: 'clamp(34px, 4vw, 50px)',
                 lineHeight: '1',
@@ -554,7 +413,7 @@ function HowItWorks() {
             >
               Del buscador a la cancha
             </h2>
-            <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
+            <p className="mt-[14px] text-base leading-[1.55] text-muted-foreground">
               Tres pasos y tu cancha está asegurada. Reserva online, confirmación inmediata.
             </p>
           </div>
@@ -562,35 +421,21 @@ function HowItWorks() {
         <div className="grid grid-cols-1 gap-[22px] sm:grid-cols-3">
           {howItWorks.map((step, i) => (
             <Reveal key={step.n} delay={i * 80}>
-              <div
-                className="relative overflow-hidden border border-white/[.09] p-7"
-                style={{
-                  borderRadius: '20px',
-                  background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))',
-                }}
-              >
+              <div className="card-premium relative overflow-hidden p-7">
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute right-[18px] top-[6px] font-display font-black italic leading-none text-white/[.045]"
+                  className="pointer-events-none absolute right-[18px] top-[6px] font-display font-black italic leading-none text-foreground/[.05]"
                   style={{ fontSize: '92px', letterSpacing: '-0.05em' }}
                 >
                   {step.n}
                 </span>
-                <div
-                  className="relative inline-flex h-[52px] w-[52px] items-center justify-center text-emerald-400"
-                  style={{
-                    borderRadius: '14px',
-                    background: 'rgba(16,185,129,.12)',
-                    border: '1px solid rgba(16,185,129,.3)',
-                    boxShadow: 'inset 0 0 20px rgba(16,185,129,.15)',
-                  }}
-                >
+                <div className="icon-halo relative inline-flex h-[52px] w-[52px] items-center justify-center rounded-[14px]">
                   <step.icon className="h-6 w-6" aria-hidden />
                 </div>
-                <h3 className="relative mt-5 font-display font-bold text-xl text-[#f8fafc]">
+                <h3 className="relative mt-5 font-display text-xl font-bold text-foreground">
                   {step.title}
                 </h3>
-                <p className="relative mt-2.5 text-[14.5px] leading-[1.6] text-slate-400">
+                <p className="relative mt-2.5 text-[14.5px] leading-[1.6] text-muted-foreground">
                   {step.description}
                 </p>
               </div>
@@ -605,42 +450,25 @@ function HowItWorks() {
 function StatsBar() {
   return (
     <section className="relative z-10">
-      <div className="mx-auto max-w-[1240px] px-6">
-        <div
-          className="relative overflow-hidden rounded-3xl border border-emerald-500/[.22] p-11"
-          style={{
-            background:
-              'linear-gradient(120deg, rgba(6,78,59,.55), rgba(2,6,23,.35) 55%, rgba(6,78,59,.4))',
-            boxShadow:
-              '0 0 70px rgba(16,185,129,.165), inset 0 1px 0 rgba(255,255,255,.06)',
-          }}
-        >
+      <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
+        <div className="stats-band relative overflow-hidden rounded-3xl p-7 sm:p-11">
           <div
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-[-40%] h-[400px] w-[700px] -translate-x-1/2 rounded-full blur-[20px]"
-            style={{
-              background: 'radial-gradient(closest-side, rgba(16,185,129,.3), transparent 72%)',
-            }}
+            className="hero-glow-blob pointer-events-none absolute left-1/2 top-[-40%] hidden h-[400px] w-[700px] -translate-x-1/2 rounded-full blur-[20px] dark:block"
           />
           <div className="relative grid grid-cols-2 gap-6 sm:grid-cols-4">
             {playerStats.map((s, i) => (
               <div
                 key={s.label}
-                className={`text-center ${i > 0 ? 'border-l border-white/10' : ''}`}
+                className={`text-center ${i > 0 ? 'border-l border-emerald-900/10 dark:border-white/10' : ''}`}
               >
                 <div
-                  className="font-display font-black italic leading-none"
-                  style={{
-                    fontSize: 'clamp(40px, 4.6vw, 56px)',
-                    background: 'linear-gradient(180deg, #ffffff, #6ee7b7)',
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    color: 'transparent',
-                  }}
+                  className="hero-accent-text font-display font-black italic leading-none"
+                  style={{ fontSize: 'clamp(34px, 4.6vw, 56px)' }}
                 >
                   {s.value}
                 </div>
-                <div className="mt-[10px] font-logo text-[12.5px] font-bold uppercase tracking-[.08em] text-slate-400">
+                <div className="mt-[10px] font-logo text-[12.5px] font-bold uppercase tracking-[.08em] text-muted-foreground">
                   {s.label}
                 </div>
               </div>
@@ -655,75 +483,48 @@ function StatsBar() {
 function OwnerBanner() {
   return (
     <section id="partners" className="relative z-10 py-14 sm:py-20">
-      <div className="mx-auto max-w-[1240px] px-6">
+      <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
         <Reveal>
-          <div
-            className="relative isolate overflow-hidden"
-            style={{
-              borderRadius: '24px',
-              padding: '44px',
-              border: '1px solid rgba(255,255,255,.1)',
-              background:
-                'linear-gradient(120deg, rgba(15,23,42,.85), rgba(2,6,23,.9))',
-              boxShadow: '0 30px 70px -40px rgba(0,0,0,.9)',
-            }}
-          >
-            {/* Background Image */}
+          <div className="cta-band relative isolate overflow-hidden rounded-3xl p-7 sm:p-11">
+            {/* Foto de ambiente: solo dark */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 z-[-2] opacity-25"
+              className="pointer-events-none absolute inset-0 z-[-2] hidden opacity-25 dark:block"
               style={{
                 backgroundImage: "url('/bg-owner.png')",
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                transform: 'scale(1.05)'
+                transform: 'scale(1.05)',
               }}
             />
-            {/* Background glow */}
+            {/* Glow (solo dark; en light la banda ya trae tinte propio) */}
             <div
               aria-hidden
-              className="pointer-events-none absolute right-[-8%] top-[-60%] z-[-1] h-[620px] w-[620px] rounded-full blur-[16px]"
-              style={{
-                background:
-                  'radial-gradient(closest-side, rgba(16,185,129,.27), transparent 70%)',
-              }}
+              className="hero-glow-blob pointer-events-none absolute right-[-8%] top-[-60%] z-[-1] hidden h-[620px] w-[620px] rounded-full blur-[16px] dark:block"
             />
-            {/* Grid pattern */}
+            {/* Retícula */}
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 z-[-1]"
+              className="player-hero-grid pointer-events-none absolute inset-0 z-[-1] bg-[length:40px_40px]"
               style={{
-                backgroundImage:
-                  'linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px)',
-                backgroundSize: '40px 40px',
-                WebkitMaskImage:
-                  'radial-gradient(80% 120% at 100% 0%, #000, transparent 60%)',
-                maskImage:
-                  'radial-gradient(80% 120% at 100% 0%, #000, transparent 60%)',
+                WebkitMaskImage: 'radial-gradient(80% 120% at 100% 0%, #000, transparent 60%)',
+                maskImage: 'radial-gradient(80% 120% at 100% 0%, #000, transparent 60%)',
               }}
             />
 
             <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-[22px] min-w-0">
-                {/* Icon */}
-                <div
-                  className="flex-shrink-0 inline-flex h-[60px] w-[60px] items-center justify-center text-emerald-400"
-                  style={{
-                    borderRadius: '16px',
-                    background: 'rgba(16,185,129,.14)',
-                    border: '1px solid rgba(16,185,129,.35)',
-                    boxShadow: 'inset 0 0 24px rgba(16,185,129,.2)',
-                  }}
-                >
+              <div className="flex min-w-0 items-start gap-[22px]">
+                {/* Ícono */}
+                <div className="icon-halo inline-flex h-[60px] w-[60px] flex-shrink-0 items-center justify-center rounded-2xl">
                   <Building2 className="h-7 w-7" aria-hidden />
                 </div>
 
                 <div className="min-w-0">
-                  <div className="mb-2 font-logo text-xs font-bold uppercase tracking-[.1em] text-emerald-400">
+                  <div className="mb-2 font-logo text-xs font-bold uppercase tracking-[.1em] text-emerald-800 dark:text-emerald-400">
                     Solución para complejos
                   </div>
                   <h2
-                    className="font-display font-black italic text-[#f8fafc]"
+                    className="font-display font-black italic text-foreground"
                     style={{
                       fontSize: 'clamp(28px, 3.2vw, 40px)',
                       letterSpacing: '-0.025em',
@@ -732,7 +533,7 @@ function OwnerBanner() {
                   >
                     Llevá tu complejo al siguiente nivel
                   </h2>
-                  <p className="mt-3 max-w-[560px] text-base leading-[1.55] text-slate-400">
+                  <p className="mt-3 max-w-[560px] text-base leading-[1.55] text-muted-foreground">
                     Automatizá reservas, cobrá señas con MercadoPago y conectá con miles de jugadores activos. Tu complejo, vendiendo canchas 24/7.
                   </p>
                 </div>
@@ -740,8 +541,7 @@ function OwnerBanner() {
 
               <Link
                 href="/para-complejos"
-                className="group inline-flex h-12 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-emerald-600 px-8 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500 sm:self-auto"
-                style={{ boxShadow: '0 8px 30px rgba(16,185,129,.35)' }}
+                className="group inline-flex h-12 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 dark:shadow-emerald-500/25 sm:self-auto"
               >
                 Registrá tu complejo
                 <ArrowRight

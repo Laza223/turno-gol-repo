@@ -18,7 +18,7 @@ describe('ConfirmDialog focus-visible rings', () => {
     )
     const input = screen.getByLabelText(/escribí/i)
     expect(input.className).toContain('focus-visible:ring-2')
-    expect(input.className).toContain('focus-visible:ring-emerald-500')
+    expect(input.className).toContain('focus-visible:ring-ring')
   })
 
   it('cancel + confirm buttons use focus-visible:ring', () => {
@@ -33,8 +33,8 @@ describe('ConfirmDialog focus-visible rings', () => {
     const cancel = screen.getByRole('button', { name: /cancelar/i })
     const confirm = screen.getByRole('button', { name: /confirmar/i })
     expect(cancel.className).toContain('focus-visible:ring-2')
-    expect(cancel.className).toContain('focus-visible:ring-emerald-500')
+    expect(cancel.className).toContain('focus-visible:ring-ring')
     expect(confirm.className).toContain('focus-visible:ring-2')
-    expect(confirm.className).toContain('focus-visible:ring-emerald-500')
+    expect(confirm.className).toContain('focus-visible:ring-ring')
   })
 })

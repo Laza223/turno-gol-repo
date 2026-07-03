@@ -233,6 +233,13 @@ profunda + glow emerald). Recetas canónicas ya en `globals.css`:
 | `.reserva-*` | Shell/badge/receipt del flujo de reserva | Flujo `reserva/[bookingId]` |
 | `.shell-bg` / `.content-area-gradient` | Fondo del shell admin | Layout admin |
 | `.skeleton` | Shimmer de carga | Todo loading que reemplaza contenido |
+| `.landing-hero` | Fondo de página de la landing (light crema emerald / dark slab) | Solo `/` |
+| `.overlay-nav` | Pill de nav flotante glass/elevada | Header overlay de la landing + toasts flotantes decorativos |
+| `.live-pill` | Pill de estado "en vivo" AA en ambos temas | Landing + banda de /explorar |
+| `.search-card` | Tarjeta del buscador (light elevada / dark glass slab) | HeroSearch landing + SearchBar explorar |
+| `.mockup-card` / `.mockup-cover` | Card "producto en acción" y su cover emerald | Mockup del hero; `mockup-cover` también como cover fallback de cards de complejo |
+| `.stats-band` / `.cta-band` | Bandas de prueba social y CTA B2B | Secciones stats/owner de la landing |
+| `.hero-particle` | Partícula flotante con glow (decorativa, dark-only) | Hero landing |
 
 Sombras utilitarias shadcn (`shadow-sm/md/lg/2xl`) siguen válidas para dropdowns/modales.
 **Regla:** una vista no inventa su propia sombra/glass inline; si la receta no existe, se agrega a
@@ -575,8 +582,7 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 
 ### P1 — vistas
 3. **Reportes**: KPIs con formato propio (no `StatCard`), vacío gigante sin empty state didáctico ni ejemplo espectral → §6.4, §7.2.
-5. **Landing mobile**: header desborda a la derecha (Ingresar cortado), valor de fecha trunca ("01/0..."), toast "1 error" → §6.3, §6.7.
-6. **Coherencia de journey de tema**: `(public)/layout.tsx` fuerza dark con `<div className="dark">` (además `color-scheme` queda light → controles nativos/scrollbars inconsistentes), mientras `(player)` y `reserva/` son theme-adaptive. Un jugador en light salta dark→light dentro del mismo flujo. **REQUIERE INPUT (decisión de producto):** (a) público theme-adaptive completo [recomendada: el rediseño 2026-06-26 ya pagó el costo], o (b) público always-dark como identidad — entonces usar `forcedTheme` de next-themes y asumir el salto. Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
+6. **Coherencia de journey de tema**: RESUELTA la parte de vistas (opción (a) aplicada: público + landing + checkout theme-adaptive, rediseño 2026-07-03). Residuo: `tests/e2e/theme-toggle.spec.ts` #2 todavía espera un wrapper `div.dark` always-dark en `/explorar` que ya no existe — actualizar el spec (REQUIERE INPUT de QA). Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
 
 ### P2 — polish
 8. Teléfonos sin formato (`+541100000000` en página de complejo) → §8.4.
@@ -608,6 +614,18 @@ badge de estado único ícono+texto §6.5/§8.5 compartido entre lista y detalle
 clickeable con Link estirado (Fitts) + `hover:bg-accent/50`, CTA y píldoras a `bg-primary`,
 empty state con CTA "Cargar una reserva", `formatArs`/`formatDateLong` únicos —mueren 4
 `formatARS`/`formatDate` locales en `[id]/*`—, skeleton con silueta real).
+
+Cerrados 2026-07-03 (rediseño player premium, spec
+`docs/superpowers/specs/2026-07-03-player-premium-redesign-design.md`): landing + /explorar +
+checkout + retorno de reserva theme-adaptive completos (mueren los slabs `#020617` hardcodeados
+de `page.tsx`, `SearchBand`, `BookingDarkShell`, `BookingSummary`, `PaymentMethodSelector`,
+`LoginGate` — recetas nuevas §4.3 con par light/dark), CTAs del lado jugador a `bg-primary`
+(AA §2.4 en ambos temas), landing mobile [ex P1.5] (paddings responsivos del header overlay,
+`dateFieldClass` para que la fecha no trunque), `formatARS`/`fmtArs` locales del flujo de reserva
+mueren → `formatArs` único §8.2 (player sin decimales), fecha ISO del éxito → `formatDateLong`
+(§8.3), celebración del éxito a una sola vez (`animate-slot-pulse`, ex `animate-ping` infinito,
+§5.3), PitchLines promovida a firma compartida (`components/public/`), `FeaturedComplexCard`
+vuelve a Server Component (muere el hover con JS inline).
 
 Cerrados 2026-07-03: rediseño de Abonados (spec nueva `pages/abonados.md`: badge de estado
 ícono+texto §6.5 vía `status-visual.tsx` —reemplaza `ui/Badge` + `STATUS_VARIANT` sin ícono—,

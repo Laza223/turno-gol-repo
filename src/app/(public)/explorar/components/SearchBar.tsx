@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Clock, MapPin, Search, ChevronDown } from 'lucide-react'
+import { Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import {
@@ -104,11 +104,7 @@ export default function SearchBar({ cities }: Props) {
     <form
       onSubmit={onSubmit}
       aria-label="Buscar canchas"
-      className="rounded-2xl border border-border bg-card/95 p-3 sm:p-4"
-      style={{
-        boxShadow:
-          '0 0 60px rgba(16,185,129,.22), 0 30px 60px -34px rgba(0,0,0,.7)',
-      }}
+      className="search-card rounded-2xl p-3 sm:p-4"
     >
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-end">
         {/* Texto libre */}
@@ -206,7 +202,7 @@ export default function SearchBar({ cities }: Props) {
           <button
             type="submit"
             aria-label="Buscar"
-            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 active:scale-[0.99] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25 dark:hover:shadow-emerald-500/30"
           >
             <Search className="h-4 w-4" aria-hidden />
             <span className="lg:hidden">Buscar canchas</span>

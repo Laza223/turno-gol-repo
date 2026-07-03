@@ -3,15 +3,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function Loading() {
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8" aria-busy="true">
-      {/* Heading */}
-      <div className="space-y-1 px-1">
-        <Skeleton className="h-8 w-72" />
-        <Skeleton className="mt-2 h-4 w-96 max-w-full" />
+      {/* Banda hero (misma silueta que SearchBand) */}
+      <div className="player-hero-band rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
+        <Skeleton className="h-7 w-56 rounded-full" />
+        <Skeleton className="mt-4 h-10 w-80 max-w-full" />
+        <Skeleton className="mt-3 h-4 w-96 max-w-full" />
+        <Skeleton className="mt-6 h-20 w-full rounded-2xl" />
       </div>
 
-      <div className="rounded-3xl border border-border/80 bg-card/95 p-4 shadow-sm backdrop-blur-sm sm:p-6 lg:p-8 space-y-6">
-        {/* Barra de búsqueda */}
-        <Skeleton className="h-20 w-full rounded-2xl" />
+      <div className="space-y-6">
 
         {/* Toolbar */}
         <div className="flex items-center justify-between">

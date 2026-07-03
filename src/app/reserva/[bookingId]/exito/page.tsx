@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm'
 import { CheckCircle2 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
+import { formatArs, formatDateLong } from '@/lib/format'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
 import BookingQR from '@/components/booking/BookingQR'
@@ -60,13 +61,6 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
   })
 }
 
-function fmtArs(cents: number): string {
-  return (Math.round(cents) / 100).toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-}
-
 export default async function ReservaExitoPage({ params }: Props) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
@@ -78,7 +72,7 @@ export default async function ReservaExitoPage({ params }: Props) {
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-400">No encontramos tu reserva.</p>
-          <Link href="/mis-reservas" className="mt-8 inline-flex h-12 items-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 motion-reduce:hover:translate-y-0">
+          <Link href="/mis-reservas" className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25">
             Ver mis reservas
           </Link>
         </div>
@@ -114,9 +108,10 @@ export default async function ReservaExitoPage({ params }: Props) {
   return (
     <ReservaDarkShell>
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+      {/* Celebración peak-end §5.3: un solo ring que se disipa (600ms, una vez)
+          — sin loops. El glow estático lo pone .reserva-success-badge. */}
       <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
-        <span aria-hidden className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden" />
-        <span className="reserva-success-badge relative flex h-20 w-20 items-center justify-center rounded-full text-emerald-600 dark:text-emerald-300">
+        <span className="reserva-success-badge relative flex h-20 w-20 animate-slot-pulse items-center justify-center rounded-full text-emerald-600 dark:text-emerald-300 motion-reduce:animate-none">
           <CheckCircle2 className="h-10 w-10" aria-hidden />
         </span>
       </div>
@@ -125,16 +120,16 @@ export default async function ReservaExitoPage({ params }: Props) {
       </h1>
       <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
         <span className="font-semibold text-slate-800 dark:text-slate-200">{booking.tenantName}</span> · {booking.courtName}<br />
-        {booking.date} · {booking.timeStart.slice(0, 5)}–{booking.timeEnd.slice(0, 5)}
+        {formatDateLong(booking.date)} · {booking.timeStart.slice(0, 5)}–{booking.timeEnd.slice(0, 5)}
       </p>
       {booking.depositStatus === 'not_required' ? (
         <p className="mt-4 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
-          Pagás <span className="font-semibold text-slate-800 dark:text-slate-200">${fmtArs(booking.priceSnapshot)}</span> al llegar al complejo.
+          Pagás <span className="font-semibold text-slate-800 dark:text-slate-200">{formatArs(booking.priceSnapshot)}</span> al llegar al complejo.
         </p>
       ) : (
         <div className="mt-4 space-y-1 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
-          <p>Seña pagada: <span className="font-semibold text-emerald-600 dark:text-emerald-400">${fmtArs(booking.depositAmount)}</span></p>
-          <p>Resta abonar en el complejo: <span className="text-slate-800 dark:text-slate-200">${fmtArs(remainingAmount)}</span></p>
+          <p>Seña pagada: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{formatArs(booking.depositAmount)}</span></p>
+          <p>Resta abonar en el complejo: <span className="text-slate-800 dark:text-slate-200">{formatArs(remainingAmount)}</span></p>
         </div>
       )}
       <section
@@ -184,13 +179,13 @@ export default async function ReservaExitoPage({ params }: Props) {
 
       <Link
         href="/mis-reservas"
-        className="mt-7 inline-flex h-12 items-center rounded-xl bg-emerald-600 px-7 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0"
+        className="mt-7 inline-flex h-12 items-center rounded-xl bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
       >
         Ver mis reservas
       </Link>
       <Link
         href="/explorar"
-        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-300 dark:hover:bg-white/5 dark:hover:text-emerald-200"
+        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-600/10 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-white/5 dark:hover:text-emerald-200"
       >
         Seguir explorando
       </Link>

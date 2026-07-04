@@ -187,6 +187,128 @@ export default {
       // (no ve que la lee como config) y NO aplica overrides a su propio config file, así
       // que este override no lo apaga — se deja documentado; es inofensivo.
       { files: ['doctor.config.mjs'], rules: ['react-doctor/unused-file'] },
+
+      // ─── Security — server-auth-actions falsos positivos (batch 7, triage 2026-07-04) ───
+      // react-doctor pattern-matchea auth checks conocidos (getServerSession, auth(),
+      // etc.) y no reconoce los wrappers custom del proyecto (requireOperatorStaff,
+      // requireAdminStaff, requireAdminStaffAction en src/modules/staff/guards.ts —
+      // revalidan rol contra tenant_staff_members en DB, nunca el JWT). Cada archivo
+      // de acá se verificó leyendo TODOS sus exports: el auth check corre antes de
+      // tocar withTenantContext/DB en cada uno.
+      {
+        // 7/7: createBookingAction, confirmDepositPaymentAction, completeBookingAction,
+        // markNoShowAction, cancelBookingAction, addBookingChargeAction,
+        // toggleAbonadoCreditAction — todas llaman requireOperatorStaff() primero.
+        files: ['**/reservas/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // createAbonadoAction, pauseAbonadoAction, reactivateAbonadoAction,
+        // cancelAbonadoAction llaman requireOperatorStaff() antes de tocar DB
+        // (mismo wrapper no reconocido, ver override de reservas/actions.ts
+        // arriba). submitNewAbonado no chequea auth inline: delega en
+        // createAbonadoAction, que sí la valida — protegido por diseño, sin I/O
+        // propio antes de la delegación. Verificado leyendo todo
+        // abonados/actions.ts + abonados/nuevo/actions.ts.
+        files: ['**/abonados/actions.ts', '**/abonados/nuevo/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // server-auth-actions FALSO POSITIVO por diseño: estos son los propios
+        // endpoints de entrada/salida de sesión (login-adjacent, signup, password
+        // reset, signout) — exigir auth previo no aplica, son públicos por
+        // naturaleza. Cada uno ya tiene su propia protección adecuada donde
+        // corresponde (rate-limit vía enforce() por email o IP, respuesta genérica
+        // sin filtrar existencia de cuenta en forgot-password/resend-confirmation).
+        // signOutAction (2 variantes: admin y jugador/staff compartido) es no-op
+        // inofensivo sobre un usuario anónimo. Verificado leyendo los 5 archivos
+        // completos.
+        files: [
+          '**/actions/auth.ts',
+          '**/forgot-password/actions.ts',
+          '**/login/actions.ts',
+          '**/register/actions.ts',
+          '**/sign-out.action.ts',
+        ],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // server-auth-actions FALSO POSITIVO: las 4 acciones usan
+        // requireStaffTenant() (guard local del archivo, línea 84 —
+        // sesión+tipo staff, redirect /login) y luego assertActorIsAdmin()
+        // (línea 101 — rol admin leído fresco de tenantStaffMembers, nunca
+        // JWT) DENTRO de la transacción, antes de cualquier mutación.
+        // Wrappers custom no reconocidos por la regla (mismo patrón que
+        // requireOperatorStaff en los overrides de arriba). Verificado
+        // leyendo inviteStaffAction, deactivateStaffAction,
+        // updateStaffRoleAction, resendInviteAction completas.
+        files: ['**/staff/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // server-auth-actions FALSO POSITIVO: las 3 acciones usan
+        // requireWizardTenant() (guard local, línea 39) — sesión+tipo
+        // staff+tenant resuelto por DB, documentado en el propio archivo
+        // (línea 35-38: durante el wizard el claim tenant_id del JWT puede
+        // no estar seteado aún, por eso NO usa requireAdminStaffAction).
+        // Wrapper custom no reconocido por la regla. Verificado leyendo
+        // setWizardStepAction, saveWizardScheduleAction,
+        // createWizardCourtsAction completas.
+        files: ['**/onboarding/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // server-auth-actions FALSO POSITIVO: mockPay/mockReject/mockCancel
+        // simulan el redirect público de MercadoPago (el checkout real
+        // tampoco exige sesión TurnoGol — la confirmación llega por webhook
+        // HMAC, no por cookie). Acá el guard es guardMockMode() (línea 21):
+        // 404 salvo NODE_ENV!=='production' Y MP_MOCK_MODE==='1' — doble
+        // gate de entorno, no de sesión, por diseño (ver comentario
+        // "Defense-in-depth" en el propio archivo). Verificado leyendo
+        // mockPay, mockReject, mockCancel completas.
+        files: ['**/mock-mp/checkout/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // createCashFlowAction, closeDayAction usan requireOperatorStaff()
+        // antes de tocar DB (wrapper no reconocido). saveCanteenProductsAction
+        // (mismo archivo, usa requireAdminStaffAction) NO cayó en el scan —
+        // refuerza que la regla matchea por heurística de nombre ("Admin"/
+        // "Auth" en el identificador llamado), no por análisis real del
+        // wrapper. Verificado leyendo el archivo completo.
+        files: ['**/caja/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // toggleCourtStatusAction, getCourtDeactivationImpactAction usan
+        // requireOperatorStaff() (no reconocido). Las otras 5 acciones del
+        // mismo archivo (createCourtAction, updateCourtAction,
+        // uploadCourtPhotoAction, removeCourtPhotoAction,
+        // reorderCourtPhotosAction) usan requireAdminStaffAction y NO
+        // cayeron — mismo patrón de heurística por nombre que en
+        // caja/actions.ts. Verificado leyendo el archivo completo.
+        files: ['**/canchas/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // registerDebtPaymentAction, loadAbonadoCreditAction usan
+        // requireOperatorStaff() antes de tocar DB. Mismo wrapper no
+        // reconocido. Verificado leyendo el archivo completo.
+        files: ['**/jugadores/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
+      {
+        // cancelMyBookingAction usa requirePlayer() (guard local, línea 32 —
+        // extractAuthUser + type==='player', redirect /ingresar) MÁS dos
+        // capas de verificación de ownership: pre-read con
+        // withPlayerContext (RLS player_own_bookings_select filtra solo
+        // bookings del jugador, comentario "Defense in depth" en el propio
+        // código) y el chequeo explícito dentro de cancelByPlayer
+        // (BookingNotOwnedByPlayerError). La acción más blindada de toda
+        // esta auditoría; wrapper local no reconocido por la regla.
+        files: ['**/mis-reservas/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
     ],
   },
 }

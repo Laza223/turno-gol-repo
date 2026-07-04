@@ -147,7 +147,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
               type="button"
               disabled={pending}
               onClick={onSubmit}
-              className="h-8 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+              className="h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
             >
               Cargar
             </button>

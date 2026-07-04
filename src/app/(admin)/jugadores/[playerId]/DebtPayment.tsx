@@ -143,7 +143,7 @@ export default function DebtPayment({ playerId, balance }: Props) {
                 type="button"
                 disabled={pending}
                 onClick={onSubmit}
-                className="h-9 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+                className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
               >
                 Registrar pago
               </button>

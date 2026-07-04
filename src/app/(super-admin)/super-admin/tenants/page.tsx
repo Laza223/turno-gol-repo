@@ -138,7 +138,7 @@ export default async function SuperAdminTenantsPage({
         </div>
         <button
           type="submit"
-          className="h-10 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
+          className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
         >
           Filtrar
         </button>

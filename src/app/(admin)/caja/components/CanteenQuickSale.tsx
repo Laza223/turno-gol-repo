@@ -73,7 +73,7 @@ export function CanteenQuickSale({
               key={p.id}
               type="button"
               onClick={() => setSale(p)}
-              className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-emerald-400 hover:bg-emerald-600/5 active:bg-emerald-600/10 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10 dark:active:bg-emerald-500/15"
+              className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-emerald-400 hover:bg-primary/5 active:bg-primary/10 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10 dark:active:bg-emerald-500/15"
             >
               <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
               <span className="block text-sm tabular-nums text-muted-foreground">{formatArs(p.price)}</span>
@@ -217,7 +217,7 @@ function QuickSaleDialog({
             type="button"
             onClick={submit}
             disabled={isPending}
-            className="h-12 w-full rounded-md bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+            className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
           >
             {isPending ? 'Registrando…' : `Registrar venta — ${formatArs(total)}`}
           </button>
@@ -379,7 +379,7 @@ function ProductsEditorDialog({
               type="button"
               disabled={isPending}
               onClick={save}
-              className="h-11 rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              className="h-11 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
             >
               {isPending ? 'Guardando…' : 'Guardar'}
             </button>

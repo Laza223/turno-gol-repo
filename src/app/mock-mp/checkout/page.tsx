@@ -119,7 +119,7 @@ export default async function MockMpCheckoutPage({
           <button
             type="submit"
             formAction={mockPay}
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
             Pagar (aprobado)
           </button>

@@ -51,7 +51,7 @@ export default function BusinessHeader() {
             </Link>
             <Link
               href="/register"
-              className="inline-flex h-11 items-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              className="inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
               style={{ boxShadow: '0 8px 30px rgba(16,185,129,.35)' }}
             >
               Empezar gratis

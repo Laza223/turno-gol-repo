@@ -212,7 +212,7 @@ const SLOT_CLASSES: Record<(typeof BOOKING_SLOTS)[number]['state'], { box: strin
     label: 'text-emerald-100 dark:text-emerald-950',
   },
   free: {
-    box: 'border border-emerald-600/30 bg-emerald-600/[.07] dark:border-emerald-500/30 dark:bg-emerald-500/[.08]',
+    box: 'border border-emerald-600/30 bg-primary/[.07] dark:border-emerald-500/30 dark:bg-emerald-500/[.08]',
     time: 'text-emerald-800 dark:text-emerald-300',
     label: 'text-emerald-700 dark:text-emerald-400',
   },
@@ -269,7 +269,7 @@ function BookingCardMockup() {
                 Palermo · a 1,2 km
               </div>
             </div>
-            <div className="inline-flex shrink-0 items-center gap-[5px] rounded-full border border-emerald-600/25 bg-emerald-600/10 px-[10px] py-[5px] text-[13px] font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/[.12] dark:text-emerald-300">
+            <div className="inline-flex shrink-0 items-center gap-[5px] rounded-full border border-emerald-600/25 bg-primary/10 px-[10px] py-[5px] text-[13px] font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/[.12] dark:text-emerald-300">
               <Star className="h-[13px] w-[13px] fill-current" strokeWidth={0} aria-hidden />
               4,9
             </div>
@@ -318,7 +318,7 @@ function BookingCardMockup() {
         className="overlay-nav absolute -bottom-4 -left-[26px] inline-flex items-center gap-[9px] rounded-[14px] px-3.5 py-2.5"
         style={{ animation: 'tg-float 7s ease-in-out infinite 1.4s' }}
       >
-        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-emerald-600/15 text-emerald-700 dark:bg-emerald-500/[.18] dark:text-emerald-400">
+        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-primary/15 text-emerald-700 dark:bg-emerald-500/[.18] dark:text-emerald-400">
           <Check className="h-4 w-4" strokeWidth={2.6} aria-hidden />
         </span>
         <div>

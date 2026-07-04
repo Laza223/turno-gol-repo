@@ -148,7 +148,7 @@ export function buildDelta(
 export function chipClass(active: boolean): string {
   return `h-11 rounded-md border px-2 text-xs font-medium transition-colors disabled:opacity-60 md:h-10 ${
     active
-      ? 'border-emerald-600 bg-emerald-600/10 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300'
+      ? 'border-emerald-600 bg-primary/10 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300'
       : 'border-border bg-card text-muted-foreground hover:bg-accent'
   }`
 }

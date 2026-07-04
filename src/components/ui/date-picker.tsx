@@ -230,7 +230,7 @@ export default function DatePicker({
                 onChange(formatted)
                 setOpen(false)
               }}
-              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline px-1 py-0.5"
+              className="text-xs font-semibold text-primary hover:underline px-1 py-0.5"
             >
               Hoy
             </button>

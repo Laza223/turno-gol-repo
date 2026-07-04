@@ -95,7 +95,7 @@ export function StepPayments({ mpConnected, mpError }: Props) {
           className={cn(
             'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
             choice === 'deposit'
-              ? 'border-emerald-600 bg-emerald-600/5 dark:bg-emerald-500/10'
+              ? 'border-emerald-600 bg-primary/5 dark:bg-emerald-500/10'
               : 'border-border bg-card hover:border-emerald-600/40',
           )}
         >
@@ -117,7 +117,7 @@ export function StepPayments({ mpConnected, mpError }: Props) {
           <span className="min-w-0">
             <span className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold text-foreground">Cobrar seña online</span>
-              <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/25 dark:text-emerald-400 dark:ring-emerald-500/40">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/25 dark:text-emerald-400 dark:ring-emerald-500/40">
                 Recomendado
               </span>
             </span>
@@ -132,7 +132,7 @@ export function StepPayments({ mpConnected, mpError }: Props) {
           className={cn(
             'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
             choice === 'none'
-              ? 'border-emerald-600 bg-emerald-600/5 dark:bg-emerald-500/10'
+              ? 'border-emerald-600 bg-primary/5 dark:bg-emerald-500/10'
               : 'border-border bg-card hover:border-emerald-600/40',
           )}
         >

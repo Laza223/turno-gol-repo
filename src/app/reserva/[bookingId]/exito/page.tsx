@@ -185,7 +185,7 @@ export default async function ReservaExitoPage({ params }: Props) {
       </Link>
       <Link
         href="/explorar"
-        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-600/10 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-white/5 dark:hover:text-emerald-200"
+        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-700 transition-colors hover:bg-primary/10 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-white/5 dark:hover:text-emerald-200"
       >
         Seguir explorando
       </Link>

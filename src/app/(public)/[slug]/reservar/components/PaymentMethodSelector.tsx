@@ -62,7 +62,7 @@ const METHOD_DEFS: Record<PayMethod, MethodDef> = {
     label: 'Efectivo',
     description: 'Pagás al llegar al complejo',
     icon: <CashIcon />,
-    iconClass: 'bg-emerald-600/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    iconClass: 'bg-primary/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
     checkedClass:
       'peer-checked:border-emerald-600 peer-checked:ring-emerald-600 dark:peer-checked:border-emerald-400 dark:peer-checked:ring-emerald-400',
   },

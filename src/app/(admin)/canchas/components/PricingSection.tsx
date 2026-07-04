@@ -143,7 +143,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
               <span
                 className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 ${
                   mode === opt.value
-                    ? 'border-emerald-600 bg-emerald-600/10 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300'
+                    ? 'border-emerald-600 bg-primary/10 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300'
                     : 'border-border text-muted-foreground hover:text-foreground'
                 }`}
               >

@@ -20,7 +20,7 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
   return (
     <section
       aria-label="Cierre del día"
-      className="rounded-xl border border-emerald-600/30 bg-emerald-600/5 p-5 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10"
+      className="rounded-xl border border-emerald-600/30 bg-primary/5 p-5 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10"
     >
       <div className="flex items-start gap-3">
         <CheckCircle2

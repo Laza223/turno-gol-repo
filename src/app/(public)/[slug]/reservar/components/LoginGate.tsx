@@ -24,7 +24,7 @@ export default function LoginGate({ next }: { next: string }) {
   if (state.status === 'sent') {
     return (
       <div className="reserva-receipt-card rounded-2xl p-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-700 ring-1 ring-inset ring-emerald-600/30 dark:bg-emerald-500/[.14] dark:text-emerald-300 dark:ring-emerald-500/35">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-emerald-700 ring-1 ring-inset ring-emerald-600/30 dark:bg-emerald-500/[.14] dark:text-emerald-300 dark:ring-emerald-500/35">
           <Mail className="h-5 w-5" aria-hidden />
         </div>
         <h2 className="font-display text-base font-bold text-foreground">Revisá tu email</h2>

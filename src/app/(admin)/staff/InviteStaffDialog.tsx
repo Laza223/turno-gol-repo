@@ -35,7 +35,7 @@ function SubmitButton() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="w-full bg-emerald-600 hover:bg-emerald-500"
+      className="w-full bg-primary hover:bg-emerald-500"
     >
       {pending ? 'Enviando…' : 'Enviar invitación'}
     </Button>

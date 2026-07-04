@@ -50,7 +50,7 @@ export default function ShareButton({ url, message, label = 'Compartir', classNa
         <button
           type="button"
           className={cn(
-            'group inline-flex h-11 items-center gap-2 rounded-xl border border-border/50 bg-card/60 px-4 text-sm font-semibold text-foreground/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:border-emerald-500/30 dark:hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+            'group inline-flex h-11 items-center gap-2 rounded-xl border border-border/50 bg-card/60 px-4 text-sm font-semibold text-foreground/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:border-emerald-500/30 dark:hover:border-emerald-500/40 hover:text-primary hover:shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
             className,
           )}
         >

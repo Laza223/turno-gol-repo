@@ -131,7 +131,7 @@ function SlotCell({
       <a
         href={`tel:${phone}`}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
+        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
       >
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" aria-hidden />
@@ -145,7 +145,7 @@ function SlotCell({
   return (
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
-      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-emerald-600 hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
+      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
     >
       <span>Reservar</span>
       {priceLine}

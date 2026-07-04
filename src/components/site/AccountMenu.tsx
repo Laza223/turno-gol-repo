@@ -49,7 +49,7 @@ export function AccountMenu({ firstName, lastName, email, avatarUrl, variant = '
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
           ) : (
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
               {initials(firstName, lastName)}
             </span>
           )}

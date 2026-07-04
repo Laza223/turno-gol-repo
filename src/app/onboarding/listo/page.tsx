@@ -27,7 +27,7 @@ export default async function OnboardingListoPage() {
     <WizardShell currentStep={5}>
       <div className="card-premium rounded-2xl p-6 text-center md:p-8">
         <div className="animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600/10 dark:bg-emerald-500/15">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 dark:bg-emerald-500/15">
             <CheckCircle2 className="h-9 w-9 text-emerald-700 dark:text-emerald-400" aria-hidden />
           </span>
           <h2 className="mt-4 text-2xl font-bold tracking-tight text-foreground">

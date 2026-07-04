@@ -120,7 +120,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
         </p>
       </fieldset>
 
-      <SubmitButton className="bg-emerald-600 hover:bg-emerald-500">Guardar cambios</SubmitButton>
+      <SubmitButton className="bg-primary hover:bg-emerald-500">Guardar cambios</SubmitButton>
 
       <div aria-live="polite" className="min-h-[1.25rem]">
         {!state.success && (

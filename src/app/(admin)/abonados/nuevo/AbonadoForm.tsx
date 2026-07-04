@@ -91,7 +91,7 @@ export function PreviewSlotsView({
           type="button"
           onClick={onConfirm}
           disabled={noSlots || isConfirming}
-          className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+          className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
         >
           {isConfirming ? 'Guardando…' : 'Crear abonado'}
         </button>
@@ -240,7 +240,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
       <button
         type="submit"
         disabled={isPreviewing}
-        className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+        className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
       >
         {isPreviewing ? 'Cargando…' : 'Ver fechas del turno'}
       </button>

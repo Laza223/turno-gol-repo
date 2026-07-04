@@ -319,7 +319,7 @@ export function StepCourts({ existingCourts }: Props) {
                             key={f}
                             className={
                               active
-                                ? 'cursor-pointer rounded-full border border-emerald-600 bg-emerald-600/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
+                                ? 'cursor-pointer rounded-full border border-emerald-600 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
                                 : 'cursor-pointer rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground hover:border-emerald-600/40 hover:text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
                             }
                           >

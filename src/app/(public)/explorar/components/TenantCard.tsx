@@ -70,7 +70,7 @@ export default function TenantCard({
           className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent"
         />
         {tenant.allowOnlineBooking && (
-          <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-md shadow-emerald-900/30">
+          <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-md shadow-emerald-900/30">
             <Zap className="h-3 w-3" aria-hidden />
             Reservá online
           </span>

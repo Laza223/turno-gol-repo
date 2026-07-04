@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 
 // Los 4 pasos del wizard (pages/onboarding.md §2). El orden importa: los
 // precios del paso Canchas se generan sobre los horarios ya confirmados.
-export const WIZARD_STEPS = [
+const WIZARD_STEPS = [
   { n: 1, label: 'Tu complejo', hint: 'Nombre y ubicación' },
   { n: 2, label: 'Horarios', hint: 'Cuándo abrís' },
   { n: 3, label: 'Canchas', hint: 'Canchas y precios' },

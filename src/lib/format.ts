@@ -52,18 +52,6 @@ export function formatDateLong(value: Date | string): string {
   return capitalizeFirst(dateFormatter.format(d))
 }
 
-const dateShortFormatter = new Intl.DateTimeFormat('es-AR', {
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-})
-
-/** Date | "YYYY-MM-DD" → "vie 3 jul". */
-export function formatDateShort(value: Date | string): string {
-  const d = typeof value === 'string' ? parseDateOnly(value) : value
-  return dateShortFormatter.format(d).replace(/\./g, '')
-}
-
 /** Parsea "YYYY-MM-DD" como fecha local (evita el shift UTC de new Date(str)). */
 function parseDateOnly(value: string): Date {
   const [y, m, day] = value.split('-').map(Number)

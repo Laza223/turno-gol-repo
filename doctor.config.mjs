@@ -26,7 +26,6 @@ export default {
         files: [
           'src/components/ui/**',
           'src/app/**/status-visual.tsx',
-          'src/components/admin/table.tsx',
           'src/components/booking/BookingCard.tsx',
           'src/app/onboarding/components/WizardShell.tsx',
           '.design-sync/ds-entry.tsx',
@@ -168,6 +167,26 @@ export default {
       { files: ['src/components/site/HeroSearch.tsx', 'src/components/ui/date-picker.tsx', 'src/components/ui/phone-input.tsx'], rules: ['react-doctor/no-event-handler'] },
       { files: ['src/components/ui/image-uploader.tsx', 'src/components/site/AccountMenu.tsx'], rules: ['react-doctor/nextjs-no-img-element'] },
       { files: ['src/app/opengraph-image.tsx'], rules: ['react-doctor/nextjs-no-edge-og-runtime'] },
+
+      // ─── Maintainability — unused-export/unused-file (batch 6, triage 2026-07-04) ───
+      // 14 findings unused → 6 arreglos reales: 2 archivos borrados (PremiumCard.tsx,
+      // table.tsx — primitives UI abandonados, reemplazados por la clase CSS .card-premium;
+      // resuelve la decisión abierta 4-25 hacia "borrar la duplicación muerta") + 2 bloques
+      // muertos borrados (formatDateShort en lib/format.ts, re-export InvalidTransitionError
+      // en booking.state-machine.ts — la clase vive intacta en booking.errors.ts) + 4 FP
+      // arreglados despojando la palabra `export` de símbolos usados SOLO dentro de su propio
+      // archivo (abonadoStatusVisual, courtStatusVisual, WIZARD_STEPS, DEFAULT_COUNTRY).
+      // Los 5 restantes NO se suprimen ni se borran: son scaffolding con fix pendiente
+      // documentado (REQUIERE INPUT en PROGRESS.md), se dejan VISIBLES a propósito para que
+      // el dueño decida cablear-vs-borrar: parseRouteUuid (route-params.ts, helper de
+      // seguridad F4-T6, referenciado por zod-coverage.test.ts), cashflow.schema.ts +
+      // bookingResponseSchema (contratos de output sin cablear, pendiente validateApiOutput
+      // / finding 4-04), openingHoursSchema (finding #36 lo quiere para validar horarios),
+      // runRequestObservability (infra de observabilidad, grupo 4). Queda 1 FP cosmético
+      // NO silenciable: react-doctor marca su propia doctor.config.mjs como unused-file
+      // (no ve que la lee como config) y NO aplica overrides a su propio config file, así
+      // que este override no lo apaga — se deja documentado; es inofensivo.
+      { files: ['doctor.config.mjs'], rules: ['react-doctor/unused-file'] },
     ],
   },
 }

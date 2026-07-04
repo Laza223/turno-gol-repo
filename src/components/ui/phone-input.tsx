@@ -32,7 +32,7 @@ export const COUNTRIES: CountryOption[] = [
   { code: 'CA', name: 'Canadá', dialCode: '+1', flag: '🇨🇦' },
 ]
 
-export const DEFAULT_COUNTRY = COUNTRIES[0] // Argentina
+const DEFAULT_COUNTRY = COUNTRIES[0] // Argentina
 
 export function parsePhoneNumber(rawPhone?: string | null): {
   country: CountryOption

@@ -28,7 +28,7 @@ const STATUS_VISUALS: Record<CourtStatus, CourtStatusVisual> = {
   },
 }
 
-export function courtStatusVisual(status: CourtStatus): CourtStatusVisual {
+function courtStatusVisual(status: CourtStatus): CourtStatusVisual {
   return STATUS_VISUALS[status]
 }
 

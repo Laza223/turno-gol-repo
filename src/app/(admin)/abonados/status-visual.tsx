@@ -30,7 +30,7 @@ const STATUS_VISUALS: Record<AbonadoStatus, AbonadoStatusVisual> = {
 }
 
 /** Estado visual del abonado: color + ícono + texto siempre juntos (MASTER §2.6). */
-export function abonadoStatusVisual(status: AbonadoStatus): AbonadoStatusVisual {
+function abonadoStatusVisual(status: AbonadoStatus): AbonadoStatusVisual {
   return STATUS_VISUALS[status]
 }
 

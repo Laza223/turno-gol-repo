@@ -344,7 +344,7 @@ progresiva obligatoria:** cada vez que se toque un primitive, se tokeniza:
 | Componente | Cuándo |
 |---|---|
 | `Card` shadcn plana (`bg-card border shadow-sm`) | Contenido de trabajo: forms, tablas, listados admin |
-| `PremiumCard` / `.card-premium` | Superficies destacadas: paneles de dashboard, cards de complejo/cancha del jugador |
+| `.card-premium` | Superficies destacadas: paneles de dashboard, cards de complejo/cancha del jugador |
 | `StatCard` | KPIs. **Único** formato de KPI permitido (número `font-display` + label + ícono halo + comparativa opcional). Reportes hoy viola esto con su propio formato — migrar |
 | `PageHeader` | Cabecera de TODA página admin: ícono halo + h1 + subtítulo (fecha/contexto) + acciones a la derecha |
 

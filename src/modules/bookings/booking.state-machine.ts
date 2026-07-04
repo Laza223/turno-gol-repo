@@ -73,5 +73,3 @@ export function assertTransition(
     )
   }
 }
-
-export { InvalidTransitionError }

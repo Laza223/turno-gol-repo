@@ -112,10 +112,10 @@ export default async function PerfilPage({
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate font-display text-xl font-black italic tracking-tight text-slate-900 dark:text-white">
+            <p className="truncate font-display text-xl font-black italic tracking-tight text-foreground">
               {player.firstName} {player.lastName}
             </p>
-            <p className="truncate text-sm text-slate-600 dark:text-slate-400">{player.email}</p>
+            <p className="truncate text-sm text-muted-foreground">{player.email}</p>
           </div>
         </div>
       </PlayerHeroBand>

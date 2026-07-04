@@ -39,7 +39,7 @@ export default async function ReservaErrorPage({ params }: Props) {
     return (
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-          <p className="text-sm text-slate-600 dark:text-slate-400">No encontramos tu reserva.</p>
+          <p className="text-sm text-muted-foreground">No encontramos tu reserva.</p>
           <Link href="/mis-reservas" className={`mt-8 ${ctaClass}`}>
             Ver mis reservas
           </Link>
@@ -59,8 +59,8 @@ export default async function ReservaErrorPage({ params }: Props) {
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-100 dark:bg-red-500/15 dark:ring-red-500/10">
           <XCircle className="h-8 w-8 text-red-700 dark:text-red-300" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-slate-900 dark:text-white">El pago no se procesó.</h1>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">El pago no se procesó.</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
           El pago fue rechazado o cancelado. Podés intentar de nuevo con otro medio.
         </p>
         <span className="sr-only">Reserva {params.bookingId}</span>

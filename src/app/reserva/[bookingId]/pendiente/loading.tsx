@@ -8,10 +8,10 @@ export default function ReservaPendienteLoading() {
         role="status"
         aria-label="Cargando…"
       >
-        <div className="mb-5 h-16 w-16 animate-pulse rounded-full bg-slate-300/70 dark:bg-white/[.06]" aria-hidden />
-        <div className="h-7 w-48 animate-pulse rounded-md bg-slate-300/70 dark:bg-white/[.06]" aria-hidden />
-        <div className="mt-3 h-4 w-56 animate-pulse rounded-md bg-slate-200/70 dark:bg-white/[.05]" aria-hidden />
-        <div className="mt-2 h-4 w-40 animate-pulse rounded-md bg-slate-200/70 dark:bg-white/[.05]" aria-hidden />
+        <div className="mb-5 h-16 w-16 animate-pulse rounded-full bg-muted" aria-hidden />
+        <div className="h-7 w-48 animate-pulse rounded-md bg-muted" aria-hidden />
+        <div className="mt-3 h-4 w-56 animate-pulse rounded-md bg-muted" aria-hidden />
+        <div className="mt-2 h-4 w-40 animate-pulse rounded-md bg-muted" aria-hidden />
       </div>
     </ReservaDarkShell>
   )

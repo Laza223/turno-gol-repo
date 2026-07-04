@@ -179,7 +179,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                       <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
                         {time || 'Cualquier horario'}
                       </span>
-                      <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-slate-500" aria-hidden />
+                      <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-muted-foreground" aria-hidden />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
@@ -292,10 +292,10 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                   id="hero-time"
                   className={`${fieldClass} flex items-center justify-between text-left pr-10`}
                 >
-                  <span className={!time ? 'text-slate-500' : 'text-slate-900'}>
+                  <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
                     {time || 'Cualquier horario'}
                   </span>
-                  <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-slate-500" aria-hidden />
+                  <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-muted-foreground" aria-hidden />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">

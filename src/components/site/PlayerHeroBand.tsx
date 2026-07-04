@@ -40,7 +40,7 @@ export default function PlayerHeroBand({
       </div>
       {title && (
         <h1
-          className="mt-2 font-display font-black italic text-slate-900 dark:text-white"
+          className="mt-2 font-display font-black italic text-foreground"
           style={{ fontSize: 'clamp(26px, 6vw, 36px)', lineHeight: '1', letterSpacing: '-0.03em' }}
         >
           {title}
@@ -53,7 +53,7 @@ export default function PlayerHeroBand({
         </h1>
       )}
       {subtitle && (
-        <p className="mt-2.5 text-[14px] leading-relaxed text-slate-600 dark:text-slate-400">
+        <p className="mt-2.5 text-[14px] leading-relaxed text-muted-foreground">
           {subtitle}
         </p>
       )}

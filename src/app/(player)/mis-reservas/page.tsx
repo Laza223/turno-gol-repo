@@ -83,11 +83,11 @@ const STATUS_ICONS: Record<string, LucideIcon> = {
 const STATUS_CLASSES: Record<string, string> = {
   confirmed: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
   pending_payment: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20',
-  completed: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
-  canceled_refunded: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
-  canceled_no_refund: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
+  completed: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+  canceled_refunded: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+  canceled_no_refund: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
   no_show: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20',
-  expired: 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-muted dark:text-muted-foreground dark:ring-border',
+  expired: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
 }
 
 /** Color del bloque-fecha según estado (esmeralda activo, atenuado si cerrado). */
@@ -95,7 +95,7 @@ const DATE_BLOCK_CLASSES: Record<string, string> = {
   confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
   pending_payment: 'bg-amber-50 text-amber-700 ring-amber-600/15 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20',
 }
-const DATE_BLOCK_MUTED = 'bg-slate-50 text-slate-500 ring-slate-300/40 dark:bg-muted dark:text-muted-foreground dark:ring-border'
+const DATE_BLOCK_MUTED = 'bg-muted text-muted-foreground ring-border'
 
 export default async function MisReservasPage({
   searchParams,
@@ -157,12 +157,12 @@ export default async function MisReservasPage({
           Tu actividad
         </div>
         <h1
-          className="mt-2 font-display font-black italic text-slate-900 dark:text-white"
+          className="mt-2 font-display font-black italic text-foreground"
           style={{ fontSize: 'clamp(26px, 6vw, 36px)', lineHeight: '1', letterSpacing: '-0.03em' }}
         >
           Mis <span className="hero-accent-text">reservas</span>
         </h1>
-        <p className="mt-2.5 text-[14px] leading-relaxed text-slate-600 dark:text-slate-400 tabular-nums">
+        <p className="mt-2.5 text-[14px] leading-relaxed text-muted-foreground tabular-nums">
           {upcomingCount > 0
             ? `Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`
             : 'Consultá tus próximas reservas y tu historial de partidos.'}

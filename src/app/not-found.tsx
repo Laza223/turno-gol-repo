@@ -3,17 +3,17 @@ import { Home, Compass } from 'lucide-react'
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-4 py-12 text-center">
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-inset ring-emerald-600/20">
-        <Compass className="h-7 w-7 text-emerald-600" aria-hidden="true" />
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12 text-center">
+      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/20">
+        <Compass className="h-7 w-7 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
       </div>
-      <p className="text-7xl font-bold tracking-tight text-emerald-600 tabular-nums sm:text-8xl">
+      <p className="text-7xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 tabular-nums sm:text-8xl">
         404
       </p>
-      <h1 className="mt-4 text-2xl font-semibold text-slate-900">
+      <h1 className="mt-4 text-2xl font-semibold text-foreground">
         Página no encontrada
       </h1>
-      <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
         La página que buscás no existe o fue movida. Verificá la dirección o
         volvé al inicio.
       </p>

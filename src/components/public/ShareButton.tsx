@@ -61,9 +61,9 @@ export default function ShareButton({ url, message, label = 'Compartir', classNa
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={copyLink} className="cursor-pointer gap-2">
           {copied ? (
-            <Check className="h-4 w-4 text-emerald-600" aria-hidden />
+            <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
           ) : (
-            <Copy className="h-4 w-4 text-slate-500" aria-hidden />
+            <Copy className="h-4 w-4 text-muted-foreground" aria-hidden />
           )}
           {copied ? 'Copiado' : 'Copiar enlace'}
         </DropdownMenuItem>

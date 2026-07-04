@@ -47,19 +47,19 @@ const STATUS_VISUALS: Record<string, ReservaStatusVisual> = {
   canceled_refunded: {
     icon: XCircle,
     label: 'Cancelada',
-    accent: 'bg-slate-300 dark:bg-slate-500',
+    accent: 'bg-muted-foreground',
     badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
   },
   canceled_no_refund: {
     icon: XCircle,
     label: 'Cancelada',
-    accent: 'bg-slate-300 dark:bg-slate-500',
+    accent: 'bg-muted-foreground',
     badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
   },
   expired: {
     icon: XCircle,
     label: 'Expirada',
-    accent: 'bg-slate-300 dark:bg-slate-500',
+    accent: 'bg-muted-foreground',
     badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
   },
 }
@@ -67,7 +67,7 @@ const STATUS_VISUALS: Record<string, ReservaStatusVisual> = {
 const BLOCK_VISUAL: ReservaStatusVisual = {
   icon: Ban,
   label: 'Bloqueo',
-  accent: 'bg-slate-400 dark:bg-slate-500',
+  accent: 'bg-muted-foreground',
   badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
 }
 

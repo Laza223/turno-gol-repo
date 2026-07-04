@@ -30,7 +30,7 @@ export default async function ReservaPendientePage({ params }: Props) {
     return (
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-          <p className="text-sm text-slate-600 dark:text-slate-400">No encontramos tu reserva. Revisá tus reservas en el panel.</p>
+          <p className="text-sm text-muted-foreground">No encontramos tu reserva. Revisá tus reservas en el panel.</p>
         </div>
       </ReservaDarkShell>
     )

@@ -51,7 +51,7 @@ export default function SearchBar({ cities }: Props) {
   const today = useMemo(todayLocal, [])
 
   const [q, setQ] = useState(params.get('q') ?? '')
-  const [city, setCity] = useState(cityValueFrom(params))
+  const [city, setCity] = useState(() => cityValueFrom(params))
   const [date, setDate] = useState(params.get('date') ?? '')
   const [time, setTime] = useState(params.get('time') ?? '')
 

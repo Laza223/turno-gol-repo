@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { unstable_cache } from 'next/cache'
 import {
@@ -104,7 +105,11 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
   const playerId = authUser?.type === 'player' ? authUser.playerId : null
   const favoriteIds = playerId ? await getPlayerFavoriteIds(playerId) : new Set<string>()
 
-  const formats = csv(searchParams.formats).map(Number).filter((n) => Number.isFinite(n))
+  const formats = csv(searchParams.formats).reduce<number[]>((acc, v) => {
+    const n = Number(v)
+    if (Number.isFinite(n)) acc.push(n)
+    return acc
+  }, [])
 
   // Disponibilidad real: con fecha+hora válidas en la URL, la búsqueda queda
   // restringida a complejos con al menos una cancha libre a esa hora (cacheado
@@ -175,7 +180,10 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       : ({} as Record<string, string[]>),
     wantCardExtras && avail
       ? findFreeSlotPillsByTenant({
-          tenantIds: results.filter((t) => t.allowOnlineBooking).map((t) => t.id),
+          tenantIds: results.reduce<string[]>((acc, t) => {
+            if (t.allowOnlineBooking) acc.push(t.id)
+            return acc
+          }, []),
           date: avail.date,
           time: avail.time,
           ...(formats.length ? { formats } : {}),
@@ -200,15 +208,19 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       <SearchBand cities={cities} />
 
       <div className="sticky top-16 z-20 -mx-4 space-y-2 border-b border-border bg-card/85 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/70 sm:px-6 lg:px-8">
-        <QuickFilters />
-        <ExplorarToolbar total={total} />
+        <Suspense fallback={<div className="h-16" />}>
+          <QuickFilters />
+          <ExplorarToolbar total={total} />
+        </Suspense>
       </div>
 
       <div className={view === 'map' ? '' : 'lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6'}>
         {view === 'list' && (
           <aside className="hidden lg:block">
             <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <ExplorarFilters />
+              <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
+                <ExplorarFilters />
+              </Suspense>
             </div>
           </aside>
         )}

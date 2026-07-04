@@ -16,16 +16,22 @@ type Props = {
   tenant: PublicTenant
 }
 
+const DATE_ES_FORMATTER = new Intl.DateTimeFormat('es-AR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+})
+
+const ARS_PRICE_FORMATTER = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0,
+})
+
 function formatDateES(dateStr: string): string {
   const dt = new Date(dateStr + 'T12:00:00Z')
-  return capitalizeFirst(
-    new Intl.DateTimeFormat('es-AR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      timeZone: 'UTC',
-    }).format(dt),
-  )
+  return capitalizeFirst(DATE_ES_FORMATTER.format(dt))
 }
 
 function addDays(dateStr: string, n: number): string {
@@ -83,13 +89,7 @@ function SlotCell({
     )
   }
 
-  const priceFormatted = slot.price
-    ? new Intl.NumberFormat('es-AR', {
-        style: 'currency',
-        currency: 'ARS',
-        maximumFractionDigits: 0,
-      }).format(slot.price / 100)
-    : null
+  const priceFormatted = slot.price ? ARS_PRICE_FORMATTER.format(slot.price / 100) : null
 
   // Precio visible en todo slot futuro: el jugador ve la estructura de
   // precios del día aunque el turno esté tomado.
@@ -131,7 +131,7 @@ function SlotCell({
       <a
         href={`tel:${phone}`}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
+        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
       >
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" aria-hidden />
@@ -145,7 +145,7 @@ function SlotCell({
   return (
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
-      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
+      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
     >
       <span>Reservar</span>
       {priceLine}
@@ -396,7 +396,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
             </thead>
             <tbody className="divide-y divide-border">
               {timeRows.map((row) => (
-                <tr key={row.time} className="hover:bg-accent">
+                <tr key={row.time}>
                   <td className="py-1.5 pr-4 text-xs text-muted-foreground tabular-nums align-middle">
                     {row.time}
                   </td>

@@ -6,12 +6,14 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listTenantPlayers } from './queries'
 
+const ARS_FORMATTER = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0,
+})
+
 function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-  }).format(centavos / 100)
+  return ARS_FORMATTER.format(centavos / 100)
 }
 
 export default async function JugadoresPage({
@@ -41,6 +43,7 @@ export default async function JugadoresPage({
         <input
           type="search"
           name="q"
+          aria-label="Buscar jugadores"
           defaultValue={q ?? ''}
           placeholder="Buscar por nombre, teléfono o email"
           className="w-full rounded-md border border-border py-2 pl-9 pr-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"

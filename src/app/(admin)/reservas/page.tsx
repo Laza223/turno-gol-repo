@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CalendarX, CalendarCheck, CalendarDays } from 'lucide-react'
@@ -154,7 +155,9 @@ export default async function ReservasPage({ searchParams }: Props) {
             )
           })}
         </nav>
-        <ReservasToolbar />
+        <Suspense fallback={<div className="h-10 w-full rounded-lg bg-muted sm:w-72" aria-hidden />}>
+          <ReservasToolbar />
+        </Suspense>
       </div>
 
       <nav aria-label="Filtro por estado" className="flex flex-wrap gap-2">

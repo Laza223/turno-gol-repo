@@ -1,7 +1,6 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { useMemo } from 'react'
 import { useTheme } from 'next-themes'
 
 export interface ChartTheme {
@@ -69,5 +68,5 @@ const DARK: ChartTheme = {
  */
 export function useChartTheme(): ChartTheme {
   const { resolvedTheme } = useTheme()
-  return useMemo(() => (resolvedTheme === 'dark' ? DARK : LIGHT), [resolvedTheme])
+  return resolvedTheme === 'dark' ? DARK : LIGHT
 }

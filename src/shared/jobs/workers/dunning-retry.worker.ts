@@ -37,6 +37,10 @@ async function loadTenantOwners(tenantIds: string[]): Promise<TenantOwnerInfo[]>
   const sql = getWorkerSql()
   const out: TenantOwnerInfo[] = []
   for (const id of tenantIds) {
+    // secuencial: `sql` (getWorkerSql) es una conexión postgres-js compartida; no
+    // corre queries en paralelo → Promise.all crashea. Mejora futura: una sola
+    // query con WHERE id = ANY(${tenantIds}) en lugar de N lookups.
+    // react-doctor-disable-next-line react-doctor/async-await-in-loop
     const rows = await sql<TenantOwnerInfo[]>`
       SELECT t.id AS "tenantId",
              t.name AS "tenantName",

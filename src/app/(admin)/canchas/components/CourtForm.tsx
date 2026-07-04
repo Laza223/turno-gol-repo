@@ -148,10 +148,11 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
       {/* Basic fields */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="court-name" className="block text-sm font-medium mb-1">
             Nombre <span className="text-red-500">*</span>
           </label>
           <input
+            id="court-name"
             name="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -162,10 +163,11 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="court-surface" className="block text-sm font-medium mb-1">
             Superficie <span className="text-red-500">*</span>
           </label>
           <select
+            id="court-surface"
             name="surfaceType"
             value={surfaceType}
             onChange={(e) => setSurfaceType(e.target.value)}
@@ -180,10 +182,11 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="court-format" className="block text-sm font-medium mb-1">
             Formato <span className="text-red-500">*</span>
           </label>
           <select
+            id="court-format"
             name="format"
             value={format}
             onChange={(e) => setFormat(Number(e.target.value))}

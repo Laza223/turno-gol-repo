@@ -30,7 +30,7 @@ describe('focus-visible rings on primitives', () => {
         </DialogContent>
       </Dialog>,
     )
-    const close = screen.getByRole('button', { name: /close/i })
+    const close = screen.getByRole('button', { name: /cerrar|close/i })
     expect(close.className).toContain('focus-visible:ring-2')
     expect(close.className).toContain('focus-visible:ring-ring')
   })

@@ -20,12 +20,14 @@ const STATUS_LABELS: Record<string, string> = {
   canceled: 'Cancelado',
 }
 
+const ARS_FORMATTER = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0,
+})
+
 function formatARS(centavos: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-  }).format(centavos / 100)
+  return ARS_FORMATTER.format(centavos / 100)
 }
 
 function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerAbonado }) {

@@ -29,8 +29,10 @@ const TYPE_LABELS: Record<string, string> = {
   block: 'Bloqueo',
 }
 
+const ARS_FORMATTER = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
+
 function formatARS(cents: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(cents / 100)
+  return ARS_FORMATTER.format(cents / 100)
 }
 
 function formatDate(dateStr: string): string {

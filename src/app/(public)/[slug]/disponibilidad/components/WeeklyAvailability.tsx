@@ -4,15 +4,19 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { WeeklyAvailabilityResponse } from '@/modules/tenants/public.service'
 
+const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
+const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const ARS_FORMATTER = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
+
 function formatDayTab(dateStr: string): { dow: string; dm: string } {
   const dt = new Date(dateStr + 'T12:00:00Z')
-  const dow = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' }).format(dt)
-  const dm = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(dt)
+  const dow = DOW_FORMATTER.format(dt)
+  const dm = DAY_MONTH_FORMATTER.format(dt)
   return { dow, dm }
 }
 
 function formatARS(cents: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(cents / 100)
+  return ARS_FORMATTER.format(cents / 100)
 }
 
 export default function WeeklyAvailability({ slug, week }: { slug: string; week: WeeklyAvailabilityResponse }) {

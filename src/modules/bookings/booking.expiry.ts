@@ -152,9 +152,7 @@ export async function expirePendingBookingWithPolicy(
 
   if (!won) return 'skipped'
 
-  for (const id of notifIds) {
-    await dispatchEmail(id)
-  }
+  await Promise.all(notifIds.map((id) => dispatchEmail(id)))
   return 'expired'
 }
 

@@ -279,13 +279,14 @@ export function BookingGrid({
     setLastArrival(`Nueva reserva: ${first.timeStart}${courtName ? ` en ${courtName}` : ''}`)
     // Fire-and-forget: la animación corre una sola vez; la clase se retira
     // apenas termina para que un re-render no la repita.
-    setTimeout(() => {
+    const pulseTimer = setTimeout(() => {
       setPulseIds((prev) => {
         const next = new Set(prev)
         for (const b of fresh) next.delete(b.id)
         return next
       })
     }, 700)
+    return () => clearTimeout(pulseTimer)
   }, [bookings, courts])
 
   // Línea de "ahora": filas de 60 min (fix del bug ÷30 que la dibujaba al

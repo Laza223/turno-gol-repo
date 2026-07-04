@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import type { SlotPill } from '@/modules/tenants/availability-search.service'
@@ -182,8 +183,7 @@ function TenantCardCompact({
     <article className="group relative flex gap-3 rounded-xl border border-border bg-card p-2.5 shadow-sm transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
       <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
         {tenant.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} loading="lazy" className="h-full w-full object-cover" />
+          <Image src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} fill sizes="112px" className="object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-muted text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:text-emerald-300">
             {tenant.name.slice(0, 2).toUpperCase()}

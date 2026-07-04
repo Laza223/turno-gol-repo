@@ -44,10 +44,12 @@ export async function notifyAdminPush(
   const options = pushSendOptions(new Date(), timeZone)
 
   const boss = await getBoss()
-  for (const sub of subs) {
-    const data: PushSendJobData = { subscription_id: sub.id, payload }
-    await boss.send(QUEUE_PUSH_SEND, data, options)
-  }
+  await Promise.all(
+    subs.map((sub) => {
+      const data: PushSendJobData = { subscription_id: sub.id, payload }
+      return boss.send(QUEUE_PUSH_SEND, data, options)
+    }),
+  )
   logger.info('enqueued admin push notifications', {
     module: 'push.service',
     tenantId,
@@ -72,10 +74,12 @@ export async function notifyStaffPush(
   `
   if (subs.length === 0) return { enqueued: 0 }
   const boss = await getBoss()
-  for (const sub of subs) {
-    const data: PushSendJobData = { subscription_id: sub.id, payload }
-    await boss.send(QUEUE_PUSH_SEND, data, PUSH_SEND_SEND_OPTIONS)
-  }
+  await Promise.all(
+    subs.map((sub) => {
+      const data: PushSendJobData = { subscription_id: sub.id, payload }
+      return boss.send(QUEUE_PUSH_SEND, data, PUSH_SEND_SEND_OPTIONS)
+    }),
+  )
   logger.info('enqueued staff push notifications', {
     module: 'push.service',
     tenantId,

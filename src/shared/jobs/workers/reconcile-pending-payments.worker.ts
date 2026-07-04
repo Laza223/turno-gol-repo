@@ -69,9 +69,7 @@ export async function reconcilePendingPayments(): Promise<number> {
       })
 
       if (outcome && !outcome.alreadyProcessed) {
-        for (const id of outcome.notificationIds ?? []) {
-          await dispatchEmail(id)
-        }
+        await Promise.all((outcome.notificationIds ?? []).map((id) => dispatchEmail(id)))
         reconciled += 1
         track.payment('payment.reconcile.confirmed', {
           bookingId: row.bookingId,

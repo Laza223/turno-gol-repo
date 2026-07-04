@@ -162,9 +162,7 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // alert, Hallazgo 3) only after it has committed — the rows must exist when
   // the send-email worker reads them.
   if (outcome && !outcome.alreadyProcessed) {
-    for (const id of outcome.notificationIds ?? []) {
-      await dispatchEmail(id)
-    }
+    await Promise.all((outcome.notificationIds ?? []).map((id) => dispatchEmail(id)))
   }
 
   // Push notification to admin when a booking deposit is confirmed.

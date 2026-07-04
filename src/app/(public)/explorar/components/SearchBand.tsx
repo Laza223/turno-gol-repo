@@ -11,7 +11,7 @@ import SearchBar from './SearchBar'
  */
 export default function SearchBand({ cities }: { cities: CityCount[] }) {
   return (
-    <section className="player-hero-band relative isolate z-30 overflow-hidden rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
+    <section className="player-hero-band relative isolate z-30 rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
         {/* Líneas de cal — la firma de la vista */}
         <div className="absolute inset-y-0 right-[-8%] w-[72%] text-emerald-600/[.16] dark:text-white/[.05]">

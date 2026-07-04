@@ -68,9 +68,11 @@ export function aggregateByMethod(rows: CashflowTypeMethodRow[]): MethodReport[]
     if (r.type !== 'income') continue
     methodMap.set(r.method, (methodMap.get(r.method) ?? 0) + Number(r.total))
   }
-  return Array.from(methodMap.entries())
-    .filter(([, total]) => total > 0)
-    .map(([method, total]) => ({ method: method as MethodReport['method'], total }))
+  const result: MethodReport[] = []
+  for (const [method, total] of Array.from(methodMap)) {
+    if (total > 0) result.push({ method: method as MethodReport['method'], total })
+  }
+  return result
 }
 
 /**

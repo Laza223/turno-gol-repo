@@ -150,10 +150,10 @@ export function PhoneInput({
 
   // Focus search input when dropdown opens
   useEffect(() => {
-    if (isOpen) {
-      setSearchQuery('')
-      setTimeout(() => searchInputRef.current?.focus(), 50)
-    }
+    if (!isOpen) return
+    setSearchQuery('')
+    const t = setTimeout(() => searchInputRef.current?.focus(), 50)
+    return () => clearTimeout(t)
   }, [isOpen])
 
   const fullValue = formatFullPhone(country, nationalNumber)
@@ -248,6 +248,7 @@ export function PhoneInput({
                 <input
                   ref={searchInputRef}
                   type="text"
+                  aria-label="Buscar país o código"
                   placeholder="Buscar país o código..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

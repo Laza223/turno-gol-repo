@@ -95,7 +95,7 @@ export function ProfileForm({ defaultValues }: Props) {
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-foreground">Email</label>
+        <span className="text-sm font-medium text-foreground">Email</span>
         <div className="flex h-11 items-center rounded-xl border border-border bg-muted/40 px-3.5 text-sm text-muted-foreground">
           {defaultValues.email}
         </div>

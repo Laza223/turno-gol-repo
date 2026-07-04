@@ -30,13 +30,15 @@ export function mondayOf(dateStr: string): string {
 }
 
 /** Nombre de mes corto es-AR, ej. '2026-06-15' → 'jun 2026'. */
+const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat('es-AR', {
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
 function monthLabel(dateStr: string): string {
   const { y, m } = parseYmd(dateStr)
-  return new Intl.DateTimeFormat('es-AR', {
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(y, m - 1, 1)))
+  return MONTH_LABEL_FORMATTER.format(new Date(Date.UTC(y, m - 1, 1)))
 }
 
 /**
@@ -98,10 +100,12 @@ export function relativeTimeEs(iso: string, nowMs: number): string {
 }
 
 /** Formato moneda es-AR desde centavos, sin decimales (igual que /reportes). */
+const ARS_FORMATTER = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  minimumFractionDigits: 0,
+})
+
 export function formatARS(cents: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
+  return ARS_FORMATTER.format(cents / 100)
 }

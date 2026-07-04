@@ -78,29 +78,31 @@ function extractMessage(response: unknown): string {
  * long-running pollers, wrong for the short-lived Next.js web process.
  */
 export async function attachFailureHandlers(boss: PgBoss): Promise<void> {
-  for (const queue of ALL_QUEUES) {
-    try {
-      await boss.onComplete(queue, (job: CompletionJob) => {
-        const data = job?.data
-        if (!isFailure(data)) return
-        const jobId = String(job?.id ?? 'unknown')
-        const message = extractMessage(data?.response)
-        Sentry.captureException(new Error(`Job ${queue} failed: ${message}`), {
-          tags: { queue, job_id: jobId },
+  await Promise.all(
+    ALL_QUEUES.map(async (queue) => {
+      try {
+        await boss.onComplete(queue, (job: CompletionJob) => {
+          const data = job?.data
+          if (!isFailure(data)) return
+          const jobId = String(job?.id ?? 'unknown')
+          const message = extractMessage(data?.response)
+          Sentry.captureException(new Error(`Job ${queue} failed: ${message}`), {
+            tags: { queue, job_id: jobId },
+          })
+          logger.error('job.failed', {
+            module: 'dlq',
+            queue,
+            job_id: jobId,
+            error: message,
+          })
         })
-        logger.error('job.failed', {
+      } catch (err) {
+        logger.warn('dlq.subscribe_failed', {
           module: 'dlq',
           queue,
-          job_id: jobId,
-          error: message,
+          error: err instanceof Error ? err.message : String(err),
         })
-      })
-    } catch (err) {
-      logger.warn('dlq.subscribe_failed', {
-        module: 'dlq',
-        queue,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
-  }
+      }
+    }),
+  )
 }

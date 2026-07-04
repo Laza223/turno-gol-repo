@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm'
 import { getDb } from '@/shared/db/client'
 import { uuid } from '@/shared/validation/primitives'
 import { mockPay, mockReject, mockCancel } from './actions'
+import { formatArsContable, formatDateLong } from '@/lib/format'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,9 +46,7 @@ async function loadBookingSummary(bookingId: string): Promise<BookingRow | null>
   return rows[0] ?? null
 }
 
-function formatPesos(centavos: number): string {
-  return (centavos / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })
-}
+
 
 export default async function MockMpCheckoutPage({
   searchParams,
@@ -95,7 +94,7 @@ export default async function MockMpCheckoutPage({
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-slate-500">Fecha</dt>
-            <dd className="font-medium text-slate-800">{booking.date}</dd>
+            <dd className="font-medium text-slate-800">{formatDateLong(booking.date)}</dd>
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-slate-500">Horario</dt>
@@ -106,7 +105,7 @@ export default async function MockMpCheckoutPage({
           <div className="flex justify-between gap-2 border-t border-slate-200 pt-2">
             <dt className="font-semibold text-slate-700">Seña</dt>
             <dd className="font-bold text-slate-900">
-              ${formatPesos(booking.deposit_amount)}
+              {formatArsContable(booking.deposit_amount)}
             </dd>
           </div>
         </dl>

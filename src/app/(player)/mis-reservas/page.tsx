@@ -61,7 +61,7 @@ function dateParts(dateStr: string): { weekday: string; day: string; month: stri
 const STATUS_LABELS: Record<string, string> = {
   confirmed: 'Confirmado',
   pending_payment: 'Pago pendiente',
-  completed: 'Completado',
+  completed: 'Jugada',
   canceled_refunded: 'Cancelado (con reembolso)',
   canceled_no_refund: 'Cancelado (sin reembolso)',
   no_show: 'Ausente',

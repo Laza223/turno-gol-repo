@@ -8,6 +8,7 @@ import { createBookingAction } from '@/app/(admin)/reservas/actions'
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
 import type { BookingRow } from '@/modules/bookings/booking.types'
+import { formatDateLong } from '@/lib/format'
 
 type Slot = {
   courtId: string
@@ -159,7 +160,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
             Nueva reserva
           </Dialog.Title>
           <Dialog.Description className="text-sm text-muted-foreground mb-4">
-            {slot.courtName} · {slot.date} · {slot.timeStart}–{timeEnd}
+            {slot.courtName} · {formatDateLong(slot.date)} · {slot.timeStart}–{timeEnd}
           </Dialog.Description>
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">

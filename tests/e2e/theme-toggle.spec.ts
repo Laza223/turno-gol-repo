@@ -4,8 +4,8 @@
  * Verifica que:
  *   #1  Hacer clic en "Claro" quita .dark del <html> y las páginas de app
  *       del jugador pasan a light.
- *   #2  Las páginas always-dark (/explorar) conservan su wrapper div.dark
- *       independientemente del tema elegido.
+ *   #2  La página /explorar es theme-adaptive y respeta el tema configurado
+ *       (no fuerza dark).
  *   #3  Hacer clic en "Oscuro" agrega .dark al <html>.
  *
  * Usa el storageState del jugador E2E (generado en global-setup) para
@@ -15,7 +15,7 @@
 import { test, expect } from './fixtures'
 
 test.describe('Toggle de tema', () => {
-  test('togglea superficies de app y respeta always-dark', async ({ browser, playerStorageState }) => {
+  test('togglea superficies de app y /explorar es theme-adaptive', async ({ browser, playerStorageState }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
     const page = await ctx.newPage()
 
@@ -30,14 +30,17 @@ test.describe('Toggle de tema', () => {
       await page.goto('/perfil')
       await expect(page.locator('html')).not.toHaveClass(/dark/)
 
-      // Página always-dark: su layout fuerza .dark en un wrapper interno,
-      // independiente del <html>. Verificar que el wrapper existe y es visible.
+      // Página theme-adaptive (/explorar): ya no es always-dark, respeta el tema activo (Claro)
       await page.goto('/explorar')
-      await expect(page.locator('div.dark').first()).toBeVisible()
+      await expect(page.locator('html')).not.toHaveClass(/dark/)
 
       // Forzar tema Oscuro
       await page.goto('/configuracion')
       await page.getByRole('radio', { name: 'Oscuro' }).click()
+      await expect(page.locator('html')).toHaveClass(/dark/)
+
+      // Verificar que /explorar ahora tiene la clase dark
+      await page.goto('/explorar')
       await expect(page.locator('html')).toHaveClass(/dark/)
     } finally {
       await ctx.close()

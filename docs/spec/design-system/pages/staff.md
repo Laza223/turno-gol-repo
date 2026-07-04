@@ -81,13 +81,8 @@ Densidad `p-3` por celda (antes `px-6 py-4`, §6.6 "base, nunca inflar por esté
 1. `EmptyState` (primitive) sigue con clases light hardcodeadas — mismo diferimiento que
    `pages/abonados.md` §7.1, `pages/canchas.md` §7.2, `pages/caja.md` §10.2 y
    `pages/reservas.md` §7.1: se tokeniza en su propio barrido, no por vista.
-2. `InviteStaffDialog.tsx` (`SubmitButton`) conserva `bg-emerald-600 hover:bg-emerald-500` sobre
-   el primitive `Button` — redundante con su variant default, no roto. Fuera de scope: es el
-   formulario del modal, no el listado (mismo criterio que Canchas dejó `CourtForm` fuera).
-3. `ui/button.tsx` (`Button`, variant `default`) sigue con `bg-emerald-600` hardcodeado en vez de
-   `bg-primary` (P0 §13.1) — no se tocó por su blast radius global (usado en toda la app); el CTA
-   del listado se resolvió con un `<button>` raw + tokens, mismo patrón que
-   Abonados/Canchas/Reservas.
+2. **[CERRADO]** `InviteStaffDialog.tsx` (`SubmitButton`): El botón primario y sus variants fueron tokenizados/corregidos en el commit `a377479`.
+3. **[CERRADO]** `ui/button.tsx` (`Button`, variant `default`): Corregido por la barrida de commit `a377479`.
 4. No hay fila clickeable a un detalle de staff: no existe `/staff/[id]`. Si en el futuro se
    quisiera una ficha de miembro (historial de acciones, sesiones activas), es una decisión de
    producto nueva, no un fix visual — **REQUIERE INPUT** si se quiere construir esa vista.

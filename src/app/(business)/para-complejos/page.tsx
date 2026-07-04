@@ -317,7 +317,7 @@ function PanelMockup() {
           <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/[.08] pt-[16px]">
             <div>
               <div className="font-logo text-[11px] uppercase tracking-[.05em] text-slate-500">Caja del día</div>
-              <div className="font-display font-bold text-[20px] text-[#f8fafc]">$184.500</div>
+              <div className="font-display font-bold text-[20px] text-[#f8fafc]">$ 184.500</div>
             </div>
             <div
               className="inline-flex items-center gap-2 rounded-xl px-4 py-[10px] text-[13px] font-semibold text-[#6ee7b7]"

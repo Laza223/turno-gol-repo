@@ -231,4 +231,28 @@ test.describe('Player bookings', () => {
       }
     },
   )
+
+  test('shows completed booking in history and displays "Jugada" status badge', async ({
+    browser,
+    playerStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const bookingId = await insertPlayerBooking(supabase, {
+      date: '2026-06-01',
+      timeStart: '18:00',
+      timeEnd: '19:00',
+      status: 'completed',
+    })
+
+    const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
+    const page = await ctx.newPage()
+
+    try {
+      await page.goto('/mis-reservas?tab=historial')
+      await expect(page.getByRole('heading', { name: 'Mis Reservas' })).toBeVisible()
+      await expect(page.getByText('Jugada').first()).toBeVisible()
+    } finally {
+      await ctx.close()
+    }
+  })
 })

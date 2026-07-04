@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { PerfilImagesForm } from '@/app/(admin)/settings/perfil/PerfilImagesForm'

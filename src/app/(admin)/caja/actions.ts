@@ -10,6 +10,8 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
+import { cashFlowResponseSchema } from '@/modules/cashflow/cashflow.schema'
+import { validateApiOutput } from '@/shared/api-output'
 import {
   CloseDateInFutureError,
   DayAlreadyClosedError,
@@ -92,7 +94,10 @@ export async function createCashFlowAction(
     }
   })
 
-  if (result.success) revalidatePath('/caja')
+  if (result.success) {
+    validateApiOutput(cashFlowResponseSchema, { data: result.cashFlow }, 'createCashFlowAction')
+    revalidatePath('/caja')
+  }
   return result
 }
 

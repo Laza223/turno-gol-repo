@@ -1,10 +1,10 @@
 import { sql } from 'drizzle-orm'
 import { withPlayer } from '@/shared/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
-import { badRequest, notFound } from '@/shared/api-error'
+import { notFound } from '@/shared/api-error'
 import { validatedJson } from '@/shared/api-output'
 import { paymentStatusResponseSchema } from '@/modules/payments/payment.schema'
-import { uuid } from '@/shared/validation/primitives'
+import { parseRouteUuid } from '@/shared/api/route-params'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,12 +16,9 @@ export const GET = withPlayer(async (req, user, tx) => {
   const throttled = await guard('bookingStatus', user.playerId)
   if (throttled) return throttled
 
-  // Path is .../[id]/status — the booking id is the second-to-last segment.
-  const parsedId = uuid.safeParse(req.nextUrl.pathname.split('/').at(-2))
-  if (!parsedId.success) {
-    return badRequest('ID inválido.', { code: 'INVALID_ID' })
-  }
-  const bookingId = parsedId.data
+  const parsedId = parseRouteUuid(req, 'second-last')
+  if ('response' in parsedId) return parsedId.response
+  const bookingId = parsedId.uuid
 
   const rows = await tx.execute(sql`
     SELECT status, deposit_status AS "depositStatus", created_at AS "createdAt"

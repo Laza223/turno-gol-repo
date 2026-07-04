@@ -19,6 +19,7 @@ const cashFlowRowResponseSchema = z
     description: z.string(),
     bookingId: uuid.nullable(),
     productId: uuid.nullable(),
+    abonadoId: uuid.nullable(),
     registeredBy: z.string(),
     occurredAt: z.string(),
     createdAt: z.string(),
@@ -26,42 +27,3 @@ const cashFlowRowResponseSchema = z
   .strict()
 
 export const cashFlowResponseSchema = z.object({ data: cashFlowRowResponseSchema }).strict()
-
-// The daily-close mutation itself is a Server Action (out of the Route Handler
-// scope); the route-handler surface for "daily close" is the day summary, which
-// carries the close row when the day is closed.
-const dailyCashCloseResponseSchema = z
-  .object({
-    id: uuid,
-    tenantId: uuid,
-    date: z.string(),
-    totalIncome: z.number().int(),
-    totalAdjustments: z.number().int(),
-    totalExpense: z.number().int(),
-    balance: z.number().int(),
-    declaredCash: z.number().int(),
-    diffAmount: z.number().int(),
-    note: z.string().nullable(),
-    closedBy: z.string(),
-    closedAt: z.string(),
-  })
-  .strict()
-
-// GET /api/cash-flows/summary → `{ data: DaySummary }`.
-export const daySummaryResponseSchema = z
-  .object({
-    data: z
-      .object({
-        date: z.string(),
-        totalIncome: z.number().int(),
-        totalAdjustments: z.number().int(),
-        totalExpense: z.number().int(),
-        balance: z.number().int(),
-        byCategory: z.record(z.string(), z.number()),
-        byMethod: z.record(z.string(), z.number()),
-        isClosed: z.boolean(),
-        close: dailyCashCloseResponseSchema.nullable(),
-      })
-      .strict(),
-  })
-  .strict()

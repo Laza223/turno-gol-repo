@@ -27,7 +27,8 @@ import {
   CreditNotApplicableError,
 } from '@/modules/abonados/abonado.errors'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
-import { createManualBookingSchema } from '@/modules/bookings/booking.schema'
+import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
+import { validateApiOutput } from '@/shared/api-output'
 import {
   SlotTakenError,
   CourtOfflineError,
@@ -102,6 +103,7 @@ export async function createBookingAction(
   })
 
   if (result.success) {
+    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'createBookingAction')
     // Revalidate both the reservas list and the grilla — the grilla is the
     // surface most likely to be open when the admin creates a booking
     // (BookingFormModal is launched from there), so its cached server data
@@ -151,7 +153,10 @@ export async function confirmDepositPaymentAction(
     return { success: true as const, booking: r.row }
   })
 
-  if (result.success) revalidateBooking(bookingId)
+  if (result.success) {
+    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'confirmDepositPaymentAction')
+    revalidateBooking(bookingId)
+  }
   return result
 }
 
@@ -183,7 +188,10 @@ export async function completeBookingAction(
     }
   })
 
-  if (result.success) revalidateBooking(bookingId)
+  if (result.success) {
+    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'completeBookingAction')
+    revalidateBooking(bookingId)
+  }
   return result
 }
 
@@ -217,7 +225,10 @@ export async function markNoShowAction(
     }
   })
 
-  if (result.success) revalidateBooking(bookingId)
+  if (result.success) {
+    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'markNoShowAction')
+    revalidateBooking(bookingId)
+  }
   return result
 }
 
@@ -277,7 +288,10 @@ export async function cancelBookingAction(
     }
   })
 
-  if (result.success) revalidateBooking(bookingId)
+  if (result.success) {
+    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'cancelBookingAction')
+    revalidateBooking(bookingId)
+  }
   return result
 }
 

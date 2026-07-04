@@ -41,7 +41,7 @@ function GhostKpis() {
   const ghosts = [
     { label: 'Ingresos', value: '$ 85.000,00', icon: <TrendingUp className="h-4 w-4" aria-hidden="true" />, accent: 'emerald' as const },
     { label: 'Ajustes', value: '$ 0,00', icon: <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />, accent: 'slate' as const },
-    { label: 'Balance', value: '$ 85.000,00', icon: <Wallet className="h-4 w-4" aria-hidden="true" />, accent: 'emerald' as const },
+    { label: 'Saldo', value: '$ 85.000,00', icon: <Wallet className="h-4 w-4" aria-hidden="true" />, accent: 'emerald' as const },
     { label: 'Reservas', value: '32', icon: <CalendarCheck className="h-4 w-4" aria-hidden="true" />, accent: 'slate' as const },
   ]
 
@@ -164,7 +164,7 @@ export default async function ReportesPage({
               accent="slate"
             />
             <StatCard
-              label="Balance"
+              label="Saldo"
               value={signedArsContable(report.balance)}
               icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
               accent={report.balance >= 0 ? 'emerald' : 'red'}

@@ -117,10 +117,10 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     return (
       <div className="flex flex-col items-center text-center" aria-live="polite">
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
-          <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-300" aria-hidden />
+          <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-slate-900 dark:text-white">¡Reserva confirmada!</h1>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Tu pago fue acreditado.</p>
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">¡Reserva confirmada!</h1>
+        <p className="mt-3 text-sm text-muted-foreground">Tu pago fue acreditado.</p>
         <Link
           href="/mis-reservas"
           className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
@@ -135,10 +135,10 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     return (
       <div className="flex flex-col items-center text-center" aria-live="polite">
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-500/15 ring-8 ring-slate-500/10">
-          <XCircle className="h-8 w-8 text-slate-600 dark:text-slate-400" aria-hidden />
+          <XCircle className="h-8 w-8 text-muted-foreground" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-slate-900 dark:text-white">La reserva expiró</h1>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">La reserva expiró</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
           No se completó el pago a tiempo. El turno quedó liberado.
         </p>
         <Link
@@ -157,7 +157,7 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 ring-8 ring-red-500/10">
           <XCircle className="h-8 w-8 text-red-600 dark:text-red-300" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-slate-900 dark:text-white">Reserva cancelada</h1>
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">Reserva cancelada</h1>
         <Link
           href="/mis-reservas"
           className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
@@ -173,12 +173,12 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     return (
       <div className="flex flex-col items-center text-center" aria-live="polite" role="status">
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-500/15 ring-8 ring-slate-500/10">
-          <XCircle className="h-8 w-8 text-slate-600 dark:text-slate-400" aria-hidden />
+          <XCircle className="h-8 w-8 text-muted-foreground" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-slate-900 dark:text-white">
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
           {stalled === 'error' ? 'No pudimos verificar tu pago' : 'Se acabó el tiempo'}
         </h1>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-3 text-sm text-muted-foreground">
           {stalled === 'error'
             ? 'Tuvimos problemas para verificar el estado de tu pago. Si lo completaste, te confirmamos por email apenas se acredite.'
             : 'No recibimos la confirmación a tiempo. Si pagaste, te avisamos por email apenas se acredite; si no, el turno quedó liberado.'}
@@ -197,11 +197,11 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
   return (
     <div className="flex flex-col items-center text-center" aria-live="polite">
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 dark:text-emerald-300" aria-hidden />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 dark:text-emerald-400" aria-hidden />
       </div>
-      <h2 className="font-display text-2xl font-black italic tracking-tight text-slate-900 dark:text-white">Confirmando tu pago…</h2>
-      <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Esto puede tardar unos segundos.</p>
-      <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+      <h2 className="font-display text-2xl font-black italic tracking-tight text-foreground">Confirmando tu pago…</h2>
+      <p className="mt-3 text-sm text-muted-foreground">Esto puede tardar unos segundos.</p>
+      <p className="mt-4 text-sm text-muted-foreground">
         Te queda{' '}
         <strong>
           <ExpiryCountdown expiresAt={expiresAt} />
@@ -209,7 +209,7 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         para completar el pago.
       </p>
       {showDelayNote && (
-        <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
+        <p className="mt-3 text-xs text-muted-foreground">
           ¿Tarda? Te avisamos por email apenas se confirme.
         </p>
       )}

@@ -6,7 +6,7 @@ import { CalendarPlus, MessageCircle, Navigation } from 'lucide-react'
 const BookingMiniMap = dynamic(() => import('./BookingMiniMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-44 w-full animate-pulse bg-slate-200/70 dark:bg-white/5" aria-hidden />
+    <div className="h-44 w-full animate-pulse bg-muted" aria-hidden />
   ),
 })
 
@@ -96,7 +96,7 @@ export default function BookingSuccessExtras(props: Props) {
   return (
     <div className="mt-6 w-full space-y-3">
       {hasGeo && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm dark:border-white/10">
+        <div className="overflow-hidden rounded-xl border border-border shadow-sm">
           <BookingMiniMap lat={props.latitude!} lng={props.longitude!} label={tenantName} />
         </div>
       )}
@@ -113,7 +113,7 @@ export default function BookingSuccessExtras(props: Props) {
         <button
           type="button"
           onClick={addToCalendar}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-card px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-white/[.04] dark:text-slate-200 dark:hover:bg-white/[.08]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/[.04] dark:hover:bg-white/[.08]"
         >
           <CalendarPlus className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
           Calendario
@@ -122,7 +122,7 @@ export default function BookingSuccessExtras(props: Props) {
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-card px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-white/[.04] dark:text-slate-200 dark:hover:bg-white/[.08]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/[.04] dark:hover:bg-white/[.08]"
         >
           <Navigation className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
           Cómo llegar

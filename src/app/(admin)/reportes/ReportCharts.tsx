@@ -60,7 +60,7 @@ export function OccupancyChart({ byCourt }: { byCourt: CourtReport[] }) {
 }
 
 /**
- * Comparativa mes actual vs mes anterior (Ingresos/Balance). Se omite por completo
+ * Comparativa mes actual vs mes anterior (Ingresos/Saldo). Se omite por completo
  * cuando no hay `prevPeriod` (tenant sin actividad el mes pasado) — no se fabrica
  * una comparativa contra cero.
  */
@@ -74,7 +74,7 @@ export function TrendChart({
   const chart = useChartTheme()
   const data = [
     { name: 'Ingresos', actual: current.income, anterior: prev.income },
-    { name: 'Balance', actual: current.balance, anterior: prev.balance },
+    { name: 'Saldo', actual: current.balance, anterior: prev.balance },
   ]
 
   return (

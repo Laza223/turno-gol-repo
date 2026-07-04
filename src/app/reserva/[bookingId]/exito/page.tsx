@@ -71,7 +71,7 @@ export default async function ReservaExitoPage({ params }: Props) {
     return (
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-          <p className="text-sm text-slate-600 dark:text-slate-400">No encontramos tu reserva.</p>
+          <p className="text-sm text-muted-foreground">No encontramos tu reserva.</p>
           <Link href="/mis-reservas" className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25">
             Ver mis reservas
           </Link>
@@ -111,25 +111,25 @@ export default async function ReservaExitoPage({ params }: Props) {
       {/* Celebración peak-end §5.3: un solo ring que se disipa (600ms, una vez)
           — sin loops. El glow estático lo pone .reserva-success-badge. */}
       <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
-        <span className="reserva-success-badge relative flex h-20 w-20 animate-slot-pulse items-center justify-center rounded-full text-emerald-600 dark:text-emerald-300 motion-reduce:animate-none">
+        <span className="reserva-success-badge relative flex h-20 w-20 animate-slot-pulse items-center justify-center rounded-full text-emerald-600 dark:text-emerald-400 motion-reduce:animate-none">
           <CheckCircle2 className="h-10 w-10" aria-hidden />
         </span>
       </div>
-      <h1 className="font-display text-3xl font-black italic tracking-tight text-slate-900 dark:text-white">
+      <h1 className="font-display text-3xl font-black italic tracking-tight text-foreground">
         ¡Reserva <span className="hero-accent-text">confirmada!</span>
       </h1>
-      <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
-        <span className="font-semibold text-slate-800 dark:text-slate-200">{booking.tenantName}</span> · {booking.courtName}<br />
+      <p className="mt-3 text-sm text-muted-foreground tabular-nums">
+        <span className="font-semibold text-foreground">{booking.tenantName}</span> · {booking.courtName}<br />
         {formatDateLong(booking.date)} · {booking.timeStart.slice(0, 5)}–{booking.timeEnd.slice(0, 5)}
       </p>
       {booking.depositStatus === 'not_required' ? (
-        <p className="mt-4 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
-          Pagás <span className="font-semibold text-slate-800 dark:text-slate-200">{formatArs(booking.priceSnapshot)}</span> al llegar al complejo.
+        <p className="mt-4 text-sm text-muted-foreground tabular-nums">
+          Pagás <span className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</span> al llegar al complejo.
         </p>
       ) : (
-        <div className="mt-4 space-y-1 text-sm text-slate-600 dark:text-slate-400 tabular-nums">
+        <div className="mt-4 space-y-1 text-sm text-muted-foreground tabular-nums">
           <p>Seña pagada: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{formatArs(booking.depositAmount)}</span></p>
-          <p>Resta abonar en el complejo: <span className="text-slate-800 dark:text-slate-200">{formatArs(remainingAmount)}</span></p>
+          <p>Resta abonar en el complejo: <span className="text-foreground">{formatArs(remainingAmount)}</span></p>
         </div>
       )}
       <section
@@ -141,7 +141,7 @@ export default async function ReservaExitoPage({ params }: Props) {
             <BookingQR value={verifyUrl} label="Código QR de verificación de la reserva" />
           </div>
         </div>
-        <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
+        <p className="mt-3 text-xs text-muted-foreground">
           Mostrá este código al llegar: el complejo lo escanea y verifica tu reserva al instante.
         </p>
         <DownloadReceiptButton
@@ -185,7 +185,7 @@ export default async function ReservaExitoPage({ params }: Props) {
       </Link>
       <Link
         href="/explorar"
-        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-700 transition-colors hover:bg-primary/10 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-white/5 dark:hover:text-emerald-200"
+        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-700 transition-colors hover:bg-primary/10 hover:text-emerald-800 dark:text-emerald-400 dark:hover:bg-white/5 dark:hover:text-emerald-300"
       >
         Seguir explorando
       </Link>

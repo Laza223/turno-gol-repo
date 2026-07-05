@@ -34,7 +34,7 @@ export default async function FacturacionPage() {
   if (!tenant) redirect('/login')
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
-  let mpConnected = !!tenant.mpConnectedAt
+  const mpConnected = !!tenant.mpConnectedAt
 
   try {
     sub = await withTenantContext(tenant.id, (tx) => getSubscriptionState(tenant.id, tx))

@@ -187,6 +187,14 @@ export default {
       // (no ve que la lee como config) y NO aplica overrides a su propio config file, así
       // que este override no lo apaga — se deja documentado; es inofensivo.
       { files: ['doctor.config.mjs'], rules: ['react-doctor/unused-file'] },
+      // no-multi-comp en `.design-sync/previews/**`: son fixtures de preview
+      // generados por el tooling de design-sync (galería: co-ubican a propósito
+      // varias muestras de un mismo primitive por archivo para renderizarlas
+      // juntas). NO es código shippeado en el bundle de la app — vive fuera de
+      // `src/`. Partirlos no aporta nada y rompería el generador. (Los giants/
+      // multi-comp reales de `src/` SÍ se refactorizaron: HorariosForms,
+      // BookingGrid, SupportActionsPanel.)
+      { files: ['.design-sync/previews/**'], rules: ['react-doctor/no-multi-comp'] },
 
       // ─── Security — server-auth-actions falsos positivos (batch 7, triage 2026-07-04) ───
       // react-doctor pattern-matchea auth checks conocidos (getServerSession, auth(),

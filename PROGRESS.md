@@ -227,3 +227,28 @@ Nada commiteado.
 ### Cola restante
 - **Giants:** StepCourts (386), PricingGrid (309).
 - **Config:** override `no-multi-comp` para `.design-sync/previews/**` en `doctor.config.mjs` (FP tooling, único no-multi-comp restante = 6).
+
+---
+
+## Ticket 3 (cont.) — StepCourts + config design-sync (no-giant-component / no-multi-comp) — 2026-07-04
+
+**Config — `doctor.config.mjs`**
+- Override `no-multi-comp` para `.design-sync/previews/**` (fixtures de preview del tooling: co-ubican varias muestras por archivo a propósito; fuera de `src/`, no shippea). Re-scan: no-multi-comp **6→0**.
+
+**Fix — StepCourts (386 → orquestador ~90 líneas)**
+- Subcarpeta `src/app/onboarding/components/step-courts/` (self-contained, hook incluido por decisión del dueño):
+  - `constants.ts` — `FORMATS`, `SURFACE_OPTIONS`, tipos `SurfaceType`/`Draft`, helper puro `minPrice()`.
+  - `use-court-drafts.ts` — hook: estado de drafts (`drafts`/`expandedKeys`/`nextKey`) + `toggleExpand`/`expand`/`updateDraft`/`addDraft`/`removeDraft` + derivado `canRemove`.
+  - `CourtDraftCard.tsx` — tarjeta por-draft (fila-resumen colapsable + form inline). El grueso de las líneas.
+  - `ExistingCourtsList.tsx` — lista read-only de canchas ya creadas.
+- Parent `StepCourts.tsx`: misma ruta + export + `Props`. Retiene `handleSubmit`/`handleBack` (transitions + Server Actions `createWizardCourtsAction`/`setWizardStepAction`) y estado `error`; submit fuerza `expand(d.key)` en el draft inválido.
+- Importer `onboarding/page.tsx:12` intacto. Sin tests que toquen internals.
+
+### Verificación
+- `bash scripts/audit-verify.sh` 🟢 completo: typecheck + lint + **1510 tests**.
+- Re-scan react-doctor: no-giant-component **2→1** (sólo PricingGrid), no-multi-comp **0**. Ningún archivo nuevo quedó giant ni multi-comp.
+
+### Cola restante
+- **Giant:** PricingGrid (309) — último de `src/`.
+
+Nada commiteado.

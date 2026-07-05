@@ -252,3 +252,30 @@ Nada commiteado.
 - **Giant:** PricingGrid (309) — último de `src/`.
 
 Nada commiteado.
+
+---
+
+## Ticket 3 (cont.) — PricingGrid (no-giant-component) — 2026-07-04
+
+**Fix — PricingGrid (309 → orquestador ~85 líneas)**
+- Subcarpeta `src/app/(admin)/canchas/components/pricing-grid/`:
+  - `cell-utils.ts` — puros (sin JSX): `cellKey`/`parseCellKey` (encode/decode de clave celda) + `heatStyle` + rampas HEAT_*.
+  - `use-cell-selection.ts` — hook: modelo de interacción (selección click/arrastre/Shift, modo bloque, edición inline, asignación masiva) + `setCells`/`rectCells` + pointerup effect. Recibe la grilla controlada (`grid`/`onGridChange`), nunca muta precios propios.
+  - `PricingGridToolbar.tsx` — barra: modo selección + barra bulk + hint.
+  - `PricingGridTable.tsx` — matriz día×hora (headers + celdas heat map + editor inline). El grueso de las líneas.
+- Parent `PricingGrid.tsx`: misma ruta + export + `Props`. Compone hook + toolbar + tabla; retiene `useTheme`/`isDark`, memos `hours`/`priceStats`, early-return `hours.length===0`.
+- Importers intactos: `PricingSection.tsx:24` + `tests/unit/pricing-grid-render.test.tsx:5`. Comportamiento y aria-labels (`Lun 08:00` / `Precio Lun 08:00`) preservados exactos → test verde sin tocarlo.
+
+**Config — parity de FP reubicados**
+- `no-aria-hidden-on-focusable`: el `<td aria-hidden>·</td>` (inactiva, no focuseable — FP verificado) se mudó a `PricingGridTable.tsx`; el override glob `**/PricingGrid.tsx` no lo matcheaba → extendido con `**/PricingGridTable.tsx`. Re-suprimido, count 0.
+- `no-autofocus` (editor inline, autofocus deliberado): preexistente y VISIBLE (nunca suprimido) en PricingGrid.tsx:308 → ahora PricingGridTable.tsx:106. Count 1→1, sin cambio; se deja visible igual que antes (no se introduce supresión nueva).
+
+### Verificación
+- `bash scripts/audit-verify.sh` 🟢 completo: typecheck + lint + **1510 tests**.
+- Re-scan react-doctor: no-giant-component **1→0** (último giant de `src/` cerrado), no-multi-comp **0**. Parity de las otras reglas confirmada (aria-hidden 0, autofocus 1 = pre-refactor).
+
+### Estado Ticket 3
+- **no-giant-component: 0** en `src/` (HorariosForms, BookingGrid, SupportActionsPanel, StepCourts, PricingGrid).
+- **no-multi-comp: 0** (design-sync previews suprimidos por config).
+
+Nada commiteado.

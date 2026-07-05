@@ -81,7 +81,7 @@ export default {
       { files: ['src/components/ui/combobox.tsx', 'src/components/ui/phone-input.tsx'], rules: ['react-doctor/no-noninteractive-element-to-interactive-role'] },
       { files: ['src/components/ui/combobox.tsx'], rules: ['react-doctor/click-events-have-key-events'] },
       { files: ['src/components/admin/PushNotificationManager.tsx'], rules: ['react-doctor/media-has-caption'] },
-      { files: ['src/components/admin/PushNotificationManager.tsx', '**/PricingGrid.tsx'], rules: ['react-doctor/no-aria-hidden-on-focusable'] },
+      { files: ['src/components/admin/PushNotificationManager.tsx', '**/PricingGrid.tsx', '**/PricingGridTable.tsx'], rules: ['react-doctor/no-aria-hidden-on-focusable'] },
       { files: ['src/components/booking/BookingGrid.tsx'], rules: ['react-doctor/no-noninteractive-tabindex', 'react-doctor/no-static-element-interactions'] },
       { files: ['**/LeaveReviewButton.tsx'], rules: ['react-doctor/interactive-supports-focus'] },
       // Test files: a11y en fixtures de test (imgs mock sin alt, dialogs de test) no es

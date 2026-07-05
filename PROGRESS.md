@@ -182,3 +182,30 @@ Verificación previa: doc15 documenta mutaciones de booking/cashflow como Route 
 | 5 | `runRequestObservability` | Sin tocar — decisión de auditoría previa (4-29), retrofit grande fuera de scope |
 
 Nada commiteado. Archivos tocados: `src/app/api/player/bookings/[id]/status/route.ts`, `src/app/(admin)/reservas/actions.ts`, `src/app/(admin)/caja/actions.ts`, `src/modules/cashflow/cashflow.schema.ts`, `src/modules/tenants/tenant.schema.ts`.
+
+---
+
+## Ticket 3 — Mantenibilidad estructural (react-doctor: no-giant-component + no-multi-comp) — 2026-07-04
+
+**Alcance aprobado:** 2 peores infractores (1 por regla). Resto queda como follow-up.
+
+### Fix 1 — BookingGrid (no-giant-component, 559 → orquestador ~120 líneas)
+- Hooks extraídos → `src/hooks/`: `use-persisted-density.ts`, `use-dismissible-hint.ts`, `use-realtime-pulse.ts`, `use-grid-layout.ts`, `use-now-line.ts`.
+- Subcomponentes extraídos → `src/components/booking/grid/`: `GridToolbar.tsx`, `GridScroller.tsx`, `GridLegend.tsx`, `FirstBookingHint.tsx`, `MorningCollapseBand.tsx`.
+- `BookingGrid.tsx` conserva export público + re-export `GridBooking` + `BookingFormModal`. Cero cambio de comportamiento/API.
+
+### Fix 2 — HorariosForms (no-multi-comp, 3 comps → 3 archivos)
+- Split limpio → `HorariosForm.tsx`, `AddClosedDateForm.tsx`, `RemoveClosedDateForm.tsx` (misma carpeta). `HorariosForms.tsx` eliminado.
+- Importers actualizados: `settings/horarios/page.tsx`, `tests/unit/horarios-forms.test.tsx`. Sin barrels.
+
+### Verificación
+- `pnpm typecheck` ✅
+- Lint de archivos tocados (`src/`) ✅. Tests: `booking-grid` 13, `grilla-date-param` 3, `use-booking-realtime` 7, `horarios-forms` 4 → todos verdes.
+- Re-scan react-doctor: no-giant-component 4→3 (BookingGrid eliminado), no-multi-comp 8→6 (HorariosForms eliminado; restan solo `.design-sync/previews/*` = FP tooling). Ningún subcomponente nuevo quedó giant.
+
+### Pendiente / no tocado
+- **PRE-EXISTENTE arreglado (con OK del usuario):** `src/app/(admin)/settings/facturacion/page.tsx:37` — `let mpConnected` (solo lectura, líneas 103/109) → `const`. Venía de a377479, rompía el gate. Fix de 1 línea. `bash scripts/audit-verify.sh` ahora 🟢 completo (typecheck + lint + **1510 tests**).
+- **Follow-up giants:** SupportActionsPanel (426), StepCourts (386), PricingGrid (309).
+- **Config:** agregar override `no-multi-comp` para `.design-sync/previews/**` en `doctor.config.mjs` (FP tooling).
+
+Nada commiteado.

@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { AddClosedDateForm, HorariosForm, RemoveClosedDateForm } from './HorariosForms'
+import { AddClosedDateForm } from './AddClosedDateForm'
+import { HorariosForm } from './HorariosForm'
+import { RemoveClosedDateForm } from './RemoveClosedDateForm'
 import type { LooseOpeningHours } from './horarios-lib'
 
 const SETTINGS_TABS = [

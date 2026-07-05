@@ -21,11 +21,9 @@ vi.mock('@/app/(admin)/settings/horarios/actions', () => ({
   removeClosedDateAction: vi.fn(),
 }))
 
-import {
-  AddClosedDateForm,
-  HorariosForm,
-  RemoveClosedDateForm,
-} from '@/app/(admin)/settings/horarios/HorariosForms'
+import { AddClosedDateForm } from '@/app/(admin)/settings/horarios/AddClosedDateForm'
+import { HorariosForm } from '@/app/(admin)/settings/horarios/HorariosForm'
+import { RemoveClosedDateForm } from '@/app/(admin)/settings/horarios/RemoveClosedDateForm'
 
 afterEach(() => cleanup())
 

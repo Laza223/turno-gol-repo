@@ -209,3 +209,21 @@ Nada commiteado. Archivos tocados: `src/app/api/player/bookings/[id]/status/rout
 - **Config:** agregar override `no-multi-comp` para `.design-sync/previews/**` en `doctor.config.mjs` (FP tooling).
 
 Nada commiteado.
+
+---
+
+## Ticket 3 (cont.) — SupportActionsPanel (no-giant-component) — 2026-07-04
+
+**Fix — SupportActionsPanel (426 → orquestador ~110 líneas)**
+- Compartidos → `_components/support-actions/`: `constants.ts` (tipos + STATUS_LABELS + consts de clases), `FeedbackText.tsx`, `SectionCard.tsx` (separados en archivos propios para NO reintroducir no-multi-comp; el sketch original los ponía juntos en shared.tsx).
+- 7 secciones → archivo propio: `ForceStatusSection`, `ReactivateSection`, `ExtendTrialSection`, `ChangePlanSection`, `SettingsSection`, `ResetPasswordSection`, `CancelSection`. Cada una dueña de su estado local + feedback.
+- Parent conserva `Props` idéntico + re-export `SupportPanelSettings`; un único `useTransition`/`run` compartido baja como prop `pending`+`run` (mismo comportamiento: todos los botones se deshabilitan durante cualquier acción).
+- Importer `page.tsx` intacto (mismo entry + tipo). Sin tests que dependan del panel.
+
+### Verificación
+- `bash scripts/audit-verify.sh` 🟢 completo: typecheck + lint + **1510 tests**.
+- Re-scan react-doctor: no-giant-component 3→2 (SupportActionsPanel fuera). Ningún archivo nuevo quedó giant ni multi-comp.
+
+### Cola restante
+- **Giants:** StepCourts (386), PricingGrid (309).
+- **Config:** override `no-multi-comp` para `.design-sync/previews/**` en `doctor.config.mjs` (FP tooling, único no-multi-comp restante = 6).

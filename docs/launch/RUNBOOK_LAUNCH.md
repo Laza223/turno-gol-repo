@@ -116,6 +116,18 @@ El procedimiento de simulacro completo ya está escrito en `docs/audit/backup-dr
 - Forzar un evento de prueba (botón **"Send Test Event"** del dashboard de Sentry, o `Sentry.captureException(new Error('test-alert'))` en un endpoint de test) → confirmar que llega a `#turnogol-alertas` en < 1 min
 - Confirmar que el mensaje de Slack linkea al issue correcto en Sentry
 
+## PASOS MANUALES OBLIGATORIOS POST-DEPLOY EN VERCEL
+
+> Bloqueantes de lanzamiento (revisión adversarial pre-launch). `launch:check` solo valida PRESENCIA de estas vars, no que sean reales — con placeholders/dummies pasa en verde pero rompe en runtime. No hacer el anuncio a clientes hasta tildar todo esto.
+
+- [ ] **Credenciales reales en Vercel** (reemplazar cualquier dummy/placeholder usado en local):
+  - [ ] `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` reales — con dummy, las políticas fail-closed de rate-limit (`src/shared/rate-limit/policies.ts`) bloquean TODO login/magic-link/registro/PIN en prod (`apply.ts:69-78`: error de conexión → `ok: policy.failMode === 'open'`)
+  - [ ] `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` reales — con dummy la app corre pero todos los errores se pierden en silencio (incluida la alerta que delataría el punto anterior)
+  - [ ] Verificar en `/api/status` que Redis responde 200 (hace `redis.ping()` real, sí delata un dummy — a diferencia de Sentry que solo chequea presencia)
+  - [ ] Forzar un evento de prueba de Sentry (ver sección Alertas más abajo) y confirmar que llega a `#turnogol-alertas`
+- [ ] **Primera reserva con seña real contra MercadoPago** (no `MP_MOCK_MODE`, no sandbox): un jugador de prueba reserva un turno con seña en el complejo piloto, se confirma el pago, el webhook llega firmado y la reserva pasa a `confirmed` en la grilla. Es la primera vez que el flujo corre contra la API real de MP en este proyecto — hasta ahora solo se validó con `MP_MOCK_MODE=1` en e2e.
+- [ ] Ejercitar el rollback una vez en este mismo deploy-day (Promote to Production del deployment anterior) para confirmar que el procedimiento de la sección Rollback funciona en la práctica, no solo en papel.
+
 ## Smoke test post-deploy
 
 ## Contactos y accesos

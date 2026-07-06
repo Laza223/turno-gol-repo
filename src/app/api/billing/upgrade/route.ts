@@ -10,7 +10,8 @@ import {
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
-import { badRequest, validationError, notFound, conflict } from '@/shared/api-error'
+import { badRequest, validationError, notFound, conflict, apiError } from '@/shared/api-error'
+import { isFeatureEnabled } from '@/shared/feature-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,15 @@ export const dynamic = 'force-dynamic'
 export const POST = withTenant(async (req: NextRequest, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
+
+  // Gateado cerrado (TG-P1-MP-02): el webhook que confirma el upgrade usa el
+  // gateway del tenant contra un preapproval del MASTER y rompe el flujo. Sin
+  // fila en `feature_flags`, `saas_upgrade` resuelve `false` (unknown = off) —
+  // no requiere migración. Sacar el gate recién cuando se corrija el webhook.
+  const upgradesEnabled = await isFeatureEnabled('saas_upgrade', user.tenantId!)
+  if (!upgradesEnabled) {
+    return apiError(501, 'NOT_IMPLEMENTED', 'Cambio de plan no disponible todavía.')
+  }
 
   let body: unknown
   try {

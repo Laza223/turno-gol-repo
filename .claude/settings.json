@@ -18,8 +18,23 @@
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
       "Read(./secrets/**)",
-      "Bash(rm -rf *)"
+      "Read(./supabase/.env)",
+      "Read(./supabase/.env.*)",
+      "Bash(pnpm db:push)", "Bash(pnpm run db:push)",
+      "Bash(pnpm db:migrate)", "Bash(pnpm run db:migrate)",
+      "Bash(pnpm db:sync-supabase)", "Bash(pnpm run db:sync-supabase)",
+      "Bash(drizzle-kit push:*)", "Bash(npx drizzle-kit push:*)",
+      "Bash(supabase db push:*)", "Bash(supabase db reset --linked:*)",
+      "Bash(supabase link:*)", "Bash(supabase migration up --linked:*)",
+      "Bash(supabase secrets:*)",
+      "Bash(vercel:*)", "Bash(npx vercel:*)", "Bash(pnpm dlx vercel:*)",
+      "Bash(pnpm staging:seed)", "Bash(pnpm staging:check)", "Bash(pnpm webhook:replay)",
+      "Bash(pnpm seed:system-admin)", "Bash(pnpm run seed:system-admin)",
+      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git push origin main:*)",
+      "Bash(rm -rf *)", "Bash(rm -rf:*)"
     ],
     "ask": [
       "Bash(git push:*)",

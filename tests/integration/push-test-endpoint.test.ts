@@ -24,6 +24,7 @@ import {
   createTestStaffUser,
   createTestTenant,
   ensureRoles,
+  linkStaffToTenant,
 } from '../helpers/tenant'
 
 const asUser = (user: AuthUser | null) =>
@@ -46,6 +47,9 @@ beforeAll(async () => {
 
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
+    // withTenant() revalida el rol contra tenant_staff_members (no el JWT):
+    // sin este link, getStaffRole() devuelve null → 403 antes del handler.
+    await linkStaffToTenant(sql, tenant.id, staff.id)
     tenantId = tenant.id
     staffUserId = staff.id
 

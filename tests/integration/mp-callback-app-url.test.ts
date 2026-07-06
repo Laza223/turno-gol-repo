@@ -1,6 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
 import { NextRequest } from 'next/server'
+import type { AuthUser } from '@/modules/auth/types'
+
+// El callback revalida admin autenticado del mismo tenant (route.ts:78-85). Se
+// mockea la identidad; el `state` firmado sigue siendo real. Mockear
+// auth.middleware además evita el crash de React `cache()` al importar el route
+// en el entorno node de vitest.
+vi.mock('@/modules/auth/auth.middleware', () => ({
+  extractAuthUser: vi.fn(),
+  extractRealAuthUser: vi.fn(),
+}))
+vi.mock('@/modules/staff/staff.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/modules/staff/staff.service')>()),
+  getStaffRole: vi.fn(),
+}))
+
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getStaffRole } from '@/modules/staff/staff.service'
 import { GET as mpCallback } from '@/app/api/mp/callback/route'
 
 const env = process.env as Record<string, string | undefined>
@@ -23,6 +40,17 @@ beforeEach(() => {
   saved.NODE_ENV = env.NODE_ENV
   saved.MP_CLIENT_SECRET = env.MP_CLIENT_SECRET
   env.MP_CLIENT_SECRET = SECRET
+  // Admin autenticado del tenant embebido en freshState() (default 'tenant-appurl').
+  const user: AuthUser = {
+    type: 'staff',
+    id: 'auth-appurl',
+    email: 'admin@test.local',
+    staffUserId: 'staff-appurl',
+    tenantId: 'tenant-appurl',
+    role: 'admin',
+  }
+  vi.mocked(extractAuthUser).mockResolvedValue(user)
+  vi.mocked(getStaffRole).mockResolvedValue('admin')
 })
 afterEach(() => {
   env.NEXT_PUBLIC_APP_URL = saved.NEXT_PUBLIC_APP_URL

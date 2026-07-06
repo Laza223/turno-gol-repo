@@ -1,6 +1,19 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
 import { NextRequest } from 'next/server'
+import type { AuthUser } from '@/modules/auth/types'
+
+// El callback revalida admin autenticado del mismo tenant (route.ts:78-85). Se
+// mockea la identidad; el `state` firmado + la persistencia en DB siguen reales.
+// Mockear auth.middleware además evita el crash de React `cache()` en node.
+vi.mock('@/modules/auth/auth.middleware', () => ({
+  extractAuthUser: vi.fn(),
+  extractRealAuthUser: vi.fn(),
+}))
+vi.mock('@/modules/staff/staff.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/modules/staff/staff.service')>()),
+  getStaffRole: vi.fn(),
+}))
 
 // Env required by the callback route + real encryption. Set BEFORE importing the
 // route module so module-eval and request-time reads both see them.
@@ -11,6 +24,8 @@ process.env.NEXT_PUBLIC_APP_URL = 'https://app.test.local'
 
 import { closeSql, getSql } from '@/shared/db/client'
 import { decrypt } from '@/lib/crypto/encrypt'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getStaffRole } from '@/modules/staff/staff.service'
 import { GET as mpCallback } from '@/app/api/mp/callback/route'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
@@ -28,6 +43,20 @@ function stubMpToken(body: Record<string, unknown>, status = 200): void {
     'fetch',
     vi.fn(async () => new Response(JSON.stringify(body), { status })),
   )
+}
+
+// El callback exige admin autenticado del tenant embebido en el state (route.ts:78-85).
+function mockAdminAuth(tenantId: string): void {
+  const user: AuthUser = {
+    type: 'staff',
+    id: 'auth-hp',
+    email: 'admin@test.local',
+    staffUserId: 'staff-hp',
+    tenantId,
+    role: 'admin',
+  }
+  vi.mocked(extractAuthUser).mockResolvedValue(user)
+  vi.mocked(getStaffRole).mockResolvedValue('admin')
 }
 
 beforeAll(async () => {
@@ -48,6 +77,7 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
   it('persiste tokens MP cifrados, activa la seña, marca onboarding y redirige a /onboarding/listo', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
+    mockAdminAuth(tenant.id)
 
     // Only the external MP token endpoint is mocked. Everything else (HMAC state
     // verify, encrypt-at-rest, DB write, onboarding flag) runs for real.
@@ -108,6 +138,7 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
   it('si MP rechaza el token (400) no persiste credenciales y redirige a mp_token_failed', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
+    mockAdminAuth(tenant.id)
     stubMpToken({ error: 'invalid_grant' }, 400)
 
     const state = makeState(tenant.id)
@@ -130,6 +161,7 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
   it('state expirado (>10min) no dispara intercambio ni escribe credenciales', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
+    mockAdminAuth(tenant.id)
     const fetchSpy = vi.fn(async () => new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchSpy)
 

@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthUser } from '@/modules/auth/types'
 
 // Only the auth boundary is mocked; getBoss() hits the real local pg-boss.
@@ -8,20 +8,39 @@ vi.mock('@/modules/auth/auth.middleware', () => ({
 }))
 
 import { extractAuthUser, extractRealAuthUser } from '@/modules/auth/auth.middleware'
+import { getSql } from '@/shared/db/client'
 import { stopBoss } from '@/shared/jobs/boss'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
 import { GET as getJobs } from '@/app/api/admin/jobs/route'
+import { createTestSystemAdmin, ensureRoles } from '../helpers/tenant'
 
 const asUser = (user: AuthUser | null) => {
   vi.mocked(extractAuthUser).mockResolvedValue(user)
   vi.mocked(extractRealAuthUser).mockResolvedValue(user)
 }
 
+// resolveSystemAdmin() no confía en el claim JWT: valida contra una fila activa
+// en system_admins (RLS self-only) + el email de esa fila en SYSTEM_ADMIN_EMAILS.
+// El id debe ser un UUID real de la DB (el 'sa-1' viejo rompía con 22P02).
+let systemAdminId: string
+let savedAllowlist: string | undefined
+
+beforeAll(async () => {
+  const sql = getSql()
+  await ensureRoles(sql)
+  const sa = await createTestSystemAdmin(sql)
+  systemAdminId = sa.id
+  savedAllowlist = process.env.SYSTEM_ADMIN_EMAILS
+  process.env.SYSTEM_ADMIN_EMAILS = sa.email
+}, 30_000)
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 afterAll(async () => {
+  if (savedAllowlist === undefined) delete process.env.SYSTEM_ADMIN_EMAILS
+  else process.env.SYSTEM_ADMIN_EMAILS = savedAllowlist
   // getBoss() started a singleton in the system_admin case — close it so the
   // pg-boss pollers don't leave open handles.
   await stopBoss()
@@ -49,7 +68,7 @@ describe('GET /api/admin/jobs (queue depth — B10 T7)', () => {
       type: 'system_admin',
       id: 'auth-1',
       email: 'admin@test.local',
-      systemAdminId: 'sa-1',
+      systemAdminId,
     })
     const res = await getJobs()
     expect(res.status).toBe(200)

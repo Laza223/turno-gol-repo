@@ -144,9 +144,9 @@ Estas son verificaciones de flujo end-to-end específicas de TurnoGol, no solo m
 
 | Rol | Responsabilidad | Quién (completar antes del lanzamiento) |
 |---|---|---|
-| **Incident Commander (IC)** | Declara el incidente, decide severidad (doc19 §2.1), coordina, decide rollback vs. roll-forward, da el OK de cierre | _[completar]_ |
-| **Comms** | Redacta y envía updates a clientes, mantiene el canal interno informado, arma el mensaje de resolución | _[completar — puede ser la misma persona que IC si el equipo es chico]_ |
-| **Fix** | Ejecuta el diagnóstico técnico y el rollback/fix | _[completar — puede ser la misma persona que IC]_ |
+| **Incident Commander (IC)** | Declara el incidente, decide severidad (doc19 §2.1), coordina, decide rollback vs. roll-forward, da el OK de cierre | el Fundador |
+| **Comms** | Redacta y envía updates a clientes, mantiene el canal interno informado, arma el mensaje de resolución | el Fundador |
+| **Fix** | Ejecuta el diagnóstico técnico y el rollback/fix | el Fundador |
 
 En un equipo de una sola persona, los 3 roles son la misma persona, pero **igual hay que pasar explícitamente por los 3 pasos** (declarar, comunicar, arreglar) — no saltar directo a arreglar en silencio, porque el complejo piloto necesita saber que algo pasó antes de que llame preguntando.
 

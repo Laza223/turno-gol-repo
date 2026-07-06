@@ -119,6 +119,30 @@ async function countProcessedWebhooks(mpEventId: string): Promise<number> {
   return Number(rows[0]!.c)
 }
 
+async function seedTrialingSubscription(tenantId: string): Promise<void> {
+  const sql = getSql()
+  const planRows = await sql<{ id: string }[]>`SELECT id FROM plans LIMIT 1`
+  const planId = planRows[0]!.id
+  await sql`
+    INSERT INTO tenant_subscriptions (
+      tenant_id, plan_id, billing_cycle, status,
+      current_period_start, current_period_end, mp_subscription_id
+    ) VALUES (
+      ${tenantId}, ${planId}, 'monthly'::billing_cycle, 'trialing'::subscription_status,
+      ${'2027-04-01T00:00:00Z'}::timestamptz, ${'2027-05-01T00:00:00Z'}::timestamptz,
+      ${`mp-preapp-${tenantId.slice(0, 8)}`}
+    )
+  `
+}
+
+async function getSubscriptionStatus(tenantId: string): Promise<string | undefined> {
+  const sql = getSql()
+  const rows = await sql<{ status: string }[]>`
+    SELECT status FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+  `
+  return rows[0]?.status
+}
+
 async function getAuditLogs(bookingId: string) {
   const sql = getSql()
   return sql<
@@ -635,5 +659,82 @@ describe('handleMpWebhookJob — unknown booking reference', () => {
     expect(await countPaymentRows(missingBookingId)).toBe(0)
     // Event is consumed (lock committed) so MP retries don't reprocess forever.
     expect(await countProcessedWebhooks(mpEventId)).toBe(1)
+  })
+})
+
+describe('handleMpWebhookJob — suscripción SaaS usa el gateway master (TG-BL-03)', () => {
+  it('activa trialing→active con subscription_authorized_payment aunque el tenant NO tenga MP conectado para señas', async () => {
+    const sql = getSql()
+    // Deliberately no setTenantMpToken(): mp_access_token stays NULL. Before
+    // the fix, ANY event type threw TenantMpNotConnectedError right here —
+    // a tenant can be current on its SaaS subscription without ever having
+    // connected MP for booking deposits.
+    const tenant = await createTestTenant(sql)
+    await seedTrialingSubscription(tenant.id)
+
+    const mpPaymentId = `mp-pay-sub-ok-${tenant.id.slice(0, 8)}`
+    const mpEventId = `mp-evt-sub-ok-${tenant.id.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 350_000,
+      externalReference: tenant.id, // createPreapproval sets external_reference = tenantId
+      paymentMethodId: 'account_money',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'subscription_authorized_payment',
+      mpPaymentId,
+      rawPayload: {
+        id: mpEventId,
+        type: 'subscription_authorized_payment',
+        data: { id: mpPaymentId },
+      },
+    })
+
+    expect(await getSubscriptionStatus(tenant.id)).toBe('active')
+  })
+
+  it('rechaza subscription_authorized_payment cuyo external_reference no coincide con el tenant reclamado (IDOR) sin mutar ningún estado', async () => {
+    const sql = getSql()
+    const tenantA = await createTestTenant(sql)
+    await seedTrialingSubscription(tenantA.id)
+    const tenantB = await createTestTenant(sql)
+    await seedTrialingSubscription(tenantB.id)
+
+    const mpPaymentId = `mp-pay-sub-idor-${tenantB.id.slice(0, 8)}`
+    const mpEventId = `mp-evt-sub-idor-${tenantB.id.slice(0, 8)}`
+    // Gateway resolves the payment to tenant A's preapproval (external_reference)...
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 350_000,
+      externalReference: tenantA.id,
+      paymentMethodId: 'account_money',
+    }
+
+    // ...but the job claims tenant B (e.g. attacker-controlled ?tenant= query
+    // on the shared webhook URL, or a stale/misrouted event).
+    await expect(
+      handleMpWebhookJob({
+        tenantId: tenantB.id,
+        mpEventId,
+        eventType: 'subscription_authorized_payment',
+        mpPaymentId,
+        rawPayload: {
+          id: mpEventId,
+          type: 'subscription_authorized_payment',
+          data: { id: mpPaymentId },
+        },
+      }),
+    ).rejects.toThrow(/tenant mismatch/)
+
+    // Neither subscription transitioned, and the event was never locked (so
+    // a legitimate retry for the correct tenant can still succeed later).
+    expect(await getSubscriptionStatus(tenantA.id)).toBe('trialing')
+    expect(await getSubscriptionStatus(tenantB.id)).toBe('trialing')
+    expect(await countProcessedWebhooks(mpEventId)).toBe(0)
   })
 })

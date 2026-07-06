@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from './mp-oauth'
+import type { PaymentGateway } from './mp-gateway'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
 import { parseSaasUpgradeRef } from './payment.types'
@@ -10,6 +11,7 @@ import {
   onPaymentRejected,
 } from '@/modules/billing/dunning.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
+import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminPush } from '@/modules/notifications/push.service'
 import { track } from '@/shared/observability'
@@ -51,14 +53,28 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     .limit(1)
 
   const tenant = rows[0]
-  if (!tenant?.mpAccessToken) {
-    throw new TenantMpNotConnectedError(job.tenantId)
-  }
 
-  // Wired with the 401 refresh-and-retry fail-safe (Hallazgo 4): if the
-  // per-tenant access token expired between cron refreshes, the gateway
-  // refreshes it on the fly and retries the failing call.
-  const gateway = resolveTenantGateway(job.tenantId, tenant.mpAccessToken)
+  // Subscription events (recurring charge, preapproval echo) are billed
+  // through TurnoGol's MASTER MP account (billing.gateway), never the
+  // tenant's booking-deposit OAuth token — a tenant that never connected MP
+  // for señas can still have an active SaaS subscription. Only the `payment`
+  // branch (booking deposit / SaaS upgrade proration) needs the tenant token.
+  const isSubscriptionEvent =
+    job.eventType === 'subscription_authorized_payment' ||
+    job.eventType === 'subscription_preapproval'
+
+  let gateway: PaymentGateway
+  if (isSubscriptionEvent) {
+    gateway = getBillingGateway()
+  } else {
+    if (!tenant?.mpAccessToken) {
+      throw new TenantMpNotConnectedError(job.tenantId)
+    }
+    // Wired with the 401 refresh-and-retry fail-safe (Hallazgo 4): if the
+    // per-tenant access token expired between cron refreshes, the gateway
+    // refreshes it on the fly and retries the failing call.
+    gateway = resolveTenantGateway(job.tenantId, tenant.mpAccessToken)
+  }
 
   // Capture the booking id when a deposit is confirmed, so we can enqueue a
   // push notification AFTER the transaction commits. This avoids threading
@@ -69,6 +85,15 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   const outcome = await withTenantContext(job.tenantId, async (tx) => {
     if (job.eventType === 'subscription_authorized_payment') {
       const info = await gateway.getPaymentStatus(job.mpPaymentId)
+      // Cross-check: `createPreapproval` sets external_reference = tenantId
+      // (payment.types.ts). A holder of MP_WEBHOOK_SECRET must not be able
+      // to apply another tenant's recurring-charge outcome by claiming a
+      // different `?tenant=` query param on the webhook URL.
+      if (info.externalReference !== job.tenantId) {
+        throw new Error(
+          `webhook tenant mismatch: claimed=${job.tenantId} actual=${info.externalReference}`,
+        )
+      }
       const at = new Date()
       if (info.status === 'approved') {
         await onPaymentApproved(

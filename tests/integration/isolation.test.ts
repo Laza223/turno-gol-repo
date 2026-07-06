@@ -719,3 +719,26 @@ describe('L. tablas RLS post-021', () => {
     ).rejects.toThrow(/row-level security policy for table "reviews"/i)
   })
 })
+
+// ─── M. Invariante de schema: toda tabla con RLS tiene FORCE (TG-BL-02) ───
+// Cierra el gap que dejó 021 (ver 036_force_rls_remaining_tables.sql): sin FORCE,
+// el owner de la tabla bypassa las policies. Este test va ROJO si alguien agrega
+// una tabla con ENABLE ROW LEVEL SECURITY pero se olvida del FORCE.
+describe('M. schema invariant: FORCE ROW LEVEL SECURITY', () => {
+  it('toda tabla public con relrowsecurity también tiene relforcerowsecurity', async () => {
+    const sql = getSql()
+    const rows = await sql<{ relname: string }[]>`
+      SELECT c.relname
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relkind = 'r'
+        AND c.relrowsecurity
+        AND NOT c.relforcerowsecurity
+      ORDER BY c.relname
+    `
+    // toEqual([]) en vez de length===0 para que el mensaje de falla liste las
+    // tablas ofensoras (ej. ['nueva_tabla']).
+    expect(rows.map((r) => r.relname)).toEqual([])
+  })
+})

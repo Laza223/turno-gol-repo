@@ -1,8 +1,9 @@
 /**
  * RLS isolation suite — BLOCKING.
- * Comment out any policy in 006_rls_policies.sql → at least 1 test must fail.
+ * Comment out any policy in 006_rls_policies.sql (o 014–017 para las tablas
+ * post-021) → at least 1 test must fail.
  *
- * Coverage (84 tests):
+ * Coverage:
  *  A. Smoke positivo: tenant SÍ ve sus filas (13)
  *  B. Cross-tenant SELECT bloqueado (13)
  *  C. Cross-tenant INSERT bloqueado (13)
@@ -10,8 +11,11 @@
  *  E. Cross-tenant DELETE bloqueado (10)
  *  F. PTR cross-tenant UPDATE bloqueado (1)
  *  G. REVOKE: UPDATE/DELETE en audit_logs+daily_cash_closes propios falla (4)
- *  H. Fail-safe: sin contexto, 0 filas (15)
+ *  H. Fail-safe: sin contexto, 0 filas (17)
  *  I. Casos especiales (5)
+ *  J. Positive policies — cierre de gaps
+ *  K. Positive relational reads
+ *  L. Tablas RLS post-021 (push_subscriptions, player_favorites, feature_flags, reviews) (7)
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { faker } from '@faker-js/faker'
@@ -42,6 +46,10 @@ let A: IsolationSeed
 let B: IsolationSeed
 let planId: string
 let extraPlayerA: { id: string; email: string }
+// Tablas RLS post-021 (TG-BL-01): 1 fila sembrada de tenant A para que el
+// fail-safe (bloque H) y los cross-tenant/cross-player de L sean reales.
+let pushSubA: string
+let favA: string
 
 beforeAll(async () => {
   const sql = getSql()
@@ -54,6 +62,22 @@ beforeAll(async () => {
   planId = await getOrCreatePlanId(sql)
   // Extra player attached to tenant A — used by I.4 (player without PTR-with-A test).
   extraPlayerA = await createTestPlayer(sql)
+
+  // TG-BL-01: sembrar 1 fila en las tablas RLS post-021 con aislamiento clásico.
+  // Sin fila la tabla queda vacía y el count=0 del fail-safe daría verde aunque
+  // la policy estuviera rota (false green). getSql() es superuser → bypassa RLS.
+  const [ps] = await sql`
+    INSERT INTO push_subscriptions (tenant_id, staff_user_id, endpoint, p256dh_key, auth_key)
+    VALUES (${tenantA.id}, ${A.staffUserId}, ${`https://push.test/${tenantA.id}`}, 'p256dh-test', 'auth-test')
+    RETURNING id
+  `
+  pushSubA = (ps as { id: string }).id
+  const [fav] = await sql`
+    INSERT INTO player_favorites (player_id, tenant_id)
+    VALUES (${A.playerId}, ${tenantA.id})
+    RETURNING id
+  `
+  favA = (fav as { id: string }).id
 }, 30_000)
 
 afterAll(async () => {
@@ -92,11 +116,16 @@ const tablesUpdDel = tablesAll.filter(
     ),
 )
 
-// All 15 tables with RLS for fail-safe (no context) test.
+// All RLS tables with tenant/player isolation for the fail-safe (no context) test.
+// Incluye 2 tablas post-021 con aislamiento clásico (TG-BL-01); feature_flags y
+// reviews NO entran acá (lectura global/pública por diseño → count>0 sin contexto)
+// y se cubren con fail-safe de escritura en el bloque L.
 const failSafeTables = [
   ...tablesAll.map((t) => t.name),
   'players',
   'staff_users',
+  'push_subscriptions',
+  'player_favorites',
 ]
 
 // ─── A. Smoke positivo ─────────────────────────────────────────
@@ -613,5 +642,80 @@ describe('K. positive relational reads', () => {
     )
     expect(rows.length).toBe(1)
     expect(rows[0].id).toBe(A.ptrId)
+  })
+})
+
+// ─── L. Tablas RLS post-021 (TG-P0-RLS-01 / TG-BL-01) ──────────────
+// 4 tablas ganaron RLS después de 006 y NO estaban en la suite bloqueante: si se
+// dropeaba su policy, ningún test rojo lo delataba. Se cubren según su modelo:
+//   * push_subscriptions / player_favorites — aislamiento clásico → fail-safe
+//     count=0 (bloque H, arriba) + cross-tenant/cross-player + smoke positivo acá.
+//   * feature_flags / reviews — lectura global/pública por diseño → fail-safe de
+//     ESCRITURA: el rol de app no puede mutar (no hay write policy / falta contexto).
+describe('L. tablas RLS post-021', () => {
+  it('push_subscriptions: tenant B no ve la suscripción de A (cross-tenant SELECT)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantB.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM push_subscriptions WHERE id = ${pushSubA}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('push_subscriptions: tenant A SÍ ve su suscripción (smoke positivo)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM push_subscriptions WHERE id = ${pushSubA}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('player_favorites: otro jugador no ve el favorito de A (cross-player SELECT)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', playerId: B.playerId },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM player_favorites WHERE id = ${favA}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('player_favorites: el jugador A SÍ ve su favorito (smoke positivo)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', playerId: A.playerId },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM player_favorites WHERE id = ${favA}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('feature_flags: rol de app NO puede INSERT un override (sin write policy)', async () => {
+    // RLS default-deny: feature_flags sólo tiene policy de SELECT. Un tenant no
+    // puede crear overrides (ej. flipear su propio kill switch `suspended`).
+    await expect(
+      withContextRollback({ role: 'authenticated', tenantId: tenantA.id }, (tx) =>
+        tx`INSERT INTO feature_flags (key, value, tenant_id)
+           VALUES (${`spoof_flag_${tenantA.id}`}, true, ${tenantA.id})`,
+      ),
+    ).rejects.toThrow(/row-level security policy for table "feature_flags"/i)
+  })
+
+  it('feature_flags: rol de app NO puede UPDATE un flag global (0 filas)', async () => {
+    const rows = await withContextRollback(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) =>
+        tx<{ id: string }[]>`
+          UPDATE feature_flags SET value = NOT value
+          WHERE key = 'online_booking' AND tenant_id IS NULL
+          RETURNING id`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('reviews: sin player context, INSERT rechazado por RLS', async () => {
+    // reviews tiene lectura PÚBLICA (USING true) pero INSERT sólo del jugador
+    // dueño del booking. Sin app.current_player_id, la WITH CHECK falla.
+    await expect(
+      withContextRollback({ role: 'authenticated', tenantId: tenantA.id }, (tx) =>
+        tx`INSERT INTO reviews (tenant_id, player_id, booking_id, rating)
+           VALUES (${tenantA.id}, ${A.playerId}, ${A.bookingId}, 5)`,
+      ),
+    ).rejects.toThrow(/row-level security policy for table "reviews"/i)
   })
 })

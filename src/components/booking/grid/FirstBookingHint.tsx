@@ -15,7 +15,7 @@ export function FirstBookingHint({ onDismiss }: { onDismiss: () => void }) {
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 rounded-md px-2 py-1 text-sm font-medium text-emerald-800 transition-colors duration-150 hover:bg-primary/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
+        className="shrink-0 rounded-md px-3 min-h-11 md:min-h-9 text-sm font-medium text-emerald-800 transition-colors duration-150 hover:bg-primary/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
       >
         Entendido
       </button>

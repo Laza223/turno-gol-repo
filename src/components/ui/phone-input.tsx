@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useId } from 'react'
 import { ChevronDown, Search, Check } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
 export type CountryOption = {
@@ -124,7 +125,6 @@ export function PhoneInput({
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const containerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const numberInputRef = useRef<HTMLInputElement>(null)
 
@@ -137,24 +137,9 @@ export function PhoneInput({
     }
   }, [controlledValue])
 
-  // Click outside listener
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Focus search input when dropdown opens
-  useEffect(() => {
-    if (!isOpen) return
-    setSearchQuery('')
-    const t = setTimeout(() => searchInputRef.current?.focus(), 50)
-    return () => clearTimeout(t)
-  }, [isOpen])
+  // El panel es un Radix Popover portaled: cierre por click-afuera y Esc los
+  // maneja Radix (el listener manual de mousedown cerraría el panel al
+  // clickear ADENTRO, porque el contenido ya no vive dentro del container).
 
   const fullValue = formatFullPhone(country, nationalNumber)
 
@@ -187,7 +172,7 @@ export function PhoneInput({
   )
 
   return (
-    <div className={cn('space-y-1.5', className)} ref={containerRef}>
+    <div className={cn('space-y-1.5', className)}>
       {label && (
         <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
           {label} {required && <span className="text-red-500 dark:text-red-400">*</span>}
@@ -197,29 +182,35 @@ export function PhoneInput({
       {/* Hidden input to ensure standard HTML forms / Server Actions receive full international string */}
       {name && <input type="hidden" name={name} value={fullValue} />}
 
+      <Popover
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open)
+          if (open) setSearchQuery('')
+        }}
+      >
       <div className="relative flex rounded-lg shadow-sm">
         {/* Country Selector Button */}
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setIsOpen(!isOpen)}
-          aria-expanded={isOpen}
-          aria-haspopup="listbox"
-          aria-label={`Seleccionar código de país. Actual: ${country.name} (${country.dialCode})`}
-          className={cn(
-            'flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 h-11 md:h-10 select-none',
-            error && 'border-red-500 dark:border-red-400',
-          )}
-        >
-          <span className="text-base leading-none" role="img" aria-label={country.name}>
-            {country.flag}
-          </span>
-          <span className="font-semibold text-xs text-muted-foreground">{country.dialCode}</span>
-          <ChevronDown
-            className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200"
-            style={{ transform: isOpen ? 'rotate(180deg)' : undefined }}
-          />
-        </button>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label={`Seleccionar código de país. Actual: ${country.name} (${country.dialCode})`}
+            className={cn(
+              'flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 h-11 md:h-10 select-none',
+              error && 'border-red-500 dark:border-red-400',
+            )}
+          >
+            <span className="text-base leading-none" role="img" aria-label={country.name}>
+              {country.flag}
+            </span>
+            <span className="font-semibold text-xs text-muted-foreground">{country.dialCode}</span>
+            <ChevronDown
+              className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200"
+              style={{ transform: isOpen ? 'rotate(180deg)' : undefined }}
+            />
+          </button>
+        </PopoverTrigger>
 
         {/* National Number Input */}
         <input
@@ -239,9 +230,20 @@ export function PhoneInput({
           )}
         />
 
-        {/* Country Picker Dropdown Panel */}
-        {isOpen && (
-          <div className="absolute left-0 top-full z-50 mt-1.5 max-h-72 w-72 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl ring-1 ring-black/5 animate-in fade-in-50 zoom-in-95">
+        {/* Country Picker: Popover portaled (Radix) — no se clipea dentro de
+            modales con overflow (ej. BookingFormModal). */}
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          className="w-72 overflow-hidden p-0"
+          // El foco inicial va al buscador, no al primer item.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            searchInputRef.current?.focus()
+          }}
+          // Al elegir país devolvemos el foco al input del número a mano.
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
             <div className="p-2 border-b border-border bg-muted/20">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -252,7 +254,7 @@ export function PhoneInput({
                   placeholder="Buscar país o código..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8.5 w-full rounded-md border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
@@ -295,9 +297,9 @@ export function PhoneInput({
                 })
               )}
             </ul>
-          </div>
-        )}
+        </PopoverContent>
       </div>
+      </Popover>
 
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       {!error && helper && <p className="text-xs text-muted-foreground">{helper}</p>}

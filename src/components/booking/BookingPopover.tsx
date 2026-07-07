@@ -1,7 +1,6 @@
 'use client'
 
 import { Banknote, CalendarClock, User } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { bookingDisplayName } from './BookingCard'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 
@@ -43,32 +42,21 @@ function depositLabel(booking: GridBooking): string {
 type Props = {
   booking: GridBooking
   courtName: string
-  id: string
-  /** Lado de apertura según la fila: las últimas abren hacia arriba. */
-  side: 'top' | 'bottom'
-  /** Alineación según la columna: la última cancha alinea a la derecha. */
-  align: 'left' | 'right'
 }
 
 /**
- * Detalle de una reserva al hover/focus del slot. Solo lectura: quién
- * reservó, horario, precio, método de pago y estado de la seña.
+ * Detalle de una reserva (solo lectura): quién reservó, horario, precio,
+ * método de pago y estado de la seña. Es el CONTENIDO del popover; el
+ * posicionamiento/portal lo pone ui/popover.tsx desde BookingCard (Radix,
+ * con collision detection — antes era un panel absolute que se clipeaba
+ * contra el overflow del GridScroller).
  */
-export function BookingPopover({ booking, courtName, id, side, align }: Props) {
+export function BookingPopover({ booking, courtName }: Props) {
   const isBlock = booking.type === 'block'
   const name = bookingDisplayName(booking)
 
   return (
-    <div
-      id={id}
-      role="tooltip"
-      className={cn(
-        'absolute z-[25] w-60 rounded-lg border border-border bg-popover p-3 text-left shadow-lg',
-        'animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none',
-        side === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1',
-        align === 'left' ? 'left-0' : 'right-0',
-      )}
-    >
+    <>
       <p className="flex items-center gap-1.5 text-sm font-semibold text-popover-foreground">
         <User aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
         <span className="truncate">{name ?? (isBlock ? 'Bloqueo' : 'Sin nombre')}</span>
@@ -102,6 +90,6 @@ export function BookingPopover({ booking, courtName, id, side, align }: Props) {
           </div>
         </dl>
       )}
-    </div>
+    </>
   )
 }

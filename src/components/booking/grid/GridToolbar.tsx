@@ -50,7 +50,9 @@ export function GridToolbar({
                 aria-pressed={isCompact}
                 aria-label="Cambiar densidad de la grilla"
                 className={cn(
-                  'flex min-h-11 items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors duration-150 md:min-h-9',
+                  // min-w-11: <sm el label se oculta y el botón queda icon-only —
+                  // sin el mínimo, el ancho cae a ~42px (WCAG 2.5.5).
+                  'flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors duration-150 md:min-h-9 sm:min-w-0',
                   isCompact
                     ? 'border-emerald-600/40 bg-primary/10 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-300'
                     : 'border-border bg-card text-foreground hover:bg-accent',

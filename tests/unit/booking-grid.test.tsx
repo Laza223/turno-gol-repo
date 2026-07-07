@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -212,6 +212,10 @@ describe('BookingGrid — layout CSS Grid', () => {
   })
 })
 
+// Contrato Radix (Paso 3 blueprint mobile): el detalle abre por CLICK/tap
+// (PopoverTrigger — en touch no hay hover ni focus confiable) y por hover con
+// intent en desktop. El contenido es role="dialog" portaled (ya no un panel
+// absolute role="tooltip" clipeado por el overflow del scroller).
 describe('BookingGrid — popover de detalle', () => {
   const paid = booking({
     paymentMethod: 'cash',
@@ -220,67 +224,67 @@ describe('BookingGrid — popover de detalle', () => {
     priceSnapshot: 2000000,
   })
 
-  it('focus en un slot ocupado muestra quién reservó, pago y seña', () => {
+  it('click/tap en un slot ocupado muestra quién reservó, pago y seña; otro click cierra', async () => {
     renderGrid({ bookings: [paid] })
     const slot = screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ })
 
-    expect(screen.queryByRole('tooltip')).toBeNull()
-    fireEvent.focus(slot)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(slot)
 
-    const tooltip = screen.getByRole('tooltip')
+    const detail = await screen.findByRole('dialog')
     expect(slot.getAttribute('aria-expanded')).toBe('true')
-    expect(tooltip.textContent).toContain('Tomás García')
-    expect(tooltip.textContent).toContain('Efectivo')
-    expect(tooltip.textContent).toContain('Seña pagada')
-    expect(tooltip.textContent).toContain('5.000') // monto de la seña
-    expect(tooltip.textContent).toContain('20.000') // precio del turno
+    expect(detail.textContent).toContain('Tomás García')
+    expect(detail.textContent).toContain('Efectivo')
+    expect(detail.textContent).toContain('Seña pagada')
+    expect(detail.textContent).toContain('5.000') // monto de la seña
+    expect(detail.textContent).toContain('20.000') // precio del turno
 
-    fireEvent.blur(slot)
-    expect(screen.queryByRole('tooltip')).toBeNull()
+    fireEvent.click(slot)
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('hover abre el popover y mouseLeave lo cierra', async () => {
+  it('hover abre el popover y mouseLeave lo cierra (con gracia de 150ms)', async () => {
     renderGrid({ bookings: [paid] })
     const wrapper = screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ })
       .parentElement as HTMLElement
 
     fireEvent.mouseEnter(wrapper)
-    expect(await screen.findByRole('tooltip')).toBeTruthy()
+    expect(await screen.findByRole('dialog')).toBeTruthy()
 
     fireEvent.mouseLeave(wrapper)
-    expect(screen.queryByRole('tooltip')).toBeNull()
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
   it('Escape cierra el popover sin perder el foco', async () => {
     renderGrid({ bookings: [paid] })
     const slot = screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ })
-    fireEvent.focus(slot)
-    expect(await screen.findByRole('tooltip')).toBeTruthy()
+    fireEvent.click(slot)
+    expect(await screen.findByRole('dialog')).toBeTruthy()
 
-    fireEvent.keyDown(slot, { key: 'Escape' })
-    expect(screen.queryByRole('tooltip')).toBeNull()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('seña pendiente y sin datos de pago degradan con etiquetas claras', () => {
+  it('seña pendiente y sin datos de pago degradan con etiquetas claras', async () => {
     renderGrid({
       bookings: [
         booking({ depositStatus: 'pending', depositAmount: 300000, paymentMethod: null }),
       ],
     })
-    fireEvent.focus(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
-    const tooltip = screen.getByRole('tooltip')
-    expect(tooltip.textContent).toContain('Seña pendiente')
-    expect(tooltip.textContent).toContain('—') // método de pago sin registrar
+    fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
+    const detail = await screen.findByRole('dialog')
+    expect(detail.textContent).toContain('Seña pendiente')
+    expect(detail.textContent).toContain('—') // método de pago sin registrar
   })
 
-  it('un bloqueo no muestra datos de pago', () => {
+  it('un bloqueo no muestra datos de pago', async () => {
     renderGrid({
       bookings: [booking({ type: 'block', playerFirstName: null, guestName: null })],
     })
-    fireEvent.focus(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
-    const tooltip = screen.getByRole('tooltip')
-    expect(tooltip.textContent).toContain('Bloqueo')
-    expect(tooltip.textContent).not.toContain('Seña')
-    expect(tooltip.textContent).not.toContain('Precio')
+    fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
+    const detail = await screen.findByRole('dialog')
+    expect(detail.textContent).toContain('Bloqueo')
+    expect(detail.textContent).not.toContain('Seña')
+    expect(detail.textContent).not.toContain('Precio')
   })
 })

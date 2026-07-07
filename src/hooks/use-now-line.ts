@@ -37,7 +37,9 @@ export function useNowLine({ artNow, date, visibleSlots, hasBand, rowHeightRem }
     // Antes de la apertura visible (o madrugada operativa) no se dibuja.
     if (nowMins < firstMins) return null
 
-    const headerRem = 2.75 + (hasBand ? 2 : 0)
+    // Header 2.75rem + banda de madrugada 2.75rem (44px touch — debe coincidir
+    // con gridTemplateRows de GridScroller).
+    const headerRem = 2.75 + (hasBand ? 2.75 : 0)
     const top = headerRem + ((nowMins - firstMins) / 60) * rowHeightRem
     const maxTop = headerRem + visibleSlots.length * rowHeightRem
     return top <= maxTop ? top : null

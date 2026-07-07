@@ -11,8 +11,9 @@ type Props = {
 
 /**
  * Banda de madrugada colapsada (pages/grilla.md §5): reemplaza las horas muertas
- * por un botón de 2rem que expande al tocarlo. Es hija directa del CSS Grid
- * (gridRow 2, todas las columnas), por eso vive dentro de GridScroller.
+ * por un botón de 2.75rem (44px, touch mínimo §10) que expande al tocarlo. Es
+ * hija directa del CSS Grid (gridRow 2, todas las columnas), por eso vive
+ * dentro de GridScroller.
  */
 export function MorningCollapseBand({ firstSlot, boundarySlot, onExpand }: Props) {
   return (

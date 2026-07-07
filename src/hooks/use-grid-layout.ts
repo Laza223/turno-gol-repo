@@ -96,7 +96,7 @@ export function useGridLayout({
   )
 
   // Madrugada muerta colapsada (pages/grilla.md §5): las horas ya pasadas sin
-  // ninguna reserva se pliegan a una banda de 2rem en vez de forzar scroll.
+  // ninguna reserva se pliegan a una banda (2.75rem, touch §10) en vez de forzar scroll.
   const collapsedCount = useMemo(
     () => (showMorning ? 0 : countCollapsibleLeading(slots, courts, cells, isSlotPast)),
     [showMorning, slots, courts, cells, isSlotPast],

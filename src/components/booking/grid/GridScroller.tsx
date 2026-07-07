@@ -80,7 +80,10 @@ export function GridScroller({
         className="grid relative"
         style={{
           gridTemplateColumns: `3.5rem repeat(${courts.length}, minmax(8.5rem, 1fr))`,
-          gridTemplateRows: `2.75rem ${hasBand ? '2rem ' : ''}repeat(${visibleSlots.length}, ${rowHeightRem}rem)`,
+          // Banda de madrugada 2.75rem (44px): touch mínimo MASTER §10 — el
+          // botón "Mostrar" ocupa toda la fila (pages/grilla.md §5 decía 2rem;
+          // quedó corto para touch y lo marcaba touch-targets.spec).
+          gridTemplateRows: `2.75rem ${hasBand ? '2.75rem ' : ''}repeat(${visibleSlots.length}, ${rowHeightRem}rem)`,
           minWidth: `${56 + courts.length * 136}px`,
         }}
         onKeyDown={onGridKeyDown}
@@ -159,8 +162,6 @@ export function GridScroller({
                   courtName={court.name}
                   detailOpen={detailBookingId === cell.booking.id}
                   onDetailChange={onDetailChange}
-                  popoverSide={ri + cell.rowSpan >= visibleSlots.length - 1 ? 'top' : 'bottom'}
-                  popoverAlign={courts.length > 1 && ci === courts.length - 1 ? 'right' : 'left'}
                 />
               )
             }

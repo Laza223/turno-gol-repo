@@ -149,7 +149,9 @@ test.describe('Abonados CRUD', () => {
       await page.fill('input[name="timeStart"]', '14:00')
       await page.fill('input[name="timeEnd"]', '15:00')
       await page.fill('input[name="contactName"]', 'E2E Happy Path')
-      await page.fill('input[name="contactPhone"]', contactPhone)
+      // #contactPhone = el input tel VISIBLE del PhoneInput; input[name=contactPhone]
+      // es el hidden que arma el valor internacional (+54 …) y no es fillable.
+      await page.fill('#contactPhone', contactPhone)
       await page.fill('input[name="pricePerSession"]', '5000')
       await page.fill('input[name="monthlyPrice"]', '20000')
       await page.fill('input[name="startsOn"]', startsOn)
@@ -171,7 +173,8 @@ test.describe('Abonados CRUD', () => {
       // cards (mobile); .first() = la tabla, visible en este viewport desktop.
       await expect(page.getByText('E2E Happy Path').first()).toBeVisible()
     } finally {
-      await cleanupAbonadosByContact(supabase, contactPhone)
+      // El PhoneInput persiste el número internacional: "+54 <nacional>".
+      await cleanupAbonadosByContact(supabase, `+54 ${contactPhone}`)
     }
   })
 
@@ -205,7 +208,7 @@ test.describe('Abonados CRUD', () => {
       await page.fill('input[name="timeStart"]', '14:00')
       await page.fill('input[name="timeEnd"]', '15:00')
       await page.fill('input[name="contactName"]', 'E2E Conflict')
-      await page.fill('input[name="contactPhone"]', contactPhone)
+      await page.fill('#contactPhone', contactPhone)
       await page.fill('input[name="pricePerSession"]', '5000')
       await page.fill('input[name="monthlyPrice"]', '20000')
       await page.fill('input[name="startsOn"]', startsOn)
@@ -223,7 +226,7 @@ test.describe('Abonados CRUD', () => {
       if (conflictBookingId) {
         await supabase.from('bookings').delete().eq('id', conflictBookingId)
       }
-      await cleanupAbonadosByContact(supabase, contactPhone)
+      await cleanupAbonadosByContact(supabase, `+54 ${contactPhone}`)
     }
   })
 

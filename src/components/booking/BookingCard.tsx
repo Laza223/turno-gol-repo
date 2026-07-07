@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { BookingPopover } from './BookingPopover'
 import type { GridBooking } from './BookingGrid'
 
@@ -33,11 +34,9 @@ type BookingCardProps = {
   courtId?: string
   courtName: string
   onSlotClick?: (courtId: string, slotTime: string) => void
-  /** Popover de detalle (solo slots ocupados): estado y dónde abrirlo. */
+  /** Popover de detalle (solo slots ocupados): estado controlado por BookingGrid (uno abierto a la vez). */
   detailOpen?: boolean
   onDetailChange?: (bookingId: string | null) => void
-  popoverSide?: 'top' | 'bottom'
-  popoverAlign?: 'left' | 'right'
 }
 
 /** Posición explícita en la grilla CSS: rowOffset deja lugar a la columna de horas, la fila de headers y la banda de colapso. */
@@ -150,34 +149,41 @@ function BookingCardComponent({
   onSlotClick,
   detailOpen = false,
   onDetailChange,
-  popoverSide = 'bottom',
-  popoverAlign = 'left',
 }: BookingCardProps) {
   // Hooks SIEMPRE antes del early-return de slot libre (rules-of-hooks).
-  // Hover intent: delay de 300ms para evitar popovers accidentales al mover el mouse rápido.
-  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Hover intent (desktop): 300ms para evitar popovers accidentales. El cierre
+  // tiene 150ms de gracia para poder entrar con el mouse al popover portaled
+  // sin que se cierre en el camino. En touch no hay hover: abre por tap
+  // (PopoverTrigger de Radix — antes el detalle era inalcanzable en iOS).
+  const openTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const bookingId = booking?.id ?? null
 
   const handleMouseEnter = React.useCallback(() => {
     if (!onDetailChange || !bookingId) return
-    timeoutRef.current = setTimeout(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    openTimerRef.current = setTimeout(() => {
       onDetailChange(bookingId)
     }, 300)
   }, [onDetailChange, bookingId])
 
   const handleMouseLeave = React.useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-    }
-    if (onDetailChange) {
+    if (openTimerRef.current) clearTimeout(openTimerRef.current)
+    if (!onDetailChange) return
+    closeTimerRef.current = setTimeout(() => {
       onDetailChange(null)
-    }
+    }, 150)
   }, [onDetailChange])
 
-  // Limpiar timeout si se desmonta
+  const cancelClose = React.useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+  }, [])
+
+  // Limpiar timers si se desmonta
   React.useEffect(() => {
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (openTimerRef.current) clearTimeout(openTimerRef.current)
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
     }
   }, [])
 
@@ -230,10 +236,12 @@ function BookingCardComponent({
   const visual = slotVisual(booking)
   const displayName = bookingDisplayName(booking)
   const StateIcon = visual.icon
-  const popoverId = `booking-popover-${booking.id}`
 
-  // El popover abre por hover con intent y por focus (tab o tap en mobile
-  // dispara focus). Escape lo cierra sin perder el lugar en la grilla.
+  // El popover abre por hover con intent (desktop) y por tap/click/Enter
+  // (Radix PopoverTrigger — funciona en touch, donde no existe hover).
+  // Radix maneja Escape, aria-expanded/controls y el posicionamiento con
+  // collision detection (el panel ya no se clipea contra el overflow del
+  // GridScroller: va portaled al body).
   // La hora NO se repite en la celda: el eje sticky es la única fuente; el
   // rango completo vive en el aria-label y en el popover.
   return (
@@ -243,65 +251,65 @@ function BookingCardComponent({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <button
-        type="button"
-        data-col={col}
-        data-row={row}
-        aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ?? visual.label}, ${visual.label}`}
-        aria-expanded={detailOpen}
-        aria-controls={detailOpen ? popoverId : undefined}
-        onFocus={onDetailChange ? () => onDetailChange(booking.id) : undefined}
-        onBlur={onDetailChange ? () => onDetailChange(null) : undefined}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' && detailOpen) {
-            e.stopPropagation()
-            onDetailChange?.(null)
-          }
-        }}
-        className={cn(
-          'flex h-full w-full cursor-default overflow-hidden rounded-md border-l-[3px] text-left',
-          visual.cell,
-          visual.borderL,
-          isPast && 'opacity-60 saturate-50',
-          isNew && 'animate-slot-pulse',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-        )}
+      <Popover
+        open={detailOpen}
+        onOpenChange={(open) => onDetailChange?.(open ? booking.id : null)}
       >
-        {compact ? (
-          <span className="flex min-w-0 flex-1 items-center gap-1 px-1.5">
-            <StateIcon aria-hidden className={cn('h-3 w-3 shrink-0', visual.labelText)} />
-            <span className="truncate text-xs font-semibold leading-tight text-foreground">
-              {displayName ?? visual.label}
-            </span>
-          </span>
-        ) : (
-          <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-1.5">
-            {displayName && (
-              <span className="truncate text-xs font-semibold leading-tight text-foreground">
-                {displayName}
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            data-col={col}
+            data-row={row}
+            aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ?? visual.label}, ${visual.label}`}
+            className={cn(
+              'flex h-full w-full cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
+              visual.cell,
+              visual.borderL,
+              isPast && 'opacity-60 saturate-50',
+              isNew && 'animate-slot-pulse',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+            )}
+          >
+            {compact ? (
+              <span className="flex min-w-0 flex-1 items-center gap-1 px-1.5">
+                <StateIcon aria-hidden className={cn('h-3 w-3 shrink-0', visual.labelText)} />
+                <span className="truncate text-xs font-semibold leading-tight text-foreground">
+                  {displayName ?? visual.label}
+                </span>
+              </span>
+            ) : (
+              <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-1.5">
+                {displayName && (
+                  <span className="truncate text-xs font-semibold leading-tight text-foreground">
+                    {displayName}
+                  </span>
+                )}
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 text-[11px] font-medium leading-tight',
+                    visual.labelText,
+                  )}
+                >
+                  <StateIcon aria-hidden className="h-3 w-3 shrink-0" />
+                  {visual.label}
+                </span>
               </span>
             )}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 text-[11px] font-medium leading-tight',
-                visual.labelText,
-              )}
-            >
-              <StateIcon aria-hidden className="h-3 w-3 shrink-0" />
-              {visual.label}
-            </span>
-          </span>
-        )}
-      </button>
-      {detailOpen && (
-        <BookingPopover
-          booking={booking}
-          courtName={courtName}
-          id={popoverId}
-          side={popoverSide}
-          align={popoverAlign}
-        />
-      )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="start"
+          className="w-60 p-3"
+          // No robar el foco de la grilla al abrir (la navegación por flechas
+          // vive en los botones de celda); al cerrar, Radix devuelve el foco.
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onMouseEnter={cancelClose}
+          onMouseLeave={handleMouseLeave}
+        >
+          <BookingPopover booking={booking} courtName={courtName} />
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

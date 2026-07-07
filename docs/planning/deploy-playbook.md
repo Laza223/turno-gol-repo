@@ -1,5 +1,7 @@
 # Playbook de deploy a producción — TurnoGol
 
+> ⚠️ **Actualización 2026-07-07**: el schema avanzó a **35 migraciones** (027–035: drop open_matches, drop read_only, pricing por franja, format/capacity, cashflow, drop no_show_penalty, closes_next_day). El §2.2 lista solo 001–026; el procedimiento de aplicación (§2.1) sigue idéntico — aplicar las 35 en orden. El fix de BK-01 (§4) ya existe en código: DSN dual `getWorkerSql`/`getWorkerDb` para workers.
+>
 > Verificado contra el código en dev @ `4a3c6c2` (2026-06-12). Cada claim cita `archivo:línea`.
 > Arquitectura de deploy: **web Next.js → Vercel** + **workers pg-boss → Railway** (`railway.toml:1-15`, `Dockerfile.worker:1-31`) + **PostgreSQL/Auth/Realtime → Supabase Pro** (`docs/infraestructura.md` §1-§3). No existe `vercel.json`; el deploy de la web lo hace `.github/workflows/deploy.yml` (Vercel CLI `--prebuilt --prod`) tras CI verde en `main`.
 

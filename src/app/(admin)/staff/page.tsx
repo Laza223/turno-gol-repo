@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { UserCog } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ResponsiveList } from '@/components/ui/responsive-list'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
@@ -69,8 +70,45 @@ export default async function StaffPage() {
             }
           />
         ) : (
-          <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-            <table className="w-full">
+          <ResponsiveList
+            className="shadow-sm"
+            cards={
+              <ul className="divide-y divide-border">
+                {members.map((m) => (
+                  <li key={m.memberId} className="flex items-start justify-between gap-3 p-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {m.firstName} {m.lastName}
+                        {m.staffUserId === staffUserId && (
+                          <span className="ml-2 text-xs text-muted-foreground">(vos)</span>
+                        )}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">{m.email}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <StaffRoleBadge role={m.role} />
+                        <StaffStatusBadge isActive={m.isActive} />
+                      </div>
+                    </div>
+                    {m.staffUserId !== staffUserId && (
+                      <StaffActions
+                        member={{
+                          memberId: m.memberId,
+                          email: m.email,
+                          firstName: m.firstName,
+                          lastName: m.lastName,
+                          isActive: m.isActive,
+                          role: m.role,
+                        }}
+                        currentUserStaffId={staffUserId}
+                        activeAdminCount={activeAdminCount}
+                      />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            }
+            table={
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -126,7 +164,8 @@ export default async function StaffPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            }
+          />
         )}
       </div>
   )

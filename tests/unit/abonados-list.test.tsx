@@ -71,26 +71,30 @@ afterEach(() => {
   cleanup()
 })
 
+// La lista renderiza cada abonado DOS veces (tabla desktop + card mobile,
+// patrón caja): los queries de elementos por-abonado usan getAllBy* y [0]
+// (la tabla va primero en el DOM). Los queries dentro del dialog siguen
+// singulares: Radix marca aria-hidden el resto del body mientras está abierto.
 describe('AbonadosList — rendering', () => {
   it('renders all 3 abonados with correct status badges', () => {
     render(
       <AbonadosList abonados={[ACTIVE_ABONADO, PAUSED_ABONADO, CANCELED_ABONADO]} />,
     )
-    expect(screen.getByText('Activo')).toBeTruthy()
-    expect(screen.getByText('Pausado')).toBeTruthy()
-    expect(screen.getByText('Cancelado')).toBeTruthy()
+    expect(screen.getAllByText('Activo').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Pausado').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Cancelado').length).toBeGreaterThan(0)
   })
 
   it('active row shows Pausar + Cancelar buttons', () => {
     render(<AbonadosList abonados={[ACTIVE_ABONADO]} />)
-    expect(screen.getByRole('button', { name: 'Pausar' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Pausar' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Cancelar' }).length).toBeGreaterThan(0)
   })
 
   it('paused row shows Reactivar + Cancelar buttons', () => {
     render(<AbonadosList abonados={[PAUSED_ABONADO]} />)
-    expect(screen.getByRole('button', { name: 'Reactivar' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Reactivar' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Cancelar' }).length).toBeGreaterThan(0)
   })
 
   it('canceled row shows no action buttons', () => {
@@ -110,7 +114,7 @@ describe('AbonadosList — Cancel action', () => {
   it('clicking Cancelar opens the ConfirmDialog with phrase input', async () => {
     render(<AbonadosList abonados={[ACTIVE_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
 
     await waitFor(() => {
       // Dialog title is in a heading element
@@ -124,7 +128,7 @@ describe('AbonadosList — Cancel action', () => {
   it('type-to-confirm gates the destructive confirm button', async () => {
     render(<AbonadosList abonados={[ACTIVE_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy()
@@ -151,7 +155,7 @@ describe('AbonadosList — Cancel action', () => {
 
     render(<AbonadosList abonados={[ACTIVE_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy())
 
     // Type phrase to enable confirm
@@ -183,7 +187,7 @@ describe('AbonadosList — Cancel action', () => {
 
     render(<AbonadosList abonados={[ACTIVE_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy())
 
     // Type phrase
@@ -211,7 +215,7 @@ describe('AbonadosList — Pause action', () => {
   it('clicking Pausar opens ConfirmDialog without type-to-confirm', async () => {
     render(<AbonadosList abonados={[ACTIVE_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Pausar' })[0]!)
 
     await waitFor(() => {
       expect(screen.getByText('Pausar abonado')).toBeTruthy()
@@ -229,9 +233,10 @@ describe('AbonadosList — Pause action', () => {
 
     render(<AbonadosList abonados={[ACTIVE_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Pausar' })[0]!)
     await waitFor(() => expect(screen.getByText('Pausar abonado')).toBeTruthy())
 
+    // Dialog abierto: Radix deja el resto aria-hidden → un solo "Pausar" accesible.
     fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
 
     await waitFor(() => {
@@ -250,7 +255,7 @@ describe('AbonadosList — Reactivate action', () => {
 
     render(<AbonadosList abonados={[PAUSED_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reactivar' })[0]!)
 
     await waitFor(() => {
       expect(screen.getByText('Reactivar abonado')).toBeTruthy()
@@ -275,13 +280,14 @@ describe('AbonadosList — Reactivate action', () => {
 
     render(<AbonadosList abonados={[PAUSED_ABONADO]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reactivar' })[0]!)
     await waitFor(() => expect(screen.getByText('Reactivar abonado')).toBeTruthy())
 
     await waitFor(() => {
       expect(screen.getByText(/Se generarán/)).toBeTruthy()
     })
 
+    // Dialog abierto: único "Reactivar" accesible es el confirm del dialog.
     fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
 
     await waitFor(() => {
@@ -304,7 +310,7 @@ describe('AbonadosList — Reactivate action', () => {
     })
 
     render(<AbonadosList abonados={[withEnd]} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reactivar' })[0]!)
 
     await waitFor(() => {
       expect(vi.mocked(previewAbonadoSlotsAction)).toHaveBeenCalledWith(
@@ -326,7 +332,7 @@ describe('AbonadosList — Reactivate action', () => {
 
     // PAUSED_ABONADO tiene endsOn: null (default de makeAbonado)
     render(<AbonadosList abonados={[PAUSED_ABONADO]} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reactivar' })[0]!)
 
     await waitFor(() => {
       expect(vi.mocked(previewAbonadoSlotsAction)).toHaveBeenCalledTimes(1)

@@ -39,16 +39,7 @@ export function AdminLayoutShell({
 
   return (
     <div className="min-h-screen shell-bg">
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-[25] bg-black/50 lg:hidden cursor-pointer"
-          onClick={() => setMobileOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Sidebar */}
+      {/* Sidebar (el overlay mobile lo trae el Sheet de AdminSidebar) */}
       <AdminSidebar
         tenantName={tenantName}
         mobileOpen={mobileOpen}

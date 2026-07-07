@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { SlidersHorizontal, Umbrella, Zap } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { formatLabel } from '@/components/public/courtFacets'
 import ExplorarFilters from './ExplorarFilters'
 import { buildExplorarUrl } from './url'
@@ -94,8 +94,9 @@ export default function QuickFilters() {
         Online
       </button>
 
-      <Dialog open={drawer} onOpenChange={setDrawer}>
-        <DialogTrigger asChild>
+      {/* Bottom-sheet (pages/explorar.md: drawer "Todos los filtros", no dialog centrado). */}
+      <Sheet open={drawer} onOpenChange={setDrawer}>
+        <SheetTrigger asChild>
           <button type="button" aria-haspopup="dialog" className={`${chipBase} ${chipOff}`}>
             <SlidersHorizontal className="h-4 w-4" aria-hidden />
             Todos los filtros
@@ -105,14 +106,14 @@ export default function QuickFilters() {
               </span>
             )}
           </button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Todos los filtros</DialogTitle>
-          </DialogHeader>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="gap-4 p-6 sm:mx-auto sm:max-w-lg sm:rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>Todos los filtros</SheetTitle>
+          </SheetHeader>
           <ExplorarFilters onApplied={() => setDrawer(false)} />
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

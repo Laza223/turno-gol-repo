@@ -9,6 +9,7 @@ import type { AbonadoRow } from '@/modules/abonados/abonado.types'
 import { pauseAbonadoAction, reactivateAbonadoAction, cancelAbonadoAction } from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArs } from '@/lib/format'
 import { AbonadoStatusBadge } from './status-visual'
 import { toast } from '@/hooks/use-toast'
@@ -91,29 +92,43 @@ export function AbonadosList({ abonados, filterLabel }: Props) {
   }
 
   return (
-    <div className="rounded-lg border bg-card">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left">
-            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Día / horario</th>
-            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Contacto</th>
-            <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio por turno</th>
-            <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio mensual</th>
-            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</th>
-            <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
+    <ResponsiveList
+      table={
+        <table className="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr className="border-b border-border text-left">
+              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Día / horario</th>
+              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Contacto</th>
+              <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio por turno</th>
+              <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio mensual</th>
+              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</th>
+              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {abonados.map((a) => (
+              <AbonadoTableRow key={a.id} abonado={a} />
+            ))}
+          </tbody>
+        </table>
+      }
+      cards={
+        <ul className="divide-y divide-border">
           {abonados.map((a) => (
-            <AbonadoRow key={a.id} abonado={a} />
+            <AbonadoCard key={a.id} abonado={a} />
           ))}
-        </tbody>
-      </table>
-    </div>
+        </ul>
+      }
+    />
   )
 }
 
-function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
+/**
+ * Estado + handlers de las acciones de un abonado. Compartido por la fila de
+ * la tabla (desktop) y la card (mobile): cada vista instancia el suyo, pero la
+ * lógica vive una sola vez acá.
+ */
+function useAbonadoActions(a: AbonadoRow) {
   const [state, setState] = useState<RowState>(defaultRowState)
   // Buttons are disabled when a dialog is open (ConfirmDialog handles its own pending state).
   const isPending = state.dialog !== null
@@ -191,6 +206,53 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
     return { success: true }
   }
 
+  function setCancelFromDate(date: string) {
+    setState((prev) => ({ ...prev, cancelFromDate: date }))
+  }
+
+  return {
+    state,
+    isPending,
+    openDialog,
+    closeDialog,
+    openReactivate,
+    onConfirmPause,
+    onConfirmReactivate,
+    onConfirmCancel,
+    setCancelFromDate,
+  }
+}
+
+/** Portal de dialogs (pausar/reactivar/cancelar), montado solo mientras hay uno abierto. */
+function AbonadoActionDialogs({
+  abonado: a,
+  actions,
+}: {
+  abonado: AbonadoRow
+  actions: ReturnType<typeof useAbonadoActions>
+}) {
+  if (actions.state.dialog === null) return null
+  return createPortal(
+    <AbonadoDialogs
+      abonadoId={a.id}
+      dialog={actions.state.dialog}
+      cancelFromDate={actions.state.cancelFromDate}
+      onCancelFromDateChange={actions.setCancelFromDate}
+      reactivatePreviewLoading={actions.state.reactivatePreviewLoading}
+      reactivatePreviewDates={actions.state.reactivatePreviewDates}
+      reactivatePreviewConflicts={actions.state.reactivatePreviewConflicts}
+      reactivatePreviewError={actions.state.reactivatePreviewError}
+      onClose={actions.closeDialog}
+      onConfirmPause={actions.onConfirmPause}
+      onConfirmReactivate={actions.onConfirmReactivate}
+      onConfirmCancel={actions.onConfirmCancel}
+    />,
+    document.body,
+  )
+}
+
+function AbonadoTableRow({ abonado: a }: { abonado: AbonadoRow }) {
+  const actions = useAbonadoActions(a)
   const isActive = a.status === 'active'
   const isPaused = a.status === 'paused'
 
@@ -214,16 +276,16 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
             <>
               <button
                 type="button"
-                disabled={isPending}
-                onClick={() => openDialog('pause')}
+                disabled={actions.isPending}
+                onClick={() => actions.openDialog('pause')}
                 className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Pausar
               </button>
               <button
                 type="button"
-                disabled={isPending}
-                onClick={() => openDialog('cancel')}
+                disabled={actions.isPending}
+                onClick={() => actions.openDialog('cancel')}
                 className="text-xs font-medium text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
@@ -234,16 +296,16 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
             <>
               <button
                 type="button"
-                disabled={isPending}
-                onClick={() => void openReactivate()}
+                disabled={actions.isPending}
+                onClick={() => void actions.openReactivate()}
                 className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Reactivar
               </button>
               <button
                 type="button"
-                disabled={isPending}
-                onClick={() => openDialog('cancel')}
+                disabled={actions.isPending}
+                onClick={() => actions.openDialog('cancel')}
                 className="text-xs font-medium text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
@@ -253,26 +315,69 @@ function AbonadoRow({ abonado: a }: { abonado: AbonadoRow }) {
         </td>
       </tr>
 
-      {state.dialog !== null &&
-        createPortal(
-          <AbonadoDialogs
-            abonadoId={a.id}
-            dialog={state.dialog}
-            cancelFromDate={state.cancelFromDate}
-            onCancelFromDateChange={(date) =>
-              setState((prev) => ({ ...prev, cancelFromDate: date }))
-            }
-            reactivatePreviewLoading={state.reactivatePreviewLoading}
-            reactivatePreviewDates={state.reactivatePreviewDates}
-            reactivatePreviewConflicts={state.reactivatePreviewConflicts}
-            reactivatePreviewError={state.reactivatePreviewError}
-            onClose={closeDialog}
-            onConfirmPause={onConfirmPause}
-            onConfirmReactivate={onConfirmReactivate}
-            onConfirmCancel={onConfirmCancel}
-          />,
-          document.body,
-        )}
+      <AbonadoActionDialogs abonado={a} actions={actions} />
     </>
+  )
+}
+
+/** Card mobile (<640px): mismos datos y acciones que la fila, con touch targets de 44px. */
+function AbonadoCard({ abonado: a }: { abonado: AbonadoRow }) {
+  const actions = useAbonadoActions(a)
+  const isActive = a.status === 'active'
+  const isPaused = a.status === 'paused'
+
+  const actionButtonClass =
+    'min-h-11 flex-1 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed'
+
+  return (
+    <li className="space-y-3 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium tabular-nums text-foreground">
+            {DAY_NAMES[a.dayOfWeek]} {a.timeStart}–{a.timeEnd}
+          </p>
+          <p className="mt-0.5 truncate text-sm text-foreground">{a.contactName}</p>
+          <p className="text-xs text-muted-foreground">{a.contactPhone}</p>
+        </div>
+        <AbonadoStatusBadge status={a.status} />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Turno {formatArs(a.pricePerSession)} · Mensual{' '}
+        <span className="font-medium text-foreground">{formatArs(a.monthlyPrice)}</span>
+      </p>
+      {(isActive || isPaused) && (
+        <div className="flex gap-2">
+          {isActive && (
+            <button
+              type="button"
+              disabled={actions.isPending}
+              onClick={() => actions.openDialog('pause')}
+              className={`${actionButtonClass} text-amber-700 dark:text-amber-400`}
+            >
+              Pausar
+            </button>
+          )}
+          {isPaused && (
+            <button
+              type="button"
+              disabled={actions.isPending}
+              onClick={() => void actions.openReactivate()}
+              className={`${actionButtonClass} text-emerald-700 dark:text-emerald-400`}
+            >
+              Reactivar
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={actions.isPending}
+            onClick={() => actions.openDialog('cancel')}
+            className={`${actionButtonClass} text-destructive`}
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+      <AbonadoActionDialogs abonado={a} actions={actions} />
+    </li>
   )
 }

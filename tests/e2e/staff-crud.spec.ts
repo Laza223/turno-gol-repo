@@ -73,7 +73,8 @@ test.describe('Staff CRUD', () => {
       await page.fill('input[name="email"]', email)
       await page.getByRole('button', { name: /Enviar invitación/i }).click()
 
-      await expect(page.getByText(email)).toBeVisible({ timeout: 10000 })
+      // Lista dual tabla+cards: .first() = la tabla, visible en desktop.
+      await expect(page.getByText(email).first()).toBeVisible({ timeout: 10000 })
     } finally {
       await deleteStaffByEmail(supabase, email)
     }

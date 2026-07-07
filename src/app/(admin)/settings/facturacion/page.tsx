@@ -4,13 +4,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
-
-const SETTINGS_TABS = [
-  { href: '/settings/perfil', label: 'Perfil' },
-  { href: '/settings/reservas', label: 'Reservas' },
-  { href: '/settings/horarios', label: 'Horarios' },
-  { href: '/settings/facturacion', label: 'Facturación' },
-]
+import { SettingsTabs } from '../SettingsTabs'
 
 const STATUS_LABELS: Record<string, string> = {
   trialing: 'Período de prueba',
@@ -46,25 +40,7 @@ export default async function FacturacionPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
-        <nav className="flex gap-1 border-b border-border">
-          {SETTINGS_TABS.map(({ href, label }) => {
-            const active = href === '/settings/facturacion'
-            return (
-              <a
-                key={href}
-                href={href}
-                className={
-                  'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
-                  (active
-                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
-                    : 'border-transparent text-muted-foreground hover:text-foreground')
-                }
-              >
-                {label}
-              </a>
-            )
-          })}
-        </nav>
+        <SettingsTabs active="/settings/facturacion" />
 
         <section className="card-premium rounded-xl p-6">
           <h2 className="text-base font-semibold text-foreground">Suscripción</h2>

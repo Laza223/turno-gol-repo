@@ -58,7 +58,31 @@ export default async function JugadoresPage({
         </p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <table className="w-full text-sm">
+          {/* Mobile: cards con la fila entera como link (MASTER §9 Fitts); desktop: tabla. */}
+          <ul className="divide-y divide-border sm:hidden">
+            {players.map((p) => (
+              <li key={p.playerId}>
+                <Link
+                  href={`/jugadores/${p.playerId}`}
+                  className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-accent"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {p.phone ?? p.email} · {p.bookingsCount} reserva{p.bookingsCount !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  {p.balance > 0 && (
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:text-red-400">
+                      {formatARS(p.balance)}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium">Jugador</th>
@@ -93,6 +117,7 @@ export default async function JugadoresPage({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

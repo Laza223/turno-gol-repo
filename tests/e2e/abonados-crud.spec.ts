@@ -167,8 +167,9 @@ test.describe('Abonados CRUD', () => {
       await page.getByRole('button', { name: 'Crear abonado' }).click()
       await page.waitForURL('**/abonados')
 
-      // Row visible with Activo badge
-      await expect(page.getByText('E2E Happy Path')).toBeVisible()
+      // Row visible with Activo badge. La lista renderiza tabla (desktop) +
+      // cards (mobile); .first() = la tabla, visible en este viewport desktop.
+      await expect(page.getByText('E2E Happy Path').first()).toBeVisible()
     } finally {
       await cleanupAbonadosByContact(supabase, contactPhone)
     }

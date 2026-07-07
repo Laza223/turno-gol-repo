@@ -193,7 +193,24 @@ export default async function ReportesPage({
               <div className="border-b border-border px-6 py-4">
                 <h2 className="text-sm font-semibold text-foreground">Por cancha</h2>
               </div>
-              <table className="w-full text-sm">
+              {/* Mobile: cards apiladas (patrón caja); desktop: tabla con scroll propio. */}
+              <ul className="divide-y divide-border sm:hidden">
+                {report.byCourt.map((c) => (
+                  <li key={c.courtId} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{c.courtName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.bookingCount} reservas · {c.occupancyPct}% ocupación
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+                      {formatArsContable(c.income)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[520px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     <th className="px-6 py-3 text-left">Cancha</th>
@@ -219,6 +236,7 @@ export default async function ReportesPage({
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 

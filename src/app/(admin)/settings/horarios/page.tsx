@@ -5,13 +5,7 @@ import { AddClosedDateForm } from './AddClosedDateForm'
 import { HorariosForm } from './HorariosForm'
 import { RemoveClosedDateForm } from './RemoveClosedDateForm'
 import type { LooseOpeningHours } from './horarios-lib'
-
-const SETTINGS_TABS = [
-  { href: '/settings/perfil', label: 'Perfil' },
-  { href: '/settings/reservas', label: 'Reservas' },
-  { href: '/settings/horarios', label: 'Horarios' },
-  { href: '/settings/facturacion', label: 'Facturación' },
-]
+import { SettingsTabs } from '../SettingsTabs'
 
 export default async function HorariosPage() {
   const user = await extractAuthUser()
@@ -28,25 +22,7 @@ export default async function HorariosPage() {
     <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
-        <nav className="flex gap-1 border-b border-border">
-          {SETTINGS_TABS.map(({ href, label }) => {
-            const active = href === '/settings/horarios'
-            return (
-              <a
-                key={href}
-                href={href}
-                className={
-                  'px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 ' +
-                  (active
-                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
-                    : 'border-transparent text-muted-foreground hover:text-foreground')
-                }
-              >
-                {label}
-              </a>
-            )
-          })}
-        </nav>
+        <SettingsTabs active="/settings/horarios" />
 
         <div className="card-premium rounded-lg p-6">
           <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>

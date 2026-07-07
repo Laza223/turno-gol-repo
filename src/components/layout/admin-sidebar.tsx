@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 
 interface SidebarProps {
   tenantName: string
@@ -144,21 +145,24 @@ export function AdminSidebar({ tenantName, mobileOpen, onClose }: SidebarProps) 
         <SidebarContent tenantName={tenantName} pathname={pathname} />
       </aside>
 
-      {/* Mobile sidebar — rail theme-adaptive */}
-      <div
-        className={cn(
-          'fixed inset-y-0 left-0 z-30 w-60 flex flex-col border-r border-border bg-card backdrop-blur-xl shadow-xl shadow-black/10 dark:bg-card/90 dark:shadow-black/40 transition-transform duration-200 lg:hidden',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
-        )}
-        aria-hidden={!mobileOpen}
-      >
-        <SidebarContent
-          tenantName={tenantName}
-          pathname={pathname}
-          onClose={onClose}
-          isMobile
-        />
-      </div>
+      {/* Mobile sidebar — Sheet Radix (focus-trap + scroll-lock + Esc; MASTER §6.8).
+          lg:hidden en panel y overlay: si queda abierto al pasar a desktop, no tapa nada. */}
+      <Sheet open={mobileOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent
+          side="left"
+          hideClose
+          overlayClassName="lg:hidden"
+          className="w-60 max-w-[85vw] backdrop-blur-xl shadow-xl shadow-black/10 dark:bg-card/90 dark:shadow-black/40 lg:hidden"
+        >
+          <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+          <SidebarContent
+            tenantName={tenantName}
+            pathname={pathname}
+            onClose={onClose}
+            isMobile
+          />
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

@@ -100,7 +100,7 @@ export function ImageUploader({
               aria-label="Quitar imagen"
               disabled={disabled || busy}
               onClick={() => handleRemove(url)}
-              className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950/70 text-white hover:bg-slate-950/90 disabled:opacity-50"
+              className="absolute right-1 top-1 inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-full bg-slate-950/70 text-white hover:bg-slate-950/90 disabled:opacity-50"
             >
               <X className="h-3.5 w-3.5" aria-hidden />
             </button>
@@ -112,7 +112,7 @@ export function ImageUploader({
                     aria-label="Mover a la izquierda"
                     disabled={disabled || busy}
                     onClick={() => handleMove(index, -1)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950/70 text-white hover:bg-slate-950/90 disabled:opacity-50"
+                    className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-full bg-slate-950/70 text-white hover:bg-slate-950/90 disabled:opacity-50"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
                   </button>
@@ -125,7 +125,7 @@ export function ImageUploader({
                     aria-label="Mover a la derecha"
                     disabled={disabled || busy}
                     onClick={() => handleMove(index, 1)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950/70 text-white hover:bg-slate-950/90 disabled:opacity-50"
+                    className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-full bg-slate-950/70 text-white hover:bg-slate-950/90 disabled:opacity-50"
                   >
                     <ChevronRight className="h-3.5 w-3.5" aria-hidden />
                   </button>

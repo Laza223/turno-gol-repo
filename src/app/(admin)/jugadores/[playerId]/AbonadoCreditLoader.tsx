@@ -100,7 +100,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
         <button
           type="button"
           onClick={openForm}
-          className="mt-3 h-8 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+          className="mt-3 h-11 md:h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
         >
           + Cargar saldo
         </button>
@@ -119,7 +119,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
                 step="0.01"
                 value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
-                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
             </div>
             <div className="flex-1 space-y-1">
@@ -130,7 +130,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
                 id={`credit-method-${abonado.id}`}
                 value={method}
                 onChange={(e) => setMethod(e.target.value as Method)}
-                className="h-[38px] w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <option value="cash">Efectivo</option>
                 <option value="transfer">Transferencia</option>
@@ -149,7 +149,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
               type="button"
               disabled={pending}
               onClick={onSubmit}
-              className="h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+              className="h-11 md:h-9 rounded-lg bg-primary px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
             >
               Cargar
             </button>
@@ -157,7 +157,7 @@ function AbonadoCard({ playerId, abonado }: { playerId: string; abonado: PlayerA
               type="button"
               disabled={pending}
               onClick={() => setOpen(false)}
-              className="h-8 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+              className="h-11 md:h-9 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
               Cancelar
             </button>

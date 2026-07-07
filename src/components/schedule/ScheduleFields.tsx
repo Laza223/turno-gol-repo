@@ -84,7 +84,7 @@ export function ScheduleFields({
               type="time"
               value={view.general.open}
               onChange={(e) => setGeneral('open', e.target.value)}
-              className="h-10 w-32"
+              className="h-11 w-32 md:h-10"
             />
           </div>
           <div className="space-y-1.5">
@@ -94,7 +94,7 @@ export function ScheduleFields({
               type="time"
               value={view.general.close}
               onChange={(e) => setGeneral('close', e.target.value)}
-              className="h-10 w-32"
+              className="h-11 w-32 md:h-10"
             />
           </div>
         </div>
@@ -155,7 +155,7 @@ export function ScheduleFields({
                       value={d.open}
                       onChange={(e) => setDay(day, { open: e.target.value })}
                       aria-label={`${label}: abre`}
-                      className="h-9 w-28"
+                      className="h-11 w-28 md:h-9"
                     />
                     <span className="text-sm text-muted-foreground">a</span>
                     <Input
@@ -163,7 +163,7 @@ export function ScheduleFields({
                       value={d.close}
                       onChange={(e) => setDay(day, { close: e.target.value })}
                       aria-label={`${label}: cierra`}
-                      className="h-9 w-28"
+                      className="h-11 w-28 md:h-9"
                     />
                   </div>
                   <Button

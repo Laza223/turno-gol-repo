@@ -153,7 +153,7 @@ function Hero({ cities }: { cities: CityCount[] }) {
           <h1
             className="mt-[22px] font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.5)]"
             style={{
-              fontSize: 'clamp(42px, 5.2vw, 78px)',
+              fontSize: 'clamp(38px, 5.2vw, 78px)',
               lineHeight: '0.95',
               letterSpacing: '-0.035em',
             }}

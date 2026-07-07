@@ -76,7 +76,7 @@ export function CourtDraftCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            className="h-11 md:h-8 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => onToggle(draft.key)}
           >
             {isExpanded ? (
@@ -95,7 +95,7 @@ export function CourtDraftCard({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                  className="h-11 w-11 md:h-8 md:w-8 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                   aria-label={`Quitar ${draft.name || 'cancha'}`}
                   onClick={() => onRemove(draft.key)}
                 >
@@ -143,8 +143,8 @@ export function CourtDraftCard({
                     key={f}
                     className={
                       active
-                        ? 'cursor-pointer rounded-full border border-emerald-600 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
-                        : 'cursor-pointer rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground hover:border-emerald-600/40 hover:text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
+                        ? 'cursor-pointer inline-flex items-center justify-center rounded-full border border-emerald-600 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 min-h-11 md:min-h-9 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
+                        : 'cursor-pointer inline-flex items-center justify-center rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground hover:border-emerald-600/40 hover:text-foreground min-h-11 md:min-h-9 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
                     }
                   >
                     <input

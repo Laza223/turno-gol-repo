@@ -96,7 +96,7 @@ export default function FavoriteButton({
       aria-label={label}
       title={label}
       className={cn(
-        'group inline-flex h-9 w-9 items-center justify-center rounded-full bg-card/85 text-foreground/70 border border-border/40 shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/30 active:scale-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+        'group inline-flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-full bg-card/85 text-foreground/70 border border-border/40 shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/30 active:scale-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
         fav && 'text-red-600 border-red-500/30 bg-red-500/10 dark:text-red-400 dark:bg-red-500/25',
         className,
       )}

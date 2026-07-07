@@ -408,7 +408,7 @@ function StatsBar() {
     <section className="relative z-10 py-6">
       <div className="mx-auto max-w-[1240px] px-6">
         <div
-          className="relative overflow-hidden rounded-3xl border border-emerald-500/[.22] p-11"
+          className="relative overflow-hidden rounded-3xl border border-emerald-500/[.22] p-7 sm:p-11"
           style={{
             background: 'linear-gradient(120deg, rgba(6,78,59,.55), rgba(2,6,23,.35) 55%, rgba(6,78,59,.4))',
             boxShadow: '0 0 70px rgba(16,185,129,.165), inset 0 1px 0 rgba(255,255,255,.06)',

@@ -131,7 +131,7 @@ function SlotCell({
       <a
         href={`tel:${phone}`}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
+        className="inline-flex w-full flex-col items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
       >
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" aria-hidden />
@@ -145,7 +145,7 @@ function SlotCell({
   return (
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
-      className="inline-flex w-full flex-col items-center rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
+      className="inline-flex w-full flex-col items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
     >
       <span>Reservar</span>
       {priceLine}
@@ -262,7 +262,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
             onClick={() => date && loadDate(addDays(date, -1))}
             disabled={!date || !today || date <= today || loading}
             aria-label="Día anterior"
-            className="h-8 w-8 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
+            className="h-11 w-11 md:h-9 md:w-9 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
@@ -289,7 +289,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
               }}
               className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
             />
-            <span className="flex h-8 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-border px-2 text-sm font-medium text-foreground tabular-nums peer-hover:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 transition-colors duration-150">
+            <span className="flex h-11 md:h-9 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-border px-2 text-sm font-medium text-foreground tabular-nums peer-hover:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 transition-colors duration-150">
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
               {date ? formatDateES(date) : ' '}
             </span>
@@ -299,7 +299,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
             onClick={() => date && loadDate(addDays(date, 1))}
             disabled={!date || !maxDate || date >= maxDate || loading}
             aria-label="Día siguiente"
-            className="h-8 w-8 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
+            className="h-11 w-11 md:h-9 md:w-9 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150"
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
@@ -338,7 +338,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
             type="button"
             onClick={() => setCourtFilter('all')}
             aria-pressed={effectiveFilter === 'all'}
-            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
+            className={`shrink-0 inline-flex items-center justify-center h-11 md:h-9 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
               effectiveFilter === 'all'
                 ? 'border-emerald-700 bg-emerald-700 text-white'
                 : 'border-border bg-card text-muted-foreground hover:bg-accent'
@@ -352,7 +352,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
               type="button"
               onClick={() => setCourtFilter(court.id)}
               aria-pressed={effectiveFilter === court.id}
-              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
+              className={`shrink-0 inline-flex items-center justify-center h-11 md:h-9 rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
                 effectiveFilter === court.id
                   ? 'border-emerald-700 bg-emerald-700 text-white'
                   : 'border-border bg-card text-muted-foreground hover:bg-accent'

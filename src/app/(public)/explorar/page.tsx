@@ -207,7 +207,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
       />
       <SearchBand cities={cities} />
 
-      <div className="sticky top-16 z-20 -mx-4 space-y-2 border-b border-border bg-card/85 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/70 sm:px-6 lg:px-8">
+      <div className="sticky top-20 z-20 -mx-4 space-y-2 border-b border-border bg-card/85 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/70 sm:px-6 lg:px-8">
         <Suspense fallback={<div className="h-16" />}>
           <QuickFilters />
           <ExplorarToolbar total={total} />

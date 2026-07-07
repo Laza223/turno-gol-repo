@@ -254,7 +254,7 @@ function CourtCard({
           <button
             type="button"
             onClick={() => onEdit(court)}
-            className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium px-2 py-1 rounded-md hover:bg-accent transition-colors duration-150"
+            className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium min-h-11 md:min-h-9 px-2 py-1 rounded-md hover:bg-accent transition-colors duration-150"
           >
             Editar
           </button>
@@ -263,7 +263,7 @@ function CourtCard({
           type="button"
           onClick={handleToggleClick}
           disabled={isPending || loadingImpact}
-          className="text-xs border border-border px-2 py-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+          className="text-xs border border-border min-h-11 md:min-h-9 px-2 py-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
         >
           {isPending || loadingImpact ? '…' : currentStatus === 'online' ? 'Desactivar' : 'Activar'}
         </button>

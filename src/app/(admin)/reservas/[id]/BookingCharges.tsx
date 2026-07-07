@@ -141,7 +141,7 @@ export default function BookingCharges({
         <button
           type="button"
           onClick={openForm}
-          className="mt-4 h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+          className="mt-4 h-11 md:h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
         >
           + Agregar cobro
         </button>
@@ -159,7 +159,7 @@ export default function BookingCharges({
                 min={1}
                 value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
-                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
             </div>
             <div className="flex-1 space-y-1">
@@ -170,7 +170,7 @@ export default function BookingCharges({
                 id="charge-method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value as typeof method)}
-                className="h-[38px] w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <option value="cash">Efectivo</option>
                 <option value="transfer">Transferencia</option>
@@ -189,7 +189,7 @@ export default function BookingCharges({
               type="button"
               disabled={pending}
               onClick={onSubmit}
-              className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+              className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
               Registrar cobro
             </button>
@@ -197,7 +197,7 @@ export default function BookingCharges({
               type="button"
               disabled={pending}
               onClick={() => setOpen(false)}
-              className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+              className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
               Cancelar
             </button>

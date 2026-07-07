@@ -109,7 +109,7 @@ export default function BookingActions({
           type="button"
           disabled={pending}
           onClick={() => runDirect(() => completeBookingAction(bookingId))}
-          className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+          className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
           Marcar completada
         </button>
@@ -117,7 +117,7 @@ export default function BookingActions({
           type="button"
           disabled={pending}
           onClick={() => setNoShowOpen(true)}
-          className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
         >
           Marcar ausente
         </button>
@@ -125,7 +125,7 @@ export default function BookingActions({
           type="button"
           disabled={pending}
           onClick={() => { setReason(''); setCancelType(null); setCancelOpen(true) }}
-          className="h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
+          className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
         >
           Cancelar
         </button>

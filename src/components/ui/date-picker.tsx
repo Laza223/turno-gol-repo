@@ -141,7 +141,7 @@ export default function DatePicker({
         <button
           type="button"
           onClick={() => onChange('')}
-          className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-muted-foreground/60 transition-colors hover:bg-muted/40 hover:text-foreground"
+          className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 flex items-center justify-center min-h-11 min-w-11 md:min-h-9 md:min-w-9 rounded-full text-muted-foreground/60 transition-colors hover:bg-muted/40 hover:text-foreground"
           aria-label="Limpiar fecha"
         >
           <X className="h-3.5 w-3.5" />
@@ -155,7 +155,7 @@ export default function DatePicker({
             <button
               type="button"
               onClick={() => changeMonth(-1)}
-              className="p-1.5 rounded-lg border border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex items-center justify-center min-h-11 min-w-11 md:min-h-9 md:min-w-9 rounded-lg border border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
               aria-label="Mes anterior"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -164,7 +164,7 @@ export default function DatePicker({
             <button
               type="button"
               onClick={() => changeMonth(1)}
-              className="p-1.5 rounded-lg border border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex items-center justify-center min-h-11 min-w-11 md:min-h-9 md:min-w-9 rounded-lg border border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
               aria-label="Mes siguiente"
             >
               <ChevronRight className="h-4 w-4" />
@@ -197,7 +197,7 @@ export default function DatePicker({
                   onClick={() => selectDay(day)}
                   disabled={isDisabled}
                   className={cn(
-                    'text-xs py-1.5 font-medium rounded-lg transition-all duration-150',
+                    'text-xs min-h-11 md:min-h-9 flex items-center justify-center font-medium rounded-lg transition-all duration-150',
                     isSelected
                       ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
                       : 'hover:bg-accent hover:text-accent-foreground text-foreground/90',

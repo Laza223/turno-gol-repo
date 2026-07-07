@@ -90,14 +90,14 @@ export function InviteStaffDialog({
           <DialogTitle>Invitar miembro del equipo</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">Nombre</Label>
-              <Input id="firstName" name="firstName" required className="h-10" />
+              <Input id="firstName" name="firstName" required className="h-11 md:h-10" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="lastName">Apellido</Label>
-              <Input id="lastName" name="lastName" required className="h-10" />
+              <Input id="lastName" name="lastName" required className="h-11 md:h-10" />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -108,7 +108,7 @@ export function InviteStaffDialog({
               type="email"
               required
               autoComplete="email"
-              className="h-10"
+              className="h-11 md:h-10"
             />
             <p className="text-xs text-muted-foreground">
               Recibirán un email para activar su cuenta.

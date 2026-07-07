@@ -58,7 +58,7 @@ export default function ExplorarToolbar({ total }: Props) {
   }
 
   const toggleBase =
-    'inline-flex h-9 items-center gap-1.5 px-3 text-sm font-medium transition-colors'
+    'inline-flex h-11 md:h-9 items-center gap-1.5 px-3 text-sm font-medium transition-colors'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -74,7 +74,7 @@ export default function ExplorarToolbar({ total }: Props) {
           id="exp-sort"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="h-11 md:h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           {SORTS.map((s) => (
             <option key={s.value} value={s.value}>

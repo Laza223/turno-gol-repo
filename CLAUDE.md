@@ -128,7 +128,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - Si fallan: revertir el cambio y registrar el intento fallido
 
 ### Reglas de acciones:
-SIEMPRE: citar archivo/línea, correr typecheck, registrar en PROGRESS.md
+SIEMPRE: citar archivo/línea, correr typecheck, registrar en docs/audit/PROGRESS.md
 PREGUNTAR: decisiones de negocio, eliminar código, cambiar estructura
 NUNCA: commits, modificar migraciones, inventar nombres, asumir sin preguntar
 

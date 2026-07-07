@@ -9,14 +9,19 @@ Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 
 | Carpeta | Qué contiene | Vigencia |
 |---------|--------------|----------|
 | [`spec/`](./spec) | Los 19 documentos canónicos (doc1–doc20, doc9 deprecado) | **Vigente — fuente de verdad** |
-| [`business/`](./business) | Planes originales de negocio, sistema e historias de usuario (precursores de los doc) | Referencia histórica |
-| [`decisions/`](./decisions) | Decisiones de sistema y de seguridad transversales | Vigente |
+| [`launch/`](./launch) | Backlog de lanzamiento, runbook, risk register, guía launch-first | **Vigente — foco actual** |
+| [`gtm/`](./gtm) | Sistema comercial: ICP, posicionamiento, oferta piloto, funnel, scripts, plan 7-30-90 | **Vigente — foco actual** |
 | [`operations/`](./operations) | Lanzamiento, migraciones, soporte de navegadores | Vigente |
+| [`planning/`](./planning) | Deploy playbook, pricing, cambios de reglas de negocio, icebox de features | Vigente |
+| [`decisions/`](./decisions) | Decisiones de sistema y de seguridad transversales | Vigente |
 | [`qa/`](./qa) | Triage de fixes, decisiones pendientes, inventario de vistas | Vigente |
-| [`audit/`](./audit) | Auditoría forense: plan maestro, planes por fase, reports y hallazgos | Histórico (completada) |
-| [`planning/`](./planning) | TODO general, planes de ataque, prompts y protocolos de lanzamiento | Proceso |
+| [`audit/`](./audit) | Auditorías: plan maestro, planes por fase, reports (código y docs), PROGRESS | Histórico (completadas) |
+| [`business/`](./business) | Planes originales de negocio, sistema e historias de usuario (precursores de los doc) | Referencia histórica |
 | [`superpowers/`](./superpowers) | Planes y specs de implementación (workflow superpowers) | Histórico |
-| [`archive/`](./archive) | Auditorías previas, guías y walkthroughs ya superados | Archivado |
+| [`testing/`](./testing) | Prompts de testeo de vistas | Proceso |
+| [`archive/`](./archive) | Planes de ataque, prompts one-shot, TODOs viejos, blueprints ejecutados, walkthroughs | Archivado |
+
+Archivo suelto vigente: [`infraestructura.md`](./infraestructura.md) (plan de infra prod — lo cita `planning/deploy-playbook.md`).
 
 ## spec/ — Especificación canónica (fuente de verdad)
 

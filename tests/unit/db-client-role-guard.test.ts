@@ -1,4 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('postgres', () => {
+  const fakeTx = async () => {}
+  fakeTx.unsafe = async () => {}
+  return {
+    default: () => ({
+      begin: async (cb: any) => cb(fakeTx),
+      end: async () => {}
+    })
+  }
+})
+
 import { withContext } from '@/shared/db/client'
 
 describe('withContext role allowlist', () => {

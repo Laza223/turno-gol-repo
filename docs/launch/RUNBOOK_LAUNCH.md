@@ -54,6 +54,25 @@ Procedimiento completo de incidente con clasificación de severidad: `doc19_runb
 
 ## Webhooks MercadoPago
 
+Los webhooks de MercadoPago procesan pagos de señas y cobros de suscripciones SaaS. Si un cliente reporta que "pagó pero la reserva sigue pendiente":
+
+1. **Revisar la tabla de webhooks procesados**:
+   ```sql
+   SELECT mp_event_id, event_type, processed_at 
+   FROM processed_webhooks 
+   ORDER BY processed_at DESC LIMIT 10;
+   ```
+   Si el evento aparece ahí, fue recibido y procesado por el sistema (si la reserva no se confirmó, revisar Sentry por errores lógicos de negocio). Si no aparece, MercadoPago no lo envió, la firma era inválida, o el worker no lo procesó aún.
+2. **Revisar alertas en Sentry (`CRIT-04`)**:
+   Los fallos del handler generan alertas. Buscar errores asociados a `mp-webhook.handler.ts`.
+3. **Verificar cola de workers (`pg-boss`)**:
+   Buscar si hay jobs fallidos en la cola de webhooks:
+   ```sql
+   SELECT * FROM pgboss.job WHERE name='process-mp-webhook' AND state='failed';
+   ```
+4. **Replay de Webhook**:
+   Si un webhook falló por un problema transitorio (ej. DB caída), MercadoPago lo reintentará automáticamente. Si se necesita forzar, se puede reenviar manualmente desde el panel de developers de MercadoPago, o usar un harness local con bypass (solo en staging o simulando firmas).
+
 ## Backups/Restore
 
 **Asunción operativa de este runbook**: Supabase plan **Pro** con **PITR** (Point-in-Time Recovery) habilitado, retención **7 días**.
@@ -131,3 +150,16 @@ El procedimiento de simulacro completo ya está escrito en `docs/audit/backup-dr
 ## Smoke test post-deploy
 
 ## Contactos y accesos
+
+Completá esta tabla con los accesos críticos antes de salir a producción para tenerlos a mano en caso de emergencia.
+
+| Servicio | Portal de Acceso | Titular / Cuenta | Email de Recuperación / Emergencia |
+|---|---|---|---|
+| **Vercel** (Hosting Web) | vercel.com | | |
+| **Railway** (Workers) | railway.app | | |
+| **Supabase** (Base de datos y Auth) | supabase.com | | |
+| **MercadoPago** (Pagos y Webhooks) | mercadopago.com.ar | | |
+| **Resend** (Emails transaccionales) | resend.com | | |
+| **Cloudflare R2** (Imágenes) | dash.cloudflare.com | | |
+| **Sentry** (Métricas y Alertas) | sentry.io | | |
+| **GitHub** (Código y CI/CD) | github.com | | |

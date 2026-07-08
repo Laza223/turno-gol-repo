@@ -93,7 +93,7 @@ test.describe('onboarding', () => {
       await page.getByPlaceholder(/av\. corrientes/i).fill('Av. Test 123')
       await page.getByPlaceholder(/luj[aá]n/i).fill('Buenos Aires')
       await page.locator('select[name="province"]').selectOption({ index: 1 })
-      await page.getByPlaceholder(/\+54 9 11/i).fill('+5491100000000')
+      await page.getByPlaceholder(/11 1234-5678/).fill('+5491100000000')
       await page.getByPlaceholder(/hola@complejo\.com/i).fill('wizard-e2e@turnogol.test')
       await page.getByRole('button', { name: /continuar/i }).click()
 

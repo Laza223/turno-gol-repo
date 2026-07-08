@@ -16,13 +16,6 @@ import {
   removeCourtPhoto,
   reorderCourtPhotos,
 } from '@/modules/courts/court.service'
-import {
-  isR2Configured,
-  putImage,
-  deleteImage,
-  publicUrl,
-  keyFromPublicUrl,
-} from '@/shared/storage/r2'
 import { createCourtSchema, updateCourtSchema } from '@/modules/courts/court.schema'
 import { bookings, abonados } from '@/shared/db/schema'
 
@@ -238,6 +231,11 @@ export async function uploadCourtPhotoAction(
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
+  // Dynamic import: r2.ts trae @aws-sdk/client-s3, un paquete pesado que solo
+  // hace falta acá — cargarlo top-level rompía TAMBIÉN create/update/toggle
+  // (mismo módulo 'use server') si el SDK falla al resolver en este entorno.
+  const { isR2Configured, putImage, publicUrl } = await import('@/shared/storage/r2')
+
   if (!isR2Configured()) {
     console.warn('[storage] R2 no configurado — upload deshabilitado en este entorno')
     return { success: false, error: 'Storage no configurado en este entorno' }
@@ -285,6 +283,8 @@ export async function removeCourtPhotoAction(
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
+
+  const { isR2Configured, keyFromPublicUrl, deleteImage } = await import('@/shared/storage/r2')
 
   if (!isR2Configured()) {
     console.warn('[storage] R2 no configurado — borrado deshabilitado en este entorno')

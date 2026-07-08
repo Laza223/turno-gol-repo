@@ -20,8 +20,9 @@
  *   the actual implementation. Corrected here to assert bookings.status only.
  *
  * Flow covered: admin views booking detail → "Cancelar" button → ConfirmDialog with
- *   refund radios (hasPaidDeposit=true) → selects "Con reembolso" → fills reason →
- *   submits → status='canceled_refunded' in DB + "Cancelada" badge in UI.
+ *   "¿Quién cancela?" radios → selects "El complejo necesita cancelar" (always
+ *   refunds, Tarea #3) → fills reason → submits → status='canceled_refunded' in
+ *   DB + "Cancelada" badge in UI.
  */
 
 import { test, expect } from '../fixtures'
@@ -88,12 +89,14 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
         // button labelled "Cancelar reserva" (strict-mode violation otherwise).
         await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
         await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
-        await expect(page.getByText('¿Reembolsar la seña?')).toBeVisible()
-        await expect(page.getByRole('radio', { name: /Sin reembolso/i })).toBeVisible()
-        await expect(page.getByRole('radio', { name: /Con reembolso/i })).toBeVisible()
+        await expect(page.getByText('¿Quién cancela?')).toBeVisible()
+        await expect(page.getByRole('radio', { name: /El complejo necesita cancelar/i })).toBeVisible()
+        await expect(page.getByRole('radio', { name: /El jugador pidió cancelar/i })).toBeVisible()
 
-        // Select "Con reembolso" and fill the mandatory cancel reason.
-        await page.getByRole('radio', { name: /Con reembolso/i }).click()
+        // "El complejo necesita cancelar" always refunds (Tarea #3: el motivo
+        // decide el reembolso), independiente de la política horaria — evita que
+        // el resultado dependa de cancellationPolicyHours / la hora del test.
+        await page.getByRole('radio', { name: /El complejo necesita cancelar/i }).click()
         await page.locator('#cancel-reason').fill('test refund E2E')
 
         // Submit the cancellation.
@@ -116,7 +119,8 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
 
         expect(error).toBeNull()
         expect(row?.status).toBe('canceled_refunded')
-        expect(row?.canceled_reason).toBe('test refund E2E')
+        // cancelByAdmin antepone la etiqueta del tipo de cancelación (Tarea #3).
+        expect(row?.canceled_reason).toBe('Cancelado por el complejo: test refund E2E')
         expect(row?.canceled_by).toBe('admin')
       } finally {
         await context.close()

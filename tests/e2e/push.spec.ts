@@ -68,8 +68,9 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
         // waiting for the table.
         await page.goto('/grilla')
 
-        // Wait for the page to be interactive (table or heading visible).
-        await expect(page.locator('table')).toBeVisible({ timeout: 15_000 })
+        // Wait for the page to be interactive (grid rendered after the redesign
+        // dropped the literal <table> markup).
+        await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
 
         // Re-post a BroadcastChannel message from the page's JS context until the
         // toast renders. This simulates what public/sw.js broadcasts on a real

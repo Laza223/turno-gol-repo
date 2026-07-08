@@ -175,20 +175,25 @@ test.describe('reservas — edge: cancel with paid deposit', () => {
         await expect(page.getByRole('dialog')).toBeVisible()
         await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
 
-        // Refund radios must be shown (hasPaidDeposit = true).
-        await expect(page.getByText('¿Reembolsar la seña?')).toBeVisible()
-        await expect(page.getByRole('radio', { name: /Sin reembolso/i })).toBeVisible()
-        await expect(page.getByRole('radio', { name: /Con reembolso/i })).toBeVisible()
-
-        // Refund warning text must mention the deposit amount.
-        // Amount is 500 ARS — formatted as "$ 500" or similar by Intl.NumberFormat es-AR.
-        await expect(page.locator('.rounded-md.bg-amber-50')).toBeVisible()
+        // "¿Quién cancela?" radios must be shown — Tarea #3: el motivo decide el
+        // reembolso, ya no hay radios Sin/Con reembolso.
+        await expect(page.getByText('¿Quién cancela?')).toBeVisible()
+        await expect(page.getByRole('radio', { name: /El complejo necesita cancelar/i })).toBeVisible()
+        await expect(page.getByRole('radio', { name: /El jugador pidió cancelar/i })).toBeVisible()
 
         // The reason textarea must be present.
         await expect(page.locator('#cancel-reason')).toBeVisible()
 
-        // Choose "Con reembolso" radio, type a reason, then confirm.
-        await page.getByRole('radio', { name: /Con reembolso/i }).click()
+        // Choose "jugador" — future date is well within any cancellation policy
+        // window, so this refunds (cash → informational, not automatic). The
+        // refund preview box only renders once cancelType is picked.
+        await page.getByRole('radio', { name: /El jugador pidió cancelar/i }).click()
+
+        // Refund preview text must mention the deposit amount.
+        // Amount is 500 ARS — formatted as "$ 500" or similar by Intl.NumberFormat es-AR.
+        await expect(page.locator('.rounded-md.bg-amber-50')).toBeVisible()
+        await expect(page.getByText(/Coordiná el reembolso/i)).toBeVisible()
+
         await page.locator('#cancel-reason').fill('Cancelación de prueba E2E con reembolso')
         await page.getByRole('button', { name: 'Cancelar reserva' }).click()
 
@@ -239,6 +244,11 @@ test.describe('reservas — edge: cancel blocked without reason', () => {
         // Open the cancel dialog.
         await page.getByRole('button', { name: 'Cancelar' }).click()
         await expect(page.getByRole('dialog')).toBeVisible()
+
+        // Pick "¿Quién cancela?" (required first) so the reason check below is
+        // the one that actually trips — onConfirmCancel validates cancelType
+        // before reason, and skipping it would surface a different error.
+        await page.getByRole('radio', { name: /El complejo necesita cancelar/i }).click()
 
         // Leave #cancel-reason empty and click confirm.
         // (We don't fill the textarea — it's blank by default)

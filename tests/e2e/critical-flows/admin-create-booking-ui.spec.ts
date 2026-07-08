@@ -52,8 +52,8 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
         await expect(page.getByText('Nueva reserva')).toBeVisible()
 
-        // Force 60 min duration (already the default, but explicit for determinism).
-        await page.getByRole('button', { name: '60 min' }).click()
+        // Duration is fixed at 60 min for guest bookings (cambio #14 eliminated the
+        // picker — SLOT_DURATION_MINUTES). It only renders for internal blocks.
 
         // Fill guest details (guestName requires guestPhone per modal validation).
         await page.fill('#guestName', 'E2E Admin Create')

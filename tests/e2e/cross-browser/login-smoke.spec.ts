@@ -17,7 +17,7 @@ test.describe('Login smoke (cross-browser)', () => {
   test('/login submit without credentials stays on /login', async ({ page }) => {
     await page.goto('/login')
 
-    const submit = page.getByRole('button', { name: /iniciar sesión/i })
+    const submit = page.getByRole('button', { name: /^ingresar$/i })
     await expect(submit).toBeVisible({ timeout: 10_000 })
 
     await submit.click()

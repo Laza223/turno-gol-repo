@@ -38,7 +38,7 @@
 #### Debilidad 2 — Cobro de abonados: 100% manual
 - ATC permite gestionar abonados (turnos fijos recurrentes) pero el cobro sigue siendo manual.
 - El dueño tiene que recordar, cobrar por transferencia o efectivo, registrarlo.
-- **Oportunidad**: Cobro automático mensual vía MercadoPago Suscripciones. El dueño No toca el tema.
+- **Oportunidad**: Gestión de abonados (automatización en v1.5 con MercadoPago Suscripciones). En v1 el cobro es manual pero integrado al perfil del cliente.
 
 #### Debilidad 3 — Multi-deporte = sin profundidad en fútbol
 - ATC cubre pádel, fútbol, tenis, básquet, etc.
@@ -146,8 +146,8 @@
 |---|---|---|---|---|
 | Panel admin mobile-first | ❌ | ✅ | ⚠️ | N/A |
 | Reservas online 24/7 | ✅ | ✅ | ✅ | ✅ |
-| Abonados / turnos fijos | ✅ (manual) | ✅ (**automático**) | ⚠️ | ❌ |
-| Cobro automático abonados | ❌ | ✅ | ❌ | ❌ |
+| Abonados / turnos fijos | ✅ (manual) | ✅ (manual) | ⚠️ | ❌ |
+| Cobro automático abonados | ❌ | ❌ (v1.5) | ❌ | ❌ |
 | Señas con MercadoPago | ✅ | ✅ | ⚠️ | ✅ |
 | Notificaciones automáticas | ✅ (WA) | ✅ (**email**) | ⚠️ | ❌ |
 | Partidos abiertos | ⚠️ básico | ❌ (post-v1) | ❌ | ❌ |
@@ -180,7 +180,7 @@ El switching cost de ATC Sports es **real pero superable**:
 
 ### Donde TENEMOS que ser mejores que ATC (battleground)
 1. **UX/UI del panel admin** — mobile-first, moderno, 10x más placentero de usar
-2. **Cobro automático de abonados** — feature exclusivo en v1 vs. sus clientes
+2. **Gestión integrada de abonados** — registro y control de deudas simple vs. ATC (cobro automático en v1.5)
 3. **Onboarding** — <20 minutos self-service vs. 1-7 días con soporte
 4. **Foco en fútbol** — terminología, flujos y features pensados para fútbol amateur
 5. **Analytics visual** — dashboard que el dueño entiende sin ser contador

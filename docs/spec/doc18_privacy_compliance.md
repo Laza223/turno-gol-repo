@@ -125,9 +125,8 @@ Plazo: 30 días hábiles para la inscripción
 Renovación: Anual (actualizar si cambian los datos registrados)
 
 CUANDO HACERLO:
-  → ANTES del lanzamiento público. 
-  → El desarrollo puede comenzar sin el registro, pero no se puede operar
-    comercialmente sin estar inscripto.
+  → ANTES del lanzamiento público comercial. 
+  → El desarrollo y las pruebas locales/staging pueden comenzar sin el registro. La inscripción definitiva está en proceso y no bloquea la codificación de la v1.
 ```
 
 ---
@@ -548,11 +547,11 @@ PASO 5: REMEDIACIÓN
 
 | Documento | Contenido | Estado |
 |---|---|---|
-| **Política de Privacidad** | Todo lo descripto en §4.1. Lenguaje claro, sin jerga legal innecesaria. | ⬜ Pendiente (requiere abogado) |
-| **Términos y Condiciones de Uso** | Condiciones del servicio, responsabilidades, limitaciones, jurisdicción. | ⬜ Pendiente (requiere abogado) |
-| **DPA (Data Processing Agreement)** | Acuerdo entre TurnoGol y cada complejo sobre tratamiento de datos de jugadores. | ⬜ Pendiente (requiere abogado) |
-| **Cookie Policy** | TurnoGol no usa cookies de tracking. Solo cookies de sesión (funcionales). Documentar. | ⬜ Pendiente |
-| **Registro AAIP** | Inscripción de las bases de datos ante la AAIP. | ⬜ Pendiente (trámite administrativo) |
+| **Política de Privacidad** | Todo lo descripto en §4.1. Lenguaje claro, sin jerga legal innecesaria. | 🔄 En proceso (no bloquea desarrollo) |
+| **Términos y Condiciones de Uso** | Condiciones del servicio, responsabilidades, limitaciones, jurisdicción. | 🔄 En proceso (no bloquea desarrollo) |
+| **DPA (Data Processing Agreement)** | Acuerdo entre TurnoGol y cada complejo sobre tratamiento de datos de jugadores. | 🔄 En proceso (no bloquea desarrollo) |
+| **Cookie Policy** | TurnoGol no usa cookies de tracking. Solo cookies de sesión (funcionales). Documentar. | 🔄 En proceso (no bloquea desarrollo) |
+| **Registro AAIP** | Inscripción de las bases de datos ante la AAIP. | 🔄 En proceso (trámite administrativo, no bloquea desarrollo) |
 
 ### 10.2 Cookies
 

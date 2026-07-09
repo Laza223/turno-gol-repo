@@ -163,7 +163,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
                 placeholder="Ej: 20.000"
                 value={uniformPrice}
                 onChange={(e) => setUniformPrice(e.target.value)}
-                className="h-10 w-32"
+                className="w-32"
               />
             </div>
           )}
@@ -178,7 +178,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
                   placeholder="Ej: 16.000"
                   value={weekPrice}
                   onChange={(e) => setWeekPrice(e.target.value)}
-                  className="h-10 w-32"
+                  className="w-32"
                 />
               </div>
               <div className="space-y-1.5">
@@ -189,7 +189,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
                   placeholder="Ej: 22.000"
                   value={weekendPrice}
                   onChange={(e) => setWeekendPrice(e.target.value)}
-                  className="h-10 w-32"
+                  className="w-32"
                 />
               </div>
             </>
@@ -203,7 +203,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
                   id="tpl-cut"
                   value={cutHour}
                   onChange={(e) => setCutHour(Number(e.target.value))}
-                  className="block h-10 w-32 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block h-11 w-32 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10"
                 >
                   {cutOptions.map((h) => (
                     <option key={h} value={h}>
@@ -220,7 +220,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
                   placeholder="Ej: 16.000"
                   value={dayPrice}
                   onChange={(e) => setDayPrice(e.target.value)}
-                  className="h-10 w-32"
+                  className="w-32"
                 />
               </div>
               <div className="space-y-1.5">
@@ -231,7 +231,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
                   placeholder="Ej: 22.000"
                   value={nightPrice}
                   onChange={(e) => setNightPrice(e.target.value)}
-                  className="h-10 w-32"
+                  className="w-32"
                 />
               </div>
             </>
@@ -257,7 +257,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
             id="copy-court"
             value={copyFromId}
             onChange={(e) => setCopyFromId(e.target.value)}
-            className="block h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="block h-11 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-9"
           >
             {otherCourts.map((c) => (
               <option key={c.id} value={c.id}>

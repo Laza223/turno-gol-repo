@@ -76,7 +76,7 @@ export function CourtDraftCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-11 md:h-8 text-xs text-muted-foreground hover:text-foreground"
+            className="h-11 md:h-9 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => onToggle(draft.key)}
           >
             {isExpanded ? (
@@ -95,7 +95,7 @@ export function CourtDraftCard({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-11 w-11 md:h-8 md:w-8 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                  className="h-11 w-11 md:h-9 md:w-9 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                   aria-label={`Quitar ${draft.name || 'cancha'}`}
                   onClick={() => onRemove(draft.key)}
                 >

@@ -103,7 +103,7 @@ export function CloseDayButton({
               onChange={(e) => setDeclaredPesos(e.target.value)}
               inputMode="decimal"
               autoComplete="off"
-              className="h-10 w-full rounded-md border border-border px-3 text-sm tabular-nums" />
+              className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm tabular-nums" />
           </div>
           {diff !== null && diff !== 0 && (
             <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">

@@ -74,7 +74,7 @@ export function ReservasToolbar() {
           onChange={(e) => onChange(e.target.value)}
           placeholder="Buscar nombre o nº de reserva"
           autoComplete="off"
-          className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 [&::-webkit-search-cancel-button]:hidden"
+          className="h-11 md:h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 [&::-webkit-search-cancel-button]:hidden"
         />
         {value && (
           <Tooltip>
@@ -102,7 +102,7 @@ export function ReservasToolbar() {
               aria-pressed={!compact}
               aria-label="Vista detallada"
               className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+                'flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
                 !compact ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -119,7 +119,7 @@ export function ReservasToolbar() {
               aria-pressed={compact}
               aria-label="Vista compacta"
               className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+                'flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
                 compact ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
             >

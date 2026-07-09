@@ -59,7 +59,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             min={10}
             max={100}
             defaultValue={s.deposit_percentage ?? 30}
-            className="h-10 w-32"
+            className="w-32"
           />
           <p className="text-xs text-muted-foreground">Entre 10% y 100%</p>
         </div>
@@ -105,7 +105,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
           min={0}
           max={72}
           defaultValue={s.cancellation_policy?.hours_before ?? 12}
-          className="h-10 w-32"
+          className="w-32"
         />
         <p className="text-xs text-muted-foreground">0 = sin límite de anticipación</p>
       </div>

@@ -19,9 +19,9 @@ export function AddClosedDateForm({ minDate }: { minDate: string }) {
       <div className="flex items-end gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="closedDate">Agregar día cerrado</Label>
-          <Input id="closedDate" name="date" type="date" className="h-10 w-48" min={minDate} />
+          <Input id="closedDate" name="date" type="date" className="w-48" min={minDate} />
         </div>
-        <SubmitButton variant="outline" pendingLabel="Agregando…" className="h-10">
+        <SubmitButton variant="outline" pendingLabel="Agregando…">
           Agregar
         </SubmitButton>
       </div>

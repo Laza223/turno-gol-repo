@@ -57,7 +57,7 @@ export function PricingGridToolbar({
               }}
               placeholder="35.000"
               aria-label="Precio para las celdas seleccionadas"
-              className="h-9 w-24 rounded-md border border-border px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="h-11 md:h-9 w-24 rounded-md border border-border px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
           <Button

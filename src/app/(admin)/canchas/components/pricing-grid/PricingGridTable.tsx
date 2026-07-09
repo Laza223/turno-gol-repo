@@ -49,7 +49,7 @@ export function PricingGridTable({
 }: Props) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full border-collapse text-sm select-none">
+      <table className="w-full min-w-[560px] border-collapse text-sm select-none">
         <thead>
           <tr>
             <th
@@ -62,7 +62,7 @@ export function PricingGridTable({
               <th
                 key={day}
                 scope="col"
-                className="bg-muted px-2 py-2 text-center text-xs font-semibold text-muted-foreground"
+                className="min-w-[64px] bg-muted px-2 py-2 text-center text-xs font-semibold text-muted-foreground"
                 style={{ width: `${88 / dayCount}%` }}
               >
                 {DAY_LABELS[day]}
@@ -119,7 +119,7 @@ export function PricingGridTable({
                           }
                         }}
                         aria-label={`Precio ${DAY_LABELS[day]} ${hourLabel(hour)}`}
-                        className="h-8 w-full rounded-md border-2 border-emerald-600 bg-background text-foreground px-1 text-center text-xs tabular-nums focus-visible:outline-none"
+                        className="h-11 md:h-8 w-full rounded-md border-2 border-emerald-600 bg-background text-foreground px-1 text-center text-xs tabular-nums focus-visible:outline-none"
                       />
                     ) : (
                       <button
@@ -132,7 +132,7 @@ export function PricingGridTable({
                           price != null ? ` ${formatArs(price)}` : ' sin precio'
                         }`}
                         aria-pressed={isSelected}
-                        className={`flex h-8 w-full items-center justify-center rounded-md text-xs font-medium tabular-nums transition-colors ${
+                        className={`flex h-11 md:h-8 w-full items-center justify-center rounded-md text-xs font-medium tabular-nums transition-colors ${
                           price == null
                             ? 'bg-amber-50 text-amber-500 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20'
                             : ''

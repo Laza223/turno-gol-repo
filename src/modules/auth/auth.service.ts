@@ -1,7 +1,7 @@
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { track } from '@/shared/observability'
 
 export type SignInResult = { ok: true } | { ok: false; error: string }
@@ -118,7 +118,11 @@ export type StaffTenantRow = {
 export async function resolveStaffTenants(
   staffUserId: string,
 ): Promise<StaffTenantRow[]> {
-  const sql = getSql()
+  // Runs before any tenant_id is known (that's what it's resolving) — RLS on
+  // staff_users/tenant_staff_members requires app.current_tenant_id, which
+  // doesn't exist yet here. Needs a bypass-capable pool, same as background
+  // jobs (CLAUDE.md: "Workers usan rol de servicio separado").
+  const sql = getWorkerSql()
   const rows = await sql<StaffTenantRow[]>`
     SELECT
       tsm.tenant_id    AS "tenantId",
@@ -153,7 +157,11 @@ async function getOrCreateStaffUser(
   lastName: string,
   phone: string | null = null,
 ): Promise<{ id: string }> {
-  const sql = getSql()
+  // Runs before any tenant_id is known (that's what it's resolving) — RLS on
+  // staff_users/tenant_staff_members requires app.current_tenant_id, which
+  // doesn't exist yet here. Needs a bypass-capable pool, same as background
+  // jobs (CLAUDE.md: "Workers usan rol de servicio separado").
+  const sql = getWorkerSql()
   const lower = email.toLowerCase()
   const existing = await sql<{ id: string }[]>`
     SELECT id FROM staff_users WHERE email = ${lower} LIMIT 1

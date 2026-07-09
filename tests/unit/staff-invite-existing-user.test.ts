@@ -5,7 +5,8 @@ const h = vi.hoisted(() => {
   // assertActorIsAdmin (roles 026) consulta select().from().where().limit()
   // sin innerJoin; por default el actor es admin para que el invite avance.
   const actorLimit = vi.fn(async () => [{ role: 'admin' }] as unknown[])
-  const insert = vi.fn()
+  // tenant_staff_members insert corre bajo withTenantContext (pool de tenant).
+  const tsmInsert = vi.fn()
   const tx = {
     select: () => ({
       from: () => ({
@@ -13,8 +14,12 @@ const h = vi.hoisted(() => {
         where: () => ({ limit: actorLimit }),
       }),
     }),
-    insert,
+    insert: tsmInsert,
   }
+  // staff_users upsert corre vía getWorkerDb() (pool worker, bypass RLS) —
+  // ver upsertStaffUser en staff.service.ts.
+  const staffUserInsert = vi.fn()
+  const workerDb = { insert: staffUserInsert }
   return {
     extractAuthUser: vi.fn(),
     getStaffTenant: vi.fn(),
@@ -24,7 +29,9 @@ const h = vi.hoisted(() => {
     listUsers: vi.fn(),
     txLimit,
     actorLimit,
-    insert,
+    tsmInsert,
+    staffUserInsert,
+    workerDb,
     tx,
   }
 })
@@ -40,6 +47,7 @@ vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: h.getStaffT
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: h.adminRateLimited }))
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: (_t: string, fn: (tx: unknown) => unknown) => fn(h.tx),
+  getWorkerDb: () => h.workerDb,
 }))
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
@@ -81,13 +89,12 @@ beforeEach(() => {
   h.txLimit.mockResolvedValue([])
   h.actorLimit.mockResolvedValue([{ role: 'admin' }])
   h.updateUserById.mockResolvedValue({ data: {}, error: null })
-  h.insert
-    .mockReturnValueOnce({
-      values: () => ({ onConflictDoUpdate: () => ({ returning: async () => [{ id: 'staff-new' }] }) }),
-    })
-    .mockReturnValueOnce({
-      values: () => ({ onConflictDoUpdate: async () => undefined }),
-    })
+  h.staffUserInsert.mockReturnValue({
+    values: () => ({ onConflictDoUpdate: () => ({ returning: async () => [{ id: 'staff-new' }] }) }),
+  })
+  h.tsmInsert.mockReturnValue({
+    values: () => ({ onConflictDoUpdate: async () => undefined }),
+  })
 })
 
 describe('inviteStaffAction — usuario ya registrado (#47)', () => {

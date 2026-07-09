@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
-import { tenantStaffMembers } from '@/shared/db/schema'
+import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import type { StaffRole } from './roles'
 
 /**
@@ -66,4 +66,36 @@ export async function getFirstActiveAdminStaffUserId(
     .orderBy(tenantStaffMembers.createdAt)
     .limit(1)
   return rows[0]?.staffUserId ?? null
+}
+
+/**
+ * Upsert (por email) del registro `staff_users` global. `006_rls_policies.sql`
+ * deliberadamente no da a `staff_users` policies de INSERT/UPDATE ("gestión
+ * vía service role"), y `036_force_rls_remaining_tables.sql` le agregó FORCE
+ * ROW LEVEL SECURITY — así que un write vía el pool de tenant (`turnogol_app`,
+ * PR #30) viola RLS incluso dentro de una transacción con
+ * `app.current_tenant_id` seteado, porque no hay policy que lo autorice.
+ * Mismo patrón que `getOrCreateStaffUser` en auth.service.ts: pool
+ * bypass-capable (`getWorkerDb`), sin filtro por tenant porque la tabla es
+ * global. El caller (`inviteStaffAction`) ya validó rol admin + duplicado
+ * antes de llamar a esto.
+ */
+export async function upsertStaffUser(
+  email: string,
+  firstName: string,
+  lastName: string,
+): Promise<{ id: string }> {
+  const db = getWorkerDb()
+  const lower = email.toLowerCase()
+  const [row] = await db
+    .insert(staffUsers)
+    .values({ email: lower, firstName, lastName })
+    .onConflictDoUpdate({
+      target: staffUsers.email,
+      set: { firstName, lastName },
+    })
+    .returning({ id: staffUsers.id })
+
+  if (!row) throw new Error('upsertStaffUser: insert/update returned no row')
+  return row
 }

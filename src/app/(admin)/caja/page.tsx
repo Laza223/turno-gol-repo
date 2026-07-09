@@ -19,6 +19,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows, getDayComparisons } from '@/modules/cashflow/cashflow.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArsContable } from '@/lib/format'
 import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
@@ -240,12 +241,12 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
       )}
 
       {/* Movimientos del día */}
-      <div className="rounded-lg border border-border bg-card shadow-sm">
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="font-medium text-foreground">Movimientos del día</h2>
-        </div>
-        {cashFlows.length === 0 ? (
-          summary.isClosed ? (
+      {cashFlows.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="font-medium text-foreground">Movimientos del día</h2>
+          </div>
+          {summary.isClosed ? (
             <EmptyState icon={Receipt} title="Este día no tuvo movimientos." />
           ) : (
             <EmptyState
@@ -253,11 +254,19 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
               title="Sin movimientos por ahora"
               description="Los cobros de reservas se registran solos. Las ventas de cantina y los gastos se cargan desde los botones de arriba."
             />
-          )
-        ) : (
-          <>
-            {/* Mobile: cards apiladas (el admin mira la caja desde el celular en la barra) */}
-            <ul className="divide-y divide-border sm:hidden">
+          )}
+        </div>
+      ) : (
+        <ResponsiveList
+          className="shadow-sm"
+          header={
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="font-medium text-foreground">Movimientos del día</h2>
+            </div>
+          }
+          cards={
+            // Mobile: cards apiladas (el admin mira la caja desde el celular en la barra)
+            <ul className="divide-y divide-border">
               {cashFlows.map((cf) => (
                 <li key={cf.id} className="flex items-start justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
@@ -273,52 +282,52 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
                 </li>
               ))}
             </ul>
-            {/* Desktop: tabla densa §6.6 — diario cronológico, monto a la derecha */}
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Hora
-                    </th>
-                    <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Descripción
-                    </th>
-                    <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Categoría
-                    </th>
-                    <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Método
-                    </th>
-                    <th className="p-2.5 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Monto
-                    </th>
+          }
+          table={
+            // Desktop: tabla densa §6.6 — diario cronológico, monto a la derecha
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Hora
+                  </th>
+                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Descripción
+                  </th>
+                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Categoría
+                  </th>
+                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Método
+                  </th>
+                  <th className="p-2.5 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Monto
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {cashFlows.map((cf) => (
+                  <tr key={cf.id} className="transition-colors hover:bg-accent/50">
+                    <td className="p-2.5 pl-4 tabular-nums text-muted-foreground">
+                      {formatTimeArt(cf.occurredAt)}
+                    </td>
+                    <td className="max-w-xs truncate p-2.5 text-foreground">{cf.description}</td>
+                    <td className="p-2.5">
+                      <CategoryBadge type={cf.type} category={cf.category} />
+                    </td>
+                    <td className="p-2.5 text-foreground">
+                      {METHOD_LABELS[cf.method] ?? cf.method}
+                    </td>
+                    <td className="p-2.5 pr-4 text-right">
+                      <SignedAmount type={cf.type} amount={cf.amount} />
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {cashFlows.map((cf) => (
-                    <tr key={cf.id} className="transition-colors hover:bg-accent/50">
-                      <td className="p-2.5 pl-4 tabular-nums text-muted-foreground">
-                        {formatTimeArt(cf.occurredAt)}
-                      </td>
-                      <td className="max-w-xs truncate p-2.5 text-foreground">{cf.description}</td>
-                      <td className="p-2.5">
-                        <CategoryBadge type={cf.type} category={cf.category} />
-                      </td>
-                      <td className="p-2.5 text-foreground">
-                        {METHOD_LABELS[cf.method] ?? cf.method}
-                      </td>
-                      <td className="p-2.5 pr-4 text-right">
-                        <SignedAmount type={cf.type} amount={cf.amount} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </div>
+                ))}
+              </tbody>
+            </table>
+          }
+        />
+      )}
     </div>
   )
 }

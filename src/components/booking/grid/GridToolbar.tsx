@@ -67,8 +67,10 @@ export function GridToolbar({
           <button
             type="button"
             onClick={() => {
-              const today = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
-              onNavigate(today)
+              // todayArt llega como prop (misma fuente que WeekStrip): evita
+              // duplicar el cálculo ART a mano. String vacío = pre-hidratación,
+              // no navegar todavía (mismo comportamiento visible que antes).
+              if (todayArt) onNavigate(todayArt)
             }}
             className="min-h-11 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent md:min-h-9"
           >

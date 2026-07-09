@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // no-UUID nunca llega al SQL (debe cortar en notFound antes de la query).
 const h = vi.hoisted(() => ({ execute: vi.fn() }))
 
-vi.mock('@/shared/db/client', () => ({ getDb: () => ({ execute: h.execute }) }))
+vi.mock('@/shared/db/client', () => ({ getWorkerDb: () => ({ execute: h.execute }) }))
 vi.mock('@/app/mock-mp/checkout/actions', () => ({
   mockPay: vi.fn(),
   mockReject: vi.fn(),

@@ -3,7 +3,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { getDb } from '@/shared/db/client'
+import { getWorkerDb } from '@/shared/db/client'
 import { buildMockPaymentId, buildMockEventId } from '@/modules/payments/mock-mp'
 import { logger } from '@/shared/lib/logger'
 
@@ -25,7 +25,11 @@ function guardMockMode(): void {
 }
 
 async function resolveTenantId(bookingId: string): Promise<string> {
-  const db = getDb()
+  // Test-only mock endpoint reading `bookings` (RLS-isolated, FORCE RLS)
+  // cross-tenant with no SET LOCAL context — under the restricted
+  // `turnogol_app` pool this would always return 0 rows (fail-closed 404),
+  // breaking every mock-payment E2E run. Needs the bypass-capable worker pool.
+  const db = getWorkerDb()
   const rows = (await db.execute(sql`
     SELECT tenant_id AS "tenantId" FROM bookings WHERE id = ${bookingId} LIMIT 1
   `)) as unknown as Array<{ tenantId: string }>

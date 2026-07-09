@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { getDb } from '@/shared/db/client'
+import { getWorkerDb } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { track } from '@/shared/observability'
 
@@ -35,7 +35,14 @@ export class PlayerAlreadyAnonymizedError extends Error {
  * intact for the complexes' accounting/metrics.
  */
 export async function anonymizePlayer(playerId: string): Promise<void> {
-  const db = getDb()
+  // Cross-tenant by design: this DELETEs/UPDATEs tenant_player_bans, bookings
+  // and payments across EVERY tenant the player ever touched, with no single
+  // app.current_tenant_id to SET LOCAL. Under the restricted `turnogol_app`
+  // pool (PR #30, FORCE RLS) those statements would each match 0 rows and the
+  // ARCO deletion (Ley 25.326) would silently no-op on the RLS-isolated
+  // tables while `players` still flips to anonymized — same bug class as
+  // getStaffRole, needs the bypass-capable worker pool.
+  const db = getWorkerDb()
 
   await db.transaction(async (tx) => {
     const rows = await tx.execute(sql`

@@ -1,5 +1,5 @@
 import { inArray, sql } from 'drizzle-orm'
-import { getDb } from '@/shared/db/client'
+import { getWorkerDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { readThroughAvailSearch } from '@/shared/cache/slots-cache'
 import { track, withSpan } from '@/shared/observability'
@@ -138,7 +138,13 @@ async function loadAvailableTenantIds({
   time,
   formats,
 }: AvailabilitySearchParams): Promise<string[]> {
-  const db = getDb()
+  // Cross-tenant read over courts/bookings WITHOUT tenant context (see the
+  // query below). Under the restricted `turnogol_app` pool (PR #30, FORCE
+  // RLS, no BYPASSRLS) that used to be a hypothetical "BK-01 caveat" is now
+  // the real behavior: 0 rows for every search, i.e. /explorar's date/time
+  // filter always empty. Needs the bypass-capable worker pool, same pattern
+  // as resolveStaffTenants.
+  const db = getWorkerDb()
   const rows = await db
     .select({
       id: tenants.id,
@@ -180,10 +186,9 @@ async function loadAvailableTenantIds({
   }
   if (candidates.length === 0) return []
 
-  // Cross-tenant read over courts/bookings WITHOUT tenant context: same caveat
-  // as the pg-boss workers (BK-01) — today the connection owns the tables so
-  // RLS does not bind; under FORCE RLS + a non-bypass role this returns 0 rows
-  // (fails closed, no leak). Only tenant_id is selected, never booking data.
+  // Cross-tenant read over courts/bookings WITHOUT tenant context: same
+  // reasoning as pg-boss workers (BK-01) — needs BYPASSRLS (`db` above is now
+  // the worker pool). Only tenant_id is selected, never booking data.
   // The slot window length is per-tenant (60' vs 120' grids), hence the unnest
   // of (tenant_id, time_end) pairs instead of a single shared window.
   const idList = sql.join(candidates.map((c) => sql`${c.id}::uuid`), sql`, `)
@@ -264,8 +269,8 @@ export function pickFreeSlotPills(
  * Hasta 3 turnos libres por tenant a partir de la hora buscada (tenantId →
  * pills), para mostrar como badges clickeables en las cards de /explorar.
  * Mismas semánticas puras que la grilla del perfil (generateSlots) + una sola
- * query cross-tenant de courts/bookings — mismo caveat RLS que
- * loadAvailableTenantIds (fail-closed: sin filas no hay pills, no hay leak).
+ * query cross-tenant de courts/bookings — mismo motivo que loadAvailableTenantIds
+ * para usar el pool worker (bypass-capable): sin él, 0 filas siempre bajo RLS.
  * Sin cache propio: corre solo sobre la página visible (≤12 tenants); puede
  * divergir ~30s del filtro cacheado de findAvailableTenantIds, en cuyo caso
  * la card simplemente no muestra pills.
@@ -293,7 +298,7 @@ async function loadFreeSlotPillsByTenant({
   formats?: number[]
 }): Promise<Record<string, SlotPill[]>> {
   if (tenantIds.length === 0) return {}
-  const db = getDb()
+  const db = getWorkerDb()
   const rows = await db
     .select({
       id: tenants.id,

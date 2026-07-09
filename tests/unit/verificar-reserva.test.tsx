@@ -8,7 +8,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 // mismo mensaje genérico que un código inexistente, sin filtrar el motivo.
 
 const execute = vi.fn()
-vi.mock('@/shared/db/client', () => ({ getDb: () => ({ execute }) }))
+vi.mock('@/shared/db/client', () => ({ getWorkerDb: () => ({ execute }) }))
 
 import VerificarReservaPage from '@/app/reserva/[bookingId]/verificar/page'
 

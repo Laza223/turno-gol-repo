@@ -3,6 +3,18 @@ import { getWorkerDb } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import type { StaffRole } from './roles'
 
+export interface StaffRosterMember {
+  memberId: string
+  staffUserId: string
+  firstName: string
+  lastName: string
+  email: string
+  role: StaffRole
+  isActive: boolean
+  createdAt: Date
+  lastLoginAt: Date | null
+}
+
 /**
  * Rol del miembro ACTIVO en un tenant, leído de la DB (no del JWT: el claim
  * `role` queda viejo si un admin cambia el rol después del login). Se llama
@@ -98,4 +110,59 @@ export async function upsertStaffUser(
 
   if (!row) throw new Error('upsertStaffUser: insert/update returned no row')
   return row
+}
+
+/**
+ * Roster COMPLETO (activos e inactivos) de un tenant, para la vista Equipo
+ * (`(admin)/staff/page.tsx`) y el detalle de tenant del panel SuperAdmin
+ * (`tenants.service.ts`). `staff_see_same_tenant_staff`
+ * (006_rls_policies.sql) solo expone en `staff_users` las filas con una
+ * `tenant_staff_members` ACTIVA para el tenant en curso — bajo el pool de
+ * tenant (`turnogol_app`, RLS aplica) un INNER JOIN pierde por completo a
+ * los miembros desactivados en vez de mostrarlos con badge "Inactivo" (el
+ * admin ve a la persona esfumarse del listado). Mismo patrón que
+ * getStaffRole: pool bypass-capable (`getWorkerDb`), filtrado explícito por
+ * tenantId ya autenticado/validado (nunca de input del cliente) — el
+ * caller es responsable de correr su guard de autorización ANTES de llamar
+ * a esto.
+ */
+export async function listStaffRoster(tenantId: string): Promise<StaffRosterMember[]> {
+  const db = getWorkerDb()
+  return db
+    .select({
+      memberId: tenantStaffMembers.id,
+      staffUserId: staffUsers.id,
+      firstName: staffUsers.firstName,
+      lastName: staffUsers.lastName,
+      email: staffUsers.email,
+      role: tenantStaffMembers.role,
+      isActive: tenantStaffMembers.isActive,
+      createdAt: tenantStaffMembers.createdAt,
+      lastLoginAt: staffUsers.lastLoginAt,
+    })
+    .from(tenantStaffMembers)
+    .innerJoin(staffUsers, eq(tenantStaffMembers.staffUserId, staffUsers.id))
+    .where(eq(tenantStaffMembers.tenantId, tenantId))
+    .orderBy(tenantStaffMembers.createdAt)
+}
+
+/**
+ * ¿El email pertenece a algún miembro (activo O inactivo) de este tenant?
+ * La usa `resendInviteAction`: el único punto de entrada de esa acción en la
+ * UI (`StaffActions.tsx`) es justamente el miembro YA desactivado (el ítem
+ * "Reenviar invitación" solo se renderiza cuando `!member.isActive`), así
+ * que acotar la búsqueda a `is_active = true` la dejaba siempre en 0 filas.
+ * Además, igual que en `listStaffRoster`, la RLS de `staff_users` esconde
+ * las filas inactivas bajo el pool de tenant — mismo bypass (`getWorkerDb`),
+ * filtrado explícito por tenantId ya autenticado.
+ */
+export async function isStaffMemberOfTenant(tenantId: string, email: string): Promise<boolean> {
+  const db = getWorkerDb()
+  const rows = await db
+    .select({ id: tenantStaffMembers.id })
+    .from(tenantStaffMembers)
+    .innerJoin(staffUsers, eq(tenantStaffMembers.staffUserId, staffUsers.id))
+    .where(and(eq(tenantStaffMembers.tenantId, tenantId), eq(staffUsers.email, email)))
+    .limit(1)
+  return rows.length > 0
 }

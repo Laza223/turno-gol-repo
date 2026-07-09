@@ -1,54 +1,21 @@
-import { eq } from 'drizzle-orm'
 import { UserCog } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { requireAdminStaff } from '@/modules/staff/guards'
-import { withTenantContext } from '@/shared/db/client'
-import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
-import type { StaffRole } from '@/modules/staff/roles'
+import { listStaffRoster } from '@/modules/staff/staff.service'
 import { InviteStaffButton } from './InviteStaffButton'
 import { StaffActions } from './StaffActions'
 import { StaffRoleBadge, StaffStatusBadge } from './status-visual'
 import { inviteStaffAction } from './actions'
 
-interface StaffMember {
-  memberId: string
-  staffUserId: string
-  firstName: string
-  lastName: string
-  email: string
-  role: StaffRole
-  isActive: boolean
-  createdAt: Date
-}
-
-async function getStaffMembers(tenantId: string): Promise<StaffMember[]> {
-  return withTenantContext(tenantId, async (tx) => {
-    return tx
-      .select({
-        memberId: tenantStaffMembers.id,
-        staffUserId: staffUsers.id,
-        firstName: staffUsers.firstName,
-        lastName: staffUsers.lastName,
-        email: staffUsers.email,
-        role: tenantStaffMembers.role,
-        isActive: tenantStaffMembers.isActive,
-        createdAt: tenantStaffMembers.createdAt,
-      })
-      .from(tenantStaffMembers)
-      .innerJoin(staffUsers, eq(tenantStaffMembers.staffUserId, staffUsers.id))
-      .where(eq(tenantStaffMembers.tenantId, tenantId))
-      .orderBy(tenantStaffMembers.createdAt)
-  })
-}
-
 export default async function StaffPage() {
   // Vista Equipo solo-admin (roles 026): Encargado/Solo lectura → /dashboard.
+  // Guard corre ANTES de leer el roster — listStaffRoster no re-autoriza.
   const { user, tenant } = await requireAdminStaff()
   const staffUserId: string = user.staffUserId
 
-  const members = await getStaffMembers(tenant.id)
+  const members = await listStaffRoster(tenant.id)
   const activeCount = members.filter((m) => m.isActive).length
   const activeAdminCount = members.filter((m) => m.isActive && m.role === 'admin').length
   return (

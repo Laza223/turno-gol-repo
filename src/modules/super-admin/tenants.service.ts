@@ -5,11 +5,10 @@ import {
   bookings,
   courts,
   plans,
-  staffUsers,
   tenants,
-  tenantStaffMembers,
   tenantSubscriptions,
 } from '@/shared/db/schema'
+import { listStaffRoster } from '@/modules/staff/staff.service'
 import type { BillingCycle, SubscriptionStatus, TenantStatus } from '@/modules/billing/billing.types'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
@@ -309,39 +308,39 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
     .where(eq(tenantSubscriptions.tenantId, tenantId))
     .limit(1)
 
-  // courts y tenant_staff_members son tablas RLS → lectura dentro del contexto
-  // del tenant (spec §4). staff_users es global pero el join hereda el scope.
-  const { courtRows, staffRows } = await withTenantContext(tenantId, async (tx) => {
-    const courtRows = await tx
-      .select({
-        id: courts.id,
-        name: courts.name,
-        status: courts.status,
-        surfaceType: courts.surfaceType,
-        format: courts.format,
-        capacity: courts.capacity,
-      })
-      .from(courts)
-      .where(eq(courts.tenantId, tenantId))
-      .orderBy(courts.name)
-
-    const staffRows = await tx
-      .select({
-        id: staffUsers.id,
-        email: staffUsers.email,
-        firstName: staffUsers.firstName,
-        lastName: staffUsers.lastName,
-        role: tenantStaffMembers.role,
-        isActive: tenantStaffMembers.isActive,
-        lastLoginAt: staffUsers.lastLoginAt,
-      })
-      .from(tenantStaffMembers)
-      .innerJoin(staffUsers, eq(staffUsers.id, tenantStaffMembers.staffUserId))
-      .where(eq(tenantStaffMembers.tenantId, tenantId))
-      .orderBy(tenantStaffMembers.createdAt)
-
-    return { courtRows, staffRows }
-  })
+  // courts es tabla RLS → lectura dentro del contexto del tenant (spec §4).
+  // staff_users/tenant_staff_members se leen vía listStaffRoster: es global
+  // y su policy de SELECT (006_rls_policies.sql, staff_see_same_tenant_staff)
+  // solo expone miembros is_active=true, así que un join bajo el pool de
+  // tenant escondería a los miembros desactivados del detalle de SuperAdmin
+  // (mismo bug que tenía (admin)/staff/page.tsx). tenantId ya fue validado
+  // arriba contra la tabla `tenants` — no es input crudo del cliente.
+  const [courtRows, staffRoster] = await Promise.all([
+    withTenantContext(tenantId, (tx) =>
+      tx
+        .select({
+          id: courts.id,
+          name: courts.name,
+          status: courts.status,
+          surfaceType: courts.surfaceType,
+          format: courts.format,
+          capacity: courts.capacity,
+        })
+        .from(courts)
+        .where(eq(courts.tenantId, tenantId))
+        .orderBy(courts.name),
+    ),
+    listStaffRoster(tenantId),
+  ])
+  const staffRows = staffRoster.map((m) => ({
+    id: m.staffUserId,
+    email: m.email,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    role: m.role,
+    isActive: m.isActive,
+    lastLoginAt: m.lastLoginAt,
+  }))
 
   return {
     tenant: { ...t, settings: t.settings as TenantSettings },

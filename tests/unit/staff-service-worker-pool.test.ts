@@ -28,13 +28,27 @@ vi.mock('@/shared/db/client', () => ({
 
 type FakeRow = Record<string, unknown>
 
+// `chain` es "thenable" (expone `.then`) para soportar queries cuyo método
+// terminal es `.orderBy()` sin `.limit()` after (listStaffRoster): un
+// `await`/`return` sobre el builder real de drizzle resuelve directo, sin un
+// `.limit()` explícito.
 function makeChain(rows: FakeRow[]) {
-  const chain = {
+  const chain: {
+    select: () => typeof chain
+    from: () => typeof chain
+    innerJoin: () => typeof chain
+    where: () => typeof chain
+    orderBy: () => typeof chain
+    limit: () => Promise<FakeRow[]>
+    then: Promise<FakeRow[]>['then']
+  } = {
     select: () => chain,
     from: () => chain,
+    innerJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
     limit: () => Promise.resolve(rows),
+    then: (onfulfilled, onrejected) => Promise.resolve(rows).then(onfulfilled, onrejected),
   }
   return chain
 }
@@ -92,6 +106,49 @@ describe('getFirstActiveAdminStaffUserId — usa el pool worker, no getDb()', ()
     const id = await getFirstActiveAdminStaffUserId('tenant-1')
 
     expect(id).toBeNull()
+    expect(h.getDb).not.toHaveBeenCalled()
+  })
+})
+
+// Regresión del bug de producto (staff-crud.spec.ts #2): staff_see_same_tenant_staff
+// (006_rls_policies.sql) solo expone `staff_users` con `tenant_staff_members.is_active
+// = true` — un INNER JOIN bajo el pool de tenant (RLS aplica) hacía desaparecer a los
+// miembros desactivados del roster entero, en vez de mostrarlos con badge "Inactivo".
+describe('listStaffRoster — usa el pool worker (bypass-capable), no getDb()', () => {
+  it('devuelve activos e inactivos leídos del pool worker, nunca de getDb()', async () => {
+    const rows: FakeRow[] = [
+      { memberId: 'm1', staffUserId: 's1', isActive: true, role: 'admin' },
+      { memberId: 'm2', staffUserId: 's2', isActive: false, role: 'manager' },
+    ]
+    h.getWorkerDb.mockReturnValue(makeChain(rows))
+    const { listStaffRoster } = await import('@/modules/staff/staff.service')
+
+    const members = await listStaffRoster('tenant-1')
+
+    expect(members).toEqual(rows)
+    expect(h.getWorkerDb).toHaveBeenCalledTimes(1)
+    expect(h.getDb).not.toHaveBeenCalled()
+  })
+})
+
+describe('isStaffMemberOfTenant — usa el pool worker (bypass-capable), no getDb()', () => {
+  it('true si el email pertenece a un miembro inactivo del tenant', async () => {
+    h.getWorkerDb.mockReturnValue(makeChain([{ id: 'm2' }]))
+    const { isStaffMemberOfTenant } = await import('@/modules/staff/staff.service')
+
+    const isMember = await isStaffMemberOfTenant('tenant-1', 'inactive@x.com')
+
+    expect(isMember).toBe(true)
+    expect(h.getDb).not.toHaveBeenCalled()
+  })
+
+  it('false si el email no pertenece a ningún miembro del tenant', async () => {
+    h.getWorkerDb.mockReturnValue(makeChain([]))
+    const { isStaffMemberOfTenant } = await import('@/modules/staff/staff.service')
+
+    const isMember = await isStaffMemberOfTenant('tenant-1', 'nadie@x.com')
+
+    expect(isMember).toBe(false)
     expect(h.getDb).not.toHaveBeenCalled()
   })
 })

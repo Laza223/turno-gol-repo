@@ -10,7 +10,7 @@ import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
-import { upsertStaffUser } from '@/modules/staff/staff.service'
+import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -386,34 +386,27 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   if (limited) return { success: false, error: limited }
 
   // Fase 3 #12: el email no debe ser arbitrario; tiene que pertenecer a un
-  // miembro ACTIVO del tenant actual antes de disparar inviteUserByEmail.
+  // miembro (activo O inactivo) del tenant actual antes de disparar
+  // inviteUserByEmail. El único punto de entrada de esta acción en la UI
+  // (StaffActions.tsx) es justamente el miembro YA desactivado — el ítem
+  // "Reenviar invitación" solo se renderiza cuando !member.isActive — así
+  // que acotar a is_active=true dejaba esto en 0 resultados siempre.
   const parsedEmail = z.string().email().safeParse(email)
   if (!parsedEmail.success) return { success: false, error: 'Email inválido.' }
   const normalizedEmail = parsedEmail.data.toLowerCase()
 
-  const lookup = await withTenantContext(tenant.id, async (tx) => {
-    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
-    if (denied) return denied
+  // Fase 1 (pool de tenant, RLS aplica): solo autorización del actor.
+  const denied = await withTenantContext(tenant.id, (tx) =>
+    assertActorIsAdmin(tx, tenant.id, user.staffUserId),
+  )
+  if (denied) return denied
 
-    const members = await tx
-      .select({ id: tenantStaffMembers.id })
-      .from(tenantStaffMembers)
-      .innerJoin(staffUsers, eq(staffUsers.id, tenantStaffMembers.staffUserId))
-      .where(
-        and(
-          eq(staffUsers.email, normalizedEmail),
-          eq(tenantStaffMembers.tenantId, tenant.id),
-          eq(tenantStaffMembers.isActive, true),
-        ),
-      )
-      .limit(1)
-    return { members }
-  })
-
-  if ('success' in lookup) return lookup
-
-  if (lookup.members.length === 0) {
-    return { success: false, error: 'Este email no es un miembro activo del complejo.' }
+  // Fase 2 (worker pool, bypass RLS): staff_users es global y su policy de
+  // SELECT (006_rls_policies.sql) solo expone miembros is_active=true, así
+  // que esta lectura necesita el mismo bypass que listStaffRoster.
+  const isMember = await isStaffMemberOfTenant(tenant.id, normalizedEmail)
+  if (!isMember) {
+    return { success: false, error: 'Este email no es miembro del complejo.' }
   }
 
   const adminClient = createAdminClient()

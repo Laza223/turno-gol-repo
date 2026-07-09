@@ -44,6 +44,16 @@ test.describe('Player data export (ARCO)', () => {
       // substring-matches "Mi cuenta" by default (strict-mode violation).
       await expect(page.getByRole('heading', { name: 'Mi cuenta', exact: true })).toBeVisible()
 
+      // The heading above renders from server HTML and is visible before the
+      // page's client bundle finishes hydrating (esp. on a cold Next.js dev
+      // compile of this route's first hit). Playwright's click() only waits
+      // for the element to be actionable in the DOM, not for React to attach
+      // its onClick — clicking too early is a silent no-op (no fetch, no
+      // download, no error) and the waitForEvent('download') below times out.
+      // Wait for the network to go idle (client chunks loaded + hydration
+      // settled) before interacting with the button.
+      await page.waitForLoadState('networkidle')
+
       const [download] = await Promise.all([
         page.waitForEvent('download'),
         page.getByRole('button', { name: 'Descargar mis datos' }).click(),

@@ -705,6 +705,15 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
   └── NO se marca como no_show automáticamente (eso requiere acción humana)
 ```
 
+#### Efectos secundarios
+
+| Evento | Efecto |
+|---|---|
+| Booking marcado como no_show | 📩 Email al jugador: "Fuiste registrado como No-Show (ausente) para tu turno del {fecha} {hora}. Se ha generado una deuda por la diferencia del turno." |
+| Seña retenida | La seña ya fue registrada como ingreso (`booking`). No genera un nuevo CashFlow (evita duplicación). |
+| Corrección de `completed` a `no_show` (dentro de 24hs) | 💰 CashFlow: adjustment (negativo), category='no_show_correction', description='Reversión de cobro por no-show de reserva autocompletada' |
+
+
 #### Decisiones del negocio de la cancelación (todas las variantes)
 
 | Condición | Resultado |
@@ -1145,12 +1154,12 @@ PASO 4 — Bienvenida post-conversión
 
 | Condición | Resultado |
 |---|---|
-| El complejo tiene más canchas que las del plan elegido | Warning: "Tu complejo tiene {N} canchas pero el plan soporta {M}. Mover al plan superior?" Si insiste en el plan inferior → las canchas extra se desactivan (status → `inactive`) |
-| Pago anual | Primer cobro = precio_anual completo. `price_locked_until` se setea. No puede haber aumento de precio durante el año. Descuento del 33% sobre el precio mensual. |
+| El complejo tiene más canchas que las del plan elegido | Warning: "Tu complejo tiene {N} canchas pero el plan soporta {M}. Mover al plan superior?" Si insiste en el plan inferior → las canchas extra se desactivan (status → `offline`) |
+| Pago anual | Primer cobro = precio_anual completo. `price_locked_until` se setea. No puede haber aumento de precio durante el año. Descuento del 20% sobre el precio mensual. |
 | Pago mensual | Cobro automático cada 30 días vía MP Suscripciones. |
 | El trial ya venció (día 31+) | El complejo está en modo "bloqueado" (solo lectura). Al suscribirse, se desbloquea todo. Los datos se conservaron. |
-| Re-activación (churned, dentro de 90 días) | Al pagar, se restaura el acceso. Datos intactos. |
-| Re-activación (churned, después de 90 días) | Datos eliminados. Empieza como complejo nuevo. |
+| Re-activación (churned, dentro de 7 días) | Al pagar, se restaura el acceso. Datos intactos. |
+| Re-activación (churned, después de 7 días) | Datos eliminados. Empieza como complejo nuevo. |
 | El pago de MP falla | Suscripción NO se activa. Mostrar error. Sugerir otro medio de pago. |
 | El dueño quiere probar un plan antes de pagar | Ya tuvo 30 días de trial con acceso completo. No hay trial extendido. |
 

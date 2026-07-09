@@ -1375,8 +1375,8 @@ Razones:
 
 ### Implementación v1
 
-- El Término y Condición del servicio especifica que **la emisión de comprobantes fiscales
-  es responsabilidad exclusiva del dueño del complejo**.
+- El Término y Condición del servicio especifica que **la emisión de comprobantes fiscales de los turnos es responsabilidad exclusiva del dueño del complejo**.
+- **Facturación de suscripciones de TurnoGol**: Dado que TurnoGol mismo cobra la suscripción mensual/anual a los complejos (SaaS), TurnoGol emitirá manualmente la factura correspondiente (A/B/C) a cada complejo fuera de la plataforma (utilizando el portal de AFIP de TurnoGol) en la v1. No se construirá integración automática para la facturación propia del SaaS.
 - TurnoGol provee **audit trail completo** (booking + timestamp + monto + datos del jugador)
   que el complejo puede usar como respaldo para su contabilidad.
 - La documentación del onboarding (Doc 10) incluye una nota para el dueño:

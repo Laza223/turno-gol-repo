@@ -490,13 +490,13 @@ CREATE TABLE courts (
 
   status          court_status NOT NULL DEFAULT 'online',
 
-  -- Precios por franja horaria (JSONB flexible)
+  -- Precios por franja horaria (JSONB flexible — reglas de puntos de corte)
   pricing         JSONB NOT NULL DEFAULT '{
-    "weekday_morning":   {"price": 800000,  "hours": ["08:00-12:00"]},
-    "weekday_afternoon": {"price": 1000000, "hours": ["12:00-18:00"]},
-    "weekday_night":     {"price": 1200000, "hours": ["18:00-23:00"]},
-    "weekend_morning":   {"price": 1000000, "hours": ["08:00-14:00"]},
-    "weekend_night":     {"price": 1500000, "hours": ["14:00-23:00"]}
+    "rules": [
+      {"days": ["mon","tue","wed","thu"], "from": "08:00", "to": "18:00", "price": 800000},
+      {"days": ["mon","tue","wed","thu"], "from": "18:00", "to": "23:00", "price": 1200000},
+      {"days": ["fri","sat","sun"],       "from": "08:00", "to": "23:00", "price": 1500000}
+    ]
   }'::JSONB,
 
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -1,5 +1,5 @@
 import { and, eq, like, or } from 'drizzle-orm'
-import { getDb, getSql } from '@/shared/db/client'
+import { getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { tenants, tenantStaffMembers } from '@/shared/db/schema'
 import { generateSlug } from './tenant.utils'
 import type {
@@ -70,12 +70,17 @@ export async function createTenantWithTrial(
     })
     .returning({ id: tenants.id, slug: tenants.slug })
 
-  await db.insert(tenantStaffMembers).values({
-    tenantId: tenant.id,
-    staffUserId: input.staffUserId,
-    role: 'admin',
-    isActive: true,
-  })
+  // tenant.id was just generated — there's no pre-existing tenant context to
+  // inherit, so RLS on tenant_staff_members (tenant_id = app.current_tenant_id)
+  // needs it set explicitly to this brand-new id before the INSERT.
+  await withTenantContext(tenant.id, (tx) =>
+    tx.insert(tenantStaffMembers).values({
+      tenantId: tenant.id,
+      staffUserId: input.staffUserId,
+      role: 'admin',
+      isActive: true,
+    }),
+  )
 
   return tenant
 }
@@ -104,7 +109,12 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
 }
 
 export async function getStaffTenant(staffUserId: string): Promise<TenantRow | null> {
-  const db = getDb()
+  // Called before any tenant_id is known (that's what it's resolving) —
+  // RLS on tenant_staff_members requires app.current_tenant_id, which
+  // doesn't exist yet here. Needs a bypass-capable pool, same as
+  // resolveStaffTenants in auth.service.ts. Parameterized by an already
+  // -authenticated staffUserId, not user-controlled input.
+  const db = getWorkerDb()
   const rows = await db
     .select({ tenants })
     .from(tenants)

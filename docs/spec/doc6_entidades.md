@@ -134,18 +134,18 @@ updated_at        timestamp     UTC
 ```json
 {
   "rules": [
-    { "days": [1,2,3,4,5], "from": "08:00", "to": "14:00", "price": 800000 },
-    { "days": [1,2,3,4,5], "from": "14:00", "to": "18:00", "price": 1000000 },
-    { "days": [1,2,3,4,5], "from": "18:00", "to": "00:00", "price": 1200000 },
-    { "days": [0,6], "from": "08:00", "to": "00:00", "price": 1500000 }
+    { "days": ["mon","tue","wed","thu"], "from": "08:00", "to": "18:00", "price": 800000 },
+    { "days": ["mon","tue","wed","thu"], "from": "18:00", "to": "23:00", "price": 1200000 },
+    { "days": ["fri","sat","sun"],       "from": "08:00", "to": "23:00", "price": 1500000 }
   ]
 }
 ```
 
 > [!NOTE]
 > **Reglas de precio**: El admin define franjas ilimitadas con puntos de corte horarios.
-> Cada regla especifica días de la semana (0=Dom, 6=Sáb), rango horario, y precio base (turnos de 60 min).
-> Esto replica el modelo de ATC Sports donde el admin configura el precio por cada combinación de franja en una grilla.
+> Cada regla especifica días de la semana (`mon`..`sun`), rango horario (`from`/`to` en HH:MM), y precio base en centavos de ARS.
+> Los días usan claves `mon|tue|wed|thu|fri|sat|sun` (consistentes con `opening_hours` del Tenant y con `week-days.ts`).
+> Validación: Zod schema en `court.schema.ts` (mínimo 1 regla, formato HH:MM, precio positivo).
 
 > [!NOTE]
 > **Horarios que cruzan medianoche (día operativo)**: si un complejo abre de 08:00 a 02:00 del
@@ -297,7 +297,7 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | `confirmed` | `canceled_no_refund` | Jugador cancela fuera del plazo | Sin reembolso, deposit_status → 'captured', email con info |
 | `confirmed` | `canceled_no_refund` | Admin cancela con cargo | Sin reembolso |
 | `confirmed` | `canceled_refunded` | Admin cancela sin cargo | Reembolso si había seña, email disculpa |
-| `confirmed` | `completed` | Auto-complete: 30 min después de `time_end` si nadie marcó (job cada 30 min) | CashFlow income registrado |
+| `confirmed` | `completed` | Auto-complete: 30 min después de `time_end` si nadie marcó (job cada 30 min) | Ninguno (caja no se mueve automáticamente) |
 | `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Deuda por no-show (cambio #5, modelo ATC): captura seña (`deposit_status='captured'`) y suma `price_snapshot − deposit_amount` a `player_tenant_relationships.balance`. Si `balance > 0`, el jugador queda bloqueado para reservar online en este complejo hasta saldar la deuda. Lógica en `handleNoShow` (`booking.cancellation.ts`). |
 | `completed` | — | — | Estado final inmutable |
 | `expired` | — | — | Estado final |
@@ -496,7 +496,7 @@ created_at        timestamp     UTC
 ## ENTIDAD 7: StaffUser (Usuario del Sistema)
 
 ### Definición
-Un StaffUser es la persona que administra un Tenant. Hay **2 roles** (Modelo ATC): `admin` (dueño, acceso total; único que conecta MP, factura y gestiona staff) y `manager` (encargado permisivo: grilla/reservas/caja, reportes, métricas y configuración general). El gating de acciones sensibles es por **rol** en la capa de aplicación (`requireAdminStaff` / `requireOperatorStaff`), **sin sistema de PIN**.
+Un StaffUser es la persona que administra un Tenant. Hay **2 roles** (Modelo ATC): `admin` (dueño, acceso total; único que conecta MP, edita precios, configuración general, factura y gestiona staff) y `manager` (encargado permisivo: grilla/reservas/caja, reportes y métricas). El gating de acciones sensibles es por **rol** en la capa de aplicación (`requireAdminStaff` / `requireOperatorStaff`), **sin sistema de PIN**.
 
 ### Atributos propios
 ```

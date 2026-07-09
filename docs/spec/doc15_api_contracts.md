@@ -276,6 +276,10 @@ Response 200 (jugador):
 
 ## 5. Endpoints del Panel Admin (Staff Auth)
 
+> [!IMPORTANT]
+> **Arquitectura de Implementación**: Según la directiva de `doc14_tech_stack.md`, todas las mutaciones del panel de administración (métodos `POST`, `PATCH`, `DELETE` listados en esta sección) se implementan como **Next.js Server Actions** en lugar de Route Handlers REST. Las firmas, payloads de entrada/salida y validaciones descriptas aquí se mapean 1:1 a los argumentos y retornos de dichas Server Actions.
+
+
 ### 5.1 Reservas (Bookings)
 
 | Método | Ruta | Rol mínimo | Descripción |
@@ -395,11 +399,11 @@ Request:
   "surface_type": "synthetic_grass",
   "capacity": 10,
   "pricing": {
-    "weekday_morning":   { "price": 800000,  "hours": ["08:00-12:00"] },
-    "weekday_afternoon": { "price": 1000000, "hours": ["12:00-18:00"] },
-    "weekday_night":     { "price": 1200000, "hours": ["18:00-23:00"] },
-    "weekend_morning":   { "price": 1000000, "hours": ["08:00-14:00"] },
-    "weekend_night":     { "price": 1500000, "hours": ["14:00-23:00"] }
+    "rules": [
+      { "days": ["mon","tue","wed","thu"], "from": "08:00", "to": "18:00", "price": 800000 },
+      { "days": ["mon","tue","wed","thu"], "from": "18:00", "to": "23:00", "price": 1200000 },
+      { "days": ["fri","sat","sun"],       "from": "08:00", "to": "23:00", "price": 1500000 }
+    ]
   }
 }
 
@@ -623,6 +627,68 @@ Response 200:
 | `GET` | `/api/notifications` | staff | Historial de notificaciones |
 | `GET` | `/api/audit-logs` | staff | Historial de auditoría |
 
+### 5.11 Jugadores (Players)
+
+| Método | Ruta | Rol mínimo | Descripción |
+|---|---|---|---|
+| `GET` | `/api/players` | staff | Listar y buscar jugadores vinculados al complejo |
+| `GET` | `/api/players/:id` | staff | Ver detalle, estadísticas y abonos de un jugador |
+| `POST` | `/api/players/:id/collect-debt` | staff | Registrar cobro de deuda de no-show (genera CashFlow) |
+| `POST` | `/api/players/:id/bans` | staff | Banear jugador para reservas online |
+| `DELETE` | `/api/players/:id/bans/:banId` | staff | Levantar ban a un jugador |
+
+#### `POST /api/players/:id/collect-debt`
+```
+Request:
+{
+  "amount": 800000,                  // Centavos de ARS
+  "payment_method": "cash" | "transfer"
+}
+Response 200:
+{
+  "data": {
+    "player_id": "uuid",
+    "new_balance": 0,
+    "cashflow_id": "uuid"
+  }
+}
+```
+
+#### `POST /api/players/:id/bans`
+```
+Request:
+{
+  "reason": "Acumulación de no-shows sin aviso",
+  "expires_at": "2026-05-17T00:00:00Z" // Opcional (null = permanente)
+}
+Response 201:
+{ "data": { "id": "ban-uuid", "player_id": "uuid", "reason": "...", "expires_at": "..." } }
+```
+
+### 5.12 Conexión MercadoPago OAuth
+
+| Método | Ruta | Rol mínimo | Descripción |
+|---|---|---|---|
+| `GET` | `/api/mp/oauth-start` | admin | Redirigir a MercadoPago para iniciar OAuth |
+| `GET` | `/api/mp/callback` | public | Callback de MercadoPago OAuth para recibir code |
+| `POST` | `/api/mp/disconnect` | admin | Revocar conexión y credenciales de MercadoPago (pendiente de implementar) |
+
+### 5.13 Aceptación de Invitación de Staff
+
+| Método | Ruta | Rol mínimo | Descripción |
+|---|---|---|---|
+| `POST` | `/api/staff/accept-invite` | public | Aceptar invitación y establecer contraseña inicial |
+
+```
+Request:
+{
+  "token": "verification-token-from-email",
+  "password": "securepassword123"
+}
+Response 200:
+{ "data": { "message": "Cuenta verificada con éxito. Ya podés iniciar sesión." } }
+```
+
 ---
 
 ## 6. Endpoints del Jugador (Player Auth)
@@ -635,6 +701,40 @@ Response 200:
 | `POST` | `/api/player/bookings/:id/cancel` | Cancelar mi reserva |
 | `GET` | `/api/player/profile` | Mi perfil |
 | `PATCH` | `/api/player/profile` | Editar mi perfil |
+| `GET` | `/api/player/favorites` | Listar mis complejos favoritos |
+| `POST` | `/api/player/favorites` | Agregar un complejo a favoritos |
+| `DELETE` | `/api/player/favorites/:complexId` | Quitar complejo de favoritos |
+| `POST` | `/api/player/reviews` | Dejar reseña de reserva completada |
+
+### 6.3 Búsqueda Pública Cross-Tenant (por zona)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/public/complexes/search` | Buscar complejos con disponibilidad por zona |
+
+```
+Request query params:
+  latitude (required): float
+  longitude (required): float
+  radius_km (optional): integer (default: 5)
+  date (required): YYYY-MM-DD
+  time_start (optional): HH:MM
+Response 200:
+{
+  "data": [
+    {
+      "id": "tenant-uuid",
+      "name": "Complejo San Martín",
+      "slug": "complejo-san-martin",
+      "latitude": -34.570,
+      "longitude": -59.105,
+      "distance_km": 1.2,
+      "available_courts_count": 2
+    }
+  ]
+}
+```
+
 
 #### `POST /api/player/bookings`
 

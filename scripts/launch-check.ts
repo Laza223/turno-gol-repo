@@ -1,5 +1,10 @@
 import { config } from 'dotenv'
 config({ path: '.env.local' })
+// .env.local sets NODE_ENV=development for the app's own runtime; that must
+// not leak into the execSync steps below (`pnpm build` needs Next.js to set
+// it to 'production' itself, otherwise it prerenders with a dev/prod chunk
+// mismatch — "Cannot read properties of null (reading 'useContext')").
+Reflect.deleteProperty(process.env, 'NODE_ENV')
 
 import { execSync } from 'node:child_process'
 import {

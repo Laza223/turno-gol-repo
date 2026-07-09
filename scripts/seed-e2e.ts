@@ -2,9 +2,21 @@ import { config } from 'dotenv'
 // Standalone scripts don't get Next.js's automatic .env.local loading.
 config({ path: '.env.local' })
 
-import { closeSql, getSql } from '@/shared/db/client'
 import { createClient } from '@supabase/supabase-js'
+import postgres from 'postgres'
 import { E2E_TEST_PASSWORD } from '../tests/e2e/_helpers/test-credentials'
+
+// This script builds fixtures across MULTIPLE tenants/players in one flat
+// pass (unlike the app itself, which always scopes a request to one
+// tenant/player via withTenantContext/withPlayerContext) and deletes from
+// audit_logs/daily_cash_closes, which 008_revokes.sql intentionally locks
+// down for turnogol_app (audit immutability) — the running app must never
+// delete those rows, but resetting E2E fixtures between runs needs to. So,
+// like a migration, it connects with the well-known local/CI Postgres
+// superuser (same default CI's postgres:15-alpine service and local
+// Supabase both use on :54322 — see .github/workflows/ci.yml) instead of
+// DATABASE_URL/getSql() — production code never takes this path.
+const SEED_ADMIN_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
 const E2E = {
   tenantId: '00000000-0000-4000-8000-000000000001',
@@ -30,7 +42,7 @@ const E2E = {
   depositCourtId: '00000000-0000-4000-8000-000000000031',
 }
 
-type SqlClient = ReturnType<typeof getSql>
+type SqlClient = ReturnType<typeof postgres>
 
 /**
  * Reverse-FK deletion order. We do NOT rely on ON DELETE CASCADE because
@@ -38,14 +50,12 @@ type SqlClient = ReturnType<typeof getSql>
  * surfaces seed mistakes immediately.
  */
 async function cleanup(sql: SqlClient): Promise<void> {
-  // Bypass the booking invariants trigger during cleanup so terminal-state
-  // bookings (canceled_refunded / canceled_no_refund / completed / no_show /
-  // expired) left over from prior runs can have their payment_id nulled out
-  // before payments are deleted. enforce_booking_invariants_fn would otherwise
-  // raise "Booking en estado terminal no puede modificarse" on the UPDATE.
-  // ALTER TABLE DISABLE is table-level (persists across connection-pool conns)
-  // and is reverted at the end of cleanup.
-  await sql`ALTER TABLE bookings DISABLE TRIGGER enforce_booking_invariants`
+  // enforce_booking_invariants only fires BEFORE UPDATE (005_triggers.sql),
+  // not DELETE — so deleting bookings outright (instead of nulling
+  // payment_id first) never touches terminal-state bookings through it.
+  // Deleting bookings before payments also satisfies the FK (bookings.
+  // payment_id -> payments.id, NO ACTION): once the referencing booking row
+  // is gone, the payment row it pointed to can be deleted freely.
 
   // Cascade-delete any tenants the freshAdmin created during prior E2E runs.
   // These have FKs into payments/bookings/courts/etc., so we need to clear
@@ -60,9 +70,12 @@ async function cleanup(sql: SqlClient): Promise<void> {
     await sql`DELETE FROM notifications WHERE tenant_id = ${tid}`
     await sql`DELETE FROM cash_flows WHERE tenant_id = ${tid}`
     await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tid}`
-    await sql`UPDATE bookings SET payment_id = NULL, payment_method = NULL WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM payments WHERE tenant_id = ${tid}`
+    // payments.booking_id -> bookings.id is the reverse leg of bookings'
+    // circular FK with payments (004_isolated_tables.sql:317+350-353) — null
+    // it out first or deleting bookings violates payments_booking_id_fkey.
+    await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${tid}`
     await sql`DELETE FROM bookings WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM payments WHERE tenant_id = ${tid}`
     await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${tid}`
     await sql`DELETE FROM abonados WHERE tenant_id = ${tid}`
     await sql`DELETE FROM products WHERE tenant_id = ${tid}`
@@ -76,9 +89,9 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.tenantId}`
-  await sql`UPDATE bookings SET payment_id = NULL, payment_method = NULL WHERE tenant_id = ${E2E.tenantId}`
-  await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
+  await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM products WHERE tenant_id = ${E2E.tenantId}`
@@ -91,9 +104,9 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.depositTenantId}`
-  await sql`UPDATE bookings SET payment_id = NULL, payment_method = NULL WHERE tenant_id = ${E2E.depositTenantId}`
-  await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM products WHERE tenant_id = ${E2E.depositTenantId}`
@@ -106,10 +119,6 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.freshStaffUserId} OR email = ${E2E.freshAdminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.secondStaffUserId} OR email = ${E2E.secondAdminEmail}`
-
-  // Restore the booking invariants trigger for the rest of the seed and any
-  // subsequent app traffic.
-  await sql`ALTER TABLE bookings ENABLE TRIGGER enforce_booking_invariants`
 }
 
 async function cleanupAuthUsers(): Promise<void> {
@@ -339,7 +348,7 @@ async function seedAuthUsers(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const sql = getSql()
+  const sql = postgres(SEED_ADMIN_URL, { max: 1, prepare: false, onnotice: () => {} })
   try {
     await cleanupAuthUsers()
     await cleanup(sql)
@@ -356,7 +365,7 @@ async function main(): Promise<void> {
     console.log(`  freshAdmin: ${E2E.freshAdminEmail} (auth ${E2E.freshAdminAuthUserId})`)
     console.log(`  admin2: ${E2E.secondAdminEmail} (auth ${E2E.secondAdminAuthUserId})`)
   } finally {
-    await closeSql()
+    await sql.end()
   }
 }
 

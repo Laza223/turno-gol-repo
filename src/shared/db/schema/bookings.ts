@@ -47,8 +47,8 @@ export const bookings = pgTable(
     // Instante físico absoluto (fuente única para lógica fuerte + constraint).
     // date/time_start/time_end quedan para día operativo + display. NOT NULL se
     // activa en migr. 041 una vez que todos los inserts los populan.
-    startsAt: timestamp('starts_at', { withTimezone: true, mode: 'date' }),
-    endsAt: timestamp('ends_at', { withTimezone: true, mode: 'date' }),
+    startsAt: timestamp('starts_at', { withTimezone: true, mode: 'date' }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true, mode: 'date' }).notNull(),
 
     type: bookingTypeEnum('type').notNull().default('spontaneous'),
     status: bookingStatusEnum('status').notNull().default('pending_payment'),

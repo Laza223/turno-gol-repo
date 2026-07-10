@@ -138,6 +138,34 @@ async function slotIsPhysicallyNextDay(
   return timeToMins(timeStart.slice(0, 5)) < openMins
 }
 
+/**
+ * SQL fragment (assumes `bookings AS b` JOINed to `tenants AS t`): TRUE when
+ * this row's slot is "physically next day" relative to `b.date` — the tenant
+ * closes after midnight (closes_next_day) and `b.time_start` is before that
+ * weekday's opening hour. SQL twin of `slotIsPhysicallyNextDay` above, for the
+ * raw-SQL guards below that need it inline: `autoCompleteOverdueBookings` is a
+ * bulk UPDATE across many tenants/bookings, so a per-row JS lookup isn't an
+ * option there (Fix caza-bugs #4/#5 — these guards used to compare
+ * `date + time_start/time_end` directly against NOW(), which for a
+ * post-midnight slot (e.g. date=Monday, time_start=01:00 for a shift that
+ * physically runs into Tuesday) computed 'Monday 01:00' — many hours in the
+ * PAST relative to the shift's own start on Monday evening — instead of the
+ * slot's real instant on Tuesday).
+ */
+const PHYSICALLY_NEXT_DAY_SQL = sql`(
+  t.closes_next_day
+  AND b.time_start < COALESCE(
+    (t.opening_hours -> (ARRAY['sun','mon','tue','wed','thu','fri','sat'])[EXTRACT(DOW FROM b.date)::int + 1] ->> 'open')::time,
+    '08:00'::time
+  )
+)`
+
+/** Physical instant a booking's slot STARTS, correcting for post-midnight slots. */
+const PHYSICAL_START_SQL = sql`(b.date + b.time_start + CASE WHEN ${PHYSICALLY_NEXT_DAY_SQL} THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`
+
+/** Physical instant a booking's slot ENDS, correcting for post-midnight slots. */
+const PHYSICAL_END_SQL = sql`(b.date + b.time_end + CASE WHEN ${PHYSICALLY_NEXT_DAY_SQL} THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`
+
 function isExclusionViolation(err: unknown): boolean {
   return (
     typeof err === 'object' &&
@@ -318,9 +346,25 @@ async function createOnlineBookingImpl(
   assertSlotDuration(input.timeStart, input.timeEnd)
   const todayStr = artTodayStr()
   if (input.date < todayStr) {
-    throw new BookingDateOutOfRangeError('past_date')
-  }
-  if (input.date === todayStr) {
+    // caza-bugs #13: el día operativo de AYER puede seguir físicamente
+    // vigente hoy de madrugada si el complejo cierra después de medianoche
+    // (closes_next_day) — el slot 01:00 de "ayer operativo" ocurre HOY
+    // calendario, todavía en el futuro. Sin esto, todo booking con
+    // input.date=ayer se rechazaba como past_date sin importar la hora real.
+    const isYesterdayOperating = input.date === addDays(todayStr, -1)
+    const physicallyToday =
+      isYesterdayOperating &&
+      (await slotIsPhysicallyNextDay(tenantId, input.date, input.timeStart, tx))
+    if (!physicallyToday) {
+      throw new BookingDateOutOfRangeError('past_date')
+    }
+    // El slot físico cae en el calendario de HOY (no en `input.date`) — comparar
+    // la hora de pared contra HOY, no contra el día operativo de ayer.
+    const slotStartMs = artDateAt(todayStr, input.timeStart).getTime()
+    if (slotStartMs <= Date.now()) {
+      throw new BookingDateOutOfRangeError('past_slot')
+    }
+  } else if (input.date === todayStr) {
     const slotStartMs = artDateAt(input.date, input.timeStart).getTime()
     if (slotStartMs <= Date.now()) {
       // Día operativo: un slot de madrugada del día operativo de hoy ocurre
@@ -545,9 +589,10 @@ export async function completeBooking(
   // and may legitimately complete bookings without passing through here.
   if (actor === 'admin') {
     const check = await tx.execute(sql`
-      SELECT (date + time_end) > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_ended
-      FROM bookings
-      WHERE id = ${bookingId}
+      SELECT ${PHYSICAL_END_SQL} > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_ended
+      FROM bookings b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.id = ${bookingId}
     `)
     const row = (check as unknown as Array<{ not_yet_ended: boolean }>)[0]
     if (row?.not_yet_ended) {
@@ -591,11 +636,13 @@ export async function autoCompleteOverdueBookings(
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${AUTO_COMPLETE_LOCK_KEY}))`)
 
   const rows = await tx.execute(sql`
-    UPDATE bookings
+    UPDATE bookings b
     SET status = 'completed', updated_at = NOW()
-    WHERE status = 'confirmed'
-      AND (date + time_end) < (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') - (${graceMinutes} || ' minutes')::interval
-    RETURNING *
+    FROM tenants t
+    WHERE t.id = b.tenant_id
+      AND b.status = 'confirmed'
+      AND ${PHYSICAL_END_SQL} < (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') - (${graceMinutes} || ' minutes')::interval
+    RETURNING b.*
   `)
   return (rows as unknown as Array<typeof bookings.$inferSelect>).map(
     rowToBookingRow,
@@ -614,11 +661,12 @@ export async function markNoShow(
   //      mal completado dentro de las 24h de la completación (bookings.updated_at).
   const check = await tx.execute(sql`
     SELECT
-      status,
-      (date + time_start) > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_started,
-      (NOW() - updated_at) < INTERVAL '24 hours' AS within_correction_window
-    FROM bookings
-    WHERE id = ${bookingId}
+      b.status,
+      ${PHYSICAL_START_SQL} > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_started,
+      (NOW() - b.updated_at) < INTERVAL '24 hours' AS within_correction_window
+    FROM bookings b
+    JOIN tenants t ON t.id = b.tenant_id
+    WHERE b.id = ${bookingId}
   `)
   const row = (
     check as unknown as Array<{

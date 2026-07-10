@@ -10,6 +10,7 @@ import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
+import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -144,8 +145,13 @@ export async function inviteStaffAction(
   }
 
   const { email, firstName, lastName, role } = parsed.data
+  const lowerEmail = email.toLowerCase()
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
+  // Fase 1 (pool de tenant, RLS aplica): autorización + chequeo de duplicado.
+  // Sin escrituras todavía: staff_users es global y su INSERT/UPDATE no tiene
+  // policy para el rol app (006_rls_policies.sql, "gestión vía service role"),
+  // así que el upsert se resuelve en la Fase 2 vía worker pool.
+  const preflight = await withTenantContext(tenant.id, async (tx) => {
     const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
     if (denied) return denied
 
@@ -155,7 +161,7 @@ export async function inviteStaffAction(
       .innerJoin(tenantStaffMembers, eq(tenantStaffMembers.staffUserId, staffUsers.id))
       .where(
         and(
-          eq(staffUsers.email, email.toLowerCase()),
+          eq(staffUsers.email, lowerEmail),
           eq(tenantStaffMembers.tenantId, tenant.id),
           eq(tenantStaffMembers.isActive, true),
         ),
@@ -165,18 +171,22 @@ export async function inviteStaffAction(
     if (existing.length > 0) {
       return { success: false as const, error: 'Este email ya es miembro activo del complejo.' }
     }
+    return { success: true as const }
+  })
+  if (!preflight.success) return preflight
 
-    const [staffUser] = await tx
-      .insert(staffUsers)
-      .values({ email: email.toLowerCase(), firstName, lastName })
-      .onConflictDoUpdate({
-        target: staffUsers.email,
-        set: { firstName, lastName },
-      })
-      .returning({ id: staffUsers.id })
+  // Fase 2 (worker pool, bypass RLS): upsert del staff_user global. El actor ya
+  // fue validado como admin en la Fase 1, antes de esta escritura.
+  let staffUser: Awaited<ReturnType<typeof upsertStaffUser>>
+  try {
+    staffUser = await upsertStaffUser(lowerEmail, firstName, lastName)
+  } catch {
+    // Error de negocio prolijo en vez de excepción cruda del Server Action.
+    return { success: false, error: 'Error creando usuario.' }
+  }
 
-    if (!staffUser) return { success: false as const, error: 'Error creando usuario.' }
-
+  // Fase 3 (pool de tenant): vincula al tenant (con policies propias) + invita.
+  const result = await withTenantContext(tenant.id, async (tx) => {
     await tx
       .insert(tenantStaffMembers)
       .values({
@@ -194,7 +204,7 @@ export async function inviteStaffAction(
 
     const adminClient = createAdminClient()
     const { data: inviteData, error: inviteError } =
-      await adminClient.auth.admin.inviteUserByEmail(email.toLowerCase(), {
+      await adminClient.auth.admin.inviteUserByEmail(lowerEmail, {
         redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
       })
 
@@ -216,7 +226,7 @@ export async function inviteStaffAction(
       // otro complejo). inviteUserByEmail no devuelve su id, así que lo buscamos y
       // sincronizamos SOLO staff_user_id, preservando su tenant_id/role actuales
       // para no pisar la sesión de otros complejos (#47).
-      const existingAuth = await findAuthUserByEmail(adminClient, email.toLowerCase())
+      const existingAuth = await findAuthUserByEmail(adminClient, lowerEmail)
       if (existingAuth) {
         await adminClient.auth.admin.updateUserById(existingAuth.id, {
           app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
@@ -376,34 +386,27 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   if (limited) return { success: false, error: limited }
 
   // Fase 3 #12: el email no debe ser arbitrario; tiene que pertenecer a un
-  // miembro ACTIVO del tenant actual antes de disparar inviteUserByEmail.
+  // miembro (activo O inactivo) del tenant actual antes de disparar
+  // inviteUserByEmail. El único punto de entrada de esta acción en la UI
+  // (StaffActions.tsx) es justamente el miembro YA desactivado — el ítem
+  // "Reenviar invitación" solo se renderiza cuando !member.isActive — así
+  // que acotar a is_active=true dejaba esto en 0 resultados siempre.
   const parsedEmail = z.string().email().safeParse(email)
   if (!parsedEmail.success) return { success: false, error: 'Email inválido.' }
   const normalizedEmail = parsedEmail.data.toLowerCase()
 
-  const lookup = await withTenantContext(tenant.id, async (tx) => {
-    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
-    if (denied) return denied
+  // Fase 1 (pool de tenant, RLS aplica): solo autorización del actor.
+  const denied = await withTenantContext(tenant.id, (tx) =>
+    assertActorIsAdmin(tx, tenant.id, user.staffUserId),
+  )
+  if (denied) return denied
 
-    const members = await tx
-      .select({ id: tenantStaffMembers.id })
-      .from(tenantStaffMembers)
-      .innerJoin(staffUsers, eq(staffUsers.id, tenantStaffMembers.staffUserId))
-      .where(
-        and(
-          eq(staffUsers.email, normalizedEmail),
-          eq(tenantStaffMembers.tenantId, tenant.id),
-          eq(tenantStaffMembers.isActive, true),
-        ),
-      )
-      .limit(1)
-    return { members }
-  })
-
-  if ('success' in lookup) return lookup
-
-  if (lookup.members.length === 0) {
-    return { success: false, error: 'Este email no es un miembro activo del complejo.' }
+  // Fase 2 (worker pool, bypass RLS): staff_users es global y su policy de
+  // SELECT (006_rls_policies.sql) solo expone miembros is_active=true, así
+  // que esta lectura necesita el mismo bypass que listStaffRoster.
+  const isMember = await isStaffMemberOfTenant(tenant.id, normalizedEmail)
+  if (!isMember) {
+    return { success: false, error: 'Este email no es miembro del complejo.' }
   }
 
   const adminClient = createAdminClient()

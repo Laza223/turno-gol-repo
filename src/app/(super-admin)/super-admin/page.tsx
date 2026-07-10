@@ -136,26 +136,28 @@ export default async function SuperAdminDashboardPage() {
           {data.expiringTrials.length === 0 ? (
             <EmptyHint text="Ningún trial vence en los próximos 7 días." />
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Complejo</th>
-                  <th className="py-2 pr-4 font-medium">Slug</th>
-                  <th className="py-2 text-right font-medium">Días restantes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {data.expiringTrials.map((trial) => (
-                  <tr key={trial.id} className="text-foreground hover:bg-accent">
-                    <td className="py-2 pr-4 font-medium">{trial.name}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">{trial.slug}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {daysRemaining(trial.trialEndsAt, now)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[400px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="py-2 pr-4 font-medium">Complejo</th>
+                    <th className="py-2 pr-4 font-medium">Slug</th>
+                    <th className="py-2 text-right font-medium">Días restantes</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.expiringTrials.map((trial) => (
+                    <tr key={trial.id} className="text-foreground hover:bg-accent">
+                      <td className="py-2 pr-4 font-medium">{trial.name}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{trial.slug}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {daysRemaining(trial.trialEndsAt, now)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </SectionCard>
 

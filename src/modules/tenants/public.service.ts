@@ -138,7 +138,11 @@ export function getPriceForSlot(
   for (const rule of rules) {
     if (!rule.days.includes(dayKey)) continue
     const from = timeToMins(rule.from)
-    const to = timeToMins(rule.to)
+    // caza-bugs #11: '00:00' de cierre significa medianoche (fin del día), no
+    // el minuto 0 — mismo tratamiento que court.service.ts/pricing-grid.ts.
+    // Sin esto, ninguna franja que cierre a medianoche matcheaba NUNCA
+    // (slotMins < 0 es imposible) y esos slots quedaban con precio null.
+    const to = rule.to === '00:00' ? 24 * 60 : timeToMins(rule.to)
     if (slotMins >= from && slotMins < to) {
       return rule.price ?? null
     }

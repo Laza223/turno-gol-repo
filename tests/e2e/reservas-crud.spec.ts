@@ -4,7 +4,7 @@
  * Happy path + 3 edge cases for the admin reservas UI:
  *   #1  Happy — complete: INSERT a past confirmed booking → detail → "Marcar completada" → status = completed
  *   #2  Edge — cancel with paid deposit: INSERT confirmed booking with deposit_status='paid' (cash) →
- *              detail → "Cancelar" → refund radios shown + reason required → cancel → status = canceled
+ *              detail → "Cancelar" → "¿Quién cancela?" + reason required → cancel → status = canceled
  *   #3  Edge — cancel blocked without reason: open cancel dialog → leave reason empty → confirm → error shown
  *   #4  Edge — no-show: INSERT confirmed past booking → detail → "Marcar ausente" → status = no_show
  *

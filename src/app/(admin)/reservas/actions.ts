@@ -27,6 +27,8 @@ import {
   CreditNotApplicableError,
 } from '@/modules/abonados/abonado.errors'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
+import { settleRefund } from '@/modules/payments/payment.service'
+import { captureMessage } from '@/lib/sentry'
 import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import { validateApiOutput } from '@/shared/api-output'
 import {
@@ -269,10 +271,10 @@ export async function cancelBookingAction(
     gateway = resolveTenantGateway(tenant.id, mpAccessToken)
   }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
+  const txResult = await withTenantContext(tenant.id, async (tx) => {
     try {
-      const booking = await cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx)
-      return { success: true as const, booking }
+      const outcome = await cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx)
+      return { success: true as const, booking: outcome.booking, pendingRefund: outcome.pendingRefund }
     } catch (err) {
       if (err instanceof BookingNotInConfirmedError) {
         return { success: false as const, error: 'La reserva no está en estado confirmado.' }
@@ -288,11 +290,32 @@ export async function cancelBookingAction(
     }
   })
 
-  if (result.success) {
-    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'cancelBookingAction')
-    revalidateBooking(bookingId)
+  if (!txResult.success) return txResult
+
+  validateApiOutput(bookingResponseSchema, { data: txResult.booking }, 'cancelBookingAction')
+  revalidateBooking(bookingId)
+
+  // caza-bugs #3: el refund a MP se resuelve DESPUÉS de que la cancelación ya
+  // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
+  // tx). Si esta llamada falla, la cancelación ya es válida —no hay
+  // rollback— pero el refund queda pendiente de resolución manual/retry.
+  if (txResult.pendingRefund && gateway) {
+    try {
+      await settleRefund(txResult.pendingRefund, gateway, tenant.id)
+    } catch (err) {
+      captureMessage('mp refund settlement failed after admin cancellation', {
+        level: 'error',
+        extra: {
+          bookingId,
+          tenantId: tenant.id,
+          refundPaymentId: txResult.pendingRefund.refundPaymentId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      })
+    }
   }
-  return result
+
+  return { success: true, booking: txResult.booking }
 }
 
 const CHARGEABLE_STATUSES = ['confirmed', 'completed', 'no_show'] as const

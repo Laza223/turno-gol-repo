@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { sql } from 'drizzle-orm'
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react'
-import { getDb } from '@/shared/db/client'
+import { getWorkerDb } from '@/shared/db/client'
 import { isTenantPubliclyVisible } from '@/modules/tenants/tenant-status'
 
 // Página PÚBLICA de verificación: la abre el complejo al escanear el QR del
@@ -28,12 +28,15 @@ type VerifyRow = {
   tenantStatus: string
 }
 
-// Lectura cross-tenant sin SET LOCAL (caveat BK-01, mismo patrón documentado
-// en getCourtPhotosByTenant): hoy la conexión es dueña de las tablas y RLS no
-// aplica; bajo FORCE RLS + rol sin bypass devuelve 0 filas → fail-closed
-// ("no pudimos verificar"), nunca un leak.
+// Lectura cross-tenant sin SET LOCAL, capability-token style (UUID no
+// enumerable). El caveat BK-01 que este comentario documentaba ("bajo FORCE
+// RLS + rol sin bypass devuelve 0 filas") dejó de ser hipotético con PR #30:
+// `getDb()` es ahora el pool restringido `turnogol_app` (sin BYPASSRLS), así
+// que ESTA página quedaba fail-closed para TODA reserva, no solo para probes
+// maliciosos — rompía la verificación por QR en producción. Se mueve al pool
+// worker (bypass-capable), mismo patrón que getStaffTenant/resolveStaffTenants.
 async function loadVerification(bookingId: string): Promise<VerifyRow | null> {
-  const db = getDb()
+  const db = getWorkerDb()
   const rows = (await db.execute(sql`
     SELECT b.status,
            b.date::text AS "date",

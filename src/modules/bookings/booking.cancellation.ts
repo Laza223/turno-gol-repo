@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
-import { createRefund } from '@/modules/payments/payment.service'
+import { prepareRefund, type PreparedRefund } from '@/modules/payments/payment.service'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { addNoShowDebt } from '@/modules/relationships/ptr.service'
@@ -91,13 +91,21 @@ async function loadSettings(tenantId: string, tx: DbTx): Promise<TenantSettings>
   return rows[0]!.settings as TenantSettings
 }
 
+export type CancellationOutcome = {
+  booking: BookingRow
+  /** Set when a paid MP deposit was refunded. Caller must pass this to
+   * `settleRefund` AFTER this function's transaction commits — see
+   * `prepareRefund`'s doc comment for why the MP call can't happen in here. */
+  pendingRefund?: PreparedRefund
+}
+
 export async function cancelByPlayer(
   bookingId: string,
   playerId: string,
   reason: string | undefined,
   gateway: PaymentGateway | null,
   tx: DbTx,
-): Promise<BookingRow> {
+): Promise<CancellationOutcome> {
   track.booking('booking.cancel.by_player', { bookingId, playerId })
 
   const b = await lockBooking(bookingId, tx)
@@ -125,12 +133,15 @@ export async function cancelByPlayer(
 
   const targetStatus = inPolicy ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
+  let pendingRefund: PreparedRefund | undefined
 
   if (b.deposit_status === 'paid') {
     if (inPolicy) {
       if (b.payment_id && gateway) {
-        // Seña MP: refund real vía gateway.
-        await createRefund(b.payment_id, b.deposit_amount, gateway, tx)
+        // Seña MP: refund real vía gateway — solo se PREPARA acá (fila
+        // 'pending' durable); la llamada a MP la hace el caller después de
+        // que esta tx commitee (settleRefund).
+        pendingRefund = await prepareRefund(b.payment_id, b.deposit_amount, tx)
         newDepositStatus = 'refunded'
       } else if (b.payment_id) {
         // Hallazgo 2: seña MP pero gateway no disponible → no se puede refundar.
@@ -171,7 +182,7 @@ export async function cancelByPlayer(
 
   await invalidateCourtDateSlots(b.court_id, b.date)
 
-  return rowToBookingRow(updated[0]!)
+  return { booking: rowToBookingRow(updated[0]!), pendingRefund }
 }
 
 // Etiqueta legible que se antepone al motivo para que `canceled_reason`
@@ -188,7 +199,7 @@ export async function cancelByAdmin(
   cancellationType: AdminCancellationType,
   gateway: PaymentGateway | null,
   tx: DbTx,
-): Promise<BookingRow> {
+): Promise<CancellationOutcome> {
   const b = await lockBooking(bookingId, tx)
   if (!b) throw new BookingNotInConfirmedError(bookingId)
   if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
@@ -222,11 +233,12 @@ export async function cancelByAdmin(
 
   const targetStatus = shouldRefund ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
+  let pendingRefund: PreparedRefund | undefined
 
   if (b.deposit_status === 'paid') {
     if (shouldRefund) {
       if (b.payment_id && gateway) {
-        await createRefund(b.payment_id, b.deposit_amount, gateway, tx)
+        pendingRefund = await prepareRefund(b.payment_id, b.deposit_amount, tx)
         newDepositStatus = 'refunded'
       } else if (b.payment_id) {
         // Hallazgo 2: refund MP pedido pero gateway no disponible → no fingir.
@@ -267,7 +279,7 @@ export async function cancelByAdmin(
 
   await invalidateCourtDateSlots(b.court_id, b.date)
 
-  return rowToBookingRow(updated[0]!)
+  return { booking: rowToBookingRow(updated[0]!), pendingRefund }
 }
 
 /**

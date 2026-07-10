@@ -1,5 +1,5 @@
 import { and, asc, eq, ilike, inArray, sql, type SQL } from 'drizzle-orm'
-import { getDb } from '@/shared/db/client'
+import { getDb, getWorkerDb } from '@/shared/db/client'
 import { courts, reviews, tenants } from '@/shared/db/schema'
 import { track, withSpan } from '@/shared/observability'
 import type { TenantSettings } from './tenant.types'
@@ -229,17 +229,17 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
 /**
  * Fotos de canchas por tenant para el carrusel de las cards de /explorar
  * (tenantId → urls, en orden de creación de la cancha). Lectura cross-tenant
- * de courts SIN tenant context: mismo caveat documentado que la búsqueda por
- * disponibilidad (BK-01) — hoy la conexión es dueña de las tablas y RLS no
- * aplica; bajo FORCE RLS + rol sin bypass devuelve 0 filas y la card cae al
- * coverUrl (fail-closed, sin leak). Solo se leen fotos, que ya son públicas
- * en el perfil del complejo.
+ * de courts SIN tenant context: mismo motivo que loadAvailableTenantIds
+ * (availability-search.service.ts) para usar el pool worker — bajo el pool
+ * restringido `turnogol_app` (PR #30, FORCE RLS, sin BYPASSRLS) esto devolvía
+ * 0 filas para TODA card (degradaba silenciosamente al coverUrl). Solo se
+ * leen fotos, que ya son públicas en el perfil del complejo.
  */
 export async function getCourtPhotosByTenant(
   tenantIds: string[],
 ): Promise<Record<string, string[]>> {
   if (tenantIds.length === 0) return {}
-  const db = getDb()
+  const db = getWorkerDb()
   const rows = await db
     .select({ tenantId: courts.tenantId, photos: courts.photos })
     .from(courts)

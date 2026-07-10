@@ -4,6 +4,7 @@ import { Rows3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WeekStrip } from '../WeekStrip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { computeArtNow } from '@/hooks/use-art-now'
 
 type Props = {
   date: string
@@ -11,7 +12,7 @@ type Props = {
   dayLabel: string
   /** Fecha larga localizada (ej. "12 de junio"). */
   dateLabel: string
-  /** Hoy en ART (useArtNow); string vacío antes de la hidratación. */
+  /** Hoy en ART (useArtNow); string vacío antes de la hidratación. Solo para resaltar el día en WeekStrip. */
   todayArt: string
   isCompact: boolean
   onToggleDensity: () => void
@@ -67,8 +68,11 @@ export function GridToolbar({
           <button
             type="button"
             onClick={() => {
-              const today = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
-              onNavigate(today)
+              // Se recalcula al click (no se usa la prop todayArt) para no
+              // depender de la hidratación ni del refresco de 60s de
+              // useArtNow: evita quedar sin navegar antes de hidratar y el
+              // desfasaje de hasta 60s cruzando la medianoche ART.
+              onNavigate(computeArtNow().date)
             }}
             className="min-h-11 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent md:min-h-9"
           >

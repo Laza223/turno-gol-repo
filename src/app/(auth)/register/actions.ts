@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
-import { getDb } from '@/shared/db/client'
+import { getWorkerDb } from '@/shared/db/client'
 import { staffUsers } from '@/shared/db/schema'
 import { signUpStaff } from '@/modules/auth/auth.service'
 import { passwordSchema } from '@/modules/auth/password'
@@ -68,10 +68,14 @@ export async function registerAction(
 
   // Si ya existe una cuenta con ese email no creamos otra: lo informamos para que
   // inicie sesión y agregue otro complejo desde el panel (US-ONB-001 / Flujo 1).
-  // staff_users es global (sin RLS), consulta directa. Resiliente: si la
-  // verificación falla no bloqueamos el alta y seguimos al signUp.
+  // caza-bugs (6ta oleada): staff_users tiene RLS relacional (staff_see_same_tenant_staff,
+  // 006_rls_policies.sql) — acá corre ANTES de que exista ningún tenant_id, así
+  // que bajo el pool restringido turnogol_app la policy nunca matchea y esto
+  // devolvía SIEMPRE 0 filas. Pool de servicio, mismo patrón que
+  // getOrCreateStaffUser en auth.service.ts. Resiliente: si la verificación
+  // falla no bloqueamos el alta y seguimos al signUp.
   try {
-    const existing = await getDb()
+    const existing = await getWorkerDb()
       .select({ id: staffUsers.id })
       .from(staffUsers)
       .where(eq(staffUsers.email, parsed.data.email))

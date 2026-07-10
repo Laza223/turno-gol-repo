@@ -136,7 +136,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
               variant="outline"
               size="sm"
               onClick={handleCopyLink}
-              className="h-8 text-xs"
+              className="h-11 md:h-8 text-xs"
             >
               <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
               {copied ? 'Copiado!' : 'Copiar link'}

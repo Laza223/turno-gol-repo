@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { sql } from 'drizzle-orm'
-import { getDb } from '@/shared/db/client'
+import { getWorkerDb } from '@/shared/db/client'
 import { uuid } from '@/shared/validation/primitives'
 import { mockPay, mockReject, mockCancel } from './actions'
 import { formatArsContable, formatDateLong } from '@/lib/format'
@@ -25,9 +25,11 @@ type BookingRow = {
 }
 
 async function loadBookingSummary(bookingId: string): Promise<BookingRow | null> {
-  // This is a TEST-ONLY page. We use the service-role db client directly
-  // (no RLS context needed — test page, no auth, no tenant SET LOCAL).
-  const db = getDb()
+  // This is a TEST-ONLY page. Reads `bookings`/`courts` (RLS-isolated, FORCE
+  // RLS) cross-tenant with no auth / no tenant SET LOCAL — under the
+  // restricted `turnogol_app` pool that returns 0 rows, not a bypass. Needs
+  // the worker pool (bypass-capable), same reasoning as getStaffTenant.
+  const db = getWorkerDb()
   const rows = (await db.execute(sql`
     SELECT
       b.deposit_amount,

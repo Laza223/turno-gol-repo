@@ -28,27 +28,16 @@ import { uniformRulesFromOpeningHours } from '@/modules/courts/pricing-grid'
 import { withTenantContext } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import type { TenantRow } from '@/modules/tenants/tenant.types'
+import { requireAdminStaff, requireAdminStaffAction } from '@/modules/staff/guards'
 
 export type WizardActionResult = { success: true } | { success: false; error: string }
 
-// Auth del wizard: extractAuthUser + getStaffTenant (NO requireAdminStaffAction).
-// Durante el onboarding el claim tenant_id del JWT puede no estar todavía
-// (setStaffTenantClaim + refreshSession son best-effort en el paso 1); la
-// membresía real se resuelve por DB via tenant_staff_members.
-async function requireWizardTenant(): Promise<
-  { ok: true; tenant: TenantRow } | { ok: false; error: string }
-> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) {
-    return { ok: false, error: 'Sesión inválida' }
-  }
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return { ok: false, error: 'Tenant no encontrado' }
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { ok: false, error: limited }
-  return { ok: true, tenant }
-}
+// caza-bugs #7: los pasos 2-4 del wizard (horarios, canchas, cerrar
+// onboarding) son Configuración — solo-admin, igual que /settings y /canchas
+// fuera del wizard. requireAdminStaffAction resuelve tenant+rol por DB
+// (getStaffTenant + getStaffRole, NUNCA por el claim JWT), así que sigue
+// funcionando aunque setStaffTenantClaim del Paso 1 todavía no haya
+// propagado al JWT — no reintroduce el problema que este guard evitaba.
 
 export async function createTenantAction(
   formData: FormData,
@@ -106,8 +95,10 @@ export async function setWizardStepAction(completedStep: number): Promise<Wizard
   if (!Number.isInteger(completedStep) || completedStep < 1 || completedStep > 3) {
     return { success: false, error: 'Paso inválido' }
   }
-  const auth = await requireWizardTenant()
+  const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
+  const limited = await adminRateLimited(auth.tenant.id)
+  if (limited) return { success: false, error: limited }
 
   await updateOnboardingStep(auth.tenant.id, completedStep)
   revalidatePath('/onboarding')
@@ -124,9 +115,11 @@ export async function saveWizardScheduleAction(
   _prevState: WizardActionResult,
   formData: FormData,
 ): Promise<WizardActionResult> {
-  const auth = await requireWizardTenant()
+  const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const parsed = horariosSchema.safeParse(horariosFormDataToInput(formData))
   if (!parsed.success) {
@@ -172,9 +165,11 @@ export type WizardCourtDraftInput = z.infer<typeof wizardCourtsSchema>['courts']
 export async function createWizardCourtsAction(
   input: unknown,
 ): Promise<WizardActionResult> {
-  const auth = await requireWizardTenant()
+  const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
 
   const parsed = wizardCourtsSchema.safeParse(input)
   if (!parsed.success) {
@@ -251,12 +246,7 @@ export async function createWizardCourtsAction(
  * un dashboard mudo. El camino "Sí, cobrar seña" termina en /api/mp/callback.
  */
 export async function finishOnboardingAction(): Promise<void> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) {
-    redirect('/login')
-  }
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const { tenant } = await requireAdminStaff()
   await completeOnboarding(tenant.id)
   redirect('/onboarding/listo')
 }

@@ -166,14 +166,22 @@ export class MercadoPagoGateway implements PaymentGateway {
     }
   }
 
-  async createRefund(mpPaymentId: string, amount?: number): Promise<RefundResult> {
+  async createRefund(
+    mpPaymentId: string,
+    amount?: number,
+    idempotencyKey?: string,
+  ): Promise<RefundResult> {
     if (!MP_ID_RE.test(mpPaymentId)) {
       throw new MpGatewayError(`invalid mpPaymentId: ${mpPaymentId}`)
     }
     try {
       const body = amount !== undefined ? { amount: centsToPesos(amount) } : undefined
       const res = await this.withRefresh(() =>
-        new PaymentRefund(this.config).create({ payment_id: mpPaymentId, body }),
+        new PaymentRefund(this.config).create({
+          payment_id: mpPaymentId,
+          body,
+          ...(idempotencyKey ? { requestOptions: { idempotencyKey } } : {}),
+        }),
       )
       const status = (res.status ?? 'pending') as RefundResult['status']
       return {

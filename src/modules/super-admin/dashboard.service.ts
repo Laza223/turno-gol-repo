@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, gte, lte, sql } from 'drizzle-orm'
-import { getDb } from '@/shared/db/client'
+import { getDb, getWorkerDb } from '@/shared/db/client'
 import {
   plans,
   processedWebhooks,
@@ -13,10 +13,13 @@ import { getQueueDepths, type QueueDepthEntry } from '@/shared/jobs/queue-stats'
 /**
  * Métricas globales del panel super-admin (spec 2026-06-12 §5, doc12 §9.5).
  *
- * Todas las queries van contra tablas GLOBALES sin RLS (`tenants`, `plans`,
- * `tenant_subscriptions`, `processed_webhooks`) — lectura directa con
- * `getDb()`, igual que el resto del código que las consulta. No se toca
- * ninguna tabla RLS-aislada acá.
+ * `tenants`, `plans` y `processed_webhooks` son tablas GLOBALES sin RLS —
+ * lectura directa con `getDb()`. `tenant_subscriptions` NO es global (caza-bugs
+ * #9): tiene `tenant_id` + RLS+FORCE (ver CLAUDE.md "Tablas aisladas"), así que
+ * `getMrrCents` (la única función acá que la toca) necesita el pool de
+ * servicio (`getWorkerDb`) para el scan cross-tenant — con `getDb()` el rol
+ * restringido `turnogol_app` ve 0 filas fuera de `withTenantContext` y el MRR
+ * mostrado siempre da $0.
  */
 
 export type TenantStatus = (typeof tenantStatusEnum.enumValues)[number]
@@ -68,7 +71,7 @@ export type DashboardData = {
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 async function getMrrCents(): Promise<number> {
-  const db = getDb()
+  const db = getWorkerDb()
   const rows = await db
     .select({
       // SUM(integer) llega como bigint (string) — coalesce + cast a number.

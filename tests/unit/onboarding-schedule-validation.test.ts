@@ -21,6 +21,12 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
   updateOnboardingStep: vi.fn(),
   completeOnboarding: vi.fn(),
 }))
+// caza-bugs #7: saveWizardScheduleAction ahora pasa por requireAdminStaffAction,
+// que resuelve el rol vía getStaffRole (DB) — mockeado 'admin' (happy path de
+// este archivo). Ver onboarding-role-guard.test.ts para el caso manager.
+vi.mock('@/modules/staff/staff.service', () => ({
+  getStaffRole: vi.fn(async () => 'admin'),
+}))
 const withTenantContext = vi.fn(async (_tenantId: string, fn: (tx: unknown) => Promise<unknown>) =>
   fn({
     update: () => ({ set: () => ({ where: vi.fn(async () => undefined) }) }),

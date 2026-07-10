@@ -208,36 +208,38 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
         {courts.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin canchas cargadas.</p>
         ) : (
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <th className="py-2 pr-4">Nombre</th>
-                <th className="py-2 pr-4">Superficie</th>
-                <th className="py-2 pr-4 text-right">Capacidad</th>
-                <th className="py-2">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm text-foreground">
-              {courts.map((c) => (
-                <tr key={c.id}>
-                  <td className="py-2 pr-4 font-medium">{c.name}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{c.surfaceType}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{c.capacity}</td>
-                  <td className="py-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-                        c.status === 'online'
-                          ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-500/30'
-                          : 'bg-muted text-muted-foreground ring-slate-500/20'
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-left">
+              <thead>
+                <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 pr-4">Nombre</th>
+                  <th className="py-2 pr-4">Superficie</th>
+                  <th className="py-2 pr-4 text-right">Capacidad</th>
+                  <th className="py-2">Estado</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm text-foreground">
+                {courts.map((c) => (
+                  <tr key={c.id}>
+                    <td className="py-2 pr-4 font-medium">{c.name}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{c.surfaceType}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{c.capacity}</td>
+                    <td className="py-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                          c.status === 'online'
+                            ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-500/30'
+                            : 'bg-muted text-muted-foreground ring-slate-500/20'
+                        }`}
+                      >
+                        {c.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 
@@ -245,32 +247,34 @@ function ResumenTab({ detail }: { detail: TenantDetail }) {
         {staff.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin staff vinculado.</p>
         ) : (
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <th className="py-2 pr-4">Nombre</th>
-                <th className="py-2 pr-4">Email</th>
-                <th className="py-2 pr-4">Rol</th>
-                <th className="py-2 pr-4">Activo</th>
-                <th className="py-2">Último login</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm text-foreground">
-              {staff.map((m) => (
-                <tr key={m.id}>
-                  <td className="py-2 pr-4 font-medium">
-                    {m.firstName} {m.lastName}
-                  </td>
-                  <td className="py-2 pr-4 text-muted-foreground">{m.email}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{m.role}</td>
-                  <td className="py-2 pr-4">{m.isActive ? 'Sí' : 'No'}</td>
-                  <td className="py-2 tabular-nums text-muted-foreground">
-                    {formatDateTimeArt(m.lastLoginAt)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-left">
+              <thead>
+                <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 pr-4">Nombre</th>
+                  <th className="py-2 pr-4">Email</th>
+                  <th className="py-2 pr-4">Rol</th>
+                  <th className="py-2 pr-4">Activo</th>
+                  <th className="py-2">Último login</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm text-foreground">
+                {staff.map((m) => (
+                  <tr key={m.id}>
+                    <td className="py-2 pr-4 font-medium">
+                      {m.firstName} {m.lastName}
+                    </td>
+                    <td className="py-2 pr-4 text-muted-foreground">{m.email}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{m.role}</td>
+                    <td className="py-2 pr-4">{m.isActive ? 'Sí' : 'No'}</td>
+                    <td className="py-2 tabular-nums text-muted-foreground">
+                      {formatDateTimeArt(m.lastLoginAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>
@@ -439,37 +443,39 @@ function ActividadTab({ tenantId, activity }: { tenantId: string; activity: Tena
         {activity.recentBookings.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin reservas.</p>
         ) : (
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <th className="py-2 pr-4">Fecha</th>
-                <th className="py-2 pr-4">Horario</th>
-                <th className="py-2 pr-4">Cancha</th>
-                <th className="py-2 pr-4">Estado</th>
-                <th className="py-2 pr-4 text-right">Precio</th>
-                <th className="py-2">Creada</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm text-foreground">
-              {activity.recentBookings.map((b) => (
-                <tr key={b.id}>
-                  {/* date es columna DATE (sin tz): se muestra tal cual, sin conversión ART. */}
-                  <td className="py-2 pr-4 tabular-nums">{b.date.toISOString().slice(0, 10)}</td>
-                  <td className="py-2 pr-4 tabular-nums">
-                    {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
-                  </td>
-                  <td className="py-2 pr-4 text-muted-foreground">{b.courtName ?? '—'}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{b.status}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">
-                    {formatArs(b.priceSnapshot)}
-                  </td>
-                  <td className="py-2 tabular-nums text-muted-foreground">
-                    {formatDateTimeArt(b.createdAt)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left">
+              <thead>
+                <tr className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 pr-4">Fecha</th>
+                  <th className="py-2 pr-4">Horario</th>
+                  <th className="py-2 pr-4">Cancha</th>
+                  <th className="py-2 pr-4">Estado</th>
+                  <th className="py-2 pr-4 text-right">Precio</th>
+                  <th className="py-2">Creada</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm text-foreground">
+                {activity.recentBookings.map((b) => (
+                  <tr key={b.id}>
+                    {/* date es columna DATE (sin tz): se muestra tal cual, sin conversión ART. */}
+                    <td className="py-2 pr-4 tabular-nums">{b.date.toISOString().slice(0, 10)}</td>
+                    <td className="py-2 pr-4 tabular-nums">
+                      {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
+                    </td>
+                    <td className="py-2 pr-4 text-muted-foreground">{b.courtName ?? '—'}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{b.status}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {formatArs(b.priceSnapshot)}
+                    </td>
+                    <td className="py-2 tabular-nums text-muted-foreground">
+                      {formatDateTimeArt(b.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>

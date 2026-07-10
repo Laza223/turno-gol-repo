@@ -3,18 +3,23 @@ import {
   closeSql,
   getDb,
   getSql,
+  getWorkerDb,
   withTenantContext,
 } from '@/shared/db/client'
 import {
+  autoCompleteOverdueBookings,
   completeBooking,
   createManualBooking,
   createOnlineBooking,
   expirePendingBooking,
   markNoShow,
 } from '@/modules/bookings/booking.service'
+import { artTodayStr } from '@/shared/dates/art'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import {
   BookingNotInConfirmedError,
+  BookingNotYetEndedError,
+  BookingNotYetStartedError,
   CourtOfflineError,
   NoShowCorrectionWindowExpiredError,
   PlayerBannedError,
@@ -735,6 +740,104 @@ describe('markNoShow', () => {
     await expect(
       withTenantContext(tenant.id, (tx) => markNoShow(created.id, staff.id, tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
+  })
+})
+
+// ─── GAP (caza-bugs #4/#5): día operativo con closes_next_day ────────────
+// completeBooking/markNoShow/autoCompleteOverdueBookings comparaban
+// `date + time_end/time_start` directo contra NOW() ART. Para un slot de
+// madrugada (date=HOY operativo, time_start/time_end < hora de apertura, con
+// closes_next_day=true) eso computa la hora de pared de HOY — muchas horas en
+// el PASADO respecto al inicio real del turno de la NOCHE, que ocurre mañana
+// calendario. Sin corregir por el día físico, un turno de las 00:00–01:00
+// cargado a las 20:00 de la noche anterior aparecía "ya terminado"/"ya
+// empezado" de inmediato. Los 3 tests fijan el día de la semana de HOY (ART)
+// con open=20:00/close=02:00 + closes_next_day=true para que la ventana
+// [naive-pasado, física-futuro] sea real sin importar cuándo corre el test
+// (mientras no sea exactamente 00:00–01:00 ART, ventana de <1h/día).
+describe('día operativo (closes_next_day) — instante físico del slot', () => {
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+
+  async function setupClosesNextDayTenant(sql: ReturnType<typeof getSql>) {
+    const tenant = await createTestTenant(sql)
+    const todayArt = artTodayStr()
+    const dayKey = DAY_KEYS[new Date(`${todayArt}T00:00:00Z`).getUTCDay()]!
+    await sql`
+      UPDATE tenants
+      SET closes_next_day = true,
+          opening_hours = opening_hours || ${sql.json({ [dayKey]: { open: '20:00', close: '02:00' } })}
+      WHERE id = ${tenant.id}
+    `
+    return { tenant, todayArt }
+  }
+
+  it('autoCompleteOverdueBookings NO completa un turno de madrugada de hoy operativo cuya hora física todavía no llegó', async () => {
+    const sql = getSql()
+    const { tenant, todayArt } = await setupClosesNextDayTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    // 00:00–01:00: date+time_end naive = 'hoy 01:00' (ya pasado casi siempre
+    // que corre el test); instante físico real = 'mañana 01:00' (futuro).
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: todayArt,
+      timeStart: '00:00',
+      timeEnd: '01:00',
+    })
+    await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
+
+    const db = getWorkerDb()
+    await db.transaction((tx) => autoCompleteOverdueBookings(tx))
+
+    const row = await sql<{ status: string }[]>`SELECT status FROM bookings WHERE id = ${bookingId}`
+    expect(row[0]!.status).toBe('confirmed')
+  })
+
+  it('completeBooking (admin) rechaza un turno de madrugada de hoy operativo con BookingNotYetEndedError', async () => {
+    const sql = getSql()
+    const { tenant, todayArt } = await setupClosesNextDayTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: todayArt,
+      timeStart: '00:00',
+      timeEnd: '01:00',
+    })
+    await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => completeBooking(bookingId, 'admin', tx)),
+    ).rejects.toBeInstanceOf(BookingNotYetEndedError)
+  })
+
+  it('markNoShow rechaza un turno de madrugada de hoy operativo con BookingNotYetStartedError', async () => {
+    const sql = getSql()
+    const { tenant, todayArt } = await setupClosesNextDayTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: todayArt,
+      timeStart: '00:00',
+      timeEnd: '01:00',
+    })
+    await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => markNoShow(bookingId, staff.id, tx)),
+    ).rejects.toBeInstanceOf(BookingNotYetStartedError)
   })
 })
 

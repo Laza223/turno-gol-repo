@@ -5,12 +5,9 @@ import { notFound } from '@/shared/api-error'
 import { validatedJson } from '@/shared/api-output'
 import { paymentStatusResponseSchema } from '@/modules/payments/payment.schema'
 import { parseRouteUuid } from '@/shared/api/route-params'
+import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 
 export const dynamic = 'force-dynamic'
-
-// Mirrors DEPOSIT_TIMER_MINUTES in src/modules/payments/payment.service.ts.
-// Kept local to avoid importing server-only payment code into this route.
-const DEPOSIT_TIMER_MINUTES = 15
 
 export const GET = withPlayer(async (req, user, tx) => {
   const throttled = await guard('bookingStatus', user.playerId)
@@ -38,7 +35,7 @@ export const GET = withPlayer(async (req, user, tx) => {
 
   const { status, depositStatus, createdAt } = row
   const expiresAt = new Date(
-    new Date(createdAt).getTime() + DEPOSIT_TIMER_MINUTES * 60_000,
+    new Date(createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000,
   ).toISOString()
 
   return validatedJson(

@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 
 export type ComboboxOption = { value: string; label: string; hint?: string }
 
@@ -65,6 +66,9 @@ export default function Combobox({
   // Última posición real del puntero: distingue movimiento del usuario de los
   // mousemove/mouseenter sintéticos que dispara el scroll bajo un cursor quieto.
   const lastPointer = useRef<{ x: number; y: number } | null>(null)
+  // Ancla del Popover (input + leadingIcon): clicks adentro NO deben cerrar el
+  // panel vía el dismiss-outside de Radix (solo blur/Escape/selección lo cierran).
+  const anchorRef = useRef<HTMLDivElement>(null)
 
   const selectedLabel = useMemo(() => {
     const match = options.find((o) => o.value === value)
@@ -190,34 +194,57 @@ export default function Combobox({
   }
 
   return (
-    <div className="relative">
-      {leadingIcon}
-      <input
-        id={id}
-        type="text"
-        role="combobox"
-        autoComplete="off"
-        spellCheck={false}
-        aria-expanded={open}
-        aria-controls={open ? listboxId : undefined}
-        aria-autocomplete="list"
-        aria-activedescendant={activeOptionId}
-        aria-describedby={ariaDescribedBy}
-        value={inputText}
-        placeholder={placeholder}
-        className={inputClassName}
-        onClick={() => {
-          if (!open) openList(selectedIndex())
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) close()
+      }}
+    >
+      <PopoverAnchor asChild>
+        <div ref={anchorRef} className="relative">
+          {leadingIcon}
+          <input
+            id={id}
+            type="text"
+            role="combobox"
+            autoComplete="off"
+            spellCheck={false}
+            aria-expanded={open}
+            aria-controls={open ? listboxId : undefined}
+            aria-autocomplete="list"
+            aria-activedescendant={activeOptionId}
+            aria-describedby={ariaDescribedBy}
+            value={inputText}
+            placeholder={placeholder}
+            className={inputClassName}
+            onClick={() => {
+              if (!open) openList(selectedIndex())
+            }}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setOpen(true)
+              setActiveIndex(0)
+            }}
+            onKeyDown={onKeyDown}
+            onBlur={onBlur}
+          />
+        </div>
+      </PopoverAnchor>
+      {/* Panel Radix (portaled + collision detection): ya no se clipea bajo
+          contenedores con overflow. El ancho iguala al del input vía la
+          custom property que expone el Popover sobre su ancla. */}
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          // Clicks dentro del input/ancla no cuentan como "afuera": los maneja
+          // el propio onClick/onBlur del input, no el dismiss de Radix.
+          if (anchorRef.current?.contains(e.target as Node)) e.preventDefault()
         }}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          setOpen(true)
-          setActiveIndex(0)
-        }}
-        onKeyDown={onKeyDown}
-        onBlur={onBlur}
-      />
-      {open && (
+        className="z-50 w-[var(--radix-popover-trigger-width)] max-h-60 overflow-auto rounded-xl border border-border bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur-md"
+      >
         <ul
           id={listboxId}
           role="listbox"
@@ -227,7 +254,6 @@ export default function Combobox({
             // (cerraría la lista en plena interacción).
             e.preventDefault()
           }}
-          className="absolute z-50 mt-1.5 max-h-60 w-full overflow-auto rounded-xl border border-border bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur-md animate-in fade-in-0 zoom-in-95"
         >
           {visible.length === 0 ? (
             <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">
@@ -268,7 +294,7 @@ export default function Combobox({
             ))
           )}
         </ul>
-      )}
+      </PopoverContent>
       {/* Anuncio de resultados para lectores de pantalla (WCAG 4.1.3). */}
       <div role="status" aria-live="polite" className="sr-only">
         {open &&
@@ -276,6 +302,6 @@ export default function Combobox({
             ? emptyMessage
             : `${filtered.length} ${filtered.length === 1 ? 'opción disponible' : 'opciones disponibles'}`)}
       </div>
-    </div>
+    </Popover>
   )
 }

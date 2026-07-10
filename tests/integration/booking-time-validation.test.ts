@@ -223,4 +223,76 @@ describe('createOnlineBooking: date window validation (BK-04)', () => {
     )
     expect(result.status).toBe('confirmed')
   }, 10_000)
+
+  // caza-bugs #13: con closes_next_day, el día operativo de AYER puede seguir
+  // físicamente vigente hoy de madrugada. Antes del fix, TODO input.date < hoy
+  // se rechazaba como past_date sin mirar la hora — un slot todavía futuro
+  // (ej. la noche de ayer sigue abierta) era irreservable por API aunque la
+  // grilla lo mostrara disponible.
+  it('día operativo: no rechaza como past_date un slot de "ayer operativo" que sigue físicamente en el futuro', async () => {
+    // Evita el wrap de medianoche del slot sintético (start+60 cruzando 24:00)
+    // en vez de perseguir la fecha real: mismo criterio de tolerancia horaria
+    // que el test de arriba ("rejects today slot...").
+    const nowGuard = artNow()
+    if (nowGuard.getUTCHours() === 23 && nowGuard.getUTCMinutes() > 49) return
+
+    const sql = getSql()
+    const cndTenant = await createTestTenant(sql)
+    await linkPlayerToTenant(sql, cndTenant.id, playerId)
+
+    const yesterday = addDaysStr(artTodayStr(), -1)
+    const DOW_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+    const yesterdayKey = DOW_KEYS[new Date(`${yesterday}T00:00:00Z`).getUTCDay()]!
+
+    // Apertura recién a las 23:59: CUALQUIER hora del día cuenta como "antes de
+    // abrir" → slotIsPhysicallyNextDay siempre true, sin importar a qué hora
+    // real corre el test.
+    await sql`
+      UPDATE tenants
+      SET closes_next_day = true,
+          opening_hours = opening_hours || ${sql.json({ [yesterdayKey]: { open: '23:59', close: '23:59' } })}
+      WHERE id = ${cndTenant.id}
+    `
+
+    // Precio uniforme las 24hs de cualquier día (to:'00:00' = fin del día,
+    // Fix #11) para que calculatePrice no dependa de la hora del slot.
+    const courtRows = await sql<{ id: string }[]>`
+      INSERT INTO courts (tenant_id, name, capacity, pricing, status)
+      VALUES (
+        ${cndTenant.id}, ${'Cancha Madrugada'}, ${10},
+        ${sql.json({ rules: [{ days: [...DOW_KEYS], from: '00:00', to: '00:00', price: 800000 }] })},
+        'online'
+      )
+      RETURNING id
+    `
+    const courtId = courtRows[0]!.id
+
+    // Slot que arranca 10 min a partir de "ahora" (ART) → siempre en el futuro,
+    // sin importar la hora real de ejecución del test.
+    const now = artNow()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const startTotal = (now.getUTCHours() * 60 + now.getUTCMinutes() + 10) % (24 * 60)
+    const endTotal = (startTotal + 60) % (24 * 60)
+    const timeStart = `${pad(Math.floor(startTotal / 60))}:${pad(startTotal % 60)}`
+    const timeEnd = `${pad(Math.floor(endTotal / 60))}:${pad(endTotal % 60)}`
+
+    const result = await withTenantContext(cndTenant.id, (tx) =>
+      createOnlineBooking(
+        cndTenant.id,
+        {
+          playerId,
+          courtId,
+          date: yesterday,
+          timeStart,
+          timeEnd,
+          requiresDeposit: false,
+          depositPercentage: 0,
+          maxAdvanceDays: 6,
+        },
+        tx,
+      ),
+    )
+    expect(result.status).toBe('confirmed')
+    expect(new Date(result.date).toISOString().slice(0, 10)).toBe(yesterday)
+  }, 10_000)
 })

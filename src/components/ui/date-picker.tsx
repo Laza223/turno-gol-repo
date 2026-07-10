@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 type Props = {
   id?: string
@@ -39,7 +40,6 @@ export default function DatePicker({
   className,
 }: Props) {
   const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   // Determinar en qué mes/año arrancar la visualización del calendario
   const [viewDate, setViewDate] = useState(() => {
@@ -58,20 +58,8 @@ export default function DatePicker({
     }
   }, [value])
 
-  // Cerrar al hacer click afuera
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [open])
+  // Cierre por click-afuera y Esc: los maneja Radix Popover (portaled, ya no
+  // se clipea contra el overflow de contenedores ancestros).
 
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -118,38 +106,45 @@ export default function DatePicker({
   const currentMonthLabel = `${MONTH_NAMES[month]} de ${year}`
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      <button
-        type="button"
-        id={id}
-        onClick={() => setOpen(!open)}
-        className={cn(
-          'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-sm text-left flex items-center justify-between transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
-          className,
-          // Paddings de íconos: pr-8 (no 10) para que "dd/mm/aaaa" quepa en
-          // columnas angostas de mobile sin truncar (§13.5).
-          'pl-10 pr-8',
-          !value && 'text-muted-foreground/70'
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative w-full">
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            id={id}
+            className={cn(
+              'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-sm text-left flex items-center justify-between transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
+              className,
+              // Paddings de íconos: pr-8 (no 10) para que "dd/mm/aaaa" quepa en
+              // columnas angostas de mobile sin truncar (§13.5).
+              'pl-10 pr-8',
+              !value && 'text-muted-foreground/70'
+            )}
+          >
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10" aria-hidden />
+            <span className="truncate">{formattedDisplay || placeholder}</span>
+          </button>
+        </PopoverTrigger>
+        {/* Fuera del trigger: <button> dentro de <button> es HTML inválido y
+            rompía la hidratación (el "1 error" del dev overlay en la landing). */}
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 flex items-center justify-center min-h-11 min-w-11 md:min-h-9 md:min-w-9 rounded-full text-muted-foreground/60 transition-colors hover:bg-muted/40 hover:text-foreground"
+            aria-label="Limpiar fecha"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         )}
-      >
-        <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10" aria-hidden />
-        <span className="truncate">{formattedDisplay || placeholder}</span>
-      </button>
-      {/* Fuera del trigger: <button> dentro de <button> es HTML inválido y
-          rompía la hidratación (el "1 error" del dev overlay en la landing). */}
-      {value && (
-        <button
-          type="button"
-          onClick={() => onChange('')}
-          className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 flex items-center justify-center min-h-11 min-w-11 md:min-h-9 md:min-w-9 rounded-full text-muted-foreground/60 transition-colors hover:bg-muted/40 hover:text-foreground"
-          aria-label="Limpiar fecha"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
 
-      {open && (
-        <div className="absolute z-50 mt-1.5 w-[280px] rounded-2xl border border-border bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-md animate-in fade-in-0 zoom-in-95">
+        {/* Panel Radix (portaled + collision detection): ya no se clipea bajo
+            contenedores con overflow. */}
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          className="w-[280px] rounded-2xl border border-border bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-md"
+        >
           {/* Header del Calendario */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -235,8 +230,8 @@ export default function DatePicker({
               Hoy
             </button>
           </div>
-        </div>
-      )}
-    </div>
+        </PopoverContent>
+      </div>
+    </Popover>
   )
 }

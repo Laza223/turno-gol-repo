@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { BarChart3, CalendarCheck, Download, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { StatCard } from '@/components/admin/StatCard'
+import { ResponsiveList } from '@/components/ui/responsive-list'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getRevenueReport } from '@/modules/reports/report.service'
@@ -189,55 +190,59 @@ export default async function ReportesPage({
 
           {/* By court */}
           {report.byCourt.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-              <div className="border-b border-border px-6 py-4">
-                <h2 className="text-sm font-semibold text-foreground">Por cancha</h2>
-              </div>
-              {/* Mobile: cards apiladas (patrón caja); desktop: tabla con scroll propio. */}
-              <ul className="divide-y divide-border sm:hidden">
-                {report.byCourt.map((c) => (
-                  <li key={c.courtId} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{c.courtName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.bookingCount} reservas · {c.occupancyPct}% ocupación
-                      </p>
-                    </div>
-                    <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                      {formatArsContable(c.income)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    <th className="px-6 py-3 text-left">Cancha</th>
-                    <th className="px-6 py-3 text-right">Ingresos</th>
-                    <th className="px-6 py-3 text-right">Reservas</th>
-                    <th className="px-6 py-3 text-right">Ocupación</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+            <ResponsiveList
+              className="overflow-hidden shadow-sm"
+              header={
+                <div className="border-b border-border px-6 py-4">
+                  <h2 className="text-sm font-semibold text-foreground">Por cancha</h2>
+                </div>
+              }
+              cards={
+                <ul className="divide-y divide-border">
                   {report.byCourt.map((c) => (
-                    <tr key={c.courtId}>
-                      <td className="px-6 py-3 text-foreground">{c.courtName}</td>
-                      <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                    <li key={c.courtId} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{c.courtName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {c.bookingCount} reservas · {c.occupancyPct}% ocupación
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
                         {formatArsContable(c.income)}
-                      </td>
-                      <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                        {c.bookingCount}
-                      </td>
-                      <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                        {c.occupancyPct}%
-                      </td>
-                    </tr>
+                      </p>
+                    </li>
                   ))}
-                </tbody>
-              </table>
-              </div>
-            </div>
+                </ul>
+              }
+              table={
+                <table className="w-full min-w-[520px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <th className="px-6 py-3 text-left">Cancha</th>
+                      <th className="px-6 py-3 text-right">Ingresos</th>
+                      <th className="px-6 py-3 text-right">Reservas</th>
+                      <th className="px-6 py-3 text-right">Ocupación</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {report.byCourt.map((c) => (
+                      <tr key={c.courtId}>
+                        <td className="px-6 py-3 text-foreground">{c.courtName}</td>
+                        <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                          {formatArsContable(c.income)}
+                        </td>
+                        <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                          {c.bookingCount}
+                        </td>
+                        <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                          {c.occupancyPct}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              }
+            />
           )}
 
           {/* By payment method */}
@@ -246,24 +251,26 @@ export default async function ReportesPage({
               <div className="border-b border-border px-6 py-4">
                 <h2 className="text-sm font-semibold text-foreground">Por método de pago</h2>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    <th className="px-6 py-3 text-left">Método</th>
-                    <th className="px-6 py-3 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {report.byMethod.map((m) => (
-                    <tr key={m.method}>
-                      <td className="px-6 py-3 text-foreground">{formatMethodLabel(m.method)}</td>
-                      <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                        {formatArsContable(m.total)}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <th className="px-6 py-3 text-left">Método</th>
+                      <th className="px-6 py-3 text-right">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {report.byMethod.map((m) => (
+                      <tr key={m.method}>
+                        <td className="px-6 py-3 text-foreground">{formatMethodLabel(m.method)}</td>
+                        <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                          {formatArsContable(m.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>

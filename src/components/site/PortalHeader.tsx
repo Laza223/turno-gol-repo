@@ -112,7 +112,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
               </Link>
               <Link
                 href="/ingresar"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
+                className="inline-flex h-11 md:h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Ingresar</span>

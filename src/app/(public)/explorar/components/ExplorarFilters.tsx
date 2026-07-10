@@ -153,7 +153,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
                 type="button"
                 aria-pressed={active}
                 onClick={() => setFormats((s) => toggle(s, f))}
-                className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm font-medium transition-colors ${
+                className={`inline-flex h-11 md:h-9 items-center rounded-lg border px-3 text-sm font-medium transition-colors ${
                   active
                     ? 'border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
                     : 'border-border bg-card text-muted-foreground hover:bg-accent'
@@ -204,7 +204,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
               placeholder="Desde"
-              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
           <span className="text-muted-foreground">–</span>
@@ -220,7 +220,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
               placeholder="Hasta"
-              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>

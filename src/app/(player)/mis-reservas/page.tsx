@@ -130,7 +130,7 @@ export default async function MisReservasPage({
   const upcomingCount = allBookings.filter((b) => b.date >= today).length
 
   const tabClass = (active: boolean) =>
-    `flex-1 rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
+    `flex min-h-11 md:min-h-9 flex-1 items-center justify-center rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
       active
         ? 'bg-primary text-primary-foreground shadow-md shadow-emerald-600/25 dark:shadow-emerald-500/25'
         : 'text-muted-foreground hover:text-foreground'

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { withPlayer } from '@/shared/middleware/with-player'
 import { notFound } from '@/shared/api-error'
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'
 import { captureMessage } from '@/lib/sentry'
 
@@ -39,7 +39,10 @@ export const GET = withPlayer(async (_req, user, tx) => {
   }
   const profile = profileRows[0]
 
-  // Compliance dump queries via service-role sql (RLS bypassed) — necessary
+  // Compliance dump queries via the worker/service pool (RLS bypassed —
+  // caza-bugs #8: getSql() is the RESTRICTED turnogol_app role and returned 0
+  // rows here since these queries run outside withTenantContext/withPlayerContext,
+  // so no SET LOCAL app.current_* was ever set for RLS to key off) — necessary
   // because:
   //   - payments / tenant_player_bans / cash_flows have tenant-scoped RLS but
   //     no player-scoped policy. A player has cross-tenant scope by design.
@@ -47,7 +50,7 @@ export const GET = withPlayer(async (_req, user, tx) => {
   //     where user.playerId comes from a Supabase-verified JWT.
   // This is the ARCO Art. 14 access right; the player can only see their own
   // data regardless of which tenant produced it.
-  const adminSql = getSql()
+  const adminSql = getWorkerSql()
 
   const bookings = await adminSql<Record<string, unknown>[]>`
     SELECT

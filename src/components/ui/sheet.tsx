@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils'
  */
 const Sheet = SheetPrimitive.Root
 const SheetTrigger = SheetPrimitive.Trigger
-const SheetClose = SheetPrimitive.Close
 const SheetPortal = SheetPrimitive.Portal
 
 const SheetOverlay = React.forwardRef<
@@ -38,8 +37,6 @@ const sheetVariants = cva(
     variants: {
       side: {
         left: 'inset-y-0 left-0 h-full w-72 max-w-[85vw] border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left',
-        right:
-          'inset-y-0 right-0 h-full w-72 max-w-[85vw] border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
         bottom:
           'inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
       },
@@ -99,4 +96,4 @@ const SheetTitle = React.forwardRef<
 ))
 SheetTitle.displayName = SheetPrimitive.Title.displayName
 
-export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetHeader, SheetTitle }
+export { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle }

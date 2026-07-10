@@ -1,4 +1,4 @@
-import { getSql } from '@/shared/db/client'
+import { getWorkerSql } from '@/shared/db/client'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 export type GetOrCreatePlayerOpts = {
@@ -8,7 +8,16 @@ export type GetOrCreatePlayerOpts = {
 }
 
 /**
- * Idempotent provisioning by email (global `players` table, no RLS).
+ * Idempotent provisioning by email (global `players` table). Runs before any
+ * `player_id` is known (that's what it's resolving), so there is no
+ * `app.current_player_id` to set — same shape as `getOrCreateStaffUser` in
+ * auth.service.ts. `players` (006_rls_policies.sql) has NO INSERT policy at
+ * all ("INSERT no tiene policy: solo service role") and its only UPDATE
+ * policy is player-self-scoped; `036_force_rls_remaining_tables.sql` added
+ * FORCE ROW LEVEL SECURITY on top. Under the restricted app pool (`turnogol_app`,
+ * PR #30) this INSERT/UPDATE would violate RLS — needs the bypass-capable
+ * worker pool, same as background jobs (CLAUDE.md: "Workers usan rol de
+ * servicio separado").
  * On an existing player, backfills `agreed_to_terms_at`/`terms_version` if the
  * caller signals fresh consent and the row had none. Names are only used on insert.
  */
@@ -18,7 +27,7 @@ export async function getOrCreatePlayer(
   lastName: string,
   opts: GetOrCreatePlayerOpts = {},
 ): Promise<{ id: string }> {
-  const sql = getSql()
+  const sql = getWorkerSql()
   const lower = email.toLowerCase()
   const agreed = opts.agreedToTerms === true
   const termsVersion = opts.termsVersion ?? CURRENT_TERMS_VERSION

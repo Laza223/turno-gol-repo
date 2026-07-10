@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm'
 import { CheckCircle2 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
+import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import { formatArs, formatDateLong } from '@/lib/format'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
@@ -82,7 +83,10 @@ export default async function ReservaExitoPage({ params }: Props) {
 
   // Player returned from MP before webhook landed — hand off to watcher
   if (booking.status !== 'confirmed') {
-    const expiresAt = new Date(new Date(booking.createdAt).getTime() + 15 * 60 * 1000).toISOString()
+    // caza-bugs #12: el hold real vence a DEFAULT_EXPIRY_SECONDS (6 min), no 15.
+    const expiresAt = new Date(
+      new Date(booking.createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000,
+    ).toISOString()
     return (
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">

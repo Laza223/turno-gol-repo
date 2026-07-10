@@ -260,7 +260,7 @@ function BookingCardComponent({
             type="button"
             data-col={col}
             data-row={row}
-            aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ?? visual.label}, ${visual.label}`}
+            aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label}` : visual.label}`}
             className={cn(
               'flex h-full w-full cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
               visual.cell,

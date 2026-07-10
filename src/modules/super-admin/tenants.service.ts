@@ -1,23 +1,28 @@
 import { and, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
-import { getDb, withTenantContext } from '@/shared/db/client'
+import { getDb, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import {
   auditLogs,
   bookings,
   courts,
   plans,
-  staffUsers,
   tenants,
-  tenantStaffMembers,
   tenantSubscriptions,
 } from '@/shared/db/schema'
+import { listStaffRoster } from '@/modules/staff/staff.service'
 import type { BillingCycle, SubscriptionStatus, TenantStatus } from '@/modules/billing/billing.types'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
 /**
  * Lecturas cross-tenant del panel SuperAdmin (spec §4 y §5).
  *
- * - `tenants`, `tenant_subscriptions` y `plans` son tablas GLOBALES (sin RLS):
- *   se leen directo con `getDb()`.
+ * - `tenants` y `plans` son tablas GLOBALES (sin RLS): se leen directo con
+ *   `getDb()`.
+ * - `tenant_subscriptions` NO es global (caza-bugs #10): tiene `tenant_id` +
+ *   RLS+FORCE (ver CLAUDE.md "Tablas aisladas"). El super admin la lee
+ *   cross-tenant a propósito (spec: "puede ver todos los tenants"), así que
+ *   usa `getWorkerDb()` (pool de servicio) en vez de `withTenantContext` —
+ *   con `getDb()` el rol restringido `turnogol_app` ve 0 filas fuera de
+ *   `withTenantContext`, dejando plan/estado de suscripción NULL para todos.
  * - `courts`, `tenant_staff_members`, `audit_logs` y `bookings` son tablas RLS:
  *   TODA lectura sobre un tenant específico va dentro de
  *   `withTenantContext(tenantId)` para que la defensa RLS normal aplique.
@@ -82,7 +87,7 @@ function monthlyEquivalentCents(
 }
 
 export async function listTenants(filters: TenantListFilters): Promise<TenantList> {
-  const db = getDb()
+  const db = getWorkerDb()
   const conditions: SQL[] = []
   const q = filters.q?.trim()
   if (q) {
@@ -283,7 +288,10 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
   const t = tenantRows[0]
   if (!t) return null
 
-  const subRows = await db
+  // tenant_subscriptions tiene RLS+FORCE (caza-bugs #10) — pool de servicio,
+  // no el `db` de arriba (restringido, sin contexto de tenant seteado acá).
+  const workerDb = getWorkerDb()
+  const subRows = await workerDb
     .select({
       status: tenantSubscriptions.status,
       planId: tenantSubscriptions.planId,
@@ -309,39 +317,39 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
     .where(eq(tenantSubscriptions.tenantId, tenantId))
     .limit(1)
 
-  // courts y tenant_staff_members son tablas RLS → lectura dentro del contexto
-  // del tenant (spec §4). staff_users es global pero el join hereda el scope.
-  const { courtRows, staffRows } = await withTenantContext(tenantId, async (tx) => {
-    const courtRows = await tx
-      .select({
-        id: courts.id,
-        name: courts.name,
-        status: courts.status,
-        surfaceType: courts.surfaceType,
-        format: courts.format,
-        capacity: courts.capacity,
-      })
-      .from(courts)
-      .where(eq(courts.tenantId, tenantId))
-      .orderBy(courts.name)
-
-    const staffRows = await tx
-      .select({
-        id: staffUsers.id,
-        email: staffUsers.email,
-        firstName: staffUsers.firstName,
-        lastName: staffUsers.lastName,
-        role: tenantStaffMembers.role,
-        isActive: tenantStaffMembers.isActive,
-        lastLoginAt: staffUsers.lastLoginAt,
-      })
-      .from(tenantStaffMembers)
-      .innerJoin(staffUsers, eq(staffUsers.id, tenantStaffMembers.staffUserId))
-      .where(eq(tenantStaffMembers.tenantId, tenantId))
-      .orderBy(tenantStaffMembers.createdAt)
-
-    return { courtRows, staffRows }
-  })
+  // courts es tabla RLS → lectura dentro del contexto del tenant (spec §4).
+  // staff_users/tenant_staff_members se leen vía listStaffRoster: es global
+  // y su policy de SELECT (006_rls_policies.sql, staff_see_same_tenant_staff)
+  // solo expone miembros is_active=true, así que un join bajo el pool de
+  // tenant escondería a los miembros desactivados del detalle de SuperAdmin
+  // (mismo bug que tenía (admin)/staff/page.tsx). tenantId ya fue validado
+  // arriba contra la tabla `tenants` — no es input crudo del cliente.
+  const [courtRows, staffRoster] = await Promise.all([
+    withTenantContext(tenantId, (tx) =>
+      tx
+        .select({
+          id: courts.id,
+          name: courts.name,
+          status: courts.status,
+          surfaceType: courts.surfaceType,
+          format: courts.format,
+          capacity: courts.capacity,
+        })
+        .from(courts)
+        .where(eq(courts.tenantId, tenantId))
+        .orderBy(courts.name),
+    ),
+    listStaffRoster(tenantId),
+  ])
+  const staffRows = staffRoster.map((m) => ({
+    id: m.staffUserId,
+    email: m.email,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    role: m.role,
+    isActive: m.isActive,
+    lastLoginAt: m.lastLoginAt,
+  }))
 
   return {
     tenant: { ...t, settings: t.settings as TenantSettings },

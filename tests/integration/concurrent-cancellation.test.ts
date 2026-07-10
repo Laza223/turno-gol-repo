@@ -26,9 +26,10 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
   }
 })
 
-import { cancelByAdmin, cancelByPlayer } from '@/modules/bookings/booking.cancellation'
+import { cancelByAdmin, cancelByPlayer, type CancellationOutcome } from '@/modules/bookings/booking.cancellation'
 import { expirePendingBooking } from '@/modules/bookings/booking.service'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
+import { settleRefund } from '@/modules/payments/payment.service'
 
 const FUTURE_DATE = '2027-09-01'
 
@@ -262,6 +263,13 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
         expect(expiryRes.value).toEqual({ won: false })
       }
 
+      // caza-bugs #3: cancelByAdmin/cancelByPlayer solo PREPARAN el refund
+      // (fila 'pending' durable dentro de la tx) — la llamada a MP la hace el
+      // caller después de que la tx commitee. El winner es el único fulfilled.
+      const winner = winners[0] as PromiseFulfilledResult<CancellationOutcome>
+      expect(winner.value.pendingRefund, `round ${i}: winner prepared a refund`).toBeDefined()
+      await settleRefund(winner.value.pendingRefund!, mockGateway, tenantId)
+
       // Final state is a single, consistent cancellation with a refund.
       const booking = await getBooking(bookingId)
       expect(booking.status).toBe('canceled_refunded')
@@ -362,9 +370,12 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     })
 
     // Cancelación inicial: lleva el booking al estado terminal canceled_refunded.
-    await withTenantContext(tenantId, (tx) =>
+    const initial = await withTenantContext(tenantId, (tx) =>
       cancelByPlayer(bookingId, playerId, 'cancela primero', mockGateway, tx),
     )
+    expect(initial.pendingRefund).toBeDefined()
+    await settleRefund(initial.pendingRefund!, mockGateway, tenantId)
+
     expect((await getBooking(bookingId)).status).toBe('canceled_refunded')
     expect(await countRefundRows(bookingId)).toBe(1)
     expect(await countCancelAudits(bookingId)).toBe(1)
@@ -443,9 +454,18 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
       // Exactamente uno gana; el otro ve un booking no-confirmado.
       const results = [adminRes, playerRes]
-      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+      const fulfilled = results.filter(
+        (r): r is PromiseFulfilledResult<CancellationOutcome> => r.status === 'fulfilled',
+      )
+      expect(fulfilled).toHaveLength(1)
       const loser = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
       expect(loser.reason).toBeInstanceOf(BookingNotInConfirmedError)
+
+      // caza-bugs #3: solo el admin ('complejo' siempre reembolsa) puede haber
+      // preparado un refund — el player fuera de plazo no entra a esa rama.
+      if (fulfilled[0]!.value.pendingRefund) {
+        await settleRefund(fulfilled[0]!.value.pendingRefund, mockGateway, tenantId)
+      }
 
       const booking = await getBooking(bookingId)
       const refundRows = await countRefundRows(bookingId)
@@ -508,9 +528,15 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
     // Exactamente uno gana; el doble-click duplicado ve un booking no-confirmado.
     const results = [click1, click2]
-    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    const fulfilled = results.filter(
+      (r): r is PromiseFulfilledResult<CancellationOutcome> => r.status === 'fulfilled',
+    )
+    expect(fulfilled).toHaveLength(1)
     const loser = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
     expect(loser.reason).toBeInstanceOf(BookingNotInConfirmedError)
+
+    expect(fulfilled[0]!.value.pendingRefund).toBeDefined()
+    await settleRefund(fulfilled[0]!.value.pendingRefund!, mockGateway, tenantId)
 
     // Un único estado terminal coherente, con un solo efecto colateral de cada tipo.
     const booking = await getBooking(bookingId)

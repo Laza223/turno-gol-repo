@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { and, eq } from 'drizzle-orm'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
-import { getSql } from '@/shared/db/client'
+import { withTenantContext } from '@/shared/db/client'
+import { pushSubscriptions } from '@/shared/db/schema'
 import { badRequest, forbidden, validationError } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
@@ -36,14 +38,21 @@ export const POST = withTenant(async (req: NextRequest, user) => {
   const tenantId = user.tenantId!
   const staffUserId = user.staffUserId
 
-  const sql = getSql()
-  const rows = await sql<{ id: string }[]>`
-    DELETE FROM push_subscriptions
-    WHERE endpoint      = ${endpoint}
-      AND tenant_id     = ${tenantId}
-      AND staff_user_id = ${staffUserId}
-    RETURNING id
-  `
+  // Ver comentario en subscribe/route.ts: push_subscriptions exige
+  // app.current_tenant_id para su policy de escritura (push_subs_modify);
+  // withTenantContext lo setea, el getSql() plano usado antes no.
+  const rows = await withTenantContext(tenantId, (tx) =>
+    tx
+      .delete(pushSubscriptions)
+      .where(
+        and(
+          eq(pushSubscriptions.endpoint, endpoint),
+          eq(pushSubscriptions.tenantId, tenantId),
+          eq(pushSubscriptions.staffUserId, staffUserId),
+        ),
+      )
+      .returning({ id: pushSubscriptions.id }),
+  )
 
   return NextResponse.json({ success: true, deleted: rows.length > 0 })
 })

@@ -62,7 +62,11 @@ export class MockGateway implements PaymentGateway {
     }
   }
 
-  async createRefund(mpPaymentId: string, amount?: number): Promise<RefundResult> {
+  async createRefund(
+    mpPaymentId: string,
+    amount?: number,
+    _idempotencyKey?: string,
+  ): Promise<RefundResult> {
     this.refundCalls.push({ mpPaymentId, ...(amount !== undefined ? { amount } : {}) })
     this.refundCounter += 1
     return {

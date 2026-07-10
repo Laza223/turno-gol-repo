@@ -97,7 +97,7 @@ export default async function SuperAdminTenantsPage({
             type="text"
             defaultValue={q ?? ''}
             placeholder="Nombre, slug o email"
-            className="h-10 w-64 rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="h-11 md:h-10 w-64 rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -108,7 +108,7 @@ export default async function SuperAdminTenantsPage({
             id="status"
             name="status"
             defaultValue={status ?? ''}
-            className="h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="h-11 md:h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">Todos</option>
             {TENANT_STATUSES.map((s) => (
@@ -126,7 +126,7 @@ export default async function SuperAdminTenantsPage({
             id="plan"
             name="plan"
             defaultValue={planSlug ?? ''}
-            className="h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="h-11 md:h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">Todos</option>
             {plansList.map((p) => (
@@ -138,14 +138,14 @@ export default async function SuperAdminTenantsPage({
         </div>
         <button
           type="submit"
-          className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
+          className="h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
         >
           Filtrar
         </button>
         {(q || status || planSlug) && (
           <Link
             href="/super-admin/tenants"
-            className="flex h-10 items-center rounded-md px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex h-11 md:h-10 items-center rounded-md px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             Limpiar
           </Link>

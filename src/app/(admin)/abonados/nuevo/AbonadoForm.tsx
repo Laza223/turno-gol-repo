@@ -10,7 +10,7 @@ const DAYS = [
   { value: '4', label: 'Jueves' }, { value: '5', label: 'Viernes' }, { value: '6', label: 'Sábado' }, { value: '0', label: 'Domingo' },
 ]
 const initial: NewAbonadoState = { status: 'idle' }
-const field = 'h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
+const field = 'h-11 md:h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
 const labelCls = 'space-y-1 text-sm block'
 const labelSpan = 'font-medium text-foreground'
 
@@ -83,7 +83,7 @@ export function PreviewSlotsView({
         <button
           type="button"
           onClick={onBack}
-          className="h-10 rounded-lg border border-border px-5 text-sm font-semibold text-foreground hover:bg-accent transition-colors"
+          className="h-11 md:h-10 rounded-lg border border-border px-5 text-sm font-semibold text-foreground hover:bg-accent transition-colors"
         >
           Volver a editar
         </button>
@@ -91,7 +91,7 @@ export function PreviewSlotsView({
           type="button"
           onClick={onConfirm}
           disabled={noSlots || isConfirming}
-          className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+          className="h-11 md:h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
         >
           {isConfirming ? 'Guardando…' : 'Crear abonado'}
         </button>
@@ -240,7 +240,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
       <button
         type="submit"
         disabled={isPreviewing}
-        className="h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+        className="h-11 md:h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
       >
         {isPreviewing ? 'Cargando…' : 'Ver fechas del turno'}
       </button>

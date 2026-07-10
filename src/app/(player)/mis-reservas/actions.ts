@@ -10,6 +10,7 @@ import { enforce } from '@/shared/rate-limit'
 import { withPlayerContext, withTenantContext, getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
+import { settleRefund } from '@/modules/payments/payment.service'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotInConfirmedError,
@@ -19,6 +20,7 @@ import {
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
+import { captureMessage } from '@/lib/sentry'
 
 const cancelSchema = z.object({
   bookingId: uuid,
@@ -74,10 +76,10 @@ export async function cancelMyBookingAction(
     }
   }
 
-  const result = await withTenantContext(pre.tenant_id, async (tx) => {
+  const txResult = await withTenantContext(pre.tenant_id, async (tx) => {
     try {
-      const booking = await cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx)
-      return { success: true as const, booking }
+      const outcome = await cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx)
+      return { success: true as const, booking: outcome.booking, pendingRefund: outcome.pendingRefund }
     } catch (err) {
       if (err instanceof BookingNotOwnedByPlayerError) {
         return { success: false as const, error: 'No tenés permiso para cancelar esta reserva.' }
@@ -103,6 +105,29 @@ export async function cancelMyBookingAction(
     }
   })
 
-  if (result.success) revalidatePath('/mis-reservas')
-  return result
+  if (!txResult.success) return txResult
+
+  revalidatePath('/mis-reservas')
+
+  // caza-bugs #3: el refund a MP se resuelve DESPUÉS de que la cancelación ya
+  // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
+  // tx). Si esta llamada falla, la cancelación del jugador ya es válida —no
+  // hay rollback— pero el refund queda pendiente de resolución manual/retry.
+  if (txResult.pendingRefund && gateway) {
+    try {
+      await settleRefund(txResult.pendingRefund, gateway, pre.tenant_id)
+    } catch (err) {
+      captureMessage('mp refund settlement failed after player cancellation', {
+        level: 'error',
+        extra: {
+          bookingId: parsed.data.bookingId,
+          tenantId: pre.tenant_id,
+          refundPaymentId: txResult.pendingRefund.refundPaymentId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      })
+    }
+  }
+
+  return { success: true, booking: txResult.booking }
 }

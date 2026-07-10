@@ -49,8 +49,8 @@ describe('withCircuitBreaker', () => {
     const inner = makeInner()
     const gw = withCircuitBreaker(inner, 'k', new CircuitBreaker({ now: () => 0 }))
 
-    await gw.createRefund('pay-1', 500)
-    expect(inner.createRefund).toHaveBeenCalledWith('pay-1', 500)
+    await gw.createRefund('pay-1', 500, 'idem-1')
+    expect(inner.createRefund).toHaveBeenCalledWith('pay-1', 500, 'idem-1')
 
     await gw.updatePreapprovalAmount('pa-1', 9900)
     expect(inner.updatePreapprovalAmount).toHaveBeenCalledWith('pa-1', 9900)

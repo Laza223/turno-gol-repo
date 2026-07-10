@@ -9,9 +9,11 @@ import {
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   createDepositPayment,
-  createRefund,
+  prepareRefund,
+  settleRefund,
   processWebhook,
 } from '@/modules/payments/payment.service'
+import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotPendingPaymentError,
   RefundInvalidStateError,
@@ -357,8 +359,8 @@ describe('processWebhook — race against expiry (Pilar C)', () => {
   })
 })
 
-describe('createRefund — new row, no cash_flow (Fix #9 Fase 3)', () => {
-  it('refund inserts a new payment row and leaves the original untouched', async () => {
+describe('prepareRefund + settleRefund — new row, no cash_flow (Fix #9 Fase 3; saga split caza-bugs #3)', () => {
+  it('prepareRefund inserts a pending row inside the tx; settleRefund calls MP after commit and approves it', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -389,9 +391,18 @@ describe('createRefund — new row, no cash_flow (Fix #9 Fase 3)', () => {
 
     const gateway = new MockGateway()
 
-    const result = await withTenantContext(tenant.id, (tx) =>
-      createRefund(originalId, undefined, gateway, tx),
+    const prepared = await withTenantContext(tenant.id, (tx) =>
+      prepareRefund(originalId, undefined, tx),
     )
+
+    // Phase 1 never touches MP: no gateway call yet, refund row inserted 'pending'.
+    expect(gateway.refundCalls).toHaveLength(0)
+    const afterPrepare = await getPaymentRows(bookingId)
+    const pendingRefund = afterPrepare.find((r) => r.id === prepared.refundPaymentId)
+    expect(pendingRefund).toMatchObject({ type: 'refund', amount: 240000, status: 'pending', mp_payment_id: null })
+
+    const settled = await settleRefund(prepared, gateway, tenant.id)
+    expect(settled.status).toBe('approved')
 
     expect(gateway.refundCalls).toHaveLength(1)
     expect(gateway.refundCalls[0]!.mpPaymentId).toBe(mpPaymentId)
@@ -402,11 +413,12 @@ describe('createRefund — new row, no cash_flow (Fix #9 Fase 3)', () => {
     expect(original!.status).toBe('approved')
     expect(original!.type).toBe('deposit')
 
-    const refund = rows.find((r) => r.id === result.refundPaymentId)
+    const refund = rows.find((r) => r.id === prepared.refundPaymentId)
     expect(refund).toBeDefined()
     expect(refund!.type).toBe('refund')
     expect(refund!.amount).toBe(240000)
     expect(refund!.status).toBe('approved')
+    expect(refund!.mp_payment_id).not.toBeNull()
 
     // Refund does NOT generate a cash_flow row (Fix #9).
     expect(await getCashFlowCount(bookingId)).toBe(0)
@@ -452,6 +464,98 @@ describe('createDepositPayment — booking-payment consistency (Fix #13)', () =>
     const pendingRow = rows.find((r) => r.status === 'pending' && r.mp_preference_id === pref.preferenceId)
     expect(pendingRow).toBeDefined()
     expect(pendingRow!.id).toBe(bookingRow[0]!.payment_id)
+  })
+})
+
+// ─── GAP (caza-bugs #1): re-link post-webhook, no cancelación huérfana ─────
+// Ningún test previo encadenaba createDepositPayment → webhook approval →
+// cancelación: cancellations.test.ts inserta el payment 'approved' YA linkeado
+// a mano (linkPaymentToBooking), así que nunca ejercitó el camino real por el
+// que bookings.payment_id llega a apuntar a una fila aprobada. Sin este test,
+// una regresión que vuelva a "insertar fila nueva en vez de re-linkear" pasa
+// la suite entera en verde mientras prepareRefund lanza RefundInvalidStateError
+// en producción para TODA cancelación con seña MP.
+describe('createDepositPayment → webhook approval → cancelByPlayer — re-link (caza-bugs #1)', () => {
+  it('bookings.payment_id sigue apuntando a la misma fila tras el webhook, y la cancelación refunda de verdad', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '18:00',
+      timeEnd: '19:00',
+      depositAmount: 240_000,
+    })
+
+    const gateway = new MockGateway()
+    await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+
+    const introRow = await sql<{ payment_id: string | null }[]>`
+      SELECT payment_id FROM bookings WHERE id = ${bookingId}
+    `
+    const intentPaymentId = introRow[0]!.payment_id
+    expect(intentPaymentId).not.toBeNull()
+
+    const mpPaymentId = `mp-pay-relink-${bookingId.slice(0, 8)}`
+    gateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'account_money',
+    }
+
+    await withTenantContext(tenant.id, (tx) =>
+      processWebhook(
+        {
+          mpEventId: `evt-relink-${bookingId.slice(0, 8)}`,
+          eventType: 'payment',
+          mpPaymentId,
+          rawPayload: { id: 'evt-relink', data: { id: mpPaymentId } },
+        },
+        tenant.id,
+        gateway,
+        tx,
+      ),
+    )
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+
+    // Re-linkeo: el webhook actualizó la MISMA fila (misma id que
+    // createDepositPayment ya había puesto en bookings.payment_id) en vez de
+    // insertar una fila nueva y huérfana.
+    const afterWebhook = await sql<
+      { payment_id: string | null; deposit_status: string }[]
+    >`SELECT payment_id, deposit_status FROM bookings WHERE id = ${bookingId}`
+    expect(afterWebhook[0]!.payment_id).toBe(intentPaymentId)
+    expect(afterWebhook[0]!.deposit_status).toBe('paid')
+
+    const rows = await getPaymentRows(bookingId)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      id: intentPaymentId,
+      status: 'approved',
+      mp_payment_id: mpPaymentId,
+      amount: 240_000,
+    })
+
+    // La cancelación debe refundar de verdad, no lanzar RefundInvalidStateError
+    // por encontrar mp_payment_id=NULL en la fila que payment_id todavía apuntaba.
+    // prepareRefund (dentro de la tx) no toca MP todavía — recién settleRefund,
+    // después de commitear, hace la llamada real (caza-bugs #3).
+    const canceled = await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, 'me arrepentí', gateway, tx),
+    )
+    expect(canceled.booking.status).toBe('canceled_refunded')
+    expect(canceled.pendingRefund).toBeDefined()
+    expect(gateway.refundCalls).toHaveLength(0)
+
+    await settleRefund(canceled.pendingRefund!, gateway, tenant.id)
+    expect(gateway.refundCalls).toContainEqual({ mpPaymentId, amount: 240_000 })
   })
 })
 
@@ -657,7 +761,7 @@ describe('createDepositPayment / createRefund — guards', () => {
     expect(await getPaymentRows(bookingId)).toHaveLength(0)
   })
 
-  it('createRefund rechaza el refund de un pago no aprobado sin llamar a MP', async () => {
+  it('prepareRefund rechaza el refund de un pago no aprobado sin llamar a MP', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -687,7 +791,7 @@ describe('createDepositPayment / createRefund — guards', () => {
 
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        createRefund(pendingPaymentId, undefined, gateway, tx),
+        prepareRefund(pendingPaymentId, undefined, tx),
       ),
     ).rejects.toBeInstanceOf(RefundInvalidStateError)
 

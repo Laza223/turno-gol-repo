@@ -2,7 +2,7 @@
  * E2E — Admin cancels booking with paid MP deposit → canceled_refunded (doc7 Flujo 3)
  *
  * DECISION — Option A (demo tenant, no real MP call):
- *   cancelByAdmin (booking.cancellation.ts:165) only calls createRefund when BOTH
+ *   cancelByAdmin (booking.cancellation.ts:165) only calls prepareRefund when BOTH
  *   `b.payment_id !== null` AND `gateway !== null`. In the E2E scenario the booking
  *   is inserted with payment_id=null (no real MP preference created), so the MP API
  *   call is unconditionally skipped and the action succeeds with the demo tenant's

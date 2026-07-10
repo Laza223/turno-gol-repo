@@ -397,7 +397,7 @@ async function handleInProcess(
 }
 
 /**
- * INSERT...ON CONFLICT (mp_payment_id) DO UPDATE.
+ * INSERT...ON CONFLICT (mp_payment_id) DO UPDATE, re-linked first.
  *
  * MP can emit multiple events for the same payment (`pending` → `in_process` →
  * `approved`). The same MP payment id reuses the same payment row; only the
@@ -405,6 +405,16 @@ async function handleInProcess(
  *
  * `processed_webhooks.mp_event_id` blocks duplicate **events**; this UPSERT
  * handles distinct events about the same payment.
+ *
+ * `createDepositPayment` already pointed `bookings.payment_id` at an "intent"
+ * row (status='pending', mp_payment_id=NULL) before MP was ever called. On the
+ * FIRST event for a booking, re-link that same row (UPDATE by
+ * `p.id = b.payment_id AND p.mp_payment_id IS NULL`) instead of inserting a
+ * new one — otherwise `bookings.payment_id` keeps pointing at a row that never
+ * gets an `mp_payment_id`, and `createRefund` (which reads `bookings.payment_id`)
+ * throws `RefundInvalidStateError` on every cancellation with a paid deposit.
+ * Once re-linked, subsequent events for the same `mp_payment_id` fall through
+ * to the ON CONFLICT branch below and keep updating that same row.
  */
 async function upsertPaymentRow(
   info: GatewayPaymentInfo,
@@ -412,6 +422,20 @@ async function upsertPaymentRow(
   status: 'pending' | 'in_process' | 'approved' | 'rejected' | 'refunded',
   tx: DbTx,
 ): Promise<void> {
+  const relinked = await tx.execute(sql`
+    UPDATE payments p
+    SET mp_payment_id = ${info.mpPaymentId},
+        status = ${status}::payment_status,
+        amount = ${info.amount},
+        processed_at = ${status === 'approved' || status === 'in_process' ? sql`NOW()` : sql`NULL`}
+    FROM bookings b
+    WHERE b.id = ${info.externalReference}
+      AND p.id = b.payment_id
+      AND p.mp_payment_id IS NULL
+    RETURNING p.id
+  `)
+  if ((relinked as unknown as Array<{ id: string }>).length > 0) return
+
   // Fetch booking to get player_id for the payment row (when inserting fresh).
   const bookingRows = await tx.execute(sql`
     SELECT player_id AS "playerId"
@@ -438,19 +462,34 @@ async function upsertPaymentRow(
   `)
 }
 
+export type PreparedRefund = {
+  refundPaymentId: string
+  mpPaymentId: string
+  refundAmount: number
+}
+
 /**
- * Refund. NEW row in `payments` (type='refund'). Original payment is immutable
- * (Payment Invariante 1).
+ * Refund, phase 1 ("prepare"). NEW row in `payments` (type='refund',
+ * status='pending', mp_payment_id=NULL — a refund "intent", same shape as the
+ * deposit intent row `createDepositPayment` inserts). Original payment is
+ * immutable (Payment Invariante 1). NO `cash_flow` row generated (Fix #9,
+ * Fase 3): la seña nunca tocó caja física; MP procesa el refund directo entre
+ * cuentas.
  *
- * NO `cash_flow` row generated (Fix #9, Fase 3): la seña nunca tocó caja física;
- * MP procesa el refund directo entre cuentas.
+ * Runs inside the CALLER's transaction (cancelByPlayer/cancelByAdmin) so the
+ * booking cancellation and the refund-intent row commit atomically. Does NOT
+ * call MP — see `settleRefund` for phase 2. Splitting it this way fixes a
+ * money bug: calling `gateway.createRefund` from inside this same transaction
+ * meant a later failure in the SAME tx (a lock timeout, a downstream insert
+ * throwing, a crash before commit) rolled back the local refund record while
+ * MP had already sent the money back — a retry would then refund a second
+ * time, because nothing local recorded the first one.
  */
-export async function createRefund(
+export async function prepareRefund(
   paymentId: string,
   amount: number | undefined,
-  gateway: PaymentGateway,
   tx: DbTx,
-): Promise<{ refundPaymentId: string }> {
+): Promise<PreparedRefund> {
   const lockRows = await tx.execute(sql`
     SELECT id, tenant_id AS "tenantId", booking_id AS "bookingId",
            player_id AS "playerId", amount, type, status,
@@ -503,8 +542,6 @@ export async function createRefund(
     throw new RefundAmountExceedsOriginalError(paymentId, refundAmount, available)
   }
 
-  const refund = await gateway.createRefund(original.mpPaymentId, refundAmount)
-
   const inserted = await tx
     .insert(payments)
     .values({
@@ -515,12 +552,52 @@ export async function createRefund(
       currency: 'ARS',
       type: 'refund',
       method: 'mercadopago',
-      status: refund.status === 'approved' ? 'approved' : 'pending',
-      mpPaymentId: refund.mpRefundId,
+      status: 'pending',
       description: `Refund of ${original.id}`,
     })
     .returning({ id: payments.id })
 
-  return { refundPaymentId: inserted[0]!.id }
+  return {
+    refundPaymentId: inserted[0]!.id,
+    mpPaymentId: original.mpPaymentId,
+    refundAmount,
+  }
+}
+
+/**
+ * Refund, phase 2 ("settle"). Calls MP with NO open transaction, then persists
+ * the outcome in a short tx of its own.
+ *
+ * The idempotency key is the refund-intent row's OWN id, not the original
+ * payment's id: a booking can have more than one refund against the same
+ * original payment (the over-refund guard in `prepareRefund` explicitly sums
+ * PRIOR refunds, so partial refunds are anticipated), and keying by the
+ * original payment would make MP treat two distinct partial refunds as the
+ * same request. Keying by the refund row's id is still deterministic across
+ * RETRIES of settling the SAME attempt (a caller that re-invokes settleRefund
+ * for a refund stuck in 'pending' — e.g. after a crash between the MP call and
+ * this function's own tx — reuses the same key, so MP returns the original
+ * result instead of refunding twice).
+ */
+export async function settleRefund(
+  prepared: PreparedRefund,
+  gateway: PaymentGateway,
+  tenantId: string,
+): Promise<{ status: 'approved' | 'pending' }> {
+  const refund = await gateway.createRefund(
+    prepared.mpPaymentId,
+    prepared.refundAmount,
+    `refund:${prepared.refundPaymentId}`,
+  )
+  const status = refund.status === 'approved' ? ('approved' as const) : ('pending' as const)
+
+  await withTenantContext(tenantId, async (tx) => {
+    await tx
+      .update(payments)
+      .set({ mpPaymentId: refund.mpRefundId, status })
+      .where(eq(payments.id, prepared.refundPaymentId))
+  })
+
+  return { status }
 }
 

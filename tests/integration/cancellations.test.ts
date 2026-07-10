@@ -31,6 +31,7 @@ import {
   cancelByPlayer,
   handleNoShow,
 } from '@/modules/bookings/booking.cancellation'
+import { settleRefund } from '@/modules/payments/payment.service'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
@@ -340,10 +341,14 @@ describe('cancelByPlayer — 4A: in-policy, deposit paid', () => {
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    // MockGateway.createRefund auto-resolves
-    await withTenantContext(tenant.id, async (tx) => {
-      await cancelByPlayer(bookingId, player.id, 'ya no puedo', mockGateway, tx)
-    })
+    // MockGateway.createRefund auto-resolves. prepareRefund solo deja la fila
+    // 'pending' durable dentro de la tx (caza-bugs #3); settleRefund, después
+    // del commit, llama a MP de verdad.
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, 'ya no puedo', mockGateway, tx),
+    )
+    expect(outcome.pendingRefund).toBeDefined()
+    await settleRefund(outcome.pendingRefund!, mockGateway, tenant.id)
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
@@ -474,9 +479,11 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', mockGateway, tx)
-    })
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', mockGateway, tx),
+    )
+    expect(outcome.pendingRefund).toBeDefined()
+    await settleRefund(outcome.pendingRefund!, mockGateway, tenant.id)
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')

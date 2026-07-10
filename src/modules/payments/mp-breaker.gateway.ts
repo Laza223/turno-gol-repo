@@ -37,7 +37,8 @@ export function withCircuitBreaker(
   return {
     createPreference: (input) => breaker.execute(key, () => inner.createPreference(input)),
     getPaymentStatus: (id) => breaker.execute(key, () => inner.getPaymentStatus(id)),
-    createRefund: (id, amount) => breaker.execute(key, () => inner.createRefund(id, amount)),
+    createRefund: (id, amount, idempotencyKey) =>
+      breaker.execute(key, () => inner.createRefund(id, amount, idempotencyKey)),
     searchPaymentsByReference: (ref) =>
       breaker.execute(key, () => inner.searchPaymentsByReference(ref)),
     createPreapproval: (input) => breaker.execute(key, () => inner.createPreapproval(input)),

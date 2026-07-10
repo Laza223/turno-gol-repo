@@ -63,7 +63,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
 
   it('devuelve success con la reserva cancelada en el happy path', async () => {
     const booking = { id: 'booking-1', status: 'canceled_refunded' }
-    vi.mocked(cancelByPlayer).mockResolvedValueOnce(booking as never)
+    vi.mocked(cancelByPlayer).mockResolvedValueOnce({ booking, pendingRefund: undefined } as never)
     const result = await cancelMyBookingAction(VALID_UUID)
     expect(result).toEqual({ success: true, booking })
   })

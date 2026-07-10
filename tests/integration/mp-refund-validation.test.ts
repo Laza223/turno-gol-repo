@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
-import { createRefund } from '@/modules/payments/payment.service'
-import { MockGateway } from '@/modules/payments/mp-gateway.mock'
+import { prepareRefund } from '@/modules/payments/payment.service'
 import {
   cleanupAll,
   createTestPlayer,
@@ -60,7 +59,6 @@ async function setupApprovedPayment(amount = 100_000): Promise<string> {
 describe('MP createRefund validation gaps', () => {
   it('refund amount > original.amount → currently allowed (potential bug)', async () => {
     const paymentId = await setupApprovedPayment(100_000)
-    const gateway = new MockGateway()
 
     // Attempt refund of 200_000 on a 100_000 payment.
     // Defensive code would reject this; if it succeeds, document as a gap.
@@ -68,7 +66,7 @@ describe('MP createRefund validation gaps', () => {
     let errMsg = ''
     try {
       await withTenantContext(tenant.id, async (tx) => {
-        await createRefund(paymentId, 200_000, gateway, tx)
+        await prepareRefund(paymentId, 200_000, tx)
       })
       succeeded = true
     } catch (e) {
@@ -81,17 +79,16 @@ describe('MP createRefund validation gaps', () => {
 
   it('double refund on same payment → currently allowed (potential bug)', async () => {
     const paymentId = await setupApprovedPayment(50_000)
-    const gateway = new MockGateway()
 
     await withTenantContext(tenant.id, async (tx) => {
-      await createRefund(paymentId, 50_000, gateway, tx)
+      await prepareRefund(paymentId, 50_000, tx)
     })
 
     let secondSucceeded = false
     let errMsg = ''
     try {
       await withTenantContext(tenant.id, async (tx) => {
-        await createRefund(paymentId, 50_000, gateway, tx)
+        await prepareRefund(paymentId, 50_000, tx)
       })
       secondSucceeded = true
     } catch (e) {
@@ -104,10 +101,9 @@ describe('MP createRefund validation gaps', () => {
 
   it('original payment status remains "approved" after refund (not updated to "refunded")', async () => {
     const paymentId = await setupApprovedPayment(75_000)
-    const gateway = new MockGateway()
 
     await withTenantContext(tenant.id, async (tx) => {
-      await createRefund(paymentId, 75_000, gateway, tx)
+      await prepareRefund(paymentId, 75_000, tx)
     })
 
     const s = getSql()

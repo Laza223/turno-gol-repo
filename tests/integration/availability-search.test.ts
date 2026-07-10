@@ -73,8 +73,15 @@ async function seedBooking(
   status = 'confirmed',
 ): Promise<void> {
   await sql`
-    INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end, status, price_snapshot)
-    VALUES (${tenantId}, ${courtId}, ${DATE}, ${timeStart}, ${timeEnd}, ${status}, 0)
+    INSERT INTO bookings (
+      tenant_id, court_id, date, time_start, time_end, starts_at, ends_at, status, price_snapshot
+    )
+    VALUES (
+      ${tenantId}, ${courtId}, ${DATE}, ${timeStart}, ${timeEnd},
+      (${DATE}::date + ${timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${DATE}::date + ${timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      ${status}, 0
+    )
   `
 }
 

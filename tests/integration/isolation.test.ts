@@ -199,9 +199,19 @@ const insertOps: Record<string, InsertFn> = {
   tenant_player_bans: async (tx, tid) =>
     tx`INSERT INTO tenant_player_bans (tenant_id, player_id, reason)
       VALUES (${tid}, ${B.playerId}, 'spoof')`,
-  bookings: async (tx, tid) =>
-    tx`INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end, price_snapshot, deposit_amount, deposit_status, payment_method)
-      VALUES (${tid}, ${B.courtId}, ${faker.date.future().toISOString().slice(0, 10)}, '10:00', '11:00', 100000, 0, 'not_required', NULL)`,
+  bookings: async (tx, tid) => {
+    const date = faker.date.future().toISOString().slice(0, 10)
+    return tx`INSERT INTO bookings (
+        tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, payment_method
+      )
+      VALUES (
+        ${tid}, ${B.courtId}, ${date}, '10:00', '11:00',
+        (${date}::date + '10:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (${date}::date + '11:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        100000, 0, 'not_required', NULL
+      )`
+  },
   // Usar un player EXISTENTE (el de A). La versión anterior insertaba un player
   // fresco primero, que falla RLS en `players` (sin policy INSERT para
   // authenticated) → el error era sobre la tabla "players", NO
@@ -441,18 +451,23 @@ describe('J. positive policies (cierre de gaps)', () => {
   })
 
   it('player_self_insert (bookings): jugador A inserta booking a su nombre', async () => {
+    const date = faker.date.future().toISOString().slice(0, 10)
     const inserted = await withContextRollback(
       { role: 'authenticated', playerId: A.playerId },
       (tx) =>
         tx<{ id: string }[]>`
           INSERT INTO bookings (
             tenant_id, court_id, player_id, date, time_start, time_end,
+            starts_at, ends_at,
             price_snapshot, deposit_amount, deposit_status, payment_method
           )
           VALUES (
             ${tenantA.id}, ${A.courtId}, ${A.playerId},
-            ${faker.date.future().toISOString().slice(0, 10)},
-            '10:00', '11:00', 100000, 0, 'not_required', NULL
+            ${date},
+            '10:00', '11:00',
+            (${date}::date + '10:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+            (${date}::date + '11:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+            100000, 0, 'not_required', NULL
           )
           RETURNING id
         `,
@@ -461,6 +476,7 @@ describe('J. positive policies (cierre de gaps)', () => {
   })
 
   it('player_self_insert: jugador A NO puede insertar booking con player_id de B', async () => {
+    const date = faker.date.future().toISOString().slice(0, 10)
     await expect(
       withContextRollback(
         { role: 'authenticated', playerId: A.playerId },
@@ -468,12 +484,16 @@ describe('J. positive policies (cierre de gaps)', () => {
           tx`
             INSERT INTO bookings (
               tenant_id, court_id, player_id, date, time_start, time_end,
+              starts_at, ends_at,
               price_snapshot, deposit_amount, deposit_status, payment_method
             )
             VALUES (
               ${tenantA.id}, ${A.courtId}, ${B.playerId},
-              ${faker.date.future().toISOString().slice(0, 10)},
-              '12:00', '13:00', 100000, 0, 'not_required', NULL
+              ${date},
+              '12:00', '13:00',
+              (${date}::date + '12:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+              (${date}::date + '13:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+              100000, 0, 'not_required', NULL
             )
           `,
       ),

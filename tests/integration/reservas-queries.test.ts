@@ -20,9 +20,17 @@ async function seedBooking(tenantId: string, date: string, overrides: { status?:
     VALUES (${tenantId}, 'Cancha 1', 10, ${sql.json(PRICING)}, 'online') RETURNING id
   `
   const booking = await sql<{ id: string }[]>`
-    INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end, type, status, price_snapshot, guest_name)
-    VALUES (${tenantId}, ${court[0]!.id}, ${date}::date, '10:00', '11:00', 'spontaneous',
-            ${overrides.status ?? 'confirmed'}::booking_status, 900000, ${overrides.guestName ?? 'Juan Invitado'})
+    INSERT INTO bookings (
+      tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+      type, status, price_snapshot, guest_name
+    )
+    VALUES (
+      ${tenantId}, ${court[0]!.id}, ${date}::date, '10:00', '11:00',
+      (${date}::date + '10:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${date}::date + '11:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      'spontaneous',
+      ${overrides.status ?? 'confirmed'}::booking_status, 900000, ${overrides.guestName ?? 'Juan Invitado'}
+    )
     RETURNING id
   `
   return booking[0]!.id

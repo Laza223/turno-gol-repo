@@ -352,11 +352,14 @@ describe('cashflow service', () => {
     const bookingId = await sql<{ id: string }[]>`
       INSERT INTO bookings (
         tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
         price_snapshot, deposit_amount, deposit_status, status
       )
       VALUES (
         ${tenant.id}, ${courtId}, ${player.id},
         ${FUTURE_DATE}::date, '14:00'::time, '15:00'::time,
+        (${FUTURE_DATE}::date + '14:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (${FUTURE_DATE}::date + '15:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         ${800000}, ${240000}, 'paid', 'confirmed'
       )
       RETURNING id

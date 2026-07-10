@@ -195,10 +195,13 @@ describe('abonado service', () => {
     // Manually insert a "past" booking (before ABO_START) to verify it's preserved
     await sql`
       INSERT INTO bookings (tenant_id, court_id, abonado_id, date, time_start, time_end,
+        starts_at, ends_at,
         type, status, price_snapshot, deposit_amount, deposit_status)
       VALUES (
         ${tenant.id}, ${courtId}, ${abonado.id},
         ${'2025-01-06'}::date, '20:00'::time, '21:00'::time,
+        (${'2025-01-06'}::date + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (${'2025-01-06'}::date + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         'fixed', 'completed', ${800000}, 0, 'not_required'
       )
     `
@@ -306,11 +309,16 @@ describe('abonado service', () => {
 
     await sql`
       INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end,
+        starts_at, ends_at,
         type, status, price_snapshot, deposit_amount, deposit_status)
       VALUES
         (${tenant.id}, ${courtId}, ${conflictDate1}::date, '14:00'::time, '15:00'::time,
+         (${conflictDate1}::date + '14:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+         (${conflictDate1}::date + '15:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
          'spontaneous', 'confirmed', ${100000}, 0, 'not_required'),
         (${tenant.id}, ${courtId}, ${conflictDate2}::date, '14:00'::time, '15:00'::time,
+         (${conflictDate2}::date + '14:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+         (${conflictDate2}::date + '15:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
          'spontaneous', 'confirmed', ${100000}, 0, 'not_required')
     `
 

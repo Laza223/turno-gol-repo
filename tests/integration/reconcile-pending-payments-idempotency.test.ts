@@ -73,11 +73,14 @@ async function setupReconcilableBooking() {
   const [{ id: bookingId }] = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status, created_at
     )
     VALUES (
       ${tenant.id}, ${courtId}, ${player.id},
       ${FUTURE_DATE}::date, '20:00'::time, '21:00'::time,
+      (${FUTURE_DATE}::date + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${FUTURE_DATE}::date + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
       800000, 240000, 'pending', NULL, 'pending_payment',
       NOW() - INTERVAL '10 minutes'
     )

@@ -38,10 +38,13 @@ async function insertBooking(params: {
   const rows = await db<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       type, status, price_snapshot, deposit_amount, deposit_status
     ) VALUES (
       ${params.tenantId}, ${params.courtId}, ${params.playerId},
       ${params.date}::date, ${params.timeStart}::time, ${params.timeEnd}::time,
+      (${params.date}::date + ${params.timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${params.date}::date + ${params.timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
       'spontaneous', 'confirmed', ${800000}, 0, 'not_required'
     )
     RETURNING id

@@ -52,8 +52,15 @@ beforeAll(async () => {
       for (const h of hours) {
         const end = `${String(Number(h.slice(0, 2)) + 1).padStart(2, '0')}:00`
         await sql`
-          INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end, status, price_snapshot)
-          VALUES (${tenantId}, ${courtId}, ${DATE}, ${h}, ${end}, 'confirmed', 0)
+          INSERT INTO bookings (
+            tenant_id, court_id, date, time_start, time_end, starts_at, ends_at, status, price_snapshot
+          )
+          VALUES (
+            ${tenantId}, ${courtId}, ${DATE}, ${h}, ${end},
+            (${DATE}::date + ${h}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
+            (${DATE}::date + ${end}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+            'confirmed', 0
+          )
         `
       }
     }

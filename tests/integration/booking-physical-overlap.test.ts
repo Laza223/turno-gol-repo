@@ -5,7 +5,6 @@ import { SlotTakenError } from '@/modules/bookings/booking.errors'
 import {
   cleanupAll, createTestPlayer, createTestTenant, ensureRoles, linkPlayerToTenant,
 } from '../helpers/tenant'
-import { insertCourt } from '../helpers/factories'
 import { seedIsolationData, type IsolationSeed } from '../helpers/seed'
 
 let tenant: { id: string }

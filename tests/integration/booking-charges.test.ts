@@ -42,11 +42,14 @@ async function insertBooking(opts: {
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${FUTURE_DATE}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      (${FUTURE_DATE}::date + ${opts.timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${FUTURE_DATE}::date + ${opts.timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
       ${opts.price}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, NULL, 'confirmed'
     )
     RETURNING id

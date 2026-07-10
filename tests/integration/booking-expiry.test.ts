@@ -45,10 +45,13 @@ async function insertPending(
 ): Promise<string> {
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
-      tenant_id, court_id, player_id, date, time_start, time_end, type,
+      tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at, type,
       status, price_snapshot, deposit_amount, deposit_status, payment_method, created_at
     ) VALUES (
       ${tenantId}, ${courtId}, ${playerId}, ${FUTURE}::date, ${timeStart}, ${timeEnd},
+      (${FUTURE}::date + ${timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${FUTURE}::date + ${timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
       'spontaneous', 'pending_payment', 1000000, 300000, 'pending', NULL,
       NOW() - (${ageSeconds} * INTERVAL '1 second')
     ) RETURNING id

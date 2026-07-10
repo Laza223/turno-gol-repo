@@ -126,7 +126,7 @@ git commit -m "feat(bookings): helper puro physicalRange para instante físico d
 
 **Files:**
 - Modify: `src/shared/db/schema/bookings.ts:43-45`
-- Create: `src/shared/db/migrations/036_booking_physical_instants_add.sql`
+- Create: `src/shared/db/migrations/040_booking_physical_instants_add.sql`
 
 **Interfaces:**
 - Produces: columnas `bookings.starts_at` / `bookings.ends_at` (timestamptz, nullable por ahora), backfilleadas en filas existentes. Drizzle: `bookings.startsAt` / `bookings.endsAt`.
@@ -138,7 +138,7 @@ En `src/shared/db/schema/bookings.ts`, después de la línea `timeEnd: time('tim
 ```ts
     // Instante físico absoluto (fuente única para lógica fuerte + constraint).
     // date/time_start/time_end quedan para día operativo + display. NOT NULL se
-    // activa en migr. 037 una vez que todos los inserts los populan.
+    // activa en migr. 041 una vez que todos los inserts los populan.
     startsAt: timestamp('starts_at', { withTimezone: true, mode: 'date' }),
     endsAt: timestamp('ends_at', { withTimezone: true, mode: 'date' }),
 ```
@@ -146,10 +146,10 @@ En `src/shared/db/schema/bookings.ts`, después de la línea `timeEnd: time('tim
 - [ ] **Step 2: Escribir la migración aditiva de columnas + backfill**
 
 ```sql
--- src/shared/db/migrations/036_booking_physical_instants_add.sql
+-- src/shared/db/migrations/040_booking_physical_instants_add.sql
 -- ============================================================
--- 036: bookings.starts_at / ends_at (timestamptz) — instante físico absoluto.
--- Aditiva, nullable + backfill. NOT NULL + swap de constraint van en 037.
+-- 040: bookings.starts_at / ends_at (timestamptz) — instante físico absoluto.
+-- Aditiva, nullable + backfill. NOT NULL + swap de constraint van en 041.
 -- El backfill usa la lógica PHYSICALLY_NEXT_DAY en SQL UNA sola vez (no runtime).
 -- AT TIME ZONE nombrada = -3 para toda fecha real (2026+), idéntico al artDateAt
 -- fijo del app. date + '24:00'::time rola a día siguiente 00:00 en Postgres.
@@ -192,7 +192,7 @@ Expected: PASS. (Columnas nullable → inserts viejos dejan NULL, permitido; nad
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/shared/db/schema/bookings.ts src/shared/db/migrations/036_booking_physical_instants_add.sql supabase/migrations/
+git add src/shared/db/schema/bookings.ts src/shared/db/migrations/040_booking_physical_instants_add.sql supabase/migrations/
 git commit -m "feat(bookings): columnas starts_at/ends_at (nullable) + backfill (migr. 036)"
 ```
 
@@ -409,7 +409,7 @@ git commit -m "feat(bookings): stampear starts_at/ends_at en los 3 insert sites 
 
 **Files:**
 - Modify: `src/shared/db/schema/bookings.ts` (flip a `.notNull()`)
-- Create: `src/shared/db/migrations/037_booking_physical_instants_enforce.sql`
+- Create: `src/shared/db/migrations/041_booking_physical_instants_enforce.sql`
 - Create: `tests/integration/booking-physical-overlap.test.ts`
 
 **Interfaces:**
@@ -509,9 +509,9 @@ Expected: el primer caso puede fallar (el constraint viejo keyea `date WITH =` +
 - [ ] **Step 4: Migración de enforcement + swap de constraint**
 
 ```sql
--- src/shared/db/migrations/037_booking_physical_instants_enforce.sql
+-- src/shared/db/migrations/041_booking_physical_instants_enforce.sql
 -- ============================================================
--- 037: NOT NULL sobre starts_at/ends_at + exclusion constraint por instante.
+-- 041: NOT NULL sobre starts_at/ends_at + exclusion constraint por instante.
 -- El constraint deja de keyear 'date WITH =': el overlap depende del instante
 -- físico, no del día operativo bajo el que se archiva el slot. btree_gist ya
 -- cargado (migr. 001); tstzrange no requiere extensión nueva.
@@ -540,7 +540,7 @@ Expected: PASS. Los race tests validan que el constraint nuevo sigue previniendo
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/shared/db/schema/bookings.ts src/shared/db/migrations/037_booking_physical_instants_enforce.sql supabase/migrations/ tests/integration/booking-physical-overlap.test.ts
+git add src/shared/db/schema/bookings.ts src/shared/db/migrations/041_booking_physical_instants_enforce.sql supabase/migrations/ tests/integration/booking-physical-overlap.test.ts
 git commit -m "feat(bookings): NOT NULL + exclusion constraint por tstzrange(starts_at,ends_at) (migr. 037)"
 ```
 
@@ -626,6 +626,18 @@ git commit -m "refactor(bookings): lógica fuerte lee starts_at/ends_at directo;
 ```
 
 ---
+
+### Task 6: Sweep de insert sites de test faltantes (gap del mapa de blast radius)
+
+**Contexto:** El mapa "exhaustivo" de insert sites (§Global Constraints) subestimó los tests: hay **31 `INSERT INTO bookings` en 23 archivos** de `tests/`. Tasks 3/5 cubrieron 5 archivos (factories, tenant-context, bookings, cancellations, concurrent-cancellation). El `NOT NULL` de migr. 041 (Task 4) rompió los **18 restantes** con `null value in column starts_at`. Este task los cierra. (El "NOT NULL falla fuerte" del plan hizo su trabajo — detectó el gap.)
+
+**Files (18, cada uno con `INSERT INTO bookings` crudo o helper local):**
+`abonados.test.ts`, `abonado-credit-debt.test.ts`, `availability-search.test.ts`, `availability-search-perf.test.ts`, `booking-active-holds-limit.test.ts`, `booking-charges.test.ts`, `booking-api.test.ts`, `booking-expiry.test.ts`, `cashflow.test.ts`, `isolation.test.ts` (×3, **BLOQUEANTE doc16**), `mp-circuit-breaker-contract.test.ts` (×2), `mp-webhook.test.ts`, `payments.test.ts` (helper `insertPendingBooking`), `player-anonymization.test.ts`, `player-app.test.ts`, `race-abonado-vs-individual.test.ts`, `reconcile-pending-payments-idempotency.test.ts`, `reservas-queries.test.ts` — todos en `tests/integration/`. Además: grepear `scripts/` por seeds con inserts crudos.
+
+**Patrón (igual que `factories.ts` en Task 3):** a cada `INSERT INTO bookings (...)` agregar columnas `starts_at, ends_at` y valores
+`(<date>::date + <time_start>::time) AT TIME ZONE 'America/Argentina/Buenos_Aires'` y el gemelo con `<time_end>`, usando las variables/literales de fecha/hora de ESE insert. Para fixtures de madrugada (día operativo) que dependan del instante corregido, computar con `+ INTERVAL '1 day'` cuando el slot sea post-medianoche.
+
+**Verificación (gate):** `pnpm test:isolation` VERDE (bloqueante). `pnpm test:integration` verde salvo ruido pre-existente documentado (flake cross-file `race-abonado-vs-individual` solo sin reset previo; `r2.ts` typecheck ajeno; unit tslib env). `payments.test.ts` y `cashflow.test.ts` (cobertura `cancelByPlayer`) verdes. Limpieza: borrar import muerto `insertCourt` en `booking-physical-overlap.test.ts:8`. Commit único.
 
 ## Self-Review
 

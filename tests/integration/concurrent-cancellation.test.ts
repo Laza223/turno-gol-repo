@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
+import { physicalRange } from '@/shared/time/physical-range'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   cleanupAll,
@@ -69,14 +70,23 @@ async function insertBooking(opts: {
   depositAmount: number
 }): Promise<string> {
   const sql = getSql()
+  // Deuda Task 4 (migr. 041 NOT NULL): starts_at/ends_at ahora obligatorios.
+  const { startsAt, endsAt } = physicalRange({
+    date: FUTURE_DATE,
+    timeStart: opts.timeStart,
+    timeEnd: opts.timeEnd,
+    physicallyNextDay: false,
+  })
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${FUTURE_DATE}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${startsAt.toISOString()}, ${endsAt.toISOString()},
       ${800000}, ${opts.depositAmount}, ${opts.depositStatus}, NULL, ${opts.status}
     )
     RETURNING id

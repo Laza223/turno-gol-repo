@@ -15,6 +15,7 @@ import {
   markNoShow,
 } from '@/modules/bookings/booking.service'
 import { artTodayStr } from '@/shared/dates/art'
+import { physicalRange } from '@/shared/time/physical-range'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import {
   BookingNotInConfirmedError,
@@ -71,16 +72,28 @@ async function insertPendingBooking(opts: {
   date: string
   timeStart: string
   timeEnd: string
+  // Deuda Task 4 (migr. 041 NOT NULL): starts_at/ends_at ahora obligatorios.
+  // Los 3 tests de "día operativo" pasan true para que el instante físico
+  // caiga en la madrugada del día calendario siguiente (ver describe de abajo).
+  physicallyNextDay?: boolean
 }): Promise<string> {
   const sql = getSql()
+  const { startsAt, endsAt } = physicalRange({
+    date: opts.date,
+    timeStart: opts.timeStart,
+    timeEnd: opts.timeEnd,
+    physicallyNextDay: opts.physicallyNextDay ?? false,
+  })
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${startsAt.toISOString()}, ${endsAt.toISOString()},
       ${800000}, ${0}, 'not_required', NULL, 'pending_payment'
     )
     RETURNING id
@@ -102,14 +115,22 @@ async function insertCompletedBooking(opts: {
   agedHours: number
 }): Promise<string> {
   const sql = getSql()
+  const { startsAt, endsAt } = physicalRange({
+    date: opts.date,
+    timeStart: opts.timeStart,
+    timeEnd: opts.timeEnd,
+    physicallyNextDay: false,
+  })
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status, updated_at
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${startsAt.toISOString()}, ${endsAt.toISOString()},
       ${800000}, ${0}, 'not_required', NULL, 'completed',
       NOW() - (${opts.agedHours} || ' hours')::interval
     )
@@ -786,6 +807,7 @@ describe('día operativo (closes_next_day) — instante físico del slot', () =>
       date: todayArt,
       timeStart: '00:00',
       timeEnd: '01:00',
+      physicallyNextDay: true,
     })
     await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
 
@@ -809,6 +831,7 @@ describe('día operativo (closes_next_day) — instante físico del slot', () =>
       date: todayArt,
       timeStart: '00:00',
       timeEnd: '01:00',
+      physicallyNextDay: true,
     })
     await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
 
@@ -832,6 +855,7 @@ describe('día operativo (closes_next_day) — instante físico del slot', () =>
       date: todayArt,
       timeStart: '00:00',
       timeEnd: '01:00',
+      physicallyNextDay: true,
     })
     await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
 

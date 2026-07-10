@@ -44,6 +44,7 @@ import {
   endLabelFromMins,
   normalizeRangeToOpenDay,
 } from '@/shared/time/operating-day'
+import { physicalRange } from '@/shared/time/physical-range'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rowToBookingRow } from './booking.mappers'
 import { calcDepositCents } from './deposit'
@@ -115,7 +116,7 @@ function assertSlotDuration(timeStart: string, timeEnd: string): void {
  * así que su hora de pared ya pasó hoy sin estar vencido. Lee las horas del
  * tenant (global, sin RLS) para decidirlo.
  */
-async function slotIsPhysicallyNextDay(
+export async function slotIsPhysicallyNextDay(
   tenantId: string,
   dateStr: string,
   timeStart: string,
@@ -201,24 +202,16 @@ async function lockCourtOrThrow(
 
 async function checkOverlapOrThrow(
   courtId: string,
-  dateStr: string,
-  timeStart: string,
-  timeEnd: string,
+  startsAt: Date,
+  endsAt: Date,
   tx: DbTx,
 ): Promise<void> {
   const result = await tx.execute(sql`
     SELECT 1
     FROM bookings
     WHERE court_id = ${courtId}
-      AND date = ${dateStr}::date
       AND status IN ('pending_payment', 'confirmed')
-      AND tsrange(
-            ('2000-01-01'::date + time_start)::timestamp,
-            ('2000-01-01'::date + time_end)::timestamp
-          ) && tsrange(
-            ('2000-01-01'::date + ${timeStart}::time)::timestamp,
-            ('2000-01-01'::date + ${timeEnd}::time)::timestamp
-          )
+      AND tstzrange(starts_at, ends_at) && tstzrange(${startsAt.toISOString()}, ${endsAt.toISOString()})
     LIMIT 1
   `)
   if ((result as unknown as unknown[]).length > 0) {
@@ -257,13 +250,14 @@ export async function createManualBooking(
     priceSnapshot = calc
   }
 
-  await checkOverlapOrThrow(
-    input.courtId,
-    input.date,
-    input.timeStart,
-    input.timeEnd,
-    tx,
+  const physicallyNextDay = await slotIsPhysicallyNextDay(
+    tenantId, input.date, input.timeStart, tx,
   )
+  const { startsAt, endsAt } = physicalRange({
+    date: input.date, timeStart: input.timeStart, timeEnd: input.timeEnd, physicallyNextDay,
+  })
+
+  await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
   const depositAmount = input.depositAmount ?? 0
   const depositStatus = input.depositStatus ?? 'not_required'
@@ -287,6 +281,8 @@ export async function createManualBooking(
         date: new Date(`${input.date}T00:00:00Z`),
         timeStart: input.timeStart,
         timeEnd: input.timeEnd,
+        startsAt,
+        endsAt,
         type: input.type,
         status: 'confirmed',
         priceSnapshot,
@@ -455,13 +451,14 @@ async function createOnlineBookingImpl(
   if (calc === null) throw new PriceUnavailableError()
   const priceSnapshot = calc
 
-  await checkOverlapOrThrow(
-    input.courtId,
-    input.date,
-    input.timeStart,
-    input.timeEnd,
-    tx,
+  const physicallyNextDay = await slotIsPhysicallyNextDay(
+    tenantId, input.date, input.timeStart, tx,
   )
+  const { startsAt, endsAt } = physicalRange({
+    date: input.date, timeStart: input.timeStart, timeEnd: input.timeEnd, physicallyNextDay,
+  })
+
+  await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
   const withDeposit = input.requiresDeposit && input.depositPercentage > 0
   const depositAmount = withDeposit
@@ -478,6 +475,8 @@ async function createOnlineBookingImpl(
         date: new Date(`${input.date}T00:00:00Z`),
         timeStart: input.timeStart,
         timeEnd: input.timeEnd,
+        startsAt,
+        endsAt,
         type: 'spontaneous',
         status: withDeposit ? 'pending_payment' : 'confirmed',
         priceSnapshot,

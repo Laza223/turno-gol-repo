@@ -1,5 +1,5 @@
 import { and, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
-import { getDb, withTenantContext } from '@/shared/db/client'
+import { getDb, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import {
   auditLogs,
   bookings,
@@ -15,8 +15,14 @@ import type { TenantSettings } from '@/modules/tenants/tenant.types'
 /**
  * Lecturas cross-tenant del panel SuperAdmin (spec §4 y §5).
  *
- * - `tenants`, `tenant_subscriptions` y `plans` son tablas GLOBALES (sin RLS):
- *   se leen directo con `getDb()`.
+ * - `tenants` y `plans` son tablas GLOBALES (sin RLS): se leen directo con
+ *   `getDb()`.
+ * - `tenant_subscriptions` NO es global (caza-bugs #10): tiene `tenant_id` +
+ *   RLS+FORCE (ver CLAUDE.md "Tablas aisladas"). El super admin la lee
+ *   cross-tenant a propósito (spec: "puede ver todos los tenants"), así que
+ *   usa `getWorkerDb()` (pool de servicio) en vez de `withTenantContext` —
+ *   con `getDb()` el rol restringido `turnogol_app` ve 0 filas fuera de
+ *   `withTenantContext`, dejando plan/estado de suscripción NULL para todos.
  * - `courts`, `tenant_staff_members`, `audit_logs` y `bookings` son tablas RLS:
  *   TODA lectura sobre un tenant específico va dentro de
  *   `withTenantContext(tenantId)` para que la defensa RLS normal aplique.
@@ -81,7 +87,7 @@ function monthlyEquivalentCents(
 }
 
 export async function listTenants(filters: TenantListFilters): Promise<TenantList> {
-  const db = getDb()
+  const db = getWorkerDb()
   const conditions: SQL[] = []
   const q = filters.q?.trim()
   if (q) {
@@ -282,7 +288,10 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
   const t = tenantRows[0]
   if (!t) return null
 
-  const subRows = await db
+  // tenant_subscriptions tiene RLS+FORCE (caza-bugs #10) — pool de servicio,
+  // no el `db` de arriba (restringido, sin contexto de tenant seteado acá).
+  const workerDb = getWorkerDb()
+  const subRows = await workerDb
     .select({
       status: tenantSubscriptions.status,
       planId: tenantSubscriptions.planId,

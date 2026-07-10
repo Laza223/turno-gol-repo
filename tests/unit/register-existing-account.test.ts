@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { signUpStaff, dbLimit } = vi.hoisted(() => ({
+const { signUpStaff, dbLimit, getDb } = vi.hoisted(() => ({
   signUpStaff: vi.fn(async () => ({ ok: true }) as { ok: true } | { ok: false; error: string }),
   dbLimit: vi.fn(async () => [] as Array<{ id: string }>),
+  // caza-bugs (6ta oleada): staff_users tiene RLS relacional que exige
+  // app.current_tenant_id — inexistente en este punto del registro. getDb()
+  // (pool restringido) es la trampa: si el código volviera a usarlo en vez de
+  // getWorkerDb(), este mock explota en vez de devolver 0 filas silenciosas.
+  getDb: vi.fn(() => {
+    throw new Error('TRAP: getDb() no debe usarse acá — staff_users necesita getWorkerDb()')
+  }),
 }))
 
 vi.mock('next/headers', () => ({
@@ -10,7 +17,8 @@ vi.mock('next/headers', () => ({
 }))
 vi.mock('@/modules/auth/auth.service', () => ({ signUpStaff }))
 vi.mock('@/shared/db/client', () => ({
-  getDb: () => ({
+  getDb,
+  getWorkerDb: () => ({
     select: () => ({ from: () => ({ where: () => ({ limit: dbLimit }) }) }),
   }),
 }))
@@ -45,6 +53,7 @@ describe('registerAction email+password (#41 / auth migration)', () => {
     expect(res.status).toBe('existing')
     if (res.status === 'existing') expect(res.email).toBe('marce@complejo.com')
     expect(signUpStaff).not.toHaveBeenCalled()
+    expect(getDb).not.toHaveBeenCalled()
   })
 
   it('si el email es nuevo crea la cuenta y queda en "confirm"', async () => {

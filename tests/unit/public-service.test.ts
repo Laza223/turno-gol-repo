@@ -56,6 +56,19 @@ describe('getPriceForSlot', () => {
     expect(getPriceForSlot(SAMPLE_PRICING.rules, 'mon', '23:30')).toBeNull()
     expect(getPriceForSlot([], 'mon', '08:00')).toBeNull()
   })
+
+  // caza-bugs #11: una regla que cierra a medianoche ('00:00' = fin del día,
+  // no el minuto 0) no matcheaba NUNCA (slotMins < 0 es imposible) — todos los
+  // slots de esa franja, incluidos los de la tardecita, quedaban con precio
+  // null. Mismo tratamiento que court.service.ts calculatePrice.
+  it('cierre a medianoche (00:00 = fin del día) cubre toda la franja, no solo el minuto 0', () => {
+    const rules = [{ days: ['fri'], from: '20:00', to: '00:00', price: 900000 }]
+    expect(getPriceForSlot(rules, 'fri', '20:00')).toBe(900000)
+    expect(getPriceForSlot(rules, 'fri', '22:30')).toBe(900000)
+    expect(getPriceForSlot(rules, 'fri', '23:59')).toBe(900000)
+    // Fuera de la franja: sigue sin matchear.
+    expect(getPriceForSlot(rules, 'fri', '19:59')).toBeNull()
+  })
 })
 
 describe('generateSlots', () => {

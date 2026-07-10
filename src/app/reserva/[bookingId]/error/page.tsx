@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm'
 import { XCircle } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
+import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 
@@ -49,9 +50,12 @@ export default async function ReservaErrorPage({ params }: Props) {
   }
 
   const now = Date.now()
+  // caza-bugs #12: el hold real vence a DEFAULT_EXPIRY_SECONDS (6 min), no 15
+  // — con 15 esta página ofrecía "Reintentar pago" sobre un booking que el
+  // worker de expiración ya había liberado, y el retry fallaba confuso.
   const withinWindow =
     booking.status === 'pending_payment' &&
-    new Date(booking.createdAt).getTime() + 15 * 60 * 1000 > now
+    new Date(booking.createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000 > now
 
   return (
     <ReservaDarkShell>

@@ -55,12 +55,23 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
  * Guard de caja cerrada: no se pueden registrar movimientos en un día ya
  * cerrado (DailyCashClose existe). Extraído para reutilizarlo desde flujos que
  * insertan cash_flows fuera de createCashFlow (p. ej. cobro de deuda).
+ *
+ * caza-bugs #14: toma el MISMO advisory lock que closeDailyRegister (keyed por
+ * tenant) antes de chequear — si un cierre está corriendo en simultáneo sobre
+ * este tenant, este INSERT espera a que termine (commit/rollback) en vez de
+ * colarse entre el aggregate y el INSERT del cierre. Sin esto, un movimiento
+ * podía insertarse después de que closeDailyRegister ya leyó los totales pero
+ * antes de que commiteara, quedando fuera del cierre y aterrizando en un día
+ * ya cerrado.
  */
 export async function assertDayOpen(
   tenantId: string,
   occurredAt: Date,
   tx: DbTx,
 ): Promise<void> {
+  const lockKey = `daily_close:${tenantId}`
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`)
+
   const artDate = artDateOf(occurredAt)
   const closeCheck = await tx.execute(
     sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${artDate}::date LIMIT 1`,

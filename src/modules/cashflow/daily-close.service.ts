@@ -50,6 +50,14 @@ export async function closeDailyRegister(
     throw new CloseDateInFutureError(date)
   }
 
+  // caza-bugs #14: mismo advisory lock que assertDayOpen (keyed por tenant) —
+  // serializa el cierre contra altas de cash_flows concurrentes. Sin esto, un
+  // alta podía commitear entre el aggregate de totales y el INSERT del cierre
+  // (o viceversa), dejando un movimiento fuera del cierre pero aterrizando en
+  // un día ya cerrado.
+  const lockKey = `daily_close:${tenantId}`
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`)
+
   const existing = await tx.execute(
     sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
   )

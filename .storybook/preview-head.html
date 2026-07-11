@@ -1,0 +1,49 @@
+<!--
+  Familias de marca, self-hosted desde los .woff2 YA COMMITEADOS en
+  .design-sync/fonts/ (main.ts los sirve en /sb-fonts vía staticDirs).
+
+  Deliberadamente NO se usa next/font: el plugin vite-plugin-storybook-nextjs-font
+  lo implementa de verdad, pero lo hace fetcheando fonts.googleapis.com en build
+  time — el build queda dependiente de la red y cualquier fallo del fetch cae en
+  system-ui en silencio, poniendo en rojo toda la regresión visual.
+
+  Hueco de fidelidad conocido: src/app/layout.tsx pide Sora en 600/700/800, y
+  .design-sync/fonts/ solo trae Sora 400/600/700. El peso 800 renderiza como bold
+  sintético de 700. Solo <Logo> usa font-logo. Para cerrarlo: agregar 800 a
+  .design-sync/fetch-fonts.mjs y re-correrlo.
+-->
+<link rel="stylesheet" href="/sb-fonts/fonts.css" />
+
+<style>
+  /* Las tres vars que next/font inyecta en src/app/layout.tsx y que consume el
+     fontFamily de tailwind.config.ts (font-sans / font-display / font-logo).
+     Contenido de .design-sync/ds-font-vars.css. */
+  :root {
+    --font-inter: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-archivo: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    --font-sora: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* La app aplica font-sans + antialiased en <body> (src/app/layout.tsx). */
+  body {
+    font-family: var(--font-inter);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Espeja el bloque @media (prefers-reduced-motion: reduce) que ya existe en
+     src/app/globals.css, para que el toggle de la toolbar lo pueda forzar. */
+  .sb-reduce-motion *,
+  .sb-reduce-motion *::before,
+  .sb-reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .sb-reduce-motion .skeleton {
+    animation: none;
+  }
+  .sb-reduce-motion .card-premium-interactive:hover {
+    transform: none;
+  }
+</style>

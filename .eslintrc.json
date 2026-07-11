@@ -14,5 +14,44 @@
       "error",
       { "checksVoidReturn": { "attributes": false } }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/**/*.stories.ts", "src/**/*.stories.tsx", "src/test/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "postgres",
+                  "drizzle-orm",
+                  "drizzle-orm/*",
+                  "pg-boss",
+                  "server-only",
+                  "@supabase/ssr"
+                ],
+                "message": "Módulo server-only: importarlo (incluso transitivamente) mete un driver de Node en el bundle de browser de Storybook."
+              },
+              {
+                "group": [
+                  "@/shared/db",
+                  "@/shared/db/*",
+                  "@/shared/jobs/*",
+                  "@/modules/*/*.service",
+                  "@/modules/*/queries"
+                ],
+                "message": "La capa de DB/servicios es server-only. Importá los TIPOS de dominio desde @/modules/**/*.types.ts (esos archivos no tienen imports) y escribí el fixture a mano."
+              },
+              {
+                "group": ["**/actions", "**/actions.ts"],
+                "message": "Las Server Actions se inyectan como prop (ver InviteStaffDialog) o se reemplazan con sb.mock(). Nunca se importan como valor desde una story. `import type` sí está permitido."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

@@ -8,6 +8,10 @@ const config: Config = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
+    // Los decorators de Storybook usan utilidades que ningún archivo de src/ usa
+    // (superficie del canvas). Sin este glob, Tailwind las purga.
+    // Las stories colocadas en src/**/*.stories.tsx ya las cubre el glob de arriba.
+    './.storybook/**/*.{ts,tsx}',
   ],
   theme: {
     container: {

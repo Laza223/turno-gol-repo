@@ -6,17 +6,34 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
-import { updateReservasPolicyAction, type PolicyActionResult } from './actions'
+import type { PolicyActionResult } from './actions'
 
 const INITIAL_STATE: PolicyActionResult = { success: true }
+
+/** Firma de la Server Action que consume el form. */
+export type UpdateReservasPolicy = (
+  prevState: PolicyActionResult,
+  formData: FormData,
+) => Promise<PolicyActionResult>
 
 /**
  * Form cliente de Políticas de Reserva (#21). Consume el PolicyActionResult vía
  * useFormState para mostrar error/éxito y usa SubmitButton para el estado de carga.
  * Utiliza selectores de chips premium para una experiencia fluida e interactiva.
+ *
+ * La action llega por PROP, no por import. El módulo './actions' es `'use server'`
+ * y arrastra drizzle/postgres y `node:async_hooks` (vía request-context), así que
+ * importarlo como valor lo mete en el grafo de cualquier bundle de browser
+ * (Storybook) y lo rompe. El type import sí es seguro: se borra en compilación.
  */
-export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
-  const [state, formAction] = useFormState(updateReservasPolicyAction, INITIAL_STATE)
+export function ReservasPolicyForm({
+  s,
+  action,
+}: {
+  s: TenantSettings
+  action: UpdateReservasPolicy
+}) {
+  const [state, formAction] = useFormState(action, INITIAL_STATE)
   const [didSubmit, setDidSubmit] = useState(false)
 
   // Toggle states for boolean settings
@@ -57,7 +74,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             type="button"
             onClick={() => setRequiresDeposit(true)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${requiresDeposit
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -67,7 +84,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             type="button"
             onClick={() => setRequiresDeposit(false)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${!requiresDeposit
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -90,7 +107,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
                     type="button"
                     onClick={() => setSelectedPercentage(p)}
                     className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${active
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold'
+                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                         : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
                       }`}
                   >
@@ -102,7 +119,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
                 type="button"
                 onClick={() => setSelectedPercentage('other')}
                 className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${selectedPercentage === 'other'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                     : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
                   }`}
               >
@@ -149,7 +166,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             type="button"
             onClick={() => setAllowOnlineBooking(true)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${allowOnlineBooking
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -159,7 +176,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             type="button"
             onClick={() => setAllowOnlineBooking(false)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${!allowOnlineBooking
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -189,7 +206,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
                 type="button"
                 onClick={() => setSelectedHours(item.value)}
                 className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${active
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                     : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
                   }`}
               >
@@ -201,7 +218,7 @@ export function ReservasPolicyForm({ s }: { s: TenantSettings }) {
             type="button"
             onClick={() => setSelectedHours('other')}
             className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${selectedHours === 'other'
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >

@@ -32,7 +32,9 @@ vi.mock('@/lib/crypto/encrypt', () => ({
 // Mock fetch to control MP token response. Typed to fetch's signature so the
 // recorded `mock.calls` tuples carry the (input, init) args the route passes —
 // otherwise vitest infers a zero-arg call shape and `call[0]`/`call[1]` fail typecheck.
-const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(
+// Vitest 3 unificó los genéricos de vi.fn: antes eran <TArgs, TReturn>, ahora es
+// un único <T extends Procedure> con la firma completa de la función.
+const fetchMock = vi.fn<typeof fetch>(
   async () =>
     new Response(
       JSON.stringify({

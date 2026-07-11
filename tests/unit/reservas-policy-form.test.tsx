@@ -15,27 +15,27 @@ vi.mock('react-dom', async (importOriginal) => {
   }
 })
 
-// Evitar cargar la Server Action real (drizzle/db) al importar el componente.
-vi.mock('@/app/(admin)/settings/reservas/actions', () => ({
-  updateReservasPolicyAction: vi.fn(),
-}))
-
 import { ReservasPolicyForm } from '@/app/(admin)/settings/reservas/ReservasPolicyForm'
 
 const SETTINGS = {} as unknown as TenantSettings
+
+// Ya no hace falta un vi.mock de '@/app/(admin)/settings/reservas/actions' para
+// evitar que drizzle/postgres se carguen al importar el componente: la Server
+// Action entra por prop, así que el componente directamente no la importa.
+const noopAction = vi.fn(async () => ({ success: true as const }))
 
 afterEach(() => cleanup())
 
 describe('ReservasPolicyForm (#21)', () => {
   it('muestra el error cuando la action devuelve success:false', () => {
     formState.mockReturnValue({ success: false, error: 'PIN requerido.' })
-    render(<ReservasPolicyForm s={SETTINGS} />)
+    render(<ReservasPolicyForm s={SETTINGS} action={noopAction} />)
     expect(screen.getByRole('alert').textContent).toContain('PIN requerido.')
   })
 
   it('no muestra alerta de error cuando el estado es success', () => {
     formState.mockReturnValue({ success: true })
-    render(<ReservasPolicyForm s={SETTINGS} />)
+    render(<ReservasPolicyForm s={SETTINGS} action={noopAction} />)
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })

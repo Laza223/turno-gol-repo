@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { ReservasPolicyForm } from './ReservasPolicyForm'
+import { updateReservasPolicyAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function ReservasPolicyPage() {
@@ -21,7 +22,7 @@ export default async function ReservasPolicyPage() {
 
         <div className="card-premium rounded-lg p-6">
           <h2 className="mb-6 text-base font-semibold text-foreground">Políticas de Reserva</h2>
-          <ReservasPolicyForm s={s} />
+          <ReservasPolicyForm s={s} action={updateReservasPolicyAction} />
         </div>
       </div>
   )

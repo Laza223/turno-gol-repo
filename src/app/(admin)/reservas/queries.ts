@@ -125,12 +125,8 @@ export type ReservaDetail = ReservaListRow & {
   canceledReason: string | null
   /** Horas de anticipación de la política de cancelación del complejo (Tarea #3). */
   cancellationPolicyHours: number
-  /** Tarea #4 — datos para el descuento de saldo en turnos fijos de abonado. */
+  /** Tarea #4 — id del abonado si el turno es de tipo fixed (NULL en otro caso). */
   abonadoId: string | null
-  /** Centavos ya descontados del saldo del abonado para esta instancia. */
-  creditApplied: number
-  /** Saldo a favor disponible del abonado (null si el turno no es de abonado). */
-  abonadoCreditBalance: number | null
 }
 
 export async function getBookingDetail(
@@ -147,8 +143,6 @@ export async function getBookingDetail(
            b.canceled_reason AS "canceledReason",
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS "cancellationPolicyHours",
            b.abonado_id AS "abonadoId",
-           b.credit_applied AS "creditApplied",
-           ab.credit_balance AS "abonadoCreditBalance",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            p.phone AS "playerPhone"
@@ -156,7 +150,6 @@ export async function getBookingDetail(
     JOIN courts c ON c.id = b.court_id
     JOIN tenants t ON t.id = b.tenant_id
     LEFT JOIN players p ON p.id = b.player_id
-    LEFT JOIN abonados ab ON ab.id = b.abonado_id
     WHERE b.tenant_id = ${tenantId} AND b.id = ${bookingId}
     LIMIT 1
   `)

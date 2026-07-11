@@ -18,7 +18,7 @@ import type {
 } from './cashflow.types'
 
 const VALID_COMBOS: Record<CashFlowType, CashFlowCategory[]> = {
-  income: ['booking', 'product_sale', 'other', 'abonado_payment'],
+  income: ['booking', 'product_sale', 'other'],
   adjustment: ['other', 'no_show_correction'],
   expense: ['operating_expense'],
 }
@@ -44,7 +44,6 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
     description: r.description,
     bookingId: r.bookingId ?? null,
     productId: r.productId ?? null,
-    abonadoId: r.abonadoId ?? null,
     registeredBy: r.registeredBy,
     occurredAt: r.occurredAt,
     createdAt: r.createdAt,
@@ -99,11 +98,11 @@ export async function createCashFlow(
     const result = await tx.execute(sql`
       INSERT INTO cash_flows (
         tenant_id, type, category, amount, method, description,
-        booking_id, product_id, abonado_id, registered_by, occurred_at, client_idempotency_key
+        booking_id, product_id, registered_by, occurred_at, client_idempotency_key
       ) VALUES (
         ${tenantId}, ${input.type}::cashflow_type, ${input.category}::cashflow_category,
         ${input.amount}, ${input.method}::payment_method, ${input.description},
-        ${input.bookingId ?? null}, ${input.productId ?? null}, ${input.abonadoId ?? null},
+        ${input.bookingId ?? null}, ${input.productId ?? null},
         ${staffUserId}, ${occurredAt.toISOString()},
         ${input.clientIdempotencyKey}
       )
@@ -133,7 +132,6 @@ export async function createCashFlow(
       description: input.description,
       bookingId: input.bookingId ?? null,
       productId: input.productId ?? null,
-      abonadoId: input.abonadoId ?? null,
       registeredBy: staffUserId,
       occurredAt,
     })
@@ -163,7 +161,6 @@ export async function getCashFlows(
     description: string
     booking_id: string | null
     product_id: string | null
-    abonado_id: string | null
     registered_by: string
     occurred_at: Date
     created_at: Date
@@ -177,7 +174,6 @@ export async function getCashFlows(
     description: r.description,
     bookingId: r.booking_id,
     productId: r.product_id,
-    abonadoId: r.abonado_id,
     registeredBy: r.registered_by,
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),

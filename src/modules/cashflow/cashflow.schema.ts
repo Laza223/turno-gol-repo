@@ -19,7 +19,6 @@ const cashFlowRowResponseSchema = z
     description: z.string(),
     bookingId: uuid.nullable(),
     productId: uuid.nullable(),
-    abonadoId: uuid.nullable(),
     registeredBy: z.string(),
     occurredAt: z.string(),
     createdAt: z.string(),

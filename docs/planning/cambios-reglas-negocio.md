@@ -43,7 +43,8 @@
   - [x] `canceled_reason` incluye el tipo de cancelación (prefijo) + audit metadata `cancellationType`/`inPolicy`
   - [x] Lógica: `decideAdminRefund` (complejo→reembolso forzado; jugador→política horaria). API `cancelBookingAction`/route reciben `cancellation_type` en vez de `should_refund`.
 
-### 4. 📅 Sistema de cobro de Abonados: copiar modelo ATC ("Saldo a Favor") — ✅ HECHO
+### 4. 📅 Sistema de cobro de Abonados: copiar modelo ATC ("Saldo a Favor") — ⛔ REVERTIDO / ELIMINADO (2026-07-10)
+> **REVERTIDO (2026-07-10)**: el modelo ATC de saldo a favor se descartó para fútbol. Se eliminaron `abonados.credit_balance`, `bookings.credit_applied`, `cash_flows.abonado_id` y la categoría `abonado_payment` del enum `cashflow_category` (migración 042), junto con `abonados.monthly_price` (dato muerto). El abonado vuelve a tener solo `price_per_session`. Queda la historia del cambio abajo como referencia; NO representa el estado actual del código/docs.
 - **Antes**: No había forma de trackear si un abonado pagó o no. El `CashFlow` no tenía relación con el `Abonado`. El admin registraba plata en la caja pero no sabía qué abonado pagó qué mes.
 - **Ahora**: Sistema de **saldo a favor por abonado**, copiando el modelo probado de ATC Sports.
 

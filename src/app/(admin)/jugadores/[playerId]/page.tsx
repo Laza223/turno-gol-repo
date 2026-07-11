@@ -7,11 +7,9 @@ import { capitalizeFirst } from '@/lib/format'
 import {
   getPlayerProfile,
   getPlayerStats,
-  getPlayerAbonados,
   getPlayerBookingHistory,
 } from '../queries'
 import DebtPayment from './DebtPayment'
-import AbonadoCreditLoader from './AbonadoCreditLoader'
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -56,16 +54,15 @@ export default async function JugadorProfilePage({ params }: Props) {
   const data = await withTenantContext(tenant.id, async (tx) => {
     const profile = await getPlayerProfile(tenant.id, params.playerId, tx)
     if (!profile) return null
-    const [stats, abonados, history] = await Promise.all([
+    const [stats, history] = await Promise.all([
       getPlayerStats(tenant.id, params.playerId, tx),
-      getPlayerAbonados(tenant.id, params.playerId, tx),
       getPlayerBookingHistory(tenant.id, params.playerId, tx),
     ])
-    return { profile, stats, abonados, history }
+    return { profile, stats, history }
   })
 
   if (!data) notFound()
-  const { profile, stats, abonados, history } = data
+  const { profile, stats, history } = data
 
   const statCards: Array<[string, string]> = [
     ['Reservas totales', String(stats.total)],
@@ -113,8 +110,6 @@ export default async function JugadorProfilePage({ params }: Props) {
       </div>
 
       <DebtPayment playerId={profile.playerId} balance={profile.balance} />
-
-      <AbonadoCreditLoader playerId={profile.playerId} abonados={abonados} />
 
       <section className="card-premium rounded-xl p-6">
         <h2 className="text-sm font-semibold text-foreground">Historial de reservas</h2>

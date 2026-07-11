@@ -12,9 +12,6 @@ export type AbonadoRow = {
   timeStart: string
   timeEnd: string
   pricePerSession: number
-  monthlyPrice: number
-  /** Saldo a favor del abonado en centavos de ARS (modelo ATC, Tarea #4). */
-  creditBalance: number
   startsOn: Date
   endsOn: Date | null
   status: AbonadoStatus
@@ -33,7 +30,6 @@ export type CreateAbonadoInput = {
   timeStart: string
   timeEnd: string
   pricePerSession: number
-  monthlyPrice: number
   startsOn: string
   endsOn?: string
   paymentMethod?: AbonadoPaymentMethod

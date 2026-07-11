@@ -42,12 +42,12 @@ export async function insertAbonado(
   const rows = await sql<{ id: string }[]>`
     INSERT INTO abonados (
       tenant_id, court_id, contact_name, contact_phone,
-      day_of_week, time_start, time_end, price_per_session, monthly_price, starts_on
+      day_of_week, time_start, time_end, price_per_session, starts_on
     )
     VALUES (
       ${tenantId}, ${courtId}, ${faker.person.fullName()}, ${faker.phone.number()},
       ${faker.number.int({ min: 0, max: 6 })}, '20:00', '21:00',
-      ${1500000}, ${6000000}, ${new Date().toISOString().slice(0, 10)}
+      ${1500000}, ${new Date().toISOString().slice(0, 10)}
     )
     RETURNING id
   `

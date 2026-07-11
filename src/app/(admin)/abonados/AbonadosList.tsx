@@ -100,7 +100,6 @@ export function AbonadosList({ abonados, filterLabel }: Props) {
               <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Día / horario</th>
               <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Contacto</th>
               <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio por turno</th>
-              <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio mensual</th>
               <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</th>
               <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</th>
             </tr>
@@ -267,7 +266,6 @@ function AbonadoTableRow({ abonado: a }: { abonado: AbonadoRow }) {
           <div className="text-muted-foreground text-xs">{a.contactPhone}</div>
         </td>
         <td className="p-3 text-right tabular-nums">{formatArs(a.pricePerSession)}</td>
-        <td className="p-3 text-right tabular-nums">{formatArs(a.monthlyPrice)}</td>
         <td className="p-3">
           <AbonadoStatusBadge status={a.status} />
         </td>
@@ -342,8 +340,7 @@ function AbonadoCard({ abonado: a }: { abonado: AbonadoRow }) {
         <AbonadoStatusBadge status={a.status} />
       </div>
       <p className="text-sm text-muted-foreground">
-        Turno {formatArs(a.pricePerSession)} · Mensual{' '}
-        <span className="font-medium text-foreground">{formatArs(a.monthlyPrice)}</span>
+        Turno {formatArs(a.pricePerSession)}
       </p>
       {(isActive || isPaused) && (
         <div className="flex gap-2">

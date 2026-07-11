@@ -81,7 +81,6 @@ describe('abonado service', () => {
         timeStart: '14:00',
         timeEnd: '15:00',
         pricePerSession: 800000,
-        monthlyPrice: 3200000,
         startsOn: ABO_START,
         paymentMethod: 'cash',
       }, tx),
@@ -120,7 +119,6 @@ describe('abonado service', () => {
         timeStart: '16:00',
         timeEnd: '17:00',
         pricePerSession: 800000,
-        monthlyPrice: 3200000,
         startsOn: ABO_START,
       }, tx),
     )
@@ -151,7 +149,6 @@ describe('abonado service', () => {
         timeStart: '18:00',
         timeEnd: '19:00',
         pricePerSession: 800000,
-        monthlyPrice: 3200000,
         startsOn: ABO_START,
       }, tx),
     )
@@ -187,7 +184,6 @@ describe('abonado service', () => {
         timeStart: '20:00',
         timeEnd: '21:00',
         pricePerSession: 800000,
-        monthlyPrice: 3200000,
         startsOn: ABO_START,
       }, tx),
     )
@@ -253,7 +249,6 @@ describe('abonado service', () => {
         timeStart: '09:00',
         timeEnd: '10:00',
         pricePerSession: 800000,
-        monthlyPrice: 3200000,
         startsOn: ABO_START,
       }, tx),
     )

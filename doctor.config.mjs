@@ -204,9 +204,9 @@ export default {
       // de acá se verificó leyendo TODOS sus exports: el auth check corre antes de
       // tocar withTenantContext/DB en cada uno.
       {
-        // 7/7: createBookingAction, confirmDepositPaymentAction, completeBookingAction,
-        // markNoShowAction, cancelBookingAction, addBookingChargeAction,
-        // toggleAbonadoCreditAction — todas llaman requireOperatorStaff() primero.
+        // 6/7: createBookingAction, confirmDepositPaymentAction, completeBookingAction,
+        // markNoShowAction, cancelBookingAction, addBookingChargeAction —
+        // todas llaman requireOperatorStaff() primero.
         files: ['**/reservas/actions.ts'],
         rules: ['react-doctor/server-auth-actions'],
       },

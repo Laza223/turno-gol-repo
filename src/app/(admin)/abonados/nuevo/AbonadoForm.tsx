@@ -27,7 +27,6 @@ type FormValues = {
   contactName: string
   contactPhone: string
   pricePerSession: string
-  monthlyPrice: string
   startsOn: string
   paymentMethod: string
   notes: string
@@ -121,7 +120,6 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
       contactName: fd.get('contactName') as string,
       contactPhone: fd.get('contactPhone') as string,
       pricePerSession: fd.get('pricePerSession') as string,
-      monthlyPrice: fd.get('monthlyPrice') as string,
       startsOn: fd.get('startsOn') as string,
       paymentMethod: (fd.get('paymentMethod') as string) || 'cash',
       notes: (fd.get('notes') as string) || '',
@@ -223,13 +221,6 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
                 </select>
               </label>
             </div>
-            <label className={labelCls}>
-              <span className={labelSpan}>Precio mensual (en pesos)</span>
-              <input name="monthlyPrice" type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" required placeholder="Ej: 100000" className={field} />
-              <span className="block text-xs font-normal text-muted-foreground">
-                La cuota que el abonado paga por mes por su turno fijo. Es el monto que vas a cobrarle cada mes.
-              </span>
-            </label>
           </fieldset>
         </div>
       </div>

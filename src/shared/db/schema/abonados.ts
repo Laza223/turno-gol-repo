@@ -35,12 +35,6 @@ export const abonados = pgTable(
     timeEnd: time('time_end').notNull(),
 
     pricePerSession: integer('price_per_session').notNull(),
-    monthlyPrice: integer('monthly_price').notNull(),
-
-    // Saldo a favor del abonado (centavos ARS, modelo ATC, Tarea #4). Se carga
-    // vía CashFlow abonado_payment y se consume al descontar sesiones
-    // (bookings.credit_applied). No se transfiere entre abonados del jugador.
-    creditBalance: integer('credit_balance').notNull().default(0),
 
     startsOn: date('starts_on', { mode: 'date' }).notNull(),
     endsOn: date('ends_on', { mode: 'date' }),
@@ -71,10 +65,6 @@ export const abonados = pgTable(
     pricePositive: check(
       'chk_abonado_price_positive',
       sql`${table.pricePerSession} > 0`,
-    ),
-    creditNonNegative: check(
-      'chk_abonado_credit_non_negative',
-      sql`${table.creditBalance} >= 0`,
     ),
     tenantIdx: index('idx_abonados_tenant').on(table.tenantId),
     tenantStatusIdx: index('idx_abonados_tenant_status').on(

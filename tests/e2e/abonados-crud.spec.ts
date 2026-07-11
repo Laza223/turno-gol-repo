@@ -98,7 +98,6 @@ async function insertAbonado(
     time_start: opts.timeStart ?? '14:00',
     time_end: opts.timeEnd ?? '15:00',
     price_per_session: 500000,
-    monthly_price: 2000000,
     starts_on: opts.startsOn,
     status: 'active',
     payment_method: 'cash',
@@ -153,7 +152,6 @@ test.describe('Abonados CRUD', () => {
       // es el hidden que arma el valor internacional (+54 …) y no es fillable.
       await page.fill('#contactPhone', contactPhone)
       await page.fill('input[name="pricePerSession"]', '5000')
-      await page.fill('input[name="monthlyPrice"]', '20000')
       await page.fill('input[name="startsOn"]', startsOn)
 
       await page.getByRole('button', { name: /Ver fechas del turno/i }).click()
@@ -210,7 +208,6 @@ test.describe('Abonados CRUD', () => {
       await page.fill('input[name="contactName"]', 'E2E Conflict')
       await page.fill('#contactPhone', contactPhone)
       await page.fill('input[name="pricePerSession"]', '5000')
-      await page.fill('input[name="monthlyPrice"]', '20000')
       await page.fill('input[name="startsOn"]', startsOn)
 
       await page.getByRole('button', { name: /Ver fechas del turno/i }).click()

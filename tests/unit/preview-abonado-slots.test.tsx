@@ -58,9 +58,6 @@ function fillFormAndSubmit() {
   fireEvent.change(form.querySelector('input[name="pricePerSession"]') as HTMLInputElement, {
     target: { value: '5000' },
   })
-  fireEvent.change(form.querySelector('input[name="monthlyPrice"]') as HTMLInputElement, {
-    target: { value: '20000' },
-  })
   fireEvent.change(form.querySelector('input[name="startsOn"]') as HTMLInputElement, {
     target: { value: '2026-06-01' },
   })
@@ -199,7 +196,6 @@ describe('AbonadoForm — preview phase', () => {
     expect((fd as FormData).get('contactName')).toBe('Grupo Test')
     expect((fd as FormData).get('contactPhone')).toBe('1199887766')
     expect((fd as FormData).get('pricePerSession')).toBe('5000')
-    expect((fd as FormData).get('monthlyPrice')).toBe('20000')
     expect((fd as FormData).get('startsOn')).toBe('2026-06-01')
     expect((fd as FormData).get('paymentMethod')).toBe('cash')
   })

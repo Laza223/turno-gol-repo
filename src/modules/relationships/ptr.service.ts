@@ -92,7 +92,6 @@ type RawCashFlow = {
   description: string
   booking_id: string | null
   product_id: string | null
-  abonado_id: string | null
   registered_by: string
   occurred_at: Date
   created_at: Date
@@ -109,7 +108,6 @@ function rawToCashFlowRow(r: RawCashFlow): CashFlowRow {
     description: r.description,
     bookingId: r.booking_id,
     productId: r.product_id,
-    abonadoId: r.abonado_id,
     registeredBy: r.registered_by,
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),

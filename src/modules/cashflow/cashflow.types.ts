@@ -5,7 +5,6 @@ export type CashFlowCategory =
   | 'other'
   | 'no_show_correction'
   | 'operating_expense'
-  | 'abonado_payment'
 export type CashPaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
 
 export type CashFlowRow = {
@@ -18,7 +17,6 @@ export type CashFlowRow = {
   description: string
   bookingId: string | null
   productId: string | null
-  abonadoId: string | null
   registeredBy: string
   occurredAt: Date
   createdAt: Date
@@ -74,7 +72,6 @@ export type CreateCashFlowInput = {
   description: string
   bookingId?: string
   productId?: string
-  abonadoId?: string
   occurredAt?: Date
   /** UUID v4 generado por el cliente al abrir el formulario. Previene duplicados por doble-submit. */
   clientIdempotencyKey?: string

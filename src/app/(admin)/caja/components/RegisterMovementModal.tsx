@@ -17,8 +17,6 @@ const TYPES: { value: CfType; label: string }[] = [
   { value: 'adjustment', label: 'Ajuste' },
 ]
 
-// abonado_payment NO se ofrece manual: rompería el invariante de credit_balance
-// (solo lo crea el módulo Abonados; el schema del server también lo bloquea).
 const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
   income: [
     { value: 'booking', label: 'Reserva' },

@@ -67,11 +67,9 @@ test.describe('UX Audit Screenshot Capturer', () => {
       time_start: '14:00:00',
       time_end: '15:00:00',
       price_per_session: 12000,
-      monthly_price: 48000,
       starts_on: getTestDate(1),
       status: 'active',
       payment_method: 'cash',
-      credit_balance: 15000, // 150 ARS in centavos
     })
   })
 
@@ -340,18 +338,10 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await adminPage.goto('/abonados')
     await takeShot(adminPage, 'admin', 'abonados_listado')
 
-    // Abonados detail & collection loader (on player profile detail page)
+    // Abonados detail (on player profile detail page)
     await adminPage.goto(`/jugadores/${PLAYER_ID}`)
     await expect(adminPage.getByText('E2E Player')).toBeVisible()
-    await takeShot(adminPage, 'admin', 'abonados_detalle_con_saldo')
-
-    // Click load balance button inside the abonado card
-    const loadBalanceBtn = adminPage.getByRole('button', { name: /cargar saldo/i }).first()
-    if (await loadBalanceBtn.count() > 0) {
-      await loadBalanceBtn.click()
-      await expect(adminPage.getByLabel(/monto/i)).toBeVisible()
-      await takeShot(adminPage, 'admin', 'abonados_modal_de_cobro')
-    }
+    await takeShot(adminPage, 'admin', 'abonados_detalle')
 
     // Settings Layout
     await adminPage.goto('/settings')

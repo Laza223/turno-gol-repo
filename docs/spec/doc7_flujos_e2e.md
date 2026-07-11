@@ -786,12 +786,7 @@ PASO 2 — Definir precio del abonado
   │     ├── Pre-cargado: precio de hora de la cancha según court.pricing en ese horario
   │     ├── El admin puede editarlo (override): precio especial para abonados
   │     └── Ejemplo: cancha vale $12.000 de noche, pero al abonado se le cobra $10.000
-  ├── Precio mensual (editable por el admin):
-  │     ├── Pre-llenado: price_per_session × 4.33 (promedio de sesiones/mes)
-  │     ├── El admin puede editarlo: redondeo, descuento por fidelidad, etc.
-  │     ├── Ejemplo: calculado = $43.300, el admin pone $40.000 como precio pack
-  │     └── Se almacena como `monthly_price` en el Abonado (atributo propio, no derivado)
-  └── Output: precio definido
+  └── Output: precio definido (`price_per_session`, único atributo de precio del Abonado)
 
 PASO 3 — Verificación de disponibilidad recurrente
   ├── El sistema verifica las próximas 8 semanas desde starts_on:
@@ -889,35 +884,7 @@ Job diario (cron: 03:00 ART):
 4. **Un feriado cae en el día del abonado**: No se genera instancia para ese día. El admin puede agregarlo manualmente a otro día si quiere.
 5. **Se crea un abonado y después se crea una reserva individual en un slot del abonado**: ERROR — el slot ya está ocupado por la instancia del abonado. La reserva individual no se puede crear.
 6. **El responsable del abonado no tiene celular registrado**: Se guarda `contact_phone` en el abonado. No necesita ser un Player registrado.
-7. **El abonado quiere pagar el mes por adelantado en efectivo**: El admin carga saldo a favor en el abonado (ver "Saldo a favor" abajo). Genera un CashFlow `income`/`abonado_payment` con `abonado_id` y acredita `credit_balance`.
-
-### Saldo a favor (cobro de abonado, cambio #4)
-
-Modelo ATC adaptado. El saldo vive en el **abonado** (`abonados.credit_balance`), no en el jugador.
-
-```
-CARGA DE SALDO (cuando el complejo recibe la plata):
-  Ficha del Jugador → Abonados → "+ Cargar saldo" (monto + medio de pago)
-    ├── CashFlow income / abonado_payment con abonado_id → entra a la caja del día
-    └── credit_balance += monto   (recalculado desde fuentes → idempotente)
-
-DESCUENTO SEMANAL (manual, cuando el grupo viene a jugar):
-  Detalle del booking fixed (instancia confirmada) → sección "Saldo a favor del abonado"
-    ├── Checkbox "Mantener saldo" (tildado por defecto, como ATC)
-    ├── DESTILDAR → descuenta price_snapshot del credit_balance
-    │     ├── setea bookings.credit_applied = price_snapshot
-    │     └── NO genera CashFlow (la plata ya entró al cargar el saldo)
-    ├── Re-TILDAR → devuelve el saldo (credit_applied → 0). Solo mientras la instancia está confirmed.
-    └── Si el saldo no alcanza (credit_balance < price_snapshot) → ❌ "El saldo no alcanza"
-
-INVARIANTE: credit_balance = Σ(abonado_payment) − Σ(credit_applied). CHECK >= 0.
-```
-
-| Caso (semana a semana) | Acción del admin |
-|---|---|
-| "Hoy pago en efectivo, no descuentes" | Mantener saldo (tildado) + registrar cobro nuevo si corresponde |
-| "Descontá del saldo que cargué" | Destildar "Mantener saldo" |
-| "Vino el primo pero descontá igual" | Destildar "Mantener saldo" |
+7. **El abonado quiere pagar el mes por adelantado en efectivo**: El admin registra el cobro como movimiento de caja normal (`CashFlow` vinculado al booking `fixed` correspondiente, "Cobros de turno", cambio #8) cada semana que juega. No existe saldo a favor pre-cargado: el sistema de crédito estilo ATC fue evaluado y **eliminado** (2026-07-10, cambio #4).
 
 ### Out of scope
 
@@ -949,7 +916,7 @@ FICHA (/jugadores/{playerId})
   │     └── Acciones: "+ Crear Ban" (razón, duración) o "Levantar Ban" (activos)
   │           ├── Crear/desactivar en tenant_player_bans
   │           └── El jugador queda bloqueado o desbloqueado para reservar online
-  ├── Abonados: abonos del jugador con su saldo a favor → "+ Cargar saldo" (ver Flujo 5)
+  ├── Abonados: abonos activos del jugador en este complejo (ver Flujo 5)
   └── Historial: últimas reservas con estado
 ```
 
@@ -965,7 +932,6 @@ FICHA (/jugadores/{playerId})
 | Evento | Efecto |
 |---|---|
 | Ban manual creado/levantado | 📊 AuditLog: `player.ban_created` / `player.ban_lifted` |
-| Carga de saldo de abonado | 📊 AuditLog: `abonado.credit_loaded` · CashFlow `abonado_payment` |
 
 ---
 

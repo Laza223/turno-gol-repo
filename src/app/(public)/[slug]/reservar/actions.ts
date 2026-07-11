@@ -19,7 +19,6 @@ import {
   BookingValidationError,
   CourtOfflineError,
   PlayerBannedError,
-  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
   TooManyActiveHoldsError,
@@ -179,8 +178,10 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     if (err instanceof BookingValidationError) redirect(`${backTo}&error=unavailable`)
     if (err instanceof BookingDateOutOfRangeError) redirect(`${backTo}&error=date_out_of_range`)
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
-    if (err instanceof PlayerBannedError) redirect(`${backTo}&error=banned`)
-    if (err instanceof PlayerHasOutstandingBalanceError) redirect(`${backTo}&error=debt`)
+    if (err instanceof PlayerBannedError) {
+      const untilParam = err.until ? `&until=${encodeURIComponent(err.until.toISOString())}` : ''
+      redirect(`${backTo}&error=banned${untilParam}`)
+    }
     if (err instanceof TooManyActiveHoldsError) redirect(`${backTo}&error=too_many_holds`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError) redirect(`${backTo}&error=unavailable`)
     throw err

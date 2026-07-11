@@ -5,7 +5,7 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { prepareRefund, type PreparedRefund } from '@/modules/payments/payment.service'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
-import { addNoShowDebt } from '@/modules/relationships/ptr.service'
+import { applyNoShowStrike } from '@/modules/relationships/ptr.service'
 import { markNoShow } from './booking.service'
 import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
@@ -277,31 +277,17 @@ export async function cancelByAdmin(
 }
 
 /**
- * Tarea #5: la deuda por no-show = precio del turno − seña capturada.
- * `markNoShow` ya capturó la seña pagada (deposit_status='paid' → 'captured') en
- * la transición, así que acá restamos lo que el complejo se quedó. Función pura
- * para testearla sin DB.
- */
-export function computeNoShowDebt(b: {
-  priceSnapshot: number
-  depositAmount: number
-  depositStatus: DepositStatus
-}): number {
-  const capturedDeposit = b.depositStatus === 'captured' ? b.depositAmount : 0
-  return Math.max(0, b.priceSnapshot - capturedDeposit)
-}
-
-/**
- * Tarea #5 — No-show: en vez del viejo ban temporal por días, el no-show genera
- * deuda financiera. El jugador queda bloqueado para reservar online en este
- * complejo hasta saldarla (createOnlineBooking gatea por balance > 0).
+ * No-show: softban por reincidencia (reemplaza la deuda financiera del cambio
+ * #5, ver applyNoShowStrike). `markNoShow` sigue capturando la seña pagada
+ * (deposit_status='paid' → 'captured') tal cual — eso no cambia, es el único
+ * costo real de faltar.
  *
  *  1. markNoShow transiciona el booking a no_show y captura la seña pagada.
- *  2. Si hay jugador vinculado y deuda > 0, se suma `price − seña` a
- *     player_tenant_relationships.balance (incremento atómico, concurrencia-safe).
- *
- * Los bans manuales (tenant_player_bans) siguen existiendo para otros motivos,
- * pero ya no se disparan automáticamente por no-show.
+ *  2. Si hay jugador vinculado, se registra la ausencia en
+ *     player_tenant_relationships (contador + ventana de reincidencia). La 2da
+ *     ausencia dentro de NO_SHOW_STRIKE_WINDOW_DAYS bloquea reservas online
+ *     por NO_SHOW_SOFTBAN_DAYS vía tenant_player_bans (mismo mecanismo que los
+ *     bans manuales del complejo, checkPlayerBanned ya lo lee).
  */
 export async function handleNoShow(
   bookingId: string,
@@ -321,27 +307,22 @@ export async function handleNoShow(
   })
 
   // Sin jugador vinculado (bloqueo interno / reserva sin player) no hay a quién
-  // cobrarle: no se genera deuda.
+  // aplicarle el strike.
   if (!booking.playerId) return booking
 
-  const debt = computeNoShowDebt(booking)
-  if (debt <= 0) return booking
-
-  await addNoShowDebt(booking.tenantId, booking.playerId, debt, tx)
+  const strike = await applyNoShowStrike(booking.tenantId, booking.playerId, tx)
 
   await insertAuditLog(tx, {
     tenantId: booking.tenantId,
     actorId: staffUserId,
     actorType: 'staff',
-    action: 'player.no_show_debt_created',
+    action: strike.softbanned ? 'player.no_show_softban_applied' : 'player.no_show_recorded',
     resourceType: 'player',
     resourceId: booking.playerId,
     metadata: {
       bookingId,
-      debt,
-      priceSnapshot: booking.priceSnapshot,
-      depositCaptured:
-        booking.depositStatus === 'captured' ? booking.depositAmount : 0,
+      noshowCount: strike.noshowCount,
+      bannedUntil: strike.bannedUntil?.toISOString() ?? null,
     },
   })
 

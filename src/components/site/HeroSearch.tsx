@@ -45,6 +45,7 @@ function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
 export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const router = useRouter()
   const today = useMemo(todayLocal, [])
+  const [q, setQ] = useState('')
   const [city, setCity] = useState('')
   const [cityTouched, setCityTouched] = useState(false)
   const [prefilled, setPrefilled] = useState(false)
@@ -75,6 +76,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const params = new URLSearchParams()
+    if (q.trim()) params.set('q', q.trim())
     if (city) {
       // value is "{city}||{province}" to disambiguate homonyms; split for the URL.
       const [cityPart, provincePart] = city.split('||')
@@ -119,34 +121,54 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
         </div>
 
         <div className="flex flex-col gap-4">
-          <div onFocusCapture={() => setCityTouched(true)}>
-            <label htmlFor="hero-city-v" className={labelClass}>
-              Localidad
+          <div>
+            <label htmlFor="hero-q-v" className={labelClass}>
+              Complejo
             </label>
-            <Combobox
-              id="hero-city-v"
-              options={cityOptions}
-              value={city}
-              onChange={(v) => {
-                setCity(v)
-                setCityTouched(true)
-              }}
-              placeholder="¿Dónde querés jugar?"
-              emptyMessage="No encontramos esa localidad"
-              listboxLabel="Localidades"
-              clearOptionLabel="Todas las ciudades"
-              inputClassName={fieldClass}
-              aria-describedby="hero-city-v-status"
-              leadingIcon={
-                <MapPin
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400"
-                  aria-hidden
-                />
-              }
-            />
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400 z-10"
+                aria-hidden
+              />
+              <input
+                id="hero-q-v"
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="¿Qué club buscás?"
+                className={fieldClass}
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-[1.15fr_1fr] gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div onFocusCapture={() => setCityTouched(true)}>
+              <label htmlFor="hero-city-v" className={labelClass}>
+                Localidad
+              </label>
+              <Combobox
+                id="hero-city-v"
+                options={cityOptions}
+                value={city}
+                onChange={(v) => {
+                  setCity(v)
+                  setCityTouched(true)
+                }}
+                placeholder="¿Dónde?"
+                emptyMessage="No encontramos esa localidad"
+                listboxLabel="Localidades"
+                clearOptionLabel="Todas las ciudades"
+                inputClassName={dateFieldClass}
+                aria-describedby="hero-city-v-status"
+                leadingIcon={
+                  <MapPin
+                    className="pointer-events-none absolute left-3 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400 z-10"
+                    aria-hidden
+                  />
+                }
+              />
+            </div>
+
             <div>
               <label htmlFor="hero-date-v" className={labelClass}>
                 Fecha
@@ -160,13 +182,14 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                 className={dateFieldClass}
               />
             </div>
+
             <div>
               <label htmlFor="hero-time-v" className={labelClass}>
                 Hora
               </label>
               <div className="relative">
                 <Clock
-                  className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400"
+                  className="pointer-events-none absolute left-3 top-1/2 z-10 h-[17px] w-[17px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400"
                   aria-hidden
                 />
                 <DropdownMenu>
@@ -174,12 +197,12 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                     <button
                       type="button"
                       id="hero-time-v"
-                      className={`${fieldClass} flex items-center justify-between text-left pr-10`}
+                      className={`${dateFieldClass} flex items-center justify-between text-left pr-8`}
                     >
                       <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
-                        {time || 'Cualquier horario'}
+                        {time || 'Cualquiera'}
                       </span>
-                      <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-muted-foreground" aria-hidden />
+                      <ChevronDown className="pointer-events-none absolute right-2.5 h-4.5 w-4.5 text-muted-foreground" aria-hidden />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
@@ -231,7 +254,28 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
         <span className="text-[12.5px] font-semibold text-muted-foreground">+1.200 turnos libres hoy</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.05fr_1.05fr_auto] lg:items-end">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_1.05fr_1.05fr_auto] lg:items-end">
+        {/* Complejo */}
+        <div className="sm:col-span-2 lg:col-span-1">
+          <label htmlFor="hero-q" className={labelClass}>
+            Complejo
+          </label>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400 z-10"
+              aria-hidden
+            />
+            <input
+              id="hero-q"
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="¿Qué club buscás?"
+              className={fieldClass}
+            />
+          </div>
+        </div>
+
         {/* Localidad */}
         <div onFocusCapture={() => setCityTouched(true)}>
           <label htmlFor="hero-city" className={labelClass}>
@@ -245,7 +289,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
               setCity(v)
               setCityTouched(true)
             }}
-            placeholder="¿Dónde querés jugar?"
+            placeholder="¿Dónde?"
             emptyMessage="No encontramos esa localidad"
             listboxLabel="Localidades"
             clearOptionLabel="Todas las ciudades"

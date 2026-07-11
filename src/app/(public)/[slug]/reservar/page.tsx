@@ -19,7 +19,17 @@ const TIME_RE = /^\d{2}:\d{2}$/
 
 type Props = {
   params: { slug: string }
-  searchParams: { court?: string; date?: string; time?: string; dur?: string; error?: string }
+  searchParams: { court?: string; date?: string; time?: string; dur?: string; error?: string; until?: string }
+}
+
+function formatBannedUntilArt(iso: string): string | null {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  })
 }
 
 function addMinsToHHMM(hhmm: string, mins: number): string {
@@ -111,12 +121,12 @@ export default async function ReservarPage({ params, searchParams }: Props) {
       )}
       {searchParams.error === 'banned' && (
         <p role="alert" className={alertDestructive}>
-          No podés reservar en este complejo actualmente.
-        </p>
-      )}
-      {searchParams.error === 'debt' && (
-        <p role="alert" className={alertDestructive}>
-          Tenés un saldo pendiente con este complejo. Regularizá tu deuda con el complejo para volver a reservar online.
+          {(() => {
+            const until = searchParams.until ? formatBannedUntilArt(searchParams.until) : null
+            return until
+              ? `Te bloqueamos temporalmente por ausencias. Volvés a poder reservar el ${until}.`
+              : 'No podés reservar en este complejo actualmente.'
+          })()}
         </p>
       )}
       {searchParams.error === 'too_many_holds' && (

@@ -140,18 +140,9 @@ function Hero({ cities }: { cities: CityCount[] }) {
       <div className="relative z-10 mx-auto grid w-full max-w-[1240px] grid-cols-1 items-center gap-14 lg:grid-cols-[1.04fr_0.96fr]">
         {/* Columna izquierda */}
         <div className="min-w-0">
-          {/* Pill de estado en vivo */}
-          <div className="live-pill inline-flex items-center gap-2.5 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold">
-            <span className="relative flex h-[9px] w-[9px] shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
-              <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
-            </span>
-            Disponibilidad en tiempo real
-          </div>
-
           {/* Titular */}
           <h1
-            className="mt-[22px] font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.5)]"
+            className="mt-1 font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.5)]"
             style={{
               fontSize: 'clamp(38px, 5.2vw, 78px)',
               lineHeight: '0.95',
@@ -165,7 +156,7 @@ function Hero({ cities }: { cities: CityCount[] }) {
 
           {/* Subtítulo */}
           <p
-            className="mt-6 max-w-[540px] text-muted-foreground"
+            className="mt-4 max-w-[540px] text-muted-foreground"
             style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}
           >
             Explorá complejos verificados, compará horarios en tiempo real y{' '}
@@ -174,7 +165,7 @@ function Hero({ cities }: { cities: CityCount[] }) {
           </p>
 
           {/* Buscador */}
-          <div className="relative mt-8 max-w-[560px]">
+          <div className="relative mt-5 max-w-[560px]">
             <HeroSearch cities={cities} layout="vertical" />
           </div>
 

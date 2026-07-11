@@ -68,6 +68,7 @@ export async function createCourt(
       // capacity derivado: jugadores totales = format × 2 (cambio #17).
       capacity: data.format * 2,
       pricing: data.pricing as unknown as Record<string, unknown>,
+      photos: data.photos ?? [],
     })
     .returning()
   return rowToCourtRow(row!)

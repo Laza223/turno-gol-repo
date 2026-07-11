@@ -30,18 +30,25 @@ export default function BusinessHeader() {
             <Logo variant="horizontal" textClassName="text-white" />
           </Link>
           <div className="flex items-center gap-1.5">
-            <a
-              href="#features"
+            {/* Rutas absolutas: el header se comparte con /precios, donde los anchors sueltos no existen. */}
+            <Link
+              href="/para-complejos#features"
               className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
             >
               Funciones
-            </a>
-            <a
-              href="#testimonios"
+            </Link>
+            <Link
+              href="/para-complejos#testimonios"
               className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
             >
               Testimonios
-            </a>
+            </Link>
+            <Link
+              href="/precios"
+              className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
+            >
+              Precios
+            </Link>
             <span aria-hidden className="mx-1.5 h-[22px] w-px bg-white/10" />
             <Link
               href="/login"

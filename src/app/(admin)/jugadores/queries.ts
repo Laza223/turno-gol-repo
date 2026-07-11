@@ -6,8 +6,6 @@ export type PlayerListRow = {
   name: string
   email: string
   phone: string | null
-  /** Saldo deudor en centavos (> 0 = deuda → badge rojo). */
-  balance: number
   bookingsCount: number
   noshowCount: number
   status: string
@@ -39,20 +37,17 @@ export async function listTenantPlayers(
     SELECT p.id AS "playerId",
            (p.first_name || ' ' || p.last_name) AS name,
            p.email, p.phone,
-           r.balance, r.bookings_count AS "bookingsCount",
+           r.bookings_count AS "bookingsCount",
            r.noshow_count AS "noshowCount", r.status,
            r.last_booking_at::text AS "lastBookingAt"
     FROM player_tenant_relationships r
     JOIN players p ON p.id = r.player_id
     WHERE r.tenant_id = ${tenantId}
       ${searchCond(filters.q)}
-    ORDER BY (r.balance > 0) DESC, r.last_booking_at DESC NULLS LAST, name ASC
+    ORDER BY r.last_booking_at DESC NULLS LAST, name ASC
     LIMIT 200
   `)
-  return (rows as unknown as Array<PlayerListRow & { balance: number | string }>).map((r) => ({
-    ...r,
-    balance: Number(r.balance ?? 0),
-  }))
+  return rows as unknown as PlayerListRow[]
 }
 
 export type PlayerProfile = {
@@ -60,7 +55,6 @@ export type PlayerProfile = {
   name: string
   email: string
   phone: string | null
-  balance: number
   status: string
   firstSeenAt: string | null
   lastBookingAt: string | null
@@ -75,7 +69,7 @@ export async function getPlayerProfile(
     SELECT p.id AS "playerId",
            (p.first_name || ' ' || p.last_name) AS name,
            p.email, p.phone,
-           r.balance, r.status,
+           r.status,
            r.first_seen_at::text AS "firstSeenAt",
            r.last_booking_at::text AS "lastBookingAt"
     FROM player_tenant_relationships r
@@ -83,9 +77,7 @@ export async function getPlayerProfile(
     WHERE r.tenant_id = ${tenantId} AND r.player_id = ${playerId}
     LIMIT 1
   `)
-  const row = (rows as unknown as Array<PlayerProfile & { balance: number | string }>)[0]
-  if (!row) return null
-  return { ...row, balance: Number(row.balance ?? 0) }
+  return (rows as unknown as PlayerProfile[])[0] ?? null
 }
 
 export type PlayerStats = {

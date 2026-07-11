@@ -7,16 +7,6 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listTenantPlayers } from './queries'
 
-const ARS_FORMATTER = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
-})
-
-function formatARS(centavos: number): string {
-  return ARS_FORMATTER.format(centavos / 100)
-}
-
 export default async function JugadoresPage({
   searchParams,
 }: {
@@ -74,9 +64,9 @@ export default async function JugadoresPage({
                         {p.phone ?? p.email} · {p.bookingsCount} reserva{p.bookingsCount !== 1 ? 's' : ''}
                       </p>
                     </div>
-                    {p.balance > 0 && (
-                      <span className="inline-flex shrink-0 items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:text-red-400">
-                        {formatARS(p.balance)}
+                    {p.noshowCount > 0 && (
+                      <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                        {p.noshowCount} ausencia{p.noshowCount !== 1 ? 's' : ''}
                       </span>
                     )}
                   </Link>
@@ -91,7 +81,7 @@ export default async function JugadoresPage({
                   <th className="px-4 py-3 font-medium">Jugador</th>
                   <th className="px-4 py-3 font-medium">Contacto</th>
                   <th className="px-4 py-3 font-medium text-right">Reservas</th>
-                  <th className="px-4 py-3 font-medium text-right">Deuda</th>
+                  <th className="px-4 py-3 font-medium text-right">Ausencias</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -108,9 +98,9 @@ export default async function JugadoresPage({
                     <td className="px-4 py-3 text-muted-foreground">{p.phone ?? p.email}</td>
                     <td className="px-4 py-3 text-right text-foreground">{p.bookingsCount}</td>
                     <td className="px-4 py-3 text-right">
-                      {p.balance > 0 ? (
-                        <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:text-red-400">
-                          {formatARS(p.balance)}
+                      {p.noshowCount > 0 ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          {p.noshowCount}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>

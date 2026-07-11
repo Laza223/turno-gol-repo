@@ -53,19 +53,6 @@ export class PlayerBannedError extends Error {
   }
 }
 
-export class PlayerHasOutstandingBalanceError extends Error {
-  constructor(
-    public readonly playerId: string,
-    public readonly tenantId: string,
-    public readonly balance: number,
-  ) {
-    super(
-      `Player ${playerId} has an outstanding balance in tenant ${tenantId}; online booking blocked`,
-    )
-    this.name = 'PlayerHasOutstandingBalanceError'
-  }
-}
-
 export class BookingNotOwnedByPlayerError extends Error {
   constructor(bookingId: string, playerId: string) {
     super(`Booking ${bookingId} does not belong to player ${playerId}`)

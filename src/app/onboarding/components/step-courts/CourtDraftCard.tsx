@@ -3,9 +3,14 @@
 import { ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ImageUploader } from '@/components/ui/image-uploader'
 import { cn } from '@/lib/utils'
 import { fieldClass, labelClass } from '../wizard-styles'
 import { FORMATS, SURFACE_OPTIONS, type Draft, type SurfaceType } from './constants'
+import {
+  uploadOnboardingCourtPhotoAction,
+  deleteOnboardingCourtPhotoAction,
+} from '../../actions'
 
 type Props = {
   draft: Draft
@@ -217,6 +222,40 @@ export function CourtDraftCard({
             />
             <span className="text-sm text-foreground">Techada</span>
           </label>
+
+          <div className="border-t border-border/40 pt-4">
+            <label className={cn(labelClass, 'mb-1 flex items-baseline gap-1.5')}>
+              Foto de la cancha
+              <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+            </label>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Subí una foto para que los jugadores puedan identificar visualmente esta cancha al reservar.
+            </p>
+            <ImageUploader
+              preset="court"
+              value={draft.photos}
+              onUpload={async (blob) => {
+                const fd = new FormData()
+                fd.append('file', blob)
+                const res = await uploadOnboardingCourtPhotoAction(fd)
+                if (res.success) {
+                  onUpdate(draft.key, { photos: [...draft.photos, res.url] })
+                } else {
+                  alert(res.error)
+                }
+              }}
+              onRemove={async (url) => {
+                const res = await deleteOnboardingCourtPhotoAction(url)
+                if (res.success) {
+                  onUpdate(draft.key, { photos: draft.photos.filter((p) => p !== url) })
+                } else {
+                  alert(res.error)
+                }
+              }}
+              max={1}
+              emptyLabel="Subir foto"
+            />
+          </div>
         </div>
       </div>
     </fieldset>

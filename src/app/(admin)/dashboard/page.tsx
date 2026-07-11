@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   ])
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const { caja, occupancy, pendingDeposits, debts } = data
+  const { caja, occupancy, pendingDeposits, blockedPlayers } = data
 
   const cajaValue =
     caja.balanceCents < 0 ? (
@@ -124,17 +124,13 @@ export default async function DashboardPage() {
           ariaLabel={`Esperando seña: ${pendingDeposits.count} — ver reservas pendientes`}
         />
         <MetricCard
-          label="Deudas por cobrar"
-          value={formatArs(debts.totalCents)}
+          label="Jugadores bloqueados"
+          value={String(blockedPlayers)}
           icon={<UserX className="h-5 w-5" aria-hidden="true" />}
-          sub={
-            debts.players > 0
-              ? `${debts.players} ${debts.players === 1 ? 'jugador con deuda' : 'jugadores con deuda'}`
-              : 'Nadie debe nada'
-          }
+          sub={blockedPlayers > 0 ? 'Por ausencias reiteradas u otros motivos' : 'Nadie bloqueado'}
           accent="red"
           href="/jugadores"
-          ariaLabel={`Deudas por cobrar: ${formatArs(debts.totalCents)} — ver jugadores`}
+          ariaLabel={`Jugadores bloqueados: ${blockedPlayers} — ver jugadores`}
         />
       </div>
 

@@ -10,7 +10,7 @@ export async function getOrCreatePlanId(sql: Sql): Promise<string> {
   if (existing.length) return existing[0].id
   const rows = await sql<{ id: string }[]>`
     INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, is_active)
-    VALUES ('Predio', ${'predio-test-' + faker.string.alphanumeric(6)}, 3, 4700000, 3760000, true)
+    VALUES ('Predio', ${'predio-test-' + faker.string.alphanumeric(6)}, 2, 5500000, 4400000, true)
     RETURNING id
   `
   return rows[0].id

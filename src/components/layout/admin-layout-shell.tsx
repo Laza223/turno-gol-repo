@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import { AdminSidebar } from './admin-sidebar'
 import { AdminHeader } from './admin-header'
 import { StatusBanner } from './status-banner'
@@ -30,6 +32,8 @@ export function AdminLayoutShell({
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
+  const pathname = usePathname()
+  const isGrilla = pathname === '/grilla'
 
   function handleSignOut() {
     startTransition(async () => {
@@ -38,7 +42,7 @@ export function AdminLayoutShell({
   }
 
   return (
-    <div className="min-h-screen shell-bg">
+    <div className={cn("min-h-screen shell-bg", isGrilla && "h-screen overflow-hidden flex flex-col")}>
       {/* Sidebar (el overlay mobile lo trae el Sheet de AdminSidebar) */}
       <AdminSidebar
         tenantName={tenantName}
@@ -54,8 +58,8 @@ export function AdminLayoutShell({
       />
 
       {/* Main content */}
-      <div className="lg:pl-60">
-        <div className="pt-[calc(4rem+env(safe-area-inset-top))]">
+      <div className={cn("lg:pl-60", isGrilla && "h-screen flex flex-col min-h-0 overflow-hidden")}>
+        <div className={cn("pt-[calc(4rem+env(safe-area-inset-top))]", isGrilla && "flex-1 flex flex-col min-h-0 overflow-hidden")}>
           {/* Banner de impersonación (super admin): pegado bajo el header */}
           {impersonationBanner}
 
@@ -69,7 +73,12 @@ export function AdminLayoutShell({
           {/* Page content — slate gradient suave sobre el shell oscuro */}
           <main
             id="main-content"
-            className="content-area-gradient mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100vh-4rem)]"
+            className={cn(
+              "content-area-gradient mx-auto w-full px-4 sm:px-6 lg:px-8",
+              isGrilla
+                ? "max-w-full flex-1 flex flex-col min-h-0 overflow-hidden py-4"
+                : "max-w-7xl py-8 min-h-[calc(100vh-4rem)]"
+            )}
           >
             {children}
           </main>

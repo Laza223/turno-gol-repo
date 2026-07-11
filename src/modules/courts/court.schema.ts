@@ -33,6 +33,7 @@ export const createCourtSchema = z.object({
       'Formato inválido: debe ser Fútbol 4 a 11',
     ),
   pricing: courtPricingSchema,
+  photos: z.array(z.string()).optional(),
 })
 
 export const updateCourtSchema = createCourtSchema.partial()

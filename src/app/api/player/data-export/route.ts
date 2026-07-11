@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic'
  *   - profile: players.* (excluding system internals)
  *   - bookings: last 12 months (booking_id, court_id, dates, status)
  *   - payments: last 5 years (payment_id, type, status, amount, dates)
- *   - tenant_relationships: balance + flags per complex
+ *   - tenant_relationships: bookings/no-show counters + flags per complex
  *   - bans: any tenant_player_bans rows
  *   - consents: terms_version + agreed_at + +18 flag
  *

@@ -99,6 +99,13 @@ const config: Config = {
           '0%': { boxShadow: '0 0 0 0 hsl(160 84% 39% / 0.65)' },
           '100%': { boxShadow: '0 0 0 10px hsl(160 84% 39% / 0)' },
         },
+        // Entrada del cuerpo de un <details> (FAQ /precios). Los keyframes
+        // accordion-* dependen de --accordion-content-height (Radix) y no
+        // sirven para <details> nativo; acá se anima solo la apertura.
+        'faq-in': {
+          from: { opacity: '0', transform: 'translateY(-4px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -106,6 +113,7 @@ const config: Config = {
         'tg-float': 'tg-float 8s ease-in-out infinite',
         'tg-drift': 'tg-drift 18s ease-in-out infinite',
         'slot-pulse': 'slot-pulse 600ms ease-out 1',
+        'faq-in': 'faq-in 0.2s ease-out',
       },
     },
   },

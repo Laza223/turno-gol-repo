@@ -38,6 +38,7 @@ export type CreateCourtInput = {
   isCovered?: boolean
   hasLighting?: boolean
   pricing: CourtPricingData
+  photos?: string[]
 }
 
 export type UpdateCourtInput = Partial<CreateCourtInput>

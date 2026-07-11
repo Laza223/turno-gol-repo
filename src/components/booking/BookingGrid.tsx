@@ -196,7 +196,7 @@ export function BookingGrid({
     !hintDismissed && !closedToday && courts.length > 0 && slots.length > 0 && bookings.length === 0
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex-1 flex flex-col min-h-0 h-full">
       {/* Anuncio accesible de reservas nuevas por Realtime (MASTER §10). */}
       <p aria-live="polite" role="status" className="sr-only">
         {lastArrival}
@@ -242,7 +242,7 @@ export function BookingGrid({
       )}
 
       {courts.length > 0 && !closedToday && (
-        <>
+        <div className="flex-1 flex flex-col min-h-0 space-y-4">
           {showFirstHint && <FirstBookingHint onDismiss={dismissHint} />}
 
           <GridScroller
@@ -269,7 +269,7 @@ export function BookingGrid({
           />
 
           <GridLegend />
-        </>
+        </div>
       )}
 
       {selectedSlot && (

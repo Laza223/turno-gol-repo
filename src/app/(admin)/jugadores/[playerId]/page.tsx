@@ -4,12 +4,12 @@ import { ChevronLeft } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { capitalizeFirst } from '@/lib/format'
+import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import {
   getPlayerProfile,
   getPlayerStats,
   getPlayerBookingHistory,
 } from '../queries'
-import DebtPayment from './DebtPayment'
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -44,6 +44,17 @@ function formatDate(dateStr: string): string {
   )
 }
 
+function formatDateArt(date: Date): string {
+  return capitalizeFirst(
+    date.toLocaleDateString('es-AR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'America/Argentina/Buenos_Aires',
+    }),
+  )
+}
+
 type Props = { params: { playerId: string } }
 
 export default async function JugadorProfilePage({ params }: Props) {
@@ -54,15 +65,16 @@ export default async function JugadorProfilePage({ params }: Props) {
   const data = await withTenantContext(tenant.id, async (tx) => {
     const profile = await getPlayerProfile(tenant.id, params.playerId, tx)
     if (!profile) return null
-    const [stats, history] = await Promise.all([
+    const [stats, history, ban] = await Promise.all([
       getPlayerStats(tenant.id, params.playerId, tx),
       getPlayerBookingHistory(tenant.id, params.playerId, tx),
+      checkPlayerBanned(params.playerId, tenant.id, tx),
     ])
-    return { profile, stats, history }
+    return { profile, stats, history, ban }
   })
 
   if (!data) notFound()
-  const { profile, stats, history } = data
+  const { profile, stats, history, ban } = data
 
   const statCards: Array<[string, string]> = [
     ['Reservas totales', String(stats.total)],
@@ -109,7 +121,17 @@ export default async function JugadorProfilePage({ params }: Props) {
         ))}
       </div>
 
-      <DebtPayment playerId={profile.playerId} balance={profile.balance} />
+      {ban.banned && (
+        <div className="card-premium rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+            Bloqueado para reservar online
+          </p>
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400/80">
+            {ban.reason}
+            {ban.until ? ` Hasta el ${formatDateArt(ban.until)}.` : ' Sin fecha de fin.'}
+          </p>
+        </div>
+      )}
 
       <section className="card-premium rounded-xl p-6">
         <h2 className="text-sm font-semibold text-foreground">Historial de reservas</h2>

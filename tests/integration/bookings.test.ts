@@ -24,7 +24,6 @@ import {
   CourtOfflineError,
   NoShowCorrectionWindowExpiredError,
   PlayerBannedError,
-  PlayerHasOutstandingBalanceError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
 import {
@@ -954,23 +953,20 @@ describe('Race condition (Fix #9): only one worker wins', () => {
   })
 })
 
-// ─── GAP: guard de saldo deudor contra DB real ──────────────────────────────
-// El único test previo (tests/unit/booking-balance-guard.test.ts) MOCKEA
-// getPlayerBlockState por completo, así que nunca toca la columna real
-// player_tenant_relationships.balance (migración 022). Si esa columna no
-// existiera o el SELECT se rompiera, el unit seguiría verde. Acá lo ejercemos
-// end-to-end contra la DB.
-describe('createOnlineBooking — guard de saldo deudor (DB real)', () => {
-  it('rechaza la reserva cuando el jugador tiene balance > 0 en el complejo', async () => {
+// ─── GAP: guard de softban por ausencias contra DB real ─────────────────────
+// El softban (cambio 2026-07-11, reemplaza la deuda del cambio #5) bloquea
+// insertando una fila en tenant_player_bans — el mismo mecanismo que los bans
+// manuales. Acá ejercemos createOnlineBooking end-to-end contra esa fila.
+describe('createOnlineBooking — guard de softban por ausencias (DB real)', () => {
+  it('rechaza la reserva cuando hay un softban activo por ausencias', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(tenant.id)
     await linkPlayerToTenant(sql, tenant.id, player.id)
     await sql`
-      UPDATE player_tenant_relationships
-      SET balance = ${250000}
-      WHERE tenant_id = ${tenant.id} AND player_id = ${player.id}
+      INSERT INTO tenant_player_bans (tenant_id, player_id, reason, banned_until)
+      VALUES (${tenant.id}, ${player.id}, 'Ausencias reiteradas (2+ en 90 días)', NOW() + INTERVAL '14 days')
     `
 
     const err = await withTenantContext(tenant.id, (tx) =>
@@ -989,53 +985,25 @@ describe('createOnlineBooking — guard de saldo deudor (DB real)', () => {
       ),
     ).catch((e: unknown) => e)
 
-    expect(err).toBeInstanceOf(PlayerHasOutstandingBalanceError)
-    expect((err as PlayerHasOutstandingBalanceError).balance).toBe(250000)
+    expect(err).toBeInstanceOf(PlayerBannedError)
 
-    // Y no se creó ninguna reserva pese a la deuda.
+    // Y no se creó ninguna reserva pese al softban.
     const count = await sql<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM bookings WHERE court_id = ${courtId}
     `
     expect(count[0]!.n).toBe(0)
   })
 
-  it('rechaza la reserva cuando la relación está marcada como blocked', async () => {
+  it('permite reservar de nuevo cuando el softban ya expiró', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(tenant.id)
     await linkPlayerToTenant(sql, tenant.id, player.id)
     await sql`
-      UPDATE player_tenant_relationships
-      SET status = 'blocked'
-      WHERE tenant_id = ${tenant.id} AND player_id = ${player.id}
+      INSERT INTO tenant_player_bans (tenant_id, player_id, reason, banned_until)
+      VALUES (${tenant.id}, ${player.id}, 'Ausencias reiteradas (2+ en 90 días)', NOW() - INTERVAL '1 day')
     `
-
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        createOnlineBooking(
-          tenant.id,
-          {
-            playerId: player.id,
-            courtId,
-            date: FUTURE_DATE,
-            timeStart: '09:00',
-            timeEnd: '10:00',
-            requiresDeposit: false,
-            depositPercentage: 0,
-          },
-          tx,
-        ),
-      ),
-    ).rejects.toBeInstanceOf(PlayerHasOutstandingBalanceError)
-  })
-
-  it('permite reservar cuando el jugador está al día (balance=0, active)', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const player = await createTestPlayer(sql)
-    const courtId = await insertCourt(tenant.id)
-    await linkPlayerToTenant(sql, tenant.id, player.id) // balance=0, status='active' por default
 
     const booking = await withTenantContext(tenant.id, (tx) =>
       createOnlineBooking(

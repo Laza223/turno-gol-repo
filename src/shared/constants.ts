@@ -14,3 +14,16 @@ export const SLOT_DURATION_MINUTES = 60
  * ver docs/superpowers/specs/2026-07-02-inv-abuse-001-rate-limiting-design.md.
  */
 export const MAX_ACTIVE_HOLDS_PER_PLAYER = 3
+
+/**
+ * Softban de ausencias (reemplaza la deuda por no-show del cambio #5): si la
+ * ausencia actual ocurre dentro de esta ventana desde la anterior, cuenta como
+ * reincidencia; si no, el contador vuelve a foja cero.
+ */
+export const NO_SHOW_STRIKE_WINDOW_DAYS = 90
+
+/**
+ * Duración del bloqueo de reservas online al llegar a la 2da ausencia dentro
+ * de la ventana de reincidencia (`NO_SHOW_STRIKE_WINDOW_DAYS`).
+ */
+export const NO_SHOW_SOFTBAN_DAYS = 14

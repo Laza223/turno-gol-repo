@@ -122,7 +122,7 @@ export function StepPayments({ mpConnected, mpError }: Props) {
               </span>
             </span>
             <span className="mt-1 block text-sm text-muted-foreground">
-              El jugador paga un porcentaje al reservar, por MercadoPago. La plata
+              El jugador paga un porcentaje al reservar que definís vos, por Mercado Pago. La plata
               va directo a tu cuenta, sin intermediarios.
             </span>
           </span>

@@ -44,7 +44,7 @@ export default async function OnboardingPage({
   }
 
   return (
-    <WizardShell currentStep={currentStep} wide={currentStep === 3}>
+    <WizardShell currentStep={currentStep} wide={currentStep === 2 || currentStep === 3}>
       <div className="card-premium rounded-2xl p-6 md:p-8">
         {currentStep === 1 && <StepIdentity />}
         {currentStep === 2 && tenantData && (

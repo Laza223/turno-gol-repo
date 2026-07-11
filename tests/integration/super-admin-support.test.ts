@@ -482,7 +482,7 @@ describe('changePlanForSupport', () => {
     const tenantId = await seedTenantWithStaff(sql)
     await seedSubscription(sql, tenantId, 'active', 'estadio')
 
-    // Plan predio: max_courts 3 → con 4 canchas online el downgrade se bloquea.
+    // Plan predio: max_courts 2 → con 4 canchas online el downgrade se bloquea.
     for (let i = 0; i < 4; i++) {
       await sql`
         INSERT INTO courts (tenant_id, name, capacity, status)

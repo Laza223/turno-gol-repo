@@ -24,6 +24,7 @@ export function useCourtDrafts(existingCourts: CourtRow[]) {
             surfaceType: 'synthetic_grass',
             isCovered: false,
             price: '',
+            photos: [],
           },
         ],
   )
@@ -64,6 +65,7 @@ export function useCourtDrafts(existingCourts: CourtRow[]) {
         surfaceType: last?.surfaceType ?? 'synthetic_grass',
         isCovered: last?.isCovered ?? false,
         price: last?.price ?? '',
+        photos: [],
       },
     ])
     // Colapsa las anteriores y expande solo la recién creada para mantener la vista limpia.

@@ -23,6 +23,7 @@ export default function BusinessFooter() {
           <span className="text-xs text-slate-500">© {new Date().getFullYear()} · Argentina</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
+          <Link href="/precios" className={linkCls}>Precios</Link>
           <Link href="/login" className={linkCls}>Ingresar</Link>
           <Link href="/register" className={linkCls}>Empezar gratis</Link>
           <a href="mailto:hola@turnogol.app" className={linkCls}>Contacto</a>

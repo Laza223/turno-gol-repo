@@ -631,10 +631,10 @@ function FinalCta() {
               <ArrowRight className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0" aria-hidden />
             </Link>
             <Link
-              href="/login"
+              href="/precios"
               className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-8 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
-              Ingresar
+              Ver planes y precios
             </Link>
           </div>
         </Reveal>

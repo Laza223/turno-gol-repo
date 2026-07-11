@@ -110,8 +110,8 @@ Solo se renderiza si hubo movimientos.
 - **Montos con signo y color SIEMPRE** (§2.5): egresos `−$ …` rojo; ingresos y ajustes `+$ …`
   emerald (700 light / 400 dark). En una tabla mayormente verde, el gasto es el distinto que
   salta (Von Restorff al servicio del control de costos).
-- Badges de categoría: Reserva (emerald) · Cantina/Bar (sky) · **Saldo de abonado (violet — fix
-  #8)** · Gasto operativo (red) · Corrección por ausencia (amber) · Otro/Ajuste (muted).
+- Badges de categoría: Reserva (emerald) · Cantina/Bar (sky) · Gasto operativo (red) ·
+  Corrección por ausencia (amber) · Otro/Ajuste (muted).
 - Empty didáctico (fix #9), según estado del día:
   - Día abierto: "Sin movimientos por ahora" + "Los cobros de reservas se registran solos.
     Las ventas de cantina y los gastos se cargan desde los botones de arriba."
@@ -167,8 +167,6 @@ desplegar (Hick: son 3/≤3/4 opciones — caben todas), touch 44px (h-11).
   (contrato `VALID_COMBOS` del service).
 - **Categoría**: dinámica por tipo. Gasto tiene una sola ("Gasto operativo"): queda un único chip
   auto-presionado — se lee como tag, no como decisión.
-  `abonado_payment` NO se ofrece manual (rompería el invariante de `credit_balance`; solo lo crea
-  el módulo Abonados — el schema del server ya lo bloquea).
 - **Método**: Efectivo · Transferencia · MercadoPago · Otro (grid 2×2 en mobile).
 - Monto (`#cf-amount`, label "Monto (pesos)") y Descripción (`#cf-desc`) intactos, ids incluidos.
 - Receta chip (única en la app, compartida con cantina): activo

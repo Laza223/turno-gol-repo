@@ -807,7 +807,12 @@ para que las instancias futuras se eliminen y el slot quede libre.
 
 ---
 
-## US-ABO-005: Saldo a Favor del Abonado (cambio #4)
+## US-ABO-005: Saldo a Favor del Abonado (cambio #4) — ⛔ REVERTIDO (2026-07-10)
+
+> **REVERTIDO**: el sistema de saldo a favor (`credit_balance`, `credit_applied`, CashFlow
+> `abonado_payment`) fue eliminado — modelo ATC descartado para fútbol (migración 042). Esta
+> historia queda como registro histórico; no representa el comportamiento actual. Ver
+> `docs/planning/cambios-reglas-negocio.md` cambio #4.
 
 **Epic**: Abonados
 **Persona**: Marcelo (Dueño) / Rodrigo (Encargado)
@@ -1744,7 +1749,7 @@ SAS-001  Suscripción
 ONB-003  Checklist                   CAN-004  Ban no-show
 ABO-001  Crear abonado               ABO-002  Generación rolling
 ABO-003  Pausar/reactivar            ABO-004  Cancelar abonado
-ABO-005  Saldo a favor               JUG-ADM-001 Módulo jugadores (bans)
+ABO-005  Saldo a favor (REVERTIDO)   JUG-ADM-001 Módulo jugadores (bans)
 CAJ-003  Cierre de caja              CAJ-005  Reportes
 JUG-003  Buscar canchas              NOT-002  Banner trial
 NOT-003  Notificaciones internas     SAS-003  Dunning

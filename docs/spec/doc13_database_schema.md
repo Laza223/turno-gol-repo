@@ -140,9 +140,10 @@ CREATE TYPE cashflow_category AS ENUM (
   'product_sale',         -- Venta de cantina
   'other',                -- Otros ingresos/egresos
   'no_show_correction',   -- Corrección compensatoria por no-show (Doc 7 Flujo 4D)
-  'operating_expense',    -- Gasto operativo (migración 025)
-  'abonado_payment'       -- Carga de saldo a favor de abonado (migración 033, cambio #4)
+  'operating_expense'     -- Gasto operativo (migración 025)
 );
+-- NOTA: 'abonado_payment' (migración 033, cambio #4) fue removida del enum en migración 042
+-- (2026-07-10): el sistema de saldo a favor de abonados se descartó (modelo ATC no aplica a fútbol).
 
 
 
@@ -562,7 +563,6 @@ CREATE TABLE bookings (
                                                  -- para reservas manuales donde no hay fila en payments.
                                                  -- Para pagos MP: derivar de payments.method vía FK payment_id.
   payment_id      UUID REFERENCES payments(id),  -- Cobro de la seña (MP)
-  credit_applied  INTEGER NOT NULL DEFAULT 0,    -- Centavos descontados del saldo del abonado para esta instancia (migración 033, cambio #4). CHECK >= 0
 
   -- Notas
   notes_internal  TEXT,                          -- Solo visible para staff
@@ -695,8 +695,6 @@ CREATE TABLE abonados (
   time_end         TIME NOT NULL,
 
   price_per_session INTEGER NOT NULL,              -- Centavos ARS (puede diferir de lista)
-  monthly_price    INTEGER NOT NULL,               -- ≈ price_per_session × 4.33
-  credit_balance   INTEGER NOT NULL DEFAULT 0,     -- Saldo a favor en centavos (modelo ATC, migración 033, cambio #4)
 
   starts_on        DATE NOT NULL,
   ends_on          DATE,                           -- NULL = indefinido
@@ -712,8 +710,7 @@ CREATE TABLE abonados (
   -- Constraints
   CONSTRAINT chk_abonado_time_valid CHECK (time_end > time_start),
   CONSTRAINT chk_abonado_day_valid CHECK (day_of_week BETWEEN 0 AND 6),
-  CONSTRAINT chk_abonado_price_positive CHECK (price_per_session > 0),
-  CONSTRAINT chk_abonado_credit_non_negative CHECK (credit_balance >= 0)
+  CONSTRAINT chk_abonado_price_positive CHECK (price_per_session > 0)
 );
 
 -- Exclusion: no overlap de abonados activos en la misma cancha+día+horario
@@ -831,7 +828,6 @@ CREATE TABLE cash_flows (
   -- Relaciones opcionales
   booking_id      UUID REFERENCES bookings(id),
   product_id      UUID REFERENCES products(id),  -- Venta de cantina
-  abonado_id      UUID REFERENCES abonados(id),  -- Carga de saldo a favor (category='abonado_payment', migración 033)
 
   registered_by   UUID NOT NULL REFERENCES staff_users(id),
   occurred_at     TIMESTAMPTZ NOT NULL,          -- Cuándo ocurrió (puede diferir de created_at)
@@ -840,16 +836,13 @@ CREATE TABLE cash_flows (
 
   -- Constraints
   CONSTRAINT chk_cashflow_amount_positive CHECK (amount > 0),
-  -- Combinaciones válidas de type+category (migración 025 sumó expense/operating_expense; 033 sumó abonado_payment)
+  -- Combinaciones válidas de type+category (migración 025 sumó expense/operating_expense)
   CONSTRAINT chk_cashflow_type_category CHECK (
-    (type = 'income'     AND category IN ('booking', 'product_sale', 'other', 'abonado_payment')) OR
+    (type = 'income'     AND category IN ('booking', 'product_sale', 'other')) OR
     (type = 'adjustment' AND category IN ('other', 'no_show_correction')) OR
     (type = 'expense'    AND category = 'operating_expense')
   )
 );
-
--- Índice parcial para el recálculo de credit_balance por abonado (migración 033)
-CREATE INDEX idx_cash_flows_abonado ON cash_flows(tenant_id, abonado_id) WHERE abonado_id IS NOT NULL;
 
 -- Índices
 CREATE INDEX idx_cash_flows_tenant ON cash_flows(tenant_id);

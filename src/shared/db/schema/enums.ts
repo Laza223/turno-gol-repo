@@ -122,15 +122,12 @@ export const paymentStatusEnum = pgEnum('payment_status', [
 // 'expense' agregado en migración 025 (rediseño de Caja); supersede Fix #7.
 export const cashflowTypeEnum = pgEnum('cashflow_type', ['income', 'adjustment', 'expense'])
 
-// 'abonado_payment' agregado en migración 033 (Tarea #4: carga de saldo a favor
-// del abonado). Solo válido con type 'income'.
 export const cashflowCategoryEnum = pgEnum('cashflow_category', [
   'booking',
   'product_sale',
   'other',
   'no_show_correction',
   'operating_expense',
-  'abonado_payment',
 ])
 
 // ─── Notification ───────────────────────────────────────────────

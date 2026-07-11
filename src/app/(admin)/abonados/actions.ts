@@ -29,7 +29,6 @@ const createAbonadoSchema = z.object({
   timeStart: hhmm,
   timeEnd: hhmm,
   pricePerSession: moneyCents,
-  monthlyPrice: moneyCents,
   startsOn: dateStr,
   endsOn: dateStr.optional(),
   paymentMethod: z.enum(['cash', 'transfer']).optional(),

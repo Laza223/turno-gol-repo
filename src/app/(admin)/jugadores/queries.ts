@@ -121,36 +121,6 @@ export async function getPlayerStats(
   return { total, completed, noShow, canceled, noShowRate }
 }
 
-export type PlayerAbonado = {
-  id: string
-  status: string
-  dayOfWeek: number
-  timeStart: string
-  timeEnd: string
-  pricePerSession: number
-  creditBalance: number
-  courtName: string
-}
-
-export async function getPlayerAbonados(
-  tenantId: string,
-  playerId: string,
-  tx: DbTx,
-): Promise<PlayerAbonado[]> {
-  const rows = await tx.execute(sql`
-    SELECT a.id, a.status, a.day_of_week AS "dayOfWeek",
-           a.time_start::text AS "timeStart", a.time_end::text AS "timeEnd",
-           a.price_per_session AS "pricePerSession",
-           a.credit_balance AS "creditBalance",
-           c.name AS "courtName"
-    FROM abonados a
-    JOIN courts c ON c.id = a.court_id
-    WHERE a.tenant_id = ${tenantId} AND a.player_id = ${playerId}
-    ORDER BY (a.status = 'active') DESC, a.day_of_week, a.time_start
-  `)
-  return rows as unknown as PlayerAbonado[]
-}
-
 export type PlayerBookingRow = {
   id: string
   date: string

@@ -21,11 +21,6 @@ import {
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
-import { setBookingAbonadoCredit } from '@/modules/abonados/abonado.service'
-import {
-  InsufficientCreditError,
-  CreditNotApplicableError,
-} from '@/modules/abonados/abonado.errors'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { settleRefund } from '@/modules/payments/payment.service'
 import { captureMessage } from '@/lib/sentry'
@@ -399,54 +394,5 @@ export async function addBookingChargeAction(
     revalidateBooking(bookingId)
     revalidatePath('/caja')
   }
-  return result
-}
-
-export type AbonadoCreditToggleResult =
-  | { success: true; creditApplied: number; abonadoCreditBalance: number }
-  | { success: false; error: string }
-
-/**
- * Tarea #4 — "Mantener saldo": descuenta (keepBalance=false) o devuelve
- * (keepBalance=true) el saldo a favor del abonado para esta instancia del turno
- * fijo. No genera CashFlow (la plata ya entró al cargar el saldo).
- */
-export async function toggleAbonadoCreditAction(
-  bookingId: string,
-  keepBalance: boolean,
-): Promise<AbonadoCreditToggleResult> {
-  const parsedId = uuid.safeParse(bookingId)
-  if (!parsedId.success) return { success: false, error: 'ID inválido.' }
-
-  const auth = await requireOperatorStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { user, tenant } = auth
-
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { success: false, error: limited }
-
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const { creditApplied, abonado } = await setBookingAbonadoCredit(
-        tenant.id,
-        user.staffUserId,
-        parsedId.data,
-        keepBalance,
-        tx,
-      )
-      return {
-        success: true as const,
-        creditApplied,
-        abonadoCreditBalance: abonado.creditBalance,
-      }
-    } catch (err) {
-      if (err instanceof InsufficientCreditError || err instanceof CreditNotApplicableError) {
-        return { success: false as const, error: (err as Error).message }
-      }
-      throw err
-    }
-  })
-
-  if (result.success) revalidateBooking(parsedId.data)
   return result
 }

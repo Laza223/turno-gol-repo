@@ -39,12 +39,10 @@ export function methodBreakdown(
 /**
  * Labels en español para los ENUMs de cash_flows. 'other' es ambiguo sin el
  * tipo: como ingreso es "Otro ingreso", como ajuste es "Ajuste".
- * `abonado_payment` faltaba y el enum crudo llegaba a la UI (fix pages/caja.md §1.8).
  */
 export function categoryLabel(type: string, category: string): string {
   if (category === 'booking') return 'Reserva'
   if (category === 'product_sale') return 'Cantina/Bar'
-  if (category === 'abonado_payment') return 'Saldo de abonado'
   if (category === 'operating_expense') return 'Gasto operativo'
   if (category === 'no_show_correction') return 'Corrección por ausencia'
   if (category === 'other') return type === 'adjustment' ? 'Ajuste' : 'Otro ingreso'
@@ -56,8 +54,6 @@ export const CATEGORY_BADGE: Record<CashFlowCategory | 'fallback', string> = {
     'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20 dark:ring-emerald-500/30',
   product_sale:
     'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-600/20 dark:ring-sky-500/30',
-  abonado_payment:
-    'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 ring-violet-600/20 dark:ring-violet-500/30',
   operating_expense:
     'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
   no_show_correction:

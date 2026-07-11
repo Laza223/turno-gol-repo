@@ -3,8 +3,6 @@ import { abonados, bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { ensurePTR } from '@/modules/relationships/ptr.service'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import type { CashFlowRow, CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 import { generateSlotDates } from './slot-generator'
 import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
 import { physicalRange } from '@/shared/time/physical-range'
@@ -13,8 +11,6 @@ import {
   AbonadoNotFoundError,
   AbonadoAlreadyCanceledError,
   ReactivationConflictError,
-  InsufficientCreditError,
-  CreditNotApplicableError,
 } from './abonado.errors'
 import type { AbonadoRow, AbonadoStatus, AbonadoPaymentMethod, CreateAbonadoInput } from './abonado.types'
 
@@ -30,8 +26,6 @@ function rowToAbonadoRow(r: typeof abonados.$inferSelect): AbonadoRow {
     timeStart: r.timeStart,
     timeEnd: r.timeEnd,
     pricePerSession: r.pricePerSession,
-    monthlyPrice: r.monthlyPrice,
-    creditBalance: r.creditBalance,
     startsOn: r.startsOn,
     endsOn: r.endsOn ?? null,
     status: r.status,
@@ -173,7 +167,6 @@ export async function createAbonado(
       timeStart: input.timeStart,
       timeEnd: input.timeEnd,
       pricePerSession: input.pricePerSession,
-      monthlyPrice: input.monthlyPrice,
       startsOn: new Date(`${input.startsOn}T00:00:00Z`),
       endsOn: input.endsOn ? new Date(`${input.endsOn}T00:00:00Z`) : null,
       status: 'active' as const,
@@ -425,8 +418,6 @@ export async function getAbonados(
     time_start: string
     time_end: string
     price_per_session: number
-    monthly_price: number
-    credit_balance: number
     starts_on: Date
     ends_on: Date | null
     status: AbonadoStatus
@@ -445,8 +436,6 @@ export async function getAbonados(
     timeStart: r.time_start,
     timeEnd: r.time_end,
     pricePerSession: r.price_per_session,
-    monthlyPrice: r.monthly_price,
-    creditBalance: r.credit_balance,
     startsOn: new Date(r.starts_on),
     endsOn: r.ends_on ? new Date(r.ends_on) : null,
     status: r.status,
@@ -455,200 +444,4 @@ export async function getAbonados(
     createdAt: new Date(r.created_at),
     updatedAt: new Date(r.updated_at),
   }))
-}
-
-async function getAbonadoInTenant(
-  tenantId: string,
-  abonadoId: string,
-  tx: DbTx,
-): Promise<AbonadoRow> {
-  const rows = await tx
-    .select()
-    .from(abonados)
-    .where(and(eq(abonados.id, abonadoId), eq(abonados.tenantId, tenantId)))
-    .limit(1)
-  if (rows.length === 0) throw new AbonadoNotFoundError(abonadoId)
-  return rowToAbonadoRow(rows[0]!)
-}
-
-/**
- * Toma un lock de fila sobre el abonado (SELECT … FOR UPDATE) para serializar
- * las operaciones que mutan credit_balance (carga + descuento). Sin esto, dos
- * transacciones concurrentes sobre el mismo abonado pueden pisar el recompute
- * (lost update) o sobre-gastar el saldo. Debe llamarse dentro de withTenantContext
- * (transacción abierta). Lanza AbonadoNotFoundError si no existe en el tenant.
- */
-async function lockAbonado(tenantId: string, abonadoId: string, tx: DbTx): Promise<void> {
-  const rows = await tx.execute(sql`
-    SELECT id FROM abonados
-    WHERE id = ${abonadoId} AND tenant_id = ${tenantId}
-    FOR UPDATE
-  `)
-  if ((rows as unknown[]).length === 0) throw new AbonadoNotFoundError(abonadoId)
-}
-
-/**
- * Recalcula credit_balance del abonado desde sus fuentes (idempotente):
- *   credit_balance = SUM(cash_flows abonado_payment) - SUM(bookings.credit_applied)
- * GREATEST(0, …) protege el CHECK chk_abonado_credit_non_negative. Llamarlo tras
- * cargar saldo o descontar una sesión deja el saldo siempre consistente, sin
- * importar reintentos de red (doble-submit con la misma idempotency key no
- * vuelve a sumar porque el CashFlow es único por clave).
- */
-async function recomputeAbonadoCredit(
-  tenantId: string,
-  abonadoId: string,
-  tx: DbTx,
-): Promise<number> {
-  const rows = await tx.execute(sql`
-    UPDATE abonados a
-    SET credit_balance = GREATEST(0,
-      COALESCE((
-        SELECT SUM(cf.amount) FROM cash_flows cf
-        WHERE cf.abonado_id = a.id AND cf.category = 'abonado_payment'
-      ), 0)
-      - COALESCE((
-        SELECT SUM(b.credit_applied) FROM bookings b WHERE b.abonado_id = a.id
-      ), 0)
-    ),
-    updated_at = NOW()
-    WHERE a.id = ${abonadoId} AND a.tenant_id = ${tenantId}
-    RETURNING credit_balance
-  `)
-  const updated = (rows as unknown as Array<{ credit_balance: number }>)[0]
-  return updated ? Number(updated.credit_balance) : 0
-}
-
-export type LoadAbonadoCreditInput = {
-  abonadoId: string
-  amount: number
-  method: CashPaymentMethod
-  note?: string
-  clientIdempotencyKey?: string
-}
-
-/**
- * Tarea #4 — Carga de saldo a favor de un abonado (modelo ATC). El complejo
- * recibe plata por adelantado → genera un CashFlow income/abonado_payment
- * vinculado al abonado (entra a la caja del día) y acredita el saldo. El saldo
- * se recalcula desde las fuentes para ser idempotente ante reintentos.
- */
-export async function loadAbonadoCredit(
-  tenantId: string,
-  staffUserId: string,
-  input: LoadAbonadoCreditInput,
-  tx: DbTx,
-): Promise<{ abonado: AbonadoRow; cashFlow: CashFlowRow }> {
-  // Serializa cargas/descuentos concurrentes sobre este abonado antes de tocar
-  // el saldo (el recompute es un re-sum: sin lock, dos cargas se pisan).
-  await lockAbonado(tenantId, input.abonadoId, tx)
-
-  const cashFlow = await createCashFlow(
-    tenantId,
-    staffUserId,
-    {
-      type: 'income',
-      category: 'abonado_payment',
-      amount: input.amount,
-      method: input.method,
-      description: input.note?.trim() ? input.note.trim() : 'Carga de saldo (abonado)',
-      abonadoId: input.abonadoId,
-      clientIdempotencyKey: input.clientIdempotencyKey,
-    },
-    tx,
-  )
-
-  await recomputeAbonadoCredit(tenantId, input.abonadoId, tx)
-  const abonado = await getAbonadoInTenant(tenantId, input.abonadoId, tx)
-
-  await insertAuditLog(tx, {
-    tenantId,
-    actorId: staffUserId,
-    actorType: 'staff',
-    action: 'abonado.credit_loaded',
-    resourceType: 'abonado',
-    resourceId: input.abonadoId,
-    metadata: { amount: input.amount, method: input.method, cashFlowId: cashFlow.id },
-  })
-
-  return { abonado, cashFlow }
-}
-
-/**
- * Tarea #4 — Descuento semanal MANUAL ("Mantener saldo"). Sobre una instancia
- * de turno fijo (booking type='fixed', status='confirmed'):
- *   - keepBalance=false → descuenta price_snapshot del saldo del abonado
- *     (setea bookings.credit_applied; NO genera CashFlow: la plata ya entró al
- *     cargar el saldo).
- *   - keepBalance=true  → revierte el descuento (credit_applied → 0).
- * Idempotente: aplicar dos veces no descuenta de más; revertir sin descuento
- * previo es no-op.
- */
-export async function setBookingAbonadoCredit(
-  tenantId: string,
-  staffUserId: string,
-  bookingId: string,
-  keepBalance: boolean,
-  tx: DbTx,
-): Promise<{ creditApplied: number; abonado: AbonadoRow }> {
-  const bookingRows = await tx.execute(sql`
-    SELECT type::text AS type, status::text AS status, abonado_id AS "abonadoId",
-           price_snapshot AS "priceSnapshot", credit_applied AS "creditApplied"
-    FROM bookings
-    WHERE id = ${bookingId} AND tenant_id = ${tenantId}
-    LIMIT 1
-  `)
-  const booking = (bookingRows as unknown as Array<{
-    type: string
-    status: string
-    abonadoId: string | null
-    priceSnapshot: number
-    creditApplied: number
-  }>)[0]
-
-  if (!booking || booking.type !== 'fixed' || !booking.abonadoId || booking.status !== 'confirmed') {
-    throw new CreditNotApplicableError()
-  }
-
-  const abonadoId = booking.abonadoId
-  // Lock del abonado: serializa descuentos concurrentes sobre el mismo saldo
-  // (dos turnos del mismo abonado tildados a la vez no deben sobre-gastar).
-  await lockAbonado(tenantId, abonadoId, tx)
-
-  if (!keepBalance) {
-    // Aplicar descuento. Si ya estaba aplicado, no-op idempotente.
-    if (booking.creditApplied === 0) {
-      const abonado = await getAbonadoInTenant(tenantId, abonadoId, tx)
-      if (abonado.creditBalance < booking.priceSnapshot) {
-        throw new InsufficientCreditError()
-      }
-      await tx.execute(sql`
-        UPDATE bookings SET credit_applied = ${booking.priceSnapshot}, updated_at = NOW()
-        WHERE id = ${bookingId} AND tenant_id = ${tenantId}
-      `)
-    }
-  } else {
-    // Revertir descuento. Si no había, no-op.
-    if (booking.creditApplied > 0) {
-      await tx.execute(sql`
-        UPDATE bookings SET credit_applied = 0, updated_at = NOW()
-        WHERE id = ${bookingId} AND tenant_id = ${tenantId}
-      `)
-    }
-  }
-
-  await recomputeAbonadoCredit(tenantId, abonadoId, tx)
-  const abonado = await getAbonadoInTenant(tenantId, abonadoId, tx)
-
-  await insertAuditLog(tx, {
-    tenantId,
-    actorId: staffUserId,
-    actorType: 'staff',
-    action: keepBalance ? 'abonado.credit_reverted' : 'abonado.credit_applied',
-    resourceType: 'booking',
-    resourceId: bookingId,
-    metadata: { abonadoId, amount: booking.priceSnapshot },
-  })
-
-  return { creditApplied: keepBalance ? 0 : booking.priceSnapshot, abonado }
 }

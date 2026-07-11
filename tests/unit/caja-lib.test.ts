@@ -57,10 +57,9 @@ describe('methodBreakdown', () => {
 })
 
 describe('categoryLabel', () => {
-  it('traduce todos los ENUMs, incluido abonado_payment (antes llegaba crudo a la UI)', () => {
+  it('traduce todos los ENUMs', () => {
     expect(categoryLabel('income', 'booking')).toBe('Reserva')
     expect(categoryLabel('income', 'product_sale')).toBe('Cantina/Bar')
-    expect(categoryLabel('income', 'abonado_payment')).toBe('Saldo de abonado')
     expect(categoryLabel('expense', 'operating_expense')).toBe('Gasto operativo')
     expect(categoryLabel('adjustment', 'no_show_correction')).toBe('Corrección por ausencia')
   })

@@ -175,8 +175,8 @@ const insertOps: Record<string, InsertFn> = {
   abonados: async (tx, tid) =>
     tx`INSERT INTO abonados (
       tenant_id, court_id, contact_name, contact_phone,
-      day_of_week, time_start, time_end, price_per_session, monthly_price, starts_on
-    ) VALUES (${tid}, ${B.courtId}, 'spoof', '111', 1, '20:00', '21:00', 1000, 4000, ${new Date().toISOString().slice(0, 10)})`,
+      day_of_week, time_start, time_end, price_per_session, starts_on
+    ) VALUES (${tid}, ${B.courtId}, 'spoof', '111', 1, '20:00', '21:00', 1000, ${new Date().toISOString().slice(0, 10)})`,
   payments: async (tx, tid) =>
     tx`INSERT INTO payments (tenant_id, amount, type, method, status)
       VALUES (${tid}, 1000, 'full_payment', 'cash', 'approved')`,

@@ -89,7 +89,6 @@ test.describe('Admin mobile smoke', () => {
       time_start: '14:00',
       time_end: '15:00',
       price_per_session: 500000,
-      monthly_price: 2000000,
       starts_on: pickFutureMonday(),
       status: 'active',
       payment_method: 'cash',

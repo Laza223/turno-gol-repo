@@ -10,7 +10,7 @@ const config: StorybookConfig = {
   // (type-aware), el `content` de Tailwind y `prettier --write src/` ya aplican.
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(ts|tsx)'],
 
-  addons: ['@storybook/addon-docs', '@storybook/addon-a11y'],
+  addons: ['@storybook/addon-docs', '@storybook/addon-a11y', '@storybook/addon-vitest'],
 
   framework: {
     name: '@storybook/nextjs-vite',

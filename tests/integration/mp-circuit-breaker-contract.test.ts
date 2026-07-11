@@ -91,11 +91,14 @@ async function insertPendingBooking(
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${FUTURE_DATE}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      (${FUTURE_DATE}::date + ${opts.timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${FUTURE_DATE}::date + ${opts.timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
       ${800000}, ${240000}, 'pending', NULL, 'pending_payment'
     )
     RETURNING id
@@ -144,11 +147,14 @@ async function setupStuckBooking(
   const [{ id: bookingId }] = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status, created_at
     )
     VALUES (
       ${tenant.id}, ${courtId}, ${player.id},
       ${FUTURE_DATE}::date, ${timeStart}::time, ${timeEnd}::time,
+      (${FUTURE_DATE}::date + ${timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${FUTURE_DATE}::date + ${timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
       ${800000}, ${240000}, 'pending', NULL, 'pending_payment',
       NOW() - INTERVAL '10 minutes'
     )

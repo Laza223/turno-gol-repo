@@ -44,6 +44,7 @@ import {
   endLabelFromMins,
   normalizeRangeToOpenDay,
 } from '@/shared/time/operating-day'
+import { physicalRange } from '@/shared/time/physical-range'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rowToBookingRow } from './booking.mappers'
 import { calcDepositCents } from './deposit'
@@ -115,7 +116,7 @@ function assertSlotDuration(timeStart: string, timeEnd: string): void {
  * así que su hora de pared ya pasó hoy sin estar vencido. Lee las horas del
  * tenant (global, sin RLS) para decidirlo.
  */
-async function slotIsPhysicallyNextDay(
+export async function slotIsPhysicallyNextDay(
   tenantId: string,
   dateStr: string,
   timeStart: string,
@@ -137,34 +138,6 @@ async function slotIsPhysicallyNextDay(
   const openMins = timeToMins(dayHours?.open ?? '08:00')
   return timeToMins(timeStart.slice(0, 5)) < openMins
 }
-
-/**
- * SQL fragment (assumes `bookings AS b` JOINed to `tenants AS t`): TRUE when
- * this row's slot is "physically next day" relative to `b.date` — the tenant
- * closes after midnight (closes_next_day) and `b.time_start` is before that
- * weekday's opening hour. SQL twin of `slotIsPhysicallyNextDay` above, for the
- * raw-SQL guards below that need it inline: `autoCompleteOverdueBookings` is a
- * bulk UPDATE across many tenants/bookings, so a per-row JS lookup isn't an
- * option there (Fix caza-bugs #4/#5 — these guards used to compare
- * `date + time_start/time_end` directly against NOW(), which for a
- * post-midnight slot (e.g. date=Monday, time_start=01:00 for a shift that
- * physically runs into Tuesday) computed 'Monday 01:00' — many hours in the
- * PAST relative to the shift's own start on Monday evening — instead of the
- * slot's real instant on Tuesday).
- */
-const PHYSICALLY_NEXT_DAY_SQL = sql`(
-  t.closes_next_day
-  AND b.time_start < COALESCE(
-    (t.opening_hours -> (ARRAY['sun','mon','tue','wed','thu','fri','sat'])[EXTRACT(DOW FROM b.date)::int + 1] ->> 'open')::time,
-    '08:00'::time
-  )
-)`
-
-/** Physical instant a booking's slot STARTS, correcting for post-midnight slots. */
-const PHYSICAL_START_SQL = sql`(b.date + b.time_start + CASE WHEN ${PHYSICALLY_NEXT_DAY_SQL} THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`
-
-/** Physical instant a booking's slot ENDS, correcting for post-midnight slots. */
-const PHYSICAL_END_SQL = sql`(b.date + b.time_end + CASE WHEN ${PHYSICALLY_NEXT_DAY_SQL} THEN INTERVAL '1 day' ELSE INTERVAL '0' END)`
 
 function isExclusionViolation(err: unknown): boolean {
   return (
@@ -201,24 +174,16 @@ async function lockCourtOrThrow(
 
 async function checkOverlapOrThrow(
   courtId: string,
-  dateStr: string,
-  timeStart: string,
-  timeEnd: string,
+  startsAt: Date,
+  endsAt: Date,
   tx: DbTx,
 ): Promise<void> {
   const result = await tx.execute(sql`
     SELECT 1
     FROM bookings
     WHERE court_id = ${courtId}
-      AND date = ${dateStr}::date
       AND status IN ('pending_payment', 'confirmed')
-      AND tsrange(
-            ('2000-01-01'::date + time_start)::timestamp,
-            ('2000-01-01'::date + time_end)::timestamp
-          ) && tsrange(
-            ('2000-01-01'::date + ${timeStart}::time)::timestamp,
-            ('2000-01-01'::date + ${timeEnd}::time)::timestamp
-          )
+      AND tstzrange(starts_at, ends_at) && tstzrange(${startsAt.toISOString()}, ${endsAt.toISOString()})
     LIMIT 1
   `)
   if ((result as unknown as unknown[]).length > 0) {
@@ -257,13 +222,14 @@ export async function createManualBooking(
     priceSnapshot = calc
   }
 
-  await checkOverlapOrThrow(
-    input.courtId,
-    input.date,
-    input.timeStart,
-    input.timeEnd,
-    tx,
+  const physicallyNextDay = await slotIsPhysicallyNextDay(
+    tenantId, input.date, input.timeStart, tx,
   )
+  const { startsAt, endsAt } = physicalRange({
+    date: input.date, timeStart: input.timeStart, timeEnd: input.timeEnd, physicallyNextDay,
+  })
+
+  await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
   const depositAmount = input.depositAmount ?? 0
   const depositStatus = input.depositStatus ?? 'not_required'
@@ -287,6 +253,8 @@ export async function createManualBooking(
         date: new Date(`${input.date}T00:00:00Z`),
         timeStart: input.timeStart,
         timeEnd: input.timeEnd,
+        startsAt,
+        endsAt,
         type: input.type,
         status: 'confirmed',
         priceSnapshot,
@@ -455,13 +423,14 @@ async function createOnlineBookingImpl(
   if (calc === null) throw new PriceUnavailableError()
   const priceSnapshot = calc
 
-  await checkOverlapOrThrow(
-    input.courtId,
-    input.date,
-    input.timeStart,
-    input.timeEnd,
-    tx,
+  const physicallyNextDay = await slotIsPhysicallyNextDay(
+    tenantId, input.date, input.timeStart, tx,
   )
+  const { startsAt, endsAt } = physicalRange({
+    date: input.date, timeStart: input.timeStart, timeEnd: input.timeEnd, physicallyNextDay,
+  })
+
+  await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
   const withDeposit = input.requiresDeposit && input.depositPercentage > 0
   const depositAmount = withDeposit
@@ -478,6 +447,8 @@ async function createOnlineBookingImpl(
         date: new Date(`${input.date}T00:00:00Z`),
         timeStart: input.timeStart,
         timeEnd: input.timeEnd,
+        startsAt,
+        endsAt,
         type: 'spontaneous',
         status: withDeposit ? 'pending_payment' : 'confirmed',
         priceSnapshot,
@@ -589,9 +560,8 @@ export async function completeBooking(
   // and may legitimately complete bookings without passing through here.
   if (actor === 'admin') {
     const check = await tx.execute(sql`
-      SELECT ${PHYSICAL_END_SQL} > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_ended
+      SELECT b.ends_at > NOW() AS not_yet_ended
       FROM bookings b
-      JOIN tenants t ON t.id = b.tenant_id
       WHERE b.id = ${bookingId}
     `)
     const row = (check as unknown as Array<{ not_yet_ended: boolean }>)[0]
@@ -638,10 +608,8 @@ export async function autoCompleteOverdueBookings(
   const rows = await tx.execute(sql`
     UPDATE bookings b
     SET status = 'completed', updated_at = NOW()
-    FROM tenants t
-    WHERE t.id = b.tenant_id
-      AND b.status = 'confirmed'
-      AND ${PHYSICAL_END_SQL} < (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') - (${graceMinutes} || ' minutes')::interval
+    WHERE b.status = 'confirmed'
+      AND b.ends_at < NOW() - (${graceMinutes} || ' minutes')::interval
     RETURNING b.*
   `)
   return (rows as unknown as Array<typeof bookings.$inferSelect>).map(
@@ -662,10 +630,9 @@ export async function markNoShow(
   const check = await tx.execute(sql`
     SELECT
       b.status,
-      ${PHYSICAL_START_SQL} > (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires') AS not_yet_started,
+      b.starts_at > NOW() AS not_yet_started,
       (NOW() - b.updated_at) < INTERVAL '24 hours' AS within_correction_window
     FROM bookings b
-    JOIN tenants t ON t.id = b.tenant_id
     WHERE b.id = ${bookingId}
   `)
   const row = (

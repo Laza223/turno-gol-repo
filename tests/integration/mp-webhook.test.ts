@@ -83,11 +83,14 @@ async function insertPendingBooking(opts: {
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      (${opts.date}::date + ${opts.timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${opts.date}::date + ${opts.timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
       ${800000}, ${240000}, 'pending', NULL, 'pending_payment'
     )
     RETURNING id

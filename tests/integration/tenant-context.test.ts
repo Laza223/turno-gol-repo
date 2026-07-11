@@ -45,19 +45,27 @@ describe('Drizzle tenant/player context helpers', () => {
     await sql`
       INSERT INTO bookings (
         tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
         price_snapshot, status
       ) VALUES (
         ${tenantA.id}, ${courtA[0].id}, ${player.id},
-        '2026-05-01', '20:00', '21:00', 10000, 'confirmed'
+        '2026-05-01', '20:00', '21:00',
+        ('2026-05-01'::date + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ('2026-05-01'::date + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        10000, 'confirmed'
       )
     `
     await sql`
       INSERT INTO bookings (
         tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
         price_snapshot, status
       ) VALUES (
         ${tenantB.id}, ${courtB[0].id}, ${player.id},
-        '2026-05-01', '20:00', '21:00', 10000, 'confirmed'
+        '2026-05-01', '20:00', '21:00',
+        ('2026-05-01'::date + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ('2026-05-01'::date + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        10000, 'confirmed'
       )
     `
   })

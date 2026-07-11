@@ -226,10 +226,13 @@ describe('GET bookings list — cursor pagination', () => {
       await sql`
         INSERT INTO bookings (
           tenant_id, court_id, player_id, date, time_start, time_end,
+          starts_at, ends_at,
           price_snapshot, deposit_amount, deposit_status, payment_method, status, type
         ) VALUES (
           ${tenant.id}, ${courtId}, ${player.id},
           ${FUTURE_DATE}::date, ${start}::time, ${end}::time,
+          (${FUTURE_DATE}::date + ${start}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+          (${FUTURE_DATE}::date + ${end}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
           ${800000}, ${0}, 'not_required', NULL, 'confirmed', 'spontaneous'
         )
       `

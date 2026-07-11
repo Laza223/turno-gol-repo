@@ -2,6 +2,8 @@ import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
+import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
+import { physicalRange } from '@/shared/time/physical-range'
 import { logger } from '@/shared/lib/logger'
 
 const JOB_NAME = 'generate-abonado-slots'
@@ -88,6 +90,13 @@ export async function runRollingSlotGeneration(): Promise<void> {
         closedDates,
       })
 
+      // Madrugada/día-operativo: mismo cálculo que insertBookingsForSlots
+      // (abonado.service.ts) — recurrencia semanal, mismo día calendario en
+      // todas las fechas generadas, así que se resuelve una sola vez.
+      const physicallyNextDay = slotDates.length > 0
+        ? await slotIsPhysicallyNextDay(abonado.tenant_id, slotDates[0]!, abonado.time_start, tx)
+        : false
+
       let count = 0
       for (const dateStr of slotDates) {
         const conflictRows = await tx.execute(drizzleSql`
@@ -100,14 +109,20 @@ export async function runRollingSlotGeneration(): Promise<void> {
         `)
         if ((conflictRows as unknown as Array<{ n: number }>)[0]!.n > 0) continue
 
+        const { startsAt, endsAt } = physicalRange({
+          date: dateStr, timeStart: abonado.time_start, timeEnd: abonado.time_end, physicallyNextDay,
+        })
+
         await tx.execute(drizzleSql`
           INSERT INTO bookings (
             tenant_id, court_id, player_id, abonado_id,
             date, time_start, time_end,
+            starts_at, ends_at,
             type, status, price_snapshot, deposit_amount, deposit_status
           ) VALUES (
             ${abonado.tenant_id}, ${abonado.court_id}, ${abonado.player_id ?? null}, ${abonado.id},
             ${dateStr}::date, ${abonado.time_start}::time, ${abonado.time_end}::time,
+            ${startsAt.toISOString()}::timestamptz, ${endsAt.toISOString()}::timestamptz,
             'fixed', 'confirmed', ${abonado.price_per_session}, 0, 'not_required'
           )
           ON CONFLICT DO NOTHING

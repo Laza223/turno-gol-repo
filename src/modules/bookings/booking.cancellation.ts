@@ -18,14 +18,6 @@ import {
 import type { BookingRow, DepositStatus } from './booking.types'
 import { track } from '@/shared/observability'
 
-// Converts ART local date+time to a UTC Date for policy comparison.
-// ART = UTC-3; a booking at "2027-06-01 21:00 ART" → UTC 2027-06-02 00:00.
-function artDateAt(dateStr: string, hhmm: string): Date {
-  const [y, mo, d] = dateStr.split('-').map(Number)
-  const [h, m] = hhmm.split(':').map(Number)
-  return new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0))
-}
-
 export type AdminCancellationType = 'complejo' | 'jugador'
 
 /**
@@ -60,6 +52,7 @@ type LockedBooking = {
   payment_id: string | null
   date: string        // 'YYYY-MM-DD'
   time_start: string  // 'HH:MM:SS'
+  starts_at: Date
 }
 
 async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking | undefined> {
@@ -74,7 +67,8 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       deposit_amount,
       payment_id,
       date::text AS date,
-      time_start::text AS time_start
+      time_start::text AS time_start,
+      starts_at
     FROM bookings
     WHERE id = ${bookingId}
     FOR UPDATE
@@ -127,7 +121,7 @@ export async function cancelByPlayer(
   }
 
   const settings = await loadSettings(b.tenant_id, tx)
-  const bookingStartUtc = artDateAt(b.date, b.time_start.slice(0, 5))
+  const bookingStartUtc = new Date(b.starts_at)
   const policyHours = settings.cancellation_policy.hours_before
   const inPolicy = Date.now() < bookingStartUtc.getTime() - policyHours * 3_600_000
 
@@ -222,7 +216,7 @@ export async function cancelByAdmin(
   // Tarea #3: el reembolso lo decide el motivo, no una casilla suelta del admin.
   // 'complejo' reembolsa siempre; 'jugador' aplica la política horaria del complejo.
   const settings = await loadSettings(b.tenant_id, tx)
-  const bookingStartUtc = artDateAt(b.date, b.time_start.slice(0, 5))
+  const bookingStartUtc = new Date(b.starts_at)
   const policyHours = settings.cancellation_policy.hours_before
   const { shouldRefund, inPolicy } = decideAdminRefund({
     cancellationType,

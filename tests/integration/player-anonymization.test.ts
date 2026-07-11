@@ -42,8 +42,16 @@ async function seedBooking(
   priceSnapshot = 800000,
 ): Promise<string> {
   const rows = await sql<{ id: string }[]>`
-    INSERT INTO bookings (tenant_id, court_id, player_id, date, time_start, time_end, price_snapshot, status, type)
-    VALUES (${tenantId}, ${courtId}, ${playerId}, '2026-06-01', '18:00', '19:00', ${priceSnapshot}, 'confirmed', 'spontaneous')
+    INSERT INTO bookings (
+      tenant_id, court_id, player_id, date, time_start, time_end, starts_at, ends_at,
+      price_snapshot, status, type
+    )
+    VALUES (
+      ${tenantId}, ${courtId}, ${playerId}, '2026-06-01', '18:00', '19:00',
+      ('2026-06-01'::date + '18:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      ('2026-06-01'::date + '19:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      ${priceSnapshot}, 'confirmed', 'spontaneous'
+    )
     RETURNING id
   `
   return rows[0]!.id

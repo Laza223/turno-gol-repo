@@ -259,11 +259,14 @@ describe('abonado slot generation vs individual booking on same slot', () => {
     // que solo cubre pending_payment|confirmed).
     await sql`
       INSERT INTO bookings (tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
         type, status, price_snapshot, deposit_amount, deposit_status,
         canceled_reason, canceled_by, canceled_at)
       VALUES (
         ${tenant.id}, ${seed.courtId}, ${playerId},
         ${startsOn}::date, '11:00'::time, '12:00'::time,
+        (${startsOn}::date + '11:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (${startsOn}::date + '12:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         'spontaneous', 'canceled_no_refund', ${100000}, 0, 'not_required',
         'test', 'admin', NOW()
       )

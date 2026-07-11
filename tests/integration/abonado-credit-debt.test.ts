@@ -69,11 +69,14 @@ async function insertFixedBooking(opts: {
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, abonado_id, date, time_start, time_end,
+      starts_at, ends_at,
       type, status, price_snapshot, deposit_amount, deposit_status, payment_method
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId}, ${opts.abonadoId},
       ${FUTURE_DATE}::date, ${'20:00'}::time, ${'21:00'}::time,
+      (${FUTURE_DATE}::date + ${'20:00'}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      (${FUTURE_DATE}::date + ${'21:00'}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
       'fixed', 'confirmed', ${opts.price}, 0, 'not_required', NULL
     )
     RETURNING id
@@ -227,8 +230,13 @@ describe('Tarea #4 — Saldo a favor de abonados', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
     const spontaneousId = await sql<{ id: string }[]>`
-      INSERT INTO bookings (tenant_id, court_id, player_id, date, time_start, time_end, type, status, price_snapshot, deposit_amount, deposit_status, payment_method)
-      VALUES (${tenant.id}, ${courtId}, ${player.id}, ${FUTURE_DATE}::date, ${'10:00'}::time, ${'11:00'}::time, 'spontaneous', 'confirmed', ${10_000_00}, 0, 'not_required', NULL)
+      INSERT INTO bookings (tenant_id, court_id, player_id, date, time_start, time_end, starts_at, ends_at, type, status, price_snapshot, deposit_amount, deposit_status, payment_method)
+      VALUES (
+        ${tenant.id}, ${courtId}, ${player.id}, ${FUTURE_DATE}::date, ${'10:00'}::time, ${'11:00'}::time,
+        (${FUTURE_DATE}::date + ${'10:00'}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (${FUTURE_DATE}::date + ${'11:00'}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        'spontaneous', 'confirmed', ${10_000_00}, 0, 'not_required', NULL
+      )
       RETURNING id
     `.then((r) => r[0]!.id)
 

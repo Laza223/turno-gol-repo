@@ -6,6 +6,8 @@ import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import type { CashFlowRow, CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 import { generateSlotDates } from './slot-generator'
+import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
+import { physicalRange } from '@/shared/time/physical-range'
 import {
   AbonadoConflictError,
   AbonadoNotFoundError,
@@ -78,18 +80,15 @@ export async function checkAbonadoSlotConflict(
 
 async function checkBookingOverlap(
   courtId: string,
-  dateStr: string,
-  timeStart: string,
-  timeEnd: string,
+  startsAt: Date,
+  endsAt: Date,
   tx: DbTx,
 ): Promise<boolean> {
   const rows = await tx.execute(sql`
     SELECT id FROM bookings
     WHERE court_id = ${courtId}
-      AND date = ${dateStr}::date
       AND status NOT IN ('canceled_refunded','canceled_no_refund')
-      AND time_start < ${timeEnd}::time
-      AND time_end > ${timeStart}::time
+      AND tstzrange(starts_at, ends_at) && tstzrange(${startsAt.toISOString()}, ${endsAt.toISOString()})
     LIMIT 1
   `)
   return (rows as unknown[]).length > 0
@@ -102,26 +101,27 @@ async function insertBookingsForSlots(
   tx: DbTx,
 ): Promise<{ slotsGenerated: number; conflictDates: string[] }> {
   const conflictDates: string[] = []
-  const validDates: string[] = []
+  const validRows: Array<{ dateStr: string; startsAt: Date; endsAt: Date }> = []
+
+  const physicallyNextDay = slotDates.length > 0
+    ? await slotIsPhysicallyNextDay(tenantId, slotDates[0]!, abonado.timeStart, tx)
+    : false
 
   for (const dateStr of slotDates) {
-    const hasConflict = await checkBookingOverlap(
-      abonado.courtId,
-      dateStr,
-      abonado.timeStart,
-      abonado.timeEnd,
-      tx,
-    )
+    const { startsAt, endsAt } = physicalRange({
+      date: dateStr, timeStart: abonado.timeStart, timeEnd: abonado.timeEnd, physicallyNextDay,
+    })
+    const hasConflict = await checkBookingOverlap(abonado.courtId, startsAt, endsAt, tx)
     if (hasConflict) {
       conflictDates.push(dateStr)
     } else {
-      validDates.push(dateStr)
+      validRows.push({ dateStr, startsAt, endsAt })
     }
   }
 
-  if (validDates.length > 0) {
+  if (validRows.length > 0) {
     await tx.insert(bookings).values(
-      validDates.map((dateStr) => ({
+      validRows.map(({ dateStr, startsAt, endsAt }) => ({
         tenantId,
         courtId: abonado.courtId,
         playerId: abonado.playerId ?? null,
@@ -129,6 +129,8 @@ async function insertBookingsForSlots(
         date: new Date(`${dateStr}T00:00:00Z`),
         timeStart: abonado.timeStart,
         timeEnd: abonado.timeEnd,
+        startsAt,
+        endsAt,
         type: 'fixed' as const,
         status: 'confirmed' as const,
         priceSnapshot: abonado.pricePerSession,
@@ -139,7 +141,7 @@ async function insertBookingsForSlots(
     )
   }
 
-  return { slotsGenerated: validDates.length, conflictDates }
+  return { slotsGenerated: validRows.length, conflictDates }
 }
 
 export async function createAbonado(

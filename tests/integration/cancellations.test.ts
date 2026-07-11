@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
+import { physicalRange } from '@/shared/time/physical-range'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   cleanupAll,
@@ -73,14 +74,23 @@ async function insertConfirmedBooking(opts: {
   const sql = getSql()
   const depositStatus = opts.depositStatus ?? 'not_required'
   const depositAmount = opts.depositAmount ?? 0
+  // Deuda Task 4 (migr. 041 NOT NULL): starts_at/ends_at ahora obligatorios.
+  const { startsAt, endsAt } = physicalRange({
+    date: opts.date,
+    timeStart: opts.timeStart,
+    timeEnd: opts.timeEnd,
+    physicallyNextDay: false,
+  })
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${startsAt.toISOString()}, ${endsAt.toISOString()},
       ${800000}, ${depositAmount}, ${depositStatus}, NULL, 'confirmed'
     )
     RETURNING id
@@ -627,10 +637,13 @@ describe('handleNoShow — Tarea #5: genera deuda', () => {
     const rows = await sql<{ id: string }[]>`
       INSERT INTO bookings (
         tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
         price_snapshot, deposit_amount, deposit_status, status
       ) VALUES (
         ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
         CURRENT_DATE - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        (CURRENT_DATE - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (CURRENT_DATE - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         ${800_000}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, 'confirmed'
       )
       RETURNING id

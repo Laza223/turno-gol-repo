@@ -11,6 +11,11 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, '**/.worktrees/**', '**/.claude/**', 'tests/e2e/**'],
     testTimeout: 10_000,
     hookTimeout: 30_000,
+    // `pool` explícito: desde Vitest 2 el default pasó de 'threads' a 'forks'. Sin
+    // esta línea, `poolOptions.threads.singleThread` queda IGNORADO en silencio y
+    // los tests de integración (Postgres compartido, RLS, isolation.test.ts) corren
+    // en forks paralelos y racean. Falla como flake, no como crash.
+    pool: 'threads',
     poolOptions: {
       threads: {
         singleThread: true,

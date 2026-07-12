@@ -236,6 +236,10 @@ export default function Combobox({
       <PopoverContent
         align="start"
         sideOffset={6}
+        // Radix rinde el Content con role="dialog", y un dialog SIN nombre accesible
+        // es una violación de axe (aria-dialog-name): el lector de pantalla anuncia
+        // "diálogo" y nada más.
+        aria-label={listboxLabel ?? placeholder ?? 'Opciones'}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
@@ -245,6 +249,13 @@ export default function Combobox({
         }}
         className="z-50 w-[var(--radix-popover-trigger-width)] max-h-60 overflow-auto rounded-xl border border-border bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur-md"
       >
+        {/* El mensaje de "sin resultados" va FUERA del listbox. Adentro violaba
+            aria-required-children: un role="listbox" solo admite hijos `option` o
+            `group`, y un <li role="presentation"> no es ninguno de los dos. Un
+            listbox vacío, en cambio, es válido. */}
+        {visible.length === 0 && (
+          <p className="px-3 py-2 text-sm text-muted-foreground">{emptyMessage}</p>
+        )}
         <ul
           id={listboxId}
           role="listbox"
@@ -255,12 +266,7 @@ export default function Combobox({
             e.preventDefault()
           }}
         >
-          {visible.length === 0 ? (
-            <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">
-              {emptyMessage}
-            </li>
-          ) : (
-            visible.map((o, i) => (
+          {visible.map((o, i) => (
               <li
                 key={`${o.value}-${i}`}
                 id={`${id}-option-${i}`}
@@ -291,8 +297,7 @@ export default function Combobox({
                   <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{o.hint}</span>
                 )}
               </li>
-            ))
-          )}
+            ))}
         </ul>
       </PopoverContent>
       {/* Anuncio de resultados para lectores de pantalla (WCAG 4.1.3). */}

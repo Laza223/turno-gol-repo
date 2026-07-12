@@ -143,6 +143,9 @@ export default function DatePicker({
         <PopoverContent
           align="start"
           sideOffset={6}
+          // Radix rinde el Content con role="dialog"; sin nombre accesible axe lo
+          // marca (aria-dialog-name) y el lector solo anuncia "diálogo".
+          aria-label="Elegir fecha"
           className="w-[280px] rounded-2xl border border-border bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-md"
         >
           {/* Header del Calendario */}

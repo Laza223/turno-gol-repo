@@ -236,6 +236,9 @@ export function PhoneInput({
           align="start"
           sideOffset={6}
           className="w-72 overflow-hidden p-0"
+          // Radix rinde el Content con role="dialog": sin nombre accesible, axe lo
+          // marca (aria-dialog-name) y el lector de pantalla solo anuncia "diálogo".
+          aria-label="Elegir país"
           // El foco inicial va al buscador, no al primer item.
           onOpenAutoFocus={(e) => {
             e.preventDefault()
@@ -259,13 +262,24 @@ export function PhoneInput({
               </div>
             </div>
 
-            <ul role="listbox" className="max-h-56 overflow-y-auto p-1 scrollbar-thin">
-              {filteredCountries.length === 0 ? (
-                <li className="px-3 py-4 text-center text-xs text-muted-foreground">
-                  No se encontraron países
-                </li>
-              ) : (
-                filteredCountries.map((c) => {
+            {/* El "no hay resultados" va FUERA del listbox: un role="listbox" solo
+                admite hijos `option`/`group` (aria-required-children). */}
+            {filteredCountries.length === 0 && (
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                No se encontraron países
+              </p>
+            )}
+            {/* tabIndex={0}: la lista scrollea, así que tiene que ser alcanzable por
+                teclado o el contenido de abajo es inaccesible sin mouse
+                (scrollable-region-focusable). aria-label: sin él, un listbox no
+                tiene nombre accesible (aria-input-field-name). */}
+            <ul
+              role="listbox"
+              aria-label="Países"
+              tabIndex={0}
+              className="max-h-56 overflow-y-auto p-1 scrollbar-thin focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {filteredCountries.map((c) => {
                   const isSelected = c.code === country.code
                   return (
                     <li
@@ -294,8 +308,7 @@ export function PhoneInput({
                       </div>
                     </li>
                   )
-                })
-              )}
+                })}
             </ul>
         </PopoverContent>
       </div>

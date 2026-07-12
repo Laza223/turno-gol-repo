@@ -301,6 +301,9 @@ function BookingCardComponent({
           side="bottom"
           align="start"
           className="w-60 p-3"
+          // Radix rinde el Content con role="dialog"; sin nombre accesible axe lo
+          // marca (aria-dialog-name) y el lector solo anuncia "diálogo".
+          aria-label="Detalle de la reserva"
           // No robar el foco de la grilla al abrir (la navegación por flechas
           // vive en los botones de celda); al cerrar, Radix devuelve el foco.
           onOpenAutoFocus={(e) => e.preventDefault()}

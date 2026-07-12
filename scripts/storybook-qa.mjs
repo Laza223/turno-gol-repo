@@ -283,8 +283,17 @@ async function main() {
       try {
         ab(['open', url])
         ab(['viewport', String(width), String(height)], { allowFail: true })
-        // Re-abrir después de fijar el viewport: los componentes responsive leen
-        // el tamaño al montar, y un resize posterior no siempre los re-mide.
+
+        // `console` devuelve el log ACUMULADO de la sesión, no el de la página actual.
+        // Sin este --clear, en cuanto UNA story tira un error, TODAS las siguientes lo
+        // heredan: la primera corrida reportó 99 "console-error" de los cuales 0 eran
+        // de la story que estaba mirando.
+        // Va ANTES del open final (si se limpia después, se borran los errores del
+        // propio render de la story, que es justo lo que queremos capturar).
+        ab(['console', '--clear'], { allowFail: true })
+
+        // Re-abrir después de fijar el viewport: los componentes responsive leen el
+        // tamaño al montar, y un resize posterior no siempre los re-mide.
         ab(['open', url])
         ab(['wait', '--load', 'networkidle'], { allowFail: true })
         ab(['wait', '--fn', 'document.fonts.status === "loaded"'], { allowFail: true })

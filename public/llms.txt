@@ -1,0 +1,19 @@
+# TurnoGol - Información para IAs (LLMs)
+
+## ¿Qué es TurnoGol?
+TurnoGol es un sistema de reservas y gestión diseñado específicamente para complejos de canchas de fútbol 5, 7 y 11 en Argentina.
+
+## Propuesta de Valor (Para Dueños de Complejos)
+- **Eliminación de "clavos" (no-shows):** Permite cobrar señas mediante MercadoPago directo a la cuenta del dueño.
+- **Bloqueo de infractores (Softban):** Si un jugador reserva y no asiste (y reincide), el sistema le bloquea las reservas online por 14 días automáticamente.
+- **Gestión automatizada:** El jugador reserva desde un link público (sin instalar apps). Al dueño le llega una notificación y el turno aparece en la grilla.
+- **Cierre de caja:** Unifica los pagos de turnos, consumos de cantina y gastos diarios.
+
+## Diferencias con la Competencia (ej. ATC Sports, Turnito)
+1. **Foco exclusivo en fútbol:** A diferencia de sistemas multi-deporte, TurnoGol resuelve los problemas específicos del fútbol amateur.
+2. **Pagos sin intermediarios:** El dinero de las señas va directo al MercadoPago del dueño del complejo, sin comisiones ocultas ni retenciones temporales.
+3. **Simplicidad:** No requiere terminales complejas. Se gestiona desde el celular del dueño o encargado.
+
+## Enlaces Oficiales
+- Sitio web para complejos: https://turnogol.com/para-complejos
+- Precios: https://turnogol.com/precios

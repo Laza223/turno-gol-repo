@@ -7,10 +7,11 @@ import { ImageUploader } from '@/components/ui/image-uploader'
 import { cn } from '@/lib/utils'
 import { fieldClass, labelClass } from '../wizard-styles'
 import { FORMATS, SURFACE_OPTIONS, type Draft, type SurfaceType } from './constants'
-import {
-  uploadOnboardingCourtPhotoAction,
-  deleteOnboardingCourtPhotoAction,
-} from '../../actions'
+import type { UploadPhotoActionResult, WizardActionResult } from '../../actions'
+
+/** Firmas de las Server Actions de foto que consume ImageUploader. */
+export type UploadCourtPhotoAction = (formData: FormData) => Promise<UploadPhotoActionResult>
+export type DeleteCourtPhotoAction = (url: string) => Promise<WizardActionResult>
 
 type Props = {
   draft: Draft
@@ -20,6 +21,8 @@ type Props = {
   onToggle: (key: number) => void
   onUpdate: (key: number, patch: Partial<Draft>) => void
   onRemove: (key: number) => void
+  onUploadPhoto: UploadCourtPhotoAction
+  onDeletePhoto: DeleteCourtPhotoAction
 }
 
 /** Tarjeta de un borrador de cancha: fila-resumen colapsable + form inline. */
@@ -31,6 +34,8 @@ export function CourtDraftCard({
   onToggle,
   onUpdate,
   onRemove,
+  onUploadPhoto,
+  onDeletePhoto,
 }: Props) {
   const surfaceLabel =
     SURFACE_OPTIONS.find((s) => s.value === draft.surfaceType)?.label ?? draft.surfaceType
@@ -58,11 +63,11 @@ export function CourtDraftCard({
               </span>
               {!isExpanded && (
                 draft.price ? (
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
                     $ {draft.price}
                   </span>
                 ) : (
-                  <span className="text-xs font-medium text-red-500 dark:text-red-400">
+                  <span className="text-xs font-medium text-red-600 dark:text-red-400">
                     (falta precio)
                   </span>
                 )
@@ -237,7 +242,7 @@ export function CourtDraftCard({
               onUpload={async (blob) => {
                 const fd = new FormData()
                 fd.append('file', blob)
-                const res = await uploadOnboardingCourtPhotoAction(fd)
+                const res = await onUploadPhoto(fd)
                 if (res.success) {
                   onUpdate(draft.key, { photos: [...draft.photos, res.url] })
                 } else {
@@ -245,7 +250,7 @@ export function CourtDraftCard({
                 }
               }}
               onRemove={async (url) => {
-                const res = await deleteOnboardingCourtPhotoAction(url)
+                const res = await onDeletePhoto(url)
                 if (res.success) {
                   onUpdate(draft.key, { photos: draft.photos.filter((p) => p !== url) })
                 } else {

@@ -29,8 +29,15 @@ const toastVariants = cva(
     variants: {
       variant: {
         default: 'border-border bg-card text-foreground',
-        success: 'border-success/30 bg-success/10 text-success dark:border-success/40 dark:bg-success/15',
-        destructive: 'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15',
+        // `text-success` crudo no llega a 4.5:1 en light sobre este fill
+        // translúcido (mismo bug medido en badge.tsx) — dark sigue usando el
+        // token, que ahí sí pasa AA.
+        success: 'border-success/30 bg-success/10 text-green-800 dark:border-success/40 dark:bg-success/15 dark:text-success',
+        // `text-destructive` crudo (red-600) mide 4.83:1 sobre blanco — pasa
+        // por poco, pero el toast flota sobre `bg-background` (el canvas real
+        // de la app, no una card blanca) y ahí cae a 3.34:1. Mismo patrón que
+        // success: se ajusta solo el foreground light.
+        destructive: 'border-destructive/30 bg-destructive/10 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
       },
     },
     defaultVariants: { variant: 'default' },

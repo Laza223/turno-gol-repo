@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { formatArs } from '@/lib/format'
-import { changePlanAction } from '../../actions'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
 import {
@@ -10,6 +9,7 @@ import {
   primaryBtn,
   type Feedback,
   type RunAction,
+  type SupportAction,
   type SupportPanelPlan,
 } from './constants'
 
@@ -20,6 +20,7 @@ type Props = {
   plans: SupportPanelPlan[]
   pending: boolean
   run: RunAction
+  action: SupportAction
 }
 
 /** Cambiar plan sin cobro: swap inmediato, sin proración. Actualiza el monto MP del próximo ciclo. */
@@ -30,6 +31,7 @@ export function ChangePlanSection({
   plans,
   pending,
   run,
+  action,
 }: Props) {
   const [targetPlanId, setTargetPlanId] = useState('')
   const [planFeedback, setPlanFeedback] = useState<Feedback>(null)
@@ -68,7 +70,7 @@ export function ChangePlanSection({
               type="button"
               disabled={pending || targetPlanId === ''}
               onClick={() =>
-                run(() => changePlanAction({ tenantId, targetPlanId }), setPlanFeedback)
+                run(() => action({ tenantId, targetPlanId }), setPlanFeedback)
               }
               className={primaryBtn}
             >

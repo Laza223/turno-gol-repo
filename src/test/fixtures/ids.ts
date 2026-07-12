@@ -12,6 +12,8 @@
  *   501-599   abonados
  *   601-699   cash_flows / daily_cash_closes
  *   1001-1999 bookings
+ *   7001-7099 super-admin (planes, trials/signups/webhooks del dashboard global)
+ *   7101-7199 super-admin (audit_logs / bookings del tenant activity tab)
  *   9001-9999 payments (mercadopago payment id / preference id)
  */
 export const uid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`

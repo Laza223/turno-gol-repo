@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { CloseDayButton } from './CloseDayButton'
+import { CloseDayButton, type CloseDayAction } from './CloseDayButton'
+import type { CreateCashFlowAction } from './RegisterMovementModal'
 
 const RegisterMovementModal = dynamic(
   () => import('./RegisterMovementModal').then((m) => m.RegisterMovementModal),
@@ -19,6 +20,8 @@ export function CajaActions({
   balance,
   cashTotal,
   isClosed,
+  createCashFlowAction,
+  closeDayAction,
 }: {
   date: string
   totalIncome: number
@@ -26,6 +29,8 @@ export function CajaActions({
   balance: number
   cashTotal: number
   isClosed: boolean
+  createCashFlowAction: CreateCashFlowAction
+  closeDayAction: CloseDayAction
 }) {
   const [movOpen, setMovOpen] = useState(false)
   if (isClosed) return null
@@ -44,8 +49,14 @@ export function CajaActions({
         totalExpense={totalExpense}
         balance={balance}
         cashTotal={cashTotal}
+        closeDayAction={closeDayAction}
       />
-      <RegisterMovementModal open={movOpen} onClose={() => setMovOpen(false)} date={date} />
+      <RegisterMovementModal
+        open={movOpen}
+        onClose={() => setMovOpen(false)}
+        date={date}
+        createCashFlowAction={createCashFlowAction}
+      />
     </div>
   )
 }

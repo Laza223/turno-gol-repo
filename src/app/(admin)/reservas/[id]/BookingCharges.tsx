@@ -2,11 +2,11 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { addBookingChargeAction } from '../actions'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { BookingChargeRow } from '../queries'
+import type { AddBookingChargeInput, BookingChargeActionResult } from '../actions'
 
 type Props = {
   bookingId: string
@@ -15,6 +15,12 @@ type Props = {
   depositStatus: string
   charges: BookingChargeRow[]
   chargesTotal: number
+  /**
+   * Server Action por PROP, no por import (ver comentario homólogo en
+   * ReservasPolicyForm.tsx): '../actions' es `'use server'` y arrastra
+   * node:async_hooks, que rompe Storybook.
+   */
+  addBookingChargeAction: (input: AddBookingChargeInput) => Promise<BookingChargeActionResult>
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -37,6 +43,7 @@ export default function BookingCharges({
   depositStatus,
   charges,
   chargesTotal,
+  addBookingChargeAction,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()

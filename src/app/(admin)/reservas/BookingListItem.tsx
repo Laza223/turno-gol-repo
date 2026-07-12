@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Ban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs, formatTime } from '@/lib/format'
-import { QuickActions } from './QuickActions'
+import { QuickActions, type BookingQuickActions } from './QuickActions'
 import { hasQuickActions } from './quick-actions-helpers'
 import { reservaStatusVisual, ReservaStatusBadge } from './status-visual'
 import type { ReservaListRow } from './queries'
@@ -31,9 +31,14 @@ type Props = {
   booking: ReservaListRow
   /** Vista compacta (?vista=compacta): una línea por reserva, sin seña. */
   compact?: boolean
+  /**
+   * Server Actions de QuickActions, reenviadas tal cual (Server Component →
+   * Client Component). Solo se usan si `hasQuickActions(booking)` es true.
+   */
+  actions: BookingQuickActions
 }
 
-export function BookingListItem({ booking, compact = false }: Props) {
+export function BookingListItem({ booking, compact = false, actions }: Props) {
   const visual = reservaStatusVisual(booking)
   const name = clientName(booking)
   const isBlock = booking.type === 'block'
@@ -65,6 +70,7 @@ export function BookingListItem({ booking, compact = false }: Props) {
         paymentMethod: booking.paymentMethod,
       }}
       label={`${name} · ${timeRange}`}
+      {...actions}
     />
   )
 

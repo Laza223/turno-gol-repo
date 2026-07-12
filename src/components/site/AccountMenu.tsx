@@ -9,7 +9,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { signOutAction } from '@/modules/auth/sign-out.action'
 import { initials } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +18,13 @@ type Props = {
   email: string
   avatarUrl: string | null
   variant?: 'overlay' | 'solid'
+  /**
+   * Server Action de cierre de sesión, recibida por PROP (nunca importada
+   * como valor acá): `@/modules/auth/sign-out.action` es `'use server'` y
+   * arrastra el cliente de Supabase, lo que rompe el bundle de browser de
+   * Storybook.
+   */
+  signOutAction: () => Promise<void>
 }
 
 // Touch-target 44px en mobile (WCAG 2.5.5), 36px en desktop.
@@ -28,7 +34,14 @@ const itemClass = 'min-h-11 gap-2.5 md:min-h-9 w-full flex items-center transiti
  * Chip de avatar + nombre con menú desplegable de cuenta (estilo ecommerce).
  * Es la prueba visual de "estás logueado" y la salida hacia las secciones.
  */
-export function AccountMenu({ firstName, lastName, email, avatarUrl, variant = 'solid' }: Props) {
+export function AccountMenu({
+  firstName,
+  lastName,
+  email,
+  avatarUrl,
+  variant = 'solid',
+  signOutAction,
+}: Props) {
   const chip =
     variant === 'overlay'
       ? 'bg-foreground/[.06] hover:bg-foreground/[.1] ring-border text-foreground dark:bg-white/15 dark:hover:bg-white/25 dark:ring-white/25 dark:text-white'

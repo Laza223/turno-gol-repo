@@ -6,6 +6,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import AbonadoForm from './AbonadoForm'
+import { submitNewAbonado, previewAbonadoSlotsAction } from './actions'
 
 export default async function NuevoAbonadoPage() {
   const user = await extractAuthUser()
@@ -22,7 +23,11 @@ export default async function NuevoAbonadoPage() {
         <ChevronLeft className="h-4 w-4" aria-hidden /> Abonados
       </Link>
       <h1 className="text-2xl font-semibold text-foreground">Nuevo abonado</h1>
-      <AbonadoForm courts={courtOptions} />
+      <AbonadoForm
+        courts={courtOptions}
+        submitAction={submitNewAbonado}
+        previewAction={previewAbonadoSlotsAction}
+      />
     </div>
   )
 }

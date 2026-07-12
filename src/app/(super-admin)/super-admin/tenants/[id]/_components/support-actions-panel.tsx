@@ -10,10 +10,16 @@ import { ChangePlanSection } from './support-actions/ChangePlanSection'
 import { SettingsSection } from './support-actions/SettingsSection'
 import { ResetPasswordSection } from './support-actions/ResetPasswordSection'
 import { CancelSection } from './support-actions/CancelSection'
-import type { Feedback, RunAction, SupportPanelPlan, SupportPanelSettings } from './support-actions/constants'
+import type {
+  Feedback,
+  RunAction,
+  SupportActionsBag,
+  SupportPanelPlan,
+  SupportPanelSettings,
+} from './support-actions/constants'
 
-// Re-export para que la page importe el tipo desde el entry del panel.
-export type { SupportPanelSettings } from './support-actions/constants'
+// Re-export para que la page importe los tipos desde el entry del panel.
+export type { SupportActionsBag, SupportPanelSettings } from './support-actions/constants'
 
 type Props = {
   tenantId: string
@@ -27,6 +33,7 @@ type Props = {
   currentPlanId: string | null
   plans: SupportPanelPlan[]
   settings: SupportPanelSettings
+  actions: SupportActionsBag
 }
 
 /**
@@ -48,6 +55,7 @@ export function SupportActionsPanel({
   currentPlanId,
   plans,
   settings,
+  actions,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -74,15 +82,19 @@ export function SupportActionsPanel({
         destructiveTargets={destructiveTargets}
         pending={pending}
         run={run}
+        action={actions.forceStatus}
       />
 
-      {canReactivate && <ReactivateSection tenantId={tenantId} pending={pending} run={run} />}
+      {canReactivate && (
+        <ReactivateSection tenantId={tenantId} pending={pending} run={run} action={actions.reactivate} />
+      )}
 
       <ExtendTrialSection
         tenantId={tenantId}
         isTrialing={isTrialing}
         pending={pending}
         run={run}
+        action={actions.extendTrial}
       />
 
       <ChangePlanSection
@@ -92,11 +104,18 @@ export function SupportActionsPanel({
         plans={plans}
         pending={pending}
         run={run}
+        action={actions.changePlan}
       />
 
-      <SettingsSection tenantId={tenantId} settings={settings} pending={pending} run={run} />
+      <SettingsSection
+        tenantId={tenantId}
+        settings={settings}
+        pending={pending}
+        run={run}
+        action={actions.updateSettings}
+      />
 
-      <ResetPasswordSection tenantId={tenantId} pending={pending} run={run} />
+      <ResetPasswordSection tenantId={tenantId} pending={pending} run={run} action={actions.resetPassword} />
 
       <CancelSection
         tenantId={tenantId}
@@ -104,6 +123,7 @@ export function SupportActionsPanel({
         hasSubscription={hasSubscription}
         pending={pending}
         run={run}
+        action={actions.cancelSubscription}
       />
     </div>
   )

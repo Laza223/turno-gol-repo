@@ -1,20 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { extendTrialAction } from '../../actions'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
-import { inputCls, primaryBtn, type Feedback, type RunAction } from './constants'
+import { inputCls, primaryBtn, type Feedback, type RunAction, type SupportAction } from './constants'
 
 type Props = {
   tenantId: string
   isTrialing: boolean
   pending: boolean
   run: RunAction
+  action: SupportAction
 }
 
 /** Extender trial: mueve el fin de trial a max(hoy, fin actual) + días. Solo tenants en trial. */
-export function ExtendTrialSection({ tenantId, isTrialing, pending, run }: Props) {
+export function ExtendTrialSection({ tenantId, isTrialing, pending, run, action }: Props) {
   const [trialDays, setTrialDays] = useState(7)
   const [trialFeedback, setTrialFeedback] = useState<Feedback>(null)
 
@@ -46,7 +46,7 @@ export function ExtendTrialSection({ tenantId, isTrialing, pending, run }: Props
               type="button"
               disabled={pending}
               onClick={() =>
-                run(() => extendTrialAction({ tenantId, days: trialDays }), setTrialFeedback)
+                run(() => action({ tenantId, days: trialDays }), setTrialFeedback)
               }
               className={primaryBtn}
             >

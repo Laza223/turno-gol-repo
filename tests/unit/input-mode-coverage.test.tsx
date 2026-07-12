@@ -24,9 +24,11 @@ describe('inputMode coverage (regression guard)', () => {
     expect(file).toMatch(/<PhoneInput/)
   })
 
-  it('register page uses PhoneInput component', () => {
+  // El form de registro se extrajo de page.tsx a RegisterCard.tsx (la page quedó
+  // como shell que le inyecta la Server Action). El markup del teléfono vive ahí.
+  it('register form uses PhoneInput component', () => {
     const file = readFileSync(
-      path.join(projectRoot, 'src/app/(auth)/register/page.tsx'),
+      path.join(projectRoot, 'src/app/(auth)/register/RegisterCard.tsx'),
       'utf8',
     )
     expect(file).toMatch(/<PhoneInput/)

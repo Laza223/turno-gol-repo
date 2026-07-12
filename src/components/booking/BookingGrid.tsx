@@ -20,6 +20,7 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import type { CreateBookingAction } from './BookingFormModal'
 
 // Re-export GridBooking so BookingCard (and others) can import it from here.
 export type { GridBooking } from '@/lib/booking/grid-cells'
@@ -52,6 +53,8 @@ type Props = {
   openingHours: OpeningHours
   closedDates: string[]
   closesNextDay: boolean
+  /** Reenviada al BookingFormModal cargado por dynamic import (ver el comentario ahí). */
+  action: CreateBookingAction
 }
 
 export function BookingGrid({
@@ -62,6 +65,7 @@ export function BookingGrid({
   openingHours,
   closedDates,
   closesNextDay,
+  action,
 }: Props) {
   const router = useRouter()
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
@@ -278,6 +282,7 @@ export function BookingGrid({
           open={true}
           onClose={() => setSelectedSlot(null)}
           onSuccess={handleBookingSuccess}
+          action={action}
         />
       )}
     </div>

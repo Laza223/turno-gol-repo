@@ -12,10 +12,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
+// createCashFlowAction ya no se importa del módulo — RegisterMovementModal la
+// recibe por prop (ver el comentario en RegisterMovementModal.tsx).
 const createCashFlowAction = vi.fn()
-vi.mock('@/app/(admin)/caja/actions', () => ({
-  createCashFlowAction: (...args: unknown[]) => createCashFlowAction(...args),
-}))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 const captureException = vi.fn()
@@ -25,7 +24,14 @@ import { RegisterMovementModal } from '@/app/(admin)/caja/components/RegisterMov
 
 function renderModal() {
   const onClose = vi.fn()
-  render(<RegisterMovementModal open onClose={onClose} date="2026-06-10" />)
+  render(
+    <RegisterMovementModal
+      open
+      onClose={onClose}
+      date="2026-06-10"
+      createCashFlowAction={createCashFlowAction}
+    />,
+  )
   // Fill the required fields so submit reaches the action.
   fireEvent.change(screen.getByLabelText('Monto (pesos)'), { target: { value: '100' } })
   fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Test' } })

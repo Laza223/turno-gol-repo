@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
-import { updateProfileAction, type UpdateProfileResult } from './actions'
+import type { UpdateProfileResult } from './actions'
 import { PhoneInput } from '@/components/ui/phone-input'
 
 type DefaultValues = {
@@ -13,8 +13,22 @@ type DefaultValues = {
   email: string
 }
 
+/** Firma de la Server Action que consume el form. */
+export type UpdateProfileAction = (
+  prevState: UpdateProfileResult,
+  formData: FormData,
+) => Promise<UpdateProfileResult>
+
 type Props = {
   defaultValues: DefaultValues
+  /**
+   * La action llega por PROP, no por import: './actions' es `'use server'` y
+   * arrastra drizzle/postgres + `node:async_hooks` (vía request-context), lo
+   * que rompe cualquier bundle de browser (Storybook) si se importa como
+   * valor. El type import de `UpdateProfileResult` sí es seguro: se borra en
+   * compilación.
+   */
+  action: UpdateProfileAction
 }
 
 const INITIAL_STATE: UpdateProfileResult = { success: true }
@@ -32,8 +46,8 @@ function SubmitButton() {
   )
 }
 
-export function ProfileForm({ defaultValues }: Props) {
-  const [state, formAction] = useFormState(updateProfileAction, INITIAL_STATE)
+export function ProfileForm({ defaultValues, action }: Props) {
+  const [state, formAction] = useFormState(action, INITIAL_STATE)
   const [didSubmit, setDidSubmit] = useState(false)
 
   return (

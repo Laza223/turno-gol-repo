@@ -16,6 +16,7 @@ import { UpcomingBookings } from '@/components/dashboard/upcoming-bookings'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
+import { markPublicLinkSharedAction } from './actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -87,6 +88,7 @@ export default async function DashboardPage() {
           state={checklistState}
           tenantSlug={tenant.slug}
           appUrl={appUrl}
+          action={markPublicLinkSharedAction}
         />
       )}
 

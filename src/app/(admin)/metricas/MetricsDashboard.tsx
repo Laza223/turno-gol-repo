@@ -63,7 +63,7 @@ function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
           </span>
         )}
         {trend.kind === 'down' && (
-          <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
             <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />
             {String(trend.deltaPts).replace('.', ',')} pts vs período anterior
           </span>
@@ -74,7 +74,13 @@ function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
 }
 
 /** BarChart de ingresos con toggle día/semana/mes (agregación client-side). */
-function RevenueChart({ metrics }: { metrics: TenantMetrics }) {
+function RevenueChart({
+  metrics,
+  isAnimationActive,
+}: {
+  metrics: TenantMetrics
+  isAnimationActive: boolean
+}) {
   const [granularity, setGranularity] = useState<RevenueGranularity>('day')
   const data = groupRevenue(metrics.revenuePerDay, granularity)
   const chart = useChartTheme()
@@ -120,7 +126,7 @@ function RevenueChart({ metrics }: { metrics: TenantMetrics }) {
               labelStyle={chart.tooltip.labelStyle}
               contentStyle={chart.tooltip.contentStyle} itemStyle={chart.tooltip.itemStyle}
             />
-            <Bar dataKey="amountCents" fill={chart.primary} radius={[3, 3, 0, 0]} />
+            <Bar dataKey="amountCents" fill={chart.primary} radius={[3, 3, 0, 0]} isAnimationActive={isAnimationActive} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -173,32 +179,35 @@ function SystemPanel({ status, nowMs }: { status: SystemStatus | null; nowMs: nu
       {!status ? (
         <p className="text-sm text-muted-foreground">No se pudo consultar el estado del sistema.</p>
       ) : (
-        <dl className="space-y-3 text-sm">
-          <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">Base de datos</dt>
-            <dd>
-              {status.db.status === 'ok' ? (
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                  Operativa{status.db.latencyMs !== null ? ` · ${status.db.latencyMs} ms` : ''}
-                </span>
-              ) : (
-                <span className="font-medium text-red-600 dark:text-red-400">Caída</span>
-              )}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">Trabajos en cola</dt>
-            <dd className="font-medium tabular-nums text-foreground">
-              {totalDepth === null ? '—' : totalDepth}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="text-muted-foreground">Último chequeo de salud</dt>
-            <dd className="font-medium text-foreground">
-              {status.lastHealthPing ? relativeTimeEs(status.lastHealthPing, nowMs) : '—'}
-            </dd>
-          </div>
-          <details className="pt-1">
+        <>
+          <dl className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Base de datos</dt>
+              <dd>
+                {status.db.status === 'ok' ? (
+                  <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                    Operativa{status.db.latencyMs !== null ? ` · ${status.db.latencyMs} ms` : ''}
+                  </span>
+                ) : (
+                  <span className="font-medium text-red-600 dark:text-red-400">Caída</span>
+                )}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Trabajos en cola</dt>
+              <dd className="font-medium tabular-nums text-foreground">
+                {totalDepth === null ? '—' : totalDepth}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Último chequeo de salud</dt>
+              <dd className="font-medium text-foreground">
+                {status.lastHealthPing ? relativeTimeEs(status.lastHealthPing, nowMs) : '—'}
+              </dd>
+            </div>
+          </dl>
+          {/* axe (definition-list): <details> no es un hijo válido de <dl>, tiene que ir afuera. */}
+          <details className="pt-1 text-sm">
             <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
               Detalle por cola
             </summary>
@@ -213,13 +222,20 @@ function SystemPanel({ status, nowMs }: { status: SystemStatus | null; nowMs: nu
               ))}
             </ul>
           </details>
-        </dl>
+        </>
       )}
     </Card>
   )
 }
 
-export default function MetricsDashboard({ canSeeSystem }: { canSeeSystem: boolean }) {
+export default function MetricsDashboard({
+  canSeeSystem,
+  isAnimationActive = true,
+}: {
+  canSeeSystem: boolean
+  /** recharts anima en JS (prefers-reduced-motion no lo frena). Default true: no cambia el comportamiento de la app. */
+  isAnimationActive?: boolean
+}) {
   const [metrics, setMetrics] = useState<TenantMetrics | null>(null)
   const [system, setSystem] = useState<SystemStatus | null>(null)
   const [error, setError] = useState(false)
@@ -312,6 +328,7 @@ export default function MetricsDashboard({ canSeeSystem }: { canSeeSystem: boole
                     strokeWidth={2}
                     dot={false}
                     activeDot={{ r: 4 }}
+                    isAnimationActive={isAnimationActive}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -321,7 +338,7 @@ export default function MetricsDashboard({ canSeeSystem }: { canSeeSystem: boole
         <NoShowCard metrics={metrics} />
       </div>
 
-      <RevenueChart metrics={metrics} />
+      <RevenueChart metrics={metrics} isAnimationActive={isAnimationActive} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TopSlots metrics={metrics} />

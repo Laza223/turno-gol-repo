@@ -14,7 +14,14 @@ import { formatArs } from '@/lib/format'
 import type { CourtReport, PeriodTotals } from '@/modules/reports/report.types'
 
 /** Barra horizontal de ocupación por cancha. Dato ya presente en `RevenueReport.byCourt`. */
-export function OccupancyChart({ byCourt }: { byCourt: CourtReport[] }) {
+export function OccupancyChart({
+  byCourt,
+  isAnimationActive = true,
+}: {
+  byCourt: CourtReport[]
+  /** recharts anima en JS (prefers-reduced-motion no lo frena). Default true: no cambia el comportamiento de la app. */
+  isAnimationActive?: boolean
+}) {
   const chart = useChartTheme()
   const height = Math.max(120, byCourt.length * 44)
 
@@ -51,7 +58,7 @@ export function OccupancyChart({ byCourt }: { byCourt: CourtReport[] }) {
               itemStyle={chart.tooltip.itemStyle}
               cursor={chart.tooltip.cursor}
             />
-            <Bar dataKey="occupancyPct" fill={chart.primary} radius={[0, 4, 4, 0]} />
+            <Bar dataKey="occupancyPct" fill={chart.primary} radius={[0, 4, 4, 0]} isAnimationActive={isAnimationActive} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -67,9 +74,12 @@ export function OccupancyChart({ byCourt }: { byCourt: CourtReport[] }) {
 export function TrendChart({
   current,
   prev,
+  isAnimationActive = true,
 }: {
   current: { income: number; balance: number }
   prev: PeriodTotals
+  /** recharts anima en JS (prefers-reduced-motion no lo frena). Default true: no cambia el comportamiento de la app. */
+  isAnimationActive?: boolean
 }) {
   const chart = useChartTheme()
   const data = [
@@ -117,8 +127,8 @@ export function TrendChart({
               itemStyle={chart.tooltip.itemStyle}
               cursor={chart.tooltip.cursor}
             />
-            <Bar dataKey="actual" name="Este mes" fill={chart.series[0]} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="anterior" name="Mes anterior" fill={chart.series[1]} radius={[3, 3, 0, 0]} />
+            <Bar dataKey="actual" name="Este mes" fill={chart.series[0]} radius={[3, 3, 0, 0]} isAnimationActive={isAnimationActive} />
+            <Bar dataKey="anterior" name="Mes anterior" fill={chart.series[1]} radius={[3, 3, 0, 0]} isAnimationActive={isAnimationActive} />
           </BarChart>
         </ResponsiveContainer>
       </div>

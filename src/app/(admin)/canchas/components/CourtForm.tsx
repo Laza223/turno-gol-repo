@@ -7,15 +7,28 @@ import {
   countEmptyCells,
   expandRulesToGrid,
 } from '@/modules/courts/pricing-grid'
-import { createCourtAction, updateCourtAction } from '../actions'
+import type { CourtActionResult, CourtPhotoActionResult } from '../actions'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
 import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/components/ui/image-uploader'
-import {
-  uploadCourtPhotoAction,
-  removeCourtPhotoAction,
-  reorderCourtPhotosAction,
-} from '../actions'
+
+/**
+ * Las 5 Server Actions llegan por PROP, no por import: '../actions' es
+ * `'use server'` y arrastra drizzle/postgres → `node:async_hooks`, que rompe
+ * cualquier bundle de browser (Storybook). Ver el comentario en
+ * ReservasPolicyForm.tsx.
+ */
+export type CreateCourtAction = (formData: FormData) => Promise<CourtActionResult>
+export type UpdateCourtAction = (courtId: string, formData: FormData) => Promise<CourtActionResult>
+export type UploadCourtPhotoAction = (
+  courtId: string,
+  formData: FormData,
+) => Promise<CourtPhotoActionResult>
+export type RemoveCourtPhotoAction = (courtId: string, url: string) => Promise<CourtPhotoActionResult>
+export type ReorderCourtPhotosAction = (
+  courtId: string,
+  urls: string[],
+) => Promise<CourtPhotoActionResult>
 
 const SURFACE_OPTIONS = [
   { value: 'synthetic_grass', label: 'Césped sintético' },
@@ -33,9 +46,25 @@ type Props = {
   otherCourts: CourtPricingSource[]
   onSaved: (court: CourtRow) => void
   onCancel: () => void
+  createAction: CreateCourtAction
+  updateAction: UpdateCourtAction
+  uploadPhotoAction: UploadCourtPhotoAction
+  removePhotoAction: RemoveCourtPhotoAction
+  reorderPhotosAction: ReorderCourtPhotosAction
 }
 
-export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel }: Props) {
+export function CourtForm({
+  court,
+  openingHours,
+  otherCourts,
+  onSaved,
+  onCancel,
+  createAction,
+  updateAction,
+  uploadPhotoAction,
+  removePhotoAction,
+  reorderPhotosAction,
+}: Props) {
   const isEdit = court !== null
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -65,21 +94,21 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
     if (!court) return
     const fd = new FormData()
     fd.set('file', blob, 'photo.webp')
-    const result = await uploadCourtPhotoAction(court.id, fd)
+    const result = await uploadPhotoAction(court.id, fd)
     if (result.success) setPhotos(result.photos)
     else setError(result.error)
   }
 
   async function handlePhotoRemove(url: string) {
     if (!court) return
-    const result = await removeCourtPhotoAction(court.id, url)
+    const result = await removePhotoAction(court.id, url)
     if (result.success) setPhotos(result.photos)
     else setError(result.error)
   }
 
   async function handlePhotoReorder(urls: string[]) {
     if (!court) return
-    const result = await reorderCourtPhotosAction(court.id, urls)
+    const result = await reorderPhotosAction(court.id, urls)
     if (result.success) setPhotos(result.photos)
     else setError(result.error)
   }
@@ -102,8 +131,8 @@ export function CourtForm({ court, openingHours, otherCourts, onSaved, onCancel 
 
     startTransition(async () => {
       const result = isEdit
-        ? await updateCourtAction(court.id, formData)
-        : await createCourtAction(formData)
+        ? await updateAction(court.id, formData)
+        : await createAction(formData)
 
       if (!result.success) {
         setError(result.error)

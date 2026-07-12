@@ -10,13 +10,20 @@ import {
   type ScheduleView,
 } from '@/app/(admin)/settings/horarios/horarios-lib'
 import { sanitizeWizardHours } from '../wizard-hours'
-import { saveWizardScheduleAction, type WizardActionResult } from '../actions'
+import type { WizardActionResult } from '../actions'
 
 const INITIAL: WizardActionResult = { success: true }
+
+/** Firma de la Server Action que consume el form. */
+export type SaveWizardScheduleAction = (
+  prevState: WizardActionResult,
+  formData: FormData,
+) => Promise<WizardActionResult>
 
 type Props = {
   hours: LooseOpeningHours
   closesNextDay: boolean
+  action: SaveWizardScheduleAction
 }
 
 /**
@@ -25,8 +32,8 @@ type Props = {
  * defaults llegan saneados (sanitizeWizardHours) para que Continuar sin tocar
  * nada sea válido y 100% cubrible por el generador de precios del paso 3.
  */
-export function StepSchedule({ hours, closesNextDay }: Props) {
-  const [state, formAction] = useFormState(saveWizardScheduleAction, INITIAL)
+export function StepSchedule({ hours, closesNextDay, action }: Props) {
+  const [state, formAction] = useFormState(action, INITIAL)
   const [view, setView] = useState<ScheduleView>(() =>
     deriveScheduleView(sanitizeWizardHours(hours, closesNextDay)),
   )

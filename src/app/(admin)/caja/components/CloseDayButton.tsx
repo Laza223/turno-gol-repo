@@ -7,8 +7,19 @@ import { Lock } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { formatArsContable } from '@/lib/format'
 import { mediumDateLabel } from '../caja-lib'
-import { closeDayAction } from '../actions'
+import type { CloseDayActionResult } from '../actions'
 import { toast } from '@/hooks/use-toast'
+
+/**
+ * closeDayAction llega por PROP: '../actions' es `'use server'` y arrastra
+ * drizzle/postgres → `node:async_hooks`, que rompe Storybook si se importa
+ * como valor (ver el comentario de ReservasPolicyForm.tsx).
+ */
+export type CloseDayAction = (
+  date: string,
+  declaredCash?: number,
+  note?: string,
+) => Promise<CloseDayActionResult>
 
 export function CloseDayButton({
   date,
@@ -16,6 +27,7 @@ export function CloseDayButton({
   totalExpense,
   balance,
   cashTotal,
+  closeDayAction,
 }: {
   date: string
   totalIncome: number
@@ -23,6 +35,7 @@ export function CloseDayButton({
   balance: number
   /** Neto en efectivo del día (byMethod.cash): la referencia para contar el cajón. */
   cashTotal: number
+  closeDayAction: CloseDayAction
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)

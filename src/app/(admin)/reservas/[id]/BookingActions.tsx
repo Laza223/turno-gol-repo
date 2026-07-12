@@ -2,12 +2,19 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { completeBookingAction, markNoShowAction, cancelBookingAction } from '../actions'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import type { BookingActionResult } from '../actions'
 
 type CancellationType = 'complejo' | 'jugador'
+
+type SimpleBookingFn = (bookingId: string) => Promise<BookingActionResult>
+type CancelBookingFn = (
+  bookingId: string,
+  reason: string,
+  cancellationType: CancellationType,
+) => Promise<BookingActionResult>
 
 type Props = {
   bookingId: string
@@ -21,6 +28,9 @@ type Props = {
   timeStart: string
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
+  completeBookingAction: SimpleBookingFn
+  markNoShowAction: SimpleBookingFn
+  cancelBookingAction: CancelBookingFn
 }
 
 // ART = UTC-3. Mismo cálculo que el server (artDateAt) para que el preview de
@@ -31,6 +41,11 @@ function bookingStartMs(dateStr: string, hhmmss: string): number {
   return Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0)
 }
 
+/**
+ * Las 3 Server Actions llegan por PROP, no por import (ver comentario
+ * homólogo en ReservasPolicyForm.tsx / QuickActions.tsx): '../actions' es
+ * `'use server'` y arrastra node:async_hooks, que rompe Storybook.
+ */
 export default function BookingActions({
   bookingId,
   status,
@@ -40,6 +55,9 @@ export default function BookingActions({
   bookingDate,
   timeStart,
   cancellationPolicyHours,
+  completeBookingAction,
+  markNoShowAction,
+  cancelBookingAction,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()

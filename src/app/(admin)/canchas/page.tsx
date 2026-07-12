@@ -3,6 +3,15 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { CourtList } from './components/CourtList'
+import {
+  createCourtAction,
+  updateCourtAction,
+  toggleCourtStatusAction,
+  getCourtDeactivationImpactAction,
+  uploadCourtPhotoAction,
+  removeCourtPhotoAction,
+  reorderCourtPhotosAction,
+} from './actions'
 
 // Ver canchas + activar/desactivar es operativo (admin+manager); crear/editar
 // (precio, nombre, formato) sigue admin-only (audit_report.md 3-18, decisión
@@ -22,6 +31,13 @@ export default async function CanchasPage() {
         openingHours={tenant.openingHours}
         isAdmin={role === 'admin'}
         tenantName={tenant.name}
+        toggleStatusAction={toggleCourtStatusAction}
+        getDeactivationImpactAction={getCourtDeactivationImpactAction}
+        createAction={createCourtAction}
+        updateAction={updateCourtAction}
+        uploadPhotoAction={uploadCourtPhotoAction}
+        removePhotoAction={removeCourtPhotoAction}
+        reorderPhotosAction={reorderCourtPhotosAction}
       />
     </main>
   )

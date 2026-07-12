@@ -9,10 +9,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 
+// createCashFlowAction ya no se importa del módulo — RegisterMovementModal la
+// recibe por prop (ver el comentario en RegisterMovementModal.tsx).
 const createCashFlowAction = vi.fn()
-vi.mock('@/app/(admin)/caja/actions', () => ({
-  createCashFlowAction: (...args: unknown[]) => createCashFlowAction(...args),
-}))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
@@ -32,7 +31,14 @@ const pressed = (name: string) =>
 describe('RegisterMovementModal — chips', () => {
   it('elegir "Gasto" auto-selecciona su única categoría y el payload sale válido', async () => {
     createCashFlowAction.mockResolvedValueOnce({ success: true, cashFlow: {} })
-    render(<RegisterMovementModal open onClose={vi.fn()} date="2026-06-10" />)
+    render(
+      <RegisterMovementModal
+        open
+        onClose={vi.fn()}
+        date="2026-06-10"
+        createCashFlowAction={createCashFlowAction}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Gasto' }))
     expect(pressed('Gasto operativo')).toBe('true')
@@ -53,7 +59,14 @@ describe('RegisterMovementModal — chips', () => {
   })
 
   it('volver a "Ingreso" re-selecciona "Reserva" (nunca queda una categoría de otro tipo)', () => {
-    render(<RegisterMovementModal open onClose={vi.fn()} date="2026-06-10" />)
+    render(
+      <RegisterMovementModal
+        open
+        onClose={vi.fn()}
+        date="2026-06-10"
+        createCashFlowAction={createCashFlowAction}
+      />,
+    )
 
     expect(pressed('Reserva')).toBe('true') // default
     fireEvent.click(screen.getByRole('button', { name: 'Ajuste' }))

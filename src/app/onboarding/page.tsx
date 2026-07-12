@@ -11,6 +11,15 @@ import { StepIdentity } from './components/StepIdentity'
 import { StepSchedule } from './components/StepSchedule'
 import { StepCourts } from './components/StepCourts'
 import { StepPayments } from './components/StepPayments'
+import {
+  createTenantAction,
+  createWizardCourtsAction,
+  deleteOnboardingCourtPhotoAction,
+  finishOnboardingAction,
+  saveWizardScheduleAction,
+  setWizardStepAction,
+  uploadOnboardingCourtPhotoAction,
+} from './actions'
 
 export default async function OnboardingPage({
   searchParams,
@@ -46,18 +55,29 @@ export default async function OnboardingPage({
   return (
     <WizardShell currentStep={currentStep} wide={currentStep === 2 || currentStep === 3}>
       <div className="card-premium rounded-2xl p-6 md:p-8">
-        {currentStep === 1 && <StepIdentity />}
+        {currentStep === 1 && <StepIdentity action={createTenantAction} />}
         {currentStep === 2 && tenantData && (
           <StepSchedule
             hours={tenantData.openingHours}
             closesNextDay={tenantData.closesNextDay}
+            action={saveWizardScheduleAction}
           />
         )}
-        {currentStep === 3 && tenantData && <StepCourts existingCourts={existingCourts} />}
+        {currentStep === 3 && tenantData && (
+          <StepCourts
+            existingCourts={existingCourts}
+            createCourtsAction={createWizardCourtsAction}
+            setStepAction={setWizardStepAction}
+            uploadPhotoAction={uploadOnboardingCourtPhotoAction}
+            deletePhotoAction={deleteOnboardingCourtPhotoAction}
+          />
+        )}
         {currentStep === 4 && tenantData && (
           <StepPayments
             mpConnected={!!tenantData.mpConnectedAt}
             mpError={searchParams?.error ?? null}
+            finishAction={finishOnboardingAction}
+            setStepAction={setWizardStepAction}
           />
         )}
       </div>

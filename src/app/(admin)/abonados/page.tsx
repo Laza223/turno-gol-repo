@@ -8,6 +8,8 @@ import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 import { AbonadosList } from './AbonadosList'
+import { pauseAbonadoAction, reactivateAbonadoAction, cancelAbonadoAction } from './actions'
+import { previewAbonadoSlotsAction } from './nuevo/actions'
 
 const VALID_STATUSES: AbonadoStatus[] = ['active', 'paused', 'canceled']
 
@@ -83,7 +85,14 @@ export default async function AbonadosPage({
         ))}
       </div>
 
-      <AbonadosList abonados={abonados} filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined} />
+      <AbonadosList
+        abonados={abonados}
+        filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
+        pauseAction={pauseAbonadoAction}
+        reactivateAction={reactivateAbonadoAction}
+        cancelAction={cancelAbonadoAction}
+        previewSlotsAction={previewAbonadoSlotsAction}
+      />
     </div>
   )
 }

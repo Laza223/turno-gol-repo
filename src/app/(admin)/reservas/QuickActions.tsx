@@ -14,13 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
-import {
-  cancelBookingAction,
-  completeBookingAction,
-  confirmDepositPaymentAction,
-  markNoShowAction,
-} from './actions'
 import { hasQuickActions } from './quick-actions-helpers'
+import type { BookingActionResult } from './actions'
 
 type QuickActionsBooking = {
   id: string
@@ -31,7 +26,25 @@ type QuickActionsBooking = {
   paymentMethod: string | null
 }
 
-type Props = {
+type SimpleBookingFn = (bookingId: string) => Promise<BookingActionResult>
+type CancelBookingFn = (
+  bookingId: string,
+  reason: string,
+  cancellationType: 'complejo' | 'jugador',
+) => Promise<BookingActionResult>
+
+/**
+ * Firma de las 4 Server Actions que consume QuickActions. Se agrupan en un
+ * solo tipo para que BookingListItem las reciba y reenvíe de un solo prop.
+ */
+export type BookingQuickActions = {
+  cancelBookingAction: CancelBookingFn
+  completeBookingAction: SimpleBookingFn
+  confirmDepositPaymentAction: SimpleBookingFn
+  markNoShowAction: SimpleBookingFn
+}
+
+type Props = BookingQuickActions & {
   booking: QuickActionsBooking
   /** Nombre + horario para que el menú mobile y los toasts tengan contexto. */
   label: string
@@ -42,8 +55,20 @@ type Props = {
  * directas, "ausente" con confirmación en dos pasos inline (genera deuda o
  * ban si hay penalidad — pero sin modal), cancelar con diálogo porque el
  * backend exige motivo. En mobile viven detrás de un menú contextual.
+ *
+ * Las 4 Server Actions llegan por PROP, no por import. './actions' es
+ * `'use server'` y arrastra request-context → node:async_hooks, que Vite
+ * externaliza en el browser y rompe Storybook. El type import de
+ * BookingActionResult sí es seguro: se borra en compilación.
  */
-export function QuickActions({ booking, label }: Props) {
+export function QuickActions({
+  booking,
+  label,
+  cancelBookingAction,
+  completeBookingAction,
+  confirmDepositPaymentAction,
+  markNoShowAction,
+}: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [noShowArmed, setNoShowArmed] = useState(false)

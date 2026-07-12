@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { updateTenantSettingsAction } from '../../actions'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
 import {
@@ -9,6 +8,7 @@ import {
   primaryBtn,
   type Feedback,
   type RunAction,
+  type SupportAction,
   type SupportPanelSettings,
 } from './constants'
 
@@ -17,10 +17,11 @@ type Props = {
   settings: SupportPanelSettings
   pending: boolean
   run: RunAction
+  action: SupportAction
 }
 
 /** Editar settings del complejo: solo campos whitelisteados (los mismos que el admin edita). */
-export function SettingsSection({ tenantId, settings, pending, run }: Props) {
+export function SettingsSection({ tenantId, settings, pending, run, action }: Props) {
   const [form, setForm] = useState<SupportPanelSettings>(settings)
   const [settingsFeedback, setSettingsFeedback] = useState<Feedback>(null)
 
@@ -105,7 +106,7 @@ export function SettingsSection({ tenantId, settings, pending, run }: Props) {
           type="button"
           disabled={pending}
           onClick={() =>
-            run(() => updateTenantSettingsAction({ tenantId, patch: form }), setSettingsFeedback)
+            run(() => action({ tenantId, patch: form }), setSettingsFeedback)
           }
           className={primaryBtn}
         >

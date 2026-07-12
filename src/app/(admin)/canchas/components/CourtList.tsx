@@ -5,12 +5,31 @@ import dynamic from 'next/dynamic'
 import { LayoutGrid, Trophy } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import { toggleCourtStatusAction, getCourtDeactivationImpactAction } from '../actions'
+import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { CourtStatusBadge } from './status-visual'
+import type {
+  CreateCourtAction,
+  UpdateCourtAction,
+  UploadCourtPhotoAction,
+  RemoveCourtPhotoAction,
+  ReorderCourtPhotosAction,
+} from './CourtForm'
+
+/**
+ * Las 2 Server Actions propias de esta lista llegan por PROP, mismo motivo
+ * que CourtForm (ver su comentario): '../actions' es `'use server'`.
+ */
+export type ToggleCourtStatusAction = (
+  courtId: string,
+  status: 'online' | 'offline',
+) => Promise<CourtActionResult>
+export type GetCourtDeactivationImpactAction = (
+  courtId: string,
+) => Promise<CourtDeactivationImpactResult>
 
 // The deactivate confirmation pulls in the Radix AlertDialog; only needed once an
 // admin clicks "Desactivar", so lazy-load and mount it on demand.
@@ -49,9 +68,28 @@ type Props = {
   openingHours: OpeningHours
   isAdmin: boolean
   tenantName: string
+  toggleStatusAction: ToggleCourtStatusAction
+  getDeactivationImpactAction: GetCourtDeactivationImpactAction
+  createAction: CreateCourtAction
+  updateAction: UpdateCourtAction
+  uploadPhotoAction: UploadCourtPhotoAction
+  removePhotoAction: RemoveCourtPhotoAction
+  reorderPhotosAction: ReorderCourtPhotosAction
 }
 
-export function CourtList({ initialCourts, openingHours, isAdmin, tenantName }: Props) {
+export function CourtList({
+  initialCourts,
+  openingHours,
+  isAdmin,
+  tenantName,
+  toggleStatusAction,
+  getDeactivationImpactAction,
+  createAction,
+  updateAction,
+  uploadPhotoAction,
+  removePhotoAction,
+  reorderPhotosAction,
+}: Props) {
   const [courts, setCourts] = useState<CourtRow[]>(initialCourts)
   const [showForm, setShowForm] = useState(false)
   const [editingCourt, setEditingCourt] = useState<CourtRow | null>(null)
@@ -122,6 +160,11 @@ export function CourtList({ initialCourts, openingHours, isAdmin, tenantName }: 
             .map((c) => ({ id: c.id, name: c.name, rules: c.pricing.rules }))}
           onSaved={handleCourtSaved}
           onCancel={closeForm}
+          createAction={createAction}
+          updateAction={updateAction}
+          uploadPhotoAction={uploadPhotoAction}
+          removePhotoAction={removePhotoAction}
+          reorderPhotosAction={reorderPhotosAction}
         />
       </div>
     )
@@ -155,7 +198,14 @@ export function CourtList({ initialCourts, openingHours, isAdmin, tenantName }: 
       ) : (
         <div className="space-y-3">
           {courts.map((court) => (
-            <CourtCard key={court.id} court={court} onEdit={openEdit} isAdmin={isAdmin} />
+            <CourtCard
+              key={court.id}
+              court={court}
+              onEdit={openEdit}
+              isAdmin={isAdmin}
+              toggleStatusAction={toggleStatusAction}
+              getDeactivationImpactAction={getDeactivationImpactAction}
+            />
           ))}
         </div>
       )}
@@ -167,10 +217,14 @@ function CourtCard({
   court,
   onEdit,
   isAdmin,
+  toggleStatusAction,
+  getDeactivationImpactAction,
 }: {
   court: CourtRow
   onEdit: (court: CourtRow) => void
   isAdmin: boolean
+  toggleStatusAction: ToggleCourtStatusAction
+  getDeactivationImpactAction: GetCourtDeactivationImpactAction
 }) {
   const [isPending, startTransition] = useTransition()
   const [currentStatus, setCurrentStatus] = useState<'online' | 'offline'>(court.status)
@@ -184,7 +238,7 @@ function CourtCard({
     const prev = currentStatus
     setCurrentStatus('online')
     startTransition(async () => {
-      const res = await toggleCourtStatusAction(court.id, 'online')
+      const res = await toggleStatusAction(court.id, 'online')
       if (!res.success) {
         setCurrentStatus(prev)
         toast({ title: 'No se pudo activar', description: res.error, variant: 'destructive' })
@@ -194,7 +248,7 @@ function CourtCard({
 
   async function openDeactivate() {
     setLoadingImpact(true)
-    const res = await getCourtDeactivationImpactAction(court.id)
+    const res = await getDeactivationImpactAction(court.id)
     setLoadingImpact(false)
     if (!res.success) {
       // Fix #58: no abrir el dialog con datos falsos (0/0) — el admin podría
@@ -213,7 +267,7 @@ function CourtCard({
   async function onConfirmDeactivate(): Promise<{ success: boolean; error?: string }> {
     const prev = currentStatus
     setCurrentStatus('offline')
-    const res = await toggleCourtStatusAction(court.id, 'offline')
+    const res = await toggleStatusAction(court.id, 'offline')
     if (!res.success) {
       setCurrentStatus(prev)
       return res

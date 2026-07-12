@@ -1,17 +1,13 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-
-// Mockeamos la Server Action para no arrastrar el grafo de la action real.
-vi.mock('@/app/(super-admin)/super-admin/tenants/[id]/actions', () => ({
-  stopImpersonationAction: vi.fn(),
-}))
-
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
 
+// La Server Action entra por PROP (ver el comentario en impersonation-banner.tsx):
+// ya no hace falta mockear el módulo real para evitar arrastrar drizzle.
 describe('ImpersonationBanner', () => {
   it('muestra el nombre del tenant impersonado y el botón de salida', () => {
-    render(<ImpersonationBanner tenantName="Complejo El Potrero" />)
+    render(<ImpersonationBanner tenantName="Complejo El Potrero" action={vi.fn()} />)
 
     expect(
       screen.getByText(/Impersonando Complejo El Potrero/i),
@@ -22,7 +18,7 @@ describe('ImpersonationBanner', () => {
   })
 
   it('es un alert (rol accesible) para que no pase desapercibido', () => {
-    render(<ImpersonationBanner tenantName="Otro Complejo" />)
+    render(<ImpersonationBanner tenantName="Otro Complejo" action={vi.fn()} />)
     expect(screen.getByRole('alert')).toBeDefined()
   })
 })

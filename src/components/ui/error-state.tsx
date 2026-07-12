@@ -39,11 +39,18 @@ export function ErrorState({
   if (variant === 'inline') {
     return (
       <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 dark:border-destructive/30 dark:bg-destructive/15">
-        <p className="text-sm text-destructive">{title}{description ? `. ${description}` : ''}</p>
+        {/*
+          text-destructive (red-600, #DC2626) sobre bg-destructive/10 mezclado
+          con bg-background (slate-200) da 3.34:1 — falla AA. Mismo antipatrón
+          documentado para emerald (texto saturado sobre tinte translúcido en
+          superficie clara): el idiom correcto es un tono más oscuro en claro,
+          el token original en oscuro (donde sí pasa).
+        */}
+        <p className="text-sm text-red-700 dark:text-destructive">{title}{description ? `. ${description}` : ''}</p>
         {onRetry ? (
           <button
             onClick={onRetry}
-            className="mt-3 text-sm font-medium text-destructive underline hover:no-underline"
+            className="mt-3 text-sm font-medium text-red-700 underline hover:no-underline dark:text-destructive"
             type="button"
           >
             {retryLabel}
@@ -67,7 +74,7 @@ export function ErrorState({
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
           ) : null}
           {digest ? (
-            <p className="mt-3 text-xs text-muted-foreground/60">
+            <p className="mt-3 text-xs text-muted-foreground">
               Código de referencia:{' '}
               <span className="font-mono tabular-nums">{digest}</span>
             </p>
@@ -109,7 +116,7 @@ export function ErrorState({
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
         {digest ? (
-          <p className="mt-3 text-xs text-muted-foreground/60">
+          <p className="mt-3 text-xs text-muted-foreground">
             Código de referencia:{' '}
             <span className="font-mono tabular-nums">{digest}</span>
           </p>

@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
 import { signOutAction } from '@/app/(admin)/actions/auth'
+import { stopImpersonationAction } from '@/app/(super-admin)/super-admin/tenants/[id]/actions'
 
 const PushNotificationManager = dynamic(
   () => import('@/components/admin/PushNotificationManager').then((m) => m.PushNotificationManager),
@@ -40,7 +41,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         periodEnd={impSub?.currentPeriodEnd?.toISOString() ?? null}
         userEmail={imp.user.email}
         signOut={signOutAction}
-        impersonationBanner={<ImpersonationBanner tenantName={imp.tenant.name} />}
+        impersonationBanner={
+          <ImpersonationBanner tenantName={imp.tenant.name} action={stopImpersonationAction} />
+        }
       >
         {children}
         <PushNotificationManager />

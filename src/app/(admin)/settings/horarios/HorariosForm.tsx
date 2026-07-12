@@ -9,24 +9,33 @@ import {
   type LooseOpeningHours,
   type ScheduleView,
 } from './horarios-lib'
-import { updateHorariosAction, type HorariosActionResult } from './actions'
+import type { HorariosActionResult } from './actions'
 
 const INITIAL: HorariosActionResult = { success: true }
+
+/** Firma de updateHorariosAction — ver comentario de DI en ReservasPolicyForm.tsx. */
+export type UpdateHorariosAction = (
+  prevState: HorariosActionResult,
+  formData: FormData,
+) => Promise<HorariosActionResult>
 
 /**
  * Form de horarios "general + excepciones" (pages/horarios-precios.md §2):
  * un par Abre/Cierra que vale para todos los días + por día Personalizar o
  * Cerrado. Los campos viven en ScheduleFields (compartidos con el wizard de
  * onboarding); al submit se expanden a los 7 días vía hidden inputs.
+ * La action entra por PROP (no se importa como valor).
  */
 export function HorariosForm({
   hours,
   closesNextDay,
+  action,
 }: {
   hours: LooseOpeningHours
   closesNextDay: boolean
+  action: UpdateHorariosAction
 }) {
-  const [state, formAction] = useFormState(updateHorariosAction, INITIAL)
+  const [state, formAction] = useFormState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
   const [view, setView] = useState<ScheduleView>(() => deriveScheduleView(hours))
   const [nextDay, setNextDay] = useState(closesNextDay)

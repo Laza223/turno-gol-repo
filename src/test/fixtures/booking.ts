@@ -1,8 +1,9 @@
+import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import { artDateString, daysFromNow, hoursFromNow, minutesFromNow } from './clock'
 import { courtFutbol5, courtFutbol7, courtFutbol11 } from './court'
 import { uid } from './ids'
-import { player, playerAlt } from './player'
+import { player, playerAlt, type PlayerRow } from './player'
 import { staffManager, staffMember } from './staff'
 import { tenant, tenantClosesNextDay } from './tenant'
 
@@ -40,6 +41,34 @@ export const booking = (overrides: Partial<BookingRow> = {}): BookingRow => ({
   createdAt: hoursFromNow(-26),
   updatedAt: hoursFromNow(-26),
   ...overrides,
+})
+
+/**
+ * Adapta un `BookingRow` (fixture "completo", shape de la tabla) al `GridBooking`
+ * acotado que consumen BookingGrid/BookingCard/BookingPopover — el mismo shape
+ * que arma el JOIN con `players` en grilla/page.tsx (nombre plano, sin objeto
+ * jugador, `date` como string). Pasá el fixture de jugador correspondiente
+ * (`player()`/`playerAlt()`) cuando `playerId` no sea null; se omite para guests
+ * y bloqueos.
+ */
+export const toGridBooking = (
+  row: BookingRow,
+  playerRow?: Pick<PlayerRow, 'firstName' | 'lastName'> | null,
+): GridBooking => ({
+  id: row.id,
+  courtId: row.courtId,
+  date: artDateString(row.date),
+  timeStart: row.timeStart,
+  timeEnd: row.timeEnd,
+  status: row.status,
+  type: row.type,
+  guestName: row.guestName,
+  playerFirstName: playerRow?.firstName ?? null,
+  playerLastName: playerRow?.lastName ?? null,
+  priceSnapshot: row.priceSnapshot,
+  paymentMethod: row.paymentMethod,
+  depositStatus: row.depositStatus,
+  depositAmount: row.depositAmount,
 })
 
 // ─── Una variante por cada BookingStatus ───────────────────────────────────
@@ -296,4 +325,19 @@ export const saturdayAfternoonGrid = (): BookingRow[] => {
     booking({ id: uid(1117), courtId: f11, timeStart: '18:00', timeEnd: '19:00', status: 'confirmed', priceSnapshot: 1800000, depositAmount: 540000, playerId: null, createdByStaff: staffId, depositStatus: 'not_required', paymentMethod: 'cash', paymentId: null, guestName: 'Damián Echeverría' }),
     booking({ id: uid(1118), courtId: f11, timeStart: '19:00', timeEnd: '20:00', status: 'confirmed', priceSnapshot: 1800000, depositAmount: 540000, playerId: null, createdByStaff: staffId, depositStatus: 'not_required', paymentMethod: 'cash', paymentId: null, guestName: 'Selección de Ex-alumnos — Promoción 2016' }),
   ]
+}
+
+/**
+ * `saturdayAfternoonGrid()` ya adaptado a `GridBooking[]` (BookingGrid/GridScroller
+ * consumen ese shape, no `BookingRow[]`). Resuelve nombre/apellido para las
+ * reservas con `playerId` de `player()`/`playerAlt()`.
+ */
+export const saturdayAfternoonGridBookings = (): GridBooking[] => {
+  const byPlayerId = new Map([
+    [player().id, player()],
+    [playerAlt().id, playerAlt()],
+  ])
+  return saturdayAfternoonGrid().map((row) =>
+    toGridBooking(row, row.playerId ? byPlayerId.get(row.playerId) : null),
+  )
 }

@@ -5,13 +5,25 @@ import { useFormState } from 'react-dom'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
-import { addClosedDateAction, type HorariosActionResult } from './actions'
+import type { HorariosActionResult } from './actions'
 
 const INITIAL: HorariosActionResult = { success: true }
 
-/** Form para agregar un día cerrado (#19). */
-export function AddClosedDateForm({ minDate }: { minDate: string }) {
-  const [state, formAction] = useFormState(addClosedDateAction, INITIAL)
+/** Firma de addClosedDateAction — ver comentario de DI en ReservasPolicyForm.tsx. */
+export type AddClosedDateAction = (
+  prevState: HorariosActionResult,
+  formData: FormData,
+) => Promise<HorariosActionResult>
+
+/** Form para agregar un día cerrado (#19). La action entra por PROP (no se importa como valor). */
+export function AddClosedDateForm({
+  minDate,
+  action,
+}: {
+  minDate: string
+  action: AddClosedDateAction
+}) {
+  const [state, formAction] = useFormState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
 
   return (

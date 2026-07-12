@@ -4,10 +4,10 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Sentry from '@sentry/nextjs'
 import { Loader2 } from 'lucide-react'
-import { createBookingAction } from '@/app/(admin)/reservas/actions'
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
 import type { BookingRow } from '@/modules/bookings/booking.types'
+import type { BookingActionResult } from '@/app/(admin)/reservas/actions'
 import { formatDateLong } from '@/lib/format'
 
 type Slot = {
@@ -18,11 +18,21 @@ type Slot = {
   durationMins: 60 | 120
 }
 
+/** Firma de createBookingAction (@/app/(admin)/reservas/actions). */
+export type CreateBookingAction = (data: unknown) => Promise<BookingActionResult>
+
 type Props = {
   slot: Slot
   open: boolean
   onClose: () => void
   onSuccess: (booking: BookingRow) => void
+  /**
+   * La Server Action llega por PROP, no por import: `./actions` es `'use server'`
+   * y arrastra drizzle/postgres/`node:async_hooks`, que Vite externaliza en el
+   * bundle de browser y rompe cualquier story (ver docs/storybook/STORYBOOK_ARCHITECTURE.md).
+   * BookingGrid (único caller) la recibe a su vez por prop y la reenvía acá.
+   */
+  action: CreateBookingAction
 }
 
 // Motivo / Tipo de bloqueo del turno manual. Dos familias:
@@ -65,7 +75,7 @@ function minsToTime(mins: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
+export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Props) {
   const [duration, setDuration] = useState<60 | 120>(slot.durationMins)
   const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
   const [error, setError] = useState<string | null>(null)
@@ -118,7 +128,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
     setError(null)
     startTransition(async () => {
       try {
-        const result = await createBookingAction(data)
+        const result = await action(data)
         if (result.success) {
           formRef.current?.reset()
           setDuration(slot.durationMins)

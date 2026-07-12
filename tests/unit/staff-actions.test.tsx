@@ -2,19 +2,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 
-// Mock server actions before importing StaffActions
-vi.mock('@/app/(admin)/staff/actions', () => ({
-  deactivateStaffAction: vi.fn(),
-  resendInviteAction: vi.fn(),
-  updateStaffRoleAction: vi.fn(),
-}))
-
 vi.mock('@/hooks/use-toast', () => ({
   toast: vi.fn(),
 }))
 
 import { StaffActions } from '@/app/(admin)/staff/StaffActions'
-import { deactivateStaffAction, resendInviteAction } from '@/app/(admin)/staff/actions'
 import { toast } from '@/hooks/use-toast'
 
 const ACTIVE_MEMBER = {
@@ -39,13 +31,22 @@ const CURRENT_USER_STAFF_ID = 'uuuuuuuu-0000-0000-0000-000000000001'
 
 type MemberProp = Parameters<typeof StaffActions>[0]['member']
 
+// Las Server Actions entran por prop (ver ReservasPolicyForm.tsx) — mocks
+// locales en vez de vi.mock('.../staff/actions').
+let deactivateAction: ReturnType<typeof vi.fn>
+let resendInviteActionMock: ReturnType<typeof vi.fn>
+let updateRoleAction: ReturnType<typeof vi.fn>
+
 /** Open the dropdown for the given member and return the menu content node. */
-async function openDropdown(member: MemberProp) {
+async function openDropdown(member: MemberProp, activeAdminCount = 3) {
   render(
     <StaffActions
       member={member}
       currentUserStaffId={CURRENT_USER_STAFF_ID}
-      activeAdminCount={3}
+      activeAdminCount={activeAdminCount}
+      deactivateAction={deactivateAction}
+      resendInviteAction={resendInviteActionMock}
+      updateRoleAction={updateRoleAction}
     />,
   )
   const trigger = screen.getByRole('button', { name: 'Opciones' })
@@ -61,6 +62,9 @@ async function openDropdown(member: MemberProp) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  deactivateAction = vi.fn()
+  resendInviteActionMock = vi.fn()
+  updateRoleAction = vi.fn()
 })
 
 afterEach(() => {
@@ -74,6 +78,9 @@ describe('StaffActions — dropdown rendering', () => {
         member={ACTIVE_MEMBER}
         currentUserStaffId={CURRENT_USER_STAFF_ID}
         activeAdminCount={3}
+        deactivateAction={deactivateAction}
+        resendInviteAction={resendInviteActionMock}
+        updateRoleAction={updateRoleAction}
       />,
     )
     expect(screen.getByRole('button', { name: 'Opciones' })).toBeTruthy()
@@ -142,7 +149,7 @@ describe('StaffActions — deactivate dialog', () => {
   })
 
   it('server error keeps dialog open and surfaces error message', async () => {
-    vi.mocked(deactivateStaffAction).mockResolvedValue({
+    deactivateAction.mockResolvedValue({
       success: false,
       error: 'El complejo debe tener al menos un administrador activo.',
     })
@@ -172,8 +179,8 @@ describe('StaffActions — deactivate dialog', () => {
     expect(screen.getByRole('heading', { name: /Desactivar/ })).toBeTruthy()
   })
 
-  it('successful deactivate calls deactivateStaffAction and closes dialog', async () => {
-    vi.mocked(deactivateStaffAction).mockResolvedValue({ success: true })
+  it('successful deactivate calls deactivateAction and closes dialog', async () => {
+    deactivateAction.mockResolvedValue({ success: true })
 
     const body = await openDropdown(ACTIVE_MEMBER)
     fireEvent.click(body.getByRole('menuitem', { name: 'Desactivar' }))
@@ -192,7 +199,7 @@ describe('StaffActions — deactivate dialog', () => {
     fireEvent.click(confirmBtn)
 
     await waitFor(() => {
-      expect(vi.mocked(deactivateStaffAction)).toHaveBeenCalledWith(ACTIVE_MEMBER.memberId)
+      expect(deactivateAction).toHaveBeenCalledWith(ACTIVE_MEMBER.memberId)
     })
 
     // Dialog should be closed (heading gone)
@@ -204,13 +211,13 @@ describe('StaffActions — deactivate dialog', () => {
 
 describe('StaffActions — resend invite', () => {
   it('clicking "Reenviar invitación" calls resendInviteAction and shows success toast', async () => {
-    vi.mocked(resendInviteAction).mockResolvedValue({ success: true })
+    resendInviteActionMock.mockResolvedValue({ success: true })
 
     const body = await openDropdown(INACTIVE_MEMBER)
     fireEvent.click(body.getByRole('menuitem', { name: 'Reenviar invitación' }))
 
     await waitFor(() => {
-      expect(vi.mocked(resendInviteAction)).toHaveBeenCalledWith(INACTIVE_MEMBER.email)
+      expect(resendInviteActionMock).toHaveBeenCalledWith(INACTIVE_MEMBER.email)
     })
 
     await waitFor(() => {
@@ -221,7 +228,7 @@ describe('StaffActions — resend invite', () => {
   })
 
   it('resend error shows destructive toast', async () => {
-    vi.mocked(resendInviteAction).mockResolvedValue({
+    resendInviteActionMock.mockResolvedValue({
       success: false,
       error: 'Error reenviando invitación: usuario no encontrado.',
     })

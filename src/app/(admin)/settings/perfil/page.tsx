@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { PerfilImagesForm } from './PerfilImagesForm'
+import { setTenantImageAction, removeTenantImageAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function PerfilPage() {
@@ -19,7 +20,12 @@ export default async function PerfilPage() {
 
       <div className="card-premium rounded-lg p-6">
         <h2 className="mb-6 text-base font-semibold text-foreground">Perfil público</h2>
-        <PerfilImagesForm logoUrl={tenant.logoUrl} coverUrl={tenant.coverUrl} />
+        <PerfilImagesForm
+          logoUrl={tenant.logoUrl}
+          coverUrl={tenant.coverUrl}
+          setImageAction={setTenantImageAction}
+          removeImageAction={removeTenantImageAction}
+        />
       </div>
     </div>
   )

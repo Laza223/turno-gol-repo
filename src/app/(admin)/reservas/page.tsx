@@ -18,6 +18,19 @@ import {
 import { BookingListItem } from './BookingListItem'
 import { ReservasToolbar } from './ReservasToolbar'
 import { EmptyState } from '@/components/ui/empty-state'
+import {
+  cancelBookingAction,
+  completeBookingAction,
+  confirmDepositPaymentAction,
+  markNoShowAction,
+} from './actions'
+
+const QUICK_ACTIONS = {
+  cancelBookingAction,
+  completeBookingAction,
+  confirmDepositPaymentAction,
+  markNoShowAction,
+}
 
 const SCOPES: Array<{ value: ReservaScope; label: string }> = [
   { value: 'hoy', label: 'Hoy' },
@@ -220,7 +233,7 @@ export default async function ReservasPage({ searchParams }: Props) {
               </h2>
               <ul className={compact ? 'space-y-1' : 'space-y-2'}>
                 {groupRows.map((r) => (
-                  <BookingListItem key={r.id} booking={r} compact={compact} />
+                  <BookingListItem key={r.id} booking={r} compact={compact} actions={QUICK_ACTIONS} />
                 ))}
               </ul>
             </section>

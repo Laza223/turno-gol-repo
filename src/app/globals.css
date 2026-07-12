@@ -21,7 +21,12 @@
     --secondary-foreground: 222 47% 11%; /* slate-900 */
 
     --muted: 214 32% 85%;             /* slate-300ish */
-    --muted-foreground: 215 20% 40%;  /* slate-600 — better contrast on new bg */
+    /* 36% (no 40%): con 40% el par muted-foreground/muted daba 4.24:1 y NO llegaba
+       al 4.5 de WCAG AA (MASTER §2.4) — lo detectó axe sobre los badges `bg-muted`
+       ("Turno fijo", chips de estado). A 36% queda en 4.93:1 sobre bg-muted, 7.16
+       sobre --card y 5.78 sobre --background. La diferencia visual es imperceptible;
+       la de accesibilidad, no. */
+    --muted-foreground: 215 20% 36%;  /* slate-600 */
 
     --accent: 214 32% 85%;            /* hover bg */
     --accent-foreground: 222 47% 11%;

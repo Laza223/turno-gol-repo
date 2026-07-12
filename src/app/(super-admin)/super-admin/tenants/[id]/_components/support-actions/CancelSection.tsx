@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { cancelSubscriptionAction } from '../../actions'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
-import { destructiveBtn, inputCls, type Feedback, type RunAction } from './constants'
+import { destructiveBtn, inputCls, type Feedback, type RunAction, type SupportAction } from './constants'
 
 type Props = {
   tenantId: string
@@ -12,13 +11,14 @@ type Props = {
   hasSubscription: boolean
   pending: boolean
   run: RunAction
+  action: SupportAction
 }
 
 /**
  * Cancelar suscripción: cancela el preapproval de MP y pasa a 'canceled'. El
  * acceso sigue hasta el fin del período pagado. Exige tipear el nombre exacto.
  */
-export function CancelSection({ tenantId, tenantName, hasSubscription, pending, run }: Props) {
+export function CancelSection({ tenantId, tenantName, hasSubscription, pending, run, action }: Props) {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelConfirm, setCancelConfirm] = useState('')
   const [cancelFeedback, setCancelFeedback] = useState<Feedback>(null)
@@ -67,7 +67,7 @@ export function CancelSection({ tenantId, tenantName, hasSubscription, pending, 
             onClick={() =>
               run(
                 () =>
-                  cancelSubscriptionAction({
+                  action({
                     tenantId,
                     reason: cancelReason.trim(),
                     confirmName: cancelConfirm,

@@ -1,9 +1,26 @@
 'use client'
 
 import { useTransition, useState } from 'react'
-import { submitNewAbonado, previewAbonadoSlotsAction, type NewAbonadoState, type PreviewAbonadoSlotsInput } from './actions'
+import type {
+  NewAbonadoState,
+  PreviewAbonadoSlotsInput,
+  PreviewAbonadoSlotsResult,
+} from './actions'
 import { Badge } from '@/components/ui/badge'
 import { PhoneInput } from '@/components/ui/phone-input'
+
+/**
+ * submitAction/previewAction llegan por PROP: './actions' es `'use server'` y
+ * arrastra drizzle/postgres → `node:async_hooks`, que rompe Storybook si se
+ * importa como valor (ver el comentario en ReservasPolicyForm.tsx).
+ */
+export type SubmitNewAbonadoAction = (
+  prevState: NewAbonadoState,
+  formData: FormData,
+) => Promise<NewAbonadoState>
+export type PreviewAbonadoSlotsAction = (
+  input: PreviewAbonadoSlotsInput,
+) => Promise<PreviewAbonadoSlotsResult>
 
 const DAYS = [
   { value: '1', label: 'Lunes' }, { value: '2', label: 'Martes' }, { value: '3', label: 'Miércoles' },
@@ -99,7 +116,15 @@ export function PreviewSlotsView({
   )
 }
 
-export default function AbonadoForm({ courts }: { courts: { id: string; name: string }[] }) {
+export default function AbonadoForm({
+  courts,
+  submitAction,
+  previewAction,
+}: {
+  courts: { id: string; name: string }[]
+  submitAction: SubmitNewAbonadoAction
+  previewAction: PreviewAbonadoSlotsAction
+}) {
   const [phase, setPhase] = useState<'form' | 'preview'>('form')
   const [previewData, setPreviewData] = useState<PreviewData | null>(null)
   const [formValues, setFormValues] = useState<FormValues | null>(null)
@@ -135,7 +160,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
 
     setPreviewError(null)
     startPreviewTransition(async () => {
-      const result = await previewAbonadoSlotsAction(input)
+      const result = await previewAction(input)
       if (!result.success) {
         setPreviewError(result.error)
         return
@@ -153,7 +178,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
       fd.set(key, val)
     }
     startConfirmTransition(async () => {
-      const result = await submitNewAbonado(initial, fd)
+      const result = await submitAction(initial, fd)
       if (result.status === 'error') {
         setPhase('form')
         setPreviewData(null)

@@ -3,9 +3,25 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { requestDeleteAccountAction } from './actions'
+import type { DeleteAccountResult } from './actions'
 
-export function DeleteAccountForm({ confirmEmail }: { confirmEmail: string }) {
+/** Firma de la Server Action que ejecuta la baja. */
+export type RequestDeleteAccountAction = () => Promise<DeleteAccountResult>
+
+/**
+ * La action llega por PROP, no por import: './actions' es `'use server'` y
+ * arrastra drizzle/postgres + `node:async_hooks` (vía request-context), lo
+ * que rompe cualquier bundle de browser (Storybook) si se importa como
+ * valor. El type import de `DeleteAccountResult` sí es seguro: se borra en
+ * compilación.
+ */
+export function DeleteAccountForm({
+  confirmEmail,
+  action,
+}: {
+  confirmEmail: string
+  action: RequestDeleteAccountAction
+}) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
 
@@ -35,7 +51,7 @@ export function DeleteAccountForm({ confirmEmail }: { confirmEmail: string }) {
         cancelLabel="No, volver"
         variant="destructive"
         onConfirm={async () => {
-          const result = await requestDeleteAccountAction()
+          const result = await action()
           if (!result.success) {
             return { success: false, error: result.error }
           }

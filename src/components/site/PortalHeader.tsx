@@ -6,7 +6,11 @@ import { AccountMenu } from './AccountMenu'
 import { usePortalSession } from './PortalSessionProvider'
 import { Search, Building2, Calendar, LogIn } from 'lucide-react'
 
-type Props = { variant?: 'overlay' | 'solid' }
+type Props = {
+  variant?: 'overlay' | 'solid'
+  /** Threaded a AccountMenu — ver el comentario de la prop homónima ahí. */
+  signOutAction: () => Promise<void>
+}
 
 /**
  * Cabecera única del portal, session-aware. Reemplaza al antiguo `SiteNav`.
@@ -17,7 +21,7 @@ type Props = { variant?: 'overlay' | 'solid' }
  * jugador aparece tras montar, ocupando el mismo slot derecho de la nav.
  * `variant="overlay"` se usa sobre el hero de la landing (markup preservado).
  */
-export default function PortalHeader({ variant = 'solid' }: Props) {
+export default function PortalHeader({ variant = 'solid', signOutAction }: Props) {
   const { session } = usePortalSession()
 
   if (variant === 'overlay') {
@@ -54,6 +58,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
                   email={session.email}
                   avatarUrl={session.avatarUrl}
                   variant="overlay"
+                  signOutAction={signOutAction}
                 />
               ) : (
                 <Link
@@ -99,6 +104,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
                 email={session.email}
                 avatarUrl={session.avatarUrl}
                 variant="solid"
+                signOutAction={signOutAction}
               />
             </>
           ) : (

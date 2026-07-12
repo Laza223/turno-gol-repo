@@ -2,9 +2,12 @@
 
 import { useFormState, useFormStatus } from 'react-dom'
 import { Loader2, Mail } from 'lucide-react'
-import { sendPlayerMagicLink, type GateState } from '../actions'
+import type { sendPlayerMagicLink, GateState } from '../actions'
 
 const initial: GateState = { status: 'idle' }
+
+/** Firma de la Server Action que consume el form (ver ../actions#sendPlayerMagicLink). */
+export type SendPlayerMagicLink = typeof sendPlayerMagicLink
 
 const inputClass =
   'h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-white/[.04]'
@@ -18,8 +21,15 @@ function Submit() {
   )
 }
 
-export default function LoginGate({ next }: { next: string }) {
-  const [state, formAction] = useFormState(sendPlayerMagicLink, initial)
+export default function LoginGate({
+  next,
+  action,
+}: {
+  next: string
+  /** Server Action inyectada por la page (../actions#sendPlayerMagicLink). */
+  action: SendPlayerMagicLink
+}) {
+  const [state, formAction] = useFormState(action, initial)
 
   if (state.status === 'sent') {
     return (

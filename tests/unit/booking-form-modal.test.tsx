@@ -11,13 +11,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
-const createBookingAction = vi.fn()
-vi.mock('@/app/(admin)/reservas/actions', () => ({
-  createBookingAction: (...args: unknown[]) => createBookingAction(...args),
-}))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 
 import { BookingFormModal } from '@/components/booking/BookingFormModal'
+
+// La action llega por PROP (no por import: ver el comentario en
+// BookingFormModal.tsx), así que el test la mockea como cualquier otro
+// callback — ya no hace falta vi.mock del módulo de actions.
+const createBookingAction = vi.fn()
 
 const slot = {
   courtId: 'court-1',
@@ -30,7 +31,16 @@ const slot = {
 function renderModal(overrides: Partial<React.ComponentProps<typeof BookingFormModal>> = {}) {
   const onClose = vi.fn()
   const onSuccess = vi.fn()
-  render(<BookingFormModal slot={slot} open onClose={onClose} onSuccess={onSuccess} {...overrides} />)
+  render(
+    <BookingFormModal
+      slot={slot}
+      open
+      onClose={onClose}
+      onSuccess={onSuccess}
+      action={createBookingAction}
+      {...overrides}
+    />,
+  )
   return { onClose, onSuccess }
 }
 

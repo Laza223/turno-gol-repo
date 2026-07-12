@@ -25,6 +25,7 @@ import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
 import { CanteenQuickSale } from './components/CanteenQuickSale'
 import { CierreCard } from './components/CierreCard'
+import { createCashFlowAction, closeDayAction, saveCanteenProductsAction } from './actions'
 import { artDateOf } from '@/shared/time/art-date'
 import {
   addDays,
@@ -143,6 +144,8 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
               balance={summary.balance}
               cashTotal={summary.byMethod.cash ?? 0}
               isClosed={summary.isClosed}
+              createCashFlowAction={createCashFlowAction}
+              closeDayAction={closeDayAction}
             />
           </>
         }
@@ -209,7 +212,12 @@ export default async function CajaPage({ searchParams }: { searchParams: { date?
 
       {/* Cantina/Bar: venta rápida con un toque (oculta con caja cerrada) */}
       {!summary.isClosed && (
-        <CanteenQuickSale date={date} products={tenant.settings.canteen_products ?? []} />
+        <CanteenQuickSale
+          date={date}
+          products={tenant.settings.canteen_products ?? []}
+          createCashFlowAction={createCashFlowAction}
+          saveCanteenProductsAction={saveCanteenProductsAction}
+        />
       )}
 
       {/* Desglose por método (§4): la referencia del arqueo. */}

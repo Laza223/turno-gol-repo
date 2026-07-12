@@ -9,6 +9,27 @@ export type RunAction = (
   setFeedback: (f: Feedback) => void,
 ) => void
 
+/**
+ * Firma común de las 7 Server Actions de soporte (`../../actions`): todas son
+ * `(input: unknown) => Promise<SupportActionResult>`. Cada sección la recibe
+ * por PROP en vez de importar su action directamente — '../../actions' es
+ * `'use server'` y arrastra request-context → node:async_hooks, que Vite
+ * externaliza en el browser y rompe la story (regla 1 del brief de Storybook).
+ * `import type` sí es seguro: se borra en compilación.
+ */
+export type SupportAction = (input: unknown) => Promise<SupportActionResult>
+
+/** Bolsa de las 7 actions que orquesta SupportActionsPanel, una por sección. */
+export type SupportActionsBag = {
+  forceStatus: SupportAction
+  reactivate: SupportAction
+  extendTrial: SupportAction
+  changePlan: SupportAction
+  updateSettings: SupportAction
+  resetPassword: SupportAction
+  cancelSubscription: SupportAction
+}
+
 export type SupportPanelSettings = {
   requires_deposit: boolean
   deposit_percentage: number

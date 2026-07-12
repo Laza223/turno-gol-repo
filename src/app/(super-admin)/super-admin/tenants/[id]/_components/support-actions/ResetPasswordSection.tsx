@@ -1,19 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { resetStaffPasswordAction } from '../../actions'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
-import { inputCls, primaryBtn, type Feedback, type RunAction } from './constants'
+import { inputCls, primaryBtn, type Feedback, type RunAction, type SupportAction } from './constants'
 
 type Props = {
   tenantId: string
   pending: boolean
   run: RunAction
+  action: SupportAction
 }
 
 /** Resetear contraseña de staff: genera una temporal (soporte telefónico). Solo staff activo del complejo. */
-export function ResetPasswordSection({ tenantId, pending, run }: Props) {
+export function ResetPasswordSection({ tenantId, pending, run, action }: Props) {
   const [resetEmail, setResetEmail] = useState('')
   const [resetFeedback, setResetFeedback] = useState<Feedback>(null)
 
@@ -41,7 +41,7 @@ export function ResetPasswordSection({ tenantId, pending, run }: Props) {
             disabled={pending || resetEmail.trim() === ''}
             onClick={() =>
               run(
-                () => resetStaffPasswordAction({ tenantId, email: resetEmail.trim() }),
+                () => action({ tenantId, email: resetEmail.trim() }),
                 setResetFeedback,
               )
             }

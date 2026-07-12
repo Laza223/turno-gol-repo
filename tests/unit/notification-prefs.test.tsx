@@ -1,20 +1,19 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-
-const updateMock = vi.fn()
-vi.mock('@/app/(player)/perfil/actions', () => ({
-  updateNotificationPrefAction: (...args: unknown[]) => updateMock(...args),
-}))
-
 import NotificationPrefs from '@/app/(player)/perfil/NotificationPrefs'
+
+// La Server Action entra por prop (WP-PLAYER DI): ya no hace falta un vi.mock
+// de '@/app/(player)/perfil/actions' para evitar que drizzle/postgres se
+// carguen al importar el componente.
+const updateMock = vi.fn()
 
 beforeEach(() => updateMock.mockReset())
 afterEach(() => cleanup())
 
 describe('NotificationPrefs', () => {
   it('renderiza ambos switches con el estado inicial del jugador', () => {
-    render(<NotificationPrefs initialEmail={true} initialPush={false} />)
+    render(<NotificationPrefs initialEmail={true} initialPush={false} action={updateMock} />)
     const email = screen.getByRole('switch', { name: 'Novedades por email' })
     const push = screen.getByRole('switch', { name: 'Notificaciones push' })
     expect(email.getAttribute('aria-checked')).toBe('true')
@@ -23,7 +22,7 @@ describe('NotificationPrefs', () => {
 
   it('togglear llama a la action con la pref correcta y cambia optimista', async () => {
     updateMock.mockResolvedValue({ success: true })
-    render(<NotificationPrefs initialEmail={true} initialPush={true} />)
+    render(<NotificationPrefs initialEmail={true} initialPush={true} action={updateMock} />)
 
     fireEvent.click(screen.getByRole('switch', { name: 'Novedades por email' }))
 
@@ -43,7 +42,7 @@ describe('NotificationPrefs', () => {
 
   it('si la action falla, el switch revierte y muestra el error', async () => {
     updateMock.mockResolvedValue({ success: false, error: 'No pudimos guardar tu preferencia.' })
-    render(<NotificationPrefs initialEmail={true} initialPush={true} />)
+    render(<NotificationPrefs initialEmail={true} initialPush={true} action={updateMock} />)
 
     fireEvent.click(screen.getByRole('switch', { name: 'Notificaciones push' }))
 

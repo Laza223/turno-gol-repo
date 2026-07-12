@@ -5,7 +5,7 @@ import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink } from 'lucide-re
 import { Button } from '@/components/ui/button'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
-import { markPublicLinkSharedAction } from '@/app/(admin)/dashboard/actions'
+import type { MarkSharedResult } from '@/app/(admin)/dashboard/actions'
 
 interface ChecklistItem {
   key: keyof ChecklistState
@@ -28,6 +28,13 @@ interface OnboardingChecklistProps {
   state: ChecklistState
   tenantSlug: string
   appUrl: string
+  /**
+   * Server Action que persiste el paso "link compartido". Llega por PROP
+   * (nunca se importa como valor acá): `./actions` es `'use server'` y
+   * arrastra drizzle/postgres + `node:async_hooks`, lo que rompe el bundle de
+   * browser de Storybook. El type import sí es seguro (se borra en compilación).
+   */
+  action: () => Promise<MarkSharedResult>
 }
 
 /**
@@ -35,7 +42,7 @@ interface OnboardingChecklistProps {
  * PENDIENTES quedan siempre visibles con su CTA; los completados se pliegan a
  * una fila-toggle para que el setup no entierre los KPIs del día.
  */
-export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChecklistProps) {
+export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: OnboardingChecklistProps) {
   const pendingItems = ITEMS.filter((i) => !state[i.key])
   const doneItems = ITEMS.filter((i) => state[i.key])
   const completed = doneItems.length
@@ -57,7 +64,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
     if (state.publicLinkShared) return
     startTransition(async () => {
       try {
-        const res = await markPublicLinkSharedAction()
+        const res = await action()
         setShareError(res.success ? null : res.error)
       } catch {
         setShareError('No pudimos guardar el paso, pero el link ya se copió.')

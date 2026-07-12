@@ -84,6 +84,124 @@ export const cashFlowExportRow = (overrides: Partial<CashFlowExportRow> = {}): C
   ...overrides,
 })
 
+// ─── /metricas (MetricsDashboard) ──────────────────────────────────────────
+// `TenantMetrics`/`SystemStatus` viven en metrics.service.ts / api/admin/
+// system-status/route.ts — ambos server-only (arrastran drizzle/getBoss), así
+// que el shape se define acá a mano (mismo patrón que player.ts) en vez de
+// importarlo, aunque sea `import type` (el override de src/test/**/*.ts
+// también bloquea *.service).
+
+type DailyCountFixture = { date: string; count: number }
+type DailyAmountFixture = { date: string; amountCents: number }
+type TimeSlotCountFixture = { time: string; count: number }
+type NoShowMetricFixture = { noShow: number; completed: number; finished: number; rate: number }
+type RevenueMetricFixture = { totalCents: number; byCategory: Record<string, number> }
+
+export type TenantMetricsFixture = {
+  windowDays: number
+  from: string
+  to: string
+  bookingsPerDay: DailyCountFixture[]
+  revenuePerDay: DailyAmountFixture[]
+  topSlots: TimeSlotCountFixture[]
+  noShow: NoShowMetricFixture
+  noShowPrev: NoShowMetricFixture
+  revenue: RevenueMetricFixture
+}
+
+const METRICS_WINDOW_DAYS = 30
+
+/** Serie de 30 días terminando en FROZEN_NOW, con un patrón de fin de semana más alto. */
+function thirtyDaySeries<T>(build: (dateStr: string, dayIndex: number) => T): T[] {
+  const out: T[] = []
+  for (let i = METRICS_WINDOW_DAYS - 1; i >= 0; i--) {
+    const dateStr = artDateString(new Date(FROZEN_NOW.getTime() - i * 86_400_000))
+    out.push(build(dateStr, METRICS_WINDOW_DAYS - 1 - i))
+  }
+  return out
+}
+
+function isWeekend(dayIndex: number): boolean {
+  // FROZEN_NOW (día 29, el último) es sábado — cada 7 días hacia atrás repite el patrón.
+  return dayIndex % 7 === 5 || dayIndex % 7 === 6
+}
+
+/** 30 días de actividad, con picos de fin de semana — la vista default de /metricas. */
+export const tenantMetrics = (overrides: Partial<TenantMetricsFixture> = {}): TenantMetricsFixture => ({
+  windowDays: METRICS_WINDOW_DAYS,
+  from: artDateString(new Date(FROZEN_NOW.getTime() - (METRICS_WINDOW_DAYS - 1) * 86_400_000)),
+  to: artDateString(FROZEN_NOW),
+  bookingsPerDay: thirtyDaySeries((date, i) => ({ date, count: isWeekend(i) ? 14 : 6 })),
+  revenuePerDay: thirtyDaySeries((date, i) => ({ date, amountCents: isWeekend(i) ? 2_100_000 : 900_000 })),
+  topSlots: [
+    { time: '20:00', count: 24 },
+    { time: '21:00', count: 21 },
+    { time: '19:00', count: 18 },
+    { time: '18:00', count: 15 },
+    { time: '17:00', count: 12 },
+  ],
+  noShow: { noShow: 8, completed: 142, finished: 150, rate: 8 / 150 },
+  noShowPrev: { noShow: 11, completed: 119, finished: 130, rate: 11 / 130 },
+  revenue: {
+    totalCents: 36_000_000,
+    byCategory: { booking: 30_000_000, product_sale: 6_000_000 },
+  },
+  ...overrides,
+})
+
+/** Complejo recién arrancado: sin reservas todavía en la ventana de 30 días. */
+export const tenantMetricsEmpty = (): TenantMetricsFixture =>
+  tenantMetrics({
+    bookingsPerDay: thirtyDaySeries((date) => ({ date, count: 0 })),
+    revenuePerDay: thirtyDaySeries((date) => ({ date, amountCents: 0 })),
+    topSlots: [],
+    noShow: { noShow: 0, completed: 0, finished: 0, rate: 0 },
+    noShowPrev: { noShow: 0, completed: 0, finished: 0, rate: 0 },
+    revenue: { totalCents: 0, byCategory: {} },
+  })
+
+type QueueDepthFixture = { queue: string; depth: number | null }
+
+export type SystemStatusFixture = {
+  db: { status: 'ok' | 'down'; latencyMs: number | null }
+  pgboss: { queues: QueueDepthFixture[] }
+  lastHealthPing: string | null
+  timestamp: string
+}
+
+const QUEUE_NAMES = [
+  'process-mp-webhook',
+  'generate-abonado-slots',
+  'send-email',
+  'expire-trials',
+  'auto-complete-bookings',
+  'dunning-retry',
+  'data-retention-cleanup',
+  'expire-pending-booking',
+  'expire-pending-booking-sweep',
+  'refresh-mp-tokens',
+  'reconcile-pending-payments',
+  'push-send',
+  'health-ping',
+]
+
+/** Sistema operativo: DB al día, colas vacías, último health-ping reciente. */
+export const systemStatusOk = (overrides: Partial<SystemStatusFixture> = {}): SystemStatusFixture => ({
+  db: { status: 'ok', latencyMs: 12 },
+  pgboss: { queues: QUEUE_NAMES.map((queue) => ({ queue, depth: 0 })) },
+  lastHealthPing: hoursFromNow(-0.05).toISOString(),
+  timestamp: FROZEN_NOW.toISOString(),
+  ...overrides,
+})
+
+/** Base de datos caída: todas las colas degradan a profundidad desconocida (fail-open). */
+export const systemStatusDbDown = (): SystemStatusFixture => ({
+  db: { status: 'down', latencyMs: null },
+  pgboss: { queues: QUEUE_NAMES.map((queue) => ({ queue, depth: null })) },
+  lastHealthPing: hoursFromNow(-2).toISOString(),
+  timestamp: FROZEN_NOW.toISOString(),
+})
+
 export const cashFlowExportRows = (): CashFlowExportRow[] => [
   cashFlowExportRow(),
   cashFlowExportRow({

@@ -2,14 +2,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 
-// Mock server actions before importing AbonadoForm
-vi.mock('@/app/(admin)/abonados/nuevo/actions', () => ({
-  submitNewAbonado: vi.fn(),
-  previewAbonadoSlotsAction: vi.fn(),
-}))
-
 import AbonadoForm, { PreviewSlotsView } from '@/app/(admin)/abonados/nuevo/AbonadoForm'
-import { previewAbonadoSlotsAction, submitNewAbonado } from '@/app/(admin)/abonados/nuevo/actions'
+
+// submitAction/previewAction ya no se importan del módulo — AbonadoForm las
+// recibe por prop (ver el comentario en AbonadoForm.tsx). Mocks locales.
+const submitNewAbonado = vi.fn()
+const previewAbonadoSlotsAction = vi.fn()
+
+function renderForm() {
+  return render(
+    <AbonadoForm
+      courts={mockCourts}
+      submitAction={submitNewAbonado}
+      previewAction={previewAbonadoSlotsAction}
+    />,
+  )
+}
 
 const mockCourts = [
   { id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Cancha A' },
@@ -67,13 +75,13 @@ function fillFormAndSubmit() {
 
 describe('AbonadoForm — preview phase', () => {
   it('shows phase 2 after successful preview call with correct badges and summary', async () => {
-    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+    previewAbonadoSlotsAction.mockResolvedValue({
       success: true,
       dates: MOCK_DATES,
       conflicts: MOCK_CONFLICTS,
     })
 
-    render(<AbonadoForm courts={mockCourts} />)
+    renderForm()
     fillFormAndSubmit()
 
     // Wait for phase 2 heading
@@ -107,13 +115,13 @@ describe('AbonadoForm — preview phase', () => {
   })
 
   it('returns to form phase when "Volver a editar" is clicked', async () => {
-    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+    previewAbonadoSlotsAction.mockResolvedValue({
       success: true,
       dates: MOCK_DATES,
       conflicts: MOCK_CONFLICTS,
     })
 
-    render(<AbonadoForm courts={mockCourts} />)
+    renderForm()
     fillFormAndSubmit()
 
     await waitFor(() => {
@@ -128,13 +136,13 @@ describe('AbonadoForm — preview phase', () => {
   })
 
   it('disables confirm and shows warning when all dates conflict', async () => {
-    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+    previewAbonadoSlotsAction.mockResolvedValue({
       success: true,
       dates: ['2026-06-01', '2026-06-08'],
       conflicts: ['2026-06-01', '2026-06-08'],
     })
 
-    render(<AbonadoForm courts={mockCourts} />)
+    renderForm()
     fillFormAndSubmit()
 
     await waitFor(() => {
@@ -148,12 +156,12 @@ describe('AbonadoForm — preview phase', () => {
   })
 
   it('shows inline error when previewAbonadoSlotsAction returns failure', async () => {
-    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+    previewAbonadoSlotsAction.mockResolvedValue({
       success: false,
       error: 'Tenant no encontrado.',
     })
 
-    render(<AbonadoForm courts={mockCourts} />)
+    renderForm()
     fillFormAndSubmit()
 
     await waitFor(() => {
@@ -166,15 +174,15 @@ describe('AbonadoForm — preview phase', () => {
   })
 
   it('calls submitNewAbonado with reconstructed FormData when "Crear abonado" clicked', async () => {
-    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+    previewAbonadoSlotsAction.mockResolvedValue({
       success: true,
       dates: MOCK_DATES,
       conflicts: MOCK_CONFLICTS,
     })
     // submitNewAbonado succeeds → component does redirect() server-side (no state update)
-    vi.mocked(submitNewAbonado).mockResolvedValue({ status: 'idle' })
+    submitNewAbonado.mockResolvedValue({ status: 'idle' })
 
-    render(<AbonadoForm courts={mockCourts} />)
+    renderForm()
     fillFormAndSubmit()
 
     await waitFor(() => {
@@ -184,11 +192,11 @@ describe('AbonadoForm — preview phase', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Crear abonado' }))
 
     await waitFor(() => {
-      expect(vi.mocked(submitNewAbonado)).toHaveBeenCalledTimes(1)
+      expect(submitNewAbonado).toHaveBeenCalledTimes(1)
     })
 
     // Verify the FormData reconstruction preserves all submitted values
-    const [, fd] = vi.mocked(submitNewAbonado).mock.calls[0]!
+    const [, fd] = submitNewAbonado.mock.calls[0]!
     expect(fd).toBeInstanceOf(FormData)
     expect((fd as FormData).get('courtId')).toBe(mockCourts[0]!.id)
     expect((fd as FormData).get('timeStart')).toBe('10:00')
@@ -201,17 +209,17 @@ describe('AbonadoForm — preview phase', () => {
   })
 
   it('returns to form phase with error when submitNewAbonado returns error', async () => {
-    vi.mocked(previewAbonadoSlotsAction).mockResolvedValue({
+    previewAbonadoSlotsAction.mockResolvedValue({
       success: true,
       dates: MOCK_DATES,
       conflicts: MOCK_CONFLICTS,
     })
-    vi.mocked(submitNewAbonado).mockResolvedValue({
+    submitNewAbonado.mockResolvedValue({
       status: 'error',
       message: 'Conflicto al crear',
     })
 
-    render(<AbonadoForm courts={mockCourts} />)
+    renderForm()
     fillFormAndSubmit()
 
     await waitFor(() => {

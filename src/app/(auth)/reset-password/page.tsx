@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/ui/logo'
 import { ResetForm } from './reset-form'
+import { resetPasswordAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +34,7 @@ export default async function ResetPasswordPage() {
                   Elegí una contraseña de al menos 8 caracteres.
                 </p>
               </header>
-              <ResetForm />
+              <ResetForm action={resetPasswordAction} />
             </>
           ) : (
             <div className="text-center">

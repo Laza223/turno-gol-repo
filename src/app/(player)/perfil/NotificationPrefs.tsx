@@ -2,9 +2,15 @@
 
 import { useState, useTransition } from 'react'
 import { BellRing, Mail } from 'lucide-react'
-import { updateNotificationPrefAction } from './actions'
+import type { UpdatePrefResult } from './actions'
 
 type PrefKey = 'email' | 'push'
+
+/** Firma de la Server Action que persiste el toggle. */
+export type UpdateNotificationPrefAction = (
+  pref: PrefKey,
+  enabled: boolean,
+) => Promise<UpdatePrefResult>
 
 const PREF_DEFS: Array<{
   key: PrefKey
@@ -31,13 +37,21 @@ const PREF_DEFS: Array<{
  * Toggles de notificación del jugador. Optimistas: el switch cambia al toque,
  * la Server Action persiste en players.notify_email/notify_push y ante error
  * se revierte con mensaje. Switch nativo accesible (role="switch").
+ *
+ * La action llega por PROP, no por import: './actions' es `'use server'` y
+ * arrastra drizzle/postgres + `node:async_hooks` (vía request-context), lo
+ * que rompe cualquier bundle de browser (Storybook) si se importa como
+ * valor. El type import de `UpdatePrefResult` sí es seguro: se borra en
+ * compilación.
  */
 export default function NotificationPrefs({
   initialEmail,
   initialPush,
+  action,
 }: {
   initialEmail: boolean
   initialPush: boolean
+  action: UpdateNotificationPrefAction
 }) {
   const [prefs, setPrefs] = useState<Record<PrefKey, boolean>>({
     email: initialEmail,
@@ -51,7 +65,7 @@ export default function NotificationPrefs({
     setPrefs((p) => ({ ...p, [key]: next }))
     setError(null)
     startTransition(async () => {
-      const result = await updateNotificationPrefAction(key, next)
+      const result = await action(key, next)
       if (!result.success) {
         setPrefs((p) => ({ ...p, [key]: !next }))
         setError(result.error)

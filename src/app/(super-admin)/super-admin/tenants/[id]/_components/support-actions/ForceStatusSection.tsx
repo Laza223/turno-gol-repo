@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import type { TenantStatus } from '@/modules/billing/billing.types'
-import { forceTenantStatusAction } from '../../actions'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
 import {
@@ -12,6 +11,7 @@ import {
   primaryBtn,
   type Feedback,
   type RunAction,
+  type SupportAction,
 } from './constants'
 
 type Props = {
@@ -22,6 +22,7 @@ type Props = {
   destructiveTargets: TenantStatus[]
   pending: boolean
   run: RunAction
+  action: SupportAction
 }
 
 /**
@@ -37,6 +38,7 @@ export function ForceStatusSection({
   destructiveTargets,
   pending,
   run,
+  action,
 }: Props) {
   const [forceTarget, setForceTarget] = useState<TenantStatus | ''>('')
   const [forceConfirm, setForceConfirm] = useState('')
@@ -80,7 +82,7 @@ export function ForceStatusSection({
               onClick={() =>
                 run(
                   () =>
-                    forceTenantStatusAction({
+                    action({
                       tenantId,
                       targetStatus: forceTarget,
                       ...(forceIsDestructive ? { confirmName: forceConfirm } : {}),

@@ -104,6 +104,9 @@ function renderGrid(opts?: {
       openingHours={OPENING}
       closedDates={[]}
       closesNextDay={false}
+      // next/dynamic está mockeado más abajo con un stub que ignora `action`
+      // (el modal real no se monta en estos tests).
+      action={vi.fn()}
     />,
   )
 }

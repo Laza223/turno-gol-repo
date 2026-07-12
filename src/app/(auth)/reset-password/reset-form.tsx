@@ -3,12 +3,25 @@
 import { useFormState, useFormStatus } from 'react-dom'
 import { useState } from 'react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
-import { resetPasswordAction, type ResetState } from './actions'
+import type { ResetState } from './actions'
 
 const initial: ResetState = { status: 'idle' }
 
-export function ResetForm() {
-  const [state, formAction] = useFormState(resetPasswordAction, initial)
+/** Firma de la Server Action que consume el form. */
+export type ResetPasswordAction = (
+  prevState: ResetState,
+  formData: FormData,
+) => Promise<ResetState>
+
+/**
+ * La action llega por PROP, no por import: './actions' es `'use server'` y
+ * arrastra drizzle/postgres + `node:async_hooks` (vía request-context), lo
+ * que rompe cualquier bundle de browser (Storybook) si se importa como
+ * valor. El type import de `ResetState` sí es seguro: se borra en
+ * compilación.
+ */
+export function ResetForm({ action }: { action: ResetPasswordAction }) {
+  const [state, formAction] = useFormState(action, initial)
   const [show, setShow] = useState(false)
 
   return (

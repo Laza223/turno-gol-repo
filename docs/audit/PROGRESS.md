@@ -496,3 +496,36 @@ Los 13 hallazgos locales (todo excepto #6, que requiere push/PR) quedaron fixead
 - **#6** (mergear `chore/claude-fixes` — retention worker) — el fix ya existe en la rama, solo falta push + PR (acción de riesgo, pendiente de confirmación).
 
 **Nada commiteado en esta sesión** — todos los cambios están en el working tree de `main`, sin stage ni commit, a la espera de que el usuario revise y decida cómo agruparlos.
+
+---
+
+## 2026-07-12 — React Doctor: re-scan completo (branch `claude/react-doctor-execution-y88hgb`)
+
+`npx react-doctor@latest -y --json` (v0.7.6), scope full, con la config existente (`doctor.config.mjs`) aplicada. **68 diagnósticos: 11 errores + 57 warnings, 41 archivos afectados.** Solo consulta/registro — sin triage ni fixes esta sesión.
+
+### Errores (11)
+
+**4 Bugs — NO cubiertos por overrides existentes, candidatos a triage real:**
+- `src/app/(admin)/abonados/AbonadosList.tsx:249` — `no-unguarded-browser-global-in-render-or-hook-init`: `document` leído durante render (SSR rompe).
+- `src/components/booking/PaymentStatusWatcher.tsx:67` — `effect-needs-cleanup`: `setTimeout` en `useEffect` sin cleanup.
+- `src/hooks/use-booking-realtime.ts:110` — `effect-needs-cleanup`: `subscribe` en `useEffect` sin cleanup.
+- `src/hooks/use-persisted-density.ts:21` — `no-impure-state-updater`: el updater de estado hace `localStorage.setItem()` (efecto lateral dentro del updater).
+
+**7 Security (`supabase-table-missing-rls`)** — mismo archivo, `supabase/migrations/20260424000003_global_tables.sql` líneas 9/32/109/139/157/186/202. Probable falso positivo: el número y ubicación coincide con las tablas globales documentadas en CLAUDE.md (`tenants`, `players`, `staff_users`, `plans`, `price_versions`, `processed_webhooks` — sin `tenant_id`, sin RLS por diseño). **NO verificado línea por línea todavía** — pendiente confirmar tabla por tabla antes de decidir supresión en `doctor.config.mjs` vs. RLS real faltante.
+
+### Warnings (57) por regla
+
+- `server-sequential-independent-await` ×14 — `canchas/actions.ts:206`, `grilla/page.tsx:36`, `reservas/page.tsx:102`, `api/player/data-export/route.ts:66,83`, `court.service.ts:125`, `metrics.service.ts:185,193`, `support.service.ts:291,398`, `tenants.service.ts:133,327,436`, `public.service.ts:383`.
+- `async-await-in-loop` ×6 — `dunning-retry.worker.ts:130,153,177,203,228` + `booking.expiry.ts:179`. Coincide exacto con el backlog de perf ya documentado en `doctor.config.mjs` (bounded-concurrency real, requiere `p-limit`, no `Promise.all`) — **no son hallazgos nuevos**.
+- `server-after-nonblocking` ×4 — `canchas/actions.ts:240,290`, `settings/perfil/actions.ts:44,95` (`console.warn()` bloqueante antes de responder; candidato a `next/server` `after()`).
+- `exhaustive-deps` ×4 — `BookingCard.tsx:168`, `use-grid-layout.ts:74,95`, `use-nearest-city.ts:83`.
+- `prefer-module-scope-static-value`/`prefer-module-scope-pure-function` ×7 — `reportes/page.tsx:42`, `reservas/[id]/page.tsx:35,41`, `para-complejos/page.tsx:450`, `mis-reservas/page.tsx:132`, `ExplorarFilters.tsx:66`, `SettingsSection.tsx:27`.
+- `no-derived-useState` ×2 — `HorariosForm.tsx:32`, `SettingsSection.tsx:24`.
+- `no-locale-format-in-render` ×2 — `ReviewsSection.tsx:76`, `status-banner.tsx:17` (hydration mismatch potencial).
+- `rerender-lazy-state-init` ×3 — `SearchBar.tsx:53,55,56`.
+- `control-has-associated-label` ×2 — `PricingSection.tsx:202,256`.
+- `js-set-map-lookups` ×2, `js-combine-iterations` ×1, `no-array-index-as-key` ×1 (`combobox.tsx:265`), `prefer-html-dialog` ×1 (`TenantGallery.tsx:92`).
+- `require-pnpm-hardening` ×2 (`pnpm-workspace.yaml` — falta `minimumReleaseAge`/`trustPolicy`), `url-prefilled-privileged-action` ×1 (`ingresar/page.tsx:152`), `clickjacking-redirect-risk` ×1 (`api/auth/callback/route.ts:100`).
+- `unused-file`/`unused-dev-dependency`/`unused-export` ×4 (Maintainability) — `doctor.config.mjs` (FP conocido, ver nota en el propio config), `@lhci/cli` + `happy-dom` sin uso en `package.json`, `runRequestObservability` (ya evaluado y dejado a propósito, ver sesión 2026-07-04 arriba).
+
+**Sin acción tomada, nada commiteado por este registro salvo el propio PROGRESS.md.** Reporte JSON completo (formato `react-doctor --json`, 68 diagnósticos con `help` extendido) generado en esta sesión — no versionado, vivía en scratchpad temporal (efímero, no sobrevive el contenedor).

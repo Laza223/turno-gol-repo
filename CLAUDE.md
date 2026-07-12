@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # TurnoGol
 
 SaaS B2B de gestión para complejos de fútbol en Argentina. Competidor vertical de ATC Sports, exclusivo para fútbol.
@@ -31,7 +35,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - `doc17` — Observabilidad: Sentry, logs, métricas
 - `doc18` — Privacy/Compliance: Ley 25.326
 - `doc19` — Runbook operativo
-- `doc20` — Design System: design-system/MASTER.md como fuente de verdad visual
+- `doc20` — Design System: `docs/spec/design-system/MASTER.md` como fuente de verdad visual
 
 ## Stack confirmado
 - Next.js 14 (App Router) + TypeScript strict
@@ -43,13 +47,56 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - Web Push API (notificaciones push al admin cuando llega reserva online)
 - Vitest + Playwright
 
-## Comandos (una vez iniciado el proyecto)
-- `pnpm dev` — desarrollo
-- `pnpm typecheck` — verificar tipos
-- `pnpm lint` — ESLint
-- `pnpm test` — tests unitarios
-- `pnpm test:integration` — tests con DB real
-- `pnpm db:push` — aplicar schema
+## Comandos
+- `pnpm dev` — desarrollo (localhost:3000)
+- `pnpm typecheck` — verificar tipos (correr después de cada cambio)
+- `pnpm lint` — ESLint sobre `src/`
+- `pnpm format` — Prettier sobre `src/`
+- `pnpm test` — unit tests (SOLO `tests/unit/`)
+- `pnpm test:integration` — tests con DB real (`tests/integration/`; requiere Postgres local: `pnpm supabase:start`, puerto 54322)
+- `pnpm test:isolation` — tests de aislamiento RLS (`tests/integration/isolation.test.ts`), BLOQUEANTES en CI
+- `pnpm test:e2e` — Playwright (`tests/e2e/`, 6 projects: chromium, mobile-chrome, axe-audit, webkit, firefox, mobile-safari); levanta `pnpm dev` solo con `MP_MOCK_MODE=1` y `NEXT_PUBLIC_E2E=1`
+- `pnpm jobs:start` — workers pg-boss standalone (`src/shared/jobs/run-workers.ts`)
+- `pnpm supabase:start|stop|reset` — Postgres + Auth local (puerto 54322)
+- `pnpm db:studio` — Drizzle Studio
+
+### Correr un test individual
+- Unit: `pnpm vitest run tests/unit/<archivo>.test.ts` (+ `-t "nombre"` para un caso puntual)
+- Integración: `DATABASE_URL="postgres://postgres:postgres@127.0.0.1:54322/postgres" pnpm test:integration tests/integration/<archivo>.test.ts`
+- E2E: `pnpm exec playwright test --project chromium <substring>` (+ `--grep "<título>"`)
+- Hay un solo `vitest.config.ts` (split unit/integration por `--dir`, singleThread por los tests de DB)
+
+### Migraciones (importante)
+- `db:push` y `db:migrate` son alias de `drizzle-kit push:pg` y están DENEGADOS por `.claude/settings.json` — no usarlos
+- Las migraciones reales son SQL escritas a mano en `src/shared/db/migrations/0*.sql` (numeradas 001–042; incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/` (`pnpm db:sync-supabase` sincroniza)
+- CI las aplica en orden vía psql; NUNCA modificar migraciones existentes — crear una nueva
+
+## Arquitectura del código
+
+Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive en el App Router.
+
+- `src/modules/*` — 25 slices de dominio (`bookings`, `payments`, `billing`, `auth`, `staff`, `abonados`, `cashflow`, `relationships`, `notifications`, `super-admin`, …), cada uno con `*.service.ts` / `*.schema.ts` (Zod) / `*.types.ts` / `*.errors.ts`. Acá vive la lógica.
+- `src/app/*` — capa fina de presentación/ruteo. Route groups: `(admin)` (dashboard staff, rutas en español: `grilla`, `caja`, `jugadores`…), `(player)`, `(public)` (portal + SEO), `(auth)`, `(business)`, `(super-admin)`. Server Actions co-locadas en `src/app/**/actions.ts`, exportan funciones con sufijo `Action`: guard → service del módulo. Route handlers notables: `api/webhooks/mercadopago`, `api/public/*`, `api/billing/*`, `api/mp/{oauth-start,callback}`.
+- `src/shared/` — infraestructura interna: `db/`, `jobs/`, `middleware/`, `time/`, `rate-limit/`, `observability/`, `security/`. `src/lib/` — adapters de terceros: `supabase/`, `mercadopago.ts`, `web-push.ts`, `crypto/`. `src/components/` y `src/hooks/` — UI.
+
+### Núcleo de tenant isolation: `src/shared/db/client.ts`
+- `getDb()` — pool restringido (rol `turnogol_app`, RLS enforced). `getWorkerDb()` — pool BYPASSRLS (`WORKER_DATABASE_URL`, rol `turnogol_worker`) para sweeps cross-tenant y lookups pre-contexto.
+- Wrappers de contexto (transacción + `set_config(..., true)` = SET LOCAL): `withTenantContext(tenantId)`, `withPlayerContext(playerId)`, `withSystemAdminContext(id)`.
+- Flujo de un request staff: `withTenant()` (`src/shared/middleware/with-tenant.ts`) → `extractAuthUser` (JWT `app_metadata`) → `getStaffRole()` re-lee el rol desde `tenant_staff_members` (**el claim `role` del JWT nunca se confía**) → `withTenantContext` → queries bajo RLS.
+
+### Guards
+- `src/modules/staff/guards.ts` — `requireAdminStaff()` (pages, redirige), `requireOperatorStaff()` / `requireAdminStaffAction()` (Server Actions, devuelven `{ok:false}`).
+- `src/modules/auth/system-admin.guards.ts` — triple check: JWT `is_system_admin` + fila activa en `system_admins` + allowlist `SYSTEM_ADMIN_EMAILS`.
+- Route handlers: `withTenant()` / `withPlayer()` en `src/shared/middleware/`.
+- `middleware.ts` raíz (edge): Fetch-Metadata anti-CSRF + rate-limit + request-id en rutas públicas/de dinero.
+
+### Background jobs
+- Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 12 workers registrados en `src/shared/jobs/workers/index.ts`; colas y retry-config en `definitions.ts` / `queue-names.ts`.
+- Webhook MP: `api/webhooks/mercadopago/route.ts` verifica firma → `boss.send(QUEUE_PROCESS_MP_WEBHOOK, …)`; con `MP_MOCK_ENABLED` (E2E) procesa inline.
+
+### Tests y CI
+- `tests/unit/` (~200 archivos), `tests/integration/` (~90, DB real: aislamiento, carreras, idempotencia de webhooks), `tests/e2e/` (`critical-flows/`, `a11y/`, `mobile/`, `cross-browser/`).
+- CI (4 jobs): lint+types → unit → integration+isolation (BLOQUEANTE; postgres:15 en 54322, aplica `0*.sql` vía psql) → e2e (solo PRs a main). Deploy automático a Vercel tras CI verde en main.
 
 ## Reglas críticas
 - TypeScript strict, nunca `any`
@@ -79,7 +126,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - Players son cross-tenant: un jugador reserva en N complejos
 - El JWT del admin tiene tenant_id; el del jugador tiene player_id (sin tenant_id)
 - **RLS dual en `bookings` y `player_tenant_relationships`**: policy para admin (por `app.current_tenant_id`), policy para jugador (por `app.current_player_id`). Policy Realtime SOLO en `bookings` (grilla admin). `player_tenant_relationships` no necesita Realtime en v1.
-- Background jobs usan rol de servicio separado
+- Background jobs usan rol de servicio separado: `turnogol_worker` (BYPASSRLS, pool de `WORKER_DATABASE_URL`) vs `turnogol_app` (restringido, RLS enforced) — migr. 037–039
 - `tenants.mp_access_token` + `mp_refresh_token`: credenciales OAuth MP del complejo para cobrar señas (encriptadas at-rest)
 - **Super Admin**: tabla `system_admins`, panel en `/super-admin/*`, puede ver todos los tenants, métricas globales. Fase 2 (Impersonación) diferida.
 
@@ -100,6 +147,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - Seña: configurable por complejo vía `settings.requires_deposit` (on/off) + `settings.deposit_percentage` (porcentaje global, default 30). Sin modo garantía.
 - Duración de turno: 60 minutos fijo (constante global `SLOT_DURATION_MINUTES` en `src/shared/constants.ts`). El campo configurable `booking_duration_minutes` se eliminó (dead code, cambio #14).
 - **Día operativo** (`tenants.closes_next_day`, migr. 035): para complejos que cierran después de medianoche. Si `true`, un día de `opening_hours` cuyo `close <= open` (ej. open 08:00, close 02:00) cierra en la madrugada del día calendario siguiente; sin el flag ese cierre es inválido (cero slots). `bookings.date` = día OPERATIVO (no calendario): los slots post-medianoche pertenecen a la noche anterior, así caja/cierre/reportes agrupan la noche junta. El slot 23:00→00:00 se guarda con `time_end='24:00'` (TIME válido y `> '23:00'` → pasa `chk_time_valid`; `'00:00'` lo violaría). Helper único `src/shared/time/operating-day.ts` (`effectiveCloseMins`/`endLabelFromMins`/`normalizeRangeToOpenDay`), consumido por TODOS los generadores de slots (grilla admin, perfil público, semanal, búsqueda cross-tenant, `getAvailableSlots`).
+- **Instantes físicos (migr. 040/041)**: `bookings.starts_at`/`ends_at` (TIMESTAMPTZ) = instante físico absoluto en UTC, fuente única para lógica fuerte (comparaciones "ya pasó / falta X"); `date` = día operativo y `time_start`/`time_end` = display. Corrigen los slots post-medianoche de complejos `closes_next_day`. Spec: `docs/superpowers/specs/2026-07-10-booking-physical-instants-design.md`.
 - Anticipación de reserva: `settings.booking_advance_days`, default 6 días (como ATC).
 - Precios por cancha: JSONB con reglas de puntos de corte horarios flexibles, **un precio por franja** (`rule.price`). Turnos de 60 min fijos: no hay precio por duración (cambios #6/#13).
 - NO hay billetera virtual del jugador. Reembolsos se resuelven entre jugador y complejo.

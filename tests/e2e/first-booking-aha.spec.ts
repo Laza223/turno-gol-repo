@@ -2,6 +2,7 @@ import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { tomorrowDateIsoArt } from './_helpers/booking-seed'
+import { bookingInstants } from './_helpers/booking-instants'
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const COURT_ID = '00000000-0000-4000-8000-000000000010'
@@ -41,6 +42,8 @@ test.describe('aha moment — first online booking', () => {
         date: bookingDate,
         time_start: '10:00:00',
         time_end: '11:00:00',
+        // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+        ...bookingInstants({ date: bookingDate, timeStart: '10:00', timeEnd: '11:00' }),
         status: 'confirmed',
         price_snapshot: 10000,
         deposit_amount: 0,

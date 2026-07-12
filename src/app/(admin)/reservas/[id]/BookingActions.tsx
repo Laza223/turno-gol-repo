@@ -214,7 +214,7 @@ export default function BookingActions({
         open={noShowOpen}
         onOpenChange={setNoShowOpen}
         title="Marcar como ausente"
-        description="Se registrará que el jugador no se presentó. Si el complejo tiene penalidad activa, puede generar deuda o suspensión del jugador. Esta acción no se puede deshacer pasadas 24hs."
+        description="Se registrará que el jugador no se presentó. La seña pagada queda para el complejo; si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online. Esta acción no se puede deshacer pasadas 24hs."
         variant="destructive"
         confirmLabel="Marcar ausente"
         cancelLabel="Volver"

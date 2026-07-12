@@ -6,9 +6,7 @@ import {
   CheckCircle2,
   CreditCard,
   LineChart,
-  Quote,
   Shield,
-  Star,
   Users,
   Wallet,
   Zap,
@@ -17,9 +15,9 @@ import { buildMetadata } from '@/lib/seo/metadata'
 import Reveal from '@/components/site/Reveal'
 
 export const metadata = buildMetadata({
-  title: 'TurnoGol para complejos — La plataforma que llena canchas',
+  title: 'TurnoGol para complejos — Reservas online y señas por MercadoPago',
   description:
-    'Gestión integral para complejos de fútbol. Reservas online 24/7, cobros automáticos con MercadoPago, grilla en tiempo real y acceso a miles de jugadores. 30 días gratis.',
+    'Sistema de gestión para complejos de fútbol. Reservas online 24/7 por link, señas por MercadoPago directo a tu cuenta, grilla en tiempo real y caja completa. 30 días gratis.',
   path: '/para-complejos',
 })
 
@@ -35,13 +33,13 @@ const features = [
   },
   {
     icon: CreditCard,
-    title: 'Cobros automáticos con MercadoPago',
+    title: 'Señas por MercadoPago, directo a tu cuenta',
     description:
-      'La seña se cobra automáticamente al confirmar la reserva. Eliminá la persecución de pagos y las transferencias pendientes.',
+      'El jugador paga la seña al reservar y la plata va a TU MercadoPago: TurnoGol no la toca. Si no paga en minutos, el turno se libera solo.',
   },
   {
     icon: LineChart,
-    title: 'Dashboard en tiempo real',
+    title: 'Métricas en tiempo real',
     description:
       'Facturación, ocupación y reservas del día en una sola vista. Tomá decisiones basadas en datos reales.',
   },
@@ -61,39 +59,15 @@ const features = [
     icon: Users,
     title: 'Abonados y partidos fijos',
     description:
-      'Turnos fijos programados y cobrados automáticamente. Tus clientes recurrentes siempre tienen su horario asegurado.',
+      'Turnos fijos que se repiten solos cada semana. Registrás quién pagó cada sesión y tus clientes recurrentes nunca pierden su horario.',
   },
 ]
 
 const stats = [
-  { value: '+10.000', label: 'Reservas gestionadas' },
-  { value: '95%', label: 'Reducción de ausencias' },
-  { value: '50+', label: 'Complejos en la plataforma' },
-  { value: '<2 min', label: 'Tiempo de configuración' },
-]
-
-const testimonials = [
-  {
-    name: 'Marcelo Pérez',
-    role: 'Dueño · Complejo San Martín',
-    city: 'Mendoza',
-    quote:
-      'Pasamos de un cuaderno a 6 canchas con reservas 24/7. Subimos la facturación 40% en tres meses sin contratar a nadie.',
-  },
-  {
-    name: 'Lucía Fernández',
-    role: 'Encargada · Predio La Pasión',
-    city: 'Córdoba',
-    quote:
-      'Las ausencias bajaron casi a cero gracias a la seña automática. Antes perdíamos 4 turnos por noche.',
-  },
-  {
-    name: 'Gonzalo Ramírez',
-    role: 'Dueño · Estadio Norte',
-    city: 'Buenos Aires',
-    quote:
-      'Cierro la caja en 30 segundos. La grilla en tiempo real me ahorra discusiones con el equipo.',
-  },
+  { value: '100%', label: 'De la seña va a tu MercadoPago' },
+  { value: '24/7', label: 'Reservas online por link' },
+  { value: '20 min', label: 'De configuración y estás andando' },
+  { value: '30 días', label: 'Gratis, sin tarjeta' },
 ]
 
 export default function ParaComplejosPage() {
@@ -103,7 +77,6 @@ export default function ParaComplejosPage() {
       <Features />
       <StatsBar />
       <ShowcaseStrip />
-      <Testimonials />
       <FinalCta />
     </>
   )
@@ -187,9 +160,9 @@ function Hero() {
           </h1>
 
           <p className="mt-6 max-w-[540px] text-slate-400" style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}>
-            La plataforma que automatiza reservas, elimina ausencias y maximiza tu ocupación.
-            Cobros con MercadoPago, grilla en tiempo real y acceso directo a miles de jugadores.{' '}
-            <span className="font-semibold text-slate-200">Diseñada específicamente para complejos de fútbol en Argentina.</span>
+            El que reserva deja una seña por MercadoPago: si te clavan, la seña queda para vos.
+            Reservas online por link, grilla en tiempo real y la caja del día en un solo lugar.{' '}
+            <span className="font-semibold text-slate-200">Hecho específicamente para complejos de fútbol en Argentina.</span>
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -210,7 +183,7 @@ function Hero() {
           </div>
 
           <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-slate-400">
-            {['Sin tarjeta de crédito', 'Configuración en menos de 2 minutos', 'Soporte dedicado'].map((t) => (
+            {['Sin tarjeta de crédito', 'Configurado en 20 minutos', 'Soporte dedicado'].map((t) => (
               <li key={t} className="flex items-center gap-2 font-medium">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
                 {t}
@@ -451,7 +424,7 @@ function ShowcaseStrip() {
     { n: '01', t: 'Creá tu cuenta', d: 'Email, nombre y contraseña. Confirmación por email y estás dentro.' },
     { n: '02', t: 'Registrá tus canchas', d: 'Nombre, tipo de superficie y capacidad. En menos de un minuto.' },
     { n: '03', t: 'Definí horarios y tarifas', d: 'Personalizá por franja horaria, por día o como mejor se adapte a tu operación.' },
-    { n: '04', t: 'Conectá MercadoPago', d: 'Integración en un click. Empezá a recibir señas automáticas.' },
+    { n: '04', t: 'Conectá MercadoPago', d: 'Integración en un click. Empezá a recibir señas online en tu cuenta.' },
   ]
   return (
     <section className="relative z-10 overflow-hidden py-20 sm:py-28">
@@ -544,53 +517,6 @@ function ShowcaseStrip() {
             </div>
           </div>
         </Reveal>
-      </div>
-    </section>
-  )
-}
-
-function Testimonials() {
-  return (
-    <section id="testimonios" className="relative z-10 py-20 sm:py-28">
-      <div className="mx-auto max-w-[1240px] px-6">
-        <Reveal>
-          <div className="mx-auto mb-12 max-w-[640px] text-center">
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Lo que dicen nuestros complejos
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-            </div>
-            <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{ fontSize: 'clamp(32px, 4vw, 50px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
-            >
-              Resultados que hablan por sí solos.
-            </h2>
-          </div>
-        </Reveal>
-        <div className="grid grid-cols-1 gap-[22px] md:grid-cols-3">
-          {testimonials.map((t, i) => (
-            <Reveal key={t.name} delay={i * 70} className="h-full">
-              <figure
-                className="group relative flex h-full flex-col overflow-hidden border border-white/[.09] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
-                style={{ borderRadius: '20px', background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))' }}
-              >
-                <Quote className="absolute right-6 top-6 h-8 w-8 text-emerald-400/20" aria-hidden />
-                <div className="flex gap-0.5 text-amber-300">
-                  {[...Array(5)].map((_, s) => (
-                    <Star key={s} className="h-4 w-4 fill-current" aria-hidden />
-                  ))}
-                </div>
-                <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-slate-200">&quot;{t.quote}&quot;</blockquote>
-                <figcaption className="mt-6 border-t border-white/10 pt-4">
-                  <div className="text-sm font-semibold text-white">{t.name}</div>
-                  <div className="text-xs text-slate-400">{t.role}</div>
-                  <div className="text-xs text-slate-500">{t.city}, Argentina</div>
-                </figcaption>
-              </figure>
-            </Reveal>
-          ))}
-        </div>
       </div>
     </section>
   )

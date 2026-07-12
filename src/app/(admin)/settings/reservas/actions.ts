@@ -47,8 +47,8 @@ export async function updateReservasPolicyAction(
     cancellationHoursBefore,
   } = parsed.data
 
-  // Tarea #5: ya no se persiste no_show_penalty (el no-show genera deuda, sin
-  // configuración por complejo).
+  // Ya no se persiste no_show_penalty: el no-show captura la seña y aplica
+  // softban por reincidencia, sin configuración por complejo.
   const patch = {
     requires_deposit: requiresDeposit,
     deposit_percentage: depositPercentage,

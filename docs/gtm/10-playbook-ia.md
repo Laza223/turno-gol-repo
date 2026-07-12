@@ -4,7 +4,7 @@
 
 ## Contexto mínimo (leer siempre)
 
-- TurnoGol: SaaS de gestión para complejos de fútbol en Argentina. Suscripción mensual: Predio $47.000 (1-3 canchas), Complejo $74.000 (4-6), Estadio $101.000 (7+), + IVA 21%, anual -20%. Trial 30 días sin tarjeta. (Fuente: `docs/spec/doc4_monetizacion.md` — verificar ahí si hubo actualización por inflación.)
+- TurnoGol: SaaS de gestión para complejos de fútbol en Argentina. Suscripción mensual: Predio $55.000 (1-2 canchas), Complejo $85.000 (3-5), Estadio $115.000 (6+), + IVA 21%, anual -20%. Trial 30 días sin tarjeta. (Fuente de verdad: tabla `plans` / `src/app/(business)/precios/plans-data.ts` — verificar ahí si hubo actualización por inflación.)
 - Competidor principal: ATC Sports (multi-deporte, marketplace de jugadores establecido, más caro — verificar precio vigente antes de citarlo).
 - Estrategia: founder-led, hiperlocal, presencial. Wedge: el clavo (no-show) y el teléfono. Docs 01-09 de esta carpeta son la doctrina.
 - Idioma: español rioplatense, voseo, cero corporate. Vocabulario y frases: [03-posicionamiento.md](./03-posicionamiento.md).
@@ -15,17 +15,17 @@
 2. **Nunca inventar métricas, clientes, casos o testimonios.** Sin datos reales de pilotos, no hay números de resultados en ningún mensaje. Los únicos números utilizables: precios (doc4), mecánica del producto, y datos que el propio prospecto dio.
 3. **Separar siempre `✅ FIRME` (mecánica verificable / dato real) de `⚠️ HIPÓTESIS` (a validar con dueños).** En cualquier análisis o recomendación nueva, etiquetar.
 4. **La IA no contacta a nadie.** Redacta borradores; el founder revisa y envía. Ningún mensaje sale sin ojos humanos.
-5. **No proponer canales nuevos (ads, SEO, partnerships) antes del gate correspondiente** ([08](./08-plan-7-30-90.md), [09](./09-contenido.md) lista negra). Si el founder lo pide, recordarle el gate y después obedecer.
+5. **No proponer canales nuevos (ads, partnerships) antes del gate correspondiente** ([08](./08-plan-7-30-90.md), [09](./09-contenido.md) lista negra). Excepción desde 2026-07-12: SEO/contenido web está ACTIVO por decisión del founder — estrategia en `docs/marketing/01-estrategia-contenido.md`. Si el founder pide otro canal vetado, recordarle el gate y después obedecer.
 6. **Actualizar los docs es parte del trabajo**: objeción nueva → [07](./07-objeciones.md); dolor dominante distinto → [03](./03-posicionamiento.md); tasa real → [05](./05-funnel.md) y [08](./08-plan-7-30-90.md). Docs desactualizados = máquina rota.
 
 ## SE PUEDE PROMETER (verificado en código, julio 2026)
 
 - Reserva online por link web (`turnogol.app/[slug]`) — sin app para el jugador.
 - Seña por MercadoPago **a la cuenta MP del complejo** (OAuth); % configurable; se puede apagar; si el jugador no paga en minutos el turno se libera.
-- No-show: seña queda para el complejo + deuda registrada al jugador, que queda bloqueado para reservar online en ese complejo hasta saldarla.
+- No-show: seña queda para el complejo + a la 2da ausencia en 90 días, bloqueo automático de 14 días para reservar online en ese complejo. **NO existe deuda de dinero por no-show** (revertido 2026-07-11).
 - Grilla en tiempo real mobile-first; push al admin con cada reserva (silencio de madrugada, avisa 8am); email de confirmación al jugador.
-- Turnos fijos (abonados): generación semanal automática, control de pagos, deudas y saldo a favor. **El cobro se REGISTRA a mano.**
-- Caja: ingresos, gastos, cantina con stock y alertas, cierre diario. Módulo Jugadores: ficha, historial, deudas, cobro de deuda.
+- Turnos fijos (abonados): generación semanal automática, precio por sesión, control de quién pagó cada sesión. **El cobro se REGISTRA a mano. NO existe saldo a favor ni ledger de deudas** (eliminados).
+- Caja: ingresos, gastos, cantina con stock y alertas, cierre diario. Módulo Jugadores: ficha, historial, stats, abonados del jugador, indicador de bloqueo por ausencias.
 - Métricas: caja, ocupación, KPIs. Turnos de madrugada agrupados en la noche anterior (día operativo).
 - Onboarding self-service ~20 min; trial 30 días sin tarjeta; exportación de datos; staff sin límite (admin + encargados); cancelación de reserva con política y reembolso automático MP según configuración.
 

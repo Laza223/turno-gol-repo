@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { addDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { makeServiceClient } from './player-seed'
+import { bookingInstants } from './booking-instants'
 
 export {
   E2E_TENANT_ID,
@@ -71,13 +72,22 @@ export async function insertBookingServiceRole(
   const bookingId = randomUUID()
   const tomorrow = tomorrowDateIsoArt()
 
+  const date = opts.date ?? tomorrow
+  const timeStart = opts.timeStart ?? '14:00:00'
+  const timeEnd = opts.timeEnd ?? '15:00:00'
+
   const { error } = await supabase.from('bookings').insert({
     id: bookingId,
     tenant_id: opts.tenantId ?? '00000000-0000-4000-8000-000000000001',
     court_id: opts.courtId ?? '00000000-0000-4000-8000-000000000010',
-    date: opts.date ?? tomorrow,
-    time_start: opts.timeStart ?? '14:00:00',
-    time_end: opts.timeEnd ?? '15:00:00',
+    date,
+    time_start: timeStart,
+    time_end: timeEnd,
+    // starts_at/ends_at son NOT NULL: la exclusion constraint de solapamiento trabaja
+    // sobre tstzrange(starts_at, ends_at), no sobre (date, time_start). Este insert va
+    // por el service client y se saltea la capa de servicios, así que hay que derivarlos
+    // acá — con el mismo physicalRange que usa la app.
+    ...bookingInstants({ date, timeStart, timeEnd }),
     type: opts.type ?? 'spontaneous',
     status: opts.status ?? 'confirmed',
     price_snapshot: opts.priceSnapshot ?? 10000,

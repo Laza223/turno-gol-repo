@@ -38,16 +38,16 @@ export default function BusinessHeader() {
               Funciones
             </Link>
             <Link
-              href="/para-complejos#testimonios"
-              className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
-            >
-              Testimonios
-            </Link>
-            <Link
               href="/precios"
               className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
             >
               Precios
+            </Link>
+            <Link
+              href="/blog"
+              className="hidden items-center rounded-full px-4 py-[9px] text-sm font-semibold text-slate-300 transition-all duration-150 hover:bg-white/[.06] hover:text-white sm:inline-flex"
+            >
+              Blog
             </Link>
             <span aria-hidden className="mx-1.5 h-[22px] w-px bg-white/10" />
             <Link

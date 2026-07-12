@@ -529,3 +529,40 @@ Los 13 hallazgos locales (todo excepto #6, que requiere push/PR) quedaron fixead
 - `unused-file`/`unused-dev-dependency`/`unused-export` ×4 (Maintainability) — `doctor.config.mjs` (FP conocido, ver nota en el propio config), `@lhci/cli` + `happy-dom` sin uso en `package.json`, `runRequestObservability` (ya evaluado y dejado a propósito, ver sesión 2026-07-04 arriba).
 
 **Sin acción tomada, nada commiteado por este registro salvo el propio PROGRESS.md.** Reporte JSON completo (formato `react-doctor --json`, 68 diagnósticos con `help` extendido) generado en esta sesión — no versionado, vivía en scratchpad temporal (efímero, no sobrevive el contenedor).
+
+## 2026-07-12 (copy) — Desalineaciones de copy en producción (.agents/product-marketing.md §Desalineaciones)
+
+**Contexto:** encargo /copywriting sobre las 5 desalineaciones del doc de product marketing. Durante el planning se detectó una SESIÓN PARALELA editando el mismo branch (`chore/storybook-complete`): 4 de los 5 hallazgos ya estaban fixeados en el working tree (sin commitear) por esa sesión. Esta sesión cubrió el residuo. Estado verificado en disco archivo por línea (no por mensajes).
+
+**Resuelto por la sesión paralela (verificado por esta sesión, sin tocar):**
+1. "cobrados automáticamente" (abonados) → `para-complejos/page.tsx:62` ahora "Registrás quién pagó cada sesión".
+2. "miles de jugadores" ×3 → metadata y hero de `para-complejos/page.tsx` + `home/OwnerBanner.tsx:60` reescritos sin la promesa.
+3. "queda con deuda" → `precios/page.tsx:21` ahora modelo softban ("si reincide, queda 14 días sin poder reservarte online"); `:26` "historial, stats y ausencias".
+4. Stats fabricados (+10.000/50+/95%) → claims mecánicos en `home/StatsBar.tsx:1-6` y `para-complejos/page.tsx:64-69`. Sección `Testimonials` de para-complejos ELIMINADA por esa sesión.
+5. "plataforma líder" → `layout.tsx:34` ahora "Sistema de reservas online y gestión…".
+
+**Aplicado por esta sesión:**
+- **A. Email muerto del modelo de deuda borrado** (OK explícito del dueño): `src/modules/notifications/templates/no-show-debt-created.ts` eliminado + 4 referencias en `templates/index.ts` (import, re-export, type map, RENDERERS) + 4 bloques en `tests/unit/notification-templates.test.ts` (import, describe, routing, array `valid`). Estaba registrado pero sin ningún enqueue (`git grep no_show_debt_created` fuera de templates/: cero) — huérfano del revert de deuda (migr. 044).
+- **B. Barrido de palabras prohibidas restante:** `para-complejos/page.tsx:42` 'Dashboard en tiempo real' → 'Métricas en tiempo real'; `home/OwnerBanner.tsx:47` 'Solución para complejos' → 'Para dueños de complejo'.
+
+**REQUIERE INPUT resuelto por el dueño (registrado):** el testimonio fabricado duplicado en `/login` (`src/app/(auth)/login/page.tsx:42-47`, "Marcelo Pérez · Complejo San Martín, Mendoza") se CONSERVA por decisión explícita del dueño. Esta sesión declinó redactar o mejorar testimonios fabricados (publicidad engañosa; viola la regla dura del GTM y expone bajo Ley 24.240) y no restauró la sección eliminada. Riesgo documentado.
+
+**Verificación (por paso):**
+- Paso A: `pnpm typecheck` 🟢, `pnpm lint` 🟢, `vitest run tests/unit/notification-templates.test.ts` → 28/28 🟢
+- Paso B: `pnpm typecheck` 🟢, `pnpm lint` 🟢
+- Grep de cierre sobre src/+tests/: cero matches de "miles de jugadores" / "cobrados automáticamente" / "queda con deuda" / "+10.000" / "plataforma líder" / "Solución para complejos" / "NoShowDebtCreated" (los hits de "Dashboard" restantes son identificadores internos y el panel super-admin, no copy de marketing).
+
+Nada commiteado.
+
+## 2026-07-12 — Contenido SEO: infra de blog + 3 piezas decision-stage (sesión estrategia de contenido)
+
+Continuación del esfuerzo docs/marketing/ (misma sesión que la estrategia). Complementa la entrada anterior de copy (sesión paralela) — sin solapamiento de archivos salvo `/para-complejos` y `/precios`, editados antes del sweep paralelo.
+
+- Copy fixes propios: `/para-complejos` (metadata, hero, features seña/abonados, stats mecánicos, testimonios fabricados ELIMINADOS + link `#testimonios` del BusinessHeader), `/precios` (deuda→softban, ficha jugador), `home/StatsBar` (stats fabricados→mecánicos), `OwnerBanner` ("miles de jugadores"→link propio), `layout.tsx` ("plataforma líder"→"Sistema de reservas online y gestión"), `BookingActions` (dialog no-show→softban), comments stale del modelo deuda (QuickActions, tenant.types, settings/reservas/actions, ptr.service, cashflow.service).
+- Infra blog: deps `next-mdx-remote@5` + `gray-matter` + `remark-gfm` + `@tailwindcss/typography` (plugin agregado a tailwind.config). `src/lib/content/posts.ts` (loader zod-validado), `ArticleShell` (JSON-LD Article+FAQPage, CTA), `Mdx.tsx`, rutas `/blog`, `/blog/[slug]`, `/vs/alquila-tu-cancha`, `/alternativas-alquila-tu-cancha`. Sitemap: +blog/comparativas, fix `/privacy`→`/privacidad` y `/terms`→`/terminos` (apuntaban a 404). Header business: +link Blog. `public/llms.txt`.
+- Contenido: 3 piezas es-AR con disclosure de sesgo y claims verificados contra `.agents/product-marketing.md` (topics #1-3 de la estrategia).
+- Verificación: `pnpm typecheck` 🟢, `pnpm lint` 🟢, dev server :3210 → 6/6 rutas HTTP 200, tabla GFM + FAQPage JSON-LD presentes en HTML renderizado, grep de claims prohibidos sobre las 4 páginas servidas = 0 matches, grep de tests/stories que asserten el copy viejo = 0.
+- Delegaciones (fase research, misma sesión): 3 agentes Sonnet (~290k tokens) → docs/marketing/research/*.
+- NO tocado: template no-show-debt (lo eliminó la sesión paralela, verificado en código), testimonio de /login (decisión del dueño), doc4_monetizacion.md (precios viejos, pendiente).
+
+Nada commiteado.

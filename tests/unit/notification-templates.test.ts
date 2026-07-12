@@ -3,7 +3,6 @@ import {
   renderBookingConfirmed,
   renderBookingCanceled,
   renderBookingCanceledByComplex,
-  renderNoShowDebtCreated,
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
@@ -125,40 +124,6 @@ describe('renderBookingCanceledByComplex', () => {
     expect(yes.text).toBeTruthy()
     expect(yes.text!).toContain('Reembolso confirmado')
     expect(no.text ?? '').not.toContain('Reembolso confirmado')
-  })
-})
-
-describe('renderNoShowDebtCreated', () => {
-  const DATA = {
-    playerFirstName: 'Tomás',
-    courtName: 'Cancha 5',
-    date: '02/06/2027',
-    timeStart: '10:00',
-    timeEnd: '11:00',
-    tenantName: 'Complejo Norte',
-    debtAmount: '$15.000',
-    tenantAddress: 'Av. Libertador 1200',
-  }
-
-  it('subject signals a pending debt and names the tenant', () => {
-    const { subject } = renderNoShowDebtCreated(DATA)
-    expect(subject.toLowerCase()).toContain('deuda')
-    expect(subject).toContain('Complejo Norte')
-  })
-
-  it('html shows the amount, address and the regularize instruction', () => {
-    const { html } = renderNoShowDebtCreated(DATA)
-    expect(html).toContain('$15.000')
-    expect(html).toContain('Av. Libertador 1200')
-    expect(html.toLowerCase()).toContain('regularizar')
-    // Regla de negocio del cambio #5/#20: el mail debe avisar el bloqueo online.
-    expect(html.toLowerCase()).toContain('no vas a poder reservar')
-  })
-
-  it('text is defined and includes the debt amount', () => {
-    const { text } = renderNoShowDebtCreated(DATA)
-    expect(text).toBeTruthy()
-    expect(text).toContain('$15.000')
   })
 })
 
@@ -310,8 +275,7 @@ describe('renderTemplate dispatcher', () => {
     expect(result.html).toContain('Tomás')
   })
 
-  // Los 2 templates nuevos (#20) estaban registrados pero el dispatcher nunca se
-  // probaba con ellos: un mapeo mal cableado en RENDERERS pasaría desapercibido.
+  // Un mapeo mal cableado en RENDERERS pasaría desapercibido sin probar el dispatcher.
   it('routes booking_canceled_by_complex to its renderer', () => {
     const result = renderTemplate('booking_canceled_by_complex', {
       ...CONFIRMED_DATA,
@@ -319,15 +283,6 @@ describe('renderTemplate dispatcher', () => {
     })
     expect(result.subject).toContain('Complejo Norte')
     expect(result.html).toContain('Reembolso confirmado')
-  })
-
-  it('routes no_show_debt_created to its renderer', () => {
-    const result = renderTemplate('no_show_debt_created', {
-      ...CONFIRMED_DATA,
-      debtAmount: '$15.000',
-    })
-    expect(result.subject.toLowerCase()).toContain('deuda')
-    expect(result.html).toContain('$15.000')
   })
 })
 
@@ -337,7 +292,6 @@ describe('isTemplateName', () => {
       'booking_confirmed',
       'booking_canceled',
       'booking_canceled_by_complex',
-      'no_show_debt_created',
       'admin_new_booking',
       'trial_welcome',
       'trial_ending',

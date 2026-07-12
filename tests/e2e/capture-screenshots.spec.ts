@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import postgres from 'postgres'
+import { bookingInstants } from './_helpers/booking-instants'
 
 
 // Seeding constants
@@ -46,6 +47,8 @@ test.describe('UX Audit Screenshot Capturer', () => {
       date,
       time_start: '10:00:00',
       time_end: '11:00:00',
+      // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+      ...bookingInstants({ date, timeStart: '10:00', timeEnd: '11:00' }),
       type: 'spontaneous',
       status: 'confirmed',
       price_snapshot: 10000,

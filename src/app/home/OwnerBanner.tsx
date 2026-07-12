@@ -44,7 +44,7 @@ export function OwnerBanner() {
 
                 <div className="min-w-0">
                   <div className="mb-2 font-logo text-xs font-bold uppercase tracking-[.1em] text-emerald-800 dark:text-emerald-400">
-                    Solución para complejos
+                    Para dueños de complejo
                   </div>
                   <h2
                     className="font-display font-black italic text-foreground"
@@ -57,7 +57,7 @@ export function OwnerBanner() {
                     Llevá tu complejo al siguiente nivel
                   </h2>
                   <p className="mt-3 max-w-[560px] text-base leading-[1.55] text-muted-foreground">
-                    Automatizá reservas, cobrá señas con MercadoPago y conectá con miles de jugadores activos. Tu complejo, vendiendo canchas 24/7.
+                    Automatizá reservas, cobrá señas con MercadoPago y compartí tu link para que reserven solos. Tu complejo, vendiendo canchas 24/7.
                   </p>
                 </div>
               </div>

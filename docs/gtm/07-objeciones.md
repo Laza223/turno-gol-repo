@@ -14,7 +14,7 @@
 > "Puede pasar, por eso la manejás vos: elegís el porcentaje, o la apagás y usás el sistema solo para ordenar la grilla y la caja. Ahora, pensalo al revés: el que no quiere dejar ni una seña, ¿qué tan seguro está de venir? La seña no espanta clientes — espanta clavos." *(⚠️ HIPÓTESIS la última frase como argumento — medir si convence o irrita.)*
 
 **4. "¿Cuánto sale?" (con cara de caro)**
-> "Hasta 3 canchas $47.000 al mes más IVA, de 4 a 6 $74.000 más IVA. Sin comisión por reserva — es fijo. Hacé la cuenta conmigo: ¿a cuánto está tu turno? ¿$[X]? Un clavo por semana son $[4X] al mes. Si el sistema te salva UN clavo al mes, ya se pagó solo. Y el primer mes es gratis, así que la cuenta la hacés con tus números reales, no con los míos."
+> "1 o 2 canchas $55.000 al mes más IVA, de 3 a 5 $85.000 más IVA, 6 o más $115.000 más IVA. Sin comisión por reserva — es fijo. Hacé la cuenta conmigo: ¿a cuánto está tu turno? ¿$[X]? Un clavo por semana son $[4X] al mes. Si el sistema te salva UN clavo al mes, ya se pagó solo. Y el primer mes es gratis, así que la cuenta la hacés con tus números reales, no con los míos."
 
 **5. "No tengo tiempo de cargar todo / no me llevo con la tecnología"**
 > "Cero problema, de eso me ocupo yo. Vos me mandás una foto del cuaderno y los precios, y en 48 horas te lo entrego andando. Al encargado lo entreno yo en 20 minutos. Vos solo mirá el celu cuando suene."
@@ -29,7 +29,7 @@
 > "La grilla la seguís viendo desde cualquier celu, y el encargado puede anotar reservas a mano en el sistema igual que siempre. Y tenés mi celular directo — no un mail de soporte que contesta el lunes. [Honesto:] Es un sistema nuevo, no te voy a decir que nunca va a tener un problema. Te digo que del otro lado estoy yo, no un robot."
 
 **9. "¿Qué pasa con mis fijos de toda la vida?"**
-> "Se cargan una vez y se repiten solos todas las semanas. Ves quién pagó, quién debe, y si un grupo te deja plata a favor queda registrada. Nadie pierde su horario. [NO decir que se les cobra automático — el cobro lo registrás vos cuando te pagan.]"
+> "Se cargan una vez y se repiten solos todas las semanas. Ves semana a semana quién pagó su sesión y quién todavía no. Nadie pierde su horario. [NO decir que se les cobra automático — el cobro lo registrás vos cuando te pagan. NO decir "saldo a favor" ni "deuda registrada": eliminados del producto.]"
 
 **10. "¿Me hace la factura / sirve para AFIP?"**
 > [Sin verso:] "No, facturación no hace — eso sigue como lo manejás hoy con tu contador. Lo que te da es el control interno: cuánto entró, cuánto salió, por dónde. La factura fiscal es otro carril."

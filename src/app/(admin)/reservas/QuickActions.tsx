@@ -52,9 +52,10 @@ type Props = BookingQuickActions & {
 
 /**
  * Acciones rápidas sin salir de la lista: confirmar pago / completar
- * directas, "ausente" con confirmación en dos pasos inline (genera deuda o
- * ban si hay penalidad — pero sin modal), cancelar con diálogo porque el
- * backend exige motivo. En mobile viven detrás de un menú contextual.
+ * directas, "ausente" con confirmación en dos pasos inline (captura la seña
+ * y a la 2da ausencia en 90 días aplica softban de 14 días — pero sin modal),
+ * cancelar con diálogo porque el backend exige motivo. En mobile viven detrás
+ * de un menú contextual.
  *
  * Las 4 Server Actions llegan por PROP, no por import. './actions' es
  * `'use server'` y arrastra request-context → node:async_hooks, que Vite

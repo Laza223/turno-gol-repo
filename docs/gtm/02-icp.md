@@ -8,7 +8,7 @@
 
 | Criterio | Valor objetivo | Por qué |
 |---|---|---|
-| Canchas de fútbol | 3 a 6 | Suficiente volumen para sufrir clavos y caos; suficientemente chico para que el dueño decida solo. Plan Predio ($47k) o Complejo ($74k). |
+| Canchas de fútbol | 3 a 6 | Suficiente volumen para sufrir clavos y caos; suficientemente chico para que el dueño decida solo. Plan Complejo ($85k, 3-5 canchas) o Estadio ($115k, 6+). |
 | Quién decide | El dueño, y está en el complejo casi todos los días | Ciclo de venta corto: una charla + una demo. Sin socios lejanos ni gerentes. |
 | Gestión actual | WhatsApp + cuaderno/Excel/Google Calendar | El 60% del mercado (doc1). Sin switching cost de datos. |
 | Demanda | Finde lleno, con gente que queda afuera | El clavo duele el doble: cada turno clavado era plata segura de otro grupo. |
@@ -35,7 +35,7 @@
 | Perfil | Por qué evitarlo |
 |---|---|
 | **Complejo con pádel/tenis relevante** | TurnoGol es fútbol-only v1. Gestionar la mitad del negocio no le sirve; te va a pedir features que no vas a construir ya. |
-| **1-2 canchas, negocio secundario** | Dolor bajo, sensibilidad extrema al precio ($47k+IVA le pesa), dueño ausente. Ciclo largo, LTV bajo. |
+| **1-2 canchas, negocio secundario** | Dolor bajo, sensibilidad extrema al precio ($55k+IVA le pesa), dueño ausente. Ciclo largo, LTV bajo. |
 | **Feliz con ATC + recibe demanda de su marketplace** | No tenés con qué. Anotarlo para el año 2. |
 | **El señor del cuaderno de toda la vida, sin Instagram, sin MP** | Evangelización de meses. El producto le queda grande hoy. Volver cuando haya boca a boca en la zona. |
 | **Cadenas / múltiples sedes / clubes institucionales** | Decisión por comité, pedidos enterprise (facturación, contratos). Quema tiempo de founder. |

@@ -1,8 +1,8 @@
 const playerStats = [
-  { value: '+10.000', label: 'Reservas completadas' },
-  { value: '50+', label: 'Complejos en la plataforma' },
-  { value: '95%', label: 'Tasa de asistencia' },
-  { value: '<2 min', label: 'Tiempo promedio de reserva' },
+  { value: '24/7', label: 'Reservá a cualquier hora' },
+  { value: '0', label: 'Apps para descargar' },
+  { value: '3 min', label: 'De la búsqueda al turno confirmado' },
+  { value: '100%', label: 'Seña online por MercadoPago' },
 ]
 
 /** Banda de estadísticas de la landing. 100% estática, sin props. */

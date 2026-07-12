@@ -96,8 +96,8 @@ export function nextNoShowCount(
  * solo se registra. 2da ausencia dentro de la ventana dispara un bloqueo de
  * NO_SHOW_SOFTBAN_DAYS vía tenant_player_bans.
  *
- * FOR UPDATE lockea la fila del jugador antes de decidir (mismo patrón que
- * registerDebtPayment): serializa ausencias concurrentes del mismo jugador.
+ * FOR UPDATE lockea la fila del jugador antes de decidir: serializa
+ * ausencias concurrentes del mismo jugador.
  * El INSERT ON CONFLICT DO NOTHING previo crea la relación si la reserva era
  * manual y el jugador todavía no tenía PTR (createManualBooking no llama a
  * ensurePTR). Debe correr dentro del mismo tx que la transición a no_show.

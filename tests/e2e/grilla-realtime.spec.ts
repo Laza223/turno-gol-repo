@@ -18,6 +18,7 @@ import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { tomorrowDateIsoArt } from './_helpers/booking-seed'
+import { bookingInstants } from './_helpers/booking-instants'
 
 // ── Seeded E2E constants (matches scripts/seed-e2e.ts) ──────────────────────
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
@@ -60,6 +61,8 @@ async function insertBookingServiceRole(
     date: TARGET_DATE,
     time_start: `${opts.timeStart}:00`,
     time_end: `${opts.timeEnd}:00`,
+    // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+    ...bookingInstants({ date: TARGET_DATE, timeStart: opts.timeStart, timeEnd: opts.timeEnd }),
     type: 'spontaneous',
     status: 'confirmed',
     price_snapshot: 10000,

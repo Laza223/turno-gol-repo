@@ -14,6 +14,7 @@
 import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { bookingInstants } from './_helpers/booking-instants'
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const COURT_ID = '00000000-0000-4000-8000-000000000010'
@@ -62,6 +63,8 @@ test.describe('Reportes', () => {
         date: dateMidMonth(month),
         time_start: '12:00',
         time_end: '13:00',
+        // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+        ...bookingInstants({ date: dateMidMonth(month), timeStart: '12:00', timeEnd: '13:00' }),
         type: 'spontaneous',
         status: 'completed',
         price_snapshot: 1000000, // 10,000 ARS in centavos

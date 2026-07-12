@@ -31,7 +31,7 @@ const sora = Sora({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
-  description: 'La plataforma líder de reservas y gestión para complejos de fútbol en Argentina.',
+  description: 'Sistema de reservas online y gestión para complejos de fútbol en Argentina.',
   applicationName: SITE_NAME,
   openGraph: {
     type: 'website',

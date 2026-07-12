@@ -26,7 +26,11 @@ export const Trialing: Story = {
   args: { tenantStatus: 'trialing', trialEndsAt: daysFromNow(9).toISOString(), periodEnd: null },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/9.*días restantes/)).toBeInTheDocument()
+    // El número vive en un <strong> separado del resto del texto — getByText
+    // solo mira los text nodes DIRECTOS de cada elemento (getNodeText), así
+    // que un regex que abarque ambos nunca matchea. Se verifica cada parte.
+    await expect(canvas.getByText('9')).toBeInTheDocument()
+    await expect(canvas.getByText(/días restantes\./)).toBeInTheDocument()
   },
 }
 
@@ -35,7 +39,8 @@ export const TrialingUnDia: Story = {
   args: { tenantStatus: 'trialing', trialEndsAt: daysFromNow(1).toISOString(), periodEnd: null },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/1.*día restante\./)).toBeInTheDocument()
+    await expect(canvas.getByText('1')).toBeInTheDocument()
+    await expect(canvas.getByText(/día restante\./)).toBeInTheDocument()
   },
 }
 
@@ -47,10 +52,22 @@ export const Suspended: Story = {
   args: { tenantStatus: 'suspended', trialEndsAt: null, periodEnd: null },
 }
 
-/** `active` sin trial/past_due/suspended: no renderiza nada (`null`). */
+/**
+ * `active` sin trial/past_due/suspended: no renderiza nada (`null`). Se
+ * verifica sobre un wrapper propio (no `canvasElement` completo): el preview
+ * global monta `<Toaster />` + el script de FOUC de next-themes como hermanos
+ * de la story dentro del mismo root, así que `canvasElement` nunca está
+ * realmente vacío aunque el componente lo esté.
+ */
 export const Activo: Story = {
   args: { tenantStatus: 'active', trialEndsAt: null, periodEnd: null },
+  render: (args) => (
+    <div data-testid="banner-slot">
+      <StatusBanner {...args} />
+    </div>
+  ),
   play: async ({ canvasElement }) => {
-    await expect(canvasElement).toBeEmptyDOMElement()
+    const canvas = within(canvasElement)
+    await expect(canvas.getByTestId('banner-slot')).toBeEmptyDOMElement()
   },
 }

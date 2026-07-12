@@ -69,7 +69,10 @@ export function ActividadTab({ tenantId, activity }: { tenantId: string; activit
                   Anterior
                 </Link>
               ) : (
-                <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
+                <span
+                  aria-disabled="true"
+                  className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
+                >
                   Anterior
                 </span>
               )}
@@ -81,7 +84,10 @@ export function ActividadTab({ tenantId, activity }: { tenantId: string; activit
                   Siguiente
                 </Link>
               ) : (
-                <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
+                <span
+                  aria-disabled="true"
+                  className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
+                >
                   Siguiente
                 </span>
               )}

@@ -42,8 +42,9 @@ export const AbreElDialogo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /agregar miembro del equipo/i }))
+    // InviteStaffDialog es un dynamic(ssr:false): findByRole espera el chunk async.
     await expect(
-      within(document.body).getByRole('heading', { name: /invitar miembro del equipo/i }),
+      await within(document.body).findByRole('heading', { name: /invitar miembro del equipo/i }),
     ).toBeInTheDocument()
   },
 }

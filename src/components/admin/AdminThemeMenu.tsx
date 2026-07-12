@@ -3,18 +3,19 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Monitor, Moon, Sun } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 
 /**
  * Switch de tema para el header admin. Botón compacto (icono = tema activo)
- * que abre un dropdown glass con el `ThemeToggle` (Sistema/Claro/Oscuro)
+ * que abre un panel glass con el `ThemeToggle` (Sistema/Claro/Oscuro)
  * reutilizado del portal. Guard `mounted`: el tema resuelto solo se conoce
  * client-side (next-themes).
+ *
+ * `Popover`, no `DropdownMenu`: `DropdownMenuContent` fuerza `role="menu"`,
+ * que por ARIA solo puede contener `menuitem*` — un `role="radiogroup"`
+ * (el `ThemeToggle`) adentro es una violación real (aria-required-children),
+ * no un artefacto de la story.
  */
 export function AdminThemeMenu() {
   const { theme, resolvedTheme } = useTheme()
@@ -30,8 +31,8 @@ export function AdminThemeMenu() {
         : Sun
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <button
           type="button"
           aria-label="Cambiar tema"
@@ -39,13 +40,13 @@ export function AdminThemeMenu() {
         >
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8} className="w-60 p-2">
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} aria-label="Cambiar tema" className="w-60 p-2">
         <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Tema
         </p>
         <ThemeToggle />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   )
 }

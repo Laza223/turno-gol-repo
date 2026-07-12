@@ -47,11 +47,15 @@ export const PlanEstadio: Story = {
   },
 }
 
-/** Ciclo anual: precio tachado + "Ahorrás $X al año" en la card activa. */
+/**
+ * Ciclo anual: precio tachado + "Ahorrás $X al año" en la card activa.
+ * `formatArs` separa "$" del monto con un espacio NO-BREAK (U+00A0) — `\s`
+ * en el regex lo cubre, un espacio literal no.
+ */
 export const CicloAnual: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: /anual/i }))
-    await expect(canvas.getByText(/ahorrás \$204\.000 al año/i)).toBeInTheDocument()
+    await expect(canvas.getByText(/ahorrás \$\s?204\.000 al año/i)).toBeInTheDocument()
   },
 }

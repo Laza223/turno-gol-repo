@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, screen, userEvent, within } from 'storybook/test'
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import ExplorarToolbar from './ExplorarToolbar'
 
@@ -63,6 +63,15 @@ export const OrdenarPorDistanciaSinGeolocalizacion: Story = {
 /** Ordenar por cercanía con geolocalización concedida: navega con lat/lng + sort=distance. */
 export const OrdenarPorDistanciaConGeolocalizacion: Story = {
   play: async ({ canvasElement }) => {
+    // El toast destructivo de "OrdenarPorDistanciaSinGeolocalizacion" persiste
+    // en el store de módulo de use-toast.ts entre stories; el ToastReaper del
+    // preview lo dismissea al montar esta story, pero el removal real tarda
+    // 200ms (animación de cierre). Sin esperar, el a11y check corre con el
+    // toast todavía fadeando — contraste falso (color intermedio de la
+    // transición). Se espera a que desaparezca antes de arrancar.
+    await waitFor(() =>
+      expect(screen.queryByText(/no soporta geolocalización/i)).not.toBeInTheDocument(),
+    )
     const canvas = within(canvasElement)
     const original = navigator.geolocation
     Object.defineProperty(navigator, 'geolocation', {

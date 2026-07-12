@@ -118,7 +118,10 @@ export function ScheduleFields({
               className={cn(
                 "flex flex-col justify-center gap-2 rounded-xl border p-3.5 shadow-sm transition-all duration-200 min-h-[4rem]",
                 closed
-                  ? "border-border bg-muted/30 opacity-70"
+                  // Sin opacity-70: diluía --muted-foreground (ya al límite, 4.24:1
+                  // sobre --muted sólido) por debajo de AA (3.21:1/2.67:1 medidos).
+                  // bg-muted/30 solo alcanza para transmitir "cerrado".
+                  ? "border-border bg-muted/30"
                   : "border-border bg-card hover:border-emerald-600/30 hover:shadow-md"
               )}
             >
@@ -169,7 +172,7 @@ export function ScheduleFields({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                      className="h-7 px-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                       onClick={() => setDay(day, { mode: 'general' })}
                     >
                       Restablecer

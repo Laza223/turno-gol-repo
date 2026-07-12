@@ -20,7 +20,9 @@ export default function BusinessFooter() {
           <Link href="/" aria-label="TurnoGol — inicio" className={linkCls}>
             <Logo variant="horizontal" textClassName="text-white text-sm" iconClassName="h-7 w-7 bg-white/95" />
           </Link>
-          <span className="text-xs text-slate-500">© {new Date().getFullYear()} · Argentina</span>
+          {/* slate-500 (#64748b) sobre #020617 da 4.23:1, bajo AA (4.5) — no es un
+              idiom dark:, es fijo, así que sube a slate-400 (7.87:1). */}
+          <span className="text-xs text-slate-400">© {new Date().getFullYear()} · Argentina</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
           <Link href="/precios" className={linkCls}>Precios</Link>

@@ -33,7 +33,7 @@ const ACCENT: Record<Accent, string> = {
 }
 
 const DELTA_TONE: Record<NonNullable<DeltaProps['tone']>, string> = {
-  positive: 'text-emerald-600 dark:text-emerald-400',
+  positive: 'text-emerald-700 dark:text-emerald-400',
   negative: 'text-red-600 dark:text-red-400',
   neutral: 'text-muted-foreground',
 }

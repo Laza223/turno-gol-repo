@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { StaffActions } from './StaffActions'
 
 const ACTIVE_MANAGER = {
@@ -58,6 +58,15 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+/**
+ * Radix DropdownMenu es modal por default: mientras está abierto, aria-oculta
+ * el resto del árbol (incluido el propio trigger, que sigue siendo focusable
+ * en el DOM) — confirmado que pasa igual en Design System/DropdownMenu con
+ * el menú dejado abierto. Cerrar con Escape al final de cada play() evita
+ * que el scan de a11y (afterEach) capture ese estado transitorio como si
+ * fuera el render final.
+ */
+
 /** Encargado activo: opción de cambiar a Administrador + Desactivar habilitado. */
 export const MiembroActivo: Story = {
   args: { member: ACTIVE_MANAGER },
@@ -67,6 +76,8 @@ export const MiembroActivo: Story = {
     const menu = within(document.body)
     await expect(menu.findByRole('menuitem', { name: 'Cambiar a Administrador' })).resolves.toBeInTheDocument()
     await expect(menu.getByRole('menuitem', { name: 'Desactivar' })).not.toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(menu.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 
@@ -81,6 +92,8 @@ export const UltimoAdminActivo: Story = {
       'aria-disabled',
       'true',
     )
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(menu.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 
@@ -93,6 +106,8 @@ export const MiembroInactivo: Story = {
     const menu = within(document.body)
     await expect(menu.findByRole('menuitem', { name: 'Reenviar invitación' })).resolves.toBeInTheDocument()
     await expect(menu.queryByRole('menuitem', { name: /Cambiar a/ })).toBeNull()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(menu.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 
@@ -105,8 +120,9 @@ export const DesactivarRequiereEmailExacto: Story = {
     const body = within(document.body)
     await userEvent.click(await body.findByRole('menuitem', { name: 'Desactivar' }))
 
+    // ConfirmDialog es un dynamic(ssr:false): findByRole espera el chunk async.
     await expect(
-      body.getByRole('heading', { name: `Desactivar ${ACTIVE_MANAGER.firstName} ${ACTIVE_MANAGER.lastName}` }),
+      await body.findByRole('heading', { name: `Desactivar ${ACTIVE_MANAGER.firstName} ${ACTIVE_MANAGER.lastName}` }),
     ).toBeInTheDocument()
 
     const confirmButtons = body.getAllByRole('button', { name: 'Desactivar' })

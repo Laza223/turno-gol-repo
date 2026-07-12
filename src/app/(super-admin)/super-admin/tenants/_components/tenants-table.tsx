@@ -87,14 +87,18 @@ export function TenantsTable({
                 Anterior
               </Link>
             ) : (
-              <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">Anterior</span>
+              <span aria-disabled="true" className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
+                Anterior
+              </span>
             )}
             {nextHref ? (
               <Link href={nextHref} className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent">
                 Siguiente
               </Link>
             ) : (
-              <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">Siguiente</span>
+              <span aria-disabled="true" className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
+                Siguiente
+              </span>
             )}
           </div>
         </nav>

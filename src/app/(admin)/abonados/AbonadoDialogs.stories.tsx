@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { uid } from '@/test/fixtures'
 import { AbonadoDialogs } from './AbonadoDialogs'
 
@@ -36,7 +36,13 @@ export const Pause: Story = {
   args: { dialog: 'pause' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    await expect(canvas.getByRole('heading', { name: 'Pausar abonado' })).toBeVisible()
+    // El diálogo arranca abierto (args.dialog='pause' desde el mount, sin click
+    // que dispare el delay natural del userEvent): la animación de entrada de
+    // Radix (fade-in, ~200ms) todavía puede estar en curso cuando arranca el
+    // play, así que hay que esperar a que termine antes de medir visibilidad.
+    await waitFor(() =>
+      expect(canvas.getByRole('heading', { name: 'Pausar abonado' })).toBeVisible(),
+    )
     await expect(canvas.getByRole('button', { name: 'Pausar' })).toBeEnabled()
   },
 }

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { AccountMenu } from './AccountMenu'
 
 /**
@@ -47,8 +47,11 @@ export const MenuAbierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cuenta de Tomás' }))
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByRole('menuitem', { name: /mis reservas/i })).toBeVisible()
-    await expect(body.getByRole('menuitem', { name: /cuenta/i })).toBeVisible()
+    // Popover (no DropdownMenu): los items son links/botones normales, no
+    // `menuitem` — ver el comentario en AccountMenu.tsx. `waitFor` porque el
+    // panel recién montado puede seguir a mitad de la animación `animate-in`.
+    await waitFor(() => expect(body.getByRole('link', { name: /mis reservas/i })).toBeVisible())
+    await expect(body.getByRole('link', { name: /cuenta/i })).toBeVisible()
     await expect(body.getByText('Tema')).toBeVisible()
   },
 }

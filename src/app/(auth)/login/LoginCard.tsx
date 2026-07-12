@@ -96,18 +96,22 @@ export function LoginCard({
         </div>
 
         {isError && (
-          <div className="space-y-1.5">
-            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
-              {state.message}
-            </p>
-            {state.unconfirmedEmail && (
-              <ResendConfirmation email={state.unconfirmedEmail} action={resendAction} />
-            )}
-          </div>
+          <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+            {state.message}
+          </p>
         )}
 
         <SubmitButton />
       </form>
+
+      {/* Fuera del <form> a propósito: un <form> anidado adentro del de login es HTML
+          inválido y el parser lo colapsa, así que el submit del botón de reenvío
+          terminaba disparando loginAction en vez de resendAction. */}
+      {isError && state.unconfirmedEmail && (
+        <div className="mt-1.5">
+          <ResendConfirmation email={state.unconfirmedEmail} action={resendAction} />
+        </div>
+      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         ¿Sos nuevo?{' '}

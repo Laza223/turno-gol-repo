@@ -20,6 +20,20 @@ const meta = {
     tenantId: '00000000-0000-4000-8000-000000000001',
     tenantName: 'Complejo Fénix',
   },
+  // En la app real siempre vive dentro del <Card title="Soporte"> de
+  // detail-primitives.tsx (bg-card blanco) — ver resumen-tab.tsx. Suelto sobre
+  // bg-background el mensaje de error rojo mide 3.88:1 y falla axe; adentro del
+  // card blanco mide 4.83:1 y pasa. El contenedor no es cosmético.
+  decorators: [
+    (Story) => (
+      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground">Soporte</h2>
+        <div className="mt-4">
+          <Story />
+        </div>
+      </section>
+    ),
+  ],
 } satisfies Meta<typeof ImpersonateButton>
 
 export default meta

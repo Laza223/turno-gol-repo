@@ -34,7 +34,11 @@ export function EmptyState({
           <Icon className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />
         </div>
       ) : null}
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      {/* Vive dentro de páginas con un <h1> de PageHeader y sin h2 intermedio
+          (courts, abonados, staff, reservas, caja): h2 es el nivel correcto,
+          no h3 (heading-order). Donde ya hay un h2 hermano (ej. caja/page.tsx
+          "Movimientos del día"), repetir nivel es válido para axe. */}
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
       {description ? (
         <p className="mt-1 max-w-sm text-sm leading-relaxed text-muted-foreground">
           {description}

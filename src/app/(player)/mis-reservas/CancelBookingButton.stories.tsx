@@ -7,6 +7,11 @@ import { CancelBookingButton } from './CancelBookingButton'
  * La Server Action entra por prop (ver el comentario en CancelBookingButton.tsx).
  * ConfirmDialog (Radix) monta en un portal fuera de canvasElement: las
  * assertions post-apertura usan `screen`.
+ *
+ * El decorator reproduce el `bg-card` (blanco) de la fila de reserva en
+ * MisReservasView.tsx: el botón nunca vive suelto sobre `bg-background`
+ * (slate ~#DDE3EC), y ahí `text-red-600` da 3.88:1 (falla AA) contra el
+ * 4.83:1 que da sobre `bg-card`.
  */
 const meta = {
   title: 'Player/MisReservas/CancelBookingButton',
@@ -21,6 +26,13 @@ const meta = {
     dateLabel: 'sáb, 14 mar',
     timeLabel: '18:00–19:00',
   },
+  decorators: [
+    (Story) => (
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof CancelBookingButton>
 
 export default meta

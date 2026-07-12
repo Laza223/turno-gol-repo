@@ -1,32 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import BusinessHeader from '@/components/site/BusinessHeader'
-import BusinessFooter from '@/components/site/BusinessFooter'
+import BusinessLayout from '../layout'
 import ParaComplejosPage from './page'
 
 /**
  * Página 100% estática (sin fetch/auth) — landing B2B, SIEMPRE superficie
- * oscura (`(business)/layout.tsx` fija `background:#020617` a mano, no es un
- * tema conmutable). `emerald-400` sobre ese fondo es correcto: no aplica el
- * idiom `text-emerald-700 dark:text-emerald-400` de las superficies claras.
- * Reproducimos el layout real (header + footer) para que el contraste y el
- * espaciado del fold se vean representativos.
+ * oscura (`(business)/layout.tsx` fija `background:#020617` + clase `dark` a
+ * mano, no es un tema conmutable). `emerald-400` sobre ese fondo es correcto.
+ * Montamos el `BusinessLayout` real (no una copia) para que la clase `dark`,
+ * el contraste y el espaciado del fold se vean representativos.
  */
 const meta = {
   title: 'Public/ParaComplejos',
   component: ParaComplejosPage,
   parameters: { layout: 'fullscreen', backgrounds: { disable: true } },
-  decorators: [
-    (Story) => (
-      <div className="min-h-dvh text-slate-300" style={{ background: '#020617' }}>
-        <BusinessHeader />
-        <main>
-          <Story />
-        </main>
-        <BusinessFooter />
-      </div>
-    ),
-  ],
+  decorators: [(Story) => <BusinessLayout><Story /></BusinessLayout>],
 } satisfies Meta<typeof ParaComplejosPage>
 
 export default meta

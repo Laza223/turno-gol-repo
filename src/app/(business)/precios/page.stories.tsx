@@ -1,29 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
-import BusinessHeader from '@/components/site/BusinessHeader'
-import BusinessFooter from '@/components/site/BusinessFooter'
+import BusinessLayout from '../layout'
 import PreciosPage from './page'
 
 /**
  * Página estática (sin fetch/auth) — compone PlanSelector y CalculadoraClavo
  * ('use client', ya storyadas por separado), un FAQ con `<details>` nativo y
- * JSON-LD estático. Siempre superficie oscura (`(business)/layout.tsx`).
+ * JSON-LD estático. Siempre superficie oscura (`(business)/layout.tsx`, clase
+ * `dark` a mano). Montamos el `BusinessLayout` real, no una copia.
  */
 const meta = {
   title: 'Public/Precios',
   component: PreciosPage,
   parameters: { layout: 'fullscreen', backgrounds: { disable: true } },
-  decorators: [
-    (Story) => (
-      <div className="min-h-dvh text-slate-300" style={{ background: '#020617' }}>
-        <BusinessHeader />
-        <main>
-          <Story />
-        </main>
-        <BusinessFooter />
-      </div>
-    ),
-  ],
+  decorators: [(Story) => <BusinessLayout><Story /></BusinessLayout>],
 } satisfies Meta<typeof PreciosPage>
 
 export default meta

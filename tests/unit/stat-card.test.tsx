@@ -18,7 +18,9 @@ describe('StatCard', () => {
       <StatCard label="x" value="1" delta={{ label: '12%', direction: 'up' }} />,
     )
     const delta = getByText(/12%/)
-    expect(delta.className).toContain('text-emerald-600')
+    // emerald-700, no emerald-600: sobre una card blanca, emerald-600 (#059669) da
+    // 3.76:1 y no llega al 4.5 de WCAG AA. emerald-700 (#047857) da 5.5:1.
+    expect(delta.className).toContain('text-emerald-700')
     expect(delta.textContent).toContain('↑')
   })
 

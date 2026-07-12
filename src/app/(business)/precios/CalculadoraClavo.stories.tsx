@@ -2,6 +2,11 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
 import CalculadoraClavo from './CalculadoraClavo'
 
+// `formatArs` (Intl.NumberFormat es-AR) separa "$" del monto con un espacio
+// NO-BREAK (U+00A0), no un espacio común — un literal '$30.000' o '$ 30.000'
+// (space normal) nunca matchea el DOM real.
+const nbsp = ' '
+
 /** Vive en la sección "Hacé tu cuenta" de /precios, sobre el fondo oscuro fijo (`(business)/layout.tsx`). */
 const meta = {
   title: 'Public/Precios/CalculadoraClavo',
@@ -23,8 +28,8 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: '$30.000', pressed: true })).toBeInTheDocument()
-    await expect(canvas.getByText('$240.000')).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: `$${nbsp}30.000`, pressed: true })).toBeInTheDocument()
+    await expect(canvas.getByText(`$${nbsp}240.000`)).toBeInTheDocument()
     await expect(canvas.getByText(/menos que lo que te llevan los clavos/i)).toBeInTheDocument()
   },
 }
@@ -36,7 +41,7 @@ export const TurnoPersonalizado: Story = {
     const input = canvas.getByLabelText(/a cuánto está tu turno/i)
     await userEvent.clear(input)
     await userEvent.type(input, '18000')
-    await expect(canvas.getByText('$144.000')).toBeInTheDocument()
+    await expect(canvas.getByText(`$${nbsp}144.000`)).toBeInTheDocument()
   },
 }
 
@@ -58,7 +63,7 @@ export const PerdidaMenorAlPlan: Story = {
     await userEvent.clear(input)
     await userEvent.type(input, '10000')
     await userEvent.click(canvas.getByRole('button', { name: 'Un clavo menos por semana' }))
-    await expect(canvas.getByText('$40.000')).toBeInTheDocument()
+    await expect(canvas.getByText(`$${nbsp}40.000`)).toBeInTheDocument()
     await expect(canvas.queryByText(/menos que lo que te llevan los clavos/i)).not.toBeInTheDocument()
   },
 }

@@ -3,6 +3,13 @@ import { expect, fn, userEvent, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import ExplorarFilters from './ExplorarFilters'
 
+/**
+ * En la app real vive dentro de `bg-card` (aside de escritorio en
+ * `explorar/page.tsx`, o el `SheetContent` del drawer mobile en
+ * `QuickFilters.tsx` — ambos usan `bg-card`), nunca directo sobre
+ * `bg-background`. El mensaje de error usa `text-red-600`: 4.83:1 sobre
+ * `bg-card` (blanco) pero 3.88:1 sobre `bg-background` (#e2e7ee) — bajo AA.
+ */
 const meta = {
   title: 'Player/Explorar/ExplorarFilters',
   component: ExplorarFilters,
@@ -10,7 +17,13 @@ const meta = {
     layout: 'padded',
     nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } },
   },
-  decorators: [(Story) => <div className="max-w-xs"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-xs rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof ExplorarFilters>
 
 export default meta

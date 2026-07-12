@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { AdminThemeMenu } from './AdminThemeMenu'
 
 /**
@@ -29,7 +29,10 @@ export const DropdownAbierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cambiar tema' }))
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByText('Tema')).toBeVisible()
+    // findByText solo espera a que el nodo EXISTA; el panel todavía puede estar
+    // a mitad de la animación `animate-in` (opacity/scale) en ese instante, así
+    // que la visibilidad se reintenta aparte con waitFor.
+    await waitFor(() => expect(body.getByText('Tema')).toBeVisible())
     await expect(body.getByRole('radiogroup', { name: 'Tema de la aplicación' })).toBeVisible()
   },
 }

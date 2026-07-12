@@ -65,6 +65,9 @@ export const ErrorDelServidor: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Guardar settings' }))
-    await expect(await canvas.findByText(/campos whitelisteados/i)).toBeInTheDocument()
+    // `/campos whitelisteados/i` también matchea la descripción estática del
+    // SectionCard ("Solo campos whitelisteados..."): acotamos por role="status"
+    // (solo lo tiene el FeedbackText del error) para no ambigüar la query.
+    await expect(await canvas.findByRole('status')).toHaveTextContent(/campos whitelisteados/i)
   },
 }

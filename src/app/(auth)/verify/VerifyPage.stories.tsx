@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, spyOn, within } from 'storybook/test'
+import { expect, within } from 'storybook/test'
 import VerifyPage from './page'
 
 /**
@@ -7,8 +7,12 @@ import VerifyPage from './page'
  * `searchParams`, sin fetch ni auth (ver isolationNotes en
  * docs/storybook/storybook-coverage.json). El estado `success` monta
  * <SuccessRedirect/> (client), que agenda un `window.location.assign(next)`
- * real a los 5s — se stubea en el `play` para que el runner no navegue la
- * página real en medio de la suite.
+ * real a los 5s. No se stubea: `assign`/`replace`/`reload` son [Unforgeable]
+ * en Location (own-property no configurable) — en un browser real (Playwright,
+ * a diferencia de jsdom) NO se pueden espiar ni en la instancia ni en
+ * `Location.prototype` (ahí ni siquiera existen como own property). El `play`
+ * corre y desmonta en <100ms, muy por debajo del timeout de 5s, y el `useEffect`
+ * de cleanup de <SuccessRedirect/> cancela el timer al desmontar la story.
  */
 const meta = {
   title: 'Auth/VerifyPage',
@@ -26,7 +30,6 @@ export const Cargando: Story = {
 export const ExitoLogin: Story = {
   args: { searchParams: { status: 'success', intent: 'login', next: '/mis-reservas' } },
   play: async ({ canvasElement }) => {
-    spyOn(window.location, 'assign').mockImplementation(() => {})
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Listo!')).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Ir a mis reservas' })).toHaveAttribute(
@@ -39,7 +42,6 @@ export const ExitoLogin: Story = {
 export const ExitoSignup: Story = {
   args: { searchParams: { status: 'success', intent: 'signup', next: '/dashboard' } },
   play: async ({ canvasElement }) => {
-    spyOn(window.location, 'assign').mockImplementation(() => {})
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Bienvenido a TurnoGol!')).toBeInTheDocument()
   },
@@ -48,7 +50,6 @@ export const ExitoSignup: Story = {
 export const ExitoBooking: Story = {
   args: { searchParams: { status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' } },
   play: async ({ canvasElement }) => {
-    spyOn(window.location, 'assign').mockImplementation(() => {})
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Cuenta confirmada!')).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Continuar con mi reserva' })).toBeInTheDocument()

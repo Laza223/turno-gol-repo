@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { TENANT_STATUSES } from '@/modules/super-admin/tenants.service'
 import type { PlanSummary } from '@/modules/super-admin/tenants.service'
+import { TENANT_STATUSES } from '@/modules/billing/billing.types'
 import type { TenantStatus } from '@/modules/billing/billing.types'
 
 const STATUS_LABELS: Record<TenantStatus, string> = {

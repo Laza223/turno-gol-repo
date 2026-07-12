@@ -21,7 +21,13 @@ const base: ConfirmedBooking = {
   depositStatus: 'paid',
 }
 
-/** El resultado siempre vive dentro de `<ReservaDarkShell>` (ver exito/page.tsx). */
+/**
+ * `exito/page.tsx` vive dentro de `src/app/reserva/layout.tsx` → `PortalShell`
+ * → `.player-shell-bg` (mint claro / `#020617` oscuro), con `<ReservaDarkShell>`
+ * adentro. Sin el fondo del portal, "Seguir explorando" (emerald-700) cae
+ * directo sobre `bg-background` (#e2e7ee) y da 4.41:1 — bajo AA (4.5). Con
+ * `.player-shell-bg` (mint #ecfdf5) el mismo texto pasa.
+ */
 const meta = {
   title: 'Player/BookingResult/BookingSuccessCard',
   component: BookingSuccessCard,
@@ -30,7 +36,13 @@ const meta = {
     bookingId: uid(1001),
     verifyUrl: 'https://turnogol.app/reserva/00000000-0000-4000-8000-000000001001/verificar',
   },
-  decorators: [(Story) => <ReservaDarkShell><Story /></ReservaDarkShell>],
+  decorators: [
+    (Story) => (
+      <div className="player-shell-bg min-h-dvh">
+        <ReservaDarkShell><Story /></ReservaDarkShell>
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof BookingSuccessCard>
 
 export default meta

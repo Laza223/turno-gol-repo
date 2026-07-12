@@ -29,9 +29,11 @@ type Story = StoryObj<typeof meta>
 /** Roles fijos (STAFF_ROLES): Encargado (DEFAULT_INVITE_ROLE) preseleccionado. */
 export const Default: Story = {
   args: { inviteAction: fn(async () => ({ success: true as const })) },
+  // DialogContent renderiza en un Portal (fuera de canvasElement): las queries
+  // van contra document.body, no contra `canvas` (ver dialog.stories.tsx).
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const manager = canvas.getByRole('radio', { name: /encargado/i }) as HTMLInputElement
+    const body = within(canvasElement.ownerDocument.body)
+    const manager = (await body.findByRole('radio', { name: /encargado/i })) as HTMLInputElement
     await expect(manager.checked).toBe(true)
   },
 }
@@ -39,12 +41,12 @@ export const Default: Story = {
 export const Enviando: Story = {
   args: { inviteAction: fn(() => new Promise<InviteActionResult>(() => {})) },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.type(canvas.getByLabelText('Nombre'), 'Rodrigo')
-    await userEvent.type(canvas.getByLabelText('Apellido'), 'Fernández')
-    await userEvent.type(canvas.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar invitación' }))
-    const pending = await canvas.findByRole('button', { name: 'Enviando…' })
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.type(await body.findByLabelText('Nombre'), 'Rodrigo')
+    await userEvent.type(body.getByLabelText('Apellido'), 'Fernández')
+    await userEvent.type(body.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
+    await userEvent.click(body.getByRole('button', { name: 'Enviar invitación' }))
+    const pending = await body.findByRole('button', { name: 'Enviando…' })
     await expect(pending).toBeDisabled()
   },
 }
@@ -57,12 +59,12 @@ export const ErrorDelServidor: Story = {
     })),
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.type(canvas.getByLabelText('Nombre'), 'Rodrigo')
-    await userEvent.type(canvas.getByLabelText('Apellido'), 'Fernández')
-    await userEvent.type(canvas.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar invitación' }))
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.type(await body.findByLabelText('Nombre'), 'Rodrigo')
+    await userEvent.type(body.getByLabelText('Apellido'), 'Fernández')
+    await userEvent.type(body.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
+    await userEvent.click(body.getByRole('button', { name: 'Enviar invitación' }))
+    await expect(await body.findByRole('alert')).toHaveTextContent(
       'Este email ya es miembro activo del complejo.',
     )
   },
@@ -72,14 +74,12 @@ export const ErrorDelServidor: Story = {
 export const Exito: Story = {
   args: { inviteAction: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement)
-    await userEvent.type(canvas.getByLabelText('Nombre'), 'Rodrigo')
-    await userEvent.type(canvas.getByLabelText('Apellido'), 'Fernández')
-    await userEvent.type(canvas.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar invitación' }))
-    await expect(
-      await within(document.body).findByText('Invitación enviada'),
-    ).toBeInTheDocument()
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.type(await body.findByLabelText('Nombre'), 'Rodrigo')
+    await userEvent.type(body.getByLabelText('Apellido'), 'Fernández')
+    await userEvent.type(body.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
+    await userEvent.click(body.getByRole('button', { name: 'Enviar invitación' }))
+    await expect(await body.findByText('Invitación enviada')).toBeInTheDocument()
     await expect(args.onClose).toHaveBeenCalled()
   },
 }

@@ -306,8 +306,29 @@ Honestamente, lo que **no** está hecho:
    El método está establecido y documentado: medir el contraste antes de cambiar un color, y decidir
    si el bug es del componente o de la story mirando el contenedor real.
 
-2. **QA visual con `agent-browser`** en los 6 viewports. El driver está escrito y probado
-   (`scripts/storybook-qa.mjs`, `pnpm qa:storybook`) pero **no se corrió el sweep completo**.
+2. **QA visual con `agent-browser`** — se corrió sobre el **Design System en mobile-primary (393×851)**,
+   no sobre las 786 stories × 6 viewports. Resultado:
+
+   | | |
+   |---|---|
+   | Celdas | 119 |
+   | PASS | **104** |
+   | FAIL | 15 |
+   | **Overflow horizontal / targets táctiles < 44px / imágenes rotas** | **0** |
+
+   Los 15 FAIL son **exactamente** las stories cuyos `play` ya están rojos en `test:storybook`
+   (combobox, datepicker, dialog, popover, sheet, tooltip…). **El sweep visual no encontró ningún bug
+   visual nuevo** más allá de lo que axe ya había reportado — los dos métodos concuerdan, que es la
+   señal que uno busca. Y los 23 primitives no tienen **ni un** problema estructural en mobile.
+
+   Falta el sweep en los otros 5 viewports y sobre los dominios de negocio.
+
+   > **Un bug que tuvo la propia herramienta**, y vale contarlo: la primera corrida reportó **99
+   > "console-error" de los cuales CERO eran de la story que estaba mirando**. `agent-browser console`
+   > devuelve el log **acumulado de la sesión**, no el de la página actual, así que en cuanto una story
+   > tiraba un error, todas las siguientes lo heredaban. Faltaba un `console --clear` **antes** de cada
+   > navegación (después borraría los errores del propio render, que es justo lo que se quiere capturar).
+   > Una herramienta de QA que inventa hallazgos es tan inútil como una que los tapa.
 
 3. **Regresión visual con baselines.** No se establecieron baselines: no tiene sentido hacerlo con 111
    stories todavía rojas.

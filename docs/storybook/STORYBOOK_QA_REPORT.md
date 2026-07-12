@@ -200,8 +200,8 @@ Todos medidos. Comando entre paréntesis.
 | `pnpm test:isolation` | ✅ 111 tests |
 | `pnpm build-storybook` | ✅ build estático OK |
 | `pnpm test:storybook` | ⚠️ **675 / 786 stories** (111 rojas, ver Pendientes) |
-| `pnpm build` | 🚫 **BLOQUEADO por entorno** (ver abajo) |
-| `pnpm test:e2e` | ⏳ en curso al cierre |
+| `pnpm test:e2e` | ✅ **24 pasan / 54 fallan — IDÉNTICO al commit base**. Cero regresiones. Los 54 son pre-existentes (`starts_at`) |
+| `pnpm build` | 🚫 falla al prerenderizar `/sitemap.xml`, por el mismo rol NOLOGIN. `✓ Compiled successfully`: el código compila |
 
 ### Progresión de las stories rojas
 
@@ -216,25 +216,77 @@ Cada fix fue medido, no declarado:
 
 ---
 
-## Bloqueos
+## Validación de la app real — cero regresiones
 
-### `pnpm build` — credenciales del entorno local
+Las extracciones presentacionales tocaron **26 páginas**. Era el riesgo más grande de todo el trabajo.
+
+### El entorno local estaba roto, y el mensaje de error engañaba
+
+`pnpm build` y `pnpm test:e2e` fallaban con:
 
 ```
-✓ Compiled successfully
-Error occurred prerendering page "/sitemap.xml"
-ej: password authentication failed for user "turnogol_app"
+password authentication failed for user "turnogol_app"
 ```
 
-`/sitemap.xml` prerenderiza contra la DB en build time, y el DSN del rol `turnogol_app` en `.env.local`
-tiene la contraseña mal.
+**No era la contraseña.** El rol `turnogol_app` existe pero tiene **`rolcanlogin = false`**:
 
-**Verificado que es pre-existente**: se hizo un worktree en el commit base (`d80b686`, el WIP del
-usuario sin ninguno de estos cambios) y `pnpm build` falla **idéntico**. No lo causó este trabajo.
-`✓ Compiled successfully` — las 214 stories y las 26 extracciones **compilan**.
+```sql
+select rolname, rolcanlogin from pg_roles where rolname = 'turnogol_app';
+--  turnogol_app | f
+```
 
-**Cómo se resuelve**: arreglar la password del rol `turnogol_app` en `.env.local` contra el Supabase
-local, o darle a `sitemap.ts` un fallback cuando la DB no está disponible en build.
+Postgres reporta un rol NOLOGIN con el mismo mensaje que una contraseña incorrecta.
+
+Es **por diseño**: `supabase/migrations/…_turnogol_app_grants.sql` dice explícitamente que
+`ALTER ROLE turnogol_app WITH LOGIN PASSWORD '...'` se hace **a mano, fuera de las migraciones** (para
+no versionar una contraseña). Los tests de integración funcionan porque `ensureRoles()` los conecta como
+`postgres` y hace `SET LOCAL ROLE` — nunca hacen login como el rol. La **app** sí, y ese paso de setup
+nunca se había hecho en esta máquina.
+
+Aplicado contra el Supabase local (**reversible**: `ALTER ROLE turnogol_app NOLOGIN`), `/api/status` pasó
+de **503** (`database: down`) a **200** (`database: ok`).
+
+### e2e: idéntico al baseline
+
+Con la DB andando, se corrió `playwright test --project chromium` en la rama **y** en un worktree del
+commit base (`d80b686` — el WIP del usuario, sin ninguno de estos cambios):
+
+| | pasan | fallan |
+|---|---|---|
+| **Base** (`d80b686`) | 24 | 54 |
+| **Esta rama** | 24 | 54 |
+
+Los dos tests que aparecían como regresión en el diff (`availability:12` y el CTA de `/para-complejos`)
+**pasan al correrlos aislados** → eran flake. Y el diff es simétrico: otros dos fallan en el base y no
+acá. Los totales son idénticos.
+
+> **Los 54 fallos son pre-existentes** y tienen una causa clara:
+> `insertBooking failed: null value in column "starts_at" violates not-null constraint`.
+> Los helpers de `tests/e2e/abonados-crud.spec.ts` hacen un **INSERT crudo** sin `starts_at`, la columna
+> que agregó el refactor de instantes físicos. El INSERT revienta, deja la DB sucia, y contamina la
+> corrida entera — por eso los totales bailan entre corridas. Es el mismo patrón ya registrado en la
+> memoria del proyecto: *"grepear INSERT crudo, no solo `.insert(bookings)`"*. Quedaron helpers de e2e
+> sin migrar. **Fuera del scope de este trabajo, pero vale un fix.**
+
+### Las páginas refactorizadas, probadas a mano
+
+Con `agent-browser` contra la app real:
+
+| Página | h1 | errores de consola | overflow horizontal |
+|---|---|---|---|
+| `/` (landing, extraída a `src/app/home/*`) | ✅ | 0 | no |
+| `/login` | ✅ | 0 | no |
+| `/register` | ✅ | 0 | no |
+| `/ingresar` | ✅ | 0 | no |
+| `/forgot-password` | ✅ | 0 | no |
+| `/explorar` | ✅ | 0 | no |
+| `/precios` | ✅ | 0 | no |
+| `/para-complejos` | ✅ | 0 | no |
+
+**Y lo más importante — la inyección de Server Actions funciona end-to-end**: se cargó `/login`, se
+completó el form con credenciales inválidas y se envió. La app respondió **"Email o contraseña
+incorrectos."**. Es decir: el `page.tsx` inyecta la action al componente extraído, `useFormState` la
+recibe, se ejecuta contra la DB y renderiza el error. El refactor no es solo "compila": **anda**.
 
 ---
 
@@ -260,10 +312,56 @@ Honestamente, lo que **no** está hecho:
 3. **Regresión visual con baselines.** No se establecieron baselines: no tiene sentido hacerlo con 111
    stories todavía rojas.
 
-4. **Validación de la app real** con Playwright — en curso al cierre. **Es lo más importante que
-   queda**, porque las extracciones presentacionales tocaron 26 páginas.
+4. **Review independiente.** No se ejecutó (se agotó el límite de sesión).
 
-5. **Review independiente.** No se ejecutó.
+---
+
+## Hallazgo aparte: la suite de e2e está caída entera (pre-existente, fuera de scope)
+
+No lo causó este trabajo y no se arregló acá, pero es lo bastante grave como para dejarlo escrito.
+
+El refactor de **instantes físicos** hizo `bookings.starts_at` / `ends_at` NOT NULL. La migración
+**nunca llegó a la capa de e2e**: los helpers siguen haciendo INSERT crudo sin esas columnas. El INSERT
+revienta con
+
+```
+null value in column "starts_at" of relation "bookings" violates not-null constraint
+```
+
+…el test muere sembrando sus datos (ni siquiera llega a probar nada), deja la DB sucia, y contamina las
+corridas siguientes — por eso los totales bailan entre corridas y hay tests que fallan o pasan según el
+orden.
+
+**Son 13 archivos**, la clase completa:
+
+```
+tests/e2e/_helpers/booking-seed.ts
+tests/e2e/_helpers/player-seed.ts
+tests/e2e/abonados-crud.spec.ts
+tests/e2e/booking-flow.spec.ts
+tests/e2e/canchas-crud.spec.ts
+tests/e2e/capture-screenshots.spec.ts
+tests/e2e/critical-flows/admin-cancel-mp-refund.spec.ts
+tests/e2e/critical-flows/admin-create-booking-ui.spec.ts
+tests/e2e/grilla-realtime.spec.ts
+tests/e2e/mobile/admin-mobile-smoke.spec.ts
+tests/e2e/player-bookings.spec.ts
+tests/e2e/reportes.spec.ts
+tests/e2e/reservas-crud.spec.ts
+```
+
+Encontrados con:
+```bash
+for f in $(grep -rln "from('bookings')\|INSERT INTO bookings" tests/); do
+  grep -q "starts_at\|startsAt" "$f" || echo "SIN starts_at: $f"
+done
+```
+
+Es exactamente la lección que ya está en la memoria del proyecto — *"grepear INSERT crudo, no solo
+`.insert(bookings)`"* — pero aplicada solo a los workers, no a los e2e.
+
+**Arreglar esto probablemente lleve la suite de 54 rojos a verde.** Es el fix de mayor ROI pendiente en
+el repo, y no tiene nada que ver con Storybook.
 
 > **Gotcha de la máquina**: `agent-browser` invocado desde Node en Windows **cuelga** si se le da un
 > pipe — levanta un daemon que hereda el fd de stdout y nunca lo cierra, así que `execFileSync` espera

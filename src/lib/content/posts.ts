@@ -29,7 +29,7 @@ export function getPostBySlug(slug: string, type: 'blog' | 'pages' = 'blog'): Md
       content,
       frontmatter: frontmatterSchema.parse(data),
     }
-  } catch (error) {
+  } catch {
     return null
   }
 }
@@ -47,7 +47,7 @@ export function getAllPosts(type: 'blog' | 'pages' = 'blog'): MdxPost[] {
       })
       .filter((post): post is MdxPost => post !== null)
       .sort((a, b) => new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime())
-  } catch (error) {
+  } catch {
     return []
   }
 }

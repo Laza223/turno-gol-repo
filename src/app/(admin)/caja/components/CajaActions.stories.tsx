@@ -51,7 +51,7 @@ export const AbrirModalDeMovimiento: Story = {
     await userEvent.click(canvas.getByRole('button', { name: '+ Agregar movimiento' }))
     // RegisterMovementModal entra por next/dynamic: timeout largo para no
     // flakear bajo carga (batería completa de stories).
-    const dialog = await body.findByRole('dialog', {}, { timeout: 5000 })
+    const dialog = await body.findByRole('dialog', {}, { timeout: 15_000 })
     // Radix anima la entrada (fade-in ~200ms): toBeVisible() puede pescar el
     // frame con opacity todavía en 0 si se chequea apenas se encuentra el nodo.
     await waitFor(() => expect(dialog).toBeVisible())

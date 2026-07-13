@@ -90,7 +90,12 @@ export function StaffActions({
 
   return (
     <>
-      <DropdownMenu>
+      {/* modal={false}: es un menú de acciones sobre la fila del staff, no un diálogo
+          que deba bloquear la página. Con el default (modal=true) Radix llama
+          hideOthers() y marca aria-hidden todo el árbol fuera del portal —incluido el
+          propio trigger, que sigue siendo focuseable— violando aria-hidden-focus (axe).
+          Mismo criterio que ShareButton, HeroSearch y SearchBar. */}
+      <DropdownMenu modal={false}>
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>

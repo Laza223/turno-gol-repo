@@ -8,11 +8,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
  * rápidas de una reserva en la lista de /reservas): trigger icon-only con
  * `MoreVertical` + items de texto, uno de ellos `disabled`.
  *
- * Radix DropdownMenu es modal por default: mientras está abierto, aria-oculta
- * el resto del árbol (incluido el propio trigger, que sigue siendo focusable
- * en el DOM) — mismo comportamiento confirmado en StaffActions.stories.tsx.
- * Cerrar con Escape al final de cada play() evita que el scan de a11y
- * (afterEach) capture ese estado transitorio como si fuera el render final.
+ * Las stories usan `modal={false}`, igual que LOS CINCO consumidores reales del repo
+ * (StaffActions, QuickActions, ShareButton, HeroSearch, SearchBar). No es una
+ * concesión al test: es el uso real.
+ *
+ * El default de Radix (`modal=true`) llama `hideOthers()` y marca aria-hidden todo el
+ * árbol fuera del portal —incluido el propio trigger, que sigue siendo focuseable—,
+ * lo que viola `aria-hidden-focus`. Es correcto para un menú que de verdad bloquea la
+ * página, pero ninguno de los menús de esta app lo es: son menús de acciones.
+ *
+ * Las stories dejan el menú ABIERTO cuando terminan, a propósito: el scan de axe corre
+ * después del play y tiene que ver el estado abierto, que es donde vivía la violación.
+ * (Antes había un `{Escape}` al final para cerrarlo; eso no arreglaba nada, solo le
+ * escondía el bug al scanner.)
  */
 const meta = {
   title: 'Design System/DropdownMenu',
@@ -47,7 +55,7 @@ function Menu({ disabledItem = false }: { disabledItem?: boolean }) {
 
 export const Cerrado: Story = {
   render: () => (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <Menu />
     </DropdownMenu>
   ),
@@ -56,7 +64,7 @@ export const Cerrado: Story = {
 /** Abierto por click real (no `defaultOpen`: ver nota de aria-hidden-focus arriba). */
 export const Abierto: Story = {
   render: () => (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <Menu />
     </DropdownMenu>
   ),
@@ -68,15 +76,12 @@ export const Abierto: Story = {
     // el primer tick y toBeVisible() lo agarra en falso negativo.
     const body = within(canvasElement.ownerDocument.body)
     await waitFor(() => expect(body.getByRole('menu')).toBeVisible())
-
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(body.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 
 export const ConItemDeshabilitado: Story = {
   render: () => (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <Menu disabledItem />
     </DropdownMenu>
   ),
@@ -89,15 +94,12 @@ export const ConItemDeshabilitado: Story = {
       'aria-disabled',
       'true',
     )
-
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(body.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 
 export const AbrirConTeclado: Story = {
   render: () => (
-    <DropdownMenu onOpenChange={fn()}>
+    <DropdownMenu modal={false} onOpenChange={fn()}>
       <Menu />
     </DropdownMenu>
   ),
@@ -110,8 +112,5 @@ export const AbrirConTeclado: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const menu = await body.findByRole('menu')
     await waitFor(() => expect(within(menu).getByRole('menuitem', { name: 'Completar' })).toBeVisible())
-
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(body.queryByRole('menu')).not.toBeInTheDocument())
   },
 }

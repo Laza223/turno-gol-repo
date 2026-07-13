@@ -1,50 +1,53 @@
 # Inventario y cobertura de Storybook
 
-Generado desde `storybook-coverage.json`, que es la fuente de verdad. Cobertura verificada contra `git ls-files "src/**/*.tsx"`: **266/266 archivos**, cero huérfanos, cero fantasmas.
+Fuente de verdad: [`storybook-coverage.json`](./storybook-coverage.json).
+
+**Cobertura verificada** contra `git ls-files "src/**/*.tsx"` (excluyendo los propios `.stories.tsx`):
+
+```
+archivos .tsx reales:   300
+inventariados:          300
+fantasma (en el json, no en git):  0
+faltantes (en git, no en el json): 0
+
+archivos .stories.tsx:  214   (786 stories)
+```
+
+> Este número se regeneró DESPUÉS de las 24 extracciones presentacionales y del merge de contenido SEO. Una versión anterior de este documento afirmaba 266/266 — era falso: el inventario se había generado antes de esos dos trabajos y nunca se actualizó. Lo detectó el review independiente.
 
 ## Resumen
 
 | Clasificación | Archivos | Qué significa |
 |---|---:|---|
-| **Story directa** | 194 | Componente visual con contrato de props. Tiene story propia. |
-| **Requiere extracción presentacional** | 24 | Mezcla fetch/autorización con presentación; adentro hay una vista tipada que vale extraer. |
-| **Cubierto por la story del padre** | 7 | Sub-componente trivial sin estados propios; solo existe dentro de su padre. |
-| **Server wrapper — no aplica** | 29 | Server Component que solo fetchea y compone (page/layout). No se fabrica una vista artificial para tener una story: la composición a nivel página ya la cubren los 35 specs de Playwright. Se storyean las hojas. |
-| **No visual** | 12 | Provider, hook, reporter o generador de imágenes (Satori/ImageResponse). No hay DOM que renderizar. |
-| **Total** | **266** | |
+| **Story directa** | 223 | Componente visual con contrato de props. Tiene story propia. |
+| **Requirió extracción presentacional** | 24 | Mezclaba fetch/autorización con presentación. Se extrajo la vista tipada a un componente hermano; la page quedó como shell que inyecta la Server Action. Las 24 tienen story. |
+| **Cubierto por la story del padre** | 8 | Sub-componente trivial sin estados propios; solo existe dentro de su padre, que sí tiene story. |
+| **Server wrapper — no aplica** | 34 | Server Component que solo fetchea y compone (page/layout). No se fabrica una vista artificial para tener una story: la composición a nivel página la cubren los specs de Playwright. Se storyean las hojas. |
+| **No visual** | 11 | Provider, hook, reporter o generador de imágenes (Satori/ImageResponse). No hay DOM que renderizar. |
+| **Total** | **300** | |
 
 ## Por dominio
 
-| Dominio | Total | Story directa | Excluidos |
+| Dominio | Total | Con story | Excluidos |
 |---|---:|---:|---:|
 | abonados | 8 | 7 | 1 |
-| auth | 10 | 7 | 3 |
+| auth | 14 | 11 | 3 |
 | booking-grid | 13 | 12 | 1 |
 | canchas | 10 | 9 | 1 |
 | dashboard | 3 | 2 | 1 |
-| design-system | 28 | 25 | 3 |
+| design-system | 27 | 25 | 2 |
 | layout-nav | 21 | 14 | 7 |
 | metricas | 3 | 1 | 2 |
-| misc | 5 | 1 | 4 |
+| misc | 9 | 4 | 5 |
 | onboarding | 11 | 9 | 2 |
 | payments-caja | 9 | 9 | 0 |
-| player-facing | 70 | 61 | 9 |
+| player-facing | 74 | 65 | 9 |
 | players | 2 | 2 | 0 |
-| public-marketing | 19 | 13 | 6 |
+| public-marketing | 33 | 23 | 10 |
 | reportes | 4 | 4 | 0 |
 | reservas | 10 | 10 | 0 |
-| staff-settings | 20 | 14 | 6 |
-| super-admin | 20 | 18 | 2 |
-
-## Dificultad de aislamiento
-
-| Dificultad | Archivos |
-|---|---:|
-| trivial | 102 |
-| easy | 55 |
-| medium | 60 |
-| hard | 38 |
-| unfeasible | 11 |
+| staff-settings | 22 | 16 | 6 |
+| super-admin | 27 | 24 | 3 |
 
 ---
 
@@ -52,7 +55,7 @@ Generado desde `storybook-coverage.json`, que es la fuente de verdad. Cobertura 
 
 Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 
-### Server wrapper — no aplica (29)
+### Server wrapper — no aplica (34)
 
 | Archivo | Motivo |
 |---|---|
@@ -70,7 +73,11 @@ Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 | `src/app/(admin)/settings/reservas/page.tsx` | Server Component: auth + composición delgada de SettingsTabs + ReservasPolicyForm. |
 | `src/app/(auth)/layout.tsx` | Layout trivial: solo envuelve children en un <main id="main-content">, sin fetch ni estado visual propio. |
 | `src/app/(auth)/reset-password/page.tsx` | Server Component que llama supabase.auth.getUser() y solo bifurca entre <ResetForm/> (ya storyable aparte) y un bloque corto 'Enlace expirado' sin estado propio significativo. |
+| `src/app/(business)/alternativas-alquila-tu-cancha/page.tsx` | Page de SEO (merge de contenido): Server Component que compone MDX + secciones. No hay lógica ni estado propio que aislar; su contenido es markdown. Se storyean sus piezas (ArticleShell) y la composición la cubren los e2e de SEO. |
+| `src/app/(business)/blog/[slug]/page.tsx` | Post del blog: Server Component que lee el MDX del filesystem y lo pasa a ArticleShell/Mdx. Solo fetchea y compone. |
+| `src/app/(business)/blog/page.tsx` | Índice del blog: Server Component que lista posts desde el filesystem (listBlogPosts). Solo fetchea y compone. |
 | `src/app/(business)/layout.tsx` | layout.tsx que solo compone BusinessHeader/BusinessFooter (@/components/site, fuera de esta área) alrededor de children con un fondo dark fijo (#020617); sin lógica visual propia distinguible de esos dos componentes. |
+| `src/app/(business)/vs/alquila-tu-cancha/page.tsx` | Page de comparativa (SEO): Server Component que compone MDX + secciones. Sin estado ni lógica propia. |
 | `src/app/(player)/layout.tsx` | Solo extractAuthUser() + redirect si no hay jugador autenticado, y envuelve children en <PortalShell/> (fuera de esta área); sin vista propia. |
 | `src/app/(public)/[slug]/disponibilidad/page.tsx` | Server Component async que hace notFound()/getPublicTenant()+getPublicWeeklyAvailability() y compone WeeklyAvailability (ya extraído y storyable) + JsonLd; sin vista propia adicional que aislar. |
 | `src/app/(public)/[slug]/page.tsx` | Server Component async con 4 fetches en paralelo (getAverageRating/getPublicCourtCards/getReviewsByTenant + getPublicTenant) y gate por status; compone leaves ya extraídos y storyables (TenantGallery/TenantHeader/CourtCard/AvailabilityGrid/ReviewsSection); ISR (revalidate=300) + generateStaticParams no aplican en Storybook. |
@@ -84,9 +91,10 @@ Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 | `src/app/onboarding/page.tsx` | extractAuthUser + resolveStaffTenants + getStaffTenant + listCourts fetch, y solo decide qué Step* renderizar dentro de <WizardShell/> según settings.onboarding_step — sin vista propia; los Step* ya se storyan aparte. |
 | `src/app/reserva/[bookingId]/pendiente/page.tsx` | Server Component con extractAuthUser()+redirect() y una query SQL cruda (withPlayerContext) solo para calcular expiresAt; el único render propio es el mensaje trivial 'no encontramos tu reserva' (mismo patrón que exito/error) — el resto delega 100% a PaymentStatusWatcher (@/components/booking, fuera de esta área), que sería la story real. |
 | `src/app/reserva/layout.tsx` | layout.tsx que solo envuelve children en PortalShell (@/components/site/PortalShell, fuera de esta área); cero lógica visual propia, mismo patrón que (public)/layout.tsx. |
+| `src/components/site/Mdx.tsx` | Wrapper de MDXRemote (next-mdx-remote/rsc): es un Server Component que compila markdown en el servidor. No renderiza DOM propio ni tiene estados; en un bundle de browser MDXRemote/rsc ni siquiera resuelve. |
 | `src/components/site/PortalShell.tsx` | Es el cascarón de composición del layout del portal (compone PortalSessionProvider + PortalFrame + PortalHeader + SiteFooter) usado directamente por (public)/layout.tsx, (player)/layout.tsx y reserva/layout.tsx — no tiene props ni estados propios más allá de 'children', es pura composición a nivel layout ya cubierta por specs de Playwright en cada ruta que lo usa. Sus piezas (PortalHeader, PortalFrame, SiteFooter, PlayerBottomNav) ya tienen story propia. |
 
-### No visual (12)
+### No visual (11)
 
 | Archivo | Motivo |
 |---|---|
@@ -101,9 +109,8 @@ Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 | `src/components/seo/JsonLd.tsx` | Renderiza un <script type='application/ld+json'> invisible con dangerouslySetInnerHTML — no hay nada visual que verificar en Storybook, solo el JSON serializado (mejor cubierto por un unit test de renderStructuredData). |
 | `src/components/site/PortalSessionProvider.tsx` | Es un React Context Provider puro (createContext/useContext) que hidrata la sesión vía fetch a /api/player/session — no renderiza ningún markup propio más allá de pasar children; se consume como decorator/wrapper en las stories de los componentes que sí usan usePortalSession (AccountMenu, PortalHeader, PortalFrame, FavoriteButton), no tiene story propia. |
 | `src/components/theme/ThemeProvider.tsx` | Es un wrapper delgado sobre next-themes' ThemeProvider (pone/saca la clase .dark en <html>) — no renderiza markup propio visible, solo configura contexto. Se usa como decorator global de Storybook (ya cubierto por el theming del proyecto), no tiene estados propios que mostrar en una story. |
-| `src/components/ui/submit-button.stories.tsx` | Es el archivo de definición de stories (Meta/StoryObj vía '@storybook/nextjs-vite' y 'storybook/test') para SubmitButton, no un componente de UI de la app: nada en src/app o src/components lo importa, solo lo consume Storybook. Es en sí mismo el artefacto de la migración (evidencia de que la story de SubmitButton ya se creó adelantada a F4), no un archivo pendiente de inventariar para 'crear una story'. |
 
-### Cubierto por la story del padre (7)
+### Cubierto por la story del padre (8)
 
 | Archivo | Motivo |
 |---|---|
@@ -112,6 +119,7 @@ Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 | `src/app/(public)/explorar/components/ExplorarMapLoader.tsx` | wrapper trivial de next/dynamic(() => import('./ExplorarMap'), {ssr:false}); sin estados propios más allá del fallback pulse — la story real es la de ExplorarMap (Storybook ya renderiza client-side, el ssr:false es redundante ahí). |
 | `src/app/(public)/explorar/components/PitchLines.tsx` | re-export vacío (`export { default } from '@/components/public/PitchLines'`); el componente real vive fuera de esta área y no hay contenido propio que storyar aquí. |
 | `src/app/(super-admin)/super-admin/_components/sa-metric-card.tsx` | Wrapper de una línea sobre <StatCard/> (@/components/admin/StatCard, fuera de esta área) con accent='violet' fijo; no agrega estados visuales propios — las variantes reales las cubre la story de StatCard, y el uso concreto ya se ve en la story del SuperAdmin dashboard page. |
+| `src/app/(super-admin)/super-admin/tenants/[id]/_components/detail-primitives.tsx` | Dos primitives de layout (par label/valor de un <dl>, y un wrapper). Sin estados propios: solo existen dentro de resumen-tab / suscripcion-tab / actividad-tab, que SI tienen story y los renderizan. |
 | `src/components/site/SiteNav.tsx` | Archivo de una sola línea que re-exporta PortalHeader (`export { default } from './PortalHeader'`) para no romper imports existentes (src/app/page.tsx sigue usándolo como <SiteNav variant="overlay"/>). No tiene JSX ni lógica propia — cualquier story de PortalHeader cubre exactamente el mismo componente. |
 | `src/components/ui/toaster.tsx` | Toaster() no recibe props: es el mount-point único (root layout) que solo suscribe useToast() y mapea el array de toasts a <Toast variant=.../> ya definido en toast.tsx. Todos los estados visuales reales (default/success/destructive, con/sin título, duración) ya se documentan directamente instanciando <Toast> en su propia story sin depender del store global; Toaster en sí no aporta ningún estado visual propio, solo wiring. |
 
@@ -119,4 +127,32 @@ Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 
 ## Detalle completo
 
-El JSON (`storybook-coverage.json`) tiene, por archivo: dominio, client/server, rol, providers que necesita, si usa red/sesión/router/Server Actions, dificultad de aislamiento, qué hook o import exacto la complica, estados relevantes, clasificación, motivo de exclusión y título de story propuesto.
+El JSON tiene, por archivo: dominio, client/server, rol, providers que necesita, si usa red/sesión/router/Server Actions, dificultad de aislamiento, qué hook o import exacto la complica, estados relevantes, clasificación, motivo de exclusión y título de story propuesto.
+
+## Cómo re-verificar la cobertura
+
+Guardá esto como `scripts/check-coverage.mjs` y corrélo con `node scripts/check-coverage.mjs`.
+**Volvé a correrlo cada vez que agregues, borres o extraigas un componente** — el inventario no se
+actualiza solo, y un doc que afirma una cobertura que ya no es cierta es peor que no tener doc.
+
+```js
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+
+const inv = JSON.parse(readFileSync('docs/storybook/storybook-coverage.json', 'utf8')).components
+const real = new Set(
+  execSync('git ls-files "src/**/*.tsx"', { encoding: 'utf8' })
+    .trim()
+    .split('\n')
+    .filter((f) => !f.endsWith('.stories.tsx')),
+)
+const paths = inv.map((c) => c.path)
+
+const ghost = paths.filter((p) => !real.has(p))
+const missing = [...real].filter((p) => !paths.includes(p))
+
+console.log(`reales: ${real.size} · inventariados: ${paths.length}`)
+console.log(`fantasma (en el json, no en git): ${ghost.length}`, ghost)
+console.log(`faltantes (en git, no en el json): ${missing.length}`, missing)
+process.exit(ghost.length || missing.length ? 1 : 0)
+```

@@ -53,17 +53,21 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
           </div>
         ))}
       </dl>
+      {/* Cada bloque va en su PROPIO <dl>: un <dt>/<dd> suelto fuera de un <dl> es HTML
+          inválido y viola la regla `dlitem` de axe (los pares término/definición solo
+          existen dentro de una lista de definiciones). Antes colgaban de un <div>
+          después de que el <dl> de arriba ya había cerrado. */}
       {booking.notesPlayer && (
-        <div className="mt-4 border-t border-border pt-4">
+        <dl className="mt-4 border-t border-border pt-4">
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">Nota del jugador</dt>
           <dd className="mt-1 text-sm text-foreground">{booking.notesPlayer}</dd>
-        </div>
+        </dl>
       )}
       {booking.canceledReason && (
-        <div className="mt-4 border-t border-border pt-4">
+        <dl className="mt-4 border-t border-border pt-4">
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">Motivo de cancelación</dt>
           <dd className="mt-1 text-sm text-foreground">{booking.canceledReason}</dd>
-        </div>
+        </dl>
       )}
     </div>
   )

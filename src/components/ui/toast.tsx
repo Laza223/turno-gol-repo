@@ -29,21 +29,23 @@ const toastVariants = cva(
     variants: {
       variant: {
         default: 'border-border bg-card text-foreground',
-        // `text-success` crudo no llega a 4.5:1 en light sobre este fill
-        // translúcido (mismo bug medido en badge.tsx) — dark sigue usando el
-        // token, que ahí sí pasa AA.
-        success: 'border-success/30 bg-success/10 text-green-800 dark:border-success/40 dark:bg-success/15 dark:text-success',
-        // `text-destructive` crudo (red-600) mide 4.83:1 sobre blanco — pasa
-        // por poco, pero el toast flota sobre `bg-background` (el canvas real
-        // de la app, no una card blanca) y ahí cae a 3.34:1. Mismo patrón que
-        // success: se ajusta el foreground light. El fill además tiene que
-        // ser OPACO (no `bg-destructive/10` translúcido): un toast destructivo
-        // puede aparecer con un `<Dialog>` todavía abierto detrás (p.ej.
-        // validación dentro del modal, LeaveReviewButton) y su overlay
-        // `bg-black/50` oscurece lo que hay debajo — el fill translúcido caía
-        // a 1.3:1 en ese caso. `bg-red-50` da 5.9:1 sobre `text-red-700` sin
-        // importar qué haya detrás.
-        destructive: 'border-destructive/30 bg-red-50 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
+
+        // LOS FILLS DE LIGHT SON OPACOS A PROPÓSITO. Un toast puede aparecer con un
+        // <Dialog> todavía abierto (o cerrándose) detrás: el overlay `bg-black/50`
+        // oscurece TODO lo que hay debajo, y un fill translúcido (`bg-*/10`) compone
+        // contra ese negro en vez de contra el fondo de la app. Medido con axe:
+        //   success translúcido sobre el overlay:      1.40:1  (ilegible)
+        //   destructive translúcido sobre el overlay:  1.30:1  (ilegible)
+        // Con fill opaco el contraste no depende de qué haya atrás:
+        //   text-green-800 sobre bg-green-50:  6.81:1
+        //   text-red-700   sobre bg-red-50:    5.91:1
+        // El foreground de light también se ajusta: los tokens crudos (`text-success`,
+        // `text-destructive`) no llegan a AA sobre estos fills. En dark los tokens sí
+        // pasan y se mantienen.
+        success:
+          'border-success/30 bg-green-50 text-green-800 dark:border-success/40 dark:bg-success/15 dark:text-success',
+        destructive:
+          'border-destructive/30 bg-red-50 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
       },
     },
     defaultVariants: { variant: 'default' },

@@ -101,9 +101,14 @@ export const TipoAjuste: Story = {
     await waitFor(() => expect(canvas.getByRole('button', { name: 'Ingreso' })).toBeVisible())
     await userEvent.click(canvas.getByRole('button', { name: 'Ajuste' }))
     // "Otro" existe también como método de pago: scopeado a la categoría por su legend.
+    // waitFor: el click en "Ajuste" re-renderiza el grupo de categorías, y estas
+    // assertions caían en el frame donde la transición de Radix todavía tiene
+    // opacity:0 — el nodo existe pero toBeVisible() lo lee como oculto.
     const categoryGroup = within(canvas.getByRole('group', { name: 'Categoría' }))
-    await expect(categoryGroup.getByRole('button', { name: 'Corrección por ausencia' })).toBeVisible()
-    await expect(categoryGroup.getByRole('button', { name: 'Otro' })).toBeVisible()
+    await waitFor(() =>
+      expect(categoryGroup.getByRole('button', { name: 'Corrección por ausencia' })).toBeVisible(),
+    )
+    await waitFor(() => expect(categoryGroup.getByRole('button', { name: 'Otro' })).toBeVisible())
   },
 }
 
@@ -122,7 +127,7 @@ export const GuardarOk: Story = {
   render: (args) => <ControlledModal {...args} />,
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    const dialogEl = canvas.getByRole('dialog')
+    const dialogEl = await canvas.findByRole('dialog')
     await userEvent.type(canvas.getByLabelText('Monto (pesos)'), '4500')
     await userEvent.type(canvas.getByLabelText('Descripción'), 'Seña turno 20:00')
     await userEvent.click(canvas.getByRole('button', { name: 'Guardar' }))

@@ -72,7 +72,7 @@ export const PausarAbonado: Story = {
     // dialog abierto, pero eso no lo saca del accessibility tree). AbonadoDialogs
     // entra por next/dynamic: timeout largo para no flakear bajo carga (batería
     // completa de stories, chunk más lento de cargar).
-    const dialog = within(await body.findByRole('dialog', {}, { timeout: 5000 }))
+    const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
     await waitFor(() => expect(dialog.getByRole('heading', { name: 'Pausar abonado' })).toBeVisible())
     await userEvent.click(dialog.getByRole('button', { name: 'Pausar' }))
 
@@ -104,7 +104,7 @@ export const ReactivarConVistaPrevia: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Reactivar' }))
     // AbonadoDialogs entra por next/dynamic: timeout largo (ver comentario en
     // "Pausar Abonado").
-    const dialog = within(await body.findByRole('dialog', {}, { timeout: 5000 }))
+    const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
     // El "2" va en un <strong> aparte: getByText por defecto solo mira los text
     // nodes DIRECTOS de un elemento (no agrega texto de hijos), así que hay que
     // matchear el inicio y verificar el contenido completo con toHaveTextContent.

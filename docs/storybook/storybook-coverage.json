@@ -1,6 +1,6 @@
 {
-  "generatedFrom": "auditoría de 6 agentes sobre src/**",
-  "total": 266,
+  "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO",
+  "total": 300,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -969,6 +969,26 @@
       "isolationNotes": "useRouter (router.refresh); importa addBookingChargeAction directamente de ../actions; usa summarizeBookingCharges (@/modules/bookings/booking.charges) para el cálculo de saldo."
     },
     {
+      "path": "src/app/(admin)/reservas/[id]/BookingDetailCard.tsx",
+      "name": "BookingDetailCard",
+      "domain": "staff-settings",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/(admin)/reservas/[id]/page.tsx",
       "name": "ReservaDetailPage",
       "domain": "reservas",
@@ -1537,6 +1557,26 @@
       "isolationNotes": "dynamic(ssr:false) de ConfirmDialog; importa deactivateStaffAction/resendInviteAction/updateStaffRoleAction directamente de ./actions."
     },
     {
+      "path": "src/app/(admin)/staff/StaffRosterView.tsx",
+      "name": "StaffRosterView",
+      "domain": "staff-settings",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/(admin)/staff/status-visual.tsx",
       "name": "StaffRoleBadge, StaffStatusBadge",
       "domain": "staff-settings",
@@ -1556,6 +1596,26 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": ""
+    },
+    {
+      "path": "src/app/(auth)/forgot-password/ForgotPasswordCard.tsx",
+      "name": "ForgotPasswordCard",
+      "domain": "auth",
+      "rendering": "client",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(auth)/forgot-password/page.tsx",
@@ -1579,6 +1639,26 @@
       "usesServerAction": true,
       "providers": [],
       "isolationNotes": "useFormState/useFormStatus (react-dom) atados a forgotPasswordAction real importado de ./actions — mockear la Server Action para cubrir idle/error/sent."
+    },
+    {
+      "path": "src/app/(auth)/ingresar/IngresarForm.tsx",
+      "name": "IngresarForm",
+      "domain": "auth",
+      "rendering": "client",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(auth)/ingresar/page.tsx",
@@ -1620,6 +1700,26 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": ""
+    },
+    {
+      "path": "src/app/(auth)/login/LoginCard.tsx",
+      "name": "LoginCard",
+      "domain": "auth",
+      "rendering": "client",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(auth)/login/page.tsx",
@@ -1668,6 +1768,26 @@
       "usesServerAction": true,
       "providers": [],
       "isolationNotes": "useFormState/useFormStatus (react-dom) atados a registerAction real — mockear para cubrir fieldErrors/confirm/existing; usa <PhoneInput/> (@/components/ui/phone-input)."
+    },
+    {
+      "path": "src/app/(auth)/register/RegisterCard.tsx",
+      "name": "RegisterCard",
+      "domain": "auth",
+      "rendering": "client",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(auth)/reset-password/page.tsx",
@@ -1754,6 +1874,66 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "setInterval/setTimeout + window.location.assign(next) como side-effect real — si se incluye en la story del padre hay que interceptar/stubear la navegación."
+    },
+    {
+      "path": "src/app/(business)/alternativas-alquila-tu-cancha/page.tsx",
+      "name": "page",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "page",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": false,
+      "isolationDifficulty": "medium",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "SERVER_WRAPPER_NOT_SUITABLE",
+      "exclusionReason": "Page de SEO (merge de contenido): Server Component que compone MDX + secciones. No hay lógica ni estado propio que aislar; su contenido es markdown. Se storyean sus piezas (ArticleShell) y la composición la cubren los e2e de SEO.",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/(business)/blog/[slug]/page.tsx",
+      "name": "page",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "page",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": false,
+      "isolationDifficulty": "medium",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "SERVER_WRAPPER_NOT_SUITABLE",
+      "exclusionReason": "Post del blog: Server Component que lee el MDX del filesystem y lo pasa a ArticleShell/Mdx. Solo fetchea y compone.",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/(business)/blog/page.tsx",
+      "name": "page",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "page",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "medium",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "SERVER_WRAPPER_NOT_SUITABLE",
+      "exclusionReason": "Índice del blog: Server Component que lista posts desde el filesystem (listBlogPosts). Solo fetchea y compone.",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(business)/layout.tsx",
@@ -1861,6 +2041,46 @@
       "isolationNotes": "useState puro; importa PLANS/annualSavings/planForCourts de ./plans-data.ts (constantes)."
     },
     {
+      "path": "src/app/(business)/vs/alquila-tu-cancha/page.tsx",
+      "name": "page",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "page",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": false,
+      "isolationDifficulty": "medium",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "SERVER_WRAPPER_NOT_SUITABLE",
+      "exclusionReason": "Page de comparativa (SEO): Server Component que compone MDX + secciones. Sin estado ni lógica propia.",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/(player)/configuracion/ConfiguracionView.tsx",
+      "name": "ConfiguracionView",
+      "domain": "player-facing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/(player)/configuracion/DataExportButton.tsx",
       "name": "DataExportButton",
       "domain": "player-facing",
@@ -1941,6 +2161,26 @@
       "usesServerAction": true,
       "providers": [],
       "isolationNotes": "useRouter (next/navigation) para router.push('/ingresar?deleted=1') tras éxito + <ConfirmDialog/> (radix) con confirmationPhrase=email; requestDeleteAccountAction (Server Action) a mockear."
+    },
+    {
+      "path": "src/app/(player)/eliminar-cuenta/EliminarCuentaView.tsx",
+      "name": "EliminarCuentaView",
+      "domain": "player-facing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(player)/eliminar-cuenta/loading.tsx",
@@ -2066,6 +2306,26 @@
         "Toaster"
       ],
       "isolationNotes": "fetch('/api/player/reviews', POST) directo (no Server Action) + useToast (@/hooks/use-toast, requiere el host <Toaster/>) + useRouter para router.refresh — mockear el fetch (MSW)."
+    },
+    {
+      "path": "src/app/(player)/mis-reservas/MisReservasView.tsx",
+      "name": "MisReservasView",
+      "domain": "player-facing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(player)/mis-reservas/page.tsx",
@@ -2212,6 +2472,26 @@
       "usesServerAction": true,
       "providers": [],
       "isolationNotes": "useFormState/useFormStatus (react-dom) atados a updateProfileAction real; usa <PhoneInput/> (@/components/ui/phone-input)."
+    },
+    {
+      "path": "src/app/(player)/perfil/ProfileHeaderNav.tsx",
+      "name": "ProfileHeaderNav",
+      "domain": "player-facing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(public)/[slug]/components/AvailabilityGrid.tsx",
@@ -2453,6 +2733,26 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "getPublicTenant/getAverageRating/getPublicCourtCards/getReviewsByTenant (DB); Suspense envolviendo AvailabilityGrid por su useSearchParams()."
+    },
+    {
+      "path": "src/app/(public)/[slug]/reservar/CheckoutStates.tsx",
+      "name": "CheckoutStates",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(public)/[slug]/reservar/components/BookingSummary.tsx",
@@ -2991,6 +3291,26 @@
       "isolationNotes": "ninguno."
     },
     {
+      "path": "src/app/(super-admin)/super-admin/_components/dashboard-view.tsx",
+      "name": "dashboard-view",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/(super-admin)/super-admin/_components/sa-metric-card.tsx",
       "name": "SaMetricCard",
       "domain": "super-admin",
@@ -3101,6 +3421,86 @@
       "isolationNotes": "Duplicado casi idéntico de _components/tenant-status-badge.tsx (dashboard) con copy distinto ('Pago vencido' vs 'Moroso') y sin soporte de `count` — señalar para consolidar en el design system."
     },
     {
+      "path": "src/app/(super-admin)/super-admin/tenants/_components/tenants-filters.tsx",
+      "name": "tenants-filters",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/(super-admin)/super-admin/tenants/_components/tenants-table.tsx",
+      "name": "tenants-table",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/(super-admin)/super-admin/tenants/[id]/_components/actividad-tab.tsx",
+      "name": "actividad-tab",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/(super-admin)/super-admin/tenants/[id]/_components/detail-primitives.tsx",
+      "name": "detail-primitives",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "medium",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "COVERED_BY_PARENT_STORY",
+      "exclusionReason": "Dos primitives de layout (par label/valor de un <dl>, y un wrapper). Sin estados propios: solo existen dentro de resumen-tab / suscripcion-tab / actividad-tab, que SI tienen story y los renderizan.",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/(super-admin)/super-admin/tenants/[id]/_components/impersonate-button.tsx",
       "name": "ImpersonateButton",
       "domain": "super-admin",
@@ -3121,6 +3521,26 @@
       "usesServerAction": true,
       "providers": [],
       "isolationNotes": "window.confirm(...) antes de disparar startImpersonationAction (que redirige en éxito, por eso solo se ve el error) — stubear window.confirm en la story."
+    },
+    {
+      "path": "src/app/(super-admin)/super-admin/tenants/[id]/_components/resumen-tab.tsx",
+      "name": "resumen-tab",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/(super-admin)/super-admin/tenants/[id]/_components/support-actions-panel.tsx",
@@ -3343,6 +3763,26 @@
       "isolationNotes": ""
     },
     {
+      "path": "src/app/(super-admin)/super-admin/tenants/[id]/_components/suscripcion-tab.tsx",
+      "name": "suscripcion-tab",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/(super-admin)/super-admin/tenants/[id]/page.tsx",
       "name": "SuperAdminTenantDetailPage",
       "domain": "super-admin",
@@ -3435,6 +3875,126 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "Renderiza su propio <html lang='es'><body> (requisito de Next.js: reemplaza el layout raíz cuando el error ocurre en el layout mismo) — anidar html/body dentro del iframe de Storybook es HTML inválido; la story necesita una variante interna sin esas etiquetas o un decorator especial. También llama Sentry.captureException en useEffect."
+    },
+    {
+      "path": "src/app/home/BookingCardMockup.tsx",
+      "name": "BookingCardMockup",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/home/FeaturedComplexes.tsx",
+      "name": "FeaturedComplexes",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/home/Hero.tsx",
+      "name": "Hero",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/home/HowItWorks.tsx",
+      "name": "HowItWorks",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/home/OwnerBanner.tsx",
+      "name": "OwnerBanner",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/home/StatsBar.tsx",
+      "name": "StatsBar",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/icon-192/route.tsx",
@@ -3533,6 +4093,26 @@
         "ThemeProvider"
       ],
       "isolationNotes": ""
+    },
+    {
+      "path": "src/app/mock-mp/checkout/MockCheckoutView.tsx",
+      "name": "MockCheckoutView",
+      "domain": "misc",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/mock-mp/checkout/page.tsx",
@@ -3837,6 +4417,26 @@
       "isolationNotes": "listPublicCities()/searchPublicTenants() con try/catch + Sentry.captureException si falla (degrada a []); envuelve <SiteNav variant='overlay'/> en <PortalSessionProvider/>."
     },
     {
+      "path": "src/app/reserva/[bookingId]/error/BookingErrorCard.tsx",
+      "name": "BookingErrorCard",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/reserva/[bookingId]/error/loading.tsx",
       "name": "ReservaErrorLoading",
       "domain": "player-facing",
@@ -3879,6 +4479,26 @@
         "form"
       ],
       "isolationNotes": "extractAuthUser()+redirect('/ingresar'); withPlayerContext(tx.execute(sql...)) — raw SQL devuelve Date como string (ver gotcha raw-sql-execute-date-string); form action={retryDepositPaymentAction} Server Action de (public)/[slug]/reservar/actions."
+    },
+    {
+      "path": "src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx",
+      "name": "BookingSuccessCard",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/reserva/[bookingId]/exito/loading.tsx",
@@ -3990,6 +4610,26 @@
       "isolationNotes": "getWorkerDb() (pool worker bypass-capable, SQL crudo) + isTenantPubliclyVisible (@/modules/tenants/tenant-status); sin auth — UUID_RE valida formato antes de la query; robots noindex."
     },
     {
+      "path": "src/app/reserva/[bookingId]/verificar/VerificationCard.tsx",
+      "name": "VerificationCard",
+      "domain": "public-marketing",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/app/reserva/layout.tsx",
       "name": "ReservaLayout",
       "domain": "player-facing",
@@ -4024,6 +4664,26 @@
       "usesServerAction": true,
       "providers": [],
       "isolationNotes": "resolveStaffTenants(staffUserId) — lista de tenants a los que el staff tiene acceso; cada <form action={selectTenantAction}> es un submit real, sin client state."
+    },
+    {
+      "path": "src/app/select-tenant/SelectTenantList.tsx",
+      "name": "SelectTenantList",
+      "domain": "misc",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/components/admin/AdminThemeMenu.tsx",
@@ -4964,6 +5624,26 @@
       "isolationNotes": "Incluye <ThemeToggle/> (usa next-themes useTheme) dentro del dropdown — requiere ThemeProvider como decorator; el form de logout usa signOutAction (Server Action real importada), no ejecuta en Storybook pero el markup renderiza; usa DropdownMenu de Radix."
     },
     {
+      "path": "src/components/site/ArticleShell.tsx",
+      "name": "ArticleShell",
+      "domain": "misc",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "easy",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "proposedStoryTitle": ""
+    },
+    {
       "path": "src/components/site/BusinessFooter.tsx",
       "name": "BusinessFooter",
       "domain": "public-marketing",
@@ -5063,6 +5743,26 @@
         "ninguno"
       ],
       "isolationNotes": "useRouter (next/navigation) para el submit (router.push a /explorar) — mockear con decorator de router; useNearestCity (src/hooks/use-nearest-city.ts) usa navigator.geolocation.getCurrentPosition, hay que stubear geolocation en el entorno de Storybook para cada estado (found/denied/pending); compone Combobox y DatePicker (ui/) y DropdownMenu de Radix para la hora."
+    },
+    {
+      "path": "src/components/site/Mdx.tsx",
+      "name": "Mdx",
+      "domain": "misc",
+      "rendering": "server",
+      "role": "presentational",
+      "providers": [
+        "ninguno"
+      ],
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "isolationDifficulty": "medium",
+      "isolationNotes": "",
+      "relevantStates": [],
+      "classification": "SERVER_WRAPPER_NOT_SUITABLE",
+      "exclusionReason": "Wrapper de MDXRemote (next-mdx-remote/rsc): es un Server Component que compila markdown en el servidor. No renderiza DOM propio ni tiene estados; en un bundle de browser MDXRemote/rsc ni siquiera resuelve.",
+      "proposedStoryTitle": ""
     },
     {
       "path": "src/components/site/PlayerBottomNav.tsx",
@@ -5799,26 +6499,6 @@
         "ninguno"
       ],
       "isolationNotes": "ninguno — div con clase 'skeleton' (animación CSS) y role condicional a la prop aria-hidden."
-    },
-    {
-      "path": "src/components/ui/submit-button.stories.tsx",
-      "name": "SubmitButton stories (meta)",
-      "domain": "design-system",
-      "rendering": "client",
-      "role": "presentational",
-      "isolationDifficulty": "trivial",
-      "classification": "NON_VISUAL",
-      "exclusionReason": "Es el archivo de definición de stories (Meta/StoryObj vía '@storybook/nextjs-vite' y 'storybook/test') para SubmitButton, no un componente de UI de la app: nada en src/app o src/components lo importa, solo lo consume Storybook. Es en sí mismo el artefacto de la migración (evidencia de que la story de SubmitButton ya se creó adelantada a F4), no un archivo pendiente de inventariar para 'crear una story'.",
-      "relevantStates": [],
-      "proposedStoryTitle": "",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
-      "isolationNotes": "N/A — solo importa SubmitButton (./submit-button) y helpers de Storybook/test; no toca red, router, sesión ni Server Actions de la app."
     },
     {
       "path": "src/components/ui/submit-button.tsx",

@@ -34,7 +34,7 @@ export const Abierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Eliminar mi cuenta' }))
     await expect(await screen.findByText('¿Eliminar tu cuenta TurnoGol?')).toBeInTheDocument()
-    const dialog = screen.getByRole('dialog')
+    const dialog = await screen.findByRole('dialog')
     const confirmButton = within(dialog).getByRole('button', { name: 'Eliminar mi cuenta' })
     await expect(confirmButton).toBeDisabled()
     await userEvent.type(screen.getByLabelText(/tomas\.ibanez@example\.com/i), 'tomas.ibanez@example.com')
@@ -57,7 +57,7 @@ export const ErrorAlConfirmar: Story = {
       await screen.findByLabelText(/tomas\.ibanez@example\.com/i),
       'tomas.ibanez@example.com',
     )
-    const dialog = screen.getByRole('dialog')
+    const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Eliminar mi cuenta' }))
     await expect(await screen.findByRole('alert')).toHaveTextContent(/no encontramos tu cuenta/i)
   },
@@ -73,7 +73,7 @@ export const ConfirmadoOk: Story = {
       await screen.findByLabelText(/tomas\.ibanez@example\.com/i),
       'tomas.ibanez@example.com',
     )
-    const dialog = screen.getByRole('dialog')
+    const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Eliminar mi cuenta' }))
     await expect(getRouter().push).toHaveBeenCalledWith('/ingresar?deleted=1')
   },

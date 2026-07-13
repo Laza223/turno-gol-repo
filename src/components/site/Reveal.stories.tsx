@@ -64,9 +64,32 @@ export const Visible: Story = {
   },
 }
 
-/** Debajo del fold de un contenedor scrolleable: nunca intersecta, se queda
- * en el estado inicial (oculto, sin animar). */
+/**
+ * Debajo del fold de un contenedor scrolleable: nunca intersecta, se queda en el
+ * estado inicial (oculto, sin animar).
+ *
+ * OJO — esta story tiene que fingir un usuario SIN `prefers-reduced-motion`.
+ * El runner corre el browser con `reducedMotion: 'reduce'` (ver
+ * vitest.storybook.config.ts: es lo que hace determinista el scan de axe), y `Reveal`
+ * hace lo correcto ante eso: si el usuario desactivó las animaciones, muestra el
+ * contenido de INMEDIATO sin esperar al IntersectionObserver — ocultarle contenido a
+ * alguien que pidió menos movimiento sería un bug de accesibilidad grave.
+ *
+ * O sea que el estado "todavía no revelado" NO EXISTE bajo reduced-motion. Sin este
+ * stub de matchMedia, la story estaría afirmando algo que el componente, por diseño,
+ * nunca hace. El camino de reduced-motion lo cubre la story `MovimientoReducido`.
+ */
 export const AntesDeIntersectar: Story = {
+  beforeEach: () => {
+    const real = window.matchMedia
+    window.matchMedia = ((query: string) =>
+      query.includes('prefers-reduced-motion')
+        ? { ...real(query), matches: false }
+        : real(query)) as typeof window.matchMedia
+    return () => {
+      window.matchMedia = real
+    }
+  },
   decorators: [
     (Story) => (
       // tabIndex=0: región scrolleable propia del fixture (no existe en

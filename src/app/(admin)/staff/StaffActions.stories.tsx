@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import { StaffActions } from './StaffActions'
 
 const ACTIVE_MANAGER = {
@@ -59,12 +59,17 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * Radix DropdownMenu es modal por default: mientras está abierto, aria-oculta
- * el resto del árbol (incluido el propio trigger, que sigue siendo focusable
- * en el DOM) — confirmado que pasa igual en Design System/DropdownMenu con
- * el menú dejado abierto. Cerrar con Escape al final de cada play() evita
- * que el scan de a11y (afterEach) capture ese estado transitorio como si
- * fuera el render final.
+ * Las stories dejan el menú ABIERTO a propósito cuando terminan: el scan de axe
+ * (que corre después del play) tiene que ver el estado abierto, que es donde vivía
+ * la violación.
+ *
+ * Antes había un `{Escape}` al final de cada play para cerrarlo. Eso NO era un fix:
+ * era esconderle el bug al scanner. El bug era real —`StaffActions.tsx` usaba el
+ * DropdownMenu con `modal=true` (el default de Radix), que llama `hideOthers()` y
+ * marca aria-hidden todo el árbol fuera del portal, incluido el propio trigger, que
+ * sigue siendo focuseable— y ahora está arreglado de raíz con `modal={false}` en el
+ * componente. Si estas stories vuelven a fallar por aria-hidden-focus, es que alguien
+ * revirtió ese fix.
  */
 
 /** Encargado activo: opción de cambiar a Administrador + Desactivar habilitado. */
@@ -76,8 +81,6 @@ export const MiembroActivo: Story = {
     const menu = within(document.body)
     await expect(menu.findByRole('menuitem', { name: 'Cambiar a Administrador' })).resolves.toBeInTheDocument()
     await expect(menu.getByRole('menuitem', { name: 'Desactivar' })).not.toHaveAttribute('aria-disabled', 'true')
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(menu.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 
@@ -92,8 +95,6 @@ export const UltimoAdminActivo: Story = {
       'aria-disabled',
       'true',
     )
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(menu.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 
@@ -106,8 +107,6 @@ export const MiembroInactivo: Story = {
     const menu = within(document.body)
     await expect(menu.findByRole('menuitem', { name: 'Reenviar invitación' })).resolves.toBeInTheDocument()
     await expect(menu.queryByRole('menuitem', { name: /Cambiar a/ })).toBeNull()
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(menu.queryByRole('menu')).not.toBeInTheDocument())
   },
 }
 

@@ -30,16 +30,21 @@ function ControlledCombobox(props: Partial<ComponentProps<typeof Combobox>>) {
         className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
         aria-hidden
       />
+      {/* `{...props}` va PRIMERO, y `value`/`onChange` al final.
+          Si el spread fuera último, un `value` fijo pasado por la story pisaría el
+          estado interno en CADA render: los clicks se registrarían y el valor no
+          cambiaría nunca. La story pasaría en verde sin probar nada. Es exactamente el
+          bug que tenía ControlledDatePicker (ver date-picker.stories.tsx). */}
       <Combobox
+        {...props}
         id="demo-combobox"
         options={CITY_OPTIONS}
-        value={value}
-        onChange={setValue}
         placeholder="Todas las ciudades"
         emptyMessage="No encontramos esa localidad"
         listboxLabel="Localidades"
         inputClassName={FIELD_CLASS}
-        {...props}
+        value={value}
+        onChange={setValue}
       />
     </div>
   )

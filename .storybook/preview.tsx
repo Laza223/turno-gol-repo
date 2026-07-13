@@ -1,11 +1,28 @@
 import type { Decorator, Preview } from '@storybook/nextjs-vite'
 import { useEffect } from 'react'
+import { configure } from 'storybook/test'
 import { ThemeProvider as NextThemeProvider } from 'next-themes'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/toaster'
 import { useToast } from '@/hooks/use-toast'
 import { withFetch } from './decorators/with-fetch'
 import '../src/app/globals.css'
+
+/**
+ * El default de `findBy*` / `waitFor` en testing-library es 1000ms. Varios diálogos
+ * de la app entran por `next/dynamic` (InviteStaffDialog, AbonadoDialogs,
+ * RegisterMovementModal, ConfirmDialog, CourtForm): con la suite entera corriendo,
+ * el chunk tarda varios segundos y el `findBy` se rinde antes.
+ *
+ * Se manifestaba como flake —un test distinto en rojo en cada corrida— pero no era
+ * azar: era un límite temporal que a veces se ganaba y a veces se perdía. Se sube acá,
+ * en un solo lugar, en vez de parchear `{ timeout: N }` story por story (que es lo que
+ * ya falló dos veces: siempre queda una sin parchear).
+ *
+ * Va junto con `testTimeout: 30_000` en vitest.storybook.config.ts — el test tiene que
+ * poder esperar MÁS que sus propias assertions, o la carrera está perdida de arranque.
+ */
+configure({ asyncUtilTimeout: 15_000 })
 
 /**
  * Reloj congelado: sábado 14-mar-2026, 15:30 ART (UTC-3). Elegido para que la

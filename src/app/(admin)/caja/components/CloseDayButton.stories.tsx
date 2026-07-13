@@ -45,8 +45,8 @@ export const SinEfectivoDeclarado: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Cerrar caja' }))
 
-    const dialog = within(body.getByRole('dialog'))
-    await userEvent.type(dialog.getByLabelText('Escribí CERRAR para confirmar'), 'CERRAR')
+    const dialog = within(await body.findByRole('dialog'))
+    await userEvent.type(await dialog.findByLabelText('Escribí CERRAR para confirmar'), 'CERRAR')
     await userEvent.click(dialog.getByRole('button', { name: 'Cerrar caja' }))
     await expect(args.closeDayAction).toHaveBeenCalledWith(args.date, undefined, undefined)
   },
@@ -84,7 +84,7 @@ export const DiffRequiereNota: Story = {
     // El type-to-confirm (fase "CERRAR") solo depende de la frase, no de la
     // nota: el confirm queda habilitado, pero onConfirm (CloseDayButton)
     // rechaza el submit sin nota — el gate real es ese, no el botón.
-    await userEvent.type(dialog.getByLabelText('Escribí CERRAR para confirmar'), 'CERRAR')
+    await userEvent.type(await dialog.findByLabelText('Escribí CERRAR para confirmar'), 'CERRAR')
     await userEvent.click(dialog.getByRole('button', { name: 'Cerrar caja' }))
     await expect(await dialog.findByRole('alert')).toHaveTextContent(/nota es obligatoria/i)
     await expect(args.closeDayAction).not.toHaveBeenCalled()
@@ -105,8 +105,8 @@ export const ErrorDeCierre: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Cerrar caja' }))
 
-    const dialog = within(body.getByRole('dialog'))
-    await userEvent.type(dialog.getByLabelText('Escribí CERRAR para confirmar'), 'CERRAR')
+    const dialog = within(await body.findByRole('dialog'))
+    await userEvent.type(await dialog.findByLabelText('Escribí CERRAR para confirmar'), 'CERRAR')
     await userEvent.click(dialog.getByRole('button', { name: 'Cerrar caja' }))
     await expect(await dialog.findByRole('alert')).toHaveTextContent(/ya fue cerrada/i)
   },

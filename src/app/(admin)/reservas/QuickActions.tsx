@@ -209,7 +209,12 @@ export function QuickActions({
 
       {/* Mobile: menú contextual, sin botones siempre visibles. z-10: encima del Link estirado de la fila. */}
       <div className="absolute right-1.5 top-1.5 z-10 sm:hidden">
-        <DropdownMenu>
+        {/* modal={false}: menú de acciones rápidas de una fila, no un diálogo. Con el
+            default (modal=true) Radix llama hideOthers() y marca aria-hidden todo el
+            árbol fuera del portal —incluido el propio trigger, que sigue siendo
+            focuseable— violando aria-hidden-focus (axe). Mismo criterio que
+            StaffActions, ShareButton, HeroSearch y SearchBar. */}
+        <DropdownMenu modal={false}>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger

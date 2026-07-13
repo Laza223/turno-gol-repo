@@ -83,7 +83,7 @@ export const FormularioAbierto: Story = {
     // CourtForm entra por next/dynamic (el chunk más pesado de la ruta, ver
     // CourtList.tsx): timeout largo para no flakear bajo carga.
     await expect(
-      await canvas.findByRole('heading', { name: 'Nueva cancha' }, { timeout: 5000 }),
+      await canvas.findByRole('heading', { name: 'Nueva cancha' }, { timeout: 15_000 }),
     ).toBeVisible()
     await expect(canvas.queryByRole('button', { name: '+ Nueva cancha' })).not.toBeInTheDocument()
   },
@@ -108,7 +108,7 @@ export const DesactivarConImpacto: Story = {
 
     // ConfirmDialog entra por next/dynamic (CourtList.tsx): timeout largo para
     // no flakear bajo carga.
-    const dialog = within(await body.findByRole('dialog', {}, { timeout: 5000 }))
+    const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
     // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
     // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
     await waitFor(() => expect(dialog.getByText(/4 reserva\(s\) futura\(s\)/i)).toBeVisible())

@@ -65,7 +65,7 @@ export const VentaRapida: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: new RegExp(PRODUCTS[0]!.name) }))
 
-    const dialogEl = body.getByRole('dialog')
+    const dialogEl = await body.findByRole('dialog')
     const dialog = within(dialogEl)
     // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
     // interactuar, si no el toBeVisible() puede pescar opacity todavía en 0.
@@ -75,7 +75,7 @@ export const VentaRapida: Story = {
     await expect(dialog.getByText('2')).toBeVisible()
 
     await userEvent.click(dialog.getByRole('button', { name: 'Transferencia' }))
-    await userEvent.click(dialog.getByRole('button', { name: /registrar venta/i }))
+    await userEvent.click(await dialog.findByRole('button', { name: /registrar venta/i }))
 
     await expect(args.createCashFlowAction).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -99,7 +99,10 @@ export const EditorDeProductos: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: 'Configurar' }))
 
-    const dialogEl = body.getByRole('dialog')
+    // findByRole, no getByRole: el editor de productos entra por next/dynamic. Un
+    // getByRole es SÍNCRONO — no espera nada, y corre una carrera contra la carga del
+    // chunk que a veces gana y a veces pierde.
+    const dialogEl = await body.findByRole('dialog')
     const dialog = within(dialogEl)
     await expect(dialog.getAllByLabelText('Nombre del producto')).toHaveLength(PRODUCTS.length)
 
@@ -137,7 +140,7 @@ export const EditorSinProductosCargaSugeridos: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: 'Configurar productos' }))
 
-    const dialog = within(body.getByRole('dialog'))
+    const dialog = within(await body.findByRole('dialog'))
     await waitFor(() =>
       expect(dialog.getByRole('button', { name: /cargar sugeridos/i })).toBeVisible(),
     )
@@ -165,8 +168,8 @@ export const ErrorDeVenta: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: new RegExp(PRODUCTS[0]!.name) }))
 
-    const dialog = within(body.getByRole('dialog'))
-    await userEvent.click(dialog.getByRole('button', { name: /registrar venta/i }))
+    const dialog = within(await body.findByRole('dialog'))
+    await userEvent.click(await dialog.findByRole('button', { name: /registrar venta/i }))
     await expect(await dialog.findByRole('alert')).toHaveTextContent(/ya fue cerrada/i)
   },
 }

@@ -2,9 +2,9 @@
   "name": "turnogol",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@8.15.0",
+  "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9"
   },
   "browserslist": {
     "production": [
@@ -149,6 +149,12 @@
     "vitest": "^3.2.7"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "@sentry/cli",
+      "esbuild",
+      "supabase",
+      "unrs-resolver"
+    ],
     "packageExtensions": {
       "@supabase/functions-js": {
         "peerDependencies": {

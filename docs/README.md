@@ -16,7 +16,7 @@ Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 
 | [`planning/`](./planning) | Deploy playbook, pricing, cambios de reglas de negocio, icebox de features | Vigente |
 | [`decisions/`](./decisions) | Decisiones de sistema y de seguridad transversales | Vigente |
 | [`qa/`](./qa) | Triage de fixes, decisiones pendientes, inventario de vistas | Vigente |
-| [`storybook/`](./storybook) | Storybook: arquitectura y decisiones, guía para escribir stories, inventario de cobertura (266/266 archivos), reporte de QA con los bugs de a11y encontrados | Vigente |
+| [`storybook/`](./storybook) | Storybook: arquitectura y decisiones, guía para escribir stories, inventario de cobertura (300/300 archivos), reporte de QA con los bugs de a11y encontrados | Vigente |
 | [`audit/`](./audit) | Auditorías: plan maestro, planes por fase, reports (código y docs), PROGRESS | Histórico (completadas) |
 | [`business/`](./business) | Planes originales de negocio, sistema e historias de usuario (precursores de los doc) | Referencia histórica |
 | [`superpowers/`](./superpowers) | Planes y specs de implementación (workflow superpowers) | Histórico |

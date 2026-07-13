@@ -55,7 +55,14 @@ export const DrawerMobileAbierto: Story = {
   args: { mobileOpen: true },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByRole('dialog')).toBeVisible()
+    // Se asertea el CONTENIDO del drawer, no el shell del diálogo. Un
+    // `expect(await findByRole('dialog')).toBeVisible()` engancha el nodo apenas monta
+    // —- sin hijos todavía y a mitad de la animación de entrada de Radix— y `toBeVisible()`
+    // lo lee como oculto: flake garantizado bajo carga. Un link de la navegación solo
+    // existe si el drawer está montado y renderizado. (Misma clase de bug que ya mordió en
+    // BookingActions.stories.tsx.)
+    const drawer = within(await body.findByRole('dialog'))
+    await expect(await drawer.findByRole('link', { name: 'Grilla' })).toBeInTheDocument()
   },
 }
 

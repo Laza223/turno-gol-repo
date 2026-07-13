@@ -42,6 +42,7 @@
     "test:storybook": "vitest run --config vitest.storybook.config.ts",
     "test:storybook:ci": "vitest run --config vitest.storybook.config.ts --reporter=default",
     "qa:storybook": "node scripts/storybook-qa.mjs",
+    "qa:coverage": "node scripts/verify-story-coverage.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --project chromium --reporter=github,html && playwright test --project mobile-chrome --reporter=github,html && playwright test --project axe-audit --reporter=github,html",
     "test:e2e:cross-browser": "playwright test --project webkit --project firefox --project mobile-safari",

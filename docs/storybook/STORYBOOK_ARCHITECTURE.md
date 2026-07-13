@@ -214,6 +214,38 @@ de `vitest`**, no `sb.mock()` — que es un no-op (ver el recuadro más arriba).
 - **IDs**: Radix emite ids tipo `:r0:`. Irrelevante para píxeles, pero **nada de snapshots de DOM**
   en los `play`.
 
+### El runner corre con `reducedMotion: 'reduce'`, y no es cosmético
+
+`vitest.storybook.config.ts` le pasa `context: { reducedMotion: 'reduce' }` al browser de Playwright.
+**Es lo que hace determinista el scan de axe**, y sin eso la suite es irreproducible.
+
+El scan corre DESPUÉS del `play`, y Radix anima entradas **y salidas**. Un nodo pescado a mitad de
+transición tiene `opacity < 1` — y la opacidad diluye **el texto Y el fondo a la vez**. Resultado: axe
+mide un contraste que no existe en ningún estado real de la app. Medido: el toast "Caja cerrada" daba
+3.66:1 con `fg #3d7e55` / `bg #d7e2db`, y **ninguno de los dos es un color del sistema**: son
+`green-800` y `green-50` desvanecidos por el fade.
+
+Se manifestaba como un flake que caía en una story distinta cada corrida, según qué animación llegara
+a tiempo. Con reduced-motion las animaciones quedan en `.01ms`: no hay estado transitorio que pescar.
+
+## ⚠️ axe no sabe medir contraste contra un gradiente — y lo calla
+
+Si el fondo de un elemento es un `linear-gradient` (o una imagen), axe **no puede** calcular el
+contraste. No lo reporta como `violation`: lo reporta como **`incomplete`**. Y `addon-a11y` con
+`test: 'error'` **solo falla con `violations`**.
+
+Traducción: **poner un gradiente detrás de un elemento le apaga el check de contraste a la story, en
+silencio.** Una story así pasa siempre, y no porque el contraste esté bien.
+
+No es teórico. La story de `SuccessRedirect` copió fielmente el `linear-gradient` de la card de
+`/verify` en su decorator, siguiendo la regla de "reproducí el contenedor real"… y pasó en verde
+tapando un **3.91:1**. Recién falló cuando el decorator pasó a usar el color **sólido** ya compuesto
+(`#0B1225` = el tope del gradiente sobre el `#020617` de la página).
+
+**Regla**: si la superficie real es un gradiente, en el decorator va el **composite calculado como color
+sólido**, y en un comentario, la cuenta. Si el gradiente recorre un rango, se usa el punto de **menor**
+contraste — el caso peor es el que hay que testear.
+
 ---
 
 ## Por qué las stories están colocadas en `src/`

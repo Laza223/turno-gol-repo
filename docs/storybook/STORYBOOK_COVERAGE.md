@@ -2,26 +2,59 @@
 
 Fuente de verdad: [`storybook-coverage.json`](./storybook-coverage.json).
 
-**Cobertura verificada** contra `git ls-files "src/**/*.tsx"` (excluyendo los propios `.stories.tsx`):
+La cobertura se verifica con **dos checks distintos**, y hacen falta los dos. Ambos corren solos:
+
+```bash
+node scripts/verify-story-coverage.mjs   # sale != 0 si la cobertura declarada no existe
+```
+
+**Check 1 — el inventario cubre el disco** (`git ls-files "src/**/*.tsx"`, excluyendo los propios `.stories.tsx`):
 
 ```
 archivos .tsx reales:   300
 inventariados:          300
 fantasma (en el json, no en git):  0
 faltantes (en git, no en el json): 0
-
-archivos .stories.tsx:  214   (786 stories)
 ```
 
-> Este número se regeneró DESPUÉS de las 24 extracciones presentacionales y del merge de contenido SEO. Una versión anterior de este documento afirmaba 266/266 — era falso: el inventario se había generado antes de esos dos trabajos y nunca se actualizó. Lo detectó el review independiente.
+**Check 2 — lo que el inventario declara cubierto TIENE una story que lo importa.**
+
+Este segundo check es el que importa, y es el que no existía. Los dos números de arriba pueden estar
+perfectos y la cobertura ser mentira igual: el `classification` del JSON nació como un **plan** (de ahí
+los `proposedStoryTitle: "… (a extraer)"`), y el documento lo leyó como si fuera un **logro**.
+
+Dos veces se declaró cobertura que no existía, y las dos las encontró el review independiente:
+
+| | qué decía | qué pasaba |
+|---|---|---|
+| 1ra | "266/266 archivos" | El inventario se generó antes de las 24 extracciones y del merge de SEO. Faltaban 35 archivos y sobraba un fantasma. |
+| 2da | "Story directa: 223 — Tiene story propia" | **10 componentes no tenían ninguna story que los importara.** Entre ellos `BookingCharges` (maneja dinero) y el módulo `/jugadores` **entero**, que la tabla por dominio daba como `2 | 2 | 0`. |
+
+La primera se arregló contando bien los archivos — y esa corrección **no alcanzó**, porque el script
+solo comparaba dos listas de rutas: detectaba fantasmas y faltantes en el inventario, pero daba por
+buena la clasificación. Un componente marcado "tiene story propia" pasaba el check aunque no
+existiera una sola story que lo importara.
+
+`scripts/verify-story-coverage.mjs` chequea lo otro: para cada componente declarado cubierto, busca
+un `.stories.tsx` que lo **importe de verdad**. Matchea contra los *specifiers de import*, no contra el
+texto del archivo: una mención en un comentario (`// reproduce QuickActions.tsx`) no es cobertura, y
+contarla como tal es exactamente cómo se infla un número. Para una `page.tsx` — que ninguna story
+puede importar — el check es si existe una story en su directorio, que es donde vive la vista extraída.
+
+```
+archivos .stories.tsx:  227   (864 stories)
+declarados con story:   247
+SIN story real:         0
+```
 
 ## Resumen
 
 | Clasificación | Archivos | Qué significa |
 |---|---:|---|
 | **Story directa** | 223 | Componente visual con contrato de props. Tiene story propia. |
-| **Requirió extracción presentacional** | 24 | Mezclaba fetch/autorización con presentación. Se extrajo la vista tipada a un componente hermano; la page quedó como shell que inyecta la Server Action. Las 24 tienen story. |
-| **Cubierto por la story del padre** | 8 | Sub-componente trivial sin estados propios; solo existe dentro de su padre, que sí tiene story. |
+| **Requirió extracción presentacional** | 21 | Mezclaba fetch/autorización con presentación. Se extrajo la vista tipada a un componente hermano; la page quedó como shell que inyecta la Server Action. |
+| **Story completada fuera del plan original** | 5 | Los huecos que destapó el segundo review: `/jugadores` (×2, hubo que extraerlas), `PushNotificationManager`, `MetricsDashboardLoader`, `SuccessRedirect`. |
+| **Cubierto por la story del padre** | 6 | Sub-componente sin estados propios que solo existe dentro de su padre, que sí tiene story. Incluye dos casos que NO son sub-componentes y conviene aclarar: `SiteNav.tsx` es un re-export de 4 líneas de `PortalHeader` (que tiene story), y `toaster.tsx` lo monta `preview.tsx` en **todas** las stories — 13 archivos disparan toasts contra él. |
 | **Server wrapper — no aplica** | 34 | Server Component que solo fetchea y compone (page/layout). No se fabrica una vista artificial para tener una story: la composición a nivel página la cubren los specs de Playwright. Se storyean las hojas. |
 | **No visual** | 11 | Provider, hook, reporter o generador de imágenes (Satori/ImageResponse). No hay DOM que renderizar. |
 | **Total** | **300** | |
@@ -31,13 +64,13 @@ archivos .stories.tsx:  214   (786 stories)
 | Dominio | Total | Con story | Excluidos |
 |---|---:|---:|---:|
 | abonados | 8 | 7 | 1 |
-| auth | 14 | 11 | 3 |
+| auth | 14 | 12 | 2 |
 | booking-grid | 13 | 12 | 1 |
 | canchas | 10 | 9 | 1 |
 | dashboard | 3 | 2 | 1 |
 | design-system | 27 | 25 | 2 |
 | layout-nav | 21 | 14 | 7 |
-| metricas | 3 | 1 | 2 |
+| metricas | 3 | 2 | 1 |
 | misc | 9 | 4 | 5 |
 | onboarding | 11 | 9 | 2 |
 | payments-caja | 9 | 9 | 0 |
@@ -48,6 +81,10 @@ archivos .stories.tsx:  214   (786 stories)
 | reservas | 10 | 10 | 0 |
 | staff-settings | 22 | 16 | 6 |
 | super-admin | 27 | 24 | 3 |
+
+> `players` decía `2 | 2 | 0` **antes de que existiera una sola story de `/jugadores`**. Ahora
+> dice lo mismo y es verdad. La diferencia no se ve en la tabla: se ve en que
+> `verify-story-coverage.mjs` sale en 0.
 
 ---
 

@@ -4,7 +4,7 @@ Storybook es el banco de pruebas de la UI: cada componente aislado, con sus esta
 deterministas, tests de interacción y un chequeo de accesibilidad que **rompe el build** si falla.
 
 - **Arquitectura y decisiones** (por qué cada pieza es como es): [`STORYBOOK_ARCHITECTURE.md`](./STORYBOOK_ARCHITECTURE.md)
-- **Inventario y cobertura** (los 266 archivos, con motivo de cada exclusión): [`STORYBOOK_COVERAGE.md`](./STORYBOOK_COVERAGE.md) · [`storybook-coverage.json`](./storybook-coverage.json)
+- **Inventario y cobertura** (los 300 archivos, con motivo de cada exclusión): [`STORYBOOK_COVERAGE.md`](./STORYBOOK_COVERAGE.md) · [`storybook-coverage.json`](./storybook-coverage.json)
 - **QA visual** (bugs encontrados y corregidos): [`STORYBOOK_QA_REPORT.md`](./STORYBOOK_QA_REPORT.md)
 
 ---
@@ -18,6 +18,11 @@ pnpm build-storybook    # build estático → storybook-static/ (gitignored)
 pnpm test:storybook     # TODAS las stories como tests en chromium headless:
                         #   render + play function + axe (a11y)
                         # Una violación de accesibilidad FALLA el comando.
+
+pnpm qa:coverage        # ¿la cobertura que declara el inventario EXISTE de verdad?
+                        # Para cada componente marcado como cubierto, busca una story
+                        # que lo IMPORTE (no que lo mencione en un comentario).
+                        # Sale != 0 si alguna cobertura declarada no existe.
 
 pnpm qa:storybook       # sweep visual con agent-browser: matriz story × viewport,
                         # screenshots, consola, excepciones, requests escapados,
@@ -76,6 +81,14 @@ export const Ausente: Story = {
    `decorators` del meta. **Una story sin su contenedor miente** sobre el layout *y* sobre el
    contraste: axe mide contra el fondo que le ponés, así que un fondo falso da un veredicto falso en
    las dos direcciones.
+
+   **Pero si la superficie real es un GRADIENTE, no lo copies: poné el composite como color sólido.**
+   axe no sabe medir contraste contra un gradiente — lo marca `incomplete`, no `violation`, y el gate
+   solo falla con violations. O sea que copiar el gradiente **le apaga el check de contraste a tu
+   story sin avisarte**. Pasó: la story de `SuccessRedirect` copió el gradiente de su card y pasó en
+   verde tapando un 3.91:1. Calculá el composite, usalo sólido, y dejá la cuenta en un comentario
+   (ver `src/app/(auth)/verify/SuccessRedirect.stories.tsx`). Si el gradiente recorre un rango, usá el
+   punto de **menor** contraste.
 3. **Las Server Actions entran por prop, nunca por import.** Un `import { x } from './actions'` de
    valor mete `drizzle`/`postgres`/`node:async_hooks` en el bundle de browser y la story explota.
    `import type` sí está permitido. Hay un `no-restricted-imports` que lo hace fallar en lint.

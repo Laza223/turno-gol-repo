@@ -105,7 +105,10 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
       <Link href={safeNext} className={ctaClass}>
         {copy.cta}
       </Link>
-      <p className="mt-4 text-xs text-slate-500">
+      {/* slate-400, no slate-500: sobre esta card (siempre oscura) slate-500 da 3.91:1,
+          abajo del 4.5 de AA. Es el mismo bug que tenía SuccessRedirect, tres líneas más
+          abajo — y el subtítulo de la línea 104 ya usaba el valor correcto. */}
+      <p className="mt-4 text-xs text-slate-400">
         ¿Abriste el enlace en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
       </p>
       <SuccessRedirect next={safeNext} />

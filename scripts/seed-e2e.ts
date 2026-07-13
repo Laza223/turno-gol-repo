@@ -5,6 +5,7 @@ config({ path: '.env.local' })
 import { createClient } from '@supabase/supabase-js'
 import postgres from 'postgres'
 import { E2E_TEST_PASSWORD } from '../tests/e2e/_helpers/test-credentials'
+import { deleteFreshAdminTenants } from '../tests/e2e/_helpers/fresh-tenant-cleanup'
 
 // This script builds fixtures across MULTIPLE tenants/players in one flat
 // pass (unlike the app itself, which always scopes a request to one
@@ -58,33 +59,11 @@ async function cleanup(sql: SqlClient): Promise<void> {
   // is gone, the payment row it pointed to can be deleted freely.
 
   // Cascade-delete any tenants the freshAdmin created during prior E2E runs.
-  // These have FKs into payments/bookings/courts/etc., so we need to clear
-  // their child tables first via the loop below. We collect IDs, then run
-  // the full reverse-FK cleanup for each.
-  const freshTenantsResult = await sql`
-    SELECT tenant_id FROM tenant_staff_members WHERE staff_user_id = ${E2E.freshStaffUserId}
-  `
-  for (const row of freshTenantsResult as unknown as Array<{ tenant_id: string }>) {
-    const tid = row.tenant_id
-    await sql`DELETE FROM audit_logs WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM notifications WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM cash_flows WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tid}`
-    // payments.booking_id -> bookings.id is the reverse leg of bookings'
-    // circular FK with payments (004_isolated_tables.sql:317+350-353) — null
-    // it out first or deleting bookings violates payments_booking_id_fkey.
-    await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM bookings WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM payments WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM abonados WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM products WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM courts WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${tid}`
-    await sql`DELETE FROM tenants WHERE id = ${tid}`
-  }
+  // El barrido vive en tests/e2e/_helpers/fresh-tenant-cleanup.ts porque los specs que
+  // completan el wizard del fresh admin también tienen que correrlo en su afterAll: el
+  // seed corre UNA sola vez (global setup) y no protege de la contaminación que ocurre
+  // durante la corrida.
+  await deleteFreshAdminTenants(sql, E2E.freshStaffUserId)
   await sql`DELETE FROM audit_logs WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.tenantId}`

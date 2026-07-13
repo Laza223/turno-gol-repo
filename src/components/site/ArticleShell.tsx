@@ -32,7 +32,10 @@ export function ArticleShell({ children, title, description, date, addFaqSchema:
       <header className="mb-10 text-center">
         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">{title}</h1>
         <p className="mt-4 text-xl text-gray-500">{description}</p>
-        {date && <p className="mt-2 text-sm text-gray-400">{date}</p>}
+        {/* gray-400 sobre el bg-gray-50 de las páginas de artículo daba 2.42:1 — menos de
+            la mitad del 4.5 de AA. gray-500 (el mismo que usa la descripción de arriba,
+            que sí pasa) da 4.84:1. */}
+        {date && <p className="mt-2 text-sm text-gray-500">{date}</p>}
       </header>
       <div className="prose prose-lg prose-blue mx-auto">
         {children}

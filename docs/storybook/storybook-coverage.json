@@ -706,8 +706,8 @@
       "rendering": "server",
       "role": "page",
       "isolationDifficulty": "hard",
-      "classification": "PRESENTATIONAL_EXTRACTION_REQUIRED",
-      "exclusionReason": "Mezcla auth (requireOperatorStaff) + 3 queries en paralelo (getPlayerStats/getPlayerBookingHistory/checkPlayerBanned) con una vista de perfil completa e inline: header de contacto, grid de 4 stat cards, aviso de softban (tenant_player_bans) y lista de historial de reservas con labels de status — vale la pena extraer como PlayerProfileView tipada.",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
       "relevantStates": [
         "ban.banned=true (con/sin fecha de fin)",
         "ban.banned=false",
@@ -715,13 +715,13 @@
         "booking status: pending_payment/confirmed/completed/no_show/canceled_refunded/canceled_no_refund/expired",
         "type: spontaneous/fixed/block"
       ],
-      "proposedStoryTitle": "Admin/Jugadores/PlayerProfileView (a extraer)",
+      "proposedStoryTitle": "Admin/Jugadores/JugadorProfileView",
       "usesNetwork": false,
       "usesSession": true,
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": ""
+      "isolationNotes": "Extraída a JugadorProfileView.tsx (4 stories). La page quedó como shell: auth + 3 queries + checkPlayerBanned."
     },
     {
       "path": "src/app/(admin)/jugadores/page.tsx",
@@ -730,21 +730,21 @@
       "rendering": "server",
       "role": "page",
       "isolationDifficulty": "hard",
-      "classification": "PRESENTATIONAL_EXTRACTION_REQUIRED",
-      "exclusionReason": "Mezcla auth (requireOperatorStaff) + fetch (listTenantPlayers) con una vista de lista completa inline (buscador GET + tabla/cards con badge de ausencias) — vale la pena extraer como PlayersListView tipada.",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
       "relevantStates": [
         "q vacío",
         "q con texto sin resultados",
         "players con resultados",
         "noshowCount=0 vs >0"
       ],
-      "proposedStoryTitle": "Admin/Jugadores/PlayersListView (a extraer)",
+      "proposedStoryTitle": "Admin/Jugadores/JugadoresView",
       "usesNetwork": false,
       "usesSession": true,
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": ""
+      "isolationNotes": "Extraída a JugadoresView.tsx (5 stories). La page quedó como shell: requireOperatorStaff + listTenantPlayers."
     },
     {
       "path": "src/app/(admin)/layout.tsx",
@@ -801,16 +801,16 @@
       "rendering": "client",
       "role": "presentational",
       "isolationDifficulty": "trivial",
-      "classification": "COVERED_BY_PARENT_STORY",
-      "exclusionReason": "Envoltorio trivial de React.lazy+Suspense sobre MetricsDashboard; su único contenido visual propio es el esqueleto de carga (DashboardSkeleton, divs animate-pulse sin estados propios), ya cubierto por la story de MetricsDashboard con datos reales.",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
       "relevantStates": [],
-      "proposedStoryTitle": "",
+      "proposedStoryTitle": "Admin/Metricas/MetricsDashboardLoader",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "React.lazy(() => import('./MetricsDashboard')) dentro de Suspense — el lazy import puede complicar el bundling de Storybook aunque funcione."
+      "isolationNotes": "Story propia: verifica que el chunk lazy resuelva y el dashboard monte. El DashboardSkeleton (fallback del Suspense) NO queda cubierto: solo se ve mientras baja el chunk de JS y en el runner esa ventana es de cero frames. Exportarlo solo para storyearlo sería cambiar código productivo para que exista una story."
     },
     {
       "path": "src/app/(admin)/metricas/page.tsx",
@@ -1864,16 +1864,16 @@
       "rendering": "client",
       "role": "presentational",
       "isolationDifficulty": "easy",
-      "classification": "COVERED_BY_PARENT_STORY",
-      "exclusionReason": "Solo un párrafo con cuenta regresiva (aria-live) que dispara window.location.assign(next) por setTimeout; no tiene variantes visuales propias más allá del número — se cubre dentro de la story del estado 'success' de VerifyPage.",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
       "relevantStates": [],
-      "proposedStoryTitle": "",
+      "proposedStoryTitle": "Auth/SuccessRedirect",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "setInterval/setTimeout + window.location.assign(next) como side-effect real — si se incluye en la story del padre hay que interceptar/stubear la navegación."
+      "isolationNotes": "Story propia (2): estado inicial y decremento del contador. No se espera a que la cuenta llegue a 0: a los 5s dispara window.location.assign, que en el runner navegaría el iframe y se llevaría puesta la corrida. Location es [LegacyUnforgeable]: no hay stub posible."
     },
     {
       "path": "src/app/(business)/alternativas-alquila-tu-cancha/page.tsx",
@@ -4741,8 +4741,8 @@
       "rendering": "client",
       "role": "presentational",
       "isolationDifficulty": "hard",
-      "classification": "PRESENTATIONAL_EXTRACTION_REQUIRED",
-      "exclusionReason": "El componente mezcla orquestación de browser APIs reales (navigator.serviceWorker.register/getRegistration, PushManager.subscribe, Notification.requestPermission, BroadcastChannel de dedupe multi-tab, fetch a /api/admin/push/vapid y /api/admin/push/subscribe, localStorage, <audio> real) con una vista mínima (card fija 'Habilitar notificaciones' con botón pending/idle). Vale la pena extraer esa card como vista pura recibiendo status+onEnable, porque hoy la única forma de ver los 2 estados visuales (oculto vs card visible con botón) es mockear TODA la cadena de Push API + fetch + BroadcastChannel dentro del propio componente.",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
       "relevantStates": [
         "status=idle/unsupported/denied/subscribed (oculto, solo <audio>)",
         "status=unsubscribed (card visible, botón habilitado)",
@@ -4754,7 +4754,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "navigator.serviceWorker / PushManager / Notification (browser Push API real, sin mock nativo en Storybook), BroadcastChannel('notif-dedupe'), fetchWithTimeout/withTimeout a /api/admin/push/vapid y /api/admin/push/subscribe, localStorage, <audio src='/sounds/notification.mp3'>, toast de @/hooks/use-toast."
+      "isolationNotes": "Story propia (4 estados: sin suscribir / pendiente / suscripto / permiso denegado). Las APIs de push del browser se stubean en beforeEach."
     },
     {
       "path": "src/components/admin/StatCard.tsx",

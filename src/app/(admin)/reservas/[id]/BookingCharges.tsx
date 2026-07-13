@@ -111,7 +111,10 @@ export default function BookingCharges({
             <dt className="text-muted-foreground">
               Seña{' '}
               {depositCounted > 0 ? (
-                <span className="text-emerald-600 dark:text-emerald-400">✓ pagada</span>
+                // emerald-600 daba 3.76:1 sobre la card blanca. El idiom del repo para
+                // esta clase de texto es -800 en light (ver status-visual.tsx): 7.68:1.
+                // El valor de dark (-400) sí pasa sobre superficie oscura y no se toca.
+                <span className="text-emerald-800 dark:text-emerald-400">✓ pagada</span>
               ) : (
                 <span className="text-muted-foreground">
                   ({DEPOSIT_STATUS_LABELS[depositStatus] ?? depositStatus})
@@ -137,7 +140,9 @@ export default function BookingCharges({
         <div className="flex items-center justify-between">
           <dt className="font-medium text-foreground">Saldo pendiente</dt>
           <dd
-            className={`font-semibold ${isPaidInFull ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+            // -600 no llegaba a AA sobre la card blanca (emerald 3.76:1, amber 3.18:1).
+            // -800 es el idiom del repo para light (status-visual.tsx): 7.68:1 y 6.36:1.
+            className={`font-semibold ${isPaidInFull ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'}`}
           >
             {isPaidInFull ? 'Pagado completo' : formatArs(pendingAmount)}
           </dd>
@@ -187,7 +192,9 @@ export default function BookingCharges({
             </div>
           </div>
           {error && (
-            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+            // red-600 sobre el panel `bg-muted/40` (#ebeff5) daba 4.18:1. red-700 es el
+            // idiom de light del repo (status-visual.tsx) y pasa AA.
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
             </p>
           )}

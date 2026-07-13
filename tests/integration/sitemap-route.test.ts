@@ -40,8 +40,11 @@ describe('GET /sitemap.xml (Next.js sitemap.ts)', () => {
     const urls = entries.map((e) => e.url)
     expect(urls.some((u) => u.endsWith('/'))).toBe(true)
     expect(urls.some((u) => u.endsWith('/explorar'))).toBe(true)
-    expect(urls.some((u) => u.endsWith('/privacy'))).toBe(true)
-    expect(urls.some((u) => u.endsWith('/terms'))).toBe(true)
+    // Las rutas legales son ESPAÑOL: src/app/(public)/{privacidad,terminos}. El
+    // sitemap anunciaba /privacy y /terms — dos 404 servidos a Google — hasta que
+    // 5eb5eca lo corrigió. El test se quedó aserteando el bug.
+    expect(urls.some((u) => u.endsWith('/privacidad'))).toBe(true)
+    expect(urls.some((u) => u.endsWith('/terminos'))).toBe(true)
   })
 
   it('emits absolute URLs', async () => {

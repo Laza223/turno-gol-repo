@@ -32,7 +32,19 @@ import { expirePendingBooking } from '@/modules/bookings/booking.service'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
 import { settleRefund } from '@/modules/payments/payment.service'
 
-const FUTURE_DATE = '2027-09-01'
+/**
+ * Turno SIEMPRE a 30 días vista, calculado en cada corrida.
+ *
+ * Antes era la constante `'2027-09-01'`. Una fecha fija en el futuro no es una
+ * fecha estable: la distancia hasta ella se acorta un día por día, así que
+ * cualquier assertion que dependa de esa distancia es una bomba de tiempo con la
+ * mecha prendida. Esta explotó el 2026-07-11 (ver `setInPolicy`).
+ */
+const FUTURE_DATE = (() => {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() + 30)
+  return d.toISOString().slice(0, 10)
+})()
 
 // El valor de la prueba depende de que las 3 transacciones corran en
 // conexiones SEPARADAS y choquen en el FOR UPDATE a nivel DB. Con un pool
@@ -121,18 +133,29 @@ async function insertApprovedPaymentAndLink(opts: {
 
 async function setInPolicy(tenantId: string): Promise<void> {
   const sql = getSql()
-  // 9999 hours before → the 2027 booking is always inside the refund window.
+  // `hours_before` es la DISTANCIA DEL DEADLINE, no el largo de la ventana: hay que
+  // cancelar con MÁS de `hours_before` de anticipación para que haya reembolso. O sea
+  // que un número más grande es una política más DURA (deadline más temprano), no más
+  // generosa — que es exactamente para lo que `setOutOfPolicy` usa 20000.
+  //
+  // Acá decía 9999 con el comentario "always inside the refund window". Al revés:
+  // 9999h = 416 días, y el turno de 2027-09-01 dejó de estar a esa distancia el
+  // 2026-07-11 — desde ese día el test empezó a fallar solo, sin que nadie tocara
+  // nada. Andaba por accidente mientras el calendario lo dejaba.
+  //
+  // 1 hora: cancelar a 30 días vista está holgadamente adentro. No depende de la fecha.
   await sql`
     UPDATE tenants
-    SET settings = settings || ${sql.json({ cancellation_policy: { hours_before: 9999, penalty_type: 'deposit', penalty_amount: null } })}
+    SET settings = settings || ${sql.json({ cancellation_policy: { hours_before: 1, penalty_type: 'deposit', penalty_amount: null } })}
     WHERE id = ${tenantId}
   `
 }
 
 async function setOutOfPolicy(tenantId: string): Promise<void> {
   const sql = getSql()
-  // 20000 hours before (~833 días) → el deadline ya pasó para el booking 2027,
-  // así el jugador queda SIEMPRE fuera de la ventana de reembolso.
+  // 20000 hours before (~833 días) exige cancelar con 833 días de anticipación: el
+  // turno está a 30, así que el deadline ya pasó y el jugador queda SIEMPRE fuera de
+  // la ventana de reembolso. Este sí tenía la dirección bien (ver `setInPolicy`).
   await sql`
     UPDATE tenants
     SET settings = settings || ${sql.json({ cancellation_policy: { hours_before: 20000, penalty_type: 'deposit', penalty_amount: null } })}

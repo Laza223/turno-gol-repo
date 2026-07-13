@@ -134,7 +134,7 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.2.10",
     "globals": "^17.7.0",
-    "happy-dom": "^14",
+    "happy-dom": "^20.10.6",
     "playwright": "1.59.1",
     "postcss": "^8",
     "prettier": "^3.2",

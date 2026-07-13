@@ -25,7 +25,7 @@
 | Respondió → Charla de dolor | 50% | 15 |
 | Charla → Demo hecha | 50% | 7-8 |
 | Demo → Piloto | 50% (la oferta [04] está diseñada para esto) | 4 |
-| Piloto → Activado | 60-70% (con kit y setup done-for-you) | 3 |
+| Piloto → Activado | 60-70% (con kit y te lo hacemos nosotros) | 3 |
 | Activado → Pago | 60-70% | 2 |
 
 **Lectura honesta: ~2 pagos por cada 100 contactos fríos.** Para 100 clientes eso serían ~5.000 contactos — inviable solo a pulso. La máquina se salva con: (a) visitas presenciales, que convierten varias veces más que el DM frío — ⚠️ HIPÓTESIS, medir por canal; (b) referidos, que se saltan las etapas 0-3; (c) densidad local (el complejo de la vuelta "ya lo usa el de tal lado"). **Por eso: cada pago DEBE producir un pedido de referido y un caso de éxito.**
@@ -51,7 +51,7 @@ Reglas:
 - **20 contactos nuevos por semana** (4/día ma-vi). Menos que eso, el funnel se seca en 3 semanas.
 - **Follow-up automático de agenda**: +2 días, +5 días, +12 días, luego break-up ([06 §6](./06-scripts.md)). El 80% de las respuestas llegan en los follow-ups, no en el primer mensaje. ⚠️ HIPÓTESIS.
 - **Demos: presencial en el complejo siempre que se pueda.** Mejor horario de visita/llamada: 14:00-17:00 (complejo tranquilo, dueño presente antes del pico nocturno). ⚠️ HIPÓTESIS — validar y anotar el horario real de respuesta de la zona.
-- **Demo con SUS datos**: antes de cada demo, cargar un tenant con las canchas/precios reales del complejo (sacados de su IG o de la charla). Ver el propio complejo funcionando vende más que cualquier slide. Costo: 20 min. Hacerlo SIEMPRE que la demo esté confirmada.
+- **Demo con SUS datos**: antes de cada demo, cargar una cuenta de prueba con las canchas/precios reales del complejo (sacados de su IG o de la charla). Ver el propio complejo funcionando vende más que cualquier slide. Costo: 20 min. Hacerlo SIEMPRE que la demo esté confirmada.
 
 ## El truco de la grilla viva (para pilotos)
 

@@ -11,8 +11,8 @@ const MAX_TURNO_ARS = 500000
 const MAX_CLAVOS = 10
 
 /**
- * "La cuenta del clavo": el visitante pone SUS números (precio del turno y
- * no-shows por semana) y ve su pérdida mensual contra el precio del plan.
+ * "La cuenta del ausente": el visitante pone SUS números (precio del turno y
+ * ausentes por semana) y ve su pérdida mensual contra el precio del plan.
  * La matemática es del cliente — cero claims inventados.
  */
 export default function CalculadoraClavo() {
@@ -88,14 +88,14 @@ export default function CalculadoraClavo() {
 
           <div>
             <span id="clavos-label" className="font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
-              ¿Cuántos te clavan por semana?
+              ¿Cuántos te cuelgan por semana?
             </span>
             <div className="mt-3 inline-flex items-center gap-4 rounded-full border border-white/10 bg-white/4 p-1.5">
               <button
                 type="button"
                 onClick={() => setClavos((c) => Math.max(0, c - 1))}
                 disabled={clavos === 0}
-                aria-label="Un clavo menos por semana"
+                aria-label="Un ausente menos por semana"
                 className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 <Minus className="h-4 w-4" aria-hidden />
@@ -110,7 +110,7 @@ export default function CalculadoraClavo() {
                 type="button"
                 onClick={() => setClavos((c) => Math.min(MAX_CLAVOS, c + 1))}
                 disabled={clavos === MAX_CLAVOS}
-                aria-label="Un clavo más por semana"
+                aria-label="Un ausente más por semana"
                 className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 <Plus className="h-4 w-4" aria-hidden />
@@ -123,7 +123,7 @@ export default function CalculadoraClavo() {
         <output aria-live="polite" className="block border-t border-white/10 pt-8 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
           {clavos === 0 ? (
             <p className="text-lg leading-relaxed text-slate-300">
-              ¿Cero clavos? Enhorabuena — sos la excepción.{' '}
+              ¿Cero ausentes? Enhorabuena — sos la excepción.{' '}
               <span className="text-slate-400">
                 TurnoGol igual te ordena la grilla, la caja y el teléfono, desde{' '}
                 <span className="font-semibold text-white">{formatArs(desdeCents)}/mes</span>.
@@ -143,13 +143,13 @@ export default function CalculadoraClavo() {
               <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
                 TurnoGol sale desde <span className="font-semibold text-white">{formatArs(desdeCents)}/mes</span>
                 {perdidaCents > desdeCents ? (
-                  <> — menos que lo que te llevan los clavos.</>
+                  <> — menos que lo que te llevan los turnos colgados.</>
                 ) : (
                   <>.</>
                 )}
               </p>
               <p className="mt-3 text-[15px] leading-relaxed text-slate-300">
-                Con la seña, el clavo lo paga el que no vino.{' '}
+                Con la seña, el turno colgado lo paga el que no vino.{' '}
                 <span className="font-semibold text-[#6ee7b7]">No vos.</span>
               </p>
             </>

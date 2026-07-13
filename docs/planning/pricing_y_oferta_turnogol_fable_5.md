@@ -31,15 +31,15 @@
 
 ## 1. Cómo tiene que percibirse el precio
 
-El dueño no compra software. Compra dejar de perder plata con clavos y dejar de estar esclavizado al teléfono. No piensa en "sistemas" ni en "suscripciones": piensa en **cuánto me sale por mes y qué me ahorra**.
+El dueño no compra software. Compra dejar de perder plata con turnos colgados y dejar de estar esclavizado al teléfono. No piensa en "sistemas" ni en "suscripciones": piensa en **cuánto me sale por mes y qué me ahorra**.
 
-- **Su unidad mental es el turno.** El precio tiene que caber en una frase: *"sale más o menos lo que te deja un turno, por mes"*. Todo argumento de precio que no se pueda hacer con el precio de SU turno, sobra. ⚠️ Verificá la hora de cancha 5 en tu zona: si la hora vale bastante menos que el plan, el ancla pasa a ser el clavo, no el turno.
+- **Su unidad mental es el turno.** El precio tiene que caber en una frase: *"sale más o menos lo que te deja un turno, por mes"*. Todo argumento de precio que no se pueda hacer con el precio de SU turno, sobra. ⚠️ Verificá la hora de cancha 5 en tu zona: si la hora vale bastante menos que el plan, el ancla pasa a ser el turno colgado, no el turno.
 - **Categoría mental correcta:** gasto fijo chico de operación — como el contador, el cable o el pibe que le maneja las redes. No "inversión en tecnología": la palabra inversión asusta; un gasto chico, fijo y conocido, no.
 - **Serio, no regalado.** Gratis eterno = juguete que nadie carga. Un precio real genera uso real y feedback real. Todo descuento tiene **motivo y fecha** (fundador, 6 meses); "porque sí" no existe.
 - **Sin sorpresas.** Número redondo, fijo, sin comisión por reserva, sin letra chica. Un IVA no avisado o un ajuste sorpresa destruyen más confianza que un precio 30% más alto dicho de frente.
 - **Transparente.** El precio se dice por WhatsApp sin vueltas. En este mercado, esconder el precio ("agendemos una llamada y te cuento") = olor a chamuyo. La transparencia ES parte de la oferta.
 
-**Percepción objetivo, en palabras del dueño:** *"Un turno por mes. Si me salva un clavo, ya está pagado. Y si no me sirve, lo corto y listo."*
+**Percepción objetivo, en palabras del dueño:** *"Un turno por mes. Si me salva un turno colgado, ya está pagado. Y si no me sirve, lo corto y listo."*
 
 ## 2. Oferta piloto recomendada
 
@@ -92,7 +92,7 @@ Un matiz de lenguaje: los tramos se venden como **"hasta 3 / hasta 6 / más de 6
 - Grilla de turnos en el celu, en tiempo real (lo que carga el encargado lo ves al instante)
 - Página propia del complejo para que reserven solos las 24hs (link para la bio de IG y el estado de WhatsApp)
 - Seña por MercadoPago que va **directo a tu cuenta de MP** — TurnoGol no toca la plata
-- Clavos con castigo: el no-show pierde la seña y le queda deuda — no puede volver a reservar online en tu complejo hasta pagarte
+- Ausentes con castigo: el ausente pierde la seña y le queda deuda — no puede volver a reservar online en tu complejo hasta pagarte
 - Fijos/abonados: se repiten solos, quién pagó, quién debe, saldo a favor
 - Caja completa: ventas de cantina con stock, gastos, cierre del día
 - Ficha de cada jugador: historial, deudas, cobros
@@ -145,9 +145,9 @@ Las diferencias reales entre planes (doc4 §8: historial 6/12/∞ meses, export 
 
 ```
 Con tus [N] canchas entrás en el plan de $38.000 por mes [+ IVA]. Fijo —
-te claven o no, sin comisión por reserva. El primer mes es gratis y el
+te cuelguen o no, sin comisión por reserva. El primer mes es gratis y el
 alta la hago yo con la foto de tu cuaderno. Vos me dijiste que la hora
-la tenés a $[X]: con que el sistema te salve UN clavo al mes, ya se
+la tenés a $[X]: con que el sistema te salve UN turno colgado al mes, ya se
 pagó solo. ¿Lo dejamos andando esta semana?
 ```
 
@@ -163,18 +163,18 @@ voy a mentir con que esto dura para siempre.
 
 ## 10. Cómo defender el precio en la llamada
 
-**No defiendas el número: defendé la cuenta.** Y la cuenta se arma ANTES de decir el precio, con la charla de dolor de `gtm/06 §4` (su precio de hora, sus clavos del mes — dichos por él).
+**No defiendas el número: defendé la cuenta.** Y la cuenta se arma ANTES de decir el precio, con la charla de dolor de `gtm/06 §4` (su precio de hora, sus turnos colgados del mes — dichos por él).
 
 Secuencia:
 
 1. Su hora: "¿a cuánto la tenés?" → $[X], dicho por él.
-2. Sus clavos: "¿cuántos este mes?" → [N], dicho por él.
-3. La cuenta: *"Un clavo por semana a $[X] son $[4X] al mes. El sistema sale $38.000. ¿La ves?"*
+2. Sus turnos colgados: "¿cuántos este mes?" → [N], dicho por él.
+3. La cuenta: *"Un turno colgado por semana a $[X] son $[4X] al mes. El sistema sale $38.000. ¿La ves?"*
 4. **Silencio.** El que habla primero después del precio, cede. No rellenes con "sé que es plata" ni "es baratito" — no es caro ni barato: es la cuenta.
 
 **Anclas listas, en orden de fuerza:**
 
-1. **Su clavo:** "un clavo al mes lo paga" — la mejor, porque usa números de él.
+1. **Su turno colgado:** "un turno colgado al mes lo paga" — la mejor, porque usa números de él.
 2. **Su turno:** "sale un turno por mes".
 3. **Por día:** "$1.270 por día — menos que una gaseosa de tu cantina".
 4. **ATC:** "menos que ATC y hecho solo para fútbol" — ⚠️ solo tras verificar el precio vigente. Mejor todavía si viene de ATC: preguntale cuánto paga y que el ancla la ponga él.
@@ -188,7 +188,7 @@ Secuencia:
 Las 15 completas están en `gtm/07`. Acá las 6 de plata, afinadas:
 
 1. **"Está caro"** → la cuenta del clavo con sus números (gtm/07 #4). Si insiste sin números: *"¿Comparado con qué?"* — que nombre contra qué compara: ahí aparece la objeción real (el cuaderno gratis, ATC, o que no le duele nada).
-2. **"El cuaderno me sale gratis"** → *"Gratis hasta el primer clavo. Vos me dijiste [N] este mes: eso son $[X] que no viste. El cuaderno es el sistema más caro que tenés."*
+2. **"El cuaderno me sale gratis"** → *"Gratis hasta el primer turno colgado. Vos me dijiste [N] este mes: eso son $[X] que no viste. El cuaderno es el sistema más caro que tenés."*
 3. **"Hacémelo más barato / ¿no hay descuento?"** → *"El fundador YA es el descuento: $38.000 en vez de $51.000, congelado 6 meses. Más abajo no bajo, porque a los otros [N] complejos les cobré esto mismo y no le miento a nadie."* El precio parejo es tu defensa: usala.
 4. **"Cobrame por reserva, si me va bien te va bien"** → *"Te entiendo, pero te sale peor: un finde bueno de 40 reservas me tendrías que pagar más que el plan entero. Fijo es más barato para vos, y no tengo que andar revisándote las reservas. El mes gratis está justo para que hagas la cuenta con números reales."*
 5. **"¿Y cuando se te ocurra aumentar?"** → *"Como todo acá: ajusta con la inflación. La diferencia es que te aviso 30 días antes y tu precio fundador está congelado 6 meses por escrito. No hay sorpresa: hay calendario."*

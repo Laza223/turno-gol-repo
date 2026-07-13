@@ -590,3 +590,17 @@ Hallazgo derivado del fix de `GhostTopSlots` (/metricas, sesión UX paralela): `
 - Nota infra: la suite storybook no corre en este worktree anidado sin el plugin `resolveAddonVitestSetupFiles` (bug resolver Vitest, ya documentado); se corrió con config temporal portada del worktree ux-usability, borrada después. El fix de config pertenece a esa rama — no se duplicó acá.
 
 Nada commiteado.
+
+## 2026-07-13 — Auditoría psicológica de /para-complejos (skill marketing-psychology, solo report)
+
+**Contexto:** encargo /marketing-psychology → landing B2B, alcance "solo auditoría" elegido por el dueño. Report nuevo: `docs/audit/AUDIT_PSICOLOGIA_PARA_COMPLEJOS.md`. Capa siguiente al sweep 5eb5eca (2026-07-12): aquel mató la lista negra literal; este audita claims residuales + efectividad psicológica del copy vigente.
+
+**Hallazgos:** 1 🔴 (H-05: "Herramientas que nacieron de la operación diaria de complejos como el tuyo", `page.tsx:346` — claim de origen falso con cero clientes; viola regla dura #2 del playbook y piso legal MASTER §9) · 6 🟡 (H-02 H1 aspiracional vs loss aversion REQUIERE INPUT; H-03 "Soporte dedicado" sin canal comprometido; H-04 softban ausente en toda la landing — diferenciador #1 sin vender; H-06 corporate-speak en Features; H-12 mock grilla 15 min = triage #92 con peso subido; H-13/H-14 REQUIERE INPUT) · 5 🟢 (pulido). + 3 gaps estructurales REQUIERE INPUT (contraste vs status quo, objeción seña, pratfall del pionero) + sección "lo que ya está bien" (subhead hero, StatsBar mecánico, risk reversal del cierre — no romper).
+
+**Claims verificados contra código antes de afirmar:** trial 30 días (`tenant.service.ts:55` ✅), TTL hold 6 min = "en minutos" (`booking.expiry.ts:81` ✅), quiet hours 8AM (`push-quiet-hours.ts:17` ✅), sin application_fee = "100% de la seña" (grep `mercadopago.ts` ✅), "20 minutos" permitido por decisión (gtm 03:51).
+
+**Cross-refs:** MASTER §13 P2.7 desactualizado (5eb5eca ya eliminó los stats que lista — cerrarlo o reescribirlo, REQUIERE INPUT); triage #92/#134 referenciados, no duplicados. Contratos de test para el fix futuro documentados en el report (story fija H1 + "Reservas online 24/7" + CTAs→/register).
+
+**Delegaciones:** 2 Explore (Sonnet, exploración landing + docs marketing/gtm) en fase de planning.
+
+Sin código tocado. Nada commiteado (report + esta entrada solamente).

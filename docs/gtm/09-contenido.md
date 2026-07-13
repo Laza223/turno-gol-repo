@@ -14,8 +14,8 @@
 | # | Pieza | Formato | Se usa en |
 |---|---|---|---|
 | 1 | **"Así reserva un cliente y deja la seña"** — screen record real: link → elegir cancha/hora → pago MP → push sonando en el celu del admin. Sin música épica, con dedo en pantalla. 60s máx | Video vertical (WA/IG/story) | Follow-up +2d ([06 §6](./06-scripts.md)), respuesta a "mandame info", bio |
-| 2 | **"Te clavaron. ¿Y ahora?"** — screen record: marcar no-show en la grilla → seña queda cobrada → si reincide, bloqueo automático de 14 días para reservar online. 45s | Video vertical | Follow-up, objeción #1 y #3 |
-| 3 | **La calculadora del clavo** — imagen simple: "¿A cuánto está tu turno? $20.000 → 1 clavo/semana = $80.000/mes que no viste". 3 variantes de precio de turno | Imagen (story + post fijado) | Follow-up +5d; abre charlas en frío |
+| 2 | **"Te colgaron el turno. ¿Y ahora?"** — screen record: marcar ausencia en la grilla → seña queda cobrada → si reincide, bloqueo automático de 14 días para reservar online. 45s | Video vertical | Follow-up, objeción #1 y #3 |
+| 3 | **La calculadora del ausente** — imagen simple: "¿A cuánto está tu turno? $20.000 → 1 turno colgado/semana = $80.000/mes que no viste". 3 variantes de precio de turno | Imagen (story + post fijado) | Follow-up +5d; abre charlas en frío |
 | 4 | **"La caja del día en 30 segundos"** — screen record: cierre diario, turnos + cantina + gastos | Video vertical | Demo paso 5 para dueños de dolor-caja; follow-up segmentado |
 | 5 | **Caso real** (recién cuando exista, con permiso y números REALES del cliente): "Complejo [X], [zona]: [N] reservas online y $[Y] en señas en su primer mes" + foto del dueño en el complejo | Post + imagen reenviable | Re-contacto 30d, objeción #11, mensaje con referido |
 | 6 | **Kit del complejo** (esto activa pilotos): QR imprimible "Reservá tu cancha acá" + 3 textos listos para SU Instagram/estado ("Reservá online 24hs, señás por MercadoPago y listo: [link]") + respuesta guardada para SU WhatsApp | PDF/imágenes + textos | Setup de cada piloto ([04](./04-oferta-piloto.md)) |

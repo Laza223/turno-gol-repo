@@ -4,8 +4,8 @@
 TurnoGol es un sistema de reservas y gestión diseñado específicamente para complejos de canchas de fútbol 5, 7 y 11 en Argentina.
 
 ## Propuesta de Valor (Para Dueños de Complejos)
-- **Eliminación de "clavos" (no-shows):** Permite cobrar señas mediante MercadoPago directo a la cuenta del dueño.
-- **Bloqueo de infractores (Softban):** Si un jugador reserva y no asiste (y reincide), el sistema le bloquea las reservas online por 14 días automáticamente.
+- **Eliminación de turnos colgados y ausentes:** Permite cobrar señas mediante MercadoPago directo a la cuenta del dueño.
+- **Bloqueo automático de infractores:** Si un jugador reserva y no asiste (y reincide), el sistema le bloquea las reservas online por 14 días automáticamente.
 - **Gestión automatizada:** El jugador reserva desde un link público (sin instalar apps). Al dueño le llega una notificación y el turno aparece en la grilla.
 - **Cierre de caja:** Unifica los pagos de turnos, consumos de cantina y gastos diarios.
 

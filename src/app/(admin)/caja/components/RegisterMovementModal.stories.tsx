@@ -1,8 +1,37 @@
+import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { artDateString } from '@/test/fixtures'
-import { RegisterMovementModal } from './RegisterMovementModal'
+import { RegisterMovementModal, type CreateCashFlowAction } from './RegisterMovementModal'
 import type { CashFlowActionResult } from '../actions'
+
+// RegisterMovementModal es controlado (open/onClose por props, dueño real =
+// CajaActions). "GuardarOk" necesita que el modal CIERRE de verdad al confirmar
+// — si no, el overlay (bg-black/50) del Dialog sigue tapando la pantalla y el
+// toast de éxito queda leyéndose sobre ese fondo oscurecido en vez del fondo
+// real de la app (mismo bug de contenedor falso que la regla 2 previene).
+function ControlledModal({
+  open: openProp,
+  onClose,
+  ...rest
+}: {
+  open: boolean
+  onClose: () => void
+  date: string
+  createCashFlowAction: CreateCashFlowAction
+}) {
+  const [open, setOpen] = useState(openProp)
+  return (
+    <RegisterMovementModal
+      {...rest}
+      open={open}
+      onClose={() => {
+        setOpen(false)
+        onClose()
+      }}
+    />
+  )
+}
 
 /**
  * Radix Dialog porta a `document.body` con su propia superficie
@@ -67,6 +96,9 @@ export const TipoGasto: Story = {
 export const TipoAjuste: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
+    // El modal arranca abierto (args.open=true desde el mount): la animación
+    // de entrada de Radix (fade-in ~200ms) puede seguir en curso.
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Ingreso' })).toBeVisible())
     await userEvent.click(canvas.getByRole('button', { name: 'Ajuste' }))
     // "Otro" existe también como método de pago: scopeado a la categoría por su legend.
     const categoryGroup = within(canvas.getByRole('group', { name: 'Categoría' }))
@@ -87,8 +119,10 @@ export const ErrorDeValidacion: Story = {
 
 /** Completar y guardar: llama la action con los datos del form y cierra el modal. */
 export const GuardarOk: Story = {
+  render: (args) => <ControlledModal {...args} />,
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
+    const dialogEl = canvas.getByRole('dialog')
     await userEvent.type(canvas.getByLabelText('Monto (pesos)'), '4500')
     await userEvent.type(canvas.getByLabelText('Descripción'), 'Seña turno 20:00')
     await userEvent.click(canvas.getByRole('button', { name: 'Guardar' }))
@@ -97,6 +131,11 @@ export const GuardarOk: Story = {
       expect.objectContaining({ type: 'income', category: 'booking', amount: 450000 }),
     )
     await expect(args.onClose).toHaveBeenCalled()
+    // El modal cierra de verdad (ControlledModal): esperamos a que el overlay
+    // se remueva antes de leer el toast, si no queda leyéndose sobre el fondo
+    // oscurecido del Dialog en vez del fondo real de la página.
+    await waitForElementToBeRemoved(dialogEl)
+    await waitFor(() => expect(canvas.getByText('Movimiento registrado')).toBeVisible())
   },
 }
 

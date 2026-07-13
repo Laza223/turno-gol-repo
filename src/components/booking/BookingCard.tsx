@@ -265,7 +265,7 @@ function BookingCardComponent({
               'flex h-full w-full cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
               visual.cell,
               visual.borderL,
-              isPast && 'opacity-60 saturate-50',
+              isPast && 'opacity-90 saturate-50',
               isNew && 'animate-slot-pulse',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
             )}

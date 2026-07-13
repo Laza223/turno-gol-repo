@@ -45,7 +45,12 @@ export default function ShareButton({ url, message, label = 'Compartir', classNa
   const waHref = `https://wa.me/?text=${waText}`
 
   return (
-    <DropdownMenu>
+    // modal={false}: es un menú de acciones liviano (copiar enlace / WhatsApp),
+    // no un diálogo que deba bloquear el resto de la página. Con el default
+    // (modal=true) Radix llama hideOthers() y marca aria-hidden todo el árbol
+    // fuera del portal —incluido el propio trigger, que sigue siendo
+    // focuseable— violando aria-hidden-focus (axe).
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

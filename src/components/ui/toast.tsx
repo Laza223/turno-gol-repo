@@ -36,8 +36,14 @@ const toastVariants = cva(
         // `text-destructive` crudo (red-600) mide 4.83:1 sobre blanco — pasa
         // por poco, pero el toast flota sobre `bg-background` (el canvas real
         // de la app, no una card blanca) y ahí cae a 3.34:1. Mismo patrón que
-        // success: se ajusta solo el foreground light.
-        destructive: 'border-destructive/30 bg-destructive/10 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
+        // success: se ajusta el foreground light. El fill además tiene que
+        // ser OPACO (no `bg-destructive/10` translúcido): un toast destructivo
+        // puede aparecer con un `<Dialog>` todavía abierto detrás (p.ej.
+        // validación dentro del modal, LeaveReviewButton) y su overlay
+        // `bg-black/50` oscurece lo que hay debajo — el fill translúcido caía
+        // a 1.3:1 en ese caso. `bg-red-50` da 5.9:1 sobre `text-red-700` sin
+        // importar qué haya detrás.
+        destructive: 'border-destructive/30 bg-red-50 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
       },
     },
     defaultVariants: { variant: 'default' },

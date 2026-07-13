@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { courtFutbol5, courtOffline, courts, openingHours } from '@/test/fixtures'
 import { CourtList } from './CourtList'
 import type { CourtDeactivationImpactResult } from '../actions'
@@ -56,7 +56,10 @@ export const SinCanchas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Sin canchas todavía')).toBeVisible()
-    await expect(canvas.getByRole('button', { name: '+ Nueva cancha' })).toBeVisible()
+    // El CTA aparece 2 veces con el mismo nombre cuando la lista está vacía:
+    // uno persistente en el header (PageHeader) y otro grande dentro del
+    // EmptyState — patrón intencional, no ambigüedad de query.
+    await expect(canvas.getAllByRole('button', { name: '+ Nueva cancha' })).toHaveLength(2)
   },
 }
 
@@ -77,7 +80,11 @@ export const FormularioAbierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: '+ Nueva cancha' }))
 
-    await expect(await canvas.findByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
+    // CourtForm entra por next/dynamic (el chunk más pesado de la ruta, ver
+    // CourtList.tsx): timeout largo para no flakear bajo carga.
+    await expect(
+      await canvas.findByRole('heading', { name: 'Nueva cancha' }, { timeout: 5000 }),
+    ).toBeVisible()
     await expect(canvas.queryByRole('button', { name: '+ Nueva cancha' })).not.toBeInTheDocument()
   },
 }
@@ -99,8 +106,12 @@ export const DesactivarConImpacto: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: 'Desactivar' }))
 
-    const dialog = within(await body.findByRole('dialog'))
-    await expect(dialog.getByText(/4 reserva\(s\) futura\(s\)/i)).toBeVisible()
+    // ConfirmDialog entra por next/dynamic (CourtList.tsx): timeout largo para
+    // no flakear bajo carga.
+    const dialog = within(await body.findByRole('dialog', {}, { timeout: 5000 }))
+    // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
+    // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
+    await waitFor(() => expect(dialog.getByText(/4 reserva\(s\) futura\(s\)/i)).toBeVisible())
     await expect(dialog.getByText(/2 abonado\(s\) activo\(s\)/i)).toBeVisible()
   },
 }
@@ -122,8 +133,16 @@ export const ErrorAlVerificarImpacto: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Desactivar' }))
 
     // El Toaster no usa Portal (renderiza inline junto a la story).
-    await expect(await canvas.findByText('No se pudo verificar el impacto')).toBeVisible()
+    const toastText = await canvas.findByText('No se pudo verificar el impacto')
+    await expect(toastText).toBeVisible()
     await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
+    // variant "destructive" persiste ~indefinidamente (design-system §6):
+    // cerrarlo acá evita que la siguiente story lo agarre a mitad de la
+    // animación de salida (color transitorio => falso positivo de axe).
+    const toastItem = toastText.closest('li')
+    if (!toastItem) throw new Error('No se encontró el toast')
+    await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
+    await waitForElementToBeRemoved(toastText)
   },
 }
 

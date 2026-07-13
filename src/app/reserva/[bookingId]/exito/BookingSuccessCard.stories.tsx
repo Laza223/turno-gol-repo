@@ -54,10 +54,11 @@ export const ConSena: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: /reserva confirmada/i })).toBeInTheDocument()
-    // "$4.500" (seña) y "$10.500" (resto) son el textContent EXACTO de un <span>
+    // "$ 4.500" (seña) y "$ 10.500" (resto) son el textContent EXACTO de un <span>
     // propio, sin hijos — un match exacto no ambigua con ningún ancestro.
-    await expect(canvas.getByText('$4.500')).toBeInTheDocument()
-    await expect(canvas.getByText('$10.500')).toBeInTheDocument()
+    // formatArs separa "$" del monto con NBSP; getByText normaliza a espacio común.
+    await expect(canvas.getByText('$ 4.500')).toBeInTheDocument()
+    await expect(canvas.getByText('$ 10.500')).toBeInTheDocument()
   },
 }
 
@@ -67,7 +68,7 @@ export const SinSena: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(/al llegar al complejo/i)).toBeInTheDocument()
-    await expect(canvas.queryByText('$4.500')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('$ 4.500')).not.toBeInTheDocument()
   },
 }
 

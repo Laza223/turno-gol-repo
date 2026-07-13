@@ -69,7 +69,14 @@ export const Visible: Story = {
 export const AntesDeIntersectar: Story = {
   decorators: [
     (Story) => (
-      <div style={{ height: 220, overflow: 'auto' }} className="rounded-lg border border-dashed border-border">
+      // tabIndex=0: región scrolleable propia del fixture (no existe en
+      // producción) — sin esto, un usuario de teclado no puede scrollearla
+      // (scrollable-region-focusable, axe).
+      <div
+        tabIndex={0}
+        style={{ height: 220, overflow: 'auto' }}
+        className="rounded-lg border border-dashed border-border"
+      >
         <div style={{ height: 600 }} className="flex items-center justify-center text-xs text-muted-foreground">
           Scrolleá para ver el contenido
         </div>

@@ -200,13 +200,14 @@ export function MisReservasView({
                   <div
                     className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 ring-1 ring-inset ${blockClass}`}
                   >
-                    <span className="font-logo text-[10px] font-bold uppercase tracking-wide opacity-70">
+                    {/* Sin opacity-70: sobre bg-emerald-50/bg-amber-50 el color heredado (emerald-700/amber-700, ya AA por su cuenta) cae a ~2.9:1 con el alfa reducido. */}
+                    <span className="font-logo text-[10px] font-bold uppercase tracking-wide">
                       {dp.weekday}
                     </span>
                     <span className="font-display text-xl font-black italic leading-none tabular-nums">
                       {dp.day}
                     </span>
-                    <span className="font-logo text-[10px] font-bold uppercase tracking-wide opacity-70">
+                    <span className="font-logo text-[10px] font-bold uppercase tracking-wide">
                       {dp.month}
                     </span>
                   </div>

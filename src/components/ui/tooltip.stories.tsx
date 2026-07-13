@@ -65,7 +65,10 @@ export const AbrePorFoco: Story = {
     await userEvent.tab()
     await expect(trigger).toHaveFocus()
 
+    // El texto aparece DOS veces (la burbuja visible + el <span role="tooltip">
+    // accesible para lectores de pantalla): getByText matchea ambos y tira
+    // "Found multiple elements". El rol es único.
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByText('Solo el admin puede editar Configuración')).toBeVisible()
+    await expect(await body.findByRole('tooltip')).toHaveTextContent('Solo el admin puede editar Configuración')
   },
 }

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { Button } from './button'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 
@@ -7,6 +7,11 @@ import { Popover, PopoverContent, PopoverTrigger } from './popover'
  * @radix-ui/react-popover puro, portaled con collision detection. Base de
  * Combobox/DatePicker/PhoneInput — acá se muestra tal cual (Trigger+Content)
  * porque esos tres ya tienen su propia story con su composición real.
+ *
+ * `PopoverContent` rinde `role="dialog"`: sin nombre accesible axe lo marca
+ * (aria-dialog-name). Los 3 usos reales sueltos del Popover crudo
+ * (BookingCard, AccountMenu, AdminThemeMenu) siempre pasan `aria-label`; acá
+ * se reproduce lo mismo.
  */
 const meta = {
   title: 'Design System/Popover',
@@ -31,7 +36,7 @@ export const Cerrado: Story = {
       <PopoverTrigger asChild>
         <Button variant="outline">¿Qué es la seña?</Button>
       </PopoverTrigger>
-      <PopoverContent>
+      <PopoverContent aria-label="¿Qué es la seña?">
         <Content />
       </PopoverContent>
     </Popover>
@@ -45,7 +50,7 @@ export const AbiertoAlineadoInicio: Story = {
       <PopoverTrigger asChild>
         <Button variant="outline">¿Qué es la seña?</Button>
       </PopoverTrigger>
-      <PopoverContent align="start">
+      <PopoverContent align="start" aria-label="¿Qué es la seña?">
         <Content />
       </PopoverContent>
     </Popover>
@@ -58,7 +63,7 @@ export const AbiertoAlineadoFin: Story = {
       <PopoverTrigger asChild>
         <Button variant="outline">¿Qué es la seña?</Button>
       </PopoverTrigger>
-      <PopoverContent align="end">
+      <PopoverContent align="end" aria-label="¿Qué es la seña?">
         <Content />
       </PopoverContent>
     </Popover>
@@ -71,7 +76,7 @@ export const AbrirPorClick: Story = {
       <PopoverTrigger asChild>
         <Button variant="outline">¿Qué es la seña?</Button>
       </PopoverTrigger>
-      <PopoverContent>
+      <PopoverContent aria-label="¿Qué es la seña?">
         <Content />
       </PopoverContent>
     </Popover>
@@ -80,7 +85,9 @@ export const AbrirPorClick: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: '¿Qué es la seña?' }))
 
+    // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
+    // el primer tick y toBeVisible() lo agarra en falso negativo.
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByText(/porcentaje de seña/i)).toBeVisible()
+    await waitFor(() => expect(body.getByText(/porcentaje de seña/i)).toBeVisible())
   },
 }

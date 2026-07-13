@@ -1,6 +1,31 @@
+import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { PricingGridToolbar } from './PricingGridToolbar'
+
+// PricingGridToolbar es puro (bulkValue/onBulkValueChange por props, dueño =
+// PricingGrid vía useCellSelection). Con onBulkValueChange como spy sin dueño
+// de estado, el input queda controlado a un valor fijo: cada keystroke se
+// resetea antes del siguiente, y userEvent.type termina emitiendo solo el
+// último carácter. Un wrapper con estado local reproduce el dueño real.
+function ControlledToolbar(
+  props: Omit<React.ComponentProps<typeof PricingGridToolbar>, 'bulkValue' | 'onBulkValueChange'> & {
+    bulkValue: string
+    onBulkValueChange: (value: string) => void
+  },
+) {
+  const [value, setValue] = useState(props.bulkValue)
+  return (
+    <PricingGridToolbar
+      {...props}
+      bulkValue={value}
+      onBulkValueChange={(v) => {
+        setValue(v)
+        props.onBulkValueChange(v)
+      }}
+    />
+  )
+}
 
 const meta = {
   title: 'Admin/Canchas/PricingGridToolbar',
@@ -46,6 +71,7 @@ export const SelectModeOnSinSeleccion: Story = {
 /** Barra masiva con celdas seleccionadas: escribir un precio habilita "Asignar precio". */
 export const ConSeleccionYPrecio: Story = {
   args: { selectMode: true, showBulkBar: true, selectedCount: 6 },
+  render: (args) => <ControlledToolbar {...args} />,
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('6 celdas')).toBeVisible()

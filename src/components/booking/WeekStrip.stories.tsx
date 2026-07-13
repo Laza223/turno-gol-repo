@@ -45,6 +45,10 @@ export const NavegarSemana: Story = {
 
 export const ClickEnDia: Story = {
   name: 'Click en un día de la tira navega a esa fecha',
+  // Semana del 2026-03-21 (sábado, misma semana-day-of-week que FROZEN_NOW):
+  // su lunes es el 16 — con el default '2026-03-14' (lunes 9) el botón "Lun 16"
+  // no existe en la tira y el getByRole nunca matchea.
+  args: { date: '2026-03-21' },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /Lun 16/ }))

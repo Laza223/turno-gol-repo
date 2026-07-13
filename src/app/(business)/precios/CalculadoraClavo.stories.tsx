@@ -3,9 +3,14 @@ import { expect, userEvent, within } from 'storybook/test'
 import CalculadoraClavo from './CalculadoraClavo'
 
 // `formatArs` (Intl.NumberFormat es-AR) separa "$" del monto con un espacio
-// NO-BREAK (U+00A0), no un espacio común — un literal '$30.000' o '$ 30.000'
-// (space normal) nunca matchea el DOM real.
+// NO-BREAK (U+00A0). El nombre accesible del <button> (getByRole) preserva
+// ese NBSP tal cual, pero `getByText` normaliza el textContent con el
+// normalizador default de testing-library (colapsa \s+ a un espacio comun, y
+// \s matchea NBSP) - el texto visible queda con espacio comun. Por eso los
+// `getByRole(..., { name })` usan `nbsp` y los `getByText(...)` un espacio comun.
 const nbsp = ' '
+
+const money = (s: string) => s.replace(/ /g, ' ')
 
 /** Vive en la sección "Hacé tu cuenta" de /precios, sobre el fondo oscuro fijo (`(business)/layout.tsx`). */
 const meta = {
@@ -29,7 +34,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: `$${nbsp}30.000`, pressed: true })).toBeInTheDocument()
-    await expect(canvas.getByText(`$${nbsp}240.000`)).toBeInTheDocument()
+    await expect(canvas.getByText(money(`$${nbsp}240.000`))).toBeInTheDocument()
     await expect(canvas.getByText(/menos que lo que te llevan los clavos/i)).toBeInTheDocument()
   },
 }
@@ -41,7 +46,7 @@ export const TurnoPersonalizado: Story = {
     const input = canvas.getByLabelText(/a cuánto está tu turno/i)
     await userEvent.clear(input)
     await userEvent.type(input, '18000')
-    await expect(canvas.getByText(`$${nbsp}144.000`)).toBeInTheDocument()
+    await expect(canvas.getByText(money(`$${nbsp}144.000`))).toBeInTheDocument()
   },
 }
 
@@ -63,7 +68,9 @@ export const PerdidaMenorAlPlan: Story = {
     await userEvent.clear(input)
     await userEvent.type(input, '10000')
     await userEvent.click(canvas.getByRole('button', { name: 'Un clavo menos por semana' }))
-    await expect(canvas.getByText(`$${nbsp}40.000`)).toBeInTheDocument()
+    // "$ 40.000" también es uno de los presets de turno: acotamos al resultado (role "status" del <output>).
+    const resultado = within(canvas.getByRole('status'))
+    await expect(resultado.getByText(money(`$${nbsp}40.000`))).toBeInTheDocument()
     await expect(canvas.queryByText(/menos que lo que te llevan los clavos/i)).not.toBeInTheDocument()
   },
 }

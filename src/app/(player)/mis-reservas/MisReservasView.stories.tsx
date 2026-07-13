@@ -129,7 +129,8 @@ export const HistorialTodosLosEstados: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Jugada')).toBeInTheDocument()
+    // 2 reservas 'completed' (con y sin reseña) → 2 badges "Jugada".
+    await expect(canvas.getAllByText('Jugada')).toHaveLength(2)
     await expect(canvas.getByText('Ausente')).toBeInTheDocument()
     await expect(canvas.getByText('Cancelado (con reembolso)')).toBeInTheDocument()
     await expect(canvas.getByText('Cancelado (sin reembolso)')).toBeInTheDocument()

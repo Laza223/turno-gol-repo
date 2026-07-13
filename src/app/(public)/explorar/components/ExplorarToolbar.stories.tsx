@@ -53,7 +53,14 @@ export const OrdenarPorDistanciaSinGeolocalizacion: Story = {
       await userEvent.selectOptions(canvas.getByRole('combobox', { name: /ordenar por/i }), 'distance')
       // El Toaster porta su contenido a document.body (Radix Portal): se busca
       // con `screen`, no con `canvas` (scoped a canvasElement).
-      await expect(await screen.findByText(/no soporta geolocalización/i)).toBeInTheDocument()
+      //
+      // getAllByText, no getByText: Radix Toast renderiza el texto DOS veces —
+      // el título visible y un <span aria-live="assertive"> que anuncia el toast
+      // a los lectores de pantalla. `getByText` es ambiguo y tira "Found multiple
+      // elements". Basta con afirmar que el toast salió; cuál de los dos nodos
+      // matchee es irrelevante.
+      const toasts = await screen.findAllByText(/no soporta geolocalización/i)
+      await expect(toasts.length).toBeGreaterThan(0)
     } finally {
       Object.defineProperty(navigator, 'geolocation', { value: original, configurable: true })
     }
@@ -70,7 +77,7 @@ export const OrdenarPorDistanciaConGeolocalizacion: Story = {
     // toast todavía fadeando — contraste falso (color intermedio de la
     // transición). Se espera a que desaparezca antes de arrancar.
     await waitFor(() =>
-      expect(screen.queryByText(/no soporta geolocalización/i)).not.toBeInTheDocument(),
+      expect(screen.queryAllByText(/no soporta geolocalización/i)).toHaveLength(0),
     )
     const canvas = within(canvasElement)
     const original = navigator.geolocation

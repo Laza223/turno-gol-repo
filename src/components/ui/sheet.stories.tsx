@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { Button } from './button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './sheet'
 
@@ -89,6 +89,8 @@ export const AbrirYCerrar: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const dialog = await body.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cerrar' }))
-    await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
+    // El nodo sigue en el DOM durante la animación de salida (data-[state=closed]
+    // duration-200): esperar a que Radix lo desmonte de verdad.
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }

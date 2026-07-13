@@ -171,20 +171,31 @@ export default function SearchBar({ cities }: Props) {
           </label>
           <div className="relative">
             <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600 z-10" aria-hidden />
-            <DropdownMenu>
+            {/* modal={false}: con el default (modal=true) Radix aria-hide-ea los
+                demás campos del form (Buscar/Localidad/Fecha/Buscar) mientras el
+                menú está abierto, pero esos siguen siendo tabbable → axe
+                aria-hidden-focus. Este dropdown es solo un filtro más, no un
+                flujo modal: no hace falta trap de foco ni ocultar el resto. */}
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   id="exp-time"
                   className={`${fieldClass} flex items-center justify-between text-left pr-10`}
                 >
-                  <span className={!time ? 'text-muted-foreground/70' : 'text-foreground'}>
+                  {/* Sin /70: baja text-muted-foreground de 5.77:1 a 3.06:1 contra bg-background (color-contrast) — igual que date-picker.tsx. */}
+                  <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
                     {time || 'Cualquiera'}
                   </span>
                   <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-muted-foreground/70" aria-hidden />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
+              {/* tabIndex={0}: la lista de 17 horas desborda max-h-60 (scroll). Al
+                  abrir, Radix mueve el foco real al contenedor (tabindex=-1,
+                  foco programático — las horas individuales solo son roving-
+                  focusable después de navegar con flechas) y axe no lo detecta
+                  como "focusable" estáticamente → scrollable-region-focusable. */}
+              <DropdownMenuContent align="start" tabIndex={0} className="max-h-60 w-[200px] overflow-y-auto">
                 <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
                   Cualquiera
                 </DropdownMenuItem>

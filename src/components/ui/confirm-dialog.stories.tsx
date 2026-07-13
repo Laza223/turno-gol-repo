@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { Button } from './button'
 import { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
 
@@ -115,7 +115,9 @@ export const ErrorControlado: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Confirmar' }))
     await expect(await body.findByRole('alert')).toHaveTextContent('El monto supera el saldo pendiente.')
-    await expect(body.getByRole('dialog')).toBeVisible()
+    // waitFor: la actualización que agrega el alert puede coincidir con un
+    // tick en el que toBeVisible() lee opacity de la transición en curso.
+    await waitFor(() => expect(body.getByRole('dialog')).toBeVisible())
   },
 }
 

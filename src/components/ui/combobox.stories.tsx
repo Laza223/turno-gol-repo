@@ -1,6 +1,6 @@
 import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { MapPin } from 'lucide-react'
 import Combobox, { type ComboboxOption } from './combobox'
 
@@ -83,8 +83,12 @@ export const AbrirListado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('combobox'))
-    await expect(canvas.getByRole('listbox', { name: 'Localidades' })).toBeVisible()
-    await expect(canvas.getByRole('option', { name: /Mendoza/ })).toHaveAttribute('aria-selected', 'true')
+    // El panel (PopoverContent) va portaled a document.body, fuera de canvasElement.
+    // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
+    // el primer tick y toBeVisible() lo agarra en falso negativo.
+    const body = within(canvasElement.ownerDocument.body)
+    await waitFor(() => expect(body.getByRole('listbox', { name: 'Localidades' })).toBeVisible())
+    await expect(body.getByRole('option', { name: /Mendoza/ })).toHaveAttribute('aria-selected', 'true')
   },
 }
 
@@ -95,8 +99,9 @@ export const Filtrando: Story = {
     const canvas = within(canvasElement)
     const input = canvas.getByRole('combobox')
     await userEvent.type(input, 'cordoba')
-    await expect(canvas.getByRole('option', { name: /Córdoba/ })).toBeVisible()
-    await expect(canvas.queryByText('Rosario')).not.toBeInTheDocument()
+    const body = within(canvasElement.ownerDocument.body)
+    await waitFor(() => expect(body.getByRole('option', { name: /Córdoba/ })).toBeVisible())
+    await expect(body.queryByText('Rosario')).not.toBeInTheDocument()
   },
 }
 

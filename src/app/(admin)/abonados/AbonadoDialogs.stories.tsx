@@ -51,7 +51,10 @@ export const ReactivateLoading: Story = {
   args: { dialog: 'reactivate', reactivatePreviewLoading: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    await expect(canvas.getByText('Cargando fechas disponibles…')).toBeVisible()
+    // Mismo motivo que "Pause": el diálogo arranca abierto sin click que dispare
+    // el delay natural del userEvent, así que la animación de entrada de Radix
+    // (fade-in, ~200ms) puede seguir en curso cuando arranca el play.
+    await waitFor(() => expect(canvas.getByText('Cargando fechas disponibles…')).toBeVisible())
   },
 }
 
@@ -63,10 +66,12 @@ export const ReactivateWithConflicts: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
+    // toBeVisible() (no toHaveTextContent, que ignora opacidad) es lo que de
+    // verdad consume la ventana de la animación de entrada.
+    await waitFor(() => expect(canvas.getByText('Ocupado')).toBeVisible())
     await expect(canvas.getByText(/se generarán/i)).toHaveTextContent(
       'Se generarán 3 turnos futuros (1 fecha ya ocupada se va a saltar).',
     )
-    await expect(canvas.getByText('Ocupado')).toBeVisible()
     await expect(canvas.getAllByText('Libre')).toHaveLength(3)
   },
 }
@@ -87,7 +92,7 @@ export const ReactivateNoSlots: Story = {
   args: { dialog: 'reactivate', reactivatePreviewDates: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    await expect(canvas.getByText(/no se encontraron fechas futuras/i)).toBeVisible()
+    await waitFor(() => expect(canvas.getByText(/no se encontraron fechas futuras/i)).toBeVisible())
   },
 }
 

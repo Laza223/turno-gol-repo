@@ -274,8 +274,8 @@ function RiesgoCero() {
         </Reveal>
         <ol className="space-y-5">
           {STEPS.map((step, i) => (
-            <Reveal key={step.n} delay={i * 70}>
-              <li className="flex gap-4 rounded-2xl border border-white/[.07] p-5" style={{ background: 'rgba(15,23,42,.4)' }}>
+            <li key={step.n}>
+              <Reveal delay={i * 70} className="flex gap-4 rounded-2xl border border-white/[.07] p-5" style={{ background: 'rgba(15,23,42,.4)' }}>
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] font-logo text-sm font-bold text-emerald-400"
                   style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.3)', boxShadow: 'inset 0 0 16px rgba(16,185,129,.15)' }}
@@ -286,8 +286,8 @@ function RiesgoCero() {
                   <h3 className="font-display text-base font-bold text-[#f8fafc]">{step.t}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-slate-400">{step.d}</p>
                 </div>
-              </li>
-            </Reveal>
+              </Reveal>
+            </li>
           ))}
         </ol>
       </div>
@@ -363,7 +363,7 @@ function FinalCta() {
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-8 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
               style={{ boxShadow: '0 8px 30px rgba(16,185,129,.35)' }}
             >
               Empezar 30 días gratis

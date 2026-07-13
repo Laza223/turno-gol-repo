@@ -118,7 +118,10 @@ export default function DatePicker({
               // Paddings de íconos: pr-8 (no 10) para que "dd/mm/aaaa" quepa en
               // columnas angostas de mobile sin truncar (§13.5).
               'pl-10 pr-8',
-              !value && 'text-muted-foreground/70'
+              // Sin /70: esa opacidad extra sobre --muted-foreground (ya afinado
+              // contra --muted) baja a 3.06:1 contra bg-background y viola AA
+              // (color-contrast). Full opacity da 5.77:1.
+              !value && 'text-muted-foreground'
             )}
           >
             <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10" aria-hidden />

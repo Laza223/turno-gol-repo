@@ -22,7 +22,9 @@ type Story = StoryObj<typeof meta>
 export const CamposVacios: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText('Buscar')).toHaveValue('')
+    // getByLabelText('Buscar') es ambiguo: el <button aria-label="Buscar"> de submit
+    // también matchea. role="searchbox" (input type="search") lo acota al campo de texto.
+    await expect(canvas.getByRole('searchbox', { name: 'Buscar' })).toHaveValue('')
     await expect(canvas.getByRole('button', { name: /buscar/i })).toBeInTheDocument()
   },
 }
@@ -39,8 +41,10 @@ export const Precargado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText('Buscar')).toHaveValue('Fénix')
-    await expect(canvas.getByRole('button', { name: /^19:00/ })).toBeInTheDocument()
+    await expect(canvas.getByRole('searchbox', { name: 'Buscar' })).toHaveValue('Fénix')
+    // El botón "Hora" toma su nombre accesible del <label>, no del texto visible
+    // "19:00" — se verifica el contenido, no el nombre del rol.
+    await expect(canvas.getByRole('button', { name: 'Hora' })).toHaveTextContent('19:00')
   },
 }
 
@@ -61,7 +65,9 @@ export const CiudadNoListada: Story = {
 export const DropdownDeHoraAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /cualquiera/i }))
+    // El nombre accesible del trigger es "Hora" (viene del <label for="exp-time">,
+    // no del texto visible "Cualquiera" — un botón con label asociado prioriza ese label).
+    await userEvent.click(canvas.getByRole('button', { name: 'Hora' }))
     // DropdownMenuContent se porta a document.body (Radix Portal): se busca con `screen`.
     await expect(await screen.findByRole('menuitem', { name: '20:00' })).toBeInTheDocument()
   },

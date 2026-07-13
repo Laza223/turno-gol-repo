@@ -39,7 +39,10 @@ export const ConSena: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Seña a pagar ahora')).toBeInTheDocument()
-    await expect(canvas.getByText('$4.500')).toBeInTheDocument()
+    // formatArs separa "$" del monto con NBSP (U+00A0); getByText normaliza el
+    // textContent a espacio común (\s+ → ' ', y \s matchea NBSP) — el matcher
+    // usa espacio común, no NBSP.
+    await expect(canvas.getByText('$ 4.500')).toBeInTheDocument()
     await expect(canvas.getByText('Resto en el complejo')).toBeInTheDocument()
   },
 }

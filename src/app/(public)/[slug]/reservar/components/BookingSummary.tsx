@@ -27,7 +27,8 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
           <MapPin className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden /> {data.city}
         </p>
       </div>
-      <dl className="space-y-2.5 border-t border-border pt-4 text-sm dark:border-white/10">
+      {/* <div>, no <dl>: son filas ícono+texto, no pares término/definición (axe definition-list). */}
+      <div className="space-y-2.5 border-t border-border pt-4 text-sm dark:border-white/10">
         <div className="flex items-center gap-2 text-foreground/90">
           <CalendarDays className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
           <span>{formatDateLong(data.date)}</span>
@@ -36,7 +37,7 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
           <Clock className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
           <span className="tabular-nums">{data.timeStart}–{data.timeEnd} · {data.courtName}</span>
         </div>
-      </dl>
+      </div>
       <div className="space-y-1.5 border-t border-border pt-4 text-sm dark:border-white/10">
         <div className="flex justify-between text-muted-foreground">
           <span>Precio del turno</span>

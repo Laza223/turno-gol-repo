@@ -101,12 +101,23 @@ parameters: {
   ],
 }
 
-// hooks que abren WebSockets u otra cosa no-mockeable: sb.mock SÍ funciona sobre hooks
-// (no sobre 'use server').
-sb.mock(import('@/hooks/use-booking-realtime'))
+// hooks que abren WebSockets u otra cosa no-mockeable → vi.mock() de vitest.
+//
+// OJO: `sb.mock()` de storybook/test es un NO-OP en esta instalación (su cuerpo está
+// literalmente vacío: `node -e "console.log(String(require('storybook/test').sb.mock))"`).
+// No falla, no avisa: simplemente no hace nada, y la story carga el módulo REAL.
+import { vi } from 'vitest'
+import { useBookingRealtime } from '@/hooks/use-booking-realtime'
+
+vi.mock(import('@/hooks/use-booking-realtime'))
+
 // ...y en la story:
 beforeEach: () => {
-  mocked(useBookingRealtime).mockReturnValue({ bookings: gridBookings(), status: 'SUBSCRIBED', refetch: fn() })
+  vi.mocked(useBookingRealtime).mockReturnValue({
+    bookings: gridBookings(),
+    status: 'SUBSCRIBED',
+    refetch: fn(),
+  })
 }
 ```
 

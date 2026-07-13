@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, mocked, sb, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, mocked, userEvent, waitFor, within } from 'storybook/test'
+import { vi } from 'vitest'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { courts } from '@/test/fixtures/court'
 import { openingHours, tenant } from '@/test/fixtures/tenant'
@@ -9,9 +10,18 @@ import { BookingGrid } from './BookingGrid'
 /**
  * Contenedor top-level de la grilla: NO se extrae en una vista presentacional
  * (su contrato de 7+1 props ya es limpio). `useBookingRealtime` (canal
- * Supabase + polling de respaldo) se mockea con `sb.mock` — es un hook común,
+ * Supabase + polling de respaldo) se mockea como módulo — es un hook común,
  * no un `'use server'`, así que Vite lo carga sin arrastrar drizzle/postgres.
  * `useRouter` ya lo mockea el framework (`parameters.nextjs`).
+ *
+ * `sb.mock()` de `storybook/test` es un no-op en esta versión instalada
+ * (@storybook/addon-vitest 10.5.0 + @vitest/mocker 3.2.7): el hoisting de
+ * `@vitest/mocker` solo reconoce `vi.`/`vitest.` como object name (ver
+ * `hoistMocksPlugin` en `@vitest/mocker/dist/node.js`), no `sb.` — con
+ * `sb.mock()` el hook queda SIN mockear y `mocked(useBookingRealtime)` no es
+ * un mock real (`.mockReturnValue is not a function`). `vi.mock()` importado
+ * directo de `'vitest'` sí hoistea correctamente y no está en la lista de
+ * imports server-only prohibidos por el eslintrc de `*.stories.tsx`.
  *
  * `BookingFormModal` entra por `next/dynamic` y solo se monta cuando
  * `selectedSlot` deja de ser null (click en un slot libre) — ninguna de estas
@@ -19,7 +29,7 @@ import { BookingGrid } from './BookingGrid'
  * Server Action real en la app) puede quedar como un stub sin comprometer el
  * aislamiento.
  */
-sb.mock(import('@/hooks/use-booking-realtime'))
+vi.mock(import('@/hooks/use-booking-realtime'))
 
 const meta = {
   title: 'Booking/Grid/BookingGrid',

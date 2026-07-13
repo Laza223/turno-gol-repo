@@ -165,7 +165,7 @@ function PlanCardView({
       )}
 
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-display text-2xl font-bold text-[#f8fafc]">{plan.name}</h3>
+        <h2 className="font-display text-2xl font-bold text-[#f8fafc]">{plan.name}</h2>
         <span className="text-[13px] font-semibold text-slate-400">{plan.rangeLabel}</span>
       </div>
 
@@ -201,7 +201,7 @@ function PlanCardView({
           href="/register"
           className={`group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
             isActive
-              ? 'bg-primary text-white hover:-translate-y-0.5 hover:bg-emerald-500'
+              ? 'bg-primary text-primary-foreground hover:-translate-y-0.5 hover:bg-emerald-500'
               : 'border border-white/15 bg-white/5 text-white hover:bg-white/10'
           }`}
           style={isActive ? { boxShadow: '0 8px 30px rgba(16,185,129,.35)' } : undefined}

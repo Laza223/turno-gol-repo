@@ -273,7 +273,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
             </div>
 
             {error && (
-              <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25">
+              <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25">
                 {error}
               </p>
             )}

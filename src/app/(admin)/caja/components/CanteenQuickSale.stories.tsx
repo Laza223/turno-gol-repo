@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { artDateString, tenantSettings } from '@/test/fixtures'
 import { CanteenQuickSale } from './CanteenQuickSale'
 import type { CanteenProductsActionResult, CashFlowActionResult } from '../actions'
@@ -65,8 +65,11 @@ export const VentaRapida: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: new RegExp(PRODUCTS[0]!.name) }))
 
-    const dialog = within(body.getByRole('dialog'))
-    await expect(dialog.getByRole('heading', { name: PRODUCTS[0]!.name })).toBeVisible()
+    const dialogEl = body.getByRole('dialog')
+    const dialog = within(dialogEl)
+    // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
+    // interactuar, si no el toBeVisible() puede pescar opacity todavía en 0.
+    await waitFor(() => expect(dialog.getByRole('heading', { name: PRODUCTS[0]!.name })).toBeVisible())
 
     await userEvent.click(dialog.getByRole('button', { name: 'Sumar uno' }))
     await expect(dialog.getByText('2')).toBeVisible()
@@ -82,6 +85,10 @@ export const VentaRapida: Story = {
         amount: PRODUCTS[0]!.price * 2,
       }),
     )
+    // La venta OK cierra el diálogo (onClose): esperar a que termine su
+    // animación de salida y se remueva, si no la siguiente aserción de axe
+    // puede pescarlo a mitad de transición (heading vacío, sin nombre accesible).
+    await waitForElementToBeRemoved(dialogEl)
   },
 }
 
@@ -92,7 +99,8 @@ export const EditorDeProductos: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: 'Configurar' }))
 
-    const dialog = within(body.getByRole('dialog'))
+    const dialogEl = body.getByRole('dialog')
+    const dialog = within(dialogEl)
     await expect(dialog.getAllByLabelText('Nombre del producto')).toHaveLength(PRODUCTS.length)
 
     await userEvent.click(dialog.getByRole('button', { name: '+ Agregar producto' }))
@@ -105,6 +113,19 @@ export const EditorDeProductos: Story = {
     await expect(args.saveCanteenProductsAction).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ name: 'Sanguchito', price: 300000 })]),
     )
+    // Guardar cierra el diálogo (onClose): mientras Radix lo anima hacia
+    // afuera, el resto de la página (incluido el toast) queda aria-hidden por
+    // el focus trap — hay que esperar a que se remueva antes de poder
+    // interactuar con el botón "Cerrar" del toast.
+    await waitForElementToBeRemoved(dialogEl)
+    // El toast (variant success) sobrevive al cambio de story: cerrarlo acá
+    // evita que la siguiente story lo agarre a mitad de la animación de
+    // salida (color transitorio => falso positivo de axe).
+    const toastText = await body.findByText('Productos guardados')
+    const toastItem = toastText.closest('li')
+    if (!toastItem) throw new Error('No se encontró el toast')
+    await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
+    await waitForElementToBeRemoved(toastText)
   },
 }
 
@@ -117,6 +138,9 @@ export const EditorSinProductosCargaSugeridos: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Configurar productos' }))
 
     const dialog = within(body.getByRole('dialog'))
+    await waitFor(() =>
+      expect(dialog.getByRole('button', { name: /cargar sugeridos/i })).toBeVisible(),
+    )
     await userEvent.click(
       dialog.getByRole('button', { name: /cargar sugeridos/i }),
     )

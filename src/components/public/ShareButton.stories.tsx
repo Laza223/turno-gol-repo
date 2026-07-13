@@ -23,7 +23,9 @@ export const MenuAbierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Compartir' }))
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByRole('menuitem', { name: /copiar enlace/i })).toBeVisible()
+    await waitFor(() =>
+      expect(body.getByRole('menuitem', { name: /copiar enlace/i })).toBeVisible(),
+    )
     await expect(body.getByRole('menuitem', { name: /whatsapp/i })).toBeVisible()
   },
 }

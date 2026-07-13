@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { artDateString } from '@/test/fixtures'
 import { CajaActions } from './CajaActions'
 
@@ -49,7 +49,12 @@ export const AbrirModalDeMovimiento: Story = {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: '+ Agregar movimiento' }))
-    await expect(await body.findByRole('dialog')).toBeVisible()
+    // RegisterMovementModal entra por next/dynamic: timeout largo para no
+    // flakear bajo carga (batería completa de stories).
+    const dialog = await body.findByRole('dialog', {}, { timeout: 5000 })
+    // Radix anima la entrada (fade-in ~200ms): toBeVisible() puede pescar el
+    // frame con opacity todavía en 0 si se chequea apenas se encuentra el nodo.
+    await waitFor(() => expect(dialog).toBeVisible())
     await expect(body.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
   },
 }

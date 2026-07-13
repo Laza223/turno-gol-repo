@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import type { BookingRow } from '@/modules/bookings/booking.types'
 import { booking } from '@/test/fixtures/booking'
 import { BookingFormModal, type CreateBookingAction } from './BookingFormModal'
 
@@ -8,6 +10,41 @@ import { BookingFormModal, type CreateBookingAction } from './BookingFormModal'
 // `import type` (mismo gotcha documentado en InviteStaffDialog.stories.tsx).
 // Se deriva el tipo del propio prop del componente en vez de importarlo directo.
 type BookingActionResult = Awaited<ReturnType<CreateBookingAction>>
+
+/**
+ * `open`/`onClose` son props controladas (no hay estado interno de apertura,
+ * ver el comentario de BookingFormModal.tsx) — igual que ConfirmDialogDemo en
+ * confirm-dialog.stories.tsx, un wrapper local con `useState` reproduce cómo
+ * el único caller real (BookingGrid.handleBookingSuccess) cierra el modal en
+ * onSuccess (setSelectedSlot(null)).
+ */
+function BookingFormModalCloseOnSuccessDemo({
+  action,
+  onSuccess,
+}: {
+  action: CreateBookingAction
+  onSuccess: (booking: BookingRow) => void
+}) {
+  const [open, setOpen] = useState(true)
+  return (
+    <BookingFormModal
+      slot={{
+        courtId: 'court-1',
+        courtName: 'Cancha 1',
+        date: '2026-03-14',
+        timeStart: '18:00',
+        durationMins: 60,
+      }}
+      open={open}
+      onClose={() => setOpen(false)}
+      action={action}
+      onSuccess={(b) => {
+        setOpen(false)
+        onSuccess(b)
+      }}
+    />
+  )
+}
 
 /**
  * `action` (createBookingAction real en la app) entra por PROP, no por import
@@ -95,11 +132,20 @@ export const Cerrado: Story = {
 }
 
 export const ExitoLlamaOnSuccess: Story = {
-  name: 'La action resuelve success:true → onSuccess(booking)',
+  name: 'La action resuelve success:true → onSuccess(booking), cierra el modal',
   args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
+  // Sin BookingFormModalCloseOnSuccessDemo el overlay `bg-black/50` queda
+  // abierto (open:true fijo) detrás del toast "Reserva creada" y axe mide el
+  // contraste del texto contra ese negro translúcido: un estado que nunca
+  // ocurre en producción, donde el modal se cierra en el mismo tick que se
+  // dispara el toast.
+  render: (args) => (
+    <BookingFormModalCloseOnSuccessDemo action={args.action} onSuccess={args.onSuccess} />
+  ),
   play: async ({ canvasElement, args }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     await waitFor(() => expect(args.onSuccess).toHaveBeenCalledOnce())
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }

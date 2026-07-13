@@ -62,7 +62,10 @@ export const EditarCeldaInline: Story = {
     await userEvent.clear(input)
     await userEvent.type(input, '9500{Enter}')
 
-    await expect(canvas.getByRole('button', { name: /Lun 09:00 \$ 9\.500/i })).toBeVisible()
+    // formatArs (Intl es-AR) separa "$" del monto con un NBSP, no un espacio
+    // normal: la accessible name (aria-label) no la normaliza getByRole, así
+    // que hace falta \s (que sí matchea NBSP) en vez de un espacio literal.
+    await expect(canvas.getByRole('button', { name: /Lun 09:00 \$\s9\.500/i })).toBeVisible()
   },
 }
 
@@ -80,7 +83,8 @@ export const AsignacionMasiva: Story = {
     await userEvent.type(canvas.getByLabelText('Precio para las celdas seleccionadas'), '18000')
     await userEvent.click(canvas.getByRole('button', { name: 'Asignar precio' }))
 
-    await expect(canvas.getByRole('button', { name: /Sáb 10:00 \$ 18\.000/i })).toBeVisible()
-    await expect(canvas.getByRole('button', { name: /Dom 10:00 \$ 18\.000/i })).toBeVisible()
+    // \s en vez de espacio literal: el "$" de formatArs va separado por NBSP.
+    await expect(canvas.getByRole('button', { name: /Sáb 10:00 \$\s18\.000/i })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /Dom 10:00 \$\s18\.000/i })).toBeVisible()
   },
 }

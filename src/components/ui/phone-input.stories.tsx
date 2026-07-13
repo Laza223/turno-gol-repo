@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { PhoneInput } from './phone-input'
 
 /**
@@ -52,8 +52,10 @@ export const SelectorDePaisAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /Seleccionar código de país/ }))
+    // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
+    // el primer tick y toBeVisible() lo agarra en falso negativo.
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByRole('listbox')).toBeVisible()
+    await waitFor(() => expect(body.getByRole('listbox')).toBeVisible())
     await expect(body.getByText('Argentina')).toBeVisible()
   },
 }
@@ -65,7 +67,7 @@ export const BusquedaSinResultados: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /Seleccionar código de país/ }))
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.type(await body.findByLabelText('Buscar país o código'), 'zzzz')
-    await expect(body.getByText('No se encontraron países')).toBeVisible()
+    await waitFor(() => expect(body.getByText('No se encontraron países')).toBeVisible())
   },
 }
 

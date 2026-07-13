@@ -114,8 +114,9 @@ export default function NotificationPrefs({
         )
       })}
 
+      {/* text-red-600 sobre bg-background (#e2e7ee, el fondo real de /perfil) mide 3.88:1 — bajo AA. text-red-700 da 5.2:1. */}
       {error && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-300">
+        <p role="alert" className="text-xs text-red-700 dark:text-red-300">
           {error}
         </p>
       )}

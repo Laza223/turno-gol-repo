@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { ImageUploader } from './image-uploader'
 
 /** SVG data-uri de color plano — sustituye una foto real para no depender de assets externos. */
@@ -116,7 +116,11 @@ export const ErrorDeProcesamiento: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText('Subí el logo de tu complejo')
-    await userEvent.upload(input, textFile())
+    // applyAccept:false — por default userEvent.upload filtra el archivo contra
+    // el atributo `accept` del input ANTES de dispararlo (simula el file picker
+    // del navegador) y nunca llega a onChange, así que nunca se ejercita la
+    // validación real de resizeToPreset. Acá se quiere probar esa validación.
+    await userEvent.upload(input, textFile(), { applyAccept: false })
     await expect(await canvas.findByRole('alert')).toHaveTextContent('El archivo debe ser una imagen')
   },
 }
@@ -127,6 +131,9 @@ export const SubidaExitosa: Story = {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText('Subí el logo de tu complejo')
     await userEvent.upload(input, pngFile())
-    await expect(args.onUpload).toHaveBeenCalledWith(expect.any(Blob))
+    // resizeToPreset decodifica la imagen y reencodea a webp en un <canvas>
+    // real (Image.onload + canvas.toBlob): async de verdad, no resuelve en el
+    // mismo tick que el upload.
+    await waitFor(() => expect(args.onUpload).toHaveBeenCalledWith(expect.any(Blob)))
   },
 }

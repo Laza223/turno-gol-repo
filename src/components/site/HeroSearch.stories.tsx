@@ -116,10 +116,12 @@ export const SeleccionaHora: Story = {
   decorators: [withGeolocation('pending')],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Cualquier horario' }))
+    // El <label htmlFor="hero-time"> ("Hora") gana la accessible-name computation
+    // sobre el texto visible del botón ("Cualquier horario" / la hora elegida).
+    await userEvent.click(canvas.getByRole('button', { name: 'Hora' }))
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('menuitem', { name: '19:00' }))
-    await expect(canvas.getByRole('button', { name: '19:00' })).toBeInTheDocument()
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Hora' })).toHaveTextContent('19:00'))
   },
 }
 

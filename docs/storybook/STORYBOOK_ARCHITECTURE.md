@@ -74,15 +74,45 @@ integration conservan su semántica exacta.
 
 ## Server Actions: por qué se inyectan por prop y no se mockean
 
-**Se probó `sb.mock()` y no sirve.** El automock de Storybook igual tiene que **cargar** el módulo
-real para enumerar sus exports. Un módulo `'use server'` importa la capa de servicios → `drizzle` +
-`postgres` + `src/shared/lib/request-context.ts` → **`node:async_hooks`**. Vite lo externaliza en el
-bundle de browser y la story muere con:
+> ### ⚠️ `sb.mock()` NO HACE NADA en esta instalación
+>
+> No es "no sirve para 'use server'": **es un no-op, literalmente**. Verificable en 3 segundos:
+>
+> ```bash
+> node -e "const t=require('storybook/test'); console.log(String(t.sb.mock))"
+> # () => {
+> #   }
+> ```
+>
+> En `storybook@10.5.0`, `sb.mock` está declarado pero su cuerpo está vacío. Y el `hoistMocksPlugin`
+> de `@vitest/mocker@3.2.7` solo reconoce `vi` / `vitest` como objetos de utilidades a hoistear —
+> nada en `@storybook/addon-vitest` lo extiende a `sb`. O sea que ni siquiera se hoistea.
+>
+> **Para mockear un módulo desde una story, usá `vi.mock()` de `vitest`.** Funciona: se hoistea y
+> reemplaza el módulo de verdad. No está en la lista de imports prohibidos del `.eslintrc`.
+>
+> ```ts
+> import { vi } from 'vitest'
+> import { useBookingRealtime } from '@/hooks/use-booking-realtime'
+>
+> vi.mock(import('@/hooks/use-booking-realtime'))
+> ```
+
+**Lo anterior explica por qué las Server Actions se inyectan por prop.** Se probó mockear el módulo
+`'use server'` con `sb.mock()` y la story explotaba igual — porque el mock nunca se aplicaba y el
+módulo REAL se cargaba. Un `'use server'` importa la capa de servicios → `drizzle` + `postgres` +
+`src/shared/lib/request-context.ts` → **`node:async_hooks`**. Vite lo externaliza en el bundle de
+browser y la story muere con:
 
 ```
 Module "node:async_hooks" has been externalized for browser compatibility.
 Cannot access "node:async_hooks.AsyncLocalStorage" in client code.
 ```
+
+*(Aunque `vi.mock()` sí hoistea, la inyección por prop sigue siendo el patrón preferido para las
+Server Actions: no depende del mocker, hace el componente unit-testeable sin `vi.mock`, y es la
+separación que el componente debería tener igual. `vi.mock()` queda para lo que no se puede inyectar,
+como un hook que abre un WebSocket.)*
 
 El patrón, entonces, es **inyección de dependencia**:
 
@@ -162,7 +192,8 @@ Cero red, salida idéntica.
 3. `msw-storybook-addon` obliga a commitear `public/mockServiceWorker.js` dentro del `public/` que se
    sirve **en producción**.
 
-Para hooks (no para `'use server'`), `sb.mock()` **sí** funciona: son módulos de browser normales.
+Para mockear un hook (por ejemplo `use-booking-realtime`, que abre el WebSocket), usá **`vi.mock()`
+de `vitest`**, no `sb.mock()` — que es un no-op (ver el recuadro más arriba).
 
 ---
 

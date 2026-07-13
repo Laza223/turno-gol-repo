@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { MoreVertical } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './dropdown-menu'
 
@@ -7,6 +7,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
  * @radix-ui/react-dropdown-menu puro. Reproduce QuickActions.tsx (acciones
  * rápidas de una reserva en la lista de /reservas): trigger icon-only con
  * `MoreVertical` + items de texto, uno de ellos `disabled`.
+ *
+ * Radix DropdownMenu es modal por default: mientras está abierto, aria-oculta
+ * el resto del árbol (incluido el propio trigger, que sigue siendo focusable
+ * en el DOM) — mismo comportamiento confirmado en StaffActions.stories.tsx.
+ * Cerrar con Escape al final de cada play() evita que el scan de a11y
+ * (afterEach) capture ese estado transitorio como si fuera el render final.
  */
 const meta = {
   title: 'Design System/DropdownMenu',
@@ -47,21 +53,46 @@ export const Cerrado: Story = {
   ),
 }
 
-/** `defaultOpen` (Radix, sin estado controlado) para mostrar el panel directamente. */
+/** Abierto por click real (no `defaultOpen`: ver nota de aria-hidden-focus arriba). */
 export const Abierto: Story = {
   render: () => (
-    <DropdownMenu defaultOpen>
+    <DropdownMenu>
       <Menu />
     </DropdownMenu>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Más acciones' }))
+
+    // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
+    // el primer tick y toBeVisible() lo agarra en falso negativo.
+    const body = within(canvasElement.ownerDocument.body)
+    await waitFor(() => expect(body.getByRole('menu')).toBeVisible())
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('menu')).not.toBeInTheDocument())
+  },
 }
 
 export const ConItemDeshabilitado: Story = {
   render: () => (
-    <DropdownMenu defaultOpen>
+    <DropdownMenu>
       <Menu disabledItem />
     </DropdownMenu>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Más acciones' }))
+
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(await body.findByRole('menuitem', { name: 'Confirmar pago' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('menu')).not.toBeInTheDocument())
+  },
 }
 
 export const AbrirConTeclado: Story = {
@@ -78,6 +109,9 @@ export const AbrirConTeclado: Story = {
 
     const body = within(canvasElement.ownerDocument.body)
     const menu = await body.findByRole('menu')
-    await expect(within(menu).getByRole('menuitem', { name: 'Completar' })).toBeVisible()
+    await waitFor(() => expect(within(menu).getByRole('menuitem', { name: 'Completar' })).toBeVisible())
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('menu')).not.toBeInTheDocument())
   },
 }

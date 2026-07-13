@@ -1,6 +1,6 @@
 import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import DatePicker from './date-picker'
 
 /**
@@ -14,7 +14,10 @@ function ControlledDatePicker(props: Partial<ComponentProps<typeof DatePicker>>)
   const [value, setValue] = useState(props.value ?? '')
   return (
     <div className="w-72">
-      <DatePicker id="demo-date-picker" value={value} onChange={setValue} {...props} />
+      {/* {...props} va ANTES de value/onChange: si el `value` fijo del story se
+          spreadeara último, pisaría el estado interno en cada render y ninguna
+          interacción (elegir día, "Hoy", "Borrar") podría cambiarlo. */}
+      <DatePicker id="demo-date-picker" {...props} value={value} onChange={setValue} />
     </div>
   )
 }
@@ -45,8 +48,12 @@ export const CalendarioAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /20\/03\/2026/ }))
-    await expect(canvas.getByText('marzo de 2026')).toBeVisible()
-    await expect(canvas.getByRole('button', { name: '20' })).toBeVisible()
+    // El panel (PopoverContent) va portaled a document.body, fuera de canvasElement.
+    // waitFor (no un findBy suelto): recién montado, el fade-in-0 de Radix puede
+    // dejar opacity:0 en el primer tick y toBeVisible() lo agarra en falso negativo.
+    const body = within(canvasElement.ownerDocument.body)
+    await waitFor(() => expect(body.getByText('marzo de 2026')).toBeVisible())
+    await expect(body.getByRole('button', { name: '20' })).toBeVisible()
   },
 }
 
@@ -56,8 +63,9 @@ export const ConMinimo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /20\/03\/2026/ }))
-    await expect(canvas.getByRole('button', { name: '10' })).toBeDisabled()
-    await expect(canvas.getByRole('button', { name: '20' })).toBeEnabled()
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(await body.findByRole('button', { name: '10' })).toBeDisabled()
+    await expect(body.getByRole('button', { name: '20' })).toBeEnabled()
   },
 }
 
@@ -66,10 +74,13 @@ export const NavegarMesYElegir: Story = {
   render: () => <ControlledDatePicker />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByPlaceholderText('Seleccionar fecha'))
-    await userEvent.click(canvas.getByRole('button', { name: 'Mes siguiente' }))
-    await expect(canvas.getByText('abril de 2026')).toBeVisible()
-    await userEvent.click(canvas.getByRole('button', { name: '10' }))
+    // El trigger es un <button>, no un <input>: no tiene placeholder de verdad,
+    // el texto "Seleccionar fecha" es su nombre accesible.
+    await userEvent.click(canvas.getByRole('button', { name: 'Seleccionar fecha' }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Mes siguiente' }))
+    await waitFor(() => expect(body.getByText('abril de 2026')).toBeVisible())
+    await userEvent.click(body.getByRole('button', { name: '10' }))
     await expect(canvas.getByText('10/04/2026')).toBeVisible()
   },
 }
@@ -80,7 +91,8 @@ export const AccionHoy: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /20\/03\/2026/ }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Hoy' }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Hoy' }))
     await expect(canvas.getByText('14/03/2026')).toBeVisible()
   },
 }
@@ -91,7 +103,8 @@ export const AccionBorrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /20\/03\/2026/ }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Borrar' }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Borrar' }))
     await expect(canvas.getByText('Seleccionar fecha')).toBeVisible()
   },
 }

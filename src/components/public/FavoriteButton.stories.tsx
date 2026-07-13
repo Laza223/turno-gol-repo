@@ -48,8 +48,10 @@ export const ToggleOptimista: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Guardar en favoritos' }))
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Quitar de favoritos' })).toBeInTheDocument())
+    // Variant 'inline': sin aria-label, el nombre accesible es el texto visible
+    // ("Guardar"/"Guardado"), no "Guardar en favoritos" (eso es del overlay).
+    await userEvent.click(canvas.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Guardado' })).toBeInTheDocument())
   },
 }
 
@@ -61,11 +63,11 @@ export const ErrorDeRed: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Guardar en favoritos' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Guardar' }))
     const body = within(canvasElement.ownerDocument.body)
     await waitFor(() =>
       expect(body.getByText('No pudimos actualizar tus favoritos.')).toBeInTheDocument(),
     )
-    await expect(canvas.getByRole('button', { name: 'Guardar en favoritos' })).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Guardar' })).toBeInTheDocument()
   },
 }

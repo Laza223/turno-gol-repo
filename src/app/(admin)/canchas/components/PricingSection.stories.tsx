@@ -1,9 +1,26 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { openingHours, pricingSynthetic } from '@/test/fixtures'
+import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
 
 const HOURS = openingHours()
+
+// openingHours() (la del resto del archivo) tiene horarios reales dispares por
+// día (mié cierra 23:00, vie/sáb 24:00, dom 22:00): con esa ventana,
+// pricingSynthetic() (franjas 09-18/18-24 lun-vie + 09-24 finde) se recorta
+// distinto por día y el resumen queda fragmentado (deja de haber 2 franjas
+// "Lun a Vie" limpias). Semana uniforme para las 2 stories que verifican el
+// resumen agregado por franja.
+const UNIFORM_WEEK: OpeningHours = {
+  mon: { open: '09:00', close: '24:00', closed: false },
+  tue: { open: '09:00', close: '24:00', closed: false },
+  wed: { open: '09:00', close: '24:00', closed: false },
+  thu: { open: '09:00', close: '24:00', closed: false },
+  fri: { open: '09:00', close: '24:00', closed: false },
+  sat: { open: '09:00', close: '24:00', closed: false },
+  sun: { open: '09:00', close: '24:00', closed: false },
+}
 
 const meta = {
   title: 'Admin/Canchas/PricingSection',
@@ -29,7 +46,7 @@ export const SinPreciosTodavia: Story = {
 }
 
 export const ConReglasExistentes: Story = {
-  args: { initialRules: pricingSynthetic().rules },
+  args: { openingHours: UNIFORM_WEEK, initialRules: pricingSynthetic().rules },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // 2 franjas Lun a Vie (día/noche a distinto precio) + 1 Sáb y Dom (24hs parejo).
@@ -56,6 +73,7 @@ export const AplicarPlantillaUniforme: Story = {
 /** Copiar de otra cancha: un click reemplaza toda la grilla por la fuente elegida. */
 export const CopiarDeOtraCancha: Story = {
   args: {
+    openingHours: UNIFORM_WEEK,
     otherCourts: [
       { id: '1', name: 'Cancha 1', rules: pricingSynthetic().rules },
     ] satisfies CourtPricingSource[],

@@ -4,10 +4,16 @@ import ReservaShell from '@/components/booking/ReservaDarkShell'
 
 // Banners de error del checkout — badge dual §6.5 (tinte + texto legible en
 // ambos temas), severidad destructive o warning según el caso.
+// `(public)/[slug]/reservar` es superficie CLARA (ReservaDarkShell acá es
+// theme-adaptive, no forzado a dark). El fill light tiene que ser OPACO:
+// `bg-destructive/10`/`bg-warning/10` (translúcido) compone contra lo que
+// haya detrás — con el fondo real del portal daba 3.34:1 / 3.68:1. `bg-red-50`
+// / `bg-amber-50` (igual que los badges de MisReservasView) fijan el
+// contraste sin importar el fondo.
 const alertDestructive =
-  'rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive ring-1 ring-inset ring-destructive/25 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/30'
+  'rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-inset ring-destructive/25 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/30'
 const alertWarning =
-  'rounded-xl bg-warning/10 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-warning/30 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30'
+  'rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-warning/30 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30'
 
 export type CheckoutErrorCode =
   | 'slot_taken'

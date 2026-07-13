@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { artDateString } from '@/test/fixtures'
 import { CloseDayButton } from './CloseDayButton'
 import type { CloseDayActionResult } from '../actions'
@@ -58,7 +58,10 @@ export const DiffCero: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Cerrar caja' }))
 
-    const dialog = within(body.getByRole('dialog'))
+    const dialog = within(await body.findByRole('dialog'))
+    // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
+    // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
+    await waitFor(() => expect(dialog.getByLabelText(/efectivo contado/i)).toBeVisible())
     await userEvent.type(dialog.getByLabelText(/efectivo contado/i), '37000')
     await expect(dialog.getByText(/nota \(opcional\)/i)).toBeVisible()
     await expect(dialog.queryByText(/diferencia de/i)).not.toBeInTheDocument()
@@ -67,18 +70,24 @@ export const DiffCero: Story = {
 
 /** Efectivo distinto del saldo: aparece la diferencia y la nota pasa a obligatoria. */
 export const DiffRequiereNota: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Cerrar caja' }))
 
-    const dialog = within(body.getByRole('dialog'))
+    const dialog = within(await body.findByRole('dialog'))
+    await waitFor(() => expect(dialog.getByLabelText(/efectivo contado/i)).toBeVisible())
     await userEvent.type(dialog.getByLabelText(/efectivo contado/i), '36500')
 
     await expect(dialog.getByText(/diferencia de.*de menos/i)).toBeVisible()
     await expect(dialog.getByText(/nota \(obligatoria\)/i)).toBeVisible()
 
+    // El type-to-confirm (fase "CERRAR") solo depende de la frase, no de la
+    // nota: el confirm queda habilitado, pero onConfirm (CloseDayButton)
+    // rechaza el submit sin nota — el gate real es ese, no el botón.
     await userEvent.type(dialog.getByLabelText('Escribí CERRAR para confirmar'), 'CERRAR')
-    await expect(dialog.getByRole('button', { name: 'Cerrar caja' })).toBeDisabled()
+    await userEvent.click(dialog.getByRole('button', { name: 'Cerrar caja' }))
+    await expect(await dialog.findByRole('alert')).toHaveTextContent(/nota es obligatoria/i)
+    await expect(args.closeDayAction).not.toHaveBeenCalled()
   },
 }
 

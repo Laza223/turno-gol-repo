@@ -103,7 +103,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="h-[32rem] p-4">
+      <div className="flex h-[32rem] flex-col p-4">
         <Story />
       </div>
     ),

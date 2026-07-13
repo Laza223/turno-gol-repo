@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, fireEvent, within } from 'storybook/test'
 import { deriveScheduleView, type ScheduleView } from '@/app/(admin)/settings/horarios/horarios-lib'
 import { openingHours, openingHoursClosesNextDay } from '@/test/fixtures/tenant'
 import { ScheduleFields } from './ScheduleFields'
@@ -63,7 +63,11 @@ export const DiaPersonalizado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Restablecer' })).toBeInTheDocument()
+    // viernes y domingo YA son 'custom' en el fixture (09-24 y 09-22 difieren
+    // del general 09-23) — hay 3 "Restablecer" en pantalla. Acotar al <li> de
+    // Sábado, que es el día que esta story personaliza.
+    const saturdayItem = canvas.getByText('Sábado').closest('li') as HTMLElement
+    await expect(within(saturdayItem).getByRole('button', { name: 'Restablecer' })).toBeInTheDocument()
   },
 }
 
@@ -77,7 +81,8 @@ export const DiaCerrado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Cerrado')).toBeInTheDocument()
-    await expect(canvas.getByLabelText('domingo abierto')).not.toBeChecked()
+    // aria-label real = `${DAY_LABELS_LONG[day]} abierto`, con mayúscula inicial.
+    await expect(canvas.getByLabelText('Domingo abierto')).not.toBeChecked()
   },
 }
 
@@ -95,7 +100,10 @@ export const CierraDespuesDeMedianoche: Story = {
   render: () => <Controlled initialView={deriveScheduleView(openingHoursClosesNextDay())} initialClosesNextDay />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText('Cierra después de medianoche')).toBeChecked()
+    // El <label> nativo envuelve el checkbox + el título + la descripción, así
+    // que el nombre accesible completo incluye todo ese texto — se matchea por
+    // el inicio.
+    await expect(canvas.getByLabelText(/^Cierra después de medianoche/)).toBeChecked()
     await expect(canvas.queryByText(/Cerrás pasada la medianoche/)).not.toBeInTheDocument()
   },
 }
@@ -105,9 +113,12 @@ export const EditarGeneral: Story = {
   render: () => <Controlled initialView={deriveScheduleView(openingHours())} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    // input type="time": userEvent.type/keyboard tipea los segmentos visibles
+    // del widget nativo (formato dependiente del locale del browser, ambiguo);
+    // fireEvent.change setea el .value directo, sin ambigüedad (mismo idiom
+    // que AbonadoForm.stories.tsx).
     const closeInput = canvas.getByLabelText('Cierra') as HTMLInputElement
-    await userEvent.click(closeInput)
-    await userEvent.keyboard('2200')
+    await fireEvent.change(closeInput, { target: { value: '22:00' } })
     await expect(closeInput).toHaveValue('22:00')
   },
 }

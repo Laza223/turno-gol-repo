@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { Button } from './button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './dialog'
 
@@ -76,9 +76,13 @@ export const AbrirYCerrar: Story = {
 
     const body = within(canvasElement.ownerDocument.body)
     const dialog = await body.findByRole('dialog')
-    await expect(within(dialog).getByText('Cancelar reserva')).toBeVisible()
+    // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
+    // el primer tick y toBeVisible() lo agarra en falso negativo.
+    await waitFor(() => expect(within(dialog).getByText('Cancelar reserva')).toBeVisible())
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cerrar' }))
-    await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
+    // El nodo sigue en el DOM durante la animación de salida (data-state=closed
+    // con duration-200): esperar a que Radix lo desmonte de verdad.
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }

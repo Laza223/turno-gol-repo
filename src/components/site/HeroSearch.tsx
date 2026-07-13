@@ -192,7 +192,11 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                   className="pointer-events-none absolute left-3 top-1/2 z-10 h-[17px] w-[17px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400"
                   aria-hidden
                 />
-                <DropdownMenu>
+                {/* modal={false}: selector liviano dentro de un form de búsqueda, no
+                    un diálogo — con el default (modal=true) Radix llama
+                    hideOthers() y aria-hidea el resto del form (incluido "Buscar
+                    canchas") mientras el menú está abierto/cerrándose. */}
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
@@ -329,7 +333,8 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
               className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400 z-10"
               aria-hidden
             />
-            <DropdownMenu>
+            {/* modal={false}: ver comentario del layout vertical más arriba. */}
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"

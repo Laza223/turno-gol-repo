@@ -17,7 +17,9 @@ async function fillRequiredFields(canvas: ReturnType<typeof within>) {
   await fireEvent.change(canvas.getByLabelText('Hora de inicio'), { target: { value: '20:00' } })
   await fireEvent.change(canvas.getByLabelText('Hora de fin'), { target: { value: '21:00' } })
   await userEvent.type(canvas.getByLabelText('Nombre y apellido'), 'Grupo Test')
-  await userEvent.type(canvas.getByLabelText('Teléfono'), '1122334455')
+  // El label de PhoneInput es "Teléfono *" (asterisco de requerido en un
+  // <span> aparte): match exacto falla, hace falta un regex parcial.
+  await userEvent.type(canvas.getByLabelText(/Teléfono/i), '1122334455')
   await userEvent.type(canvas.getByLabelText('Precio por turno (en pesos)'), '25000')
 }
 

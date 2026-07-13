@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import BusinessLayout from '../layout'
 import PreciosPage from './page'
 
@@ -32,8 +32,17 @@ export const FaqAbierta: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const question = canvas.getByText('¿Mis clientes tienen que bajarse una app?')
+    // El FAQ vive debajo del fold: `Reveal` (IntersectionObserver) solo
+    // saca el bloque de `opacity-0` cuando entra en viewport, igual que un
+    // visitante real que scrollea. Sin este scroll el wrapper de Reveal
+    // nunca revela y `toBeVisible()` da falso positivo/negativo por esa
+    // opacity heredada, no por el estado real del `<details>`.
+    question.scrollIntoView()
+    await waitFor(() => expect(question).toBeVisible())
     await expect(canvas.queryByText(/reservan desde un link/i)).not.toBeVisible()
     await userEvent.click(question)
-    await expect(canvas.getByText(/reservan desde un link/i)).toBeVisible()
+    // La respuesta entra con `animate-faq-in` (fade-up, 0.2s): esperamos a que
+    // termine para no leer opacity a mitad de la animación.
+    await waitFor(() => expect(canvas.getByText(/reservan desde un link/i)).toBeVisible())
   },
 }

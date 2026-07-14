@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
  * expiró: ofrecemos pedir uno nuevo.
  */
 export default async function ResetPasswordPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
   const hasSession = !!data?.user
 

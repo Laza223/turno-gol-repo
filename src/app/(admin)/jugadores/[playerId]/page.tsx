@@ -9,9 +9,10 @@ import {
 } from '../queries'
 import { JugadorProfileView } from './JugadorProfileView'
 
-type Props = { params: { playerId: string } }
+type Props = { params: Promise<{ playerId: string }> }
 
-export default async function JugadorProfilePage({ params }: Props) {
+export default async function JugadorProfilePage(props: Props) {
+  const params = await props.params;
   const auth = await requireOperatorStaff()
   if (!auth.ok) redirect('/dashboard')
   const { tenant } = auth

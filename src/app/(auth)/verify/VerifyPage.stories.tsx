@@ -24,11 +24,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Cargando: Story = {
-  args: { searchParams: {} },
+  args: { searchParams: Promise.resolve({}) },
 }
 
 export const ExitoLogin: Story = {
-  args: { searchParams: { status: 'success', intent: 'login', next: '/mis-reservas' } },
+  args: { searchParams: Promise.resolve({ status: 'success', intent: 'login', next: '/mis-reservas' }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Listo!')).toBeInTheDocument()
@@ -40,7 +40,7 @@ export const ExitoLogin: Story = {
 }
 
 export const ExitoSignup: Story = {
-  args: { searchParams: { status: 'success', intent: 'signup', next: '/dashboard' } },
+  args: { searchParams: Promise.resolve({ status: 'success', intent: 'signup', next: '/dashboard' }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Bienvenido a TurnoGol!')).toBeInTheDocument()
@@ -48,7 +48,7 @@ export const ExitoSignup: Story = {
 }
 
 export const ExitoBooking: Story = {
-  args: { searchParams: { status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' } },
+  args: { searchParams: Promise.resolve({ status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Cuenta confirmada!')).toBeInTheDocument()
@@ -57,7 +57,7 @@ export const ExitoBooking: Story = {
 }
 
 export const ErrorExpirado: Story = {
-  args: { searchParams: { error: 'expired' } },
+  args: { searchParams: Promise.resolve({ error: 'expired' }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Este enlace expiró. Generá uno nuevo desde Iniciar sesión.')).toBeInTheDocument()
@@ -65,11 +65,11 @@ export const ErrorExpirado: Story = {
 }
 
 export const ErrorUsado: Story = {
-  args: { searchParams: { error: 'used' } },
+  args: { searchParams: Promise.resolve({ error: 'used' }) },
 }
 
 export const ErrorInvalido: Story = {
-  args: { searchParams: { error: 'algo-no-mapeado' } },
+  args: { searchParams: Promise.resolve({ error: 'algo-no-mapeado' }) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Código sin entrada en ERROR_COPY: cae al copy de 'invalid' (fallback).

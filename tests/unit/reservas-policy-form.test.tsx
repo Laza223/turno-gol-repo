@@ -3,15 +3,28 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
-// useFormState/useFormStatus son undefined en vitest: los mockeamos para testear
-// la presentacion del feedback (#21).
+// useActionState/useFormStatus son undefined en vitest: los mockeamos para
+// testear la presentacion del feedback (#21).
+//
+// React 19: useFormState (react-dom) pasó a ser useActionState (react), así que
+// el mock tiene que ir a 'react'. useFormStatus NO se movió: sigue en react-dom.
 const formState = vi.fn()
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return {
+    ...actual,
+    useActionState: (_action: unknown, initial: unknown) => [
+      formState() ?? initial,
+      vi.fn(),
+      false,
+    ],
+  }
+})
 vi.mock('react-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-dom')>()
   return {
     ...actual,
     useFormStatus: () => ({ pending: false }),
-    useFormState: (_action: unknown, initial: unknown) => [formState() ?? initial, vi.fn()],
   }
 })
 

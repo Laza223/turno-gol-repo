@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-describe('next.config.js security headers', () => {
-  const src = readFileSync(path.resolve('next.config.js'), 'utf8')
+describe('next.config.ts security headers', () => {
+  // .ts desde el upgrade a Next 16: next.config.js (CommonJS) pasó a
+  // next.config.ts (ESM + TypeScript).
+  const src = readFileSync(path.resolve('next.config.ts'), 'utf8')
 
   it('does NOT include unsafe-eval in script-src', () => {
     const cspBlock = src.match(/Content-Security-Policy[\s\S]*?]\.join/m)?.[0] ?? ''

@@ -49,7 +49,12 @@ if (isValidDsn(dsn)) {
     environment: process.env.NODE_ENV,
     release: process.env.VERCEL_GIT_COMMIT_SHA,
     tracesSampler: (samplingContext) => {
-      const name = samplingContext.transactionContext?.name ?? ''
+      // Sentry v8 sacó `transactionContext` de SamplingContext: el nombre de la
+      // transacción ahora viene directo en `samplingContext.name`. Si se dejaba
+      // el acceso viejo quedaba `undefined` y TODO el sampling por ruta colapsaba
+      // en silencio al 0.1 de abajo — los webhooks de MP perdían la mitad de su
+      // traza sin que nada fallara.
+      const name = samplingContext.name ?? ''
       if (name.includes('/api/health') || name.includes('/api/status')) return 0
       if (name.includes('/api/webhooks')) return 0.5
       if (name.includes('/api/bookings')) return 0.3

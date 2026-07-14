@@ -1,7 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
-import { Suspense } from 'react'
+import { useFormStatus } from 'react-dom'
+import { useActionState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle2, Loader2, Mail } from 'lucide-react'
 import type { PlayerLoginState } from './actions'
@@ -58,7 +58,7 @@ function DeletedNotice() {
 }
 
 function FormCard({ action }: { action: PlayerLoginAction }) {
-  const [state, formAction] = useFormState(action, initial)
+  const [state, formAction] = useActionState(action, initial)
   const searchParams = useSearchParams()
   const next = searchParams.get('next') ?? '/mis-reservas'
 

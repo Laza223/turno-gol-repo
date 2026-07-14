@@ -3,15 +3,30 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import type { HorariosActionResult } from '@/app/(admin)/settings/horarios/actions'
 
-// useFormState/useFormStatus son undefined en vitest: mock para testear la
+// useActionState/useFormStatus son undefined en vitest: mock para testear la
 // presentacion del feedback (#19).
+//
+// React 19: useFormState (react-dom) pasó a ser useActionState (react), así que
+// el mock tiene que ir a 'react'. useFormStatus NO se movió: sigue en react-dom.
+// Ojo: si esto se dejara sólo en react-dom, el mock dejaría de interceptar y el
+// test seguiría en verde sin testear nada.
 const formState = vi.fn()
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return {
+    ...actual,
+    useActionState: (_action: unknown, initial: unknown) => [
+      formState() ?? initial,
+      vi.fn(),
+      false,
+    ],
+  }
+})
 vi.mock('react-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-dom')>()
   return {
     ...actual,
     useFormStatus: () => ({ pending: false }),
-    useFormState: (_action: unknown, initial: unknown) => [formState() ?? initial, vi.fn()],
   }
 })
 

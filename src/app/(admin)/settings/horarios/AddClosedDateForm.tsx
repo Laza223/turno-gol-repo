@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState } from 'react-dom'
+import { useActionState, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
@@ -23,7 +22,7 @@ export function AddClosedDateForm({
   minDate: string
   action: AddClosedDateAction
 }) {
-  const [state, formAction] = useFormState(action, INITIAL)
+  const [state, formAction] = useActionState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
 
   return (

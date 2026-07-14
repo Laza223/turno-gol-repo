@@ -10,7 +10,7 @@ import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 
 export const dynamic = 'force-dynamic'
 
-type Props = { params: { slug: string } }
+type Props = { params: Promise<{ slug: string }> }
 
 const UNAVAILABLE = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
 
@@ -18,7 +18,8 @@ function getArtToday(): string {
   return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 }
 
-export default async function DisponibilidadPage({ params }: Props) {
+export default async function DisponibilidadPage(props: Props) {
+  const params = await props.params;
   const tenant = await getPublicTenant(params.slug)
   if (!tenant || UNAVAILABLE.has(tenant.status)) notFound()
 
@@ -42,7 +43,8 @@ export default async function DisponibilidadPage({ params }: Props) {
   )
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
   if (UNAVAILABLE.has(tenant.status)) {

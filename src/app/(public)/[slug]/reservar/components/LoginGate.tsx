@@ -1,6 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { Loader2, Mail } from 'lucide-react'
 import type { sendPlayerMagicLink, GateState } from '../actions'
 
@@ -29,7 +30,7 @@ export default function LoginGate({
   /** Server Action inyectada por la page (../actions#sendPlayerMagicLink). */
   action: SendPlayerMagicLink
 }) {
-  const [state, formAction] = useFormState(action, initial)
+  const [state, formAction] = useActionState(action, initial)
 
   if (state.status === 'sent') {
     return (

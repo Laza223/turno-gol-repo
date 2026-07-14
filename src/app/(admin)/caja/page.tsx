@@ -76,7 +76,8 @@ const METHOD_ICON: Record<MethodKey, LucideIcon> = {
   other: Coins,
 }
 
-export default async function CajaPage({ searchParams }: { searchParams: { date?: string } }) {
+export default async function CajaPage(props: { searchParams: Promise<{ date?: string }> }) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

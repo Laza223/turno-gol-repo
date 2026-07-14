@@ -1,6 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState } from 'react'
+import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { CheckCircle2, Loader2, Mail } from 'lucide-react'
 import type { RegisterState } from './actions'
@@ -21,7 +22,7 @@ export type RegisterAction = (
  * se importa como valor.
  */
 export function RegisterCard({ action }: { action: RegisterAction }) {
-  const [state, formAction] = useFormState(action, initial)
+  const [state, formAction] = useActionState(action, initial)
 
   if (state.status === 'confirm') return <ConfirmState email={state.email} />
   if (state.status === 'existing') return <ExistingState email={state.email} />

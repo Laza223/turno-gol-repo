@@ -30,8 +30,8 @@ export async function forgotPasswordAction(
     return { status: 'error', message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.' }
   }
 
-  const origin = headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const supabase = createClient()
+  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const supabase = await createClient()
   // El template `recovery` arma la URL con token_hash + type=recovery apuntando
   // al callback; resetPasswordForEmail solo dispara el envío.
   await supabase.auth.resetPasswordForEmail(email.data, {

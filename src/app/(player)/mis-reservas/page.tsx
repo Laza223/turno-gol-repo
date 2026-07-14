@@ -9,11 +9,12 @@ function artToday(): string {
   return new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
 }
 
-export default async function MisReservasPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string }
-}) {
+export default async function MisReservasPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 

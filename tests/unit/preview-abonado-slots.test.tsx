@@ -169,8 +169,11 @@ describe('AbonadoForm — preview phase', () => {
       expect(alert.textContent).toContain('Tenant no encontrado.')
     })
 
-    // Should remain on form phase
-    expect(screen.getByRole('button', { name: /Ver fechas/i })).toBeTruthy()
+    // Should remain on form phase.
+    // findByRole y no getByRole: React 19 hizo las transiciones async de verdad, así
+    // que el botón vuelve de su estado pending un tick después de que el error ya
+    // está en el DOM. Si nunca vuelve, el findByRole expira y el test falla igual.
+    expect(await screen.findByRole('button', { name: /Ver fechas/i })).toBeTruthy()
   })
 
   it('calls submitNewAbonado with reconstructed FormData when "Crear abonado" clicked', async () => {

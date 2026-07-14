@@ -1,6 +1,6 @@
 'use client'
 
-import { useFormState } from 'react-dom'
+import { useActionState } from 'react'
 import { SubmitButton } from '@/components/ui/submit-button'
 import type { HorariosActionResult } from './actions'
 
@@ -20,7 +20,7 @@ export function RemoveClosedDateForm({
   date: string
   action: RemoveClosedDateAction
 }) {
-  const [state, formAction] = useFormState(action, INITIAL)
+  const [state, formAction] = useActionState(action, INITIAL)
 
   return (
     <form action={formAction} className="text-right">

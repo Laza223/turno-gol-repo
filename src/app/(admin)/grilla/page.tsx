@@ -16,11 +16,12 @@ import type {
 } from '@/modules/bookings/booking.types'
 
 
-export default async function GrillaPage({
-  searchParams,
-}: {
-  searchParams: { date?: string }
-}) {
+export default async function GrillaPage(
+  props: {
+    searchParams: Promise<{ date?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

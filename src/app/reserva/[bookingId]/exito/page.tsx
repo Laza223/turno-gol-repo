@@ -8,7 +8,7 @@ import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 import { BookingSuccessCard, BookingSuccessNotFound } from './BookingSuccessCard'
 
-type Props = { params: { bookingId: string } }
+type Props = { params: Promise<{ bookingId: string }> }
 
 export const dynamic = 'force-dynamic'
 
@@ -56,7 +56,8 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
   })
 }
 
-export default async function ReservaExitoPage({ params }: Props) {
+export default async function ReservaExitoPage(props: Props) {
+  const params = await props.params;
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 
@@ -93,7 +94,7 @@ export default async function ReservaExitoPage({ params }: Props) {
   // ve el estado real del turno (sin datos del jugador). Base desde env con
   // fallback al host del request (dev / previews).
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? `https://${headers().get('host') ?? 'turnogol.app'}`
+    process.env.NEXT_PUBLIC_APP_URL ?? `https://${(await headers()).get('host') ?? 'turnogol.app'}`
   const verifyUrl = `${appUrl}/reserva/${params.bookingId}/verificar`
 
   return (

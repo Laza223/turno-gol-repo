@@ -1,7 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
-import { useState } from 'react'
+import { useFormStatus } from 'react-dom'
+import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import type { LoginState, ResendState } from './actions'
@@ -29,7 +29,7 @@ export function LoginCard({
   loginAction: LoginAction
   resendAction: ResendConfirmationAction
 }) {
-  const [state, formAction] = useFormState(loginAction, initial)
+  const [state, formAction] = useActionState(loginAction, initial)
   const [show, setShow] = useState(false)
   const isError = state.status === 'error'
 
@@ -130,7 +130,7 @@ function ResendConfirmation({
   email: string
   action: ResendConfirmationAction
 }) {
-  const [state, formAction] = useFormState(action, resendInitial)
+  const [state, formAction] = useActionState(action, resendInitial)
   if (state.status === 'sent') {
     return (
       <p className="text-xs text-emerald-700 dark:text-emerald-400">

@@ -19,11 +19,12 @@ const STATUS_LABELS: Record<AbonadoStatus, string> = {
   canceled: 'Cancelados',
 }
 
-export default async function AbonadosPage({
-  searchParams,
-}: {
-  searchParams: { status?: string }
-}) {
+export default async function AbonadosPage(
+  props: {
+    searchParams: Promise<{ status?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

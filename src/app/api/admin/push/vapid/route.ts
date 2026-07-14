@@ -15,7 +15,7 @@ export const runtime = 'nodejs'
  * passes through when Upstash is not available (failMode: 'open').
  */
 export async function GET(): Promise<Response> {
-  const ip = parseClientIp(headers())
+  const ip = parseClientIp(await headers())
   const outcome = await enforce('vapidPublic', ip)
   if (!outcome.ok) return rateLimit429(outcome)
 

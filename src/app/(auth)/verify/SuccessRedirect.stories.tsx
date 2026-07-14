@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, waitFor, within } from 'storybook/test'
 import SuccessRedirect from './SuccessRedirect'
@@ -41,7 +42,8 @@ import SuccessRedirect from './SuccessRedirect'
  */
 const CARD_BG_COMPOSITED = '#0B1225'
 
-const DarkCardDecorator = (Story: () => JSX.Element) => (
+// React 19 sacó el namespace JSX global: ahora vive bajo React.JSX.
+const DarkCardDecorator = (Story: () => React.JSX.Element) => (
   <div
     className="rounded-2xl p-8 text-center"
     style={{ background: CARD_BG_COMPOSITED, border: '1px solid rgba(255,255,255,.1)' }}

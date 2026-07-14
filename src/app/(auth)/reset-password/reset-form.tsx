@@ -1,7 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
-import { useState } from 'react'
+import { useFormStatus } from 'react-dom'
+import { useActionState, useState } from 'react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import type { ResetState } from './actions'
 
@@ -21,7 +21,7 @@ export type ResetPasswordAction = (
  * compilación.
  */
 export function ResetForm({ action }: { action: ResetPasswordAction }) {
-  const [state, formAction] = useFormState(action, initial)
+  const [state, formAction] = useActionState(action, initial)
   const [show, setShow] = useState(false)
 
   return (

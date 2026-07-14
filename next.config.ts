@@ -1,21 +1,26 @@
-const { withSentryConfig } = require('@sentry/nextjs')
-const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: process.env.ANALYZE === 'true' })
+import { withSentryConfig } from '@sentry/nextjs'
+import bundleAnalyzer from '@next/bundle-analyzer'
+import type { NextConfig } from 'next'
+
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
 
 // 'unsafe-eval' is required by Next.js dev mode (webpack eval source maps) for
 // client hydration of interactive components. Production builds do NOT use
 // eval, so we keep CSP strict in prod and relax it only in dev.
-const scriptSrc = process.env.NODE_ENV === 'production'
-  ? "script-src 'self' 'unsafe-inline'"
-  : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+const scriptSrc =
+  process.env.NODE_ENV === 'production'
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
 
 // Supabase Realtime en dev apunta a ws://127.0.0.1:<port> (Supabase local), que
 // el CSP de prod (*.supabase.co) bloquea — la grilla queda "Sin conexión".
 // Relajamos connect-src SOLO en dev para permitir el WebSocket local; en
 // producción Realtime usa wss://<proj>.supabase.co (ya cubierto) y el header
 // queda estricto.
-const connectSrc = process.env.NODE_ENV === 'production'
-  ? "connect-src 'self' *.supabase.co *.mercadopago.com"
-  : "connect-src 'self' *.supabase.co *.mercadopago.com ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*"
+const connectSrc =
+  process.env.NODE_ENV === 'production'
+    ? "connect-src 'self' *.supabase.co *.mercadopago.com"
+    : "connect-src 'self' *.supabase.co *.mercadopago.com ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*"
 
 // CSP violation reports are POSTed to /api/csp-report. We emit both the legacy
 // `report-uri` (Firefox/Safari + older Chrome) and the modern `report-to`
@@ -49,13 +54,14 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
 ]
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+// Ya no hace falta `eslint: { ignoreDuringBuilds: true }`: Next 16 sacó `next
+// lint` y la integración de ESLint en el build, así que la key no existe más en
+// NextConfig. El lint sigue corriendo aparte (`pnpm lint`) y en CI.
+const nextConfig: NextConfig = {
+  // Sigue bajo `experimental` en Next 16 (verificado contra ExperimentalConfig en
+  // next/dist/server/config-shared.d.ts), no se promovió a top-level.
   experimental: { optimizePackageImports: ['lucide-react', 'date-fns'] },
-  // react-leaflet v4 es ESM-only; Next necesita transpilarlo para el build.
+  // react-leaflet es ESM-only; Next necesita transpilarlo para el build.
   transpilePackages: ['react-leaflet', '@react-leaflet/core'],
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -75,12 +81,19 @@ const nextConfig = {
   },
 }
 
-module.exports = withSentryConfig(withBundleAnalyzer(nextConfig), {
+export default withSentryConfig(withBundleAnalyzer(nextConfig), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: true,
-  hideSourceMaps: true,
+  // Sentry v8 sacó `hideSourceMaps`. El reemplazo es borrar los sourcemaps del
+  // bundle después de subirlos: mismo efecto (no quedan expuestos en prod).
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  // NO TOCAR. El `connect-src` del CSP de arriba no lista *.sentry.io: el túnel
+  // es lo único que hace pasar el ingest. Si se saca o se pone en `true` (ruta
+  // random), el CSP empieza a bloquear a Sentry en silencio.
   tunnelRoute: '/monitoring',
   disableLogger: true,
 })

@@ -13,10 +13,11 @@ export const metadata: Metadata = {
 }
 
 type Props = {
-  searchParams: { error?: string }
+  searchParams: Promise<{ error?: string }>
 }
 
-export default async function SelectTenantPage({ searchParams }: Props) {
+export default async function SelectTenantPage(props: Props) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

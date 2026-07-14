@@ -58,13 +58,14 @@ function parsePage(raw: string | undefined): number {
   return Number.isInteger(n) && n > 0 ? n : 1
 }
 
-export default async function SuperAdminTenantDetailPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string }
-  searchParams: { tab?: string; actPage?: string }
-}) {
+export default async function SuperAdminTenantDetailPage(
+  props: {
+    params: Promise<{ id: string }>
+    searchParams: Promise<{ tab?: string; actPage?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   await requireSystemAdmin()
 
   if (!UUID_RE.test(params.id)) notFound()

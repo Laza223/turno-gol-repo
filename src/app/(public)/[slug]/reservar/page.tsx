@@ -18,8 +18,8 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
 type Props = {
-  params: { slug: string }
-  searchParams: { court?: string; date?: string; time?: string; dur?: string; error?: string; until?: string }
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ court?: string; date?: string; time?: string; dur?: string; error?: string; until?: string }>
 }
 
 function addMinsToHHMM(hhmm: string, mins: number): string {
@@ -30,7 +30,9 @@ function addMinsToHHMM(hhmm: string, mins: number): string {
   return endLabelFromMins(total)
 }
 
-export default async function ReservarPage({ params, searchParams }: Props) {
+export default async function ReservarPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) notFound()
   if (UNAVAILABLE.has(tenant.status) || !tenant.allowOnlineBooking) {

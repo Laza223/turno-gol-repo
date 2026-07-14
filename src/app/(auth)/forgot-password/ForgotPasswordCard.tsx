@@ -1,6 +1,7 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState } from 'react'
+import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { Loader2, Mail } from 'lucide-react'
 import type { ForgotState } from './actions'
@@ -21,7 +22,7 @@ export type ForgotPasswordAction = (
  * import de `ForgotState` sí es seguro: se borra en compilación.
  */
 export function ForgotPasswordCard({ action }: { action: ForgotPasswordAction }) {
-  const [state, formAction] = useFormState(action, initial)
+  const [state, formAction] = useActionState(action, initial)
 
   if (state.status === 'sent') return <SentState />
 

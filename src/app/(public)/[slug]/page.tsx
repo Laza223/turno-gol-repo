@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildLocalBusiness, buildBreadcrumbList } from '@/lib/seo/structured-data'
 
-type Props = { params: { slug: string } }
+type Props = { params: Promise<{ slug: string }> }
 
 // ISR: el perfil del complejo se regenera cada 5 min. Todo lo estático (nombre,
 // fotos, canchas, reseñas, metadata y JSON-LD) sale del HTML cacheado; lo que
@@ -43,7 +43,7 @@ const UNAVAILABLE_STATUSES = new Set([
 ])
 
 export default async function PublicComplexPage(props: Props) {
-  const tenant = await getPublicTenant(props.params.slug)
+  const tenant = await getPublicTenant((await props.params).slug)
   if (!tenant) notFound()
 
   // Gate server-side: un complejo suspendido/dado de baja no expone su perfil.
@@ -123,7 +123,8 @@ export default async function PublicComplexPage(props: Props) {
   )
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
   if (UNAVAILABLE_STATUSES.has(tenant.status)) {

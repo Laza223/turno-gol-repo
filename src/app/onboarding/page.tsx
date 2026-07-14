@@ -21,11 +21,12 @@ import {
   uploadOnboardingCourtPhotoAction,
 } from './actions'
 
-export default async function OnboardingPage({
-  searchParams,
-}: {
-  searchParams?: { error?: string }
-}) {
+export default async function OnboardingPage(
+  props: {
+    searchParams?: Promise<{ error?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff') redirect('/login')
   if (!user.staffUserId) redirect('/login')

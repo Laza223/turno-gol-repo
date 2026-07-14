@@ -4,11 +4,12 @@ import { withTenantContext } from '@/shared/db/client'
 import { listTenantPlayers } from './queries'
 import { JugadoresView } from './JugadoresView'
 
-export default async function JugadoresPage({
-  searchParams,
-}: {
-  searchParams: { q?: string }
-}) {
+export default async function JugadoresPage(
+  props: {
+    searchParams: Promise<{ q?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   // Constraint: el módulo se protege con requireOperatorStaff (admin + manager).
   const auth = await requireOperatorStaff()
   if (!auth.ok) redirect('/dashboard')

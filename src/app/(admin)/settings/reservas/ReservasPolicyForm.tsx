@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState } from 'react-dom'
+import { useActionState, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
@@ -18,7 +17,7 @@ export type UpdateReservasPolicy = (
 
 /**
  * Form cliente de Políticas de Reserva (#21). Consume el PolicyActionResult vía
- * useFormState para mostrar error/éxito y usa SubmitButton para el estado de carga.
+ * useActionState para mostrar error/éxito y usa SubmitButton para el estado de carga.
  * Utiliza selectores de chips premium para una experiencia fluida e interactiva.
  *
  * La action llega por PROP, no por import. El módulo './actions' es `'use server'`
@@ -33,7 +32,7 @@ export function ReservasPolicyForm({
   s: TenantSettings
   action: UpdateReservasPolicy
 }) {
-  const [state, formAction] = useFormState(action, INITIAL_STATE)
+  const [state, formAction] = useActionState(action, INITIAL_STATE)
   const [didSubmit, setDidSubmit] = useState(false)
 
   // Toggle states for boolean settings

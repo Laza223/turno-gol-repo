@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState } from 'react-dom'
+import { useActionState, useState } from 'react'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { ScheduleFields } from '@/components/schedule/ScheduleFields'
 import {
@@ -33,7 +32,7 @@ type Props = {
  * nada sea válido y 100% cubrible por el generador de precios del paso 3.
  */
 export function StepSchedule({ hours, closesNextDay, action }: Props) {
-  const [state, formAction] = useFormState(action, INITIAL)
+  const [state, formAction] = useActionState(action, INITIAL)
   const [view, setView] = useState<ScheduleView>(() =>
     deriveScheduleView(sanitizeWizardHours(hours, closesNextDay)),
   )

@@ -17,9 +17,10 @@ import BookingCharges from './BookingCharges'
 
 const CHARGEABLE_STATUSES = new Set(['confirmed', 'completed', 'no_show'])
 
-type Props = { params: { id: string } }
+type Props = { params: Promise<{ id: string }> }
 
-export default async function ReservaDetailPage({ params }: Props) {
+export default async function ReservaDetailPage(props: Props) {
+  const params = await props.params;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
   const tenant = await getStaffTenant(user.staffUserId)

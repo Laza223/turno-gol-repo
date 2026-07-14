@@ -127,8 +127,12 @@ describe('QuickActions — confirmed', () => {
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toBeTruthy()
 
+    // findByRole y no getByRole en los clicks del confirm: React 19 hizo las
+    // transiciones async de verdad, así que el botón se queda en "Procesando…"
+    // un tick más de lo que se quedaba en React 18. findByRole reintenta hasta
+    // que vuelve a estar idle; getByRole miraba una sola vez y no lo encontraba.
     // Sin elegir quién cancela ni motivo → error, no dispara la action.
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar reserva' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(cancelMock).not.toHaveBeenCalled()
 
@@ -137,13 +141,13 @@ describe('QuickActions — confirmed', () => {
     fireEvent.click(radios[1]!)
 
     // Motivo todavía vacío → sigue exigiendo motivo.
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar reserva' }))
     expect(cancelMock).not.toHaveBeenCalled()
 
     fireEvent.change(screen.getByLabelText('Motivo (obligatorio)'), {
       target: { value: 'Lluvia torrencial' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar reserva' }))
     await waitFor(() =>
       expect(cancelMock).toHaveBeenCalledWith('b1', 'Lluvia torrencial', 'jugador'),
     )

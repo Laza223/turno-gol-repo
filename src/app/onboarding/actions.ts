@@ -76,7 +76,7 @@ export async function createTenantAction(
 
   try {
     await setStaffTenantClaim(user.id, tenant.id, user.staffUserId)
-    const supabase = createClient()
+    const supabase = await createClient()
     await supabase.auth.refreshSession()
   } catch {
     // Non-fatal: wizard continues. JWT will have tenant_id on next full login.

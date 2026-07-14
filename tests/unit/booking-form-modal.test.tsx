@@ -77,7 +77,14 @@ describe('BookingFormModal — loading recovery', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('Horario ocupado')
     })
-    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(false)
+    // Dentro de un waitFor: React 19 hizo las transiciones async de verdad, así que
+    // `isPending` sigue true un tick después de que el error ya está en el DOM. Si
+    // el botón nunca se recupera, el waitFor expira y el test falla igual.
+    await waitFor(() => {
+      expect(
+        (screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled,
+      ).toBe(false)
+    })
   })
 
   it('a successful action calls onSuccess with the booking', async () => {

@@ -57,7 +57,7 @@ export async function registerAction(
   }
 
   // Alta de bajo volumen, sin captcha (v1): rate-limit por IP (fail closed).
-  const ip = parseClientIp(headers() as unknown as Headers)
+  const ip = parseClientIp(await headers() as unknown as Headers)
   const rl = await enforce('authRegister', ip)
   if (!rl.ok) {
     return {
@@ -87,7 +87,7 @@ export async function registerAction(
     // continúa con el alta
   }
 
-  const origin = headers().get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const result = await signUpStaff(
     {
       email: parsed.data.email,

@@ -115,10 +115,18 @@ describe('AbonadosList — Cancel action', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
 
-    await waitFor(() => {
-      // Dialog title is in a heading element
-      expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy()
-    })
+    // timeout explícito: este es el PRIMER test del archivo que dispara el
+    // next/dynamic de AbonadoDialogs, así que paga el cold-start del chunk. Bajo
+    // Next 16 esa primera resolución se pasa del waitFor default de 1s de RTL
+    // (~1.5s medido); los tests siguientes reusan el módulo cacheado y tardan
+    // ~70ms. No se relaja el contrato: si el diálogo no abre, igual falla.
+    await waitFor(
+      () => {
+        // Dialog title is in a heading element
+        expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy()
+      },
+      { timeout: 5000 },
+    )
 
     // Phrase input should be present
     expect(screen.getByLabelText(/Escribí/i)).toBeTruthy()

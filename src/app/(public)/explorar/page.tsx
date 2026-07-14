@@ -92,7 +92,8 @@ async function getPlayerFavoriteIds(playerId: string): Promise<Set<string>> {
   }
 }
 
-export default async function ExplorarPage({ searchParams }: { searchParams: SP }) {
+export default async function ExplorarPage(props: { searchParams: Promise<SP> }) {
+  const searchParams = await props.searchParams;
   const offset = Math.max(num(searchParams.offset) ?? 0, 0)
   const view = searchParams.view === 'map' ? 'map' : 'list'
   const sort = SORTS.includes(searchParams.sort as SortOption)
@@ -175,7 +176,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
   const [photosByTenant, pillsByTenant] = await Promise.all([
     wantCardExtras
       ? getCourtPhotosByTenant(results.map((t) => t.id)).catch(
-          () => ({}) as Record<string, string[]>,
+          () => (({}) as Record<string, string[]>),
         )
       : ({} as Record<string, string[]>),
     wantCardExtras && avail
@@ -187,7 +188,7 @@ export default async function ExplorarPage({ searchParams }: { searchParams: SP 
           date: avail.date,
           time: avail.time,
           ...(formats.length ? { formats } : {}),
-        }).catch(() => ({}) as Record<string, SlotPill[]>)
+        }).catch(() => (({}) as Record<string, SlotPill[]>))
       : ({} as Record<string, SlotPill[]>),
   ])
 

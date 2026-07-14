@@ -37,7 +37,7 @@ afterEach(() => cleanup())
 describe('ReservaErrorPage (#44)', () => {
   it('sin reserva muestra "No encontramos tu reserva." (no el error de pago)', async () => {
     execute.mockResolvedValue([])
-    const ui = await ReservaErrorPage({ params: { bookingId: 'missing' } })
+    const ui = await ReservaErrorPage({ params: Promise.resolve({ bookingId: 'missing' }) })
     render(ui)
     expect(screen.getByText('No encontramos tu reserva.')).toBeTruthy()
     expect(screen.queryByText('El pago no se procesó.')).toBeNull()
@@ -47,7 +47,7 @@ describe('ReservaErrorPage (#44)', () => {
     execute.mockResolvedValue([
       { status: 'rejected', createdAt: new Date('2020-01-01T00:00:00Z'), tenantSlug: 'cancha-x' },
     ])
-    const ui = await ReservaErrorPage({ params: { bookingId: 'b1' } })
+    const ui = await ReservaErrorPage({ params: Promise.resolve({ bookingId: 'b1' }) })
     render(ui)
     expect(screen.getByText('El pago no se procesó.')).toBeTruthy()
     expect(screen.queryByText('No encontramos tu reserva.')).toBeNull()

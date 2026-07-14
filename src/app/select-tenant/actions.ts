@@ -33,7 +33,7 @@ export async function selectTenantAction(formData: FormData): Promise<void> {
 
   await setStaffTenantClaim(user.id, tenantId, user.staffUserId)
   // Refresh para que el nuevo app_metadata.tenant_id aparezca en el próximo JWT.
-  const supabase = createClient()
+  const supabase = await createClient()
   await supabase.auth.refreshSession()
 
   track.auth('staff.login', { staffUserId: user.staffUserId, tenantCount: tenants.length })

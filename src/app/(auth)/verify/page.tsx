@@ -39,11 +39,12 @@ const cardStyle = {
 const ctaClass =
   'mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0'
 
-export default function VerifyPage({
-  searchParams,
-}: {
-  searchParams: { error?: string; status?: string; next?: string; intent?: string }
-}) {
+export default async function VerifyPage(
+  props: {
+    searchParams: Promise<{ error?: string; status?: string; next?: string; intent?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const isSuccess = searchParams.status === 'success'
   const errCode = searchParams.error
   const isError = Boolean(errCode)

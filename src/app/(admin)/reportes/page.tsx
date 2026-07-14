@@ -34,7 +34,7 @@ function currentMonthStr(): string {
 }
 
 function isValidMonth(s: string): boolean {
-  return /^\d{4}-(0[1-9]|1[0-2])$/.test(s)
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 }
 
 /** "Primera-vez espectral" (§7.2 MASTER, nombrada explícitamente para esta vista). */
@@ -70,11 +70,12 @@ function GhostKpis() {
   )
 }
 
-export default async function ReportesPage({
-  searchParams,
-}: {
-  searchParams: { month?: string | string[] }
-}) {
+export default async function ReportesPage(
+  props: {
+    searchParams: Promise<{ month?: string | string[] }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 

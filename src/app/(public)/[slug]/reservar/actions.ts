@@ -61,7 +61,7 @@ export async function sendPlayerMagicLink(_prev: GateState, formData: FormData):
     return { status: 'error', message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.' }
   }
 
-  const origin = headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
   const safeNext = sanitizeNext(parsed.data.next, '/mis-reservas')
   const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
 
@@ -105,7 +105,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   // EL MISMO tenant, que playerBooking (por player_id) no ve. Key compuesta
   // (no solo IP) para no compartir bucket entre tenants distintos desde la
   // misma IP. INV-ABUSE-001 (hardening post security-review).
-  const ip = parseClientIp(headers())
+  const ip = parseClientIp(await headers())
   const ipRl = await enforce('publicBookingCreate', `${ip}:${slug}`)
   if (!ipRl.ok) redirect(`${backTo}&error=rate_limited`)
 

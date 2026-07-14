@@ -41,11 +41,12 @@ function buildQuery(params: SearchParams, overrides: Record<string, string | und
   return qs ? `?${qs}` : ''
 }
 
-export default async function SuperAdminTenantsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams
-}) {
+export default async function SuperAdminTenantsPage(
+  props: {
+    searchParams: Promise<SearchParams>
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireSystemAdmin()
 
   const q = searchParams.q?.trim() || undefined

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState } from 'react-dom'
+import { useActionState, useState } from 'react'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { ScheduleFields } from '@/components/schedule/ScheduleFields'
 import {
@@ -35,7 +34,7 @@ export function HorariosForm({
   closesNextDay: boolean
   action: UpdateHorariosAction
 }) {
-  const [state, formAction] = useFormState(action, INITIAL)
+  const [state, formAction] = useActionState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
   const [view, setView] = useState<ScheduleView>(() => deriveScheduleView(hours))
   const [nextDay, setNextDay] = useState(closesNextDay)

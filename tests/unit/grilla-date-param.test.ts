@@ -32,7 +32,7 @@ type RenderedGrilla = { props: { children: { props: { date: string } } } }
 
 async function gridDateFor(date: string | undefined): Promise<string> {
   const el = (await GrillaPage({
-    searchParams: { date },
+    searchParams: Promise.resolve({ date }),
   })) as unknown as RenderedGrilla
   return el.props.children.props.date
 }

@@ -36,7 +36,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   const params = new URL(req.url).searchParams
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // token_hash + verifyOtp is the ONLY flow now (Google OAuth removed, so the
   // PKCE `code` branch is gone). verifyOtp needs NO code_verifier cookie, so it's

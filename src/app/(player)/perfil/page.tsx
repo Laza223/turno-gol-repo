@@ -56,11 +56,12 @@ async function loadFavorites(playerId: string): Promise<{
   return { tenants, photosByTenant }
 }
 
-export default async function PerfilPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string }
-}) {
+export default async function PerfilPage(
+  props: {
+    searchParams: Promise<{ tab?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 

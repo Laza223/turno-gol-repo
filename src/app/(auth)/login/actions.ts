@@ -24,8 +24,8 @@ export type LoginState =
   | { status: 'idle' }
   | { status: 'error'; message: string; unconfirmedEmail?: string }
 
-function callbackOrigin(): string {
-  return headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
+async function callbackOrigin(): Promise<string> {
+  return (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
 }
 
 export async function loginAction(
@@ -68,7 +68,7 @@ export async function loginAction(
   const meta = result.user.app_metadata ?? {}
   const userMeta = result.user.user_metadata ?? {}
   if (meta.is_player === true || userMeta.is_player === true) {
-    await createClient().auth.signOut()
+    await (await createClient()).auth.signOut()
     return { status: 'error', message: GENERIC }
   }
 
@@ -101,11 +101,11 @@ export async function resendConfirmationAction(
     return { status: 'error', message: 'Demasiados intentos. Esperá un minuto.' }
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
   await supabase.auth.resend({
     type: 'signup',
     email: email.data,
-    options: { emailRedirectTo: `${callbackOrigin()}/api/auth/callback` },
+    options: { emailRedirectTo: `${await callbackOrigin()}/api/auth/callback` },
   })
   // Respuesta genérica: confirma siempre, exista o no la cuenta.
   return { status: 'sent' }

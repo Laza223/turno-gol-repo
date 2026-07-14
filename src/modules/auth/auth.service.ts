@@ -23,7 +23,7 @@ export async function signInWithPlayerMagicLink(
   redirectTo: string,
   profile: PlayerProfile,
 ): Promise<SignInResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
@@ -50,7 +50,7 @@ export async function signInWithExistingPlayerMagicLink(
   email: string,
   redirectTo: string,
 ): Promise<SignInResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: redirectTo, data: { is_player: true } },
@@ -72,7 +72,7 @@ export async function signInWithPassword(
   email: string,
   password: string,
 ): Promise<PasswordSignInResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error || !data?.user) {
     const code = error?.code === 'email_not_confirmed' ? 'email_not_confirmed' : 'invalid_credentials'
@@ -91,7 +91,7 @@ export async function signUpStaff(
   params: { email: string; password: string; firstName: string; lastName: string; phone: string },
   emailRedirectTo: string,
 ): Promise<SignInResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase.auth.signUp({
     email: params.email,
     password: params.password,
@@ -199,7 +199,7 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   const ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
   const tenants = await resolveStaffTenants(ourStaff.id)
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   if (tenants.length === 0) {
     // Set staff_user_id so they pass the layout checks, even without a tenant.

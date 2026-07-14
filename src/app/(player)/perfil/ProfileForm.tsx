@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import type { UpdateProfileResult } from './actions'
 import { PhoneInput } from '@/components/ui/phone-input'
 
@@ -47,7 +47,7 @@ function SubmitButton() {
 }
 
 export function ProfileForm({ defaultValues, action }: Props) {
-  const [state, formAction] = useFormState(action, INITIAL_STATE)
+  const [state, formAction] = useActionState(action, INITIAL_STATE)
   const [didSubmit, setDidSubmit] = useState(false)
 
   return (

@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe('ReservasPage — ?status allowlist (#30)', () => {
   it('ignora un ?status fuera del allowlist (texto basura -> sin filtro)', async () => {
-    await ReservasPage({ searchParams: { status: 'foo' } })
+    await ReservasPage({ searchParams: Promise.resolve({ status: 'foo' }) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
@@ -45,7 +45,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
   })
 
   it('ignora un enum valido pero no listado en FILTERS (canceled_refunded crudo)', async () => {
-    await ReservasPage({ searchParams: { status: 'canceled_refunded' } })
+    await ReservasPage({ searchParams: Promise.resolve({ status: 'canceled_refunded' }) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
@@ -54,7 +54,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
   })
 
   it('respeta un ?status del allowlist', async () => {
-    await ReservasPage({ searchParams: { status: 'confirmed' } })
+    await ReservasPage({ searchParams: Promise.resolve({ status: 'confirmed' }) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', status: 'confirmed' },
@@ -63,7 +63,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
   })
 
   it('acepta el filtro virtual "canceladas" (agrupa ambos canceled_*)', async () => {
-    await ReservasPage({ searchParams: { status: 'canceladas' } })
+    await ReservasPage({ searchParams: Promise.resolve({ status: 'canceladas' }) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', status: 'canceladas' },
@@ -72,7 +72,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
   })
 
   it('sin ?status filtra por todas', async () => {
-    await ReservasPage({ searchParams: {} })
+    await ReservasPage({ searchParams: Promise.resolve({}) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
@@ -83,7 +83,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
 
 describe('ReservasPage — ?dia allowlist', () => {
   it('default es hoy', async () => {
-    await ReservasPage({ searchParams: {} })
+    await ReservasPage({ searchParams: Promise.resolve({}) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'hoy' }),
@@ -92,13 +92,13 @@ describe('ReservasPage — ?dia allowlist', () => {
   })
 
   it('respeta ?dia=proximas y ?dia=historial', async () => {
-    await ReservasPage({ searchParams: { dia: 'proximas' } })
+    await ReservasPage({ searchParams: Promise.resolve({ dia: 'proximas' }) })
     expect(listTenantBookings).toHaveBeenLastCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'proximas' }),
       expect.anything(),
     )
-    await ReservasPage({ searchParams: { dia: 'historial' } })
+    await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial' }) })
     expect(listTenantBookings).toHaveBeenLastCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'historial' }),
@@ -107,7 +107,7 @@ describe('ReservasPage — ?dia allowlist', () => {
   })
 
   it('degrada un ?dia basura a hoy', async () => {
-    await ReservasPage({ searchParams: { dia: 'ayer' } })
+    await ReservasPage({ searchParams: Promise.resolve({ dia: 'ayer' }) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'hoy' }),

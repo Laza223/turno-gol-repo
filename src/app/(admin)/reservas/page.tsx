@@ -89,9 +89,10 @@ function groupBy(rows: ReservaListRow[], key: (r: ReservaListRow) => string): Ar
   return Array.from(groups.entries())
 }
 
-type Props = { searchParams: { dia?: string; status?: string; q?: string; vista?: string } }
+type Props = { searchParams: Promise<{ dia?: string; status?: string; q?: string; vista?: string }> }
 
-export default async function ReservasPage({ searchParams }: Props) {
+export default async function ReservasPage(props: Props) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
   const tenant = await getStaffTenant(user.staffUserId)

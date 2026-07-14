@@ -11,7 +11,7 @@ export function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-6 shadow-xs">
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       <p className="mt-1 text-xs text-muted-foreground">{description}</p>
       <div className="mt-4">{children}</div>

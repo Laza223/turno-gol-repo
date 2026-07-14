@@ -20,7 +20,7 @@ const meta = {
   args: { name: 'Complejo Fénix' },
   decorators: [
     (Story) => (
-      <div className="max-w-2xl rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-6">
+      <div className="max-w-2xl rounded-3xl border border-border bg-card p-4 shadow-xs sm:p-6">
         <Story />
       </div>
     ),

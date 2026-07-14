@@ -160,7 +160,7 @@ export function CourtForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card rounded-lg border border-border shadow-sm p-6 space-y-6">
+    <form onSubmit={handleSubmit} className="bg-card rounded-lg border border-border shadow-xs p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">
           {isEdit ? 'Editar cancha' : 'Nueva cancha'}
@@ -187,7 +187,7 @@ export function CourtForm({
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: Cancha 1"
             required
-            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
 
@@ -200,7 +200,7 @@ export function CourtForm({
             name="surfaceType"
             value={surfaceType}
             onChange={(e) => setSurfaceType(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             {SURFACE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -219,7 +219,7 @@ export function CourtForm({
             name="format"
             value={format}
             onChange={(e) => setFormat(Number(e.target.value))}
-            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             {FORMAT_OPTIONS.map((f) => (
               <option key={f} value={f}>

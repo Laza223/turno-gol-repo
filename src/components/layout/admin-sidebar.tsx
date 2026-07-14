@@ -63,7 +63,7 @@ function SidebarContent({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-border">
         <div className="min-w-0">
-          <Link href="/dashboard" className="block outline-none rounded-sm">
+          <Link href="/dashboard" className="block outline-hidden rounded-sm">
             <Logo variant="horizontal" textClassName="text-foreground" />
           </Link>
           <div className="mt-1">
@@ -102,7 +102,7 @@ function SidebarContent({
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-emerald-500/10 text-emerald-700 shadow-sm dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-emerald-900/30'
+                  ? 'bg-emerald-500/10 text-emerald-700 shadow-xs dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-emerald-900/30'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
@@ -132,7 +132,7 @@ export function AdminSidebar({ tenantName, mobileOpen, onClose }: SidebarProps) 
   return (
     <>
       {/* Desktop sidebar — rail theme-adaptive (light surface / dark glass) */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/[0.04] dark:bg-card/80 dark:shadow-black/30">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/4 dark:bg-card/80 dark:shadow-black/30">
         <SidebarContent tenantName={tenantName} pathname={pathname} />
       </aside>
 

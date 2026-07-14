@@ -25,7 +25,7 @@ type Props = {
 // Touch-target 44px en mobile (WCAG 2.5.5), 36px en desktop. `group` habilita
 // el desplazamiento del ícono/label en hover.
 const itemClass =
-  'group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none transition-all duration-200 md:min-h-9 focus-visible:bg-accent focus-visible:text-accent-foreground'
+  'group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-hidden transition-all duration-200 md:min-h-9 focus-visible:bg-accent focus-visible:text-accent-foreground'
 
 /**
  * Chip de avatar + nombre con panel desplegable de cuenta (estilo ecommerce).
@@ -46,7 +46,7 @@ export function AccountMenu({
 }: Props) {
   const chip =
     variant === 'overlay'
-      ? 'bg-foreground/[.06] hover:bg-foreground/[.1] ring-border text-foreground dark:bg-white/15 dark:hover:bg-white/25 dark:ring-white/25 dark:text-white'
+      ? 'bg-foreground/6 hover:bg-foreground/10 ring-border text-foreground dark:bg-white/15 dark:hover:bg-white/25 dark:ring-white/25 dark:text-white'
       : 'bg-card hover:bg-accent ring-border text-foreground'
 
   return (
@@ -56,7 +56,7 @@ export function AccountMenu({
           type="button"
           aria-label={`Cuenta de ${firstName}`}
           className={cn(
-            'inline-flex h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3 ring-1 transition-colors md:h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
+            'inline-flex h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3 ring-1 transition-colors md:h-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
             chip,
           )}
         >
@@ -68,7 +68,7 @@ export function AccountMenu({
               {initials(firstName, lastName)}
             </span>
           )}
-          <span className="max-w-[8rem] truncate text-sm font-medium">{firstName}</span>
+          <span className="max-w-32 truncate text-sm font-medium">{firstName}</span>
           <ChevronDown className="h-4 w-4 opacity-70" aria-hidden />
         </button>
       </PopoverTrigger>
@@ -84,7 +84,7 @@ export function AccountMenu({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-500/10" />
           ) : (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-sm">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-xs">
               {initials(firstName, lastName)}
             </span>
           )}

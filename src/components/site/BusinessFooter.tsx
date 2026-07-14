@@ -2,12 +2,12 @@ import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 
 const linkCls =
-  'transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded'
+  'transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded'
 
 export default function BusinessFooter() {
   return (
     <footer
-      className="relative border-t border-white/[.08] py-12"
+      className="relative border-t border-white/8 py-12"
       style={{ background: '#020617' }}
     >
       <div

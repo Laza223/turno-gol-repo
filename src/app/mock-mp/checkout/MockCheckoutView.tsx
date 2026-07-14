@@ -37,7 +37,7 @@ export function MockCheckoutView({ booking, bookingId, payAction, rejectAction, 
         <strong>Entorno de prueba (MOCK)</strong> — no se cobra dinero real.
       </div>
 
-      <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
         {/* Header */}
         <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-500">
           MercadoPago — simulador

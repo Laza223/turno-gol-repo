@@ -92,7 +92,7 @@ export default function TenantGallery({ photos, name }: Props) {
           role="dialog"
           aria-modal="true"
           aria-label={`Fotos de ${name}`}
-          className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-100 flex flex-col bg-slate-950/95 p-4 backdrop-blur-xs"
         >
           <div className="flex items-center justify-between text-white">
             <span className="text-sm tabular-nums">

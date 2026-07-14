@@ -20,7 +20,7 @@ type Story = StoryObj<typeof meta>
 export const Band: Story = {
   render: () => (
     <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-9 py-9">
-      <div className="pointer-events-none absolute inset-y-0 right-[-8%] -z-10 w-[72%] text-emerald-600/[.16] dark:text-white/[.05]">
+      <div className="pointer-events-none absolute inset-y-0 right-[-8%] -z-10 w-[72%] text-emerald-600/16 dark:text-white/5">
         <PitchLines variant="band" className="h-full w-full" />
       </div>
       <p className="max-w-md text-sm text-muted-foreground">

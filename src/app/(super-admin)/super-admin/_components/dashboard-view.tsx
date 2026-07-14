@@ -41,7 +41,7 @@ function SectionCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card shadow-sm">
+    <section className="rounded-lg border border-border bg-card shadow-xs">
       <h2 className="flex items-center gap-2 border-b border-border px-6 py-4 text-base font-semibold text-foreground">
         <span className="text-violet-600 dark:text-violet-400">{icon}</span>
         {title}

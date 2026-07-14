@@ -142,7 +142,7 @@ export default async function ReservasPage(props: Props) {
         actions={
           <Link
             href="/grilla"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
             Ir a la grilla
@@ -161,7 +161,7 @@ export default async function ReservasPage(props: Props) {
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
-                  active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  active ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {s.label}
@@ -218,7 +218,7 @@ export default async function ReservasPage(props: Props) {
           action={
             <Link
               href="/grilla"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <CalendarDays className="h-4 w-4" aria-hidden="true" />
               Cargar una reserva

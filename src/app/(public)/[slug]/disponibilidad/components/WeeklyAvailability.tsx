@@ -53,7 +53,7 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
           {day.courts.map((court) => {
             const free = court.slots.filter((s) => s.status === 'free')
             return (
-              <div key={court.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <div key={court.id} className="rounded-xl border border-border bg-card p-4 shadow-xs">
                 <h3 className="mb-3 text-sm font-semibold text-foreground">{court.name}</h3>
                 {free.length === 0 ? (
                   <p className="text-xs text-muted-foreground">Sin turnos libres.</p>

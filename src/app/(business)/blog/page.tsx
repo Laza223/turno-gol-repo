@@ -19,7 +19,7 @@ export default async function BlogIndexPage() {
         </h1>
         <div className="grid gap-8">
           {posts.map((post) => (
-            <article key={post.slug} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <article key={post.slug} className="bg-white p-6 rounded-lg shadow-xs border border-gray-100">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 <Link href={`/blog/${post.slug}`} className="hover:text-blue-600">
                   {post.frontmatter.title}

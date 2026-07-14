@@ -37,7 +37,7 @@ export default function PlanSelector() {
           <div
             role="radiogroup"
             aria-labelledby="courts-label"
-            className="inline-flex flex-wrap justify-center gap-1 rounded-full border border-white/10 bg-white/[.04] p-1.5 backdrop-blur-sm"
+            className="inline-flex flex-wrap justify-center gap-1 rounded-full border border-white/10 bg-white/4 p-1.5 backdrop-blur-xs"
           >
             {COURT_OPTIONS.map((n) => {
               const selected = courts === n
@@ -48,7 +48,7 @@ export default function PlanSelector() {
                   role="radio"
                   aria-checked={selected}
                   onClick={() => setCourts(n)}
-                  className={`h-11 w-11 rounded-full text-sm font-bold tabular-nums transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                  className={`h-11 w-11 rounded-full text-sm font-bold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                     selected
                       ? 'bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,.45)]'
                       : 'text-slate-400 hover:bg-white/[.07] hover:text-white'
@@ -64,7 +64,7 @@ export default function PlanSelector() {
         <div
           role="radiogroup"
           aria-label="Ciclo de facturación"
-          className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[.04] p-1.5 backdrop-blur-sm"
+          className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/4 p-1.5 backdrop-blur-xs"
         >
           {(
             [
@@ -80,7 +80,7 @@ export default function PlanSelector() {
                 role="radio"
                 aria-checked={selected}
                 onClick={() => setCycle(value)}
-                className={`inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                className={`inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                   selected ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -146,7 +146,7 @@ function PlanCardView({
   return (
     <div
       className={`relative flex h-full flex-col p-7 transition-all duration-300 ${
-        isActive ? 'border border-emerald-400/50 md:scale-[1.02]' : 'border border-white/[.09]'
+        isActive ? 'border border-emerald-400/50 md:scale-[1.02]' : 'border border-white/9'
       }`}
       style={{
         borderRadius: '20px',
@@ -199,7 +199,7 @@ function PlanCardView({
       <div className="mt-6">
         <Link
           href="/register"
-          className={`group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+          className={`group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
             isActive
               ? 'bg-primary text-primary-foreground hover:-translate-y-0.5 hover:bg-emerald-500'
               : 'border border-white/15 bg-white/5 text-white hover:bg-white/10'

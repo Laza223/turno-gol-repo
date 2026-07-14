@@ -30,12 +30,12 @@ function ImagePane() {
       />
       <div
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-br from-[#020617]/95 via-[#020617]/70 to-emerald-900/40"
+        className="absolute inset-0 bg-linear-to-br from-[#020617]/95 via-[#020617]/70 to-emerald-900/40"
       />
       {/* Glow blob */}
       <div
         aria-hidden
-        className="pointer-events-none absolute bottom-[-12%] left-[-8%] h-[460px] w-[460px] rounded-full blur-[12px]"
+        className="pointer-events-none absolute bottom-[-12%] left-[-8%] h-[460px] w-[460px] rounded-full blur-md"
         style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)' }}
       />
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
@@ -43,7 +43,7 @@ function ImagePane() {
           <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30" />
         </Link>
         <div className="max-w-md">
-          <div className="inline-flex items-center gap-2.5 font-logo text-[12px] font-bold uppercase tracking-[.1em] text-emerald-400">
+          <div className="inline-flex items-center gap-2.5 font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-400">
             <span className="relative flex h-[9px] w-[9px]">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
@@ -82,7 +82,7 @@ function FormPane() {
       {/* Glow blob */}
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[-15%] top-[-10%] -z-10 h-[440px] w-[440px] rounded-full blur-[12px]"
+        className="pointer-events-none absolute right-[-15%] top-[-10%] -z-10 h-[440px] w-[440px] rounded-full blur-md"
         style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.16), transparent 72%)' }}
       />
       <Link

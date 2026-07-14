@@ -23,7 +23,7 @@ export function ConfiguracionView({ firstName }: { firstName: string | null }) {
       {/* Card 0: Mi perfil */}
       <Link
         href="/perfil"
-        className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.99] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+        className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.99] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
       >
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
@@ -38,7 +38,7 @@ export function ConfiguracionView({ firstName }: { firstName: string | null }) {
       </Link>
 
       {/* Card Apariencia */}
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
             <Palette className="h-5 w-5" aria-hidden />
@@ -54,7 +54,7 @@ export function ConfiguracionView({ firstName }: { firstName: string | null }) {
       </div>
 
       {/* Card 1: Tus datos */}
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-600/15 dark:bg-sky-500/10 dark:text-sky-300">
             <Download className="h-5 w-5" aria-hidden />

@@ -96,7 +96,7 @@ export function ConfirmDialog({
               autoComplete="off"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              className="h-11 md:h-10 w-full rounded-md border border-border bg-card text-foreground px-3 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-11 md:h-10 w-full rounded-md border border-border bg-card text-foreground px-3 text-sm focus:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         ) : null}
@@ -110,7 +110,7 @@ export function ConfirmDialog({
             type="button"
             disabled={isPending}
             onClick={() => handleOpenChange(false)}
-            className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {cancelLabel}
           </button>
@@ -118,7 +118,7 @@ export function ConfirmDialog({
             type="button"
             disabled={confirmDisabled}
             onClick={handleConfirm}
-            className={`inline-flex h-11 md:h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${confirmClasses}`}
+            className={`inline-flex h-11 md:h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${confirmClasses}`}
           >
             {isPending ? 'Procesando…' : confirmLabel}
           </button>

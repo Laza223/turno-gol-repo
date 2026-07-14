@@ -5,7 +5,7 @@ import { HowItWorks } from './HowItWorks'
  * 100% estática (3 pasos fijos, sin props) — un único estado real.
  *
  * `.card-ghost-number` es el numeral gigante ("01"/"02"/"03") que decora cada
- * card de fondo: `text-foreground/[.05]` (5% de opacidad, ~1.11:1 sobre blanco)
+ * card de fondo: `text-foreground/5` (5% de opacidad, ~1.11:1 sobre blanco)
  * y `aria-hidden="true"`. axe igual lo mide como texto (aria-hidden no lo saca
  * del chequeo de contraste, que es sobre percepción visual, no sobre el árbol
  * de accesibilidad). Es un watermark decorativo — texto "incidental" bajo la

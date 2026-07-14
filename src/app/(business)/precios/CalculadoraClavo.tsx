@@ -58,10 +58,10 @@ export default function CalculadoraClavo() {
                     type="button"
                     onClick={() => setTurnoArs(preset)}
                     aria-pressed={selected}
-                    className={`h-11 rounded-full px-4 text-sm font-semibold tabular-nums transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                    className={`h-11 rounded-full px-4 text-sm font-semibold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                       selected
                         ? 'bg-emerald-500 text-slate-950'
-                        : 'border border-white/10 bg-white/[.04] text-slate-300 hover:bg-white/[.08] hover:text-white'
+                        : 'border border-white/10 bg-white/4 text-slate-300 hover:bg-white/8 hover:text-white'
                     }`}
                   >
                     {formatArs(preset * 100)}
@@ -80,7 +80,7 @@ export default function CalculadoraClavo() {
                   value={turnoArs === 0 ? '' : String(turnoArs)}
                   onChange={(e) => onTurnoInput(e.target.value)}
                   placeholder="Otro"
-                  className="h-11 w-[110px] rounded-full border border-white/10 bg-white/[.04] pl-8 pr-4 text-sm font-semibold tabular-nums text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                  className="h-11 w-[110px] rounded-full border border-white/10 bg-white/4 pl-8 pr-4 text-sm font-semibold tabular-nums text-white placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                 />
               </div>
             </div>
@@ -90,13 +90,13 @@ export default function CalculadoraClavo() {
             <span id="clavos-label" className="font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
               ¿Cuántos te clavan por semana?
             </span>
-            <div className="mt-3 inline-flex items-center gap-4 rounded-full border border-white/10 bg-white/[.04] p-1.5">
+            <div className="mt-3 inline-flex items-center gap-4 rounded-full border border-white/10 bg-white/4 p-1.5">
               <button
                 type="button"
                 onClick={() => setClavos((c) => Math.max(0, c - 1))}
                 disabled={clavos === 0}
                 aria-label="Un clavo menos por semana"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/[.08] hover:text-white disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 <Minus className="h-4 w-4" aria-hidden />
               </button>
@@ -111,7 +111,7 @@ export default function CalculadoraClavo() {
                 onClick={() => setClavos((c) => Math.min(MAX_CLAVOS, c + 1))}
                 disabled={clavos === MAX_CLAVOS}
                 aria-label="Un clavo más por semana"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/[.08] hover:text-white disabled:opacity-35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 <Plus className="h-4 w-4" aria-hidden />
               </button>
@@ -131,7 +131,7 @@ export default function CalculadoraClavo() {
             </p>
           ) : (
             <>
-              <div className="font-logo text-[12px] font-bold uppercase tracking-[.1em] text-slate-500">
+              <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-slate-500">
                 Se te van por mes
               </div>
               <div

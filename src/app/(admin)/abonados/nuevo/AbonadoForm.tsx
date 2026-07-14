@@ -27,7 +27,7 @@ const DAYS = [
   { value: '4', label: 'Jueves' }, { value: '5', label: 'Viernes' }, { value: '6', label: 'Sábado' }, { value: '0', label: 'Domingo' },
 ]
 const initial: NewAbonadoState = { status: 'idle' }
-const field = 'h-11 md:h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
+const field = 'h-11 md:h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
 const labelCls = 'space-y-1 text-sm block'
 const labelSpan = 'font-medium text-foreground'
 
@@ -67,7 +67,7 @@ export function PreviewSlotsView({
   const noSlots = goodCount === 0
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+    <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-xs">
       <h2 className="text-base font-semibold text-foreground">Fechas del turno fijo</h2>
       <ul className="divide-y divide-slate-100">
         {dates.map((d) => {
@@ -201,7 +201,7 @@ export default function AbonadoForm({
   }
 
   return (
-    <form onSubmit={handlePreviewSubmit} className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+    <form onSubmit={handlePreviewSubmit} className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-xs">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <fieldset className="space-y-4">
           <legend className="text-sm font-semibold text-foreground">Turno fijo</legend>
@@ -249,7 +249,7 @@ export default function AbonadoForm({
           </fieldset>
         </div>
       </div>
-      <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
+      <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-border px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
       {previewError && (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">{previewError}</p>
       )}

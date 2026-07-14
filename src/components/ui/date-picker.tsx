@@ -113,7 +113,7 @@ export default function DatePicker({
             type="button"
             id={id}
             className={cn(
-              'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-sm text-left flex items-center justify-between transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
+              'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-xs text-left flex items-center justify-between transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
               className,
               // Paddings de íconos: pr-8 (no 10) para que "dd/mm/aaaa" quepa en
               // columnas angostas de mobile sin truncar (§13.5).
@@ -200,7 +200,7 @@ export default function DatePicker({
                   className={cn(
                     'text-xs min-h-11 md:min-h-9 flex items-center justify-center font-medium rounded-lg transition-all duration-150',
                     isSelected
-                      ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
+                      ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
                       : 'hover:bg-accent hover:text-accent-foreground text-foreground/90',
                     isDisabled && 'opacity-25 pointer-events-none'
                   )}

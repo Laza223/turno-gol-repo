@@ -32,7 +32,7 @@ export function Hero({ cities }: { cities: CityCount[] }) {
       {/* Glow blobs */}
       <div
         aria-hidden
-        className="hero-glow-blob pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-[8px] motion-reduce:animate-none"
+        className="hero-glow-blob pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-sm motion-reduce:animate-none"
       />
       <div
         aria-hidden
@@ -41,11 +41,11 @@ export function Hero({ cities }: { cities: CityCount[] }) {
       {/* Partículas flotantes (ambiente nocturno) */}
       <span
         aria-hidden
-        className="hero-particle pointer-events-none absolute left-[8%] top-[24%] z-0 hidden h-[6px] w-[6px] animate-tg-float rounded-full motion-reduce:!hidden dark:block"
+        className="hero-particle pointer-events-none absolute left-[8%] top-[24%] z-0 hidden h-[6px] w-[6px] animate-tg-float rounded-full motion-reduce:hidden! dark:block"
       />
       <span
         aria-hidden
-        className="hero-particle pointer-events-none absolute bottom-[18%] right-[40%] z-0 hidden h-[5px] w-[5px] rounded-full motion-reduce:!hidden dark:block"
+        className="hero-particle pointer-events-none absolute bottom-[18%] right-[40%] z-0 hidden h-[5px] w-[5px] rounded-full motion-reduce:hidden! dark:block"
         style={{ animation: 'tg-float 10s ease-in-out infinite 0.8s' }}
       />
 

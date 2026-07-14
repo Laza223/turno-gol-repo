@@ -80,7 +80,7 @@ export default function ExplorarMap({
     // isolate: los panes internos de Leaflet usan z-index 400+; sin un stacking
     // context propio taparían cualquier dropdown de la página (p. ej. el combobox
     // de localidad, que el <select> nativo anterior no sufría por ser popup del OS).
-    <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-sm">
+    <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-xs">
       <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

@@ -113,7 +113,7 @@ function Hero() {
       {/* KIT-GLOW-R */}
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[-10%] top-[-30%] z-0 h-[640px] w-[640px] animate-tg-drift rounded-full blur-[8px] motion-reduce:animate-none"
+        className="pointer-events-none absolute right-[-10%] top-[-30%] z-0 h-[640px] w-[640px] animate-tg-drift rounded-full blur-sm motion-reduce:animate-none"
         style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.22), transparent 70%)' }}
       />
       <div
@@ -318,7 +318,7 @@ function Faq() {
           {FAQ.map(({ q, a }, i) => (
             <Reveal key={q} delay={Math.min(i * 50, 250)}>
               <details
-                className="group border border-white/[.09] px-6 py-5 transition-colors hover:border-emerald-400/30"
+                className="group border border-white/9 px-6 py-5 transition-colors hover:border-emerald-400/30"
                 style={{ borderRadius: '16px', background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))' }}
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-display text-[15.5px] font-bold text-[#f8fafc] [&::-webkit-details-marker]:hidden">

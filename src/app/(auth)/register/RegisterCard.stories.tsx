@@ -14,7 +14,7 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <div className="flex min-h-[520px] items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12">
+      <div className="flex min-h-[520px] items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12">
         <div className="w-full max-w-md">
           <Story />
         </div>

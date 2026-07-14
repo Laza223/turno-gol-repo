@@ -41,7 +41,7 @@ export function CourtDraftCard({
     SURFACE_OPTIONS.find((s) => s.value === draft.surfaceType)?.label ?? draft.surfaceType
 
   return (
-    <fieldset className="rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200">
+    <fieldset className="rounded-lg border border-border bg-card p-4 shadow-xs transition-all duration-200">
       <legend className="sr-only">{draft.name || `Cancha ${index + 1}`}</legend>
 
       {/* Cabecera / Fila resumen con animación de icono */}
@@ -49,7 +49,7 @@ export function CourtDraftCard({
         <button
           type="button"
           onClick={() => onToggle(draft.key)}
-          className="group flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          className="group flex flex-1 items-center gap-3 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           {isExpanded ? (
             <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform duration-200" aria-hidden />
@@ -153,8 +153,8 @@ export function CourtDraftCard({
                     key={f}
                     className={
                       active
-                        ? 'cursor-pointer inline-flex items-center justify-center rounded-full border border-emerald-600 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 min-h-11 md:min-h-9 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
-                        : 'cursor-pointer inline-flex items-center justify-center rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground hover:border-emerald-600/40 hover:text-foreground min-h-11 md:min-h-9 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
+                        ? 'cursor-pointer inline-flex items-center justify-center rounded-full border border-emerald-600 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 min-h-11 md:min-h-9 has-focus-visible:ring-2 has-focus-visible:ring-ring'
+                        : 'cursor-pointer inline-flex items-center justify-center rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground hover:border-emerald-600/40 hover:text-foreground min-h-11 md:min-h-9 has-focus-visible:ring-2 has-focus-visible:ring-ring'
                     }
                   >
                     <input

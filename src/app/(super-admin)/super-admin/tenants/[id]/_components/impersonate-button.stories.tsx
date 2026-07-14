@@ -26,7 +26,7 @@ const meta = {
   // card blanco mide 4.83:1 y pasa. El contenedor no es cosmético.
   decorators: [
     (Story) => (
-      <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-card p-6 shadow-xs">
         <h2 className="text-base font-semibold text-foreground">Soporte</h2>
         <div className="mt-4">
           <Story />

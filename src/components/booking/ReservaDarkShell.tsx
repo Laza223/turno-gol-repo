@@ -11,7 +11,7 @@ export default function ReservaDarkShell({ children }: { children: ReactNode }) 
     <div className="reserva-shell relative min-h-[88vh] overflow-hidden">
       <div
         aria-hidden
-        className="reserva-glow-top pointer-events-none absolute right-[-12%] top-[-14%] h-[560px] w-[560px] rounded-full blur-[12px]"
+        className="reserva-glow-top pointer-events-none absolute right-[-12%] top-[-14%] h-[560px] w-[560px] rounded-full blur-md"
       />
       <div
         aria-hidden

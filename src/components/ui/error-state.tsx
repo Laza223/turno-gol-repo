@@ -60,7 +60,7 @@ export function ErrorState({
     )
   }
 
-  const cardShadow = variant === 'full' ? 'shadow-lg' : 'shadow-sm'
+  const cardShadow = variant === 'full' ? 'shadow-lg' : 'shadow-xs'
 
   if (variant === 'contained') {
     return (
@@ -84,7 +84,7 @@ export function ErrorState({
               <button
                 type="button"
                 onClick={onRetry}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />
                 {retryLabel}
@@ -93,7 +93,7 @@ export function ErrorState({
             {secondaryHref && secondaryLabel ? (
               <Link
                 href={secondaryHref}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {SecondaryIcon ? <SecondaryIcon className="h-4 w-4" aria-hidden="true" /> : null}
                 {secondaryLabel}
@@ -126,7 +126,7 @@ export function ErrorState({
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               {retryLabel}
@@ -135,7 +135,7 @@ export function ErrorState({
           {secondaryHref && secondaryLabel ? (
             <Link
               href={secondaryHref}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               {SecondaryIcon ? <SecondaryIcon className="h-4 w-4" aria-hidden="true" /> : null}
               {secondaryLabel}

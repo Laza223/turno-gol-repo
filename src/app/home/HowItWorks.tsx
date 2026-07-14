@@ -71,7 +71,7 @@ export function HowItWorks() {
               <div className="card-premium relative overflow-hidden p-7">
                 <span
                   aria-hidden
-                  className="card-ghost-number pointer-events-none absolute right-[18px] top-[6px] font-display font-black italic leading-none text-foreground/[.05]"
+                  className="card-ghost-number pointer-events-none absolute right-[18px] top-[6px] font-display font-black italic leading-none text-foreground/5"
                   style={{ fontSize: '92px', letterSpacing: '-0.05em' }}
                 >
                   {step.n}

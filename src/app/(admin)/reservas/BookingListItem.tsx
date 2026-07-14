@@ -80,14 +80,14 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
         <article
           aria-label={ariaLabel}
           className={cn(
-            'group relative flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-1.5 shadow-sm transition-colors hover:bg-accent/50',
+            'group relative flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-1.5 shadow-xs transition-colors hover:bg-accent/50',
             withActions && 'pr-12 sm:pr-3',
           )}
         >
           <Link
             href={`/reservas/${booking.id}`}
             aria-label={ariaLabel}
-            className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="absolute inset-0 z-0 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           />
           <span aria-hidden className={cn('h-6 w-1 shrink-0 rounded-full', visual.accent)} />
           <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400 sm:w-24">
@@ -97,7 +97,7 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
             {isBlock && <Ban aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
             {name}
           </p>
-          <span className="hidden max-w-[9rem] truncate text-xs text-muted-foreground md:block">
+          <span className="hidden max-w-36 truncate text-xs text-muted-foreground md:block">
             {booking.courtName}
           </span>
           <ReservaStatusBadge visual={visual} className="hidden sm:inline-flex" />
@@ -117,7 +117,7 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
       <article
         aria-label={ariaLabel}
         className={cn(
-          'group relative flex gap-3 rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:bg-accent/50',
+          'group relative flex gap-3 rounded-xl border border-border bg-card p-3 shadow-xs transition-colors hover:bg-accent/50',
           // En mobile el menú contextual vive arriba a la derecha (absoluto):
           // reservamos lugar para que no pise el contenido.
           withActions && 'pr-12 sm:pr-3',
@@ -126,7 +126,7 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
         <Link
           href={`/reservas/${booking.id}`}
           aria-label={ariaLabel}
-          className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          className="absolute inset-0 z-0 rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         />
         <span aria-hidden className={cn('w-1 shrink-0 self-stretch rounded-full', visual.accent)} />
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">

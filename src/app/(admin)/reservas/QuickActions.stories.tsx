@@ -80,7 +80,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="relative max-w-xl rounded-xl border border-border bg-card p-3 shadow-sm">
+      <div className="relative max-w-xl rounded-xl border border-border bg-card p-3 shadow-xs">
         <Story />
       </div>
     ),

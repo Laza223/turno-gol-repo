@@ -27,7 +27,7 @@ export function MetricCard({ label, value, icon, sub, accent = 'emerald', href, 
     <Link
       href={href}
       aria-label={ariaLabel ?? label}
-      className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="block h-full rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       {card}
     </Link>

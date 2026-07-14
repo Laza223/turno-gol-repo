@@ -19,7 +19,7 @@ type ImageUploaderProps = {
 const ASPECT_CLASS: Record<ImagePreset, string> = {
   logo: 'aspect-square',
   cover: 'aspect-video',
-  court: 'aspect-[4/3]',
+  court: 'aspect-4/3',
 }
 
 export function ImageUploader({

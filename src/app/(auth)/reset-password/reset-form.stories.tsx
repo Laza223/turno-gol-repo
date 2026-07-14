@@ -15,8 +15,8 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <div className="flex min-h-[420px] items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/[0.04] dark:border-white/[0.08] backdrop-blur-md">
+      <div className="flex min-h-[420px] items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12">
+        <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 backdrop-blur-md">
           <Story />
         </div>
       </div>

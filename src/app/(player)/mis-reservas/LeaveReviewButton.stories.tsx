@@ -40,7 +40,7 @@ const meta = {
   args: { bookingId: 'booking-5', tenantName: 'Complejo Fénix' },
   decorators: [
     (Story) => (
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
         <Story />
       </div>
     ),

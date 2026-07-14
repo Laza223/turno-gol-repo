@@ -25,7 +25,7 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
           aria-label="Buscar jugadores"
           defaultValue={q ?? ''}
           placeholder="Buscar por nombre, teléfono o email"
-          className="w-full rounded-md border border-border py-2 pl-9 pr-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="w-full rounded-md border border-border py-2 pl-9 pr-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         />
       </form>
 
@@ -37,7 +37,7 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
         </p>
       ) : (
         <ResponsiveList
-          className="overflow-hidden rounded-xl shadow-sm"
+          className="overflow-hidden rounded-xl shadow-xs"
           cards={
             <ul className="divide-y divide-border">
               {players.map((p) => (

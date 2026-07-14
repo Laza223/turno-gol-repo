@@ -13,7 +13,7 @@ const meta = {
   // blanco miden 5.02:1 / 4.83:1 y pasan. El contenedor no es cosmético.
   decorators: [
     (Story) => (
-      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-xs">
         <Story />
       </div>
     ),

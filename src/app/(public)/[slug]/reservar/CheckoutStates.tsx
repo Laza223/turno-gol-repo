@@ -87,7 +87,7 @@ export function CheckoutInvalidState({ slug, message }: { slug: string; message:
   return (
     <ReservaShell>
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-warning/10 text-amber-700 ring-1 ring-inset ring-warning/35 dark:bg-amber-500/[.12] dark:text-amber-300 dark:ring-amber-500/35">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-warning/10 text-amber-700 ring-1 ring-inset ring-warning/35 dark:bg-amber-500/12 dark:text-amber-300 dark:ring-amber-500/35">
           <AlertTriangle className="h-8 w-8" aria-hidden />
         </div>
         <p className="text-sm text-muted-foreground">{message}</p>

@@ -36,7 +36,7 @@ export function EliminarCuentaView({
       </div>
 
       {/* Info card */}
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h2 className="text-sm font-semibold text-foreground">Qué pasa con tus datos</h2>
 
         <div className="space-y-1">

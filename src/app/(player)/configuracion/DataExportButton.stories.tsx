@@ -16,7 +16,7 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <div className="max-w-sm rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xs">
         <Story />
       </div>
     ),

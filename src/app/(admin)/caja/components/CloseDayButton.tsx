@@ -74,7 +74,7 @@ export function CloseDayButton({
       <button
         type="button"
         onClick={() => { setDeclaredPesos(''); setNote(''); setOpen(true) }}
-        className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
+        className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
       >
         <Lock className="h-4 w-4" aria-hidden="true" />
         Cerrar caja

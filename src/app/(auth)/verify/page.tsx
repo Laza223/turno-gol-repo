@@ -56,7 +56,7 @@ export default async function VerifyPage(
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[-10%] top-[-12%] h-[520px] w-[520px] rounded-full blur-[12px]"
+        className="pointer-events-none absolute right-[-10%] top-[-12%] h-[520px] w-[520px] rounded-full blur-md"
         style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.2), transparent 70%)' }}
       />
       <div

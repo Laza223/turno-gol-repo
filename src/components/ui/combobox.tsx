@@ -247,7 +247,7 @@ export default function Combobox({
           // el propio onClick/onBlur del input, no el dismiss de Radix.
           if (anchorRef.current?.contains(e.target as Node)) e.preventDefault()
         }}
-        className="z-50 w-[var(--radix-popover-trigger-width)] max-h-60 overflow-auto rounded-xl border border-border bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur-md"
+        className="z-50 w-(--radix-popover-trigger-width) max-h-60 overflow-auto rounded-xl border border-border bg-popover/95 p-1.5 text-popover-foreground shadow-xl backdrop-blur-md"
       >
         {/* El mensaje de "sin resultados" va FUERA del listbox. Adentro violaba
             aria-required-children: un role="listbox" solo admite hijos `option` o
@@ -288,7 +288,7 @@ export default function Combobox({
                   lastPointer.current = { x: e.clientX, y: e.clientY }
                   if (moved && activeIndex !== i) setActiveIndex(i)
                 }}
-                className={`flex cursor-pointer select-none items-center justify-between gap-3 px-2.5 py-2 text-sm rounded-lg outline-none transition-all duration-200 ${
+                className={`flex cursor-pointer select-none items-center justify-between gap-3 px-2.5 py-2 text-sm rounded-lg outline-hidden transition-all duration-200 ${
                   i === activeIndex ? 'bg-accent text-accent-foreground' : 'text-foreground/90'
                 }`}
               >

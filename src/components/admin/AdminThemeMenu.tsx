@@ -36,7 +36,7 @@ export function AdminThemeMenu() {
         <button
           type="button"
           aria-label="Cambiar tema"
-          className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-lg border border-border/60 bg-card/60 text-muted-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-foreground hover:border-emerald-500/30 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-lg border border-border/60 bg-card/60 text-muted-foreground shadow-xs backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-foreground hover:border-emerald-500/30 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </button>

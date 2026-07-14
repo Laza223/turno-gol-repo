@@ -156,7 +156,7 @@ export function QuickActions({
   const isPendingPayment = booking.status === 'pending_payment'
 
   const inlineBtn =
-    'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
 
   return (
     <>
@@ -220,7 +220,7 @@ export function QuickActions({
               <DropdownMenuTrigger
                 disabled={pending}
                 aria-label={`Acciones para ${label}`}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
               >
                 <MoreVertical aria-hidden className="h-5 w-5" />
               </DropdownMenuTrigger>
@@ -309,7 +309,7 @@ export function QuickActions({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>

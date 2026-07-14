@@ -120,7 +120,7 @@ export function InviteStaffDialog({
             {STAFF_ROLES.map((role) => (
               <label
                 key={role}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-500/10"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 has-checked:border-emerald-600 has-checked:bg-emerald-50 dark:has-checked:bg-emerald-500/10"
               >
                 <input
                   type="radio"

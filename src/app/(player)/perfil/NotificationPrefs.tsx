@@ -80,7 +80,7 @@ export default function NotificationPrefs({
         return (
           <div
             key={key}
-            className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-emerald-400/40"
+            className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-emerald-400/40"
           >
             <span
               className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
@@ -99,7 +99,7 @@ export default function NotificationPrefs({
               aria-checked={on}
               aria-label={label}
               onClick={() => toggle(key)}
-              className={`relative mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
+              className={`relative mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
                 on ? 'bg-primary' : 'bg-input'
               }`}
             >

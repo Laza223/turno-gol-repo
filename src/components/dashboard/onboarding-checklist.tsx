@@ -102,7 +102,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
 
   if (minimized) {
     return (
-      <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
+      <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-xs shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
         <div className="flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">¡Tu complejo está 100% listo!</p>
@@ -152,7 +152,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
               <p
                 role="status"
                 aria-live="polite"
-                className="max-w-[12rem] text-right text-xs text-red-600 dark:text-red-400"
+                className="max-w-48 text-right text-xs text-red-600 dark:text-red-400"
               >
                 {shareError}
               </p>
@@ -187,7 +187,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
         <div className="flex items-center gap-2">
           <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
               style={{ width: `${pct}%` }}
             />
           </div>

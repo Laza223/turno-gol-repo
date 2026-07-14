@@ -22,7 +22,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
     <nav
       aria-label={ariaLabel}
       className={cn(
-        'flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'flex gap-1 overflow-x-auto border-b border-border scrollbar-none [&::-webkit-scrollbar]:hidden',
         className,
       )}
     >

@@ -127,7 +127,7 @@ export default async function ReportesPage(
               </button>
             </form>
 
-            <span className="min-w-[11rem] text-center text-sm font-medium text-foreground">
+            <span className="min-w-44 text-center text-sm font-medium text-foreground">
               {formatMonthLabel(month)}
             </span>
 
@@ -192,7 +192,7 @@ export default async function ReportesPage(
           {/* By court */}
           {report.byCourt.length > 0 && (
             <ResponsiveList
-              className="overflow-hidden shadow-sm"
+              className="overflow-hidden shadow-xs"
               header={
                 <div className="border-b border-border px-6 py-4">
                   <h2 className="text-sm font-semibold text-foreground">Por cancha</h2>
@@ -248,7 +248,7 @@ export default async function ReportesPage(
 
           {/* By payment method */}
           {report.byMethod.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
               <div className="border-b border-border px-6 py-4">
                 <h2 className="text-sm font-semibold text-foreground">Por método de pago</h2>
               </div>
@@ -282,7 +282,7 @@ export default async function ReportesPage(
         <div className="flex justify-end">
           <a
             href={`/api/reports/revenue?from=${csvFrom}&to=${csvTo}&format=csv`}
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-accent"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-xs hover:bg-accent"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
             Exportar CSV

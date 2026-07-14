@@ -11,7 +11,7 @@ const initial: GateState = { status: 'idle' }
 export type SendPlayerMagicLink = typeof sendPlayerMagicLink
 
 const inputClass =
-  'h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-white/[.04]'
+  'h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus-visible:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-white/4'
 
 function Submit() {
   const { pending } = useFormStatus()
@@ -66,7 +66,7 @@ export default function LoginGate({
         <input name="email" type="email" autoComplete="email" required placeholder="vos@email.com" className={inputClass} />
       </label>
       <label className="flex items-start gap-2 text-xs text-muted-foreground">
-        <input type="checkbox" name="terms" required className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/[.04]" />
+        <input type="checkbox" name="terms" required className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/4" />
         <span>Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada).</span>
       </label>
       {state.status === 'error' && <p role="alert" className="text-xs text-destructive dark:text-red-300">{state.message}</p>}

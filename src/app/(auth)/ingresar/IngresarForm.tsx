@@ -15,7 +15,7 @@ export type PlayerLoginAction = (
 ) => Promise<PlayerLoginState>
 
 const inputClass =
-  'h-11 w-full rounded-lg border border-white/10 bg-white/[.04] px-3.5 text-sm text-white placeholder:text-slate-500 transition-colors focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 aria-[invalid=true]:border-red-500'
+  'h-11 w-full rounded-lg border border-white/10 bg-white/4 px-3.5 text-sm text-white placeholder:text-slate-500 transition-colors focus-visible:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 aria-invalid:border-red-500'
 
 /** Glass dark premium (espeja LoginGate / retorno de reserva). */
 const cardStyle = {
@@ -139,7 +139,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="group inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020617] disabled:translate-y-0 disabled:opacity-60"
+      className="group inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020617] disabled:translate-y-0 disabled:opacity-60"
     >
       {pending ? (
         <>

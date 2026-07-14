@@ -24,7 +24,7 @@ function IconButton() {
       <button
         type="button"
         aria-label="Solo el admin puede editar Configuración"
-        className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Lock className="h-4 w-4" aria-hidden />
       </button>

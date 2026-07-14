@@ -97,13 +97,13 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
         : ''
 
   const fieldClass =
-    'h-[62px] w-full rounded-xl border border-border bg-background pl-11 pr-3 text-base text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-[62px] w-full rounded-xl border border-border bg-background pl-11 pr-3 text-base text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
   // La fecha nativa necesita más ancho útil en la grilla de 2 col a 375px:
   // menos padding + fuente apenas menor para que "dd/mm/aaaa" no trunque (§13.5).
   const dateFieldClass = fieldClass.replace('pl-11 pr-3 text-base', 'pl-10 pr-2 text-[15px]')
 
-  const labelClass = 'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-[.05em] text-muted-foreground'
+  const labelClass = 'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-wider text-muted-foreground'
 
   if (layout === 'vertical') {
     return (

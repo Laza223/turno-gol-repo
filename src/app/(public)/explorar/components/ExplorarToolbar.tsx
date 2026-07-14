@@ -74,7 +74,7 @@ export default function ExplorarToolbar({ total }: Props) {
           id="exp-sort"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="h-11 md:h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="h-11 md:h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           {SORTS.map((s) => (
             <option key={s.value} value={s.value}>
@@ -84,7 +84,7 @@ export default function ExplorarToolbar({ total }: Props) {
         </select>
 
         {/* Toggle vista lista / mapa */}
-        <div className="inline-flex overflow-hidden rounded-lg border border-border bg-card shadow-sm" role="group" aria-label="Vista">
+        <div className="inline-flex overflow-hidden rounded-lg border border-border bg-card shadow-xs" role="group" aria-label="Vista">
           <button
             type="button"
             onClick={() => setView('list')}

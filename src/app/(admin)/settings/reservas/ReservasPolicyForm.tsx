@@ -73,7 +73,7 @@ export function ReservasPolicyForm({
             type="button"
             onClick={() => setRequiresDeposit(true)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${requiresDeposit
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -83,7 +83,7 @@ export function ReservasPolicyForm({
             type="button"
             onClick={() => setRequiresDeposit(false)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${!requiresDeposit
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -165,7 +165,7 @@ export function ReservasPolicyForm({
             type="button"
             onClick={() => setAllowOnlineBooking(true)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${allowOnlineBooking
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -175,7 +175,7 @@ export function ReservasPolicyForm({
             type="button"
             onClick={() => setAllowOnlineBooking(false)}
             className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${!allowOnlineBooking
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm shadow-emerald-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
               }`}
           >
@@ -266,7 +266,7 @@ export function ReservasPolicyForm({
         Guardar cambios
       </SubmitButton>
 
-      <div aria-live="polite" className="min-h-[1.25rem]">
+      <div aria-live="polite" className="min-h-5">
         {!state.success && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {state.error}

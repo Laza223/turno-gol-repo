@@ -51,7 +51,7 @@ export function HorariosForm({
       <div className="pt-2">
         <SubmitButton>Guardar horarios</SubmitButton>
       </div>
-      <div aria-live="polite" className="min-h-[1.25rem]">
+      <div aria-live="polite" className="min-h-5">
         {!state.success && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
         )}

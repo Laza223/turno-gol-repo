@@ -119,7 +119,7 @@ export function PricingGridTable({
                           }
                         }}
                         aria-label={`Precio ${DAY_LABELS[day]} ${hourLabel(hour)}`}
-                        className="h-11 md:h-8 w-full rounded-md border-2 border-emerald-600 bg-background text-foreground px-1 text-center text-xs tabular-nums focus-visible:outline-none"
+                        className="h-11 md:h-8 w-full rounded-md border-2 border-emerald-600 bg-background text-foreground px-1 text-center text-xs tabular-nums focus-visible:outline-hidden"
                       />
                     ) : (
                       <button

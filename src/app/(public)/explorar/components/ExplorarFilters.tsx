@@ -118,8 +118,8 @@ export default function ExplorarFilters({ onApplied }: Props) {
         <legend className="mb-2 text-sm font-semibold text-foreground">Cerramiento</legend>
         <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
           <input type="checkbox" checked={techado} onChange={() => setTechado((v) => !v)} className={`${checkbox} mt-0.5`} />
-          <Umbrella className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" aria-hidden />
-          <span className="break-words whitespace-normal leading-tight flex-1">Techado</span>
+          <Umbrella className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
+          <span className="wrap-break-word whitespace-normal leading-tight flex-1">Techado</span>
         </label>
       </fieldset>
 
@@ -135,7 +135,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
                 onChange={() => setSurfaces((s) => toggle(s, key))}
                 className={`${checkbox} mt-0.5`}
               />
-              <span className="break-words whitespace-normal leading-tight flex-1">{label}</span>
+              <span className="wrap-break-word whitespace-normal leading-tight flex-1">{label}</span>
             </label>
           ))}
         </div>
@@ -180,8 +180,8 @@ export default function ExplorarFilters({ onApplied }: Props) {
                   onChange={() => setServices((s) => toggle(s, key))}
                   className={`${checkbox} mt-0.5`}
                 />
-                <Icon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" aria-hidden />
-                <span className="break-words whitespace-normal leading-tight flex-1">{label}</span>
+                <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
+                <span className="wrap-break-word whitespace-normal leading-tight flex-1">{label}</span>
               </label>
             )
           })}
@@ -204,7 +204,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
               placeholder="Desde"
-              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
           <span className="text-muted-foreground">–</span>
@@ -220,7 +220,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
               placeholder="Hasta"
-              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>
@@ -232,15 +232,15 @@ export default function ExplorarFilters({ onApplied }: Props) {
       {/* Reserva online */}
       <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
         <input type="checkbox" checked={online} onChange={() => setOnline((v) => !v)} className={`${checkbox} mt-0.5`} />
-        <Zap className="h-4 w-4 text-emerald-500 mt-0.5 flex-shrink-0" aria-hidden />
-        <span className="break-words whitespace-normal leading-tight flex-1">Solo con reserva online</span>
+        <Zap className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" aria-hidden />
+        <span className="wrap-break-word whitespace-normal leading-tight flex-1">Solo con reserva online</span>
       </label>
 
       <div className="flex gap-2 border-t border-border pt-4">
         <button
           type="button"
           onClick={apply}
-          className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+          className="inline-flex h-11 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
         >
           Aplicar filtros
         </button>

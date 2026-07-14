@@ -4,7 +4,7 @@ import TenantCardCarousel from './TenantCardCarousel'
 
 const PHOTOS = ['/bg-hero.png', '/bg-hero-2.png', '/bg-owner.png', '/bg-how-it-works.png', '/hero-bg.png', '/bg-hero.png', '/bg-hero-2.png']
 
-/** Vive absolute-positioned dentro del `aspect-[16/9]` de la foto de TenantCard. */
+/** Vive absolute-positioned dentro del `aspect-video` de la foto de TenantCard. */
 const meta = {
   title: 'Player/Explorar/TenantCardCarousel',
   component: TenantCardCarousel,
@@ -12,7 +12,7 @@ const meta = {
   args: { name: 'Complejo Fénix', href: '/complejo-fenix' },
   decorators: [
     (Story) => (
-      <div className="relative aspect-[16/9] w-full max-w-sm overflow-hidden rounded-2xl bg-muted">
+      <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-2xl bg-muted">
         <Story />
       </div>
     ),

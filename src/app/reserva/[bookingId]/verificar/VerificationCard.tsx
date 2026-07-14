@@ -70,7 +70,7 @@ export function VerificationCard({
       <h1 className="text-2xl font-bold tracking-tight text-foreground">{verdict.title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{verdict.detail}</p>
 
-      <dl className="mt-6 w-full space-y-2 rounded-xl border border-border bg-card p-4 text-left text-sm shadow-sm">
+      <dl className="mt-6 w-full space-y-2 rounded-xl border border-border bg-card p-4 text-left text-sm shadow-xs">
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">Complejo</dt>
           <dd className="font-medium text-foreground">{booking.tenantName} · {booking.city}</dd>

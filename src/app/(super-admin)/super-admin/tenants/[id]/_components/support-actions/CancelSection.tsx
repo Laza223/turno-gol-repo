@@ -43,7 +43,7 @@ export function CancelSection({ tenantId, tenantName, hasSubscription, pending, 
               rows={2}
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
-              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="space-y-1 rounded-md bg-red-50 dark:bg-red-500/10 p-3 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30">

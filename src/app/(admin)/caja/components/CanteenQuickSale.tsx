@@ -55,7 +55,7 @@ export function CanteenQuickSale({
   const [editorOpen, setEditorOpen] = useState(false)
 
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm">
+    <div className="rounded-lg border border-border bg-card shadow-xs">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="font-medium text-foreground">Cantina/Bar</h2>
         <button

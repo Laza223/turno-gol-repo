@@ -13,7 +13,7 @@ export function Dt({ label, children }: { label: string; children: ReactNode }) 
 /** Tarjeta contenedora de cada bloque de un tab del detalle de tenant. */
 export function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-6 shadow-xs">
       <h2 className="text-base font-semibold text-foreground">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>

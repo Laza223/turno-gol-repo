@@ -26,7 +26,7 @@ export function MorningCollapseBand({ firstSlot, boundarySlot, onExpand }: Props
       className={cn(
         'group flex items-center overflow-hidden border-b border-border bg-muted/30 text-xs text-muted-foreground',
         'transition-colors duration-150 hover:bg-accent/60',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
       )}
     >
       <span className="sticky left-0 flex items-center gap-1.5 px-3">

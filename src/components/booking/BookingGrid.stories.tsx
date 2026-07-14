@@ -53,7 +53,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="flex h-[42rem] flex-col p-4">
+      <div className="flex h-168 flex-col p-4">
         <Story />
       </div>
     ),

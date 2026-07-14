@@ -250,7 +250,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
 
   return (
     <section
-      className="bg-card rounded-2xl border border-border shadow-sm p-4 sm:p-6 space-y-4"
+      className="bg-card rounded-2xl border border-border shadow-xs p-4 sm:p-6 space-y-4"
       aria-label="Grilla de disponibilidad"
     >
       {/* Date navigation */}

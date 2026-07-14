@@ -24,7 +24,7 @@ export function TenantsTable({
 }) {
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-xs">
         <table className="w-full min-w-[880px] text-left">
           <thead>
             <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">

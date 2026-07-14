@@ -40,7 +40,7 @@ const meta = {
       const compact = context.args.compact ?? false
       return (
         <div
-          className="grid rounded-xl border border-border bg-card shadow-sm"
+          className="grid rounded-xl border border-border bg-card shadow-xs"
           style={{
             gridTemplateColumns: '3.5rem 9rem',
             gridTemplateRows: `2.75rem repeat(3, ${compact ? '2.75rem' : '3.25rem'})`,

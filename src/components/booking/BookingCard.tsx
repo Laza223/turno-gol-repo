@@ -218,7 +218,7 @@ function BookingCardComponent({
           'border border-border/60 bg-card',
           'hover:border-emerald-500 hover:bg-emerald-500/5 dark:hover:border-emerald-400',
           'transition-colors duration-150',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         )}
       >
         <Plus
@@ -267,7 +267,7 @@ function BookingCardComponent({
               visual.borderL,
               isPast && 'opacity-90 saturate-50',
               isNew && 'animate-slot-pulse',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
             )}
           >
             {compact ? (

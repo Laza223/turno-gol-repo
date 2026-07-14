@@ -24,7 +24,7 @@ export default function PlayerHeroBand({
     <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-6 py-7">
       <div
         aria-hidden
-        className="hero-glow-blob pointer-events-none absolute right-[-12%] top-[-60%] -z-10 h-[420px] w-[420px] rounded-full blur-[12px]"
+        className="hero-glow-blob pointer-events-none absolute right-[-12%] top-[-60%] -z-10 h-[420px] w-[420px] rounded-full blur-md"
       />
       <div
         aria-hidden
@@ -35,7 +35,7 @@ export default function PlayerHeroBand({
           maskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
         }}
       />
-      <div className="font-logo text-[12px] font-bold uppercase tracking-[.1em] text-emerald-600 dark:text-emerald-400">
+      <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
         {eyebrow}
       </div>
       {title && (

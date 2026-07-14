@@ -23,12 +23,12 @@ export function OwnerBanner() {
             {/* Glow (solo dark; en light la banda ya trae tinte propio) */}
             <div
               aria-hidden
-              className="hero-glow-blob pointer-events-none absolute right-[-8%] top-[-60%] z-[-1] hidden h-[620px] w-[620px] rounded-full blur-[16px] dark:block"
+              className="hero-glow-blob pointer-events-none absolute right-[-8%] top-[-60%] z-[-1] hidden h-[620px] w-[620px] rounded-full blur-lg dark:block"
             />
             {/* Retícula */}
             <div
               aria-hidden
-              className="player-hero-grid pointer-events-none absolute inset-0 z-[-1] bg-[length:40px_40px]"
+              className="player-hero-grid pointer-events-none absolute inset-0 z-[-1] bg-size-[40px_40px]"
               style={{
                 WebkitMaskImage: 'radial-gradient(80% 120% at 100% 0%, #000, transparent 60%)',
                 maskImage: 'radial-gradient(80% 120% at 100% 0%, #000, transparent 60%)',
@@ -38,12 +38,12 @@ export function OwnerBanner() {
             <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-[22px]">
                 {/* Ícono */}
-                <div className="icon-halo inline-flex h-[60px] w-[60px] flex-shrink-0 items-center justify-center rounded-2xl">
+                <div className="icon-halo inline-flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-2xl">
                   <Building2 className="h-7 w-7" aria-hidden />
                 </div>
 
                 <div className="min-w-0">
-                  <div className="mb-2 font-logo text-xs font-bold uppercase tracking-[.1em] text-emerald-800 dark:text-emerald-400">
+                  <div className="mb-2 font-logo text-xs font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">
                     Para dueños de complejo
                   </div>
                   <h2

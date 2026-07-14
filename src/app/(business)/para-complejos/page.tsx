@@ -101,7 +101,7 @@ function Hero() {
       {/* KIT-GLOW-R */}
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-[8px] motion-reduce:animate-none"
+        className="pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-sm motion-reduce:animate-none"
         style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)' }}
       />
       {/* KIT-GLOW-L */}
@@ -126,7 +126,7 @@ function Hero() {
         <div className="min-w-0">
           {/* KIT-PILL-LIVE */}
           <div
-            className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[13px] font-semibold text-[#6ee7b7] backdrop-blur-sm"
+            className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[13px] font-semibold text-[#6ee7b7] backdrop-blur-xs"
             style={{ boxShadow: 'inset 0 0 30px rgba(16,185,129,.14)', whiteSpace: 'nowrap' }}
           >
             <Zap className="h-3.5 w-3.5" aria-hidden />
@@ -228,7 +228,7 @@ function PanelMockup() {
         }}
       >
         {/* Header del panel */}
-        <div className="flex items-center justify-between border-b border-white/[.08] px-[22px] py-[16px]">
+        <div className="flex items-center justify-between border-b border-white/8 px-[22px] py-[16px]">
           <div>
             <div className="font-logo text-[11px] uppercase tracking-[.06em] text-slate-500">Panel · Hoy</div>
             <div className="font-display font-bold text-[18px] text-[#f8fafc]">Grilla en vivo</div>
@@ -287,9 +287,9 @@ function PanelMockup() {
           </div>
 
           {/* Fila caja del día */}
-          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/[.08] pt-[16px]">
+          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/8 pt-[16px]">
             <div>
-              <div className="font-logo text-[11px] uppercase tracking-[.05em] text-slate-500">Caja del día</div>
+              <div className="font-logo text-[11px] uppercase tracking-wider text-slate-500">Caja del día</div>
               <div className="font-display font-bold text-[20px] text-[#f8fafc]">$ 184.500</div>
             </div>
             <div
@@ -304,7 +304,7 @@ function PanelMockup() {
 
       {/* Toast "Nueva reserva online" */}
       <div
-        className="absolute -left-[26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px] animate-[tg-float_7s_ease-in-out_infinite_1.4s] motion-reduce:animate-none"
+        className="absolute left-[-26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px] animate-[tg-float_7s_ease-in-out_infinite_1.4s] motion-reduce:animate-none"
         style={{
           background: 'rgba(8,15,32,.88)',
           border: '1px solid rgba(255,255,255,.12)',
@@ -351,7 +351,7 @@ function Features() {
           {features.map((f, i) => (
             <Reveal key={f.title} delay={i * 60} className="h-full">
               <div
-                className="group relative h-full overflow-hidden border border-white/[.09] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
+                className="group relative h-full overflow-hidden border border-white/9 p-7 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
                 style={{ borderRadius: '20px', background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))' }}
               >
                 <div
@@ -381,7 +381,7 @@ function StatsBar() {
     <section className="relative z-10 py-6">
       <div className="mx-auto max-w-[1240px] px-6">
         <div
-          className="relative overflow-hidden rounded-3xl border border-emerald-500/[.22] p-7 sm:p-11"
+          className="relative overflow-hidden rounded-3xl border border-emerald-500/22 p-7 sm:p-11"
           style={{
             background: 'linear-gradient(120deg, rgba(6,78,59,.55), rgba(2,6,23,.35) 55%, rgba(6,78,59,.4))',
             boxShadow: '0 0 70px rgba(16,185,129,.165), inset 0 1px 0 rgba(255,255,255,.06)',
@@ -500,7 +500,7 @@ function ShowcaseStrip() {
                         ? 'bg-emerald-500/30 text-emerald-100 ring-1 ring-inset ring-emerald-400/40'
                         : next
                           ? 'bg-amber-400/15 text-amber-200 ring-1 ring-inset ring-amber-300/30'
-                          : 'bg-white/[0.03] text-slate-500 ring-1 ring-inset ring-white/5',
+                          : 'bg-white/3 text-slate-500 ring-1 ring-inset ring-white/5',
                     ].join(' ')}
                   >
                     {(18 + Math.floor(i / 4)).toString().padStart(2, '0')}:{((i % 4) * 15).toString().padStart(2, '0')}

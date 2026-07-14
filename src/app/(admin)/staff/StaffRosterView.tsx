@@ -68,7 +68,7 @@ export function StaffRosterView({
         />
       ) : (
         <ResponsiveList
-          className="shadow-sm"
+          className="shadow-xs"
           cards={
             <ul className="divide-y divide-border">
               {members.map((m) => (

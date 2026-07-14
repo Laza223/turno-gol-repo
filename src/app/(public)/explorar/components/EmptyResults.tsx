@@ -7,7 +7,7 @@ export default function EmptyResults({
   avail?: { date: string; time: string } | null
 }) {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card py-16 text-center shadow-sm">
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card py-16 text-center shadow-xs">
       <div className="relative h-24 w-48 text-emerald-600/25 dark:text-emerald-400/25">
         <PitchLines variant="empty" className="h-full w-full" />
       </div>

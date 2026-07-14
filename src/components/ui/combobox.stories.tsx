@@ -12,7 +12,7 @@ import Combobox, { type ComboboxOption } from './combobox'
  * ese mismo recipe acá para no mostrar un combobox "roto" sin borde.
  */
 const FIELD_CLASS =
-  'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+  'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
 const CITY_OPTIONS: ComboboxOption[] = [
   { value: 'caba', label: 'Ciudad Autónoma de Buenos Aires', hint: '48' },

@@ -27,7 +27,7 @@ export function ForgotPasswordCard({ action }: { action: ForgotPasswordAction })
   if (state.status === 'sent') return <SentState />
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
+    <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <header className="mb-6 space-y-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           Recuperar contraseña
@@ -50,7 +50,7 @@ export function ForgotPasswordCard({ action }: { action: ForgotPasswordAction })
             required
             placeholder="vos@complejo.com"
             aria-invalid={state.status === 'error' ? 'true' : undefined}
-            className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-[invalid=true]:border-red-500"
+            className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-invalid:border-red-500"
           />
           {state.status === 'error' && (
             <p role="alert" className="text-xs text-red-600 dark:text-red-400">
@@ -66,7 +66,7 @@ export function ForgotPasswordCard({ action }: { action: ForgotPasswordAction })
 
 function SentState() {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/90 dark:bg-white/[0.04] dark:border-white/[0.08] p-8 text-center shadow-xl shadow-slate-900/5 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
+    <div className="rounded-2xl border border-border/60 bg-card/90 dark:bg-white/4 dark:border-white/8 p-8 text-center shadow-xl shadow-slate-900/5 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
         <Mail className="h-6 w-6 text-emerald-700 dark:text-emerald-400" aria-hidden />
       </div>
@@ -93,7 +93,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30 disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+      className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30 disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
     >
       {pending ? (
         <>

@@ -26,7 +26,7 @@ export const Disabled: Story = { args: { disabled: true, defaultValue: 'No edita
 
 export const TipoFile: Story = { args: { type: 'file' } }
 
-/** Foco visible por teclado (`focus-visible:ring` + `border-primary`). */
+/** Foco visible por teclado (`focus-visible:ring-3` + `border-primary`). */
 export const Foco: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

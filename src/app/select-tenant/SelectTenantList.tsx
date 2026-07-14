@@ -42,7 +42,7 @@ export function SelectTenantList({ tenants, error, action }: Props) {
               <input type="hidden" name="tenantId" value={t.tenantId} />
               <button
                 type="submit"
-                className="card-premium card-premium-interactive flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition-all hover:border-emerald-300 dark:hover:border-emerald-500/40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="card-premium card-premium-interactive flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition-all hover:border-emerald-300 dark:hover:border-emerald-500/40 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <span>
                   <span className="block text-sm font-semibold text-foreground">{t.tenantName}</span>

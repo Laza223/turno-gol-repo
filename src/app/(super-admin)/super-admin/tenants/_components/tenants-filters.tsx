@@ -41,7 +41,7 @@ export function TenantsFilters({
           type="text"
           defaultValue={q ?? ''}
           placeholder="Nombre, slug o email"
-          className="h-11 md:h-10 w-64 rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="h-11 md:h-10 w-64 rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -52,7 +52,7 @@ export function TenantsFilters({
           id="status"
           name="status"
           defaultValue={status ?? ''}
-          className="h-11 md:h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="h-11 md:h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
         >
           <option value="">Todos</option>
           {TENANT_STATUSES.map((s) => (
@@ -70,7 +70,7 @@ export function TenantsFilters({
           id="plan"
           name="plan"
           defaultValue={planSlug ?? ''}
-          className="h-11 md:h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="h-11 md:h-10 rounded-md border border-border bg-card px-3 text-sm focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
         >
           <option value="">Todos</option>
           {plans.map((p) => (

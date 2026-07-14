@@ -96,9 +96,9 @@ export default function SearchBar({ cities }: Props) {
   }
 
   const fieldClass =
-    'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
-  const labelClass = 'mb-1.5 block font-logo text-[11px] font-bold uppercase tracking-[.05em] text-muted-foreground'
+  const labelClass = 'mb-1.5 block font-logo text-[11px] font-bold uppercase tracking-wider text-muted-foreground'
 
   return (
     <form

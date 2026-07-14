@@ -208,7 +208,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
       />
       <SearchBand cities={cities} />
 
-      <div className="sticky top-20 z-20 -mx-4 space-y-2 border-b border-border bg-card/85 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-card/70 sm:px-6 lg:px-8">
+      <div className="sticky top-20 z-20 -mx-4 space-y-2 border-b border-border bg-card/85 px-4 py-2.5 backdrop-blur-sm supports-backdrop-filter:bg-card/70 sm:px-6 lg:px-8">
         <Suspense fallback={<div className="h-16" />}>
           <QuickFilters />
           <ExplorarToolbar total={total} />
@@ -218,7 +218,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
       <div className={view === 'map' ? '' : 'lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6'}>
         {view === 'list' && (
           <aside className="hidden lg:block">
-            <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-xs">
               <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
                 <ExplorarFilters />
               </Suspense>
@@ -257,7 +257,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
                   <div className="mt-10 flex justify-center">
                     <Link
                       href={pageUrl(searchParams, offset + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0"
+                      className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0"
                     >
                       Ver más complejos
                     </Link>
@@ -272,7 +272,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
       {view === 'map' && (
         <Link
           href={listHref}
-          className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 motion-reduce:active:scale-100 lg:hidden dark:shadow-emerald-500/25"
+          className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 motion-reduce:active:scale-100 lg:hidden dark:shadow-emerald-500/25"
         >
           <List className="h-4 w-4" aria-hidden /> Ver lista
         </Link>

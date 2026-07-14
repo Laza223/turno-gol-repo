@@ -171,7 +171,7 @@ export default function BookingCharges({
                 min={1}
                 value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
-                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
             </div>
             <div className="flex-1 space-y-1">
@@ -182,7 +182,7 @@ export default function BookingCharges({
                 id="charge-method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value as typeof method)}
-                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <option value="cash">Efectivo</option>
                 <option value="transfer">Transferencia</option>

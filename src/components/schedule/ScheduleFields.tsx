@@ -116,7 +116,7 @@ export function ScheduleFields({
             <li
               key={day}
               className={cn(
-                "flex flex-col justify-center gap-2 rounded-xl border p-3.5 shadow-sm transition-all duration-200 min-h-[4rem]",
+                "flex flex-col justify-center gap-2 rounded-xl border p-3.5 shadow-xs transition-all duration-200 min-h-16",
                 closed
                   // Sin opacity-70: diluía --muted-foreground (ya al límite, 4.24:1
                   // sobre --muted sólido) por debajo de AA (3.21:1/2.67:1 medidos).

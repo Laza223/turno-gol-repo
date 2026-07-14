@@ -10,8 +10,8 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
   const fromPrice = formatFromPrice(court.fromPriceCents)
 
   return (
-    <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0">
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+    <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0">
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
         {photo ? (
           <Image
             src={photo}

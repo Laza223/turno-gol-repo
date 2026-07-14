@@ -101,7 +101,7 @@ export function StepPayments({ mpConnected, mpError, finishAction, setStepAction
       <div role="radiogroup" aria-label="Cobro de seña" className="space-y-3">
         <label
           className={cn(
-            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring',
             choice === 'deposit'
               ? 'border-emerald-600 bg-primary/5 dark:bg-emerald-500/10'
               : 'border-border bg-card hover:border-emerald-600/40',
@@ -138,7 +138,7 @@ export function StepPayments({ mpConnected, mpError, finishAction, setStepAction
 
         <label
           className={cn(
-            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring',
             choice === 'none'
               ? 'border-emerald-600 bg-primary/5 dark:bg-emerald-500/10'
               : 'border-border bg-card hover:border-emerald-600/40',

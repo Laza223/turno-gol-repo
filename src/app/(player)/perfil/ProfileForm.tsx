@@ -54,7 +54,7 @@ export function ProfileForm({ defaultValues, action }: Props) {
     <form
       action={formAction}
       onSubmit={() => setDidSubmit(true)}
-      className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm"
+      className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xs"
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -68,7 +68,7 @@ export function ProfileForm({ defaultValues, action }: Props) {
             defaultValue={defaultValues.firstName}
             autoComplete="given-name"
             required
-            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
         <div className="space-y-1">
@@ -82,7 +82,7 @@ export function ProfileForm({ defaultValues, action }: Props) {
             defaultValue={defaultValues.lastName}
             autoComplete="family-name"
             required
-            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
       </div>
@@ -104,7 +104,7 @@ export function ProfileForm({ defaultValues, action }: Props) {
           type="text"
           defaultValue={defaultValues.preferredArea}
           placeholder="Ej: Palermo, Villa Crespo..."
-          className="w-full h-11 px-3 border border-border bg-background rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
+          className="w-full h-11 px-3 border border-border bg-background rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
 

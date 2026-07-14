@@ -11,17 +11,17 @@ const BOOKING_SLOTS = [
 
 const SLOT_CLASSES: Record<(typeof BOOKING_SLOTS)[number]['state'], { box: string; time: string; label: string }> = {
   selected: {
-    box: 'border border-emerald-500 bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-lg shadow-emerald-600/40 dark:from-emerald-500 dark:to-emerald-600 dark:shadow-emerald-500/40',
+    box: 'border border-emerald-500 bg-linear-to-br from-emerald-600 to-emerald-700 shadow-lg shadow-emerald-600/40 dark:from-emerald-500 dark:to-emerald-600 dark:shadow-emerald-500/40',
     time: 'text-white dark:text-slate-950',
     label: 'text-emerald-100 dark:text-emerald-950',
   },
   free: {
-    box: 'border border-emerald-600/30 bg-primary/[.07] dark:border-emerald-500/30 dark:bg-emerald-500/[.08]',
+    box: 'border border-emerald-600/30 bg-primary/[.07] dark:border-emerald-500/30 dark:bg-emerald-500/8',
     time: 'text-emerald-800 dark:text-emerald-300',
     label: 'text-emerald-700 dark:text-emerald-400',
   },
   occupied: {
-    box: 'border border-border bg-muted/50 opacity-60 dark:border-white/[.06] dark:bg-white/[.03]',
+    box: 'border border-border bg-muted/50 opacity-60 dark:border-white/6 dark:bg-white/3',
     time: 'text-muted-foreground line-through',
     label: 'text-muted-foreground/70',
   },
@@ -46,14 +46,14 @@ export function BookingCardMockup() {
         {/* Cover */}
         <div className="mockup-cover relative h-[132px] overflow-hidden">
           <div
-            className="player-hero-grid absolute inset-0 bg-[length:30px_30px]"
+            className="player-hero-grid absolute inset-0 bg-size-[30px_30px]"
             style={{
               WebkitMaskImage: 'linear-gradient(180deg, #000, transparent)',
               maskImage: 'linear-gradient(180deg, #000, transparent)',
             }}
           />
           <span
-            className="absolute left-[22px] top-1/2 -translate-y-1/2 font-display font-black italic text-emerald-950/[.14] dark:text-white/[.16]"
+            className="absolute left-[22px] top-1/2 -translate-y-1/2 font-display font-black italic text-emerald-950/[.14] dark:text-white/16"
             style={{ fontSize: '46px', letterSpacing: '-0.04em' }}
           >
             LC
@@ -78,7 +78,7 @@ export function BookingCardMockup() {
                 Palermo · a 1,2 km
               </div>
             </div>
-            <div className="inline-flex shrink-0 items-center gap-[5px] rounded-full border border-emerald-600/25 bg-primary/10 px-[10px] py-[5px] text-[13px] font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/[.12] dark:text-emerald-300">
+            <div className="inline-flex shrink-0 items-center gap-[5px] rounded-full border border-emerald-600/25 bg-primary/10 px-[10px] py-[5px] text-[13px] font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/12 dark:text-emerald-300">
               <Star className="h-[13px] w-[13px] fill-current" strokeWidth={0} aria-hidden />
               4,9
             </div>
@@ -108,9 +108,9 @@ export function BookingCardMockup() {
           </div>
 
           {/* Pie de card */}
-          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/[.08]">
+          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/8">
             <div>
-              <div className="font-logo text-[11px] uppercase tracking-[.05em] text-muted-foreground">Seña</div>
+              <div className="font-logo text-[11px] uppercase tracking-wider text-muted-foreground">Seña</div>
               <div className="font-display text-[20px] font-bold tabular-nums text-foreground">$ 8.000</div>
             </div>
             <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-[10px] text-[13.5px] font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 dark:shadow-emerald-500/30">
@@ -124,10 +124,10 @@ export function BookingCardMockup() {
       {/* Toast flotante "Turno confirmado" — cuelga del borde inferior para no
           tapar el precio/CTA del mockup */}
       <div
-        className="overlay-nav absolute -bottom-4 -left-[26px] inline-flex items-center gap-[9px] rounded-[14px] px-3.5 py-2.5"
+        className="overlay-nav absolute -bottom-4 left-[-26px] inline-flex items-center gap-[9px] rounded-[14px] px-3.5 py-2.5"
         style={{ animation: 'tg-float 7s ease-in-out infinite 1.4s' }}
       >
-        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-primary/15 text-emerald-700 dark:bg-emerald-500/[.18] dark:text-emerald-400">
+        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-primary/15 text-emerald-700 dark:bg-emerald-500/18 dark:text-emerald-400">
           <Check className="h-4 w-4" strokeWidth={2.6} aria-hidden />
         </span>
         <div>

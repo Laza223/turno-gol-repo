@@ -69,7 +69,7 @@ export default function TenantCardCarousel({ photos, name, href }: Props) {
               }
             : undefined
         }
-        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500"
+        className="flex h-full w-full snap-x snap-mandatory overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500"
       >
         {slides.map((src, i) => (
           <Link
@@ -104,7 +104,7 @@ export default function TenantCardCarousel({ photos, name, href }: Props) {
             aria-label="Foto anterior"
             disabled={index === 0}
             onClick={() => scrollToIndex(index - 1)}
-            className="absolute left-2 top-1/2 z-10 inline-flex h-11 w-11 md:h-8 md:w-8 -translate-y-1/2 items-center justify-center rounded-full bg-card/90 text-foreground opacity-0 shadow-sm transition-opacity hover:bg-card focus-visible:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed group-hover:disabled:opacity-40"
+            className="absolute left-2 top-1/2 z-10 inline-flex h-11 w-11 md:h-8 md:w-8 -translate-y-1/2 items-center justify-center rounded-full bg-card/90 text-foreground opacity-0 shadow-xs transition-opacity hover:bg-card focus-visible:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:group-hover:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
@@ -113,7 +113,7 @@ export default function TenantCardCarousel({ photos, name, href }: Props) {
             aria-label="Foto siguiente"
             disabled={index === slides.length - 1}
             onClick={() => scrollToIndex(index + 1)}
-            className="absolute right-2 top-1/2 z-10 inline-flex h-11 w-11 md:h-8 md:w-8 -translate-y-1/2 items-center justify-center rounded-full bg-card/90 text-foreground opacity-0 shadow-sm transition-opacity hover:bg-card focus-visible:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed group-hover:disabled:opacity-40"
+            className="absolute right-2 top-1/2 z-10 inline-flex h-11 w-11 md:h-8 md:w-8 -translate-y-1/2 items-center justify-center rounded-full bg-card/90 text-foreground opacity-0 shadow-xs transition-opacity hover:bg-card focus-visible:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:group-hover:opacity-40"
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>

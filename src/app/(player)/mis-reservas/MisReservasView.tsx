@@ -124,7 +124,7 @@ export function MisReservasView({
       <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-6 py-7">
         <div
           aria-hidden
-          className="hero-glow-blob pointer-events-none absolute right-[-12%] top-[-60%] -z-10 h-[420px] w-[420px] rounded-full blur-[12px]"
+          className="hero-glow-blob pointer-events-none absolute right-[-12%] top-[-60%] -z-10 h-[420px] w-[420px] rounded-full blur-md"
         />
         <div
           aria-hidden
@@ -135,7 +135,7 @@ export function MisReservasView({
             maskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
           }}
         />
-        <div className="font-logo text-[12px] font-bold uppercase tracking-[.1em] text-emerald-600 dark:text-emerald-400">
+        <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
           Tu actividad
         </div>
         <h1
@@ -152,7 +152,7 @@ export function MisReservasView({
       </section>
 
       {/* Tabs como segmented control premium */}
-      <div className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-sm">
+      <div className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-xs">
         <Link href="/mis-reservas?tab=proximos" className={tabClass(tab === 'proximos')}>
           Próximos
         </Link>
@@ -163,7 +163,7 @@ export function MisReservasView({
 
       {/* Booking list */}
       {bookings.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-xs">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
             <CalendarX className="h-8 w-8" aria-hidden />
           </div>
@@ -193,7 +193,7 @@ export function MisReservasView({
             return (
               <li
                 key={b.id}
-                className="group rounded-2xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
+                className="group rounded-2xl border border-border bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
               >
                 <div className="flex gap-4">
                   {/* Bloque-fecha */}

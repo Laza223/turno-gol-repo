@@ -40,8 +40,8 @@ export default function TenantCard({
   )
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 active:scale-[0.99] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:hover:shadow-emerald-500/[.15]">
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500 bg-card shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 active:scale-[0.99] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:hover:shadow-emerald-500/15">
+      <div className="relative aspect-video w-full overflow-hidden bg-muted">
         {allPhotos.length > 0 ? (
           <TenantCardCarousel photos={allPhotos} name={tenant.name} href={`/${tenant.slug}`} />
         ) : (
@@ -61,14 +61,14 @@ export default function TenantCard({
                 backgroundSize: '28px 28px',
               }}
             />
-            <span className="font-display text-5xl font-black italic tracking-tight text-white/[.16]">
+            <span className="font-display text-5xl font-black italic tracking-tight text-white/16">
               {tenant.name.slice(0, 2).toUpperCase()}
             </span>
           </div>
         )}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent"
+          className="pointer-events-none absolute inset-0 z-10 bg-linear-to-t from-slate-950/35 via-transparent to-transparent"
         />
         {tenant.allowOnlineBooking && (
           <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-md shadow-emerald-900/30">
@@ -82,7 +82,7 @@ export default function TenantCard({
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
-            <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0 focus-visible:outline-none">
+            <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0 focus-visible:outline-hidden">
               {tenant.name}
             </Link>
           </h3>
@@ -132,7 +132,7 @@ export default function TenantCard({
                 key={s.time}
                 href={`/${tenant.slug}/reservar?court=${s.courtId}&date=${slotPills.date}&time=${s.time}&dur=${s.durationMins}`}
                 aria-label={`Reservar a las ${s.time}`}
-                className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold tabular-nums text-primary-foreground shadow-sm transition-[background-color,transform] hover:bg-primary/90 active:scale-95 motion-reduce:active:scale-100"
+                className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold tabular-nums text-primary-foreground shadow-xs transition-[background-color,transform] hover:bg-primary/90 active:scale-95 motion-reduce:active:scale-100"
               >
                 {s.time}
               </Link>
@@ -180,12 +180,12 @@ function TenantCardCompact({
 }) {
   const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
   return (
-    <article className="group relative flex gap-3 rounded-xl border border-border bg-card p-2.5 shadow-sm transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
+    <article className="group relative flex gap-3 rounded-xl border border-border bg-card p-2.5 shadow-xs transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
       <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
         {tenant.coverUrl ? (
           <Image src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} fill sizes="112px" className="object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-muted text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:text-emerald-300">
+          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-50 to-muted text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:text-emerald-300">
             {tenant.name.slice(0, 2).toUpperCase()}
           </div>
         )}

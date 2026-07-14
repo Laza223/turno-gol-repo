@@ -36,7 +36,7 @@ export function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[]
             </div>
             <Link
               href="/explorar"
-              className="group inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent active:scale-[0.98] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+              className="group inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-accent active:scale-[0.98] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
             >
               Ver todos
               <ArrowRight

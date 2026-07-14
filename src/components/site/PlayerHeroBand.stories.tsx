@@ -29,7 +29,7 @@ export const ConChildren: Story = {
   args: {
     children: (
       <div className="mt-4 flex items-center gap-3">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white">
           TI
         </span>
         <div>

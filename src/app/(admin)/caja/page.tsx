@@ -207,7 +207,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
               ? undefined
               : `vs prom. semanal ${signedArs(summary.balance - comparisons.weekAvg.balance)}`
           }
-          className="order-first col-span-2 ring-1 ring-emerald-600/20 dark:ring-emerald-500/25 lg:order-none lg:col-span-1"
+          className="order-first col-span-2 ring-1 ring-emerald-600/20 dark:ring-emerald-500/25 lg:order-0 lg:col-span-1"
         />
       </div>
 
@@ -223,7 +223,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
 
       {/* Desglose por método (§4): la referencia del arqueo. */}
       {methods.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-xs">
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-foreground">Desglose por método</h2>
             <p className="hidden text-xs text-muted-foreground sm:block">
@@ -251,7 +251,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
 
       {/* Movimientos del día */}
       {cashFlows.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card shadow-sm">
+        <div className="rounded-lg border border-border bg-card shadow-xs">
           <div className="border-b border-border px-4 py-3">
             <h2 className="font-medium text-foreground">Movimientos del día</h2>
           </div>
@@ -267,7 +267,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
         </div>
       ) : (
         <ResponsiveList
-          className="shadow-sm"
+          className="shadow-xs"
           header={
             <div className="border-b border-border px-4 py-3">
               <h2 className="font-medium text-foreground">Movimientos del día</h2>

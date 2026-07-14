@@ -32,7 +32,7 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
   }, [date])
 
   const chevronClass =
-    'flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+    'flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
 
   return (
     <div className="flex items-center gap-1.5">
@@ -65,7 +65,7 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                 aria-current={selected ? 'date' : undefined}
                 className={cn(
                   'flex h-12 min-w-11 flex-col items-center justify-center rounded-lg px-2 transition-colors duration-150',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   selected
                     ? // Token primary: emerald-700+blanco en light, emerald-500+slate-950 en dark (§2.4).
                       'bg-primary text-primary-foreground'

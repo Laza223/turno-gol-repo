@@ -25,7 +25,7 @@ export async function playerLoginAction(
     .string()
     .trim()
     .toLowerCase()
-    .email({ message: 'Ingresá un email válido' })
+    .pipe(z.email({ message: 'Ingresá un email válido' }))
     .safeParse(formData.get('email'))
   if (!email.success) return { status: 'error', message: 'Ingresá un email válido.' }
 

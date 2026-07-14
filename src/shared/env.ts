@@ -6,8 +6,8 @@ const minLen = (n: number, name: string) =>
 function makeSchema(isProd: boolean) {
   return z.object({
     DATABASE_URL: z.string().min(1),
-    NEXT_PUBLIC_APP_URL: isProd ? z.string().url() : z.string().url().optional(),
-    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+    NEXT_PUBLIC_APP_URL: isProd ? z.url() : z.url().optional(),
+    NEXT_PUBLIC_SUPABASE_URL: z.url(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
     IMPERSONATION_COOKIE_SECRET: minLen(16, 'IMPERSONATION_COOKIE_SECRET'),
@@ -16,7 +16,7 @@ function makeSchema(isProd: boolean) {
     MP_CLIENT_SECRET: z.string().min(1),
     MP_WEBHOOK_SECRET: isProd ? minLen(16, 'MP_WEBHOOK_SECRET') : minLen(16, 'MP_WEBHOOK_SECRET').optional(),
     RESEND_API_KEY: z.string().min(1),
-    UPSTASH_REDIS_REST_URL: isProd ? z.string().url() : z.string().url().optional(),
+    UPSTASH_REDIS_REST_URL: isProd ? z.url() : z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: isProd ? z.string().min(20) : z.string().min(20).optional(),
     VAPID_PUBLIC_KEY: isProd ? minLen(80, 'VAPID_PUBLIC_KEY') : minLen(80, 'VAPID_PUBLIC_KEY').optional(),
     VAPID_PRIVATE_KEY: isProd ? minLen(40, 'VAPID_PRIVATE_KEY') : minLen(40, 'VAPID_PRIVATE_KEY').optional(),
@@ -30,7 +30,7 @@ function makeSchema(isProd: boolean) {
     R2_ACCESS_KEY_ID: isProd ? z.string().min(1) : z.string().min(1).optional(),
     R2_SECRET_ACCESS_KEY: isProd ? z.string().min(1) : z.string().min(1).optional(),
     R2_BUCKET: isProd ? z.string().min(1) : z.string().min(1).optional(),
-    R2_PUBLIC_BASE_URL: isProd ? z.string().url() : z.string().url().optional(),
+    R2_PUBLIC_BASE_URL: isProd ? z.url() : z.url().optional(),
   })
 }
 

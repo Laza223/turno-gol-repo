@@ -27,7 +27,7 @@ const endAfterStart = (d: { timeStart: string; timeEnd: string }): boolean =>
 
 const schema = z
   .object({
-    courtId: z.string().uuid('Elegí una cancha'),
+    courtId: z.guid('Elegí una cancha'),
     contactName: z.string().trim().min(1, 'Nombre requerido'),
     contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
     dayOfWeek: z.coerce.number().int().min(0).max(6),
@@ -44,7 +44,7 @@ const schema = z
 
 const previewSchema = z
   .object({
-    courtId: z.string().uuid('Elegí una cancha'),
+    courtId: z.guid('Elegí una cancha'),
     dayOfWeek: z.coerce.number().int().min(0).max(6),
     // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
     // reactivate dialog, which renders the abonado row's stored time directly).

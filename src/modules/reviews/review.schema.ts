@@ -23,18 +23,14 @@ export const listReviewsQuerySchema = z.object({
 })
 
 // ─── Output (contract, doc15) ───────────────────────────────────
-const reviewItemResponseSchema = z
-  .object({
-    id: uuid,
-    tenantId: uuid,
-    playerId: uuid,
-    bookingId: uuid,
-    rating: z.number().int(),
-    comment: z.string().nullable(),
-    createdAt: z.string(), // ISO 8601 sobre el cable
-  })
-  .strict()
+const reviewItemResponseSchema = z.strictObject({
+  id: uuid,
+  tenantId: uuid,
+  playerId: uuid,
+  bookingId: uuid,
+  rating: z.number().int(),
+  comment: z.string().nullable(),
+  createdAt: z.string(), // ISO 8601 sobre el cable
+})
 
-export const createReviewResponseSchema = z
-  .object({ data: reviewItemResponseSchema })
-  .strict()
+export const createReviewResponseSchema = z.strictObject({ data: reviewItemResponseSchema })

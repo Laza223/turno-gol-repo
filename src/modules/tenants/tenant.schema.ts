@@ -6,6 +6,6 @@ export const createTenantSchema = z.object({
   city: z.string().min(2).max(100),
   province: z.string().min(2).max(100),
   phone: z.string().min(8, 'Teléfono inválido').max(25),
-  email: z.string().email('Email inválido'),
+  email: z.email('Email inválido'),
 })
 

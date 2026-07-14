@@ -14,7 +14,7 @@ import { enforce } from '@/shared/rate-limit/apply'
 const GENERIC = 'Email o contraseña incorrectos.'
 
 const schema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string().min(MIN_PASSWORD_LENGTH),
 })
 
@@ -93,7 +93,7 @@ export async function resendConfirmationAction(
   _prev: ResendState,
   formData: FormData,
 ): Promise<ResendState> {
-  const email = z.string().trim().toLowerCase().email().safeParse(formData.get('email'))
+  const email = z.string().trim().toLowerCase().pipe(z.email()).safeParse(formData.get('email'))
   if (!email.success) return { status: 'error', message: 'Email inválido.' }
 
   const rl = await enforce('authMagicLink', email.data)

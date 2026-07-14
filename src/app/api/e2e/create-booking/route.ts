@@ -13,8 +13,8 @@ function isE2EAllowed(): boolean {
 }
 
 const bodySchema = z.object({
-  tenantId: z.string().uuid(),
-  courtId: z.string().uuid(),
+  tenantId: z.guid(),
+  courtId: z.guid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   timeStart: z.string().regex(/^\d{2}:\d{2}$/),
   timeEnd: z.string().regex(/^\d{2}:\d{2}$/),

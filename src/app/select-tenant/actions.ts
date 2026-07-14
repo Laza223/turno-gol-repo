@@ -11,7 +11,7 @@ import {
 import { track } from '@/shared/observability'
 import { isMemberTenant } from './select-tenant.utils'
 
-const tenantIdSchema = z.string().uuid()
+const tenantIdSchema = z.guid()
 
 /**
  * Staff con N>1 complejos elige uno. Setea el claim tenant_id en el JWT y entra

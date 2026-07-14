@@ -2,7 +2,7 @@ import type { NextResponse, NextRequest } from 'next/server'
 import { z } from 'zod'
 import { badRequest } from '@/shared/api-error'
 
-const uuidSchema = z.string().uuid()
+const uuidSchema = z.guid()
 
 /**
  * Extract the last path segment as a UUID and validate it via Zod.

@@ -15,7 +15,7 @@ const phoneRegex = /^\+?[1-9][0-9\s-]{7,24}$/
 
 const schema = z
   .object({
-    email: z.string().trim().toLowerCase().email({ message: 'Ingresá un email válido' }),
+    email: z.string().trim().toLowerCase().pipe(z.email({ message: 'Ingresá un email válido' })),
     firstName: z.string().trim().min(2, 'Ingresá tu nombre').max(80),
     lastName: z.string().trim().min(2, 'Ingresá tu apellido').max(80),
     phone: z.string().trim().regex(phoneRegex, 'Ingresá un número de teléfono válido'),

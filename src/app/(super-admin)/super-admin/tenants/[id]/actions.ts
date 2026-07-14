@@ -266,7 +266,7 @@ export async function updateTenantSettingsAction(input: unknown): Promise<Suppor
 
 const resetStaffPasswordInputSchema = z.object({
   tenantId: uuid,
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
 })
 
 type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }

@@ -9,13 +9,9 @@ export const toggleFavoriteSchema = z.object({
 })
 
 // ─── Output ─────────────────────────────────────────────────────
-export const toggleFavoriteResponseSchema = z
-  .object({
-    data: z
-      .object({
-        tenantId: uuid,
-        favorited: z.boolean(),
-      })
-      .strict(),
-  })
-  .strict()
+export const toggleFavoriteResponseSchema = z.strictObject({
+  data: z.strictObject({
+    tenantId: uuid,
+    favorited: z.boolean(),
+  }),
+})

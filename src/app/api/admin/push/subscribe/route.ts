@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const subscribeSchema = z.object({
-  endpoint: z.string().url('endpoint must be a valid URL').max(2000, 'endpoint too long'),
+  endpoint: z.url('endpoint must be a valid URL').max(2000, 'endpoint too long'),
   keys: z.object({
     p256dh: z.string().min(80, 'p256dh must be at least 80 chars').max(200),
     auth: z.string().min(16, 'auth must be at least 16 chars').max(200),

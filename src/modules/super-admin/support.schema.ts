@@ -59,11 +59,11 @@ export const cancelSubscriptionInputSchema = z.object({
 
 /**
  * Whitelist de settings editables por soporte: exactamente los campos de
- * `UpdateTenantSettingsInput` (tenant.types.ts). `.strict()` rechaza cualquier
- * campo extra — nunca JSON libre.
+ * `UpdateTenantSettingsInput` (tenant.types.ts). `z.strictObject` rechaza
+ * cualquier campo extra — nunca JSON libre.
  */
 export const settingsPatchSchema = z
-  .object({
+  .strictObject({
     requires_deposit: z.boolean().optional(),
     deposit_percentage: z.number().int().min(0).max(100).optional(),
     cancellation_policy: z
@@ -80,7 +80,6 @@ export const settingsPatchSchema = z
     booking_advance_days: z.number().int().min(1).max(60).optional(),
     auto_complete_minutes: z.number().int().min(0).max(1440).optional(),
   })
-  .strict()
   .refine((patch) => Object.keys(patch).length > 0, {
     message: 'El patch de settings no puede estar vacío.',
   })

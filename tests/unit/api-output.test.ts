@@ -3,9 +3,9 @@ import { z } from 'zod'
 import { validateApiOutput, validatedJson } from '@/shared/api-output'
 import { logger } from '@/shared/lib/logger'
 
-const schema = z
-  .object({ data: z.object({ id: z.string(), n: z.number() }).strict() })
-  .strict()
+const schema = z.strictObject({
+  data: z.strictObject({ id: z.string(), n: z.number() }),
+})
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -42,7 +42,7 @@ describe('validateApiOutput', () => {
 
   it('validates the serialized shape — a Date field is an ISO string over the wire', () => {
     const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
-    const dateSchema = z.object({ when: z.string() }).strict()
+    const dateSchema = z.strictObject({ when: z.string() })
     // In memory `when` is a Date; serialized it is an ISO string, which is what
     // the client receives. The helper round-trips through JSON, so z.string() is
     // the correct contract and this must NOT warn.

@@ -76,7 +76,7 @@ export async function createTenantAction(
 
   try {
     await setStaffTenantClaim(user.id, tenant.id, user.staffUserId)
-    const supabase = createClient()
+    const supabase = await createClient()
     await supabase.auth.refreshSession()
   } catch {
     // Non-fatal: wizard continues. JWT will have tenant_id on next full login.
@@ -155,6 +155,7 @@ const wizardCourtsSchema = z.object({
           .number()
           .int()
           .positive('Cargá el precio por turno de cada cancha'),
+        photos: z.array(z.string()).optional(),
       }),
     )
     .max(20, 'Máximo 20 canchas por vez'),
@@ -198,6 +199,7 @@ export async function createWizardCourtsAction(
       isCovered: draft.isCovered,
       format: draft.format,
       pricing: { rules },
+      photos: draft.photos,
     })
     if (!courtParsed.success) {
       return {
@@ -249,4 +251,72 @@ export async function finishOnboardingAction(): Promise<void> {
   const { tenant } = await requireAdminStaff()
   await completeOnboarding(tenant.id)
   redirect('/onboarding/listo')
+}
+
+export type UploadPhotoActionResult = { success: true; url: string } | { success: false; error: string }
+
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024
+
+export async function uploadOnboardingCourtPhotoAction(
+  formData: FormData,
+): Promise<UploadPhotoActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { isR2Configured, putImage, publicUrl } = await import('@/shared/storage/r2')
+
+  if (!isR2Configured()) {
+    console.warn('[storage] R2 no configurado — upload deshabilitado en este entorno')
+    return { success: false, error: 'Storage no configurado en este entorno' }
+  }
+
+  const file = formData.get('file')
+  if (!(file instanceof Blob) || file.size === 0) {
+    return { success: false, error: 'Archivo inválido' }
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { success: false, error: 'La imagen no puede superar 2MB' }
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const key = `${tenant.id}/courts/draft/${crypto.randomUUID()}.webp`
+
+  try {
+    await putImage(key, bytes, 'image/webp')
+  } catch {
+    return { success: false, error: 'No se pudo subir la imagen' }
+  }
+
+  const url = publicUrl(key)
+  return { success: true, url }
+}
+
+export async function deleteOnboardingCourtPhotoAction(url: string): Promise<WizardActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { isR2Configured, keyFromPublicUrl, deleteImage } = await import('@/shared/storage/r2')
+
+  if (!isR2Configured()) {
+    console.warn('[storage] R2 no configurado — borrado deshabilitado en este entorno')
+    return { success: false, error: 'Storage no configurado en este entorno' }
+  }
+
+  const key = keyFromPublicUrl(url)
+  if (!key || !key.startsWith(`${tenant.id}/`)) {
+    return { success: false, error: 'Imagen inválida' }
+  }
+
+  try {
+    await deleteImage(key)
+    return { success: true }
+  } catch {
+    return { success: false, error: 'No se pudo borrar la imagen' }
+  }
 }

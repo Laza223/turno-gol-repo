@@ -5,12 +5,22 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { formatArs } from '@/lib/format'
 import { chipClass } from '../caja-lib'
-import { createCashFlowAction, saveCanteenProductsAction } from '../actions'
+import { formatArs } from '@/lib/format'
+import type { CanteenProductsActionResult } from '../actions'
+import type { CreateCashFlowAction } from './RegisterMovementModal'
 import { occurredAtForDate } from './occurred-at'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenProduct } from '@/modules/tenants/tenant.types'
+
+/**
+ * saveCanteenProductsAction llega por PROP, mismo motivo que
+ * createCashFlowAction (ver RegisterMovementModal.tsx): '../actions' es
+ * `'use server'` y arrastra drizzle/postgres a cualquier bundle de browser.
+ */
+export type SaveCanteenProductsAction = (
+  products: { id: string; name: string; price: number }[],
+) => Promise<CanteenProductsActionResult>
 
 // Sugerencias para el primer uso: el admin ajusta nombres y precios antes de guardar.
 const SUGGESTED: Array<{ name: string; pricePesos: string }> = [
@@ -32,16 +42,20 @@ type SaleMethod = (typeof METHOD_OPTIONS)[number]['value']
 export function CanteenQuickSale({
   date,
   products,
+  createCashFlowAction,
+  saveCanteenProductsAction,
 }: {
   date: string
   products: CanteenProduct[]
+  createCashFlowAction: CreateCashFlowAction
+  saveCanteenProductsAction: SaveCanteenProductsAction
 }) {
   const router = useRouter()
   const [sale, setSale] = useState<CanteenProduct | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
 
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm">
+    <div className="rounded-lg border border-border bg-card shadow-xs">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="font-medium text-foreground">Cantina/Bar</h2>
         <button
@@ -82,12 +96,19 @@ export function CanteenQuickSale({
         </div>
       )}
 
-      <QuickSaleDialog date={date} product={sale} onClose={() => setSale(null)} onSold={() => router.refresh()} />
+      <QuickSaleDialog
+        date={date}
+        product={sale}
+        onClose={() => setSale(null)}
+        onSold={() => router.refresh()}
+        createCashFlowAction={createCashFlowAction}
+      />
       <ProductsEditorDialog
         open={editorOpen}
         products={products}
         onClose={() => setEditorOpen(false)}
         onSaved={() => router.refresh()}
+        saveCanteenProductsAction={saveCanteenProductsAction}
       />
     </div>
   )
@@ -98,11 +119,13 @@ function QuickSaleDialog({
   product,
   onClose,
   onSold,
+  createCashFlowAction,
 }: {
   date: string
   product: CanteenProduct | null
   onClose: () => void
   onSold: () => void
+  createCashFlowAction: CreateCashFlowAction
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -234,11 +257,13 @@ function ProductsEditorDialog({
   products,
   onClose,
   onSaved,
+  saveCanteenProductsAction,
 }: {
   open: boolean
   products: CanteenProduct[]
   onClose: () => void
   onSaved: () => void
+  saveCanteenProductsAction: SaveCanteenProductsAction
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)

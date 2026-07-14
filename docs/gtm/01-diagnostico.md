@@ -15,7 +15,7 @@
 | Producto | 7/10 | Superficie competitiva real (ver lista abajo). Falta: aviso por WhatsApp al jugador, cobro automático de abonados, marketplace con tráfico. Onboarding <20 min es diferencial real vs 1-7 días de ATC. |
 | Distribución | 1/10 | Cero marca, cero clientes, cero casos de éxito, cero red de jugadores. Todo por construir. Acá está el riesgo de muerte del proyecto, no en el código. |
 | Moat | 2/10 | Nada impide que ATC copie features. El único moat temprano posible: densidad local (todos los complejos de una zona) + relación directa con dueños. |
-| Pricing | 7/10 | Modelo validado por ATC (nadie que educar). Predio $47.000 vs ATC Base $60.500 (dato Q1 2025 — **verificar precio actual de ATC antes de usarlo en una venta**, con la inflación seguro cambió). +IVA 21% en checkout: decilo antes de que lo descubra en el checkout. |
+| Pricing | 7/10 | Modelo validado por ATC (nadie que educar). Predio $55.000 vs ATC Base $60.500 (dato Q1 2025 — **verificar precio actual de ATC antes de usarlo en una venta**, con la inflación seguro cambió). +IVA 21% en checkout: decilo antes de que lo descubra en el checkout. |
 
 ## Lo que juega a favor (real, verificado en código)
 
@@ -23,11 +23,11 @@
 
 - **Reserva online por link** (`turnogol.app/[slug]`): el jugador no baja ninguna app, entra por link web. Mata la objeción "mis clientes no van a usar una app".
 - **Seña por MercadoPago directo a la cuenta MP del complejo** (OAuth): TurnoGol no toca la plata. Porcentaje configurable, se puede apagar. Si el jugador no paga en minutos, el turno se libera solo.
-- **No-show con castigo automático**: si te clavan, la seña queda para el complejo y el resto del turno queda registrado como deuda del jugador — no puede volver a reservar online en ese complejo hasta saldarla.
+- **No-show con castigo automático**: si te clavan, la seña queda para el complejo. Y al reincidente (2da ausencia en 90 días) el sistema le bloquea solo las reservas online en ese complejo por 14 días. **NO hay deuda de dinero por no-show** (modelo revertido 2026-07-11): el único costo para el jugador es la seña + el bloqueo.
 - **Grilla en tiempo real, mobile-first**: la reserva entra y la ve el dueño desde el celu, esté donde esté. Push notification con cada reserva (con horario silencioso: de madrugada no suena, avisa a las 8).
 - **Caja completa**: ingresos, gastos, cantina con stock y alertas, cierre diario. ATC no tiene gastos (doc2).
-- **Abonados (turnos fijos)**: se generan solos cada semana, control de quién pagó, saldo a favor, deudas visibles. **OJO: el cobro es registrado a mano por el dueño, NO es débito automático — no prometer cobro automático.**
-- **Módulo Jugadores**: ficha con historial, deudas y cobro de deuda de cada cliente del complejo.
+- **Abonados (turnos fijos)**: se generan solos cada semana, precio por sesión, control de quién pagó cada sesión. **OJO: el cobro es registrado a mano por el dueño, NO es débito automático — no prometer cobro automático. NO existe saldo a favor ni ledger de deudas** (eliminado, modelo ATC descartado).
+- **Módulo Jugadores**: ficha de cada cliente del complejo con historial, stats, sus abonados y el indicador de bloqueo por ausencias.
 - **Día operativo**: los turnos de madrugada (00:00-02:00) cuentan para la caja de la noche anterior. Detalle que las turneras genéricas no entienden y los complejos que cierran tarde sufren.
 - **Onboarding self-service ~15-20 min** + trial 30 días sin tarjeta (ya construido en el producto).
 - **Métricas**: dashboard con caja, ocupación, KPIs.

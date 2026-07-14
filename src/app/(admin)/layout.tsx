@@ -7,15 +7,11 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { redirectIfTenantSuspended } from '@/shared/kill-switch'
 import { tenantSubscriptions } from '@/shared/db/schema'
-import dynamic from 'next/dynamic'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
+import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 import { signOutAction } from '@/app/(admin)/actions/auth'
-
-const PushNotificationManager = dynamic(
-  () => import('@/components/admin/PushNotificationManager').then((m) => m.PushNotificationManager),
-  { ssr: false, loading: () => null },
-)
+import { stopImpersonationAction } from '@/app/(super-admin)/super-admin/tenants/[id]/actions'
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   // Impersonación (spec §6): el super admin entra a CUALQUIER tenant para dar
@@ -40,10 +36,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         periodEnd={impSub?.currentPeriodEnd?.toISOString() ?? null}
         userEmail={imp.user.email}
         signOut={signOutAction}
-        impersonationBanner={<ImpersonationBanner tenantName={imp.tenant.name} />}
+        impersonationBanner={
+          <ImpersonationBanner tenantName={imp.tenant.name} action={stopImpersonationAction} />
+        }
       >
         {children}
-        <PushNotificationManager />
+        <PushNotificationManagerLoader />
       </AdminLayoutShell>
     )
   }
@@ -91,7 +89,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       signOut={signOutAction}
     >
       {children}
-      <PushNotificationManager />
+      <PushNotificationManagerLoader />
     </AdminLayoutShell>
   )
 }

@@ -1,14 +1,26 @@
 'use client'
 
-import { useFormState } from 'react-dom'
+import { useActionState } from 'react'
 import { SubmitButton } from '@/components/ui/submit-button'
-import { removeClosedDateAction, type HorariosActionResult } from './actions'
+import type { HorariosActionResult } from './actions'
 
 const INITIAL: HorariosActionResult = { success: true }
 
-/** Form inline por fila para quitar un día cerrado (#19). */
-export function RemoveClosedDateForm({ date }: { date: string }) {
-  const [state, formAction] = useFormState(removeClosedDateAction, INITIAL)
+/** Firma de removeClosedDateAction — ver comentario de DI en ReservasPolicyForm.tsx. */
+export type RemoveClosedDateAction = (
+  prevState: HorariosActionResult,
+  formData: FormData,
+) => Promise<HorariosActionResult>
+
+/** Form inline por fila para quitar un día cerrado (#19). La action entra por PROP. */
+export function RemoveClosedDateForm({
+  date,
+  action,
+}: {
+  date: string
+  action: RemoveClosedDateAction
+}) {
+  const [state, formAction] = useActionState(action, INITIAL)
 
   return (
     <form action={formAction} className="text-right">

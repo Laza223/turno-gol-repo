@@ -7,6 +7,12 @@ interface StatusBannerProps {
   tenantStatus: string
   trialEndsAt: string | null
   periodEnd: string | null
+  /**
+   * Override para Storybook/tests: por default lee `NEXT_PUBLIC_SERVICE_DEGRADED`
+   * (deploy-playbook.md — toggle sin redeploy de código). Nadie en la app real
+   * pasa esta prop; el default preserva el comportamiento exacto de siempre.
+   */
+  serviceDegraded?: boolean
 }
 
 function daysUntil(iso: string): number {
@@ -21,9 +27,10 @@ export function StatusBanner({
   tenantStatus,
   trialEndsAt,
   periodEnd,
+  serviceDegraded = process.env.NEXT_PUBLIC_SERVICE_DEGRADED === 'true',
 }: StatusBannerProps) {
   // Priority 1: Service degraded
-  if (process.env.NEXT_PUBLIC_SERVICE_DEGRADED === 'true') {
+  if (serviceDegraded) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/25 dark:text-amber-200">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />

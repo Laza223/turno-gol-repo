@@ -15,7 +15,6 @@ import {
   ChartLine,
   UserCog,
   Settings,
-  Lock,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -32,7 +31,6 @@ interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   label: string
-  pin?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -41,12 +39,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
   { href: '/abonados', icon: Users, label: 'Abonados' },
   { href: '/jugadores', icon: Contact, label: 'Jugadores' },
-  { href: '/canchas', icon: Trophy, label: 'Canchas', pin: true },
+  { href: '/canchas', icon: Trophy, label: 'Canchas' },
   { href: '/caja', icon: Banknote, label: 'Caja' },
-  { href: '/reportes', icon: BarChart3, label: 'Reportes', pin: true },
-  { href: '/metricas', icon: ChartLine, label: 'Métricas', pin: true },
-  { href: '/staff', icon: UserCog, label: 'Equipo', pin: true },
-  { href: '/settings', icon: Settings, label: 'Configuración', pin: true },
+  { href: '/reportes', icon: BarChart3, label: 'Reportes' },
+  { href: '/metricas', icon: ChartLine, label: 'Métricas' },
+  { href: '/staff', icon: UserCog, label: 'Equipo' },
+  { href: '/settings', icon: Settings, label: 'Configuración' },
 ]
 
 function SidebarContent({
@@ -65,7 +63,7 @@ function SidebarContent({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-border">
         <div className="min-w-0">
-          <Link href="/dashboard" className="block outline-none rounded-sm">
+          <Link href="/dashboard" className="block outline-hidden rounded-sm">
             <Logo variant="horizontal" textClassName="text-foreground" />
           </Link>
           <div className="mt-1">
@@ -90,7 +88,7 @@ function SidebarContent({
 
       {/* Nav */}
       <nav aria-label="Navegación del panel" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, pin }) => {
+        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href ||
             (href !== '/dashboard' && pathname.startsWith(href + '/'))
@@ -104,7 +102,7 @@ function SidebarContent({
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-emerald-500/10 text-emerald-700 shadow-sm dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-emerald-900/30'
+                  ? 'bg-emerald-500/10 text-emerald-700 shadow-xs dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-emerald-900/30'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
@@ -120,13 +118,6 @@ function SidebarContent({
                 )}
               />
               <span className="flex-1 truncate">{label}</span>
-              {pin && (
-                <Lock
-                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50"
-                  aria-hidden="true"
-                />
-              )}
-              {pin && <span className="sr-only">Requiere PIN</span>}
             </Link>
           )
         })}
@@ -141,7 +132,7 @@ export function AdminSidebar({ tenantName, mobileOpen, onClose }: SidebarProps) 
   return (
     <>
       {/* Desktop sidebar — rail theme-adaptive (light surface / dark glass) */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/[0.04] dark:bg-card/80 dark:shadow-black/30">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/4 dark:bg-card/80 dark:shadow-black/30">
         <SidebarContent tenantName={tenantName} pathname={pathname} />
       </aside>
 

@@ -7,6 +7,7 @@ import { listCourts } from '@/modules/courts/court.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { bookings, players } from '@/shared/db/schema'
 import { BookingGrid, type GridBooking } from '@/components/booking/BookingGrid'
+import { createBookingAction } from '@/app/(admin)/reservas/actions'
 import type {
   BookingStatus,
   BookingType,
@@ -15,11 +16,12 @@ import type {
 } from '@/modules/bookings/booking.types'
 
 
-export default async function GrillaPage({
-  searchParams,
-}: {
-  searchParams: { date?: string }
-}) {
+export default async function GrillaPage(
+  props: {
+    searchParams: Promise<{ date?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -80,9 +82,7 @@ export default async function GrillaPage({
   }))
 
   return (
-    // py-4 (no py-8): densidad admin — la grilla es la vista de trabajo, el
-    // aire vertical de cortesía es scroll extra (MASTER §12).
-    <main className="max-w-full px-4 py-4 space-y-4">
+    <div className="flex-1 flex flex-col min-h-0 space-y-4 h-full">
       <BookingGrid
         key={dateStr}
         courts={courts}
@@ -92,7 +92,8 @@ export default async function GrillaPage({
         openingHours={tenant.openingHours}
         closedDates={tenant.closedDates ?? []}
         closesNextDay={tenant.closesNextDay}
+        action={createBookingAction}
       />
-    </main>
+    </div>
   )
 }

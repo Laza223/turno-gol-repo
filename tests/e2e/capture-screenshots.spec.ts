@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import postgres from 'postgres'
+import { bookingInstants } from './_helpers/booking-instants'
+import { SEED_ADMIN_URL, deleteFreshAdminTenants } from './_helpers/fresh-tenant-cleanup'
 
 
 // Seeding constants
@@ -11,6 +13,9 @@ const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const COURT_ID = '00000000-0000-4000-8000-000000000010'
 const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 const PLAYER_ID = '00000000-0000-4000-8000-000000000020'
+// Mismo id que scripts/seed-e2e.ts (E2E.freshStaffUserId). Se necesita en el afterAll para
+// borrar los tenants que este spec le crea al fresh admin al fotografiar el wizard.
+const FRESH_STAFF_USER_ID = '00000000-0000-4000-8000-000000000005'
 const DEPOSIT_TENANT_ID = '00000000-0000-4000-8000-000000000030'
 const DEPOSIT_COURT_ID = '00000000-0000-4000-8000-000000000031'
 
@@ -29,11 +34,47 @@ test.describe('UX Audit Screenshot Capturer', () => {
   let supabase: ReturnType<typeof makeServiceClient>
   let testBookingId: string
   let testAbonadoId: string
+  /**
+   * Ids de las reservas que YA existían antes de este spec. Todo lo que aparezca después
+   * lo creó él y hay que borrarlo.
+   *
+   * No alcanza con borrar `testBookingId`: este spec también recorre el FLUJO PÚBLICO DE
+   * RESERVA completo para fotografiarlo (formulario -> checkout MP -> éxito), y eso deja
+   * una reserva REAL del jugador compartido en el tenant de seña. Los jugadores son
+   * cross-tenant, así que esa reserva aparece en `/mis-reservas` junto a las de los otros
+   * specs — y `player-bookings.spec.ts` hace `.getByRole('button', {name:'Cancelar'})
+   * .first()`, o sea que terminaba cancelando la reserva de ESTE spec y después fallaba al
+   * verificar la suya, que seguía `confirmed`.
+   *
+   * El snapshot es a prueba de futuro: si mañana el spot de fotos toca otro flujo que crea
+   * reservas, la limpieza lo cubre sin que nadie se acuerde de agregarlo.
+   */
+  let preexistingBookingIds: Set<string>
 
   test.beforeAll(async () => {
     supabase = makeServiceClient()
     testBookingId = randomUUID()
     testAbonadoId = randomUUID()
+
+    // Dejá al fresh admin sin onboarding ANTES de empezar, no solo después.
+    //
+    // Este spec matchea DOS projects (chromium por descarte, mobile-chrome por su
+    // testMatch), asi que corre dos veces por suite. El afterAll que restaura al fresh
+    // admin no alcanza: no corre entre una pasada y la otra, asi que la segunda arrancaba
+    // con el tenant que dejó la primera, el wizard la mandaba derecho al paso 2 y el
+    // `expect(heading /tu complejo/i)` del paso 1 se caía por timeout.
+    //
+    // Limpiar tambien de entrada hace al spec idempotente: no depende del orden de los
+    // projects ni de que la corrida anterior haya terminado bien.
+    const bootSql = postgres(SEED_ADMIN_URL, { max: 1, prepare: false, onnotice: () => {} })
+    try {
+      await deleteFreshAdminTenants(bootSql, FRESH_STAFF_USER_ID)
+    } finally {
+      await bootSql.end()
+    }
+
+    const { data: before } = await supabase.from('bookings').select('id')
+    preexistingBookingIds = new Set((before ?? []).map((b) => b.id as string))
 
     // 1. Seed a future booking for the loaded admin views
     const date = getTestDate(1)
@@ -46,6 +87,8 @@ test.describe('UX Audit Screenshot Capturer', () => {
       date,
       time_start: '10:00:00',
       time_end: '11:00:00',
+      // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+      ...bookingInstants({ date, timeStart: '10:00', timeEnd: '11:00' }),
       type: 'spontaneous',
       status: 'confirmed',
       price_snapshot: 10000,
@@ -75,8 +118,43 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
   test.afterAll(async () => {
     // Cleanup seeded records
-    await supabase.from('bookings').delete().eq('id', testBookingId)
     await supabase.from('abonados').delete().eq('id', testAbonadoId)
+
+    // Y devolvé el fresh admin como estaba.
+    //
+    // Este spec maneja el wizard de onboarding hasta el final para fotografiarlo (crea
+    // "Complejo UX Audit"), y con eso le CONSUME al fresh admin lo único que lo hace útil:
+    // no tener onboarding completo. A partir de acá `/onboarding` le redirige a
+    // `/dashboard`, y `onboarding.spec.ts` (que depende de esa fixture) falla — más
+    // player-bookings y player-delete-account, que caen por el mismo arrastre.
+    //
+    // Medido: este spec, SOLO, dejaba 5 tests ajenos en rojo. Sacándolo de la corrida, esos
+    // 5 pasaban. Borrar los registros propios no alcanza: hay que deshacer la mutación que
+    // le hizo a una fixture COMPARTIDA.
+    const sql = postgres(SEED_ADMIN_URL, { max: 1, prepare: false, onnotice: () => {} })
+    try {
+      // Borrá TODA reserva que no existiera antes de este spec (ver `preexistingBookingIds`):
+      // la sembrada a mano MÁS las que dejó el recorrido del flujo público de reserva.
+      const { data: after } = await supabase.from('bookings').select('id')
+      const created = (after ?? [])
+        .map((b) => b.id as string)
+        .filter((id) => !preexistingBookingIds.has(id))
+
+      if (created.length > 0) {
+        // payments.booking_id -> bookings.id: hay que anularlo antes o el DELETE viola
+        // payments_booking_id_fkey (mismo orden que usa el seed).
+        //
+        // `IN ${sql(ids)}`, no `= ANY(sql.array(ids)::uuid[])`: el cast explícito sobre
+        // sql.array() en postgres.js arma un literal malformado
+        // (`malformed array literal: "uuid1,uuid2"`).
+        await sql`UPDATE payments SET booking_id = NULL WHERE booking_id IN ${sql(created)}`
+        await sql`DELETE FROM bookings WHERE id IN ${sql(created)}`
+      }
+
+      await deleteFreshAdminTenants(sql, FRESH_STAFF_USER_ID)
+    } finally {
+      await sql.end()
+    }
   })
 
   test('UX Audit UI screenshots capture', async ({
@@ -227,19 +305,29 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 2: horarios (general + excepciones; defaults saneados → Continuar directo)
-    await expect(freshAdminPage.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 15000 })
+    // `filter({ visible: true })`, no `.first()`: WizardShell pinta el label del paso DOS
+    // veces — en el <aside> (hidden, lg:flex) y en el <header> (lg:hidden). En DOM order el
+    // primero es el del aside, que en viewport mobile está oculto, asi que `.first()` daba
+    // "resolved to <p>...</p>" pero hidden. Este spec corre en chromium Y en mobile-chrome.
+    await expect(
+      freshAdminPage.getByText(/paso 2 de 4/i).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 15000 })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_2')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 3: canchas inline (nombre precargado; solo falta el precio)
-    await expect(freshAdminPage.getByText(/paso 3 de 4/i).first()).toBeVisible({ timeout: 15000 })
+    await expect(
+      freshAdminPage.getByText(/paso 3 de 4/i).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 15000 })
     await freshAdminPage.getByPlaceholder(/20\.000/).fill('20.000')
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_3')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 4: señas (cards de decisión)
     try {
-      await expect(freshAdminPage.getByText(/paso 4 de 4/i).first()).toBeVisible({ timeout: 15000 })
+      await expect(
+        freshAdminPage.getByText(/paso 4 de 4/i).filter({ visible: true }).first(),
+      ).toBeVisible({ timeout: 15000 })
     } catch (err) {
       console.log("=== STEP 4 VISIBILITY FAILURE DETAILS ===")
       console.log("Current URL:", freshAdminPage.url())
@@ -428,9 +516,18 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await takeShot(loadingPage, 'special_states', 'dashboard_loading')
 
     // Error State: Temporary rename bookings table to trigger layout error boundary
-    const sql = postgres(process.env.DATABASE_URL!)
+    //
+    // Renombrar la tabla es un DDL de OWNER. `DATABASE_URL` es el rol `turnogol_app`,
+    // restringido a propósito (migr. 037-039): tiene DML pero NO es dueño de las
+    // tablas, así que acá moría con `PostgresError: must be owner of table bookings`
+    // — o sea, el sistema de permisos funcionando. Va el DSN de superusuario, que es
+    // el canal ya establecido del repo para setup de tests (mismo que usa
+    // scripts/seed-e2e.ts; CI y Supabase local comparten estas credenciales).
+    const sql = postgres(SEED_ADMIN_URL, { max: 1, prepare: false, onnotice: () => {} })
+    let renamed = false
     try {
       await sql`ALTER TABLE bookings RENAME TO bookings_temp`
+      renamed = true
 
       const errorPage = await adminCtx.newPage()
       errorPage.on('console', msg => {
@@ -447,8 +544,14 @@ test.describe('UX Audit Screenshot Capturer', () => {
       await expect(errorPage.getByRole('button', { name: /intentar/i }).first()).toBeVisible({ timeout: 15000 })
       await takeShot(errorPage, 'special_states', 'grilla_error')
     } finally {
-      // Revert the table rename
-      await sql`ALTER TABLE bookings_temp RENAME TO bookings`.catch(() => {})
+      // Si el rename-back falla, la tabla `bookings` queda como `bookings_temp` y la
+      // base local queda ROTA para todo lo que corra después — que es exactamente el
+      // efecto dominó que se vio acá: este spec caía y arrastraba a otros 6.
+      // El `.catch(() => {})` que había antes se tragaba justo ese error, dejando al
+      // dev con la base rota y sin un solo mensaje. Que grite.
+      // El guard `renamed` existe porque si el ALTER de arriba nunca corrió, no hay
+      // nada que revertir (y el rename-back fallaría con "no existe bookings_temp").
+      if (renamed) await sql`ALTER TABLE bookings_temp RENAME TO bookings`
       await sql.end()
     }
 

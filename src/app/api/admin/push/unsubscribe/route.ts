@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const unsubscribeSchema = z.object({
-  endpoint: z.string().url('endpoint must be a valid URL').max(2000, 'endpoint too long'),
+  endpoint: z.url('endpoint must be a valid URL').max(2000, 'endpoint too long'),
 })
 
 export const POST = withTenant(async (req: NextRequest, user) => {

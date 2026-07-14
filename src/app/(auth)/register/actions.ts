@@ -15,7 +15,7 @@ const phoneRegex = /^\+?[1-9][0-9\s-]{7,24}$/
 
 const schema = z
   .object({
-    email: z.string().trim().toLowerCase().email({ message: 'Ingresá un email válido' }),
+    email: z.string().trim().toLowerCase().pipe(z.email({ message: 'Ingresá un email válido' })),
     firstName: z.string().trim().min(2, 'Ingresá tu nombre').max(80),
     lastName: z.string().trim().min(2, 'Ingresá tu apellido').max(80),
     phone: z.string().trim().regex(phoneRegex, 'Ingresá un número de teléfono válido'),
@@ -57,7 +57,7 @@ export async function registerAction(
   }
 
   // Alta de bajo volumen, sin captcha (v1): rate-limit por IP (fail closed).
-  const ip = parseClientIp(headers() as unknown as Headers)
+  const ip = parseClientIp(await headers() as unknown as Headers)
   const rl = await enforce('authRegister', ip)
   if (!rl.ok) {
     return {
@@ -87,7 +87,7 @@ export async function registerAction(
     // continúa con el alta
   }
 
-  const origin = headers().get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const result = await signUpStaff(
     {
       email: parsed.data.email,

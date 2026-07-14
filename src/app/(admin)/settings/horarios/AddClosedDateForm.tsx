@@ -1,17 +1,28 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState } from 'react-dom'
+import { useActionState, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
-import { addClosedDateAction, type HorariosActionResult } from './actions'
+import type { HorariosActionResult } from './actions'
 
 const INITIAL: HorariosActionResult = { success: true }
 
-/** Form para agregar un día cerrado (#19). */
-export function AddClosedDateForm({ minDate }: { minDate: string }) {
-  const [state, formAction] = useFormState(addClosedDateAction, INITIAL)
+/** Firma de addClosedDateAction — ver comentario de DI en ReservasPolicyForm.tsx. */
+export type AddClosedDateAction = (
+  prevState: HorariosActionResult,
+  formData: FormData,
+) => Promise<HorariosActionResult>
+
+/** Form para agregar un día cerrado (#19). La action entra por PROP (no se importa como valor). */
+export function AddClosedDateForm({
+  minDate,
+  action,
+}: {
+  minDate: string
+  action: AddClosedDateAction
+}) {
+  const [state, formAction] = useActionState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
 
   return (
@@ -25,7 +36,7 @@ export function AddClosedDateForm({ minDate }: { minDate: string }) {
           Agregar
         </SubmitButton>
       </div>
-      <div aria-live="polite" className="min-h-[1.25rem]">
+      <div aria-live="polite" className="min-h-5">
         {!state.success && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
         )}

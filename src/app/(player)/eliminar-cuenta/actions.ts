@@ -25,7 +25,7 @@ export async function requestDeleteAccountAction(): Promise<DeleteAccountResult>
       // Account was already anonymized (e.g. double-tab). Sign out and redirect
       // with the same deleted=1 param so the login page shows the farewell message.
       if (process.env.NEXT_PUBLIC_E2E !== '1') {
-        const supabase = createClient()
+        const supabase = await createClient()
         await supabase.auth.signOut()
       }
       redirect('/ingresar?deleted=1')
@@ -46,7 +46,7 @@ export async function requestDeleteAccountAction(): Promise<DeleteAccountResult>
   // redirected to /ingresar. The router.push('/ingresar?deleted=1') in
   // DeleteAccountForm still navigates the UI; the SQL anonymize already ran.
   if (process.env.NEXT_PUBLIC_E2E !== '1') {
-    const supabase = createClient()
+    const supabase = await createClient()
     await supabase.auth.signOut()
   }
   revalidatePath('/', 'layout')

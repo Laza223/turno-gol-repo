@@ -14,7 +14,7 @@
 | # | Pieza | Formato | Se usa en |
 |---|---|---|---|
 | 1 | **"Así reserva un cliente y deja la seña"** — screen record real: link → elegir cancha/hora → pago MP → push sonando en el celu del admin. Sin música épica, con dedo en pantalla. 60s máx | Video vertical (WA/IG/story) | Follow-up +2d ([06 §6](./06-scripts.md)), respuesta a "mandame info", bio |
-| 2 | **"Te clavaron. ¿Y ahora?"** — screen record: marcar no-show en la grilla → seña queda cobrada → deuda registrada al jugador. 45s | Video vertical | Follow-up, objeción #1 y #3 |
+| 2 | **"Te clavaron. ¿Y ahora?"** — screen record: marcar no-show en la grilla → seña queda cobrada → si reincide, bloqueo automático de 14 días para reservar online. 45s | Video vertical | Follow-up, objeción #1 y #3 |
 | 3 | **La calculadora del clavo** — imagen simple: "¿A cuánto está tu turno? $20.000 → 1 clavo/semana = $80.000/mes que no viste". 3 variantes de precio de turno | Imagen (story + post fijado) | Follow-up +5d; abre charlas en frío |
 | 4 | **"La caja del día en 30 segundos"** — screen record: cierre diario, turnos + cantina + gastos | Video vertical | Demo paso 5 para dueños de dolor-caja; follow-up segmentado |
 | 5 | **Caso real** (recién cuando exista, con permiso y números REALES del cliente): "Complejo [X], [zona]: [N] reservas online y $[Y] en señas en su primer mes" + foto del dueño en el complejo | Post + imagen reenviable | Re-contacto 30d, objeción #11, mensaje con referido |
@@ -36,8 +36,10 @@ Cadencia sostenida: **2 publicaciones/semana máximo.** El perfil debe verse viv
 
 ## Qué NO hacer (lista negra, revisar en 6 meses)
 
+> **⚠️ REVISIÓN 2026-07-12 — SEO/blog SALE de la lista negra.** Decisión del founder: la producción asistida por IA elimina el costo que justificaba diferirlo, y pre-lanzamiento es el momento de plantar activos de ciclo largo. La estrategia vive en [`docs/marketing/01-estrategia-contenido.md`](../marketing/01-estrategia-contenido.md). El racional original se conserva abajo como registro. **El resto de la lista negra (ads, TikTok, LinkedIn, prensa) sigue vigente.** El filtro de este doc (munición 1:1) sigue mandando para el contenido de venta; el contenido SEO es una vía paralela que no compite con horas de prospección porque la drafta la IA.
+
 - Ads de Meta/Google — hasta 10 pagos y mensajes calibrados con respuestas reales.
-- SEO / blog — ciclo larguísimo, cero aporte a los primeros 100.
+- ~~SEO / blog — ciclo larguísimo, cero aporte a los primeros 100.~~ **Revertido 2026-07-12, ver arriba.**
 - TikTok / contenido de tendencias — audiencia equivocada (jugadores, no dueños; y jugadores sin marketplace no monetizan).
 - LinkedIn corporativo — los dueños de complejos no viven ahí.
 - Newsletter, podcast, webinars, prensa — todo post-100 clientes, si acaso.

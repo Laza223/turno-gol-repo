@@ -7,7 +7,7 @@ import { getWorkerDb } from '@/shared/db/client'
 import { buildMockPaymentId, buildMockEventId } from '@/modules/payments/mock-mp'
 import { logger } from '@/shared/lib/logger'
 
-const bookingFormSchema = z.object({ booking: z.string().uuid() })
+const bookingFormSchema = z.object({ booking: z.guid() })
 
 function parseBookingId(formData: FormData): string {
   const parsed = bookingFormSchema.safeParse({ booking: formData.get('booking') })

@@ -73,7 +73,7 @@ const publicTenantCardSchema = z.object({
   coverUrl: z.string().nullable(),
   allowOnlineBooking: z.boolean(),
   fromPriceCents: z.number().int().nullable(),
-  amenities: z.record(z.boolean()),
+  amenities: z.record(z.string(), z.boolean()),
   avgRating: z.number(),
   reviewCount: z.number().int(),
   distanceKm: z.number().nullable(),

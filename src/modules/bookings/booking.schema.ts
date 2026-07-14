@@ -46,45 +46,43 @@ export const createManualBookingSchema = z
 
 // ── Output (response) contracts — doc15 §2 ────────────────────────────────────
 // Mirror `BookingRow` (booking.types.ts) as serialized over the wire: Date fields
-// become ISO strings. `.strict()` so a new/renamed field surfaces as drift. Used
-// by `validateApiOutput` on the booking mutation endpoints (create/cancel/
+// become ISO strings. `z.strictObject` so a new/renamed field surfaces as drift.
+// Used by `validateApiOutput` on the booking mutation endpoints (create/cancel/
 // complete/no-show), all of which respond `{ data: BookingRow }`.
-const bookingRowResponseSchema = z
-  .object({
-    id: uuid,
-    tenantId: uuid,
-    courtId: uuid,
-    playerId: uuid.nullable(),
-    abonadoId: uuid.nullable(),
-    createdByStaff: z.string().nullable(),
-    date: z.string(),
-    timeStart: z.string(),
-    timeEnd: z.string(),
-    type: z.enum(['spontaneous', 'fixed', 'block']),
-    status: z.enum([
-      'pending_payment',
-      'confirmed',
-      'expired',
-      'canceled_refunded',
-      'canceled_no_refund',
-      'completed',
-      'no_show',
-    ]),
-    priceSnapshot: z.number().int(),
-    depositAmount: z.number().int(),
-    depositStatus: z.enum(['not_required', 'pending', 'paid', 'refunded', 'captured']),
-    paymentMethod: z.enum(['cash', 'transfer', 'mercadopago', 'other']).nullable(),
-    paymentId: z.string().nullable(),
-    notesInternal: z.string().nullable(),
-    notesPlayer: z.string().nullable(),
-    guestName: z.string().nullable(),
-    guestPhone: z.string().nullable(),
-    canceledReason: z.string().nullable(),
-    canceledBy: z.enum(['player', 'admin', 'system']).nullable(),
-    canceledAt: z.string().nullable(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
-  })
-  .strict()
+const bookingRowResponseSchema = z.strictObject({
+  id: uuid,
+  tenantId: uuid,
+  courtId: uuid,
+  playerId: uuid.nullable(),
+  abonadoId: uuid.nullable(),
+  createdByStaff: z.string().nullable(),
+  date: z.string(),
+  timeStart: z.string(),
+  timeEnd: z.string(),
+  type: z.enum(['spontaneous', 'fixed', 'block']),
+  status: z.enum([
+    'pending_payment',
+    'confirmed',
+    'expired',
+    'canceled_refunded',
+    'canceled_no_refund',
+    'completed',
+    'no_show',
+  ]),
+  priceSnapshot: z.number().int(),
+  depositAmount: z.number().int(),
+  depositStatus: z.enum(['not_required', 'pending', 'paid', 'refunded', 'captured']),
+  paymentMethod: z.enum(['cash', 'transfer', 'mercadopago', 'other']).nullable(),
+  paymentId: z.string().nullable(),
+  notesInternal: z.string().nullable(),
+  notesPlayer: z.string().nullable(),
+  guestName: z.string().nullable(),
+  guestPhone: z.string().nullable(),
+  canceledReason: z.string().nullable(),
+  canceledBy: z.enum(['player', 'admin', 'system']).nullable(),
+  canceledAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
 
-export const bookingResponseSchema = z.object({ data: bookingRowResponseSchema }).strict()
+export const bookingResponseSchema = z.strictObject({ data: bookingRowResponseSchema })

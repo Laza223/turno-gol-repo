@@ -70,10 +70,10 @@ export function GridScroller({
       role="region"
       aria-label={ariaLabel}
       className={cn(
-        'overflow-auto overscroll-x-contain snap-x snap-proximity max-h-[70dvh] rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(2,6,23,0.04),0_8px_24px_-12px_rgba(2,6,23,0.10)] dark:shadow-[0_24px_50px_-34px_rgba(0,0,0,0.9)]',
+        'overflow-auto overscroll-x-contain snap-x snap-proximity flex-1 min-h-0 rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(2,6,23,0.04),0_8px_24px_-12px_rgba(2,6,23,0.10)] dark:shadow-[0_24px_50px_-34px_rgba(0,0,0,0.9)]',
         'transition-opacity duration-150 motion-reduce:transition-none',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isNavPending && 'opacity-60',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+        isNavPending && 'opacity-90',
       )}
     >
       <div
@@ -90,7 +90,7 @@ export function GridScroller({
       >
         {nowTopRem !== null && (
           <div
-            className="absolute left-[3.5rem] right-0 z-20 pointer-events-none flex items-center"
+            className="absolute left-14 right-0 z-20 pointer-events-none flex items-center"
             style={{ top: `calc(${nowTopRem}rem - 0.5px)` }}
           >
             <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
@@ -109,7 +109,7 @@ export function GridScroller({
           <div
             key={court.id}
             style={{ gridColumn: ci + 2, gridRow: 1 }}
-            className="sticky top-0 z-20 snap-start scroll-ml-14 flex items-center justify-center gap-1 truncate border-b border-border bg-card/95 px-2 text-xs font-semibold text-foreground backdrop-blur"
+            className="sticky top-0 z-20 snap-start scroll-ml-14 flex items-center justify-center gap-1 truncate border-b border-border bg-card/95 px-2 text-xs font-semibold text-foreground backdrop-blur-sm"
           >
             <span className="truncate">{court.name}</span>
             {court.status === 'offline' && (

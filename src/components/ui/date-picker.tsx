@@ -113,12 +113,15 @@ export default function DatePicker({
             type="button"
             id={id}
             className={cn(
-              'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-sm text-left flex items-center justify-between transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
+              'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-xs text-left flex items-center justify-between transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
               className,
               // Paddings de íconos: pr-8 (no 10) para que "dd/mm/aaaa" quepa en
               // columnas angostas de mobile sin truncar (§13.5).
               'pl-10 pr-8',
-              !value && 'text-muted-foreground/70'
+              // Sin /70: esa opacidad extra sobre --muted-foreground (ya afinado
+              // contra --muted) baja a 3.06:1 contra bg-background y viola AA
+              // (color-contrast). Full opacity da 5.77:1.
+              !value && 'text-muted-foreground'
             )}
           >
             <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10" aria-hidden />
@@ -143,6 +146,9 @@ export default function DatePicker({
         <PopoverContent
           align="start"
           sideOffset={6}
+          // Radix rinde el Content con role="dialog"; sin nombre accesible axe lo
+          // marca (aria-dialog-name) y el lector solo anuncia "diálogo".
+          aria-label="Elegir fecha"
           className="w-[280px] rounded-2xl border border-border bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-md"
         >
           {/* Header del Calendario */}
@@ -194,7 +200,7 @@ export default function DatePicker({
                   className={cn(
                     'text-xs min-h-11 md:min-h-9 flex items-center justify-center font-medium rounded-lg transition-all duration-150',
                     isSelected
-                      ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
+                      ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
                       : 'hover:bg-accent hover:text-accent-foreground text-foreground/90',
                     isDisabled && 'opacity-25 pointer-events-none'
                   )}

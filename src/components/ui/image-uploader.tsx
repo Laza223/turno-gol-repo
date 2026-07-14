@@ -19,7 +19,7 @@ type ImageUploaderProps = {
 const ASPECT_CLASS: Record<ImagePreset, string> = {
   logo: 'aspect-square',
   cover: 'aspect-video',
-  court: 'aspect-[4/3]',
+  court: 'aspect-4/3',
 }
 
 export function ImageUploader({
@@ -165,8 +165,10 @@ export function ImageUploader({
         )}
       </div>
 
+      {/* red-600 sobre bg-background da 3.89:1 y viola AA (color-contrast);
+          red-700 da 5.21:1. Mismo idiom que emerald-700/emerald-400. */}
       {error && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <p role="alert" className="text-xs text-red-700 dark:text-red-400">
           {error}
         </p>
       )}

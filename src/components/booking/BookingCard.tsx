@@ -218,7 +218,7 @@ function BookingCardComponent({
           'border border-border/60 bg-card',
           'hover:border-emerald-500 hover:bg-emerald-500/5 dark:hover:border-emerald-400',
           'transition-colors duration-150',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         )}
       >
         <Plus
@@ -265,9 +265,9 @@ function BookingCardComponent({
               'flex h-full w-full cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
               visual.cell,
               visual.borderL,
-              isPast && 'opacity-60 saturate-50',
+              isPast && 'opacity-90 saturate-50',
               isNew && 'animate-slot-pulse',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
             )}
           >
             {compact ? (
@@ -301,6 +301,9 @@ function BookingCardComponent({
           side="bottom"
           align="start"
           className="w-60 p-3"
+          // Radix rinde el Content con role="dialog"; sin nombre accesible axe lo
+          // marca (aria-dialog-name) y el lector solo anuncia "diálogo".
+          aria-label="Detalle de la reserva"
           // No robar el foco de la grilla al abrir (la navegación por flechas
           // vive en los botones de celda); al cerrar, Radix devuelve el foco.
           onOpenAutoFocus={(e) => e.preventDefault()}

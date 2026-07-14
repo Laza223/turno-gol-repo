@@ -32,14 +32,14 @@ afterEach(() => {
 describe('MockMpCheckoutPage — ?booking UUID (#32)', () => {
   it('404 sin tocar la DB cuando ?booking no es un UUID', async () => {
     await expect(
-      MockMpCheckoutPage({ searchParams: { booking: 'not-a-uuid' } }),
+      MockMpCheckoutPage({ searchParams: Promise.resolve({ booking: 'not-a-uuid' }) }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
     expect(h.execute).not.toHaveBeenCalled()
   })
 
   it('404 cuando el UUID es valido pero no existe la reserva', async () => {
     await expect(
-      MockMpCheckoutPage({ searchParams: { booking: VALID_UUID } }),
+      MockMpCheckoutPage({ searchParams: Promise.resolve({ booking: VALID_UUID }) }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
     expect(h.execute).toHaveBeenCalledTimes(1)
   })
@@ -56,7 +56,7 @@ describe('MockMpCheckoutPage — ?booking UUID (#32)', () => {
         tenant_id: 'tenant-1',
       },
     ])
-    const el = await MockMpCheckoutPage({ searchParams: { booking: VALID_UUID } })
+    const el = await MockMpCheckoutPage({ searchParams: Promise.resolve({ booking: VALID_UUID }) })
     expect(el).toBeTruthy()
     expect(h.execute).toHaveBeenCalledTimes(1)
   })

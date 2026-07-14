@@ -19,7 +19,6 @@ import {
   BookingValidationError,
   CourtOfflineError,
   PlayerBannedError,
-  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
   TooManyActiveHoldsError,
@@ -31,10 +30,14 @@ import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const gateSchema = z.object({
-  email: z.string().trim().toLowerCase().email({ message: 'Ingresá un email válido' }),
+  // Zod 4: los validadores de formato son top-level (`z.email()`), y encadenarlos
+  // DESPUÉS de las transformaciones invierte el orden — `z.email().trim()` valida
+  // el formato ANTES de trimear, así que un email con un espacio de más falla.
+  // `.pipe()` mantiene la semántica de v3: normalizar primero, validar después.
+  email: z.string().trim().toLowerCase().pipe(z.email({ message: 'Ingresá un email válido' })),
   firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80),
   lastName: z.string().trim().max(80).optional().default(''),
-  terms: z.literal('on', { errorMap: () => ({ message: 'Tenés que aceptar los términos.' }) }),
+  terms: z.literal('on', { error: 'Tenés que aceptar los términos.' }),
   next: z.string(),
 })
 
@@ -62,7 +65,7 @@ export async function sendPlayerMagicLink(_prev: GateState, formData: FormData):
     return { status: 'error', message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.' }
   }
 
-  const origin = headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
   const safeNext = sanitizeNext(parsed.data.next, '/mis-reservas')
   const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
 
@@ -106,7 +109,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   // EL MISMO tenant, que playerBooking (por player_id) no ve. Key compuesta
   // (no solo IP) para no compartir bucket entre tenants distintos desde la
   // misma IP. INV-ABUSE-001 (hardening post security-review).
-  const ip = parseClientIp(headers())
+  const ip = parseClientIp(await headers())
   const ipRl = await enforce('publicBookingCreate', `${ip}:${slug}`)
   if (!ipRl.ok) redirect(`${backTo}&error=rate_limited`)
 
@@ -179,8 +182,10 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     if (err instanceof BookingValidationError) redirect(`${backTo}&error=unavailable`)
     if (err instanceof BookingDateOutOfRangeError) redirect(`${backTo}&error=date_out_of_range`)
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
-    if (err instanceof PlayerBannedError) redirect(`${backTo}&error=banned`)
-    if (err instanceof PlayerHasOutstandingBalanceError) redirect(`${backTo}&error=debt`)
+    if (err instanceof PlayerBannedError) {
+      const untilParam = err.until ? `&until=${encodeURIComponent(err.until.toISOString())}` : ''
+      redirect(`${backTo}&error=banned${untilParam}`)
+    }
     if (err instanceof TooManyActiveHoldsError) redirect(`${backTo}&error=too_many_holds`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError) redirect(`${backTo}&error=unavailable`)
     throw err

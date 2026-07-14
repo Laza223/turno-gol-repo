@@ -4,12 +4,20 @@ import { useState, useTransition } from 'react'
 import { AlertTriangle, CheckCircle2, ShieldCheck, Wallet } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { finishOnboardingAction, setWizardStepAction } from '../actions'
+import type { WizardActionResult } from '../actions'
+
+/** Firma de la Server Action que cierra el wizard (redirige internamente). */
+export type FinishOnboardingAction = () => Promise<void>
+
+/** Firma de la Server Action de "Volver" (mueve el wizard a un paso previo). */
+export type SetWizardStepAction = (completedStep: number) => Promise<WizardActionResult>
 
 type Props = {
   mpConnected: boolean
   /** Código `?error=mp_*` del callback OAuth (pages/onboarding.md §6.2). */
   mpError: string | null
+  finishAction: FinishOnboardingAction
+  setStepAction: SetWizardStepAction
 }
 
 // Nunca mostrar el código crudo: siempre qué pasó + qué hacer (§6.7).
@@ -28,7 +36,7 @@ function mpErrorMessage(code: string): string {
  * MP (el callback activa la seña y cierra el wizard); "No" cierra el wizard
  * directo. Ambos caminos aterrizan en /onboarding/listo.
  */
-export function StepPayments({ mpConnected, mpError }: Props) {
+export function StepPayments({ mpConnected, mpError, finishAction, setStepAction }: Props) {
   const [isPending, startTransition] = useTransition()
   const [isGoingBack, startBackTransition] = useTransition()
   const [backError, setBackError] = useState<string | null>(null)
@@ -36,14 +44,14 @@ export function StepPayments({ mpConnected, mpError }: Props) {
 
   function handleFinish() {
     startTransition(async () => {
-      await finishOnboardingAction()
+      await finishAction()
     })
   }
 
   function handleBack() {
     setBackError(null)
     startBackTransition(async () => {
-      const result = await setWizardStepAction(2)
+      const result = await setStepAction(2)
       if (!result.success) setBackError(result.error)
     })
   }
@@ -93,7 +101,7 @@ export function StepPayments({ mpConnected, mpError }: Props) {
       <div role="radiogroup" aria-label="Cobro de seña" className="space-y-3">
         <label
           className={cn(
-            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring',
             choice === 'deposit'
               ? 'border-emerald-600 bg-primary/5 dark:bg-emerald-500/10'
               : 'border-border bg-card hover:border-emerald-600/40',
@@ -117,12 +125,12 @@ export function StepPayments({ mpConnected, mpError }: Props) {
           <span className="min-w-0">
             <span className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold text-foreground">Cobrar seña online</span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/25 dark:text-emerald-400 dark:ring-emerald-500/40">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-600/25 dark:text-emerald-400 dark:ring-emerald-500/40">
                 Recomendado
               </span>
             </span>
             <span className="mt-1 block text-sm text-muted-foreground">
-              El jugador paga un porcentaje al reservar, por MercadoPago. La plata
+              El jugador paga un porcentaje al reservar que definís vos, por Mercado Pago. La plata
               va directo a tu cuenta, sin intermediarios.
             </span>
           </span>
@@ -130,7 +138,7 @@ export function StepPayments({ mpConnected, mpError }: Props) {
 
         <label
           className={cn(
-            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+            'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring',
             choice === 'none'
               ? 'border-emerald-600 bg-primary/5 dark:bg-emerald-500/10'
               : 'border-border bg-card hover:border-emerald-600/40',

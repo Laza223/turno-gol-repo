@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import { DAY_KEYS, DAY_LABELS_LONG, type DayKey } from '@/shared/time/week-days'
 import {
   effectiveDay,
@@ -106,76 +107,102 @@ export function ScheduleFields({
       </div>
 
       {/* Días: excepciones al general (Personalizar) o cerrados. */}
-      <ul className="divide-y divide-border rounded-lg border border-border">
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
         {DAY_KEYS.map((day) => {
           const d = view.days[day]
           const label = DAY_LABELS_LONG[day]
           const closed = d.mode === 'closed'
           return (
-            <li key={day} className="flex min-h-[3rem] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
-              <label className="flex w-28 shrink-0 cursor-pointer select-none items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!closed}
-                  onChange={(e) => toggleOpen(day, e.target.checked)}
-                  aria-label={`${label} abierto`}
-                  className="h-4 w-4 accent-emerald-600"
-                />
-                <span
-                  className={`text-sm font-medium ${closed ? 'text-muted-foreground' : 'text-foreground'}`}
-                >
-                  {label}
-                </span>
-              </label>
-
-              {closed ? (
-                <span className="text-sm text-muted-foreground">Cerrado</span>
-              ) : d.mode === 'general' ? (
-                <>
-                  <span className="text-sm text-muted-foreground">
-                    {view.general.open} a {view.general.close} · horario general
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto"
-                    onClick={() =>
-                      setDay(day, { mode: 'custom', open: view.general.open, close: view.general.close })
-                    }
+            <li
+              key={day}
+              className={cn(
+                "flex flex-col justify-center gap-2 rounded-xl border p-3.5 shadow-xs transition-all duration-200 min-h-16",
+                closed
+                  // Sin opacity-70: diluía --muted-foreground (ya al límite, 4.24:1
+                  // sobre --muted sólido) por debajo de AA (3.21:1/2.67:1 medidos).
+                  // bg-muted/30 solo alcanza para transmitir "cerrado".
+                  ? "border-border bg-muted/30"
+                  : "border-border bg-card hover:border-emerald-600/30 hover:shadow-md"
+              )}
+            >
+              {/* Fila Principal */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={!closed}
+                    onChange={(e) => toggleOpen(day, e.target.checked)}
+                    aria-label={`${label} abierto`}
+                    className="h-4 w-4 rounded border-border text-emerald-600 accent-emerald-600 cursor-pointer"
+                  />
+                  <span
+                    className={cn(
+                      "text-sm font-semibold transition-colors",
+                      closed ? "text-muted-foreground" : "text-foreground"
+                    )}
                   >
-                    Personalizar
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
+                    {label}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {closed ? (
+                    <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground border border-border/50">
+                      Cerrado
+                    </span>
+                  ) : d.mode === 'general' ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-600/10">
+                        {view.general.open} a {view.general.close}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                        onClick={() =>
+                          setDay(day, { mode: 'custom', open: view.general.open, close: view.general.close })
+                        }
+                      >
+                        Personalizar
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                      onClick={() => setDay(day, { mode: 'general' })}
+                    >
+                      Restablecer
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Fila Secundaria (Solo si se personaliza y no está cerrado) */}
+              {!closed && d.mode === 'custom' && (
+                <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <span className="text-xs font-medium text-muted-foreground">Horario propio:</span>
+                  <div className="flex items-center gap-1.5">
                     <Input
                       type="time"
                       value={d.open}
                       onChange={(e) => setDay(day, { open: e.target.value })}
                       aria-label={`${label}: abre`}
-                      className="h-11 w-28 md:h-9"
+                      className="h-8 w-[76px] text-xs px-2 py-1 text-center"
                     />
-                    <span className="text-sm text-muted-foreground">a</span>
+                    <span className="text-xs text-muted-foreground">a</span>
                     <Input
                       type="time"
                       value={d.close}
                       onChange={(e) => setDay(day, { close: e.target.value })}
                       aria-label={`${label}: cierra`}
-                      className="h-11 w-28 md:h-9"
+                      className="h-8 w-[76px] text-xs px-2 py-1 text-center"
                     />
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto"
-                    onClick={() => setDay(day, { mode: 'general' })}
-                  >
-                    Usar horario general
-                  </Button>
-                </>
+                </div>
               )}
             </li>
           )

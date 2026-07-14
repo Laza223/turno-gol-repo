@@ -24,13 +24,14 @@ export const playerTenantRelationships = pgTable(
       .references(() => players.id),
 
     bookingsCount: integer('bookings_count').notNull().default(0),
+    // Ausencias dentro de la ventana de reincidencia vigente (se resetea a 1 si
+    // la ausencia actual ocurre 90+ días después de la anterior). Llegar a 2
+    // dispara un softban de 14 días (ver applyNoShowStrike en ptr.service.ts).
     noshowCount: integer('noshow_count').notNull().default(0),
-
-    // Saldo deudor del jugador en este complejo, en centavos de ARS.
-    // Si > 0, el jugador queda bloqueado para reservar online en este complejo
-    // (ver CLAUDE.md §schema y createOnlineBooking). No es una billetera virtual:
-    // refunds/no-shows se concilian entre jugador y complejo.
-    balance: integer('balance').notNull().default(0),
+    lastNoShowAt: timestamp('last_no_show_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     lastBookingAt: timestamp('last_booking_at', {
       withTimezone: true,
       mode: 'date',

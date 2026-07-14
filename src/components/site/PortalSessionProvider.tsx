@@ -34,15 +34,23 @@ let cachedSessionValue: PortalSessionContextValue | null = null
  * GET /api/player/session; si hay jugador logueado aparecen avatar, bottom-nav
  * y favoritos. Fail-open: cualquier error deja el portal en modo anónimo.
  */
-export function PortalSessionProvider({ children }: { children: ReactNode }) {
+export function PortalSessionProvider({
+  children,
+  initialValue,
+}: {
+  children: ReactNode
+  /** Storybook/tests: siembra el estado y corta el fetch a /api/player/session. */
+  initialValue?: PortalSessionContextValue
+}) {
   const [value, setValue] = useState<PortalSessionContextValue>(() => {
-    return cachedSessionValue ?? {
+    return initialValue ?? cachedSessionValue ?? {
       session: null,
       favoriteTenantIds: EMPTY_FAVORITES,
     }
   })
 
   useEffect(() => {
+    if (initialValue) return
     let active = true
     fetch('/api/player/session', { cache: 'no-store' })
       .then(async (res) => {
@@ -75,6 +83,7 @@ export function PortalSessionProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialValue es un seed de una sola vez (Storybook/tests), no debe re-disparar el fetch si el caller pasa un objeto nuevo por render.
   }, [])
 
   return <PortalSessionContext.Provider value={value}>{children}</PortalSessionContext.Provider>

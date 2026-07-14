@@ -12,10 +12,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
+// createCashFlowAction ya no se importa del módulo — RegisterMovementModal la
+// recibe por prop (ver el comentario en RegisterMovementModal.tsx).
 const createCashFlowAction = vi.fn()
-vi.mock('@/app/(admin)/caja/actions', () => ({
-  createCashFlowAction: (...args: unknown[]) => createCashFlowAction(...args),
-}))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 const captureException = vi.fn()
@@ -25,7 +24,14 @@ import { RegisterMovementModal } from '@/app/(admin)/caja/components/RegisterMov
 
 function renderModal() {
   const onClose = vi.fn()
-  render(<RegisterMovementModal open onClose={onClose} date="2026-06-10" />)
+  render(
+    <RegisterMovementModal
+      open
+      onClose={onClose}
+      date="2026-06-10"
+      createCashFlowAction={createCashFlowAction}
+    />,
+  )
   // Fill the required fields so submit reaches the action.
   fireEvent.change(screen.getByLabelText('Monto (pesos)'), { target: { value: '100' } })
   fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Test' } })
@@ -53,7 +59,18 @@ describe('RegisterMovementModal — loading recovery', () => {
 
     // Button is back to idle (modal no longer locked) and the failure is
     // reported to Sentry rather than swallowed silently.
-    expect((screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement).disabled).toBe(false)
+    //
+    // Dentro de un waitFor y no como assert sync: React 19 hizo las transiciones
+    // async de verdad — `isPending` de useTransition se mantiene true hasta que el
+    // callback async del startTransition termina, no flipea al toque como en 18.
+    // El error ya está en el DOM un tick antes de que el botón vuelva a "Guardar".
+    // Sigue siendo el mismo contrato: si el botón NUNCA se recupera, el waitFor
+    // expira y el test falla.
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement).disabled).toBe(
+        false,
+      )
+    })
     expect(captureException).toHaveBeenCalledOnce()
     expect(onClose).not.toHaveBeenCalled()
   })
@@ -67,7 +84,12 @@ describe('RegisterMovementModal — loading recovery', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('Caja cerrada')
     })
-    expect((screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement).disabled).toBe(false)
+    // waitFor por el mismo motivo que arriba (transiciones async de React 19).
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement).disabled).toBe(
+        false,
+      )
+    })
     expect(captureException).not.toHaveBeenCalled()
   })
 })

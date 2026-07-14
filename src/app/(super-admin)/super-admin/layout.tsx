@@ -32,7 +32,7 @@ const LAST_LOGIN_THROTTLE = sql`now() - interval '15 minutes'`
  */
 async function recordLastLogin(systemAdminId: string): Promise<void> {
   try {
-    const forwardedFor = headers().get('x-forwarded-for')
+    const forwardedFor = (await headers()).get('x-forwarded-for')
     const ip = forwardedFor?.split(',')[0]?.trim() || null
 
     await withSystemAdminContext(systemAdminId, async (tx) => {

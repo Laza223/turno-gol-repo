@@ -72,14 +72,12 @@ async function guardStaffMutation(tenant: {
 }
 
 const inviteSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.email('Email inválido'),
   firstName: z.string().min(1, 'Nombre requerido').max(100),
   lastName: z.string().min(1, 'Apellido requerido').max(100),
   // El default Encargado se aplica acá (capa de aplicación); el DEFAULT de la
   // columna sigue siendo 'admin' por retrocompatibilidad (migración 026).
-  role: z
-    .enum(STAFF_ROLES, { errorMap: () => ({ message: 'Rol inválido' }) })
-    .default(DEFAULT_INVITE_ROLE),
+  role: z.enum(STAFF_ROLES, { error: 'Rol inválido' }).default(DEFAULT_INVITE_ROLE),
 })
 
 async function requireStaffTenant() {
@@ -312,9 +310,7 @@ export async function deactivateStaffAction(
   return result
 }
 
-const updateRoleSchema = z.enum(STAFF_ROLES, {
-  errorMap: () => ({ message: 'Rol inválido' }),
-})
+const updateRoleSchema = z.enum(STAFF_ROLES, { error: 'Rol inválido' })
 
 export async function updateStaffRoleAction(
   staffMemberId: string,
@@ -391,7 +387,7 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   // (StaffActions.tsx) es justamente el miembro YA desactivado — el ítem
   // "Reenviar invitación" solo se renderiza cuando !member.isActive — así
   // que acotar a is_active=true dejaba esto en 0 resultados siempre.
-  const parsedEmail = z.string().email().safeParse(email)
+  const parsedEmail = z.email().safeParse(email)
   if (!parsedEmail.success) return { success: false, error: 'Email inválido.' }
   const normalizedEmail = parsedEmail.data.toLowerCase()
 

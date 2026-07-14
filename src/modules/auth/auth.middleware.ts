@@ -13,7 +13,7 @@ import type { AuthUser } from './types'
  * sola lectura de `supabase.auth.getUser()` en lugar de repetirla N veces.
  */
 export const extractRealAuthUser = cache(async (): Promise<AuthUser | null> => {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.auth.getUser()
   if (error || !data?.user) return null
   const user = data.user

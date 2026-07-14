@@ -5,7 +5,7 @@ import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink } from 'lucide-re
 import { Button } from '@/components/ui/button'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
-import { markPublicLinkSharedAction } from '@/app/(admin)/dashboard/actions'
+import type { MarkSharedResult } from '@/app/(admin)/dashboard/actions'
 
 interface ChecklistItem {
   key: keyof ChecklistState
@@ -28,6 +28,13 @@ interface OnboardingChecklistProps {
   state: ChecklistState
   tenantSlug: string
   appUrl: string
+  /**
+   * Server Action que persiste el paso "link compartido". Llega por PROP
+   * (nunca se importa como valor acá): `./actions` es `'use server'` y
+   * arrastra drizzle/postgres + `node:async_hooks`, lo que rompe el bundle de
+   * browser de Storybook. El type import sí es seguro (se borra en compilación).
+   */
+  action: () => Promise<MarkSharedResult>
 }
 
 /**
@@ -35,7 +42,7 @@ interface OnboardingChecklistProps {
  * PENDIENTES quedan siempre visibles con su CTA; los completados se pliegan a
  * una fila-toggle para que el setup no entierre los KPIs del día.
  */
-export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChecklistProps) {
+export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: OnboardingChecklistProps) {
   const pendingItems = ITEMS.filter((i) => !state[i.key])
   const doneItems = ITEMS.filter((i) => state[i.key])
   const completed = doneItems.length
@@ -57,7 +64,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
     if (state.publicLinkShared) return
     startTransition(async () => {
       try {
-        const res = await markPublicLinkSharedAction()
+        const res = await action()
         setShareError(res.success ? null : res.error)
       } catch {
         setShareError('No pudimos guardar el paso, pero el link ya se copió.')
@@ -95,7 +102,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
 
   if (minimized) {
     return (
-      <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
+      <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-xs shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
         <div className="flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">¡Tu complejo está 100% listo!</p>
@@ -145,7 +152,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
               <p
                 role="status"
                 aria-live="polite"
-                className="max-w-[12rem] text-right text-xs text-red-600 dark:text-red-400"
+                className="max-w-48 text-right text-xs text-red-600 dark:text-red-400"
               >
                 {shareError}
               </p>
@@ -180,7 +187,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl }: OnboardingChe
         <div className="flex items-center gap-2">
           <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
               style={{ width: `${pct}%` }}
             />
           </div>

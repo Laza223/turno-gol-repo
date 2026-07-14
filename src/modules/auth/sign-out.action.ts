@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
  * Server action compartido por el menú de cuenta y cualquier botón "Salir".
  */
 export async function signOutAction(): Promise<void> {
-  const supabase = createClient()
+  const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/')
 }

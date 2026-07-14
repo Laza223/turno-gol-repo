@@ -15,7 +15,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      'fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:max-w-sm',
+      'fixed bottom-0 right-0 z-100 flex max-h-screen w-full flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:max-w-sm',
       className,
     )}
     {...props}
@@ -24,13 +24,28 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:slide-in-from-bottom-4 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none',
+  'group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:slide-in-from-bottom-4 data-[swipe=end]:translate-x-(--radix-toast-swipe-end-x) data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=move]:transition-none',
   {
     variants: {
       variant: {
         default: 'border-border bg-card text-foreground',
-        success: 'border-success/30 bg-success/10 text-success dark:border-success/40 dark:bg-success/15',
-        destructive: 'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15',
+
+        // LOS FILLS DE LIGHT SON OPACOS A PROPÓSITO. Un toast puede aparecer con un
+        // <Dialog> todavía abierto (o cerrándose) detrás: el overlay `bg-black/50`
+        // oscurece TODO lo que hay debajo, y un fill translúcido (`bg-*/10`) compone
+        // contra ese negro en vez de contra el fondo de la app. Medido con axe:
+        //   success translúcido sobre el overlay:      1.40:1  (ilegible)
+        //   destructive translúcido sobre el overlay:  1.30:1  (ilegible)
+        // Con fill opaco el contraste no depende de qué haya atrás:
+        //   text-green-800 sobre bg-green-50:  6.81:1
+        //   text-red-700   sobre bg-red-50:    5.91:1
+        // El foreground de light también se ajusta: los tokens crudos (`text-success`,
+        // `text-destructive`) no llegan a AA sobre estos fills. En dark los tokens sí
+        // pasan y se mantienen.
+        success:
+          'border-success/30 bg-green-50 text-green-800 dark:border-success/40 dark:bg-success/15 dark:text-success',
+        destructive:
+          'border-destructive/30 bg-red-50 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive',
       },
     },
     defaultVariants: { variant: 'default' },
@@ -57,7 +72,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      'absolute right-1.5 top-1.5 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      'absolute right-1.5 top-1.5 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
       className,
     )}
     aria-label="Cerrar"

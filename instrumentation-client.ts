@@ -1,0 +1,102 @@
+import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
+import { scrubObject, scrubQueryString } from '@/lib/sentry-pii-scrub'
+
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
+
+/**
+ * F12 audit 2026-05-29: remove Replay to reduce shared bundle (~40KB).
+ * Errors still capture with stack+breadcrumbs+tracesSampleRate; we lose
+ * session video replay. Reactivate if support needs visual debugging.
+ *
+ * Exported as a pure function so unit tests can assert filtering logic
+ * without triggering Sentry.init side-effects.
+ */
+export function filterReplay<T extends { name: string }>(integrations: T[]): T[] {
+  return integrations.filter((i) => i.name !== 'Replay' && i.name !== 'ReplayIntegration')
+}
+
+/**
+ * F12 perf 2026-05-31: lazy-load the Sentry browser SDK.
+ *
+ * `@sentry/nextjs` (~50KB+ gzipped) was previously imported at the top of this
+ * module, so webpack bundled it into the shared First Load JS that blocks every
+ * page's initial paint. Switching to a dynamic `import()` splits the SDK into
+ * its own async chunk that downloads after hydration, off the LCP critical path
+ * (LCP < 2.5s budget — grilla was at 3.8s).
+ *
+ * Trade-off: errors thrown in the very first tick — before the chunk resolves —
+ * are not captured. Accepted: the SDK loads within ~1 frame of interactivity and
+ * `beforeSend` already drops all non-production events anyway.
+ *
+ * `requestIdleCallback` (when available) defers the fetch until the browser is
+ * idle so it never competes with hydration; otherwise we kick it off async.
+ */
+function initSentry(): void {
+  void import('@sentry/nextjs').then((Sentry) => {
+    Sentry.init({
+      dsn,
+      tracesSampleRate: 0.1,
+      integrations: filterReplay,
+      ignoreErrors: [
+        'AbortError',
+        'Network request failed',
+        'Failed to fetch',
+        'Load failed',
+        'NavigationDuplicated',
+        /^chrome-extension:\/\//,
+        /^moz-extension:\/\//,
+      ],
+      beforeSend(event, hint) {
+        if (isDroppableDomainError(hint)) return null
+        if (process.env.NODE_ENV !== 'production') return null
+
+        // PII scrub (#11 / Ley 25.326 / B9) — paridad con sentry.server.config.ts.
+        // El config del browser tambien puede arrastrar email, phone, tokens MP o
+        // headers de auth en extra/contexts/request/user; nunca deben llegar a Sentry.
+        if (event.request) {
+          delete event.request.data
+          if (event.request.headers) {
+            const h = event.request.headers as Record<string, string>
+            delete h.cookie
+            delete h.Cookie
+            delete h.authorization
+            delete h.Authorization
+          }
+          if (typeof event.request.query_string === 'string') {
+            event.request.query_string = scrubQueryString(event.request.query_string)
+          }
+        }
+        if (event.extra) event.extra = scrubObject(event.extra) as typeof event.extra
+        if (event.contexts) {
+          event.contexts = scrubObject(event.contexts) as typeof event.contexts
+        }
+        if (event.user) {
+          // Conservar id para trazabilidad, descartar email/username/ip_address.
+          event.user = { id: event.user.id }
+        }
+        return event
+      },
+      beforeBreadcrumb(breadcrumb) {
+        if (breadcrumb.category === 'ui.click') return null
+        return breadcrumb
+      },
+    })
+  })
+}
+
+// Solo se inicializa en produccion. `beforeSend` ya descartaba TODO evento fuera
+// de produccion, asi que en dev el SDK no reportaba nada — pero igual abria el
+// transporte y mandaba envelopes de sesion/tracing al DSN, que en local es un
+// placeholder (dummy.ingest.sentry.io). Eso es un error de CORS en cada carga de
+// pagina: ruido en la consola del dev y fallo de los smoke tests que exigen 0
+// errores de consola. Preview de Vercel corre con NODE_ENV=production, asi que
+// sigue reportando.
+if (isValidDsn(dsn) && process.env.NODE_ENV === 'production') {
+  const ric = (globalThis as { requestIdleCallback?: (cb: () => void) => void })
+    .requestIdleCallback
+  if (typeof ric === 'function') {
+    ric(initSentry)
+  } else {
+    initSentry()
+  }
+}

@@ -1,19 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { reactivateTenantAction } from '../../actions'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
-import { primaryBtn, type Feedback, type RunAction } from './constants'
+import { primaryBtn, type Feedback, type RunAction, type SupportAction } from './constants'
 
 type Props = {
   tenantId: string
   pending: boolean
   run: RunAction
+  action: SupportAction
 }
 
 /** Reactivar complejo: vuelve a 'active' (limpia dunning, cancelación y eliminación programada). */
-export function ReactivateSection({ tenantId, pending, run }: Props) {
+export function ReactivateSection({ tenantId, pending, run, action }: Props) {
   const [reactivateFeedback, setReactivateFeedback] = useState<Feedback>(null)
 
   return (
@@ -25,7 +25,7 @@ export function ReactivateSection({ tenantId, pending, run }: Props) {
         <button
           type="button"
           disabled={pending}
-          onClick={() => run(() => reactivateTenantAction({ tenantId }), setReactivateFeedback)}
+          onClick={() => run(() => action({ tenantId }), setReactivateFeedback)}
           className={primaryBtn}
         >
           Reactivar

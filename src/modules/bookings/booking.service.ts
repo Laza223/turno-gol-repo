@@ -11,11 +11,7 @@ import {
   invalidateCourtDateSlots,
   readThroughSlots,
 } from '@/shared/cache/slots-cache'
-import {
-  ensurePTR,
-  getPlayerBlockState,
-  isBlockedForOnlineBooking,
-} from '@/modules/relationships/ptr.service'
+import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -32,7 +28,6 @@ import {
   CourtOfflineError,
   NoShowCorrectionWindowExpiredError,
   PlayerBannedError,
-  PlayerHasOutstandingBalanceError,
   PriceUnavailableError,
   SlotTakenError,
   TooManyActiveHoldsError,
@@ -359,6 +354,9 @@ async function createOnlineBookingImpl(
     playerId: input.playerId,
   })
 
+  // checkPlayerBanned cubre tanto bans manuales del complejo como el softban
+  // automático por ausencias reiteradas (applyNoShowStrike inserta en
+  // tenant_player_bans, ver booking.cancellation.ts:handleNoShow).
   const banResult = await checkPlayerBanned(input.playerId, tenantId, tx)
   if (banResult.banned) {
     throw new PlayerBannedError(
@@ -367,24 +365,6 @@ async function createOnlineBookingImpl(
       banResult.bannedGlobal,
       banResult.reason,
       banResult.until,
-    )
-  }
-
-  // Regla de negocio (CLAUDE.md): un jugador con saldo deudor (> 0) o con la
-  // relación marcada como 'blocked' queda bloqueado para reservar online en
-  // este complejo. Se chequea dentro del tx (misma transacción que el INSERT)
-  // para que el bloqueo sea consistente con el estado leído.
-  const blockState = await getPlayerBlockState(input.playerId, tenantId, tx)
-  if (isBlockedForOnlineBooking(blockState)) {
-    track.booking('booking.online.create.blocked_balance', {
-      tenantId,
-      courtId: input.courtId,
-      playerId: input.playerId,
-    })
-    throw new PlayerHasOutstandingBalanceError(
-      input.playerId,
-      tenantId,
-      blockState.balance,
     )
   }
 

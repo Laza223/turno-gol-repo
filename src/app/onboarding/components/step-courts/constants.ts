@@ -20,6 +20,7 @@ export type Draft = {
   isCovered: boolean
   /** Pesos como texto del input; se convierte a centavos al enviar. */
   price: string
+  photos: string[]
 }
 
 /** Precio "desde" de una cancha existente para la fila-resumen. */

@@ -39,11 +39,21 @@ const cardStyle = {
 const ctaClass =
   'mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0'
 
-export default function VerifyPage({
-  searchParams,
-}: {
-  searchParams: { error?: string; status?: string; next?: string; intent?: string }
-}) {
+type VerifySearchParams = {
+  error?: string
+  status?: string
+  next?: string
+  intent?: string
+}
+
+/**
+ * En Next 16 `searchParams` es una Promise, así que la page tiene que ser async.
+ * Un componente async NO se puede montar en el cliente ("Only Server Components
+ * can be async at the moment"), lo que dejaba la story de esta página sin poder
+ * renderizarla. La page queda como un cascarón que resuelve la Promise y delega
+ * en este componente sincrónico, que es el que la story monta.
+ */
+export function VerifyView({ searchParams }: { searchParams: VerifySearchParams }) {
   const isSuccess = searchParams.status === 'success'
   const errCode = searchParams.error
   const isError = Boolean(errCode)
@@ -55,7 +65,7 @@ export default function VerifyPage({
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute right-[-10%] top-[-12%] h-[520px] w-[520px] rounded-full blur-[12px]"
+        className="pointer-events-none absolute right-[-10%] top-[-12%] h-[520px] w-[520px] rounded-full blur-md"
         style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.2), transparent 70%)' }}
       />
       <div
@@ -82,6 +92,10 @@ export default function VerifyPage({
   )
 }
 
+export default async function VerifyPage(props: { searchParams: Promise<VerifySearchParams> }) {
+  return <VerifyView searchParams={await props.searchParams} />
+}
+
 function SuccessState({ next, intent }: { next: string | undefined; intent: SuccessIntent }) {
   const safeNext = sanitizeNext(next)
   const copy = SUCCESS_COPY[intent]
@@ -105,7 +119,10 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
       <Link href={safeNext} className={ctaClass}>
         {copy.cta}
       </Link>
-      <p className="mt-4 text-xs text-slate-500">
+      {/* slate-400, no slate-500: sobre esta card (siempre oscura) slate-500 da 3.91:1,
+          abajo del 4.5 de AA. Es el mismo bug que tenía SuccessRedirect, tres líneas más
+          abajo — y el subtítulo de la línea 104 ya usaba el valor correcto. */}
+      <p className="mt-4 text-xs text-slate-400">
         ¿Abriste el enlace en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
       </p>
       <SuccessRedirect next={safeNext} />

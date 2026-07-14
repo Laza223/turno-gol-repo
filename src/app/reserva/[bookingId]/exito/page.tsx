@@ -1,20 +1,14 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import Link from 'next/link'
 import { sql } from 'drizzle-orm'
-import { CheckCircle2 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
-import { formatArs, formatDateLong } from '@/lib/format'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
-import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
-import BookingQR from '@/components/booking/BookingQR'
-import BookingReceipt from '@/components/booking/BookingReceipt'
-import DownloadReceiptButton from '@/components/booking/DownloadReceiptButton'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
+import { BookingSuccessCard, BookingSuccessNotFound } from './BookingSuccessCard'
 
-type Props = { params: { bookingId: string } }
+type Props = { params: Promise<{ bookingId: string }> }
 
 export const dynamic = 'force-dynamic'
 
@@ -62,7 +56,8 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
   })
 }
 
-export default async function ReservaExitoPage({ params }: Props) {
+export default async function ReservaExitoPage(props: Props) {
+  const params = await props.params;
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 
@@ -71,12 +66,7 @@ export default async function ReservaExitoPage({ params }: Props) {
   if (!booking) {
     return (
       <ReservaDarkShell>
-        <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-          <p className="text-sm text-muted-foreground">No encontramos tu reserva.</p>
-          <Link href="/mis-reservas" className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25">
-            Ver mis reservas
-          </Link>
-        </div>
+        <BookingSuccessNotFound />
       </ReservaDarkShell>
     )
   }
@@ -100,100 +90,34 @@ export default async function ReservaExitoPage({ params }: Props) {
     )
   }
 
-  const remainingAmount = booking.priceSnapshot - booking.depositAmount
-
   // URL pública de verificación que codifica el QR: el complejo la escanea y
   // ve el estado real del turno (sin datos del jugador). Base desde env con
   // fallback al host del request (dev / previews).
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? `https://${headers().get('host') ?? 'turnogol.app'}`
+    process.env.NEXT_PUBLIC_APP_URL ?? `https://${(await headers()).get('host') ?? 'turnogol.app'}`
   const verifyUrl = `${appUrl}/reserva/${params.bookingId}/verificar`
 
   return (
     <ReservaDarkShell>
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-      {/* Celebración peak-end §5.3: un solo ring que se disipa (600ms, una vez)
-          — sin loops. El glow estático lo pone .reserva-success-badge. */}
-      <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
-        <span className="reserva-success-badge relative flex h-20 w-20 animate-slot-pulse items-center justify-center rounded-full text-emerald-600 dark:text-emerald-400 motion-reduce:animate-none">
-          <CheckCircle2 className="h-10 w-10" aria-hidden />
-        </span>
-      </div>
-      <h1 className="font-display text-3xl font-black italic tracking-tight text-foreground">
-        ¡Reserva <span className="hero-accent-text">confirmada!</span>
-      </h1>
-      <p className="mt-3 text-sm text-muted-foreground tabular-nums">
-        <span className="font-semibold text-foreground">{booking.tenantName}</span> · {booking.courtName}<br />
-        {formatDateLong(booking.date)} · {booking.timeStart.slice(0, 5)}–{booking.timeEnd.slice(0, 5)}
-      </p>
-      {booking.depositStatus === 'not_required' ? (
-        <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-          Pagás <span className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</span> al llegar al complejo.
-        </p>
-      ) : (
-        <div className="mt-4 space-y-1 text-sm text-muted-foreground tabular-nums">
-          <p>Seña pagada: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{formatArs(booking.depositAmount)}</span></p>
-          <p>Resta abonar en el complejo: <span className="text-foreground">{formatArs(remainingAmount)}</span></p>
-        </div>
-      )}
-      <section
-        aria-label="Comprobante para mostrar en el complejo"
-        className="reserva-receipt-card mt-7 w-full overflow-hidden rounded-2xl p-5"
-      >
-        <div className="flex justify-center">
-          <div className="rounded-xl bg-white p-3 shadow-lg">
-            <BookingQR value={verifyUrl} label="Código QR de verificación de la reserva" />
-          </div>
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Mostrá este código al llegar: el complejo lo escanea y verifica tu reserva al instante.
-        </p>
-        <DownloadReceiptButton
-          fileName={`comprobante-${booking.tenantSlug}-${booking.date}`}
-        />
-      </section>
-
-      <BookingReceipt
+      <BookingSuccessCard
         bookingId={params.bookingId}
-        tenantName={booking.tenantName}
-        address={booking.address}
-        city={booking.city}
-        courtName={booking.courtName}
-        date={booking.date}
-        timeStart={booking.timeStart}
-        timeEnd={booking.timeEnd}
-        priceSnapshot={booking.priceSnapshot}
-        depositAmount={booking.depositAmount}
-        depositStatus={booking.depositStatus}
         verifyUrl={verifyUrl}
+        booking={{
+          tenantName: booking.tenantName,
+          tenantSlug: booking.tenantSlug,
+          courtName: booking.courtName,
+          address: booking.address,
+          city: booking.city,
+          latitude: booking.latitude == null ? null : Number(booking.latitude),
+          longitude: booking.longitude == null ? null : Number(booking.longitude),
+          date: booking.date,
+          timeStart: booking.timeStart,
+          timeEnd: booking.timeEnd,
+          priceSnapshot: booking.priceSnapshot,
+          depositAmount: booking.depositAmount,
+          depositStatus: booking.depositStatus,
+        }}
       />
-
-      <BookingSuccessExtras
-        tenantName={booking.tenantName}
-        courtName={booking.courtName}
-        slug={booking.tenantSlug}
-        date={booking.date}
-        timeStart={booking.timeStart}
-        timeEnd={booking.timeEnd}
-        address={booking.address}
-        city={booking.city}
-        latitude={booking.latitude == null ? null : Number(booking.latitude)}
-        longitude={booking.longitude == null ? null : Number(booking.longitude)}
-      />
-
-      <Link
-        href="/mis-reservas"
-        className="mt-7 inline-flex h-12 items-center rounded-xl bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
-      >
-        Ver mis reservas
-      </Link>
-      <Link
-        href="/explorar"
-        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-700 transition-colors hover:bg-primary/10 hover:text-emerald-800 dark:text-emerald-400 dark:hover:bg-white/5 dark:hover:text-emerald-300"
-      >
-        Seguir explorando
-      </Link>
-    </div>
     </ReservaDarkShell>
   )
 }

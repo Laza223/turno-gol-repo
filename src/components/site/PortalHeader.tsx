@@ -6,7 +6,11 @@ import { AccountMenu } from './AccountMenu'
 import { usePortalSession } from './PortalSessionProvider'
 import { Search, Building2, Calendar, LogIn } from 'lucide-react'
 
-type Props = { variant?: 'overlay' | 'solid' }
+type Props = {
+  variant?: 'overlay' | 'solid'
+  /** Threaded a AccountMenu — ver el comentario de la prop homónima ahí. */
+  signOutAction: () => Promise<void>
+}
 
 /**
  * Cabecera única del portal, session-aware. Reemplaza al antiguo `SiteNav`.
@@ -17,7 +21,7 @@ type Props = { variant?: 'overlay' | 'solid' }
  * jugador aparece tras montar, ocupando el mismo slot derecho de la nav.
  * `variant="overlay"` se usa sobre el hero de la landing (markup preservado).
  */
-export default function PortalHeader({ variant = 'solid' }: Props) {
+export default function PortalHeader({ variant = 'solid', signOutAction }: Props) {
   const { session } = usePortalSession()
 
   if (variant === 'overlay') {
@@ -28,20 +32,20 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
       <header className="fixed top-0 z-50 w-full px-3 pt-3.5 sm:px-6 sm:pt-[18px]">
         <div className="mx-auto max-w-[1240px]">
           <div className="overlay-nav flex items-center justify-between gap-2 rounded-full py-2 pl-4 pr-2 sm:gap-6 sm:py-3 sm:pl-6 sm:pr-3.5">
-            <Link href="/" aria-label="TurnoGol — inicio" className="flex-shrink-0 transition-opacity hover:opacity-90">
+            <Link href="/" aria-label="TurnoGol — inicio" className="shrink-0 transition-opacity hover:opacity-90">
               <Logo variant="horizontal" textClassName="text-foreground" />
             </Link>
             <div className="flex items-center gap-1 sm:gap-1.5">
               <Link
                 href="/explorar"
-                className="inline-flex items-center gap-2 rounded-full px-3 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/[.05] hover:text-foreground sm:px-4"
+                className="inline-flex items-center gap-2 rounded-full px-3 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4"
               >
                 <Search className="h-[17px] w-[17px]" aria-hidden />
                 Explorar
               </Link>
               <Link
                 href="/para-complejos"
-                className="hidden items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/[.05] hover:text-foreground sm:inline-flex"
+                className="hidden items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
               >
                 <Building2 className="h-[17px] w-[17px]" aria-hidden />
                 Para complejos
@@ -54,6 +58,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
                   email={session.email}
                   avatarUrl={session.avatarUrl}
                   variant="overlay"
+                  signOutAction={signOutAction}
                 />
               ) : (
                 <Link
@@ -99,6 +104,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
                 email={session.email}
                 avatarUrl={session.avatarUrl}
                 variant="solid"
+                signOutAction={signOutAction}
               />
             </>
           ) : (
@@ -112,7 +118,7 @@ export default function PortalHeader({ variant = 'solid' }: Props) {
               </Link>
               <Link
                 href="/ingresar"
-                className="inline-flex h-11 md:h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
+                className="inline-flex h-11 md:h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs transition-all duration-200 hover:bg-primary/90 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Ingresar</span>

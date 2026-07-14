@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterReplay } from '@/../sentry.client.config'
+import { filterReplay } from '@/../instrumentation-client'
 
 describe('filterReplay', () => {
   it('removes the Replay integration and keeps the rest', () => {

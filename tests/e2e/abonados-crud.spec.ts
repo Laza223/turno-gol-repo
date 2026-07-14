@@ -25,6 +25,7 @@
 import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { bookingInstants } from './_helpers/booking-instants'
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const COURT_ID = '00000000-0000-4000-8000-000000000010'
@@ -118,6 +119,8 @@ async function insertConfirmedBooking(
     date: opts.date,
     time_start: opts.timeStart,
     time_end: opts.timeEnd,
+    // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+    ...bookingInstants({ date: opts.date, timeStart: opts.timeStart, timeEnd: opts.timeEnd }),
     type: 'spontaneous',
     status: 'confirmed',
     price_snapshot: 500000,
@@ -253,6 +256,8 @@ test.describe('Abonados CRUD', () => {
           date: dateStr,
           time_start: '14:00',
           time_end: '15:00',
+          // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+          ...bookingInstants({ date: dateStr, timeStart: '14:00', timeEnd: '15:00' }),
           type: 'fixed',
           status: 'confirmed',
           price_snapshot: 500000,
@@ -314,6 +319,12 @@ test.describe('Abonados CRUD', () => {
           date: cursor.toISOString().slice(0, 10),
           time_start: '14:00',
           time_end: '15:00',
+          // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+          ...bookingInstants({
+            date: cursor.toISOString().slice(0, 10),
+            timeStart: '14:00',
+            timeEnd: '15:00',
+          }),
           type: 'fixed',
           status: 'confirmed',
           price_snapshot: 500000,

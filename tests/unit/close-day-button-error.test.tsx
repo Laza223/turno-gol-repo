@@ -5,11 +5,26 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
-vi.mock('@/app/(admin)/caja/actions', () => ({ closeDayAction: vi.fn() }))
 
 import { CloseDayButton } from '@/app/(admin)/caja/components/CloseDayButton'
-import { closeDayAction } from '@/app/(admin)/caja/actions'
 import * as Sentry from '@sentry/nextjs'
+
+// closeDayAction ya no se importa del módulo — CloseDayButton la recibe por
+// prop (ver el comentario en CloseDayButton.tsx).
+const closeDayAction = vi.fn()
+
+function renderButton() {
+  return render(
+    <CloseDayButton
+      date="2026-06-10"
+      totalIncome={12000}
+      totalExpense={2000}
+      balance={10000}
+      cashTotal={10000}
+      closeDayAction={closeDayAction}
+    />,
+  )
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -28,9 +43,9 @@ async function openAndConfirm() {
 
 describe('CloseDayButton onConfirm (#49)', () => {
   it('si closeDayAction lanza, muestra error contextual y reporta a Sentry sin romper', async () => {
-    vi.mocked(closeDayAction).mockRejectedValue(new Error('db down'))
+    closeDayAction.mockRejectedValue(new Error('db down'))
 
-    render(<CloseDayButton date="2026-06-10" totalIncome={12000} totalExpense={2000} balance={10000} cashTotal={10000} />)
+    renderButton()
     const dialog = await openAndConfirm()
 
     await waitFor(() => {
@@ -40,13 +55,13 @@ describe('CloseDayButton onConfirm (#49)', () => {
   })
 
   it('cierre exitoso llama a closeDayAction y no muestra error', async () => {
-    vi.mocked(closeDayAction).mockResolvedValue({ success: true } as never)
+    closeDayAction.mockResolvedValue({ success: true })
 
-    render(<CloseDayButton date="2026-06-10" totalIncome={12000} totalExpense={2000} balance={10000} cashTotal={10000} />)
+    renderButton()
     await openAndConfirm()
 
     await waitFor(() => {
-      expect(vi.mocked(closeDayAction)).toHaveBeenCalledWith('2026-06-10', undefined, undefined)
+      expect(closeDayAction).toHaveBeenCalledWith('2026-06-10', undefined, undefined)
     })
     expect(screen.queryByRole('alert')).toBeNull()
     expect(vi.mocked(Sentry.captureException)).not.toHaveBeenCalled()

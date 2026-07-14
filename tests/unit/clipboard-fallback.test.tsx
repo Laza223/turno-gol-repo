@@ -3,11 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 
-// Mock the server action import
-vi.mock('@/app/(admin)/dashboard/actions', () => ({
-  markPublicLinkSharedAction: vi.fn(),
-}))
-
+// La Server Action entra por PROP (ver el comentario en onboarding-checklist.tsx):
+// ya no hace falta mockear el módulo './actions' para evitar arrastrar drizzle.
 // Provide a baseline state where the copy button is rendered (not minimized).
 // 7 items total: accountCreated, complexData, hasCourts, hasSchedule,
 // mpConnected, publicLinkShared, firstBookingReceived.
@@ -25,6 +22,7 @@ const baseProps = {
   },
   tenantSlug: 'test-slug',
   appUrl: 'https://turnogol.app',
+  action: vi.fn(async () => ({ success: true as const })),
 }
 
 describe('OnboardingChecklist clipboard fallback', () => {

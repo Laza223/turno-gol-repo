@@ -5,18 +5,30 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { parsePesosToCents } from '@/modules/courts/pricing-grid'
 import type { CourtRow } from '@/modules/courts/court.types'
+import type { WizardActionResult, WizardCourtDraftInput } from '../actions'
 import {
-  createWizardCourtsAction,
-  setWizardStepAction,
-  type WizardCourtDraftInput,
-} from '../actions'
-import { CourtDraftCard } from './step-courts/CourtDraftCard'
+  CourtDraftCard,
+  type DeleteCourtPhotoAction,
+  type UploadCourtPhotoAction,
+} from './step-courts/CourtDraftCard'
 import { ExistingCourtsList } from './step-courts/ExistingCourtsList'
 import { useCourtDrafts } from './step-courts/use-court-drafts'
+
+/** Firma de la Server Action que crea las canchas del wizard. */
+export type CreateWizardCourtsAction = (input: {
+  courts: WizardCourtDraftInput[]
+}) => Promise<WizardActionResult>
+
+/** Firma de la Server Action de "Volver" (mueve el wizard a un paso previo). */
+export type SetWizardStepAction = (completedStep: number) => Promise<WizardActionResult>
 
 type Props = {
   /** Canchas ya creadas (revisita con "Volver"): se listan, no se editan acá. */
   existingCourts: CourtRow[]
+  createCourtsAction: CreateWizardCourtsAction
+  setStepAction: SetWizardStepAction
+  uploadPhotoAction: UploadCourtPhotoAction
+  deletePhotoAction: DeleteCourtPhotoAction
 }
 
 /**
@@ -26,7 +38,13 @@ type Props = {
  * franja (día/noche, finde) vive en /canchas. Orquesta: lista de existentes +
  * tarjetas de borrador (estado en useCourtDrafts) + submit a la Server Action.
  */
-export function StepCourts({ existingCourts }: Props) {
+export function StepCourts({
+  existingCourts,
+  createCourtsAction,
+  setStepAction,
+  uploadPhotoAction,
+  deletePhotoAction,
+}: Props) {
   const [isPending, startTransition] = useTransition()
   const [isGoingBack, startBackTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -60,7 +78,7 @@ export function StepCourts({ existingCourts }: Props) {
     }
 
     startTransition(async () => {
-      const result = await createWizardCourtsAction({ courts })
+      const result = await createCourtsAction({ courts })
       if (!result.success) setError(result.error)
     })
   }
@@ -68,7 +86,7 @@ export function StepCourts({ existingCourts }: Props) {
   function handleBack() {
     setError(null)
     startBackTransition(async () => {
-      const result = await setWizardStepAction(1)
+      const result = await setStepAction(1)
       if (!result.success) setError(result.error)
     })
   }
@@ -95,6 +113,8 @@ export function StepCourts({ existingCourts }: Props) {
             onToggle={toggleExpand}
             onUpdate={updateDraft}
             onRemove={removeDraft}
+            onUploadPhoto={uploadPhotoAction}
+            onDeletePhoto={deletePhotoAction}
           />
         ))}
 

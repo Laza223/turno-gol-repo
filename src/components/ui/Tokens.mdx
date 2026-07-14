@@ -1,0 +1,153 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Design System/Tokens" />
+
+# Tokens
+
+Fuente de verdad: `src/app/globals.css` (`:root` / `.dark`) + `tailwind.config.ts`
+(`theme.extend`). Esta página documenta lo que ya existe en el código — no
+inventa nombres nuevos. Los swatches usan `style={{ background: 'hsl(var(--x))' }}`
+en vez de clases Tailwind para que el valor mostrado sea siempre el real,
+inclusive si algún día cambia el HSL sin que nadie toque este archivo.
+
+Cambiá el tema con el toggle de la toolbar (arriba) para ver los valores `.dark`.
+
+export const Swatch = ({ name, varName, fg }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+    <div
+      style={{
+        width: 96,
+        height: 48,
+        borderRadius: 8,
+        border: '1px solid hsl(var(--border))',
+        background: `hsl(var(${varName}))`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 11,
+        fontWeight: 600,
+        color: fg ? `hsl(var(${fg}))` : undefined,
+      }}
+    >
+      {fg ? 'Aa' : ''}
+    </div>
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
+      <code style={{ fontSize: 12, opacity: 0.7 }}>{varName}</code>
+    </div>
+  </div>
+)
+
+## Color — superficies y foreground
+
+Base shadcn/ui (`background`/`foreground`/`card`/`popover`/`primary`/`secondary`/
+`muted`/`accent`/`destructive`/`border`/`input`/`ring`). Light = "Slate Surface"
+(fondo `slate-200`, cards blancas flotando arriba); dark = `slate-950` + cards glass.
+
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 32px' }}>
+  <Swatch name="Background" varName="--background" />
+  <Swatch name="Foreground" varName="--foreground" fg="--background" />
+  <Swatch name="Card" varName="--card" />
+  <Swatch name="Card foreground" varName="--card-foreground" fg="--card" />
+  <Swatch name="Popover" varName="--popover" />
+  <Swatch name="Popover foreground" varName="--popover-foreground" fg="--popover" />
+  <Swatch name="Primary" varName="--primary" />
+  <Swatch name="Primary foreground" varName="--primary-foreground" fg="--primary" />
+  <Swatch name="Secondary" varName="--secondary" />
+  <Swatch name="Secondary foreground" varName="--secondary-foreground" fg="--secondary" />
+  <Swatch name="Muted" varName="--muted" />
+  <Swatch name="Muted foreground" varName="--muted-foreground" fg="--muted" />
+  <Swatch name="Accent" varName="--accent" />
+  <Swatch name="Accent foreground" varName="--accent-foreground" fg="--accent" />
+  <Swatch name="Destructive" varName="--destructive" />
+  <Swatch name="Destructive foreground" varName="--destructive-foreground" fg="--destructive" />
+  <Swatch name="Border" varName="--border" />
+  <Swatch name="Input" varName="--input" />
+  <Swatch name="Ring" varName="--ring" />
+</div>
+
+`--primary`: `emerald-700 #047857` en light (5.5:1 sobre blanco), `emerald-500
+#10b981` en dark (7.9:1 sobre `slate-950`) — MASTER §2.4. El link/texto de marca
+usa el mismo par por fuera de `--primary`: clase `text-emerald-700
+dark:text-emerald-400` (ver Button `variant="link"`, Logo). **Bug conocido**:
+`text-emerald-400` sobre `bg-emerald-500/10` en una superficie CLARA da 1.75:1
+(ilegible) — el idiom correcto es `text-emerald-700 dark:text-emerald-400`
+(4.99 light / 8.31 dark). Válido solo en superficies SIEMPRE oscuras
+(`(business)/para-complejos`, `ReservaDarkShell`, `.player-hero-band`) usar
+`emerald-400` sin el par light.
+
+## Color — tokens semánticos extra
+
+`--success` / `--warning` / `--info`, agregados sobre el set base de shadcn/ui
+para estados de dominio (`Badge`, `Toast`): reservas confirmadas/jugadas,
+señas pendientes, abonados pausados, avisos neutros.
+
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 24px' }}>
+  <Swatch name="Success" varName="--success" fg="--success-foreground" />
+  <Swatch name="Warning" varName="--warning" fg="--warning-foreground" />
+  <Swatch name="Info" varName="--info" fg="--info-foreground" />
+</div>
+
+## Radius
+
+`--radius: 0.5rem` (8px). `tailwind.config.ts` deriva 3 escalones:
+
+| Clase Tailwind | Valor | Uso |
+| --- | --- | --- |
+| `rounded-sm` | `calc(var(--radius) - 4px)` = 4px | chips, controles chicos |
+| `rounded-md` | `calc(var(--radius) - 2px)` = 6px | inputs, items de menú |
+| `rounded-lg` | `var(--radius)` = 8px | botones, cards |
+
+Las recipes (`.card-premium`) suman `+ 0.25rem` sobre `--radius` (→ 12px) para
+que las superficies elevadas se vean un escalón más redondeadas que sus
+controles internos.
+
+## Tipografía — 3 familias
+
+Self-hosted vía `next/font` (`src/app/layout.tsx`), expuestas como CSS vars
+que `tailwind.config.ts` mapea a utilidades:
+
+| Utilidad Tailwind | CSS var | Fuente | Uso |
+| --- | --- | --- | --- |
+| `font-sans` | `--font-inter` | Inter | Body copy, default de `<body>` |
+| `font-display` | `--font-archivo` | Archivo | Titulares (`h1`/`h2` de landing, `PageHeader`) |
+| `font-logo` | `--font-sora` | Sora | Wordmark (`Logo`), micro-labels uppercase (`SearchBar` `labelClass`) |
+
+<div style={{ display: 'grid', gap: 10 }}>
+  <p className="font-sans" style={{ fontSize: 20 }}>font-sans — Inter — Reservá tu cancha en segundos</p>
+  <p className="font-display" style={{ fontSize: 20 }}>font-display — Archivo — Reservá tu cancha en segundos</p>
+  <p className="font-logo" style={{ fontSize: 20 }}>font-logo — Sora — TurnoGol</p>
+</div>
+
+## Recipes de `globals.css`
+
+Clases utilitarias compuestas (no Tailwind puro) que varios componentes
+consumen directo por `className`, en vez de reconstruir la sombra/blur a mano.
+
+### `.card-premium`
+
+Superficie elevada estándar. Light = elevación (sombra en capas, sin
+translucidez); dark = glass (`bg-white/3` + `blur(8px)` + sombra profunda).
+`.card-premium-interactive` (opt-in) suma lift + glow emerald en `:hover`.
+Es el contenedor real de `ReservasPolicyForm`, `HorariosForm`, etc.
+
+<div className="card-premium" style={{ padding: 24, maxWidth: 320 }}>
+  <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>.card-premium</p>
+  <p style={{ fontSize: 13, opacity: 0.7, margin: '4px 0 0' }}>
+    bg-card + border-border + box-shadow por capas (dark: glass + blur)
+  </p>
+</div>
+
+### `.skeleton`
+
+Shimmer CSS (`@keyframes shimmer`, gradiente `--muted` → `--secondary` →
+`--muted`, 1.5s). La usa `Skeleton` (`src/components/ui/skeleton.tsx`) y
+todos los `loading.tsx` de ruta. Respeta `prefers-reduced-motion` (la
+animación se apaga vía el bloque `@media` global).
+
+<div className="skeleton" style={{ height: 24, width: 220, borderRadius: 6 }} />
+
+---
+
+Componentes cubiertos por este paquete (`src/components/ui/*`): ver el resto
+de las stories de "Design System/*" y "Patterns/*" en el sidebar.

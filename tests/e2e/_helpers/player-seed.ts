@@ -10,6 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
+import { bookingInstants } from './booking-instants'
 
 // ─── Seed constants (mirror scripts/seed-e2e.ts) ────────────────────────────
 
@@ -145,6 +146,9 @@ export async function insertPlayerBooking(
     date: opts.date,
     time_start: `${timeStart}:00`,
     time_end: `${timeEnd}:00`,
+    // NOT NULL desde el refactor de instantes físicos. Este insert va por el service
+    // client, saltea la capa de servicios, y por eso hay que derivarlos a mano.
+    ...bookingInstants({ date: opts.date, timeStart, timeEnd }),
     type: 'spontaneous',
     status,
     price_snapshot: 1500000,

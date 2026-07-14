@@ -2,12 +2,19 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { completeBookingAction, markNoShowAction, cancelBookingAction } from '../actions'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import type { BookingActionResult } from '../actions'
 
 type CancellationType = 'complejo' | 'jugador'
+
+type SimpleBookingFn = (bookingId: string) => Promise<BookingActionResult>
+type CancelBookingFn = (
+  bookingId: string,
+  reason: string,
+  cancellationType: CancellationType,
+) => Promise<BookingActionResult>
 
 type Props = {
   bookingId: string
@@ -21,6 +28,9 @@ type Props = {
   timeStart: string
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
+  completeBookingAction: SimpleBookingFn
+  markNoShowAction: SimpleBookingFn
+  cancelBookingAction: CancelBookingFn
 }
 
 // ART = UTC-3. Mismo cálculo que el server (artDateAt) para que el preview de
@@ -31,6 +41,11 @@ function bookingStartMs(dateStr: string, hhmmss: string): number {
   return Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0)
 }
 
+/**
+ * Las 3 Server Actions llegan por PROP, no por import (ver comentario
+ * homólogo en ReservasPolicyForm.tsx / QuickActions.tsx): '../actions' es
+ * `'use server'` y arrastra node:async_hooks, que rompe Storybook.
+ */
 export default function BookingActions({
   bookingId,
   status,
@@ -40,6 +55,9 @@ export default function BookingActions({
   bookingDate,
   timeStart,
   cancellationPolicyHours,
+  completeBookingAction,
+  markNoShowAction,
+  cancelBookingAction,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -186,7 +204,7 @@ export default function BookingActions({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>
@@ -196,7 +214,7 @@ export default function BookingActions({
         open={noShowOpen}
         onOpenChange={setNoShowOpen}
         title="Marcar como ausente"
-        description="Se registrará que el jugador no se presentó. Si el complejo tiene penalidad activa, puede generar deuda o suspensión del jugador. Esta acción no se puede deshacer pasadas 24hs."
+        description="Se registrará que el jugador no se presentó. La seña pagada queda para el complejo; si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online. Esta acción no se puede deshacer pasadas 24hs."
         variant="destructive"
         confirmLabel="Marcar ausente"
         cancelLabel="Volver"

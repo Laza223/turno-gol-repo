@@ -10,7 +10,7 @@ export async function getOrCreatePlanId(sql: Sql): Promise<string> {
   if (existing.length) return existing[0].id
   const rows = await sql<{ id: string }[]>`
     INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, is_active)
-    VALUES ('Predio', ${'predio-test-' + faker.string.alphanumeric(6)}, 3, 4700000, 3760000, true)
+    VALUES ('Predio', ${'predio-test-' + faker.string.alphanumeric(6)}, 2, 5500000, 4400000, true)
     RETURNING id
   `
   return rows[0].id
@@ -34,10 +34,23 @@ export async function insertProduct(sql: Sql, tenantId: string): Promise<string>
   return rows[0].id
 }
 
+/**
+ * Abonado de relleno para los seeds (RLS, retención de datos): lo único que se
+ * le pide es existir y tener id.
+ *
+ * El día y el horario son DETERMINISTAS y viven fuera de la franja 20:00–21:00
+ * a propósito. Antes el día salía de `faker.number.int({ min: 0, max: 6 })` sobre
+ * la MISMA cancha que devuelve `seedIsolationData`, así que 1 de cada 7 corridas
+ * caía en lunes y chocaba con el abonado que crea
+ * `tests/integration/race-abonado-vs-individual.test.ts` (lunes 20:00–21:00) —
+ * `createAbonado` tiraba AbonadoConflictError y el test fallaba de forma
+ * intermitente sin ninguna relación con lo que estaba probando.
+ */
 export async function insertAbonado(
   sql: Sql,
   tenantId: string,
   courtId: string,
+  dayOfWeek = 3,
 ): Promise<string> {
   const rows = await sql<{ id: string }[]>`
     INSERT INTO abonados (
@@ -46,7 +59,7 @@ export async function insertAbonado(
     )
     VALUES (
       ${tenantId}, ${courtId}, ${faker.person.fullName()}, ${faker.phone.number()},
-      ${faker.number.int({ min: 0, max: 6 })}, '20:00', '21:00',
+      ${dayOfWeek}, '08:00', '09:00',
       ${1500000}, ${new Date().toISOString().slice(0, 10)}
     )
     RETURNING id

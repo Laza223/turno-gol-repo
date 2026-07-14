@@ -2,11 +2,11 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { addBookingChargeAction } from '../actions'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { BookingChargeRow } from '../queries'
+import type { AddBookingChargeInput, BookingChargeActionResult } from '../actions'
 
 type Props = {
   bookingId: string
@@ -15,6 +15,12 @@ type Props = {
   depositStatus: string
   charges: BookingChargeRow[]
   chargesTotal: number
+  /**
+   * Server Action por PROP, no por import (ver comentario homólogo en
+   * ReservasPolicyForm.tsx): '../actions' es `'use server'` y arrastra
+   * node:async_hooks, que rompe Storybook.
+   */
+  addBookingChargeAction: (input: AddBookingChargeInput) => Promise<BookingChargeActionResult>
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -37,6 +43,7 @@ export default function BookingCharges({
   depositStatus,
   charges,
   chargesTotal,
+  addBookingChargeAction,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -104,7 +111,10 @@ export default function BookingCharges({
             <dt className="text-muted-foreground">
               Seña{' '}
               {depositCounted > 0 ? (
-                <span className="text-emerald-600 dark:text-emerald-400">✓ pagada</span>
+                // emerald-600 daba 3.76:1 sobre la card blanca. El idiom del repo para
+                // esta clase de texto es -800 en light (ver status-visual.tsx): 7.68:1.
+                // El valor de dark (-400) sí pasa sobre superficie oscura y no se toca.
+                <span className="text-emerald-800 dark:text-emerald-400">✓ pagada</span>
               ) : (
                 <span className="text-muted-foreground">
                   ({DEPOSIT_STATUS_LABELS[depositStatus] ?? depositStatus})
@@ -130,7 +140,9 @@ export default function BookingCharges({
         <div className="flex items-center justify-between">
           <dt className="font-medium text-foreground">Saldo pendiente</dt>
           <dd
-            className={`font-semibold ${isPaidInFull ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+            // -600 no llegaba a AA sobre la card blanca (emerald 3.76:1, amber 3.18:1).
+            // -800 es el idiom del repo para light (status-visual.tsx): 7.68:1 y 6.36:1.
+            className={`font-semibold ${isPaidInFull ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'}`}
           >
             {isPaidInFull ? 'Pagado completo' : formatArs(pendingAmount)}
           </dd>
@@ -159,7 +171,7 @@ export default function BookingCharges({
                 min={1}
                 value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
-                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
             </div>
             <div className="flex-1 space-y-1">
@@ -170,7 +182,7 @@ export default function BookingCharges({
                 id="charge-method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value as typeof method)}
-                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <option value="cash">Efectivo</option>
                 <option value="transfer">Transferencia</option>
@@ -180,7 +192,9 @@ export default function BookingCharges({
             </div>
           </div>
           {error && (
-            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+            // red-600 sobre el panel `bg-muted/40` (#ebeff5) daba 4.18:1. red-700 es el
+            // idiom de light del repo (status-visual.tsx) y pasa AA.
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
             </p>
           )}

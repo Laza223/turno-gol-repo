@@ -160,7 +160,7 @@ describe('MercadoPago webhook payload contract', () => {
 })
 
 // ── Output (response) contracts — doc15 §2 ────────────────────────────────────
-// validatedJson() validates the route's ACK body against these .strict() schemas
+// validatedJson() validates the route's ACK body against these z.strictObject() schemas
 // at runtime. If the shape drifts, the route throws 500 in prod silently. These
 // tests pin the ACK contract MP and the player polling screen depend on.
 describe('MercadoPago webhook ACK contract (webhookResponseSchema)', () => {

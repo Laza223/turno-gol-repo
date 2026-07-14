@@ -103,7 +103,7 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
                 className="peer sr-only"
               />
               <span
-                className={`flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-accent peer-checked:ring-1 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-500 dark:border-white/10 dark:bg-white/[.04] dark:hover:bg-white/[.07] ${def.checkedClass}`}
+                className={`flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-accent peer-checked:ring-1 peer-focus-visible:outline-solid peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-500 dark:border-white/10 dark:bg-white/4 dark:hover:bg-white/[.07] ${def.checkedClass}`}
               >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${def.iconClass}`}>
                   {def.icon}

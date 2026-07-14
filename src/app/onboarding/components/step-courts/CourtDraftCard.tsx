@@ -3,9 +3,15 @@
 import { ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ImageUploader } from '@/components/ui/image-uploader'
 import { cn } from '@/lib/utils'
 import { fieldClass, labelClass } from '../wizard-styles'
 import { FORMATS, SURFACE_OPTIONS, type Draft, type SurfaceType } from './constants'
+import type { UploadPhotoActionResult, WizardActionResult } from '../../actions'
+
+/** Firmas de las Server Actions de foto que consume ImageUploader. */
+export type UploadCourtPhotoAction = (formData: FormData) => Promise<UploadPhotoActionResult>
+export type DeleteCourtPhotoAction = (url: string) => Promise<WizardActionResult>
 
 type Props = {
   draft: Draft
@@ -15,6 +21,8 @@ type Props = {
   onToggle: (key: number) => void
   onUpdate: (key: number, patch: Partial<Draft>) => void
   onRemove: (key: number) => void
+  onUploadPhoto: UploadCourtPhotoAction
+  onDeletePhoto: DeleteCourtPhotoAction
 }
 
 /** Tarjeta de un borrador de cancha: fila-resumen colapsable + form inline. */
@@ -26,12 +34,14 @@ export function CourtDraftCard({
   onToggle,
   onUpdate,
   onRemove,
+  onUploadPhoto,
+  onDeletePhoto,
 }: Props) {
   const surfaceLabel =
     SURFACE_OPTIONS.find((s) => s.value === draft.surfaceType)?.label ?? draft.surfaceType
 
   return (
-    <fieldset className="rounded-lg border border-border bg-card p-4 shadow-sm transition-all duration-200">
+    <fieldset className="rounded-lg border border-border bg-card p-4 shadow-xs transition-all duration-200">
       <legend className="sr-only">{draft.name || `Cancha ${index + 1}`}</legend>
 
       {/* Cabecera / Fila resumen con animación de icono */}
@@ -39,7 +49,7 @@ export function CourtDraftCard({
         <button
           type="button"
           onClick={() => onToggle(draft.key)}
-          className="group flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          className="group flex flex-1 items-center gap-3 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           {isExpanded ? (
             <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform duration-200" aria-hidden />
@@ -53,11 +63,11 @@ export function CourtDraftCard({
               </span>
               {!isExpanded && (
                 draft.price ? (
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
                     $ {draft.price}
                   </span>
                 ) : (
-                  <span className="text-xs font-medium text-red-500 dark:text-red-400">
+                  <span className="text-xs font-medium text-red-600 dark:text-red-400">
                     (falta precio)
                   </span>
                 )
@@ -143,8 +153,8 @@ export function CourtDraftCard({
                     key={f}
                     className={
                       active
-                        ? 'cursor-pointer inline-flex items-center justify-center rounded-full border border-emerald-600 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 min-h-11 md:min-h-9 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
-                        : 'cursor-pointer inline-flex items-center justify-center rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground hover:border-emerald-600/40 hover:text-foreground min-h-11 md:min-h-9 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring'
+                        ? 'cursor-pointer inline-flex items-center justify-center rounded-full border border-emerald-600 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 min-h-11 md:min-h-9 has-focus-visible:ring-2 has-focus-visible:ring-ring'
+                        : 'cursor-pointer inline-flex items-center justify-center rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground hover:border-emerald-600/40 hover:text-foreground min-h-11 md:min-h-9 has-focus-visible:ring-2 has-focus-visible:ring-ring'
                     }
                   >
                     <input
@@ -217,6 +227,40 @@ export function CourtDraftCard({
             />
             <span className="text-sm text-foreground">Techada</span>
           </label>
+
+          <div className="border-t border-border/40 pt-4">
+            <label className={cn(labelClass, 'mb-1 flex items-baseline gap-1.5')}>
+              Foto de la cancha
+              <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+            </label>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Subí una foto para que los jugadores puedan identificar visualmente esta cancha al reservar.
+            </p>
+            <ImageUploader
+              preset="court"
+              value={draft.photos}
+              onUpload={async (blob) => {
+                const fd = new FormData()
+                fd.append('file', blob)
+                const res = await onUploadPhoto(fd)
+                if (res.success) {
+                  onUpdate(draft.key, { photos: [...draft.photos, res.url] })
+                } else {
+                  alert(res.error)
+                }
+              }}
+              onRemove={async (url) => {
+                const res = await onDeletePhoto(url)
+                if (res.success) {
+                  onUpdate(draft.key, { photos: draft.photos.filter((p) => p !== url) })
+                } else {
+                  alert(res.error)
+                }
+              }}
+              max={1}
+              emptyLabel="Subir foto"
+            />
+          </div>
         </div>
       </div>
     </fieldset>

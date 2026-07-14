@@ -79,7 +79,7 @@ export default function BookingReceipt(props: BookingReceiptData) {
         </p>
       </div>
 
-      <footer className="mt-5 border-t border-slate-200 pt-2 text-[10px] text-slate-400">
+      <footer className="mt-5 border-t border-slate-200 pt-2 text-[10px] text-slate-500">
         Reserva {props.bookingId} · Emitido por TurnoGol — este comprobante no es una factura.
       </footer>
     </div>

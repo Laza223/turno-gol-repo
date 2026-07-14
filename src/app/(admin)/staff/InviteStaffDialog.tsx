@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState, useEffect, useRef } from 'react'
+import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,7 +23,7 @@ import type { StaffActionResult } from './actions'
 // inviteStaffAction tiene firma (formData) => Promise<StaffActionResult>.
 type InviteAction = (formData: FormData) => Promise<StaffActionResult>
 
-// useFormState arranca en null (sin resultado todavía) y pasa a un StaffActionResult
+// useActionState arranca en null (sin resultado todavía) y pasa a un StaffActionResult
 // después del primer submit.
 type FormState = StaffActionResult | null
 const INITIAL_STATE: FormState = null
@@ -52,7 +52,7 @@ function SubmitButton() {
  * primitive out of the initial Staff chunk entirely.
  *
  * `inviteAction` is the server action, kept on the server while the UI is client.
- * Se cablea con useFormState para mostrar errores, estado de carga y, en éxito,
+ * Se cablea con useActionState para mostrar errores, estado de carga y, en éxito,
  * un toast + cierre del modal (la action ya hace revalidatePath('/staff')).
  */
 export function InviteStaffDialog({
@@ -62,7 +62,7 @@ export function InviteStaffDialog({
   inviteAction: InviteAction
   onClose: () => void
 }) {
-  const [state, formAction] = useFormState<FormState, FormData>(
+  const [state, formAction] = useActionState<FormState, FormData>(
     (_prev, formData) => inviteAction(formData),
     INITIAL_STATE,
   )
@@ -120,7 +120,7 @@ export function InviteStaffDialog({
             {STAFF_ROLES.map((role) => (
               <label
                 key={role}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 dark:has-[:checked]:bg-emerald-500/10"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2 has-checked:border-emerald-600 has-checked:bg-emerald-50 dark:has-checked:bg-emerald-500/10"
               >
                 <input
                   type="radio"

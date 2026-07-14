@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
  * por tests/unit/sentry-pii-scrub.test.ts.
  */
 const src = readFileSync(
-  fileURLToPath(new URL('../../sentry.client.config.ts', import.meta.url)),
+  fileURLToPath(new URL('../../instrumentation-client.ts', import.meta.url)),
   'utf8',
 )
 

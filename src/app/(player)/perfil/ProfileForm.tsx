@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useFormState, useFormStatus } from 'react-dom'
-import { updateProfileAction, type UpdateProfileResult } from './actions'
+import { useActionState, useState } from 'react'
+import { useFormStatus } from 'react-dom'
+import type { UpdateProfileResult } from './actions'
 import { PhoneInput } from '@/components/ui/phone-input'
 
 type DefaultValues = {
@@ -13,8 +13,22 @@ type DefaultValues = {
   email: string
 }
 
+/** Firma de la Server Action que consume el form. */
+export type UpdateProfileAction = (
+  prevState: UpdateProfileResult,
+  formData: FormData,
+) => Promise<UpdateProfileResult>
+
 type Props = {
   defaultValues: DefaultValues
+  /**
+   * La action llega por PROP, no por import: './actions' es `'use server'` y
+   * arrastra drizzle/postgres + `node:async_hooks` (vía request-context), lo
+   * que rompe cualquier bundle de browser (Storybook) si se importa como
+   * valor. El type import de `UpdateProfileResult` sí es seguro: se borra en
+   * compilación.
+   */
+  action: UpdateProfileAction
 }
 
 const INITIAL_STATE: UpdateProfileResult = { success: true }
@@ -32,15 +46,15 @@ function SubmitButton() {
   )
 }
 
-export function ProfileForm({ defaultValues }: Props) {
-  const [state, formAction] = useFormState(updateProfileAction, INITIAL_STATE)
+export function ProfileForm({ defaultValues, action }: Props) {
+  const [state, formAction] = useActionState(action, INITIAL_STATE)
   const [didSubmit, setDidSubmit] = useState(false)
 
   return (
     <form
       action={formAction}
       onSubmit={() => setDidSubmit(true)}
-      className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm"
+      className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xs"
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -54,7 +68,7 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.firstName}
             autoComplete="given-name"
             required
-            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
         <div className="space-y-1">
@@ -68,7 +82,7 @@ export function ProfileForm({ defaultValues }: Props) {
             defaultValue={defaultValues.lastName}
             autoComplete="family-name"
             required
-            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
       </div>
@@ -90,7 +104,7 @@ export function ProfileForm({ defaultValues }: Props) {
           type="text"
           defaultValue={defaultValues.preferredArea}
           placeholder="Ej: Palermo, Villa Crespo..."
-          className="w-full h-11 px-3 border border-border bg-background rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
+          className="w-full h-11 px-3 border border-border bg-background rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus:border-emerald-500"
         />
       </div>
 

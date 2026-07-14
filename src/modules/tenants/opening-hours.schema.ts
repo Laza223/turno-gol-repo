@@ -112,7 +112,7 @@ export const horariosSchema = z
       openDays++
       if (!isValidDayRange(day.open, day.close, data.closesNextDay)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: [key, 'close'],
           message: `${label}: el horario de cierre debe ser posterior al de apertura.`,
         })
@@ -120,7 +120,7 @@ export const horariosSchema = z
     }
     if (openDays === 0) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: [],
         message: 'Abrí al menos un día de la semana.',
       })

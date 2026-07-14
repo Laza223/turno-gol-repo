@@ -21,7 +21,16 @@ function isLocated(t: PublicTenantCard): t is Located {
 // active=true → color más oscuro + leve escala para resaltar en split view.
 function priceIcon(t: Located, active = false): L.DivIcon {
   const label = t.fromPriceCents != null ? formatArs(t.fromPriceCents) : t.name.slice(0, 2).toUpperCase()
-  const bg = active ? '#047857' : '#059669'
+  // Texto blanco bold de 12px: eso es "texto normal" para WCAG (12px no califica como
+  // grande ni en bold), así que el fondo tiene que dar 4.5:1 contra #fff.
+  //   #059669  emerald-600  3.76:1  ✗   <- era el pin por defecto, o sea CASI TODOS
+  //   #047857  emerald-700  5.48:1  ✓
+  //   #065f46  emerald-800  7.68:1  ✓
+  // Los dos estados bajan un escalón: se conserva la jerarquía "active más oscuro" (ver
+  // comentario de arriba) y ninguno de los dos queda abajo de AA.
+  // El sweep de contraste previo no lo agarró porque estos colores viven en el html crudo
+  // de un `L.divIcon`, no en clases de Tailwind — un grep no los ve.
+  const bg = active ? '#065f46' : '#047857'
   const scale = active ? 'transform:translate(-50%,-100%) scale(1.12);' : 'transform:translate(-50%,-100%);'
   const html = `<div style="${scale}white-space:nowrap;background:${bg};color:#fff;font-weight:700;font-size:12px;line-height:1;padding:6px 10px;border-radius:9999px;box-shadow:0 2px 8px rgba(2,6,23,.35);border:2px solid #fff">${label}</div>`
   return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -28] })
@@ -71,7 +80,7 @@ export default function ExplorarMap({
     // isolate: los panes internos de Leaflet usan z-index 400+; sin un stacking
     // context propio taparían cualquier dropdown de la página (p. ej. el combobox
     // de localidad, que el <select> nativo anterior no sufría por ser popup del OS).
-    <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-sm">
+    <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-xs">
       <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

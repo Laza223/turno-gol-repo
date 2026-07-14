@@ -5,10 +5,8 @@ import { slug as slugSchema } from '@/shared/validation/primitives'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { slug: string } },
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const parsed = slugSchema.safeParse(params.slug)
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })

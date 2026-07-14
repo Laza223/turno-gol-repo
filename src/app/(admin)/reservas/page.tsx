@@ -18,6 +18,19 @@ import {
 import { BookingListItem } from './BookingListItem'
 import { ReservasToolbar } from './ReservasToolbar'
 import { EmptyState } from '@/components/ui/empty-state'
+import {
+  cancelBookingAction,
+  completeBookingAction,
+  confirmDepositPaymentAction,
+  markNoShowAction,
+} from './actions'
+
+const QUICK_ACTIONS = {
+  cancelBookingAction,
+  completeBookingAction,
+  confirmDepositPaymentAction,
+  markNoShowAction,
+}
 
 const SCOPES: Array<{ value: ReservaScope; label: string }> = [
   { value: 'hoy', label: 'Hoy' },
@@ -76,9 +89,10 @@ function groupBy(rows: ReservaListRow[], key: (r: ReservaListRow) => string): Ar
   return Array.from(groups.entries())
 }
 
-type Props = { searchParams: { dia?: string; status?: string; q?: string; vista?: string } }
+type Props = { searchParams: Promise<{ dia?: string; status?: string; q?: string; vista?: string }> }
 
-export default async function ReservasPage({ searchParams }: Props) {
+export default async function ReservasPage(props: Props) {
+  const searchParams = await props.searchParams;
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
   const tenant = await getStaffTenant(user.staffUserId)
@@ -128,7 +142,7 @@ export default async function ReservasPage({ searchParams }: Props) {
         actions={
           <Link
             href="/grilla"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
             Ir a la grilla
@@ -147,7 +161,7 @@ export default async function ReservasPage({ searchParams }: Props) {
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
-                  active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  active ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {s.label}
@@ -204,7 +218,7 @@ export default async function ReservasPage({ searchParams }: Props) {
           action={
             <Link
               href="/grilla"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <CalendarDays className="h-4 w-4" aria-hidden="true" />
               Cargar una reserva
@@ -220,7 +234,7 @@ export default async function ReservasPage({ searchParams }: Props) {
               </h2>
               <ul className={compact ? 'space-y-1' : 'space-y-2'}>
                 {groupRows.map((r) => (
-                  <BookingListItem key={r.id} booking={r} compact={compact} />
+                  <BookingListItem key={r.id} booking={r} compact={compact} actions={QUICK_ACTIONS} />
                 ))}
               </ul>
             </section>

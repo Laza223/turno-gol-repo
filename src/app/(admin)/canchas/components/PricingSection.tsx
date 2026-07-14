@@ -203,7 +203,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
                   id="tpl-cut"
                   value={cutHour}
                   onChange={(e) => setCutHour(Number(e.target.value))}
-                  className="block h-11 w-32 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10"
+                  className="block h-11 w-32 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10"
                 >
                   {cutOptions.map((h) => (
                     <option key={h} value={h}>
@@ -257,7 +257,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
             id="copy-court"
             value={copyFromId}
             onChange={(e) => setCopyFromId(e.target.value)}
-            className="block h-11 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-9"
+            className="block h-11 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-9"
           >
             {otherCourts.map((c) => (
               <option key={c.id} value={c.id}>
@@ -301,7 +301,7 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
           type="button"
           onClick={() => setShowGrid((v) => !v)}
           aria-expanded={showGrid}
-          className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+          className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
         >
           Ajustar por hora
           <ChevronDown

@@ -2,10 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { createTenantAction } from '../actions'
+import type { WizardActionResult } from '../actions'
 import { generateSlug } from '@/modules/tenants/tenant.utils'
 import { fieldClass, labelClass } from './wizard-styles'
 import { PhoneInput } from '@/components/ui/phone-input'
+
+/** Firma de la Server Action que consume el form. */
+export type CreateTenantAction = (formData: FormData) => Promise<WizardActionResult>
 
 const PROVINCES = [
   'Buenos Aires',
@@ -34,7 +37,7 @@ const PROVINCES = [
   'Tucumán',
 ]
 
-export function StepIdentity() {
+export function StepIdentity({ action }: { action: CreateTenantAction }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -46,7 +49,7 @@ export function StepIdentity() {
     setError(null)
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
-      const result = await createTenantAction(formData)
+      const result = await action(formData)
       if (!result.success) setError(result.error)
     })
   }
@@ -157,7 +160,7 @@ export function StepIdentity() {
           </div>
         </div>
 
-        {error && <p role="alert" className="text-sm text-red-500 dark:text-red-400">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
         <Button type="submit" isLoading={isPending} className="w-full">
           Continuar

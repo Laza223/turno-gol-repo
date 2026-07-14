@@ -20,7 +20,7 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
   return (
     <section
       aria-label="Cierre del día"
-      className="rounded-xl border border-emerald-600/30 bg-primary/5 p-5 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10"
+      className="rounded-xl border border-emerald-600/30 bg-primary/5 p-5 shadow-xs dark:border-emerald-500/30 dark:bg-emerald-500/10"
     >
       <div className="flex items-start gap-3">
         <CheckCircle2
@@ -38,7 +38,11 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-muted-foreground">Ingresos</dt>
-              <dd className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+              {/* emerald-700 (idiom habitual admin/claro) da 4.12:1 acá — el
+                  fondo real no es blanco sino bg-primary/5 sobre bg-background
+                  (~#d7e1e6), por debajo del piso AA de 4.5. emerald-800 sube a
+                  ~5.79:1 sobre ese mismo fondo (medido). */}
+              <dd className="font-medium tabular-nums text-emerald-800 dark:text-emerald-400">
                 +{formatArsContable(close.totalIncome + close.totalAdjustments)}
               </dd>
             </div>

@@ -2,7 +2,7 @@
 
 import { useFormStatus } from 'react-dom'
 import { Loader2, ShieldCheck } from 'lucide-react'
-import { createBookingAndCheckout } from '../actions'
+import type { createBookingAndCheckout } from '../actions'
 import PaymentMethodSelector, { type PayMethod } from './PaymentMethodSelector'
 
 function Inner({ depositAmount }: { depositAmount: number }) {
@@ -24,9 +24,11 @@ export default function ConfirmBookingButton(props: {
   dur: number
   depositAmount: number
   payMethods: PayMethod[]
+  /** Server Action inyectada por la page (../actions#createBookingAndCheckout). */
+  action: typeof createBookingAndCheckout
 }) {
   return (
-    <form action={createBookingAndCheckout} className="space-y-4">
+    <form action={props.action} className="space-y-4">
       <input type="hidden" name="slug" value={props.slug} />
       <input type="hidden" name="court" value={props.court} />
       <input type="hidden" name="date" value={props.date} />

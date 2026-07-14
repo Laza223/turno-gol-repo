@@ -136,7 +136,8 @@ describe('getImpersonationSessionFor', () => {
   it('system_admin + cookie → sesión', async () => {
     cookieStore.get.mockReturnValue({ value: validCookie() })
     const { getImpersonationSessionFor } = await load()
-    expect(getImpersonationSessionFor(SYSTEM_ADMIN_USER)).toEqual({
+    // async desde Next 16: cookies() devuelve Promise.
+    expect(await getImpersonationSessionFor(SYSTEM_ADMIN_USER)).toEqual({
       systemAdminId: SYSTEM_ADMIN_ID,
       tenantId: TENANT_ID,
     })
@@ -146,7 +147,7 @@ describe('getImpersonationSessionFor', () => {
     cookieStore.get.mockReturnValue({ value: validCookie() })
     const { getImpersonationSessionFor } = await load()
     expect(
-      getImpersonationSessionFor({
+      await getImpersonationSessionFor({
         type: 'staff',
         id: 'x',
         email: 'staff@x.com',

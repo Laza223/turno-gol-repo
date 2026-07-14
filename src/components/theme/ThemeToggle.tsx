@@ -38,9 +38,9 @@ export default function ThemeToggle() {
             aria-checked={active}
             aria-label={label}
             onClick={() => setTheme(value)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 text-xs font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-500 ${
               active
-                ? 'bg-card text-foreground shadow-sm scale-[1.01]'
+                ? 'bg-card text-foreground shadow-xs scale-[1.01]'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >

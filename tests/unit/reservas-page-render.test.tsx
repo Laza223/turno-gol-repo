@@ -68,7 +68,7 @@ describe('ReservasPage — render', () => {
     ])
     countsMock.mockResolvedValue({ confirmed: 3 })
 
-    render(await ReservasPage({ searchParams: {} }))
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
     const cancha1 = screen.getByRole('region', { name: 'Cancha 1' })
     expect(within(cancha1).getAllByRole('article')).toHaveLength(2)
@@ -79,7 +79,7 @@ describe('ReservasPage — render', () => {
 
   it('cada reserva es un article con aria-label descriptivo', async () => {
     listMock.mockResolvedValue([row({})])
-    render(await ReservasPage({ searchParams: {} }))
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
     expect(
       screen.getByRole('article', { name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada' }),
@@ -93,7 +93,7 @@ describe('ReservasPage — render', () => {
       canceled_refunded: 1,
       canceled_no_refund: 1,
     })
-    render(await ReservasPage({ searchParams: {} }))
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
     const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
     expect(within(filtros).getByRole('link', { name: 'Confirmadas 12' })).toBeTruthy()
@@ -104,7 +104,7 @@ describe('ReservasPage — render', () => {
   })
 
   it('los filtros arman URLs compartibles preservando dia, status y q', async () => {
-    render(await ReservasPage({ searchParams: { dia: 'historial', q: 'juan' } }))
+    render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', q: 'juan' }) }))
 
     const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
     expect(within(filtros).getByRole('link', { name: /Pendientes/ }).getAttribute('href')).toBe(
@@ -116,7 +116,7 @@ describe('ReservasPage — render', () => {
 
   it('?vista=compacta renderiza filas de una línea preservando el aria-label', async () => {
     listMock.mockResolvedValue([row({})])
-    render(await ReservasPage({ searchParams: { vista: 'compacta' } }))
+    render(await ReservasPage({ searchParams: Promise.resolve({ vista: 'compacta' }) }))
 
     const article = screen.getByRole('article', {
       name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada',
@@ -131,7 +131,7 @@ describe('ReservasPage — render', () => {
   })
 
   it('la búsqueda se pasa a la query junto al scope', async () => {
-    render(await ReservasPage({ searchParams: { q: '  maría  ' } }))
+    render(await ReservasPage({ searchParams: Promise.resolve({ q: '  maría  ' }) }))
     expect(listMock).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', q: 'maría' },

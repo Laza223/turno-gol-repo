@@ -53,7 +53,7 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
 /**
  * Guard de caja cerrada: no se pueden registrar movimientos en un día ya
  * cerrado (DailyCashClose existe). Extraído para reutilizarlo desde flujos que
- * insertan cash_flows fuera de createCashFlow (p. ej. cobro de deuda).
+ * insertan cash_flows fuera de createCashFlow.
  *
  * caza-bugs #14: toma el MISMO advisory lock que closeDailyRegister (keyed por
  * tenant) antes de chequear — si un cierre está corriendo en simultáneo sobre

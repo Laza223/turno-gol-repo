@@ -1,16 +1,33 @@
 'use client'
 
 import { useTransition, useState } from 'react'
-import { submitNewAbonado, previewAbonadoSlotsAction, type NewAbonadoState, type PreviewAbonadoSlotsInput } from './actions'
+import type {
+  NewAbonadoState,
+  PreviewAbonadoSlotsInput,
+  PreviewAbonadoSlotsResult,
+} from './actions'
 import { Badge } from '@/components/ui/badge'
 import { PhoneInput } from '@/components/ui/phone-input'
+
+/**
+ * submitAction/previewAction llegan por PROP: './actions' es `'use server'` y
+ * arrastra drizzle/postgres → `node:async_hooks`, que rompe Storybook si se
+ * importa como valor (ver el comentario en ReservasPolicyForm.tsx).
+ */
+export type SubmitNewAbonadoAction = (
+  prevState: NewAbonadoState,
+  formData: FormData,
+) => Promise<NewAbonadoState>
+export type PreviewAbonadoSlotsAction = (
+  input: PreviewAbonadoSlotsInput,
+) => Promise<PreviewAbonadoSlotsResult>
 
 const DAYS = [
   { value: '1', label: 'Lunes' }, { value: '2', label: 'Martes' }, { value: '3', label: 'Miércoles' },
   { value: '4', label: 'Jueves' }, { value: '5', label: 'Viernes' }, { value: '6', label: 'Sábado' }, { value: '0', label: 'Domingo' },
 ]
 const initial: NewAbonadoState = { status: 'idle' }
-const field = 'h-11 md:h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
+const field = 'h-11 md:h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
 const labelCls = 'space-y-1 text-sm block'
 const labelSpan = 'font-medium text-foreground'
 
@@ -50,7 +67,7 @@ export function PreviewSlotsView({
   const noSlots = goodCount === 0
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+    <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-xs">
       <h2 className="text-base font-semibold text-foreground">Fechas del turno fijo</h2>
       <ul className="divide-y divide-slate-100">
         {dates.map((d) => {
@@ -99,7 +116,15 @@ export function PreviewSlotsView({
   )
 }
 
-export default function AbonadoForm({ courts }: { courts: { id: string; name: string }[] }) {
+export default function AbonadoForm({
+  courts,
+  submitAction,
+  previewAction,
+}: {
+  courts: { id: string; name: string }[]
+  submitAction: SubmitNewAbonadoAction
+  previewAction: PreviewAbonadoSlotsAction
+}) {
   const [phase, setPhase] = useState<'form' | 'preview'>('form')
   const [previewData, setPreviewData] = useState<PreviewData | null>(null)
   const [formValues, setFormValues] = useState<FormValues | null>(null)
@@ -135,7 +160,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
 
     setPreviewError(null)
     startPreviewTransition(async () => {
-      const result = await previewAbonadoSlotsAction(input)
+      const result = await previewAction(input)
       if (!result.success) {
         setPreviewError(result.error)
         return
@@ -153,7 +178,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
       fd.set(key, val)
     }
     startConfirmTransition(async () => {
-      const result = await submitNewAbonado(initial, fd)
+      const result = await submitAction(initial, fd)
       if (result.status === 'error') {
         setPhase('form')
         setPreviewData(null)
@@ -176,7 +201,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
   }
 
   return (
-    <form onSubmit={handlePreviewSubmit} className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+    <form onSubmit={handlePreviewSubmit} className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-xs">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <fieldset className="space-y-4">
           <legend className="text-sm font-semibold text-foreground">Turno fijo</legend>
@@ -224,7 +249,7 @@ export default function AbonadoForm({ courts }: { courts: { id: string; name: st
           </fieldset>
         </div>
       </div>
-      <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
+      <label className={labelCls}><span className={labelSpan}>Notas (opcional)</span><textarea name="notes" rows={2} className="w-full rounded-lg border border-border px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500" /></label>
       {previewError && (
         <p role="alert" className="text-xs text-red-600 dark:text-red-400">{previewError}</p>
       )}

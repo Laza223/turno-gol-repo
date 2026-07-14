@@ -31,6 +31,12 @@ docs/audit/reports/fase-f03-raw/lhci/*.json
 docs/audit/reports/fase-f06-raw/lhci/*.html
 docs/audit/reports/fase-f06-raw/lhci/*.json
 
+# Storybook — build estático y evidencia de QA visual (screenshots, snapshots,
+# logs de consola). A git van solo los reportes resumidos, los manifiestos y los
+# scripts reproducibles (scripts/storybook-qa.mjs), no los miles de PNG.
+storybook-static/
+artifacts/
+
 # design-sync (claude.ai/design) — staged scripts, build output, machine state
 .ds-sync/
 ds-bundle/

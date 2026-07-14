@@ -9,6 +9,7 @@ import {
   tenantSubscriptions,
 } from '@/shared/db/schema'
 import { listStaffRoster } from '@/modules/staff/staff.service'
+import { TENANT_STATUSES, isTenantStatus } from '@/modules/billing/billing.types'
 import type { BillingCycle, SubscriptionStatus, TenantStatus } from '@/modules/billing/billing.types'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
@@ -28,20 +29,8 @@ import type { TenantSettings } from '@/modules/tenants/tenant.types'
  *   `withTenantContext(tenantId)` para que la defensa RLS normal aplique.
  */
 
-export const TENANT_STATUSES = [
-  'trialing',
-  'active',
-  'past_due',
-  'suspended',
-  'blocked',
-  'canceled',
-  'churned',
-  'deleted',
-] as const
-
-export function isTenantStatus(value: string): value is TenantStatus {
-  return (TENANT_STATUSES as readonly string[]).includes(value)
-}
+/** Re-exportados para no romper a los consumidores existentes (page.tsx). Definición real: billing.types.ts. */
+export { TENANT_STATUSES, isTenantStatus }
 
 // ─── Lista ───────────────────────────────────────────────────────────────────
 

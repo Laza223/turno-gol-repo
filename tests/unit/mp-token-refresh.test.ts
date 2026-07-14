@@ -35,7 +35,8 @@ describe('withTokenRefresh', () => {
   it('refreshes and retries once on a 401, then succeeds', async () => {
     const refresh = vi.fn(async () => {})
     const op = vi
-      .fn<[], Promise<string>>()
+      // Vitest 3: vi.fn toma UN genérico con la firma entera, no <TArgs, TReturn>.
+      .fn<() => Promise<string>>()
       .mockRejectedValueOnce({ status: 401 })
       .mockResolvedValueOnce('recovered')
 

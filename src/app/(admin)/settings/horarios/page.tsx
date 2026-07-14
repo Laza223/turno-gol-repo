@@ -5,6 +5,7 @@ import { AddClosedDateForm } from './AddClosedDateForm'
 import { HorariosForm } from './HorariosForm'
 import { RemoveClosedDateForm } from './RemoveClosedDateForm'
 import type { LooseOpeningHours } from './horarios-lib'
+import { addClosedDateAction, removeClosedDateAction, updateHorariosAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function HorariosPage() {
@@ -26,7 +27,7 @@ export default async function HorariosPage() {
 
         <div className="card-premium rounded-lg p-6">
           <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>
-          <HorariosForm hours={hours} closesNextDay={tenant.closesNextDay} />
+          <HorariosForm hours={hours} closesNextDay={tenant.closesNextDay} action={updateHorariosAction} />
         </div>
 
         <div className="card-premium rounded-lg p-6">
@@ -44,7 +45,7 @@ export default async function HorariosPage() {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
                   </span>
-                  <RemoveClosedDateForm date={date} />
+                  <RemoveClosedDateForm date={date} action={removeClosedDateAction} />
                 </li>
               ))}
             </ul>
@@ -52,7 +53,7 @@ export default async function HorariosPage() {
             <p className="mb-4 text-sm text-muted-foreground">No hay días cerrados configurados.</p>
           )}
 
-          <AddClosedDateForm minDate={minDate} />
+          <AddClosedDateForm minDate={minDate} action={addClosedDateAction} />
         </div>
       </div>
   )

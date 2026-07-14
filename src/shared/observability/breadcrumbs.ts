@@ -4,7 +4,6 @@ type BookingEvent =
   | 'booking.online.create.start'
   | 'booking.online.create.success'
   | 'booking.online.create.slot_taken'
-  | 'booking.online.create.blocked_balance'
   | 'booking.online.create.too_many_holds'
   | 'booking.manual.create.success'
   | 'booking.transition.confirmed'

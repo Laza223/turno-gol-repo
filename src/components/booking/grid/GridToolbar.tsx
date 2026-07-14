@@ -34,7 +34,7 @@ export function GridToolbar({
   onNavigate,
 }: Props) {
   return (
-    <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 -mx-4 space-y-3 bg-background/95 px-4 py-2 backdrop-blur">
+    <div className="relative -mx-4 space-y-3 bg-background/95 px-4 py-2 backdrop-blur-sm shrink-0">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Grilla</h1>

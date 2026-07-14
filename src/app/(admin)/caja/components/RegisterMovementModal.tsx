@@ -5,9 +5,18 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { chipClass } from '../caja-lib'
-import { createCashFlowAction } from '../actions'
+import type { CashFlowActionResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { toast } from '@/hooks/use-toast'
+import type { CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
+
+/**
+ * createCashFlowAction llega por PROP, no por import: '../actions' es
+ * `'use server'` y arrastra drizzle/postgres → `node:async_hooks`, que Vite
+ * externaliza en el browser (rompe Storybook). Ver CanteenQuickSale, que
+ * comparte la misma action.
+ */
+export type CreateCashFlowAction = (input: CreateCashFlowInput) => Promise<CashFlowActionResult>
 
 type CfType = 'income' | 'adjustment' | 'expense'
 
@@ -41,10 +50,12 @@ export function RegisterMovementModal({
   open,
   onClose,
   date,
+  createCashFlowAction,
 }: {
   open: boolean
   onClose: () => void
   date: string
+  createCashFlowAction: CreateCashFlowAction
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()

@@ -14,18 +14,18 @@ export default function SearchBand({ cities }: { cities: CityCount[] }) {
     <section className="player-hero-band relative isolate z-30 rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
         {/* Líneas de cal — la firma de la vista */}
-        <div className="absolute inset-y-0 right-[-8%] w-[72%] text-emerald-600/[.16] dark:text-white/[.05]">
+        <div className="absolute inset-y-0 right-[-8%] w-[72%] text-emerald-600/16 dark:text-white/5">
           <PitchLines className="h-full w-full" />
         </div>
         {/* Glow nocturno (solo dark) */}
         <div
           aria-hidden
-          className="hero-glow-blob absolute right-[-10%] top-[-70%] hidden h-[480px] w-[480px] rounded-full blur-[12px] dark:block"
+          className="hero-glow-blob absolute right-[-10%] top-[-70%] hidden h-[480px] w-[480px] rounded-full blur-md dark:block"
         />
       </div>
 
       <div className="mb-6 max-w-2xl">
-        <div className="live-pill inline-flex items-center gap-2.5 rounded-full px-3.5 py-1.5 font-logo text-[12px] font-bold uppercase tracking-[.1em]">
+        <div className="live-pill inline-flex items-center gap-2.5 rounded-full px-3.5 py-1.5 font-logo text-[12px] font-bold uppercase tracking-widest">
           <span aria-hidden className="inline-flex h-[8px] w-[8px] rounded-full bg-emerald-500 dark:bg-emerald-400" />
           Disponibilidad en tiempo real
         </div>

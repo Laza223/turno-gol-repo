@@ -2,14 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 
-vi.mock('@/app/(admin)/staff/actions', () => ({
-  deactivateStaffAction: vi.fn(),
-  resendInviteAction: vi.fn(),
-  updateStaffRoleAction: vi.fn().mockResolvedValue({ success: true }),
-}))
-
 import { StaffActions } from '@/app/(admin)/staff/StaffActions'
-import { updateStaffRoleAction } from '@/app/(admin)/staff/actions'
 
 afterEach(() => {
   cleanup()
@@ -23,20 +16,28 @@ function renderActions(
     activeAdminCount: number
   }> = {},
 ) {
-  return render(
-    <StaffActions
-      member={{
-        memberId: 'member-1',
-        email: 'miembro@test.local',
-        firstName: 'Mi',
-        lastName: 'Embro',
-        isActive: overrides.isActive ?? true,
-        role: overrides.role ?? 'manager',
-      }}
-      currentUserStaffId="staff-yo"
-      activeAdminCount={overrides.activeAdminCount ?? 2}
-    />,
-  )
+  // Las Server Actions entran por prop (ver ReservasPolicyForm.tsx).
+  const updateRoleAction = vi.fn().mockResolvedValue({ success: true })
+  return {
+    updateRoleAction,
+    ...render(
+      <StaffActions
+        member={{
+          memberId: 'member-1',
+          email: 'miembro@test.local',
+          firstName: 'Mi',
+          lastName: 'Embro',
+          isActive: overrides.isActive ?? true,
+          role: overrides.role ?? 'manager',
+        }}
+        currentUserStaffId="staff-yo"
+        activeAdminCount={overrides.activeAdminCount ?? 2}
+        deactivateAction={vi.fn()}
+        resendInviteAction={vi.fn()}
+        updateRoleAction={updateRoleAction}
+      />,
+    ),
+  }
 }
 
 async function openMenu() {
@@ -55,12 +56,12 @@ describe('StaffActions — cambio de rol', () => {
     expect(screen.queryByRole('menuitem', { name: /Cambiar a Encargado/ })).toBeNull()
   })
 
-  it('invoca updateStaffRoleAction con el memberId y el rol elegido', async () => {
-    renderActions({ role: 'admin' })
+  it('invoca updateRoleAction con el memberId y el rol elegido', async () => {
+    const { updateRoleAction } = renderActions({ role: 'admin' })
     await openMenu()
     fireEvent.click(screen.getByRole('menuitem', { name: /Cambiar a Encargado/ }))
     await waitFor(() => {
-      expect(updateStaffRoleAction).toHaveBeenCalledWith('member-1', 'manager')
+      expect(updateRoleAction).toHaveBeenCalledWith('member-1', 'manager')
     })
   })
 

@@ -158,12 +158,31 @@ export function PushNotificationManager() {
       if (audioRef.current) {
         try { await audioRef.current.play(); audioRef.current.pause() } catch { /* noop */ }
       }
-      await navigator.serviceWorker.register(SW_PATH, { scope: SW_SCOPE })
-      // serviceWorker.ready never resolves if the SW fails to activate (scope
-      // mismatch, install error). Cap the wait so we surface an error instead of
-      // hanging on "Habilitando…".
+      const reg = await navigator.serviceWorker.register(SW_PATH, { scope: SW_SCOPE })
+      // Esperar a que el service worker se active.
+      // Primero intentamos esperar usando la registración retornada por register (más robusto ante páginas
+      // fuera del scope como /onboarding). Si reg no está definido (ej. en mocks de tests), caemos
+      // en navigator.serviceWorker.ready.
       const ready = await withTimeout(
-        navigator.serviceWorker.ready,
+        (async () => {
+          if (reg) {
+            if (reg.active) return reg
+            const worker = reg.installing || reg.waiting
+            if (worker) {
+              await new Promise<void>((resolve) => {
+                const listener = () => {
+                  if (worker.state === 'activated' || reg.active) {
+                    worker.removeEventListener('statechange', listener)
+                    resolve()
+                  }
+                }
+                worker.addEventListener('statechange', listener)
+              })
+              return reg
+            }
+          }
+          return navigator.serviceWorker.ready
+        })(),
         SW_READY_TIMEOUT_MS,
         'El service worker no se activó',
       )
@@ -212,7 +231,7 @@ export function PushNotificationManager() {
         type="button"
         onClick={enable}
         disabled={status === 'pending'}
-        className="mt-3 inline-flex h-11 md:h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50"
+        className="mt-3 inline-flex h-11 md:h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white shadow-xs transition-all hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50"
       >
         {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
       </button>

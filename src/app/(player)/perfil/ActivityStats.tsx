@@ -45,7 +45,7 @@ export default function ActivityStats({
           <li
             key={label}
             aria-label={`${value} ${detail ? `${detail} de ` : ''}${label.toLowerCase()}`}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-5 text-center shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-5 text-center shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0"
           >
             <span className={`flex h-9 w-9 items-center justify-center rounded-full ${accent}`}>
               <Icon className="h-4 w-4" aria-hidden />

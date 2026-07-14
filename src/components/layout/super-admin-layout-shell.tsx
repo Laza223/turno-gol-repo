@@ -51,7 +51,7 @@ function SidebarContent({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-border">
         <div className="min-w-0">
-          <Link href="/super-admin" className="block outline-none rounded-sm">
+          <Link href="/super-admin" className="block outline-hidden rounded-sm">
             <Logo variant="horizontal" textClassName="text-foreground" />
           </Link>
           <div className="mt-1">
@@ -91,7 +91,7 @@ function SidebarContent({
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-violet-500/10 text-violet-700 shadow-sm dark:bg-violet-500/15 dark:text-violet-300 dark:shadow-violet-950/30'
+                  ? 'bg-violet-500/10 text-violet-700 shadow-xs dark:bg-violet-500/15 dark:text-violet-300 dark:shadow-violet-950/30'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
@@ -134,14 +134,14 @@ export function SuperAdminLayoutShell({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-[25] bg-black/50 lg:hidden cursor-pointer"
+          className="fixed inset-0 z-25 bg-black/50 lg:hidden cursor-pointer"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
 
       {/* Sidebar desktop — dark shell con acento violeta */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/[0.04] dark:bg-card/80 dark:shadow-black/30">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/4 dark:bg-card/80 dark:shadow-black/30">
         <SidebarContent adminName={adminName} pathname={pathname} />
       </aside>
 
@@ -162,7 +162,7 @@ export function SuperAdminLayoutShell({
       </div>
 
       {/* Header */}
-      <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-border bg-card/80 backdrop-blur-xl shadow-sm shadow-black/[0.03] dark:shadow-black/20 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
+      <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-border bg-card/80 backdrop-blur-xl shadow-xs shadow-black/3 dark:shadow-black/20 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
         <Button
           variant="ghost"
           size="icon"

@@ -112,7 +112,7 @@ export function AbonadoDialogs({
             min={todayART()}
             value={cancelFromDate}
             onChange={(e) => onCancelFromDateChange(e.target.value)}
-            className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
       </ConfirmDialog>

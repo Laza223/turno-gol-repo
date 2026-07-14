@@ -22,7 +22,11 @@ async function resolveImpersonationOverride(): Promise<{
 } | null> {
   try {
     const { cookies } = await import('next/headers')
-    const raw = cookies().get(IMPERSONATION_COOKIE_NAME)?.value
+    // `await cookies()` dentro del try: en un worker de pg-boss (sin request
+    // context) la Promise rechaza, el await lo convierte en throw y el catch de
+    // abajo devuelve null. Mismo contrato que cuando `cookies()` tiraba sync.
+    const cookieStore = await cookies()
+    const raw = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
     if (!raw) return null
     const payload = verifyImpersonationCookie(raw)
     if (!payload) return null

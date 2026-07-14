@@ -10,7 +10,9 @@ export default function NotFound() {
         </p>
         <Link
           href="/"
-          className="inline-flex items-center text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors duration-150"
+          // emerald-700 (#047857) sobre `bg-background` (#e2e7ee, no blanco puro)
+          // da 4.41:1 — bajo AA (4.5). emerald-800 (#065f46) da 6.19:1.
+          className="inline-flex items-center text-sm font-medium text-emerald-800 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-200 transition-colors duration-150"
         >
           ← Volver al inicio
         </Link>

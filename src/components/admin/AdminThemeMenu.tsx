@@ -3,18 +3,19 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Monitor, Moon, Sun } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 
 /**
  * Switch de tema para el header admin. Botón compacto (icono = tema activo)
- * que abre un dropdown glass con el `ThemeToggle` (Sistema/Claro/Oscuro)
+ * que abre un panel glass con el `ThemeToggle` (Sistema/Claro/Oscuro)
  * reutilizado del portal. Guard `mounted`: el tema resuelto solo se conoce
  * client-side (next-themes).
+ *
+ * `Popover`, no `DropdownMenu`: `DropdownMenuContent` fuerza `role="menu"`,
+ * que por ARIA solo puede contener `menuitem*` — un `role="radiogroup"`
+ * (el `ThemeToggle`) adentro es una violación real (aria-required-children),
+ * no un artefacto de la story.
  */
 export function AdminThemeMenu() {
   const { theme, resolvedTheme } = useTheme()
@@ -30,22 +31,22 @@ export function AdminThemeMenu() {
         : Sun
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <button
           type="button"
           aria-label="Cambiar tema"
-          className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-lg border border-border/60 bg-card/60 text-muted-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-foreground hover:border-emerald-500/30 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="inline-flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-lg border border-border/60 bg-card/60 text-muted-foreground shadow-xs backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-foreground hover:border-emerald-500/30 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8} className="w-60 p-2">
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} aria-label="Cambiar tema" className="w-60 p-2">
         <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Tema
         </p>
         <ThemeToggle />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   )
 }

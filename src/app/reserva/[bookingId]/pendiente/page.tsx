@@ -6,7 +6,7 @@ import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 
-type Props = { params: { bookingId: string } }
+type Props = { params: Promise<{ bookingId: string }> }
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +21,8 @@ async function loadBooking(bookingId: string, playerId: string) {
   })
 }
 
-export default async function ReservaPendientePage({ params }: Props) {
+export default async function ReservaPendientePage(props: Props) {
+  const params = await props.params;
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 

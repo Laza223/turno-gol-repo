@@ -21,7 +21,7 @@ export const createCourtSchema = z.object({
   name: z.string().min(1, 'Nombre requerido').max(100),
   description: z.string().max(500).optional(),
   surfaceType: z.enum(['synthetic_grass', 'natural_grass', 'cement', 'tile'], {
-    errorMap: () => ({ message: 'Tipo de superficie inválido' }),
+    error: 'Tipo de superficie inválido',
   }),
   isCovered: z.boolean().optional(),
   hasLighting: z.boolean().optional(),
@@ -33,6 +33,7 @@ export const createCourtSchema = z.object({
       'Formato inválido: debe ser Fútbol 4 a 11',
     ),
   pricing: courtPricingSchema,
+  photos: z.array(z.string()).optional(),
 })
 
 export const updateCourtSchema = createCourtSchema.partial()

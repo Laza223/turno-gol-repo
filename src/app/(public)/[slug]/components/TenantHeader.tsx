@@ -39,7 +39,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
   const amenities = activeAmenities(tenant.amenities)
 
   const chipClass =
-    'inline-flex h-11 md:h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0'
+    'inline-flex h-11 md:h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground shadow-xs transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0'
 
   return (
     <div className="space-y-4">
@@ -52,7 +52,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
               width={64}
               height={64}
               sizes="64px"
-              className="h-16 w-16 flex-shrink-0 rounded-xl border border-border object-cover shadow-sm"
+              className="h-16 w-16 shrink-0 rounded-xl border border-border object-cover shadow-xs"
             />
           )}
           <div className="min-w-0 space-y-1.5">
@@ -80,16 +80,16 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
 
       <div className="space-y-3">
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
+          <MapPin className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
           {tenant.address}, {tenant.city}
         </p>
         <div className="flex flex-wrap gap-2">
           <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={chipClass}>
-            <Navigation className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
+            <Navigation className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             Cómo llegar
           </a>
           <a href={`tel:${tenant.phone}`} className={chipClass}>
-            <Phone className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
+            <Phone className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             {tenant.phone}
           </a>
           {whatsappUrl && (
@@ -97,14 +97,14 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-11 md:h-10 items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 text-sm font-medium text-green-700 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-green-400 hover:shadow-md motion-reduce:hover:translate-y-0 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300"
+              className="inline-flex h-11 md:h-10 items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 text-sm font-medium text-green-700 shadow-xs transition-all duration-150 hover:-translate-y-0.5 hover:border-green-400 hover:shadow-md motion-reduce:hover:translate-y-0 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300"
             >
-              <MessageCircle className="h-4 w-4 flex-shrink-0" aria-hidden />
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
               WhatsApp
             </a>
           )}
           <Link href={`/${tenant.slug}/disponibilidad`} className={chipClass}>
-            <CalendarDays className="h-4 w-4 flex-shrink-0 text-emerald-600" aria-hidden />
+            <CalendarDays className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             Ver semana completa
           </Link>
         </div>
@@ -118,7 +118,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
             return (
               <li
                 key={key}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground shadow-xs"
               >
                 <Icon className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
                 {label}
@@ -128,7 +128,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
         </ul>
       )}
 
-      <div className="rounded-2xl border border-border bg-muted/40 p-5 shadow-sm">
+      <div className="rounded-2xl border border-border bg-muted/40 p-5 shadow-xs">
         <h2 className="mb-3.5 font-logo text-[12px] font-bold uppercase tracking-[.08em] text-muted-foreground">
           Horarios
         </h2>

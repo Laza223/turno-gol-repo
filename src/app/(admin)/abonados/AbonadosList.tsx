@@ -6,8 +6,8 @@ import dynamic from 'next/dynamic'
 import { UserPlus, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
-import { pauseAbonadoAction, reactivateAbonadoAction, cancelAbonadoAction } from './actions'
-import { previewAbonadoSlotsAction } from './nuevo/actions'
+import type { AbonadoActionResult } from './actions'
+import type { PreviewAbonadoSlotsInput, PreviewAbonadoSlotsResult } from './nuevo/actions'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArs } from '@/lib/format'
@@ -61,13 +61,37 @@ function defaultRowState(): RowState {
   }
 }
 
+/**
+ * Las 4 Server Actions llegan por PROP, no por import: ./actions y
+ * ./nuevo/actions son `'use server'` y arrastran drizzle/postgres →
+ * `node:async_hooks`, que rompe cualquier bundle de browser (Storybook).
+ * Ver el comentario en ReservasPolicyForm.tsx.
+ */
+export type PauseAbonadoAction = (id: string) => Promise<AbonadoActionResult>
+export type ReactivateAbonadoAction = (id: string) => Promise<AbonadoActionResult>
+export type CancelAbonadoAction = (id: string, fromDate: string) => Promise<AbonadoActionResult>
+export type PreviewAbonadoSlotsAction = (
+  input: PreviewAbonadoSlotsInput,
+) => Promise<PreviewAbonadoSlotsResult>
+
 type Props = {
   abonados: AbonadoRow[]
   /** Etiqueta del filtro activo (ej. "activos"), para un empty state que explique el vacío. */
   filterLabel?: string
+  pauseAction: PauseAbonadoAction
+  reactivateAction: ReactivateAbonadoAction
+  cancelAction: CancelAbonadoAction
+  previewSlotsAction: PreviewAbonadoSlotsAction
 }
 
-export function AbonadosList({ abonados, filterLabel }: Props) {
+export function AbonadosList({
+  abonados,
+  filterLabel,
+  pauseAction,
+  reactivateAction,
+  cancelAction,
+  previewSlotsAction,
+}: Props) {
   if (abonados.length === 0) {
     return (
       <EmptyState
@@ -106,7 +130,14 @@ export function AbonadosList({ abonados, filterLabel }: Props) {
           </thead>
           <tbody>
             {abonados.map((a) => (
-              <AbonadoTableRow key={a.id} abonado={a} />
+              <AbonadoTableRow
+                key={a.id}
+                abonado={a}
+                pauseAction={pauseAction}
+                reactivateAction={reactivateAction}
+                cancelAction={cancelAction}
+                previewSlotsAction={previewSlotsAction}
+              />
             ))}
           </tbody>
         </table>
@@ -114,7 +145,14 @@ export function AbonadosList({ abonados, filterLabel }: Props) {
       cards={
         <ul className="divide-y divide-border">
           {abonados.map((a) => (
-            <AbonadoCard key={a.id} abonado={a} />
+            <AbonadoCard
+              key={a.id}
+              abonado={a}
+              pauseAction={pauseAction}
+              reactivateAction={reactivateAction}
+              cancelAction={cancelAction}
+              previewSlotsAction={previewSlotsAction}
+            />
           ))}
         </ul>
       }
@@ -122,12 +160,19 @@ export function AbonadosList({ abonados, filterLabel }: Props) {
   )
 }
 
+type AbonadoServerActions = {
+  pauseAction: PauseAbonadoAction
+  reactivateAction: ReactivateAbonadoAction
+  cancelAction: CancelAbonadoAction
+  previewSlotsAction: PreviewAbonadoSlotsAction
+}
+
 /**
  * Estado + handlers de las acciones de un abonado. Compartido por la fila de
  * la tabla (desktop) y la card (mobile): cada vista instancia el suyo, pero la
  * lógica vive una sola vez acá.
  */
-function useAbonadoActions(a: AbonadoRow) {
+function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
   const [state, setState] = useState<RowState>(defaultRowState)
   // Buttons are disabled when a dialog is open (ConfirmDialog handles its own pending state).
   const isPending = state.dialog !== null
@@ -142,7 +187,7 @@ function useAbonadoActions(a: AbonadoRow) {
 
   // ── Pause ─────────────────────────────────────────────────────────────────
   async function onConfirmPause(): Promise<{ success: boolean; error?: string }> {
-    const res = await pauseAbonadoAction(a.id)
+    const res = await actions.pauseAction(a.id)
     if (!res.success) {
       return { success: false, error: res.error }
     }
@@ -161,7 +206,7 @@ function useAbonadoActions(a: AbonadoRow) {
       reactivatePreviewConflicts: [],
     }))
 
-    const preview = await previewAbonadoSlotsAction({
+    const preview = await actions.previewSlotsAction({
       courtId: a.courtId,
       dayOfWeek: a.dayOfWeek,
       timeStart: a.timeStart,
@@ -183,7 +228,7 @@ function useAbonadoActions(a: AbonadoRow) {
   }
 
   async function onConfirmReactivate(): Promise<{ success: boolean; error?: string }> {
-    const res = await reactivateAbonadoAction(a.id)
+    const res = await actions.reactivateAction(a.id)
     if (!res.success) {
       return { success: false, error: res.error }
     }
@@ -197,7 +242,7 @@ function useAbonadoActions(a: AbonadoRow) {
 
   // ── Cancel ────────────────────────────────────────────────────────────────
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
-    const res = await cancelAbonadoAction(a.id, state.cancelFromDate)
+    const res = await actions.cancelAction(a.id, state.cancelFromDate)
     if (!res.success) {
       return { success: false, error: res.error }
     }
@@ -250,8 +295,11 @@ function AbonadoActionDialogs({
   )
 }
 
-function AbonadoTableRow({ abonado: a }: { abonado: AbonadoRow }) {
-  const actions = useAbonadoActions(a)
+function AbonadoTableRow({
+  abonado: a,
+  ...serverActions
+}: { abonado: AbonadoRow } & AbonadoServerActions) {
+  const actions = useAbonadoActions(a, serverActions)
   const isActive = a.status === 'active'
   const isPaused = a.status === 'paused'
 
@@ -319,8 +367,11 @@ function AbonadoTableRow({ abonado: a }: { abonado: AbonadoRow }) {
 }
 
 /** Card mobile (<640px): mismos datos y acciones que la fila, con touch targets de 44px. */
-function AbonadoCard({ abonado: a }: { abonado: AbonadoRow }) {
-  const actions = useAbonadoActions(a)
+function AbonadoCard({
+  abonado: a,
+  ...serverActions
+}: { abonado: AbonadoRow } & AbonadoServerActions) {
+  const actions = useAbonadoActions(a, serverActions)
   const isActive = a.status === 'active'
   const isPaused = a.status === 'paused'
 

@@ -4,10 +4,10 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Sentry from '@sentry/nextjs'
 import { Loader2 } from 'lucide-react'
-import { createBookingAction } from '@/app/(admin)/reservas/actions'
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
 import type { BookingRow } from '@/modules/bookings/booking.types'
+import type { BookingActionResult } from '@/app/(admin)/reservas/actions'
 import { formatDateLong } from '@/lib/format'
 
 type Slot = {
@@ -18,11 +18,21 @@ type Slot = {
   durationMins: 60 | 120
 }
 
+/** Firma de createBookingAction (@/app/(admin)/reservas/actions). */
+export type CreateBookingAction = (data: unknown) => Promise<BookingActionResult>
+
 type Props = {
   slot: Slot
   open: boolean
   onClose: () => void
   onSuccess: (booking: BookingRow) => void
+  /**
+   * La Server Action llega por PROP, no por import: `./actions` es `'use server'`
+   * y arrastra drizzle/postgres/`node:async_hooks`, que Vite externaliza en el
+   * bundle de browser y rompe cualquier story (ver docs/storybook/STORYBOOK_ARCHITECTURE.md).
+   * BookingGrid (único caller) la recibe a su vez por prop y la reenvía acá.
+   */
+  action: CreateBookingAction
 }
 
 // Motivo / Tipo de bloqueo del turno manual. Dos familias:
@@ -65,7 +75,7 @@ function minsToTime(mins: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
+export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Props) {
   const [duration, setDuration] = useState<60 | 120>(slot.durationMins)
   const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
   const [error, setError] = useState<string | null>(null)
@@ -118,7 +128,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
     setError(null)
     startTransition(async () => {
       try {
-        const result = await createBookingAction(data)
+        const result = await action(data)
         if (result.success) {
           formRef.current?.reset()
           setDuration(slot.durationMins)
@@ -154,10 +164,10 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         {/* w-[calc(100vw-2rem)]: gutter de 1rem por lado en mobile (misma receta
             que ui/dialog.tsx) — con w-full el card quedaba edge-to-edge <448px. */}
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border rounded-xl shadow-2xl dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] p-6 focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border rounded-xl shadow-2xl dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] p-6 focus:outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
           <Dialog.Title className="text-base font-semibold text-foreground mb-1">
             Nueva reserva
           </Dialog.Title>
@@ -178,7 +188,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                 name="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value as ReasonValue)}
-                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
               >
                 {REASONS.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -231,7 +241,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                     type="text"
                     maxLength={200}
                     autoComplete="name"
-                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     placeholder="Ej: Juan Pérez"
                   />
                 </div>
@@ -257,13 +267,13 @@ export function BookingFormModal({ slot, open, onClose, onSuccess }: Props) {
                 name="notesInternal"
                 maxLength={1000}
                 rows={2}
-                className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-9 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-9 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500 resize-none"
                 placeholder="Solo visible para el staff"
               />
             </div>
 
             {error && (
-              <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25">
+              <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25">
                 {error}
               </p>
             )}

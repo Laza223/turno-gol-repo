@@ -138,14 +138,25 @@ async function setTenantPolicy(tenantId: string, hoursBefore: number): Promise<v
   `
 }
 
-async function getPlayerBalance(tenantId: string, playerId: string): Promise<number> {
+async function getPlayerNoShowCount(tenantId: string, playerId: string): Promise<number> {
   const sql = getSql()
-  const rows = await sql<{ balance: number | null }[]>`
-    SELECT balance FROM player_tenant_relationships
+  const rows = await sql<{ noshow_count: number | null }[]>`
+    SELECT noshow_count FROM player_tenant_relationships
     WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
     LIMIT 1
   `
-  return Number(rows[0]?.balance ?? 0)
+  return Number(rows[0]?.noshow_count ?? 0)
+}
+
+async function getActiveBanUntil(tenantId: string, playerId: string): Promise<Date | null> {
+  const sql = getSql()
+  const rows = await sql<{ banned_until: string | null }[]>`
+    SELECT banned_until FROM tenant_player_bans
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+      AND (banned_until IS NULL OR banned_until > NOW())
+    LIMIT 1
+  `
+  return rows[0]?.banned_until ? new Date(rows[0].banned_until) : null
 }
 
 async function getBookingDepositStatus(bookingId: string): Promise<string> {
@@ -624,8 +635,8 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
   })
 })
 
-// ─── Tarea #5: no-show genera deuda (modelo ATC, sin ban temporal) ───
-describe('handleNoShow — Tarea #5: genera deuda', () => {
+// ─── Softban por ausencias reiteradas (reemplaza la deuda del cambio #5) ───
+describe('handleNoShow — softban por ausencias reiteradas', () => {
   async function insertPastConfirmed(opts: {
     tenantId: string
     courtId: string
@@ -651,7 +662,7 @@ describe('handleNoShow — Tarea #5: genera deuda', () => {
     return rows[0]!.id
   }
 
-  it('sin se\u00f1a → balance += precio completo, se\u00f1a intacta, sin ban', async () => {
+  it('sin seña → 1ra ausencia se registra, sin bloqueo', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -665,15 +676,15 @@ describe('handleNoShow — Tarea #5: genera deuda', () => {
 
     expect(await getBookingStatus(bookingId)).toBe('no_show')
     expect(await getBookingDepositStatus(bookingId)).toBe('not_required')
-    expect(await getPlayerBalance(tenant.id, player.id)).toBe(800_000)
-    // El viejo auto-ban por no-show ya no existe.
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
+    // La 1ra ausencia no bloquea: sin fila en tenant_player_bans.
     expect(await countAllBans(tenant.id, player.id)).toBe(0)
 
     const audits = await getAuditLogs(bookingId)
     expect(audits.some((a) => a.action === 'booking.marked_no_show')).toBe(true)
   })
 
-  it('con se\u00f1a paga → se\u00f1a capturada + balance += (precio − se\u00f1a)', async () => {
+  it('con seña paga → seña capturada, 1ra ausencia sin bloqueo', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -693,11 +704,11 @@ describe('handleNoShow — Tarea #5: genera deuda', () => {
 
     expect(await getBookingStatus(bookingId)).toBe('no_show')
     expect(await getBookingDepositStatus(bookingId)).toBe('captured')
-    expect(await getPlayerBalance(tenant.id, player.id)).toBe(560_000)
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
     expect(await countAllBans(tenant.id, player.id)).toBe(0)
   })
 
-  it('sin jugador vinculado → no genera deuda', async () => {
+  it('sin jugador vinculado → no registra ausencia', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
@@ -712,7 +723,36 @@ describe('handleNoShow — Tarea #5: genera deuda', () => {
     expect(await getBookingStatus(bookingId)).toBe('no_show')
   })
 
-  it('idempotente: un segundo no-show lanza y no duplica la deuda', async () => {
+  it('2da ausencia dentro de la ventana → softban de 14 días', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const firstBookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(firstBookingId, staff.id, tx))
+    expect(await countAllBans(tenant.id, player.id)).toBe(0)
+
+    const secondBookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(secondBookingId, staff.id, tx))
+
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(2)
+    expect(await countAllBans(tenant.id, player.id)).toBe(1)
+
+    const bannedUntil = await getActiveBanUntil(tenant.id, player.id)
+    expect(bannedUntil).not.toBeNull()
+    const daysUntilBan = (bannedUntil!.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+    expect(daysUntilBan).toBeGreaterThan(13)
+    expect(daysUntilBan).toBeLessThanOrEqual(14)
+
+    // El audit del softban queda con resourceType 'player', no 'booking'.
+    const audits = await getAuditLogs(player.id)
+    expect(audits.some((a) => a.action === 'player.no_show_softban_applied')).toBe(true)
+  })
+
+  it('idempotente: un segundo intento sobre el mismo booking lanza y no duplica el strike', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -723,14 +763,14 @@ describe('handleNoShow — Tarea #5: genera deuda', () => {
     const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
 
     await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
-    expect(await getPlayerBalance(tenant.id, player.id)).toBe(800_000)
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
 
     await expect(
       withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
 
-    // La deuda no se duplic\u00f3.
-    expect(await getPlayerBalance(tenant.id, player.id)).toBe(800_000)
+    // El strike no se duplicó.
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
   })
 })
 

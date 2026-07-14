@@ -266,7 +266,7 @@ export async function updateTenantSettingsAction(input: unknown): Promise<Suppor
 
 const resetStaffPasswordInputSchema = z.object({
   tenantId: uuid,
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
 })
 
 type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
@@ -425,7 +425,11 @@ export async function startImpersonationAction(
   }
 
   const cookieValue = buildImpersonationCookie({ tenantId: id, systemAdminId: auth.admin.id })
-  cookies().set({
+  // A una variable y no `(await cookies()).set(...)` inline: el repo usa
+  // `semi: false`, y una línea que arranca con `(` se pega a la anterior por ASI
+  // — quedaría `buildImpersonationCookie({...})(await cookies())`.
+  const cookieStore = await cookies()
+  cookieStore.set({
     name: IMPERSONATION_COOKIE_NAME,
     value: cookieValue,
     httpOnly: true,
@@ -470,6 +474,7 @@ export async function stopImpersonationAction(): Promise<void> {
     }
   }
 
-  cookies().delete(IMPERSONATION_COOKIE_NAME)
+  const cookieStore = await cookies()
+  cookieStore.delete(IMPERSONATION_COOKIE_NAME)
   redirect(session ? `/super-admin/tenants/${session.tenantId}` : '/super-admin')
 }

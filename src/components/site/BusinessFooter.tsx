@@ -2,12 +2,12 @@ import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 
 const linkCls =
-  'transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded'
+  'transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded'
 
 export default function BusinessFooter() {
   return (
     <footer
-      className="relative border-t border-white/[.08] py-12"
+      className="relative border-t border-white/8 py-12"
       style={{ background: '#020617' }}
     >
       <div
@@ -20,9 +20,12 @@ export default function BusinessFooter() {
           <Link href="/" aria-label="TurnoGol — inicio" className={linkCls}>
             <Logo variant="horizontal" textClassName="text-white text-sm" iconClassName="h-7 w-7 bg-white/95" />
           </Link>
-          <span className="text-xs text-slate-500">© {new Date().getFullYear()} · Argentina</span>
+          {/* slate-500 (#64748b) sobre #020617 da 4.23:1, bajo AA (4.5) — no es un
+              idiom dark:, es fijo, así que sube a slate-400 (7.87:1). */}
+          <span className="text-xs text-slate-400">© {new Date().getFullYear()} · Argentina</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
+          <Link href="/precios" className={linkCls}>Precios</Link>
           <Link href="/login" className={linkCls}>Ingresar</Link>
           <Link href="/register" className={linkCls}>Empezar gratis</Link>
           <a href="mailto:hola@turnogol.app" className={linkCls}>Contacto</a>

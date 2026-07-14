@@ -15,6 +15,15 @@ export type ReservaStatusVisual = {
  * (BookingCard.slotVisual), acá no se distingue "Señada" de "Confirmada":
  * el detalle de seña ya vive en la línea secundaria de cada ítem.
  */
+/**
+ * Recipe neutral (cancelada/expirada/bloqueo): mismo patrón que las demás
+ * entradas (tinte 10%/15% + texto oscuro fijo + ring), NO `bg-muted
+ * text-muted-foreground` — esa combo es opaca y da 4.21:1 (falla AA, ver
+ * abonados/status-visual.tsx `canceled` con el mismo bug).
+ */
+const NEUTRAL_BADGE =
+  'bg-slate-500/10 text-slate-800 ring-1 ring-inset ring-slate-500/25 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-500/40'
+
 const STATUS_VISUALS: Record<string, ReservaStatusVisual> = {
   pending_payment: {
     icon: Clock,
@@ -48,19 +57,19 @@ const STATUS_VISUALS: Record<string, ReservaStatusVisual> = {
     icon: XCircle,
     label: 'Cancelada',
     accent: 'bg-muted-foreground',
-    badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+    badge: NEUTRAL_BADGE,
   },
   canceled_no_refund: {
     icon: XCircle,
     label: 'Cancelada',
     accent: 'bg-muted-foreground',
-    badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+    badge: NEUTRAL_BADGE,
   },
   expired: {
     icon: XCircle,
     label: 'Expirada',
     accent: 'bg-muted-foreground',
-    badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+    badge: NEUTRAL_BADGE,
   },
 }
 
@@ -68,7 +77,7 @@ const BLOCK_VISUAL: ReservaStatusVisual = {
   icon: Ban,
   label: 'Bloqueo',
   accent: 'bg-muted-foreground',
-  badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+  badge: NEUTRAL_BADGE,
 }
 
 const FALLBACK_VISUAL = STATUS_VISUALS.completed!

@@ -35,7 +35,7 @@ export async function resetPasswordAction(
     return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error: getErr } = await supabase.auth.getUser()
   if (getErr || !data?.user) {
     return {

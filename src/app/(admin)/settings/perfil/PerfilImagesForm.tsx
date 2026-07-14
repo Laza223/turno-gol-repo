@@ -2,14 +2,31 @@
 
 import { useState } from 'react'
 import { ImageUploader } from '@/components/ui/image-uploader'
-import { setTenantImageAction, removeTenantImageAction } from './actions'
+import type { TenantImageActionResult } from './actions'
+
+/** Firmas de setTenantImageAction/removeTenantImageAction — DI, ver ReservasPolicyForm.tsx. */
+export type SetTenantImageAction = (
+  kind: 'logo' | 'cover',
+  formData: FormData,
+) => Promise<TenantImageActionResult>
+export type RemoveTenantImageAction = (
+  kind: 'logo' | 'cover',
+  previousUrl: string | null,
+) => Promise<{ success: true } | { success: false; error: string }>
 
 type Props = {
   logoUrl: string | null
   coverUrl: string | null
+  setImageAction: SetTenantImageAction
+  removeImageAction: RemoveTenantImageAction
 }
 
-export function PerfilImagesForm({ logoUrl: initialLogo, coverUrl: initialCover }: Props) {
+export function PerfilImagesForm({
+  logoUrl: initialLogo,
+  coverUrl: initialCover,
+  setImageAction,
+  removeImageAction,
+}: Props) {
   const [logoUrl, setLogoUrl] = useState(initialLogo)
   const [coverUrl, setCoverUrl] = useState(initialCover)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +37,7 @@ export function PerfilImagesForm({ logoUrl: initialLogo, coverUrl: initialCover 
     fd.set('file', blob, `${kind}.webp`)
     const previous = kind === 'logo' ? logoUrl : coverUrl
     if (previous) fd.set('previousUrl', previous)
-    const result = await setTenantImageAction(kind, fd)
+    const result = await setImageAction(kind, fd)
     if (!result.success) {
       setError(result.error)
       return
@@ -31,7 +48,7 @@ export function PerfilImagesForm({ logoUrl: initialLogo, coverUrl: initialCover 
 
   async function remove(kind: 'logo' | 'cover', url: string) {
     setError(null)
-    const result = await removeTenantImageAction(kind, url)
+    const result = await removeImageAction(kind, url)
     if (!result.success) {
       setError(result.error)
       return

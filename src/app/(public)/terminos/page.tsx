@@ -116,13 +116,13 @@ export default function TerminosPage() {
         </p>
         <ul className="list-disc space-y-1 pl-6">
           <li>
-            <strong>Predio</strong>: 1 a 3 canchas.
+            <strong>Predio</strong>: 1 o 2 canchas.
           </li>
           <li>
-            <strong>Complejo</strong>: 4 a 6 canchas.
+            <strong>Complejo</strong>: 3 a 5 canchas.
           </li>
           <li>
-            <strong>Estadio</strong>: 7 o más canchas.
+            <strong>Estadio</strong>: 6 o más canchas.
           </li>
         </ul>
         <p>

@@ -72,7 +72,7 @@ const GRID_LEGEND: ReadonlyArray<{
 /** Leyenda de estados: enseña el mapeo ícono↔estado (pages/grilla.md §11). */
 export function GridLegend() {
   return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+    <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground shrink-0">
       {GRID_LEGEND.map((item) => {
         const LegendIcon = item.icon
         return (

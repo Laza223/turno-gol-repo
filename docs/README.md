@@ -11,10 +11,12 @@ Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 
 | [`spec/`](./spec) | Los 19 documentos canónicos (doc1–doc20, doc9 deprecado) | **Vigente — fuente de verdad** |
 | [`launch/`](./launch) | Backlog de lanzamiento, runbook, risk register, guía launch-first | **Vigente — foco actual** |
 | [`gtm/`](./gtm) | Sistema comercial: ICP, posicionamiento, oferta piloto, funnel, scripts, plan 7-30-90 | **Vigente — foco actual** |
+| [`marketing/`](./marketing) | Estrategia de contenido SEO/web + research (keywords, competidores, foros) | **Vigente** (SEO activado 2026-07-12) |
 | [`operations/`](./operations) | Lanzamiento, migraciones, soporte de navegadores | Vigente |
 | [`planning/`](./planning) | Deploy playbook, pricing, cambios de reglas de negocio, icebox de features | Vigente |
 | [`decisions/`](./decisions) | Decisiones de sistema y de seguridad transversales | Vigente |
 | [`qa/`](./qa) | Triage de fixes, decisiones pendientes, inventario de vistas | Vigente |
+| [`storybook/`](./storybook) | Storybook: arquitectura y decisiones, guía para escribir stories, inventario de cobertura (300/300 archivos), reporte de QA con los bugs de a11y encontrados | Vigente |
 | [`audit/`](./audit) | Auditorías: plan maestro, planes por fase, reports (código y docs), PROGRESS | Histórico (completadas) |
 | [`business/`](./business) | Planes originales de negocio, sistema e historias de usuario (precursores de los doc) | Referencia histórica |
 | [`superpowers/`](./superpowers) | Planes y specs de implementación (workflow superpowers) | Histórico |

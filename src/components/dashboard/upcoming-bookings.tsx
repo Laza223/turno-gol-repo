@@ -144,7 +144,7 @@ export function UpcomingBookings({
                 <li key={row.id}>
                   <Link
                     href={`/reservas/${row.id}`}
-                    className="flex min-h-[44px] items-center gap-4 px-5 py-3 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+                    className="flex min-h-[44px] items-center gap-4 px-5 py-3 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-hidden"
                     aria-label={`${formatTime(row.timeStart)} ${name} en ${row.courtName} — ver reserva`}
                   >
                     <div className="w-14 shrink-0">

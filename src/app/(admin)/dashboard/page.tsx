@@ -16,6 +16,7 @@ import { UpcomingBookings } from '@/components/dashboard/upcoming-bookings'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
+import { markPublicLinkSharedAction } from './actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -51,7 +52,7 @@ export default async function DashboardPage() {
   ])
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const { caja, occupancy, pendingDeposits, debts } = data
+  const { caja, occupancy, pendingDeposits, blockedPlayers } = data
 
   const cajaValue =
     caja.balanceCents < 0 ? (
@@ -74,7 +75,7 @@ export default async function DashboardPage() {
         actions={
           <Link
             href="/grilla"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
             Ir a la grilla
@@ -87,6 +88,7 @@ export default async function DashboardPage() {
           state={checklistState}
           tenantSlug={tenant.slug}
           appUrl={appUrl}
+          action={markPublicLinkSharedAction}
         />
       )}
 
@@ -124,17 +126,13 @@ export default async function DashboardPage() {
           ariaLabel={`Esperando seña: ${pendingDeposits.count} — ver reservas pendientes`}
         />
         <MetricCard
-          label="Deudas por cobrar"
-          value={formatArs(debts.totalCents)}
+          label="Jugadores bloqueados"
+          value={String(blockedPlayers)}
           icon={<UserX className="h-5 w-5" aria-hidden="true" />}
-          sub={
-            debts.players > 0
-              ? `${debts.players} ${debts.players === 1 ? 'jugador con deuda' : 'jugadores con deuda'}`
-              : 'Nadie debe nada'
-          }
+          sub={blockedPlayers > 0 ? 'Por ausencias reiteradas u otros motivos' : 'Nadie bloqueado'}
           accent="red"
           href="/jugadores"
-          ariaLabel={`Deudas por cobrar: ${formatArs(debts.totalCents)} — ver jugadores`}
+          ariaLabel={`Jugadores bloqueados: ${blockedPlayers} — ver jugadores`}
         />
       </div>
 

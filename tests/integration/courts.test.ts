@@ -94,14 +94,14 @@ describe('createCourt', () => {
 })
 
 describe('plan limit enforcement', () => {
-  it('getCourtCountAndLimit returns limit=3 when predio plan linked', async () => {
+  it('getCourtCountAndLimit returns limit=2 when predio plan linked', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const planId = await getOrCreatePlanId(sql)
     await insertSubscription(sql, { tenantId: tenant.id, planId })
 
-    // Create 3 courts
-    for (let i = 1; i <= 3; i++) {
+    // Create 2 courts (nuevo límite del plan predio, migr. 043)
+    for (let i = 1; i <= 2; i++) {
       await withTenantContext(tenant.id, (tx) =>
         createCourt(tenant.id, { ...COURT_INPUT, name: `Cancha ${i}` }, tx),
       )
@@ -111,9 +111,9 @@ describe('plan limit enforcement', () => {
       getCourtCountAndLimit(tenant.id, tx),
     )
 
-    expect(count).toBe(3)
-    expect(maxCourts).toBe(3)
-    // 4th creation would be blocked (count >= maxCourts)
+    expect(count).toBe(2)
+    expect(maxCourts).toBe(2)
+    // 3rd creation would be blocked (count >= maxCourts)
     expect(count >= maxCourts!).toBe(true)
   })
 

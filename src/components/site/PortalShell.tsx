@@ -3,6 +3,7 @@ import PortalHeader from './PortalHeader'
 import SiteFooter from './SiteFooter'
 import PortalFrame from './PortalFrame'
 import { PortalSessionProvider } from './PortalSessionProvider'
+import { signOutAction } from '@/modules/auth/sign-out.action'
 
 /**
  * Cascarón único del portal del jugador (público + logueado + post-reserva).
@@ -13,7 +14,10 @@ import { PortalSessionProvider } from './PortalSessionProvider'
 export default function PortalShell({ children }: { children: ReactNode }) {
   return (
     <PortalSessionProvider>
-      <PortalFrame header={<PortalHeader variant="solid" />} footer={<SiteFooter />}>
+      <PortalFrame
+        header={<PortalHeader variant="solid" signOutAction={signOutAction} />}
+        footer={<SiteFooter />}
+      >
         {children}
       </PortalFrame>
     </PortalSessionProvider>

@@ -88,7 +88,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
                 aria-label={`${n} estrella${n === 1 ? '' : 's'}`}
                 onClick={() => setRating(n)}
                 onMouseEnter={() => setHover(n)}
-                className="rounded p-1 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:hover:scale-100"
+                className="rounded p-1 transition-transform hover:scale-110 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:hover:scale-100"
               >
                 <Star
                   className={cn(
@@ -112,7 +112,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
               maxLength={500}
               rows={3}
               placeholder="¿Qué te pareció la cancha, el lugar, la atención?"
-              className="w-full resize-none rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full resize-none rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
             <p className="text-right text-xs text-muted-foreground tabular-nums">{comment.length}/500</p>
           </div>
@@ -121,7 +121,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
             type="button"
             onClick={submit}
             disabled={pending}
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-[background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 motion-reduce:active:scale-100"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 motion-reduce:active:scale-100"
           >
             {pending ? 'Enviando…' : 'Publicar reseña'}
           </button>

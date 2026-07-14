@@ -11,10 +11,8 @@ export const dynamic = 'force-dynamic'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // GET /api/public/reviews/[tenantId] — lista pública de reseñas + promedio.
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { tenantId: string } },
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ tenantId: string }> }) {
+  const params = await props.params;
   const tenantId = params.tenantId
   if (!UUID_RE.test(tenantId)) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })

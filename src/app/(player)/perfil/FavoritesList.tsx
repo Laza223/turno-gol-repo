@@ -17,7 +17,7 @@ export default function FavoritesList({
 }) {
   if (tenants.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-sm">
+      <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-xs">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 ring-1 ring-inset ring-rose-500/15 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/20">
           <Heart className="h-8 w-8" aria-hidden />
         </div>

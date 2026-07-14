@@ -26,7 +26,10 @@ export default function SuccessRedirect({ next }: { next: string }) {
   }, [next])
 
   return (
-    <p className="mt-4 text-xs text-slate-500" aria-live="polite">
+    // slate-500 (#64748b) sobre la card de /verify daba 3.91:1 — abajo del 4.5 que pide
+    // AA para 12px. Es un gris del medio: no llega ni contra fondo claro ni contra
+    // oscuro. slate-400 sobre esta card (siempre oscura) da 7.33:1.
+    <p className="mt-4 text-xs text-slate-400" aria-live="polite">
       Te llevamos automáticamente en {remaining}s…
     </p>
   )

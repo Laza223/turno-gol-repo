@@ -4,7 +4,7 @@
 
 ## La frase central (aprenderla de memoria)
 
-> **"TurnoGol hace que el que reserva deje una seña por MercadoPago. Si te clavan, la seña queda para vos, y el que te clavó no puede volver a reservar hasta que te pague. Y de paso dejás de atender el teléfono todo el día: el jugador ve los huecos y reserva solo desde un link."**
+> **"TurnoGol hace que el que reserva deje una seña por MercadoPago. Si te clavan, la seña queda para vos, y al que clava seguido el sistema le corta solo las reservas online por dos semanas. Y de paso dejás de atender el teléfono todo el día: el jugador ve los huecos y reserva solo desde un link."**
 
 Todo lo demás (caja, abonados, métricas) es refuerzo. La puerta se abre con **el clavo y el teléfono**.
 
@@ -14,7 +14,7 @@ Todo lo demás (caja, abonados, métricas) es refuerzo. La puerta se abre con **
 
 ## Versión 30 segundos (elevator / audio de WhatsApp)
 
-> "Mirá, es simple: tenés un link con tus canchas, tus horarios y tus precios. El jugador entra, elige el hueco y paga la seña por MercadoPago — la plata va directo a TU MercadoPago, yo no toco nada. A vos te suena el celu con cada reserva y la ves en la grilla. Si el tipo no aparece, la seña queda para vos y le queda una deuda registrada: no puede volver a reservar online hasta pagarte. Los fijos los cargás una vez y se repiten solos. Y al final del día la caja te cierra sola: turnos, cantina y gastos en un solo lugar."
+> "Mirá, es simple: tenés un link con tus canchas, tus horarios y tus precios. El jugador entra, elige el hueco y paga la seña por MercadoPago — la plata va directo a TU MercadoPago, yo no toco nada. A vos te suena el celu con cada reserva y la ves en la grilla. Si el tipo no aparece, la seña queda para vos; y si es de los que clavan seguido, el sistema solo le bloquea las reservas online por dos semanas. Los fijos los cargás una vez y se repiten solos. Y al final del día la caja te cierra sola: turnos, cantina y gastos en un solo lugar."
 
 ## Versión para reenviar al socio (texto que el dueño manda al otro dueño)
 
@@ -22,9 +22,9 @@ Todo lo demás (caja, abonados, métricas) es refuerzo. La puerta se abre con **
 
 ## Los 3 pilares (en orden de dolor)
 
-1. **"Que no te claven más"** — seña por MP a TU cuenta + deuda automática al que clava. ✅ FIRME (mecánica del producto).
+1. **"Que no te claven más"** — seña por MP a TU cuenta + bloqueo automático al reincidente (2da ausencia en 90 días = 14 días sin reservar online en tu complejo). ✅ FIRME (mecánica del producto). **NO decir "deuda": no existe deuda de dinero por no-show** (revertido 2026-07-11).
 2. **"Que el teléfono deje de manejarte el día"** — link público 24/7, el jugador reserva solo, te llega push y lo ves en la grilla desde el celu. ✅ FIRME.
-3. **"Que la caja te cierre"** — turnos + cantina + gastos + cierre diario; y los abonados con quién pagó, quién debe y saldo a favor. ✅ FIRME (cobro registrado a mano, NO automático — no prometer débito).
+3. **"Que la caja te cierre"** — turnos + cantina + gastos + cierre diario; y los fijos con el control de quién pagó cada sesión. ✅ FIRME (cobro registrado a mano, NO automático — no prometer débito. **NO decir "saldo a favor"**: eliminado del producto). 
 
 ## Contra cada alternativa
 

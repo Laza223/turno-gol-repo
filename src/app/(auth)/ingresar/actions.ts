@@ -11,8 +11,8 @@ export type PlayerLoginState =
   | { status: 'sent'; email: string }
   | { status: 'error'; message: string }
 
-function callbackOrigin(): string {
-  return headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
+async function callbackOrigin(): Promise<string> {
+  return (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
 }
 
 // Magic link de re-acceso para un jugador EXISTENTE (sesión vencida). El alta de
@@ -25,7 +25,7 @@ export async function playerLoginAction(
     .string()
     .trim()
     .toLowerCase()
-    .email({ message: 'Ingresá un email válido' })
+    .pipe(z.email({ message: 'Ingresá un email válido' }))
     .safeParse(formData.get('email'))
   if (!email.success) return { status: 'error', message: 'Ingresá un email válido.' }
 
@@ -36,7 +36,7 @@ export async function playerLoginAction(
 
   const nextRaw = formData.get('next')
   const safeNext = sanitizeNext(typeof nextRaw === 'string' ? nextRaw : null, '/mis-reservas')
-  const redirectTo = `${callbackOrigin()}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
+  const redirectTo = `${await callbackOrigin()}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
   const result = await signInWithExistingPlayerMagicLink(email.data, redirectTo)
   if (!result.ok) {
     return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.' }

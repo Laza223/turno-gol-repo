@@ -49,7 +49,7 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
   return (
     <section
       aria-label="Reseñas"
-      className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+      className="rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Reseñas</h2>
@@ -91,7 +91,7 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
                 type="button"
                 onClick={loadMore}
                 disabled={loading}
-                className="inline-flex h-11 items-center rounded-full border border-border bg-card px-6 text-sm font-medium text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md disabled:opacity-60 motion-reduce:hover:translate-y-0 dark:hover:text-emerald-400"
+                className="inline-flex h-11 items-center rounded-full border border-border bg-card px-6 text-sm font-medium text-foreground shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md disabled:opacity-60 motion-reduce:hover:translate-y-0 dark:hover:text-emerald-400"
               >
                 {loading ? 'Cargando…' : 'Ver más reseñas'}
               </button>

@@ -53,7 +53,7 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
           {day.courts.map((court) => {
             const free = court.slots.filter((s) => s.status === 'free')
             return (
-              <div key={court.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <div key={court.id} className="rounded-xl border border-border bg-card p-4 shadow-xs">
                 <h3 className="mb-3 text-sm font-semibold text-foreground">{court.name}</h3>
                 {free.length === 0 ? (
                   <p className="text-xs text-muted-foreground">Sin turnos libres.</p>
@@ -66,7 +66,8 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
                         className="flex min-h-11 flex-col items-center justify-center rounded-lg bg-green-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-emerald-300 ring-1 ring-inset ring-green-600/20 dark:ring-emerald-400/20 hover:bg-green-100 dark:hover:bg-emerald-500/15 active:scale-[0.98] transition-colors"
                       >
                         <span className="tabular-nums">{s.time}</span>
-                        {s.price && <span className="text-[10px] text-green-600 dark:text-emerald-400 tabular-nums">{formatARS(s.price)}</span>}
+                        {/* text-green-600 sobre bg-green-50 mide 3.14:1 — bajo AA. text-green-700 (igual que el resto del link) da 4.79:1. */}
+                        {s.price && <span className="text-[10px] text-green-700 dark:text-emerald-400 tabular-nums">{formatARS(s.price)}</span>}
                       </Link>
                     ))}
                   </div>

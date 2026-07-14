@@ -96,7 +96,7 @@ export default function BookingSuccessExtras(props: Props) {
   return (
     <div className="mt-6 w-full space-y-3">
       {hasGeo && (
-        <div className="overflow-hidden rounded-xl border border-border shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-border shadow-xs">
           <BookingMiniMap lat={props.latitude!} lng={props.longitude!} label={tenantName} />
         </div>
       )}
@@ -105,7 +105,7 @@ export default function BookingSuccessExtras(props: Props) {
         <button
           type="button"
           onClick={shareWhatsApp}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-800 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:bg-green-600 dark:hover:bg-green-500"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 text-sm font-semibold text-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-800 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:bg-green-600 dark:hover:bg-green-500"
         >
           <MessageCircle className="h-4 w-4" aria-hidden />
           Compartir
@@ -113,7 +113,7 @@ export default function BookingSuccessExtras(props: Props) {
         <button
           type="button"
           onClick={addToCalendar}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/[.04] dark:hover:bg-white/[.08]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/4 dark:hover:bg-white/8"
         >
           <CalendarPlus className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
           Calendario
@@ -122,7 +122,7 @@ export default function BookingSuccessExtras(props: Props) {
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/[.04] dark:hover:bg-white/[.08]"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/4 dark:hover:bg-white/8"
         >
           <Navigation className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
           Cómo llegar

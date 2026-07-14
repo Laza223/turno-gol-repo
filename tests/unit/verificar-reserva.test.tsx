@@ -29,7 +29,7 @@ function row(overrides: Record<string, string> = {}) {
 }
 
 async function renderPage(bookingId: string = BOOKING_ID) {
-  const ui = await VerificarReservaPage({ params: { bookingId } })
+  const ui = await VerificarReservaPage({ params: Promise.resolve({ bookingId }) })
   return render(ui)
 }
 

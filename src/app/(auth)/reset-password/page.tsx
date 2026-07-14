@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/ui/logo'
 import { ResetForm } from './reset-form'
+import { resetPasswordAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,18 +12,18 @@ export const dynamic = 'force-dynamic'
  * expiró: ofrecemos pedir uno nuevo.
  */
 export default async function ResetPasswordPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
   const hasSession = !!data?.user
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative flex min-h-dvh items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="mb-8 flex justify-center">
           <Logo variant="vertical" className="w-32" />
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
+        <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
           {hasSession ? (
             <>
               <header className="mb-6 space-y-1">
@@ -33,7 +34,7 @@ export default async function ResetPasswordPage() {
                   Elegí una contraseña de al menos 8 caracteres.
                 </p>
               </header>
-              <ResetForm />
+              <ResetForm action={resetPasswordAction} />
             </>
           ) : (
             <div className="text-center">

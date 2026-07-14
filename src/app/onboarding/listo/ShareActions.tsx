@@ -4,12 +4,16 @@ import { useEffect, useState, useTransition } from 'react'
 import { Copy, MessageCircle } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
-import { markPublicLinkSharedAction } from '@/app/(admin)/dashboard/actions'
+import type { MarkSharedResult } from '@/app/(admin)/dashboard/actions'
+
+/** Firma de la Server Action que marca `public_link_shared` (best-effort). */
+export type MarkPublicLinkSharedAction = () => Promise<MarkSharedResult>
 
 type Props = {
   appUrl: string | null
   slug: string
   tenantName: string
+  action: MarkPublicLinkSharedAction
 }
 
 /**
@@ -18,7 +22,7 @@ type Props = {
  * hacia el Aha Moment (doc10 §6). Compartir o copiar marcan `public_link_shared`
  * para que la checklist del dashboard arranque más llena.
  */
-export function ShareActions({ appUrl, slug, tenantName }: Props) {
+export function ShareActions({ appUrl, slug, tenantName, action }: Props) {
   // El origin recién existe post-hidratación; con NEXT_PUBLIC_APP_URL seteado
   // el link ya sale correcto en SSR.
   const [origin, setOrigin] = useState<string | null>(null)
@@ -39,7 +43,7 @@ export function ShareActions({ appUrl, slug, tenantName }: Props) {
   function persistShared() {
     startTransition(async () => {
       try {
-        await markPublicLinkSharedAction()
+        await action()
       } catch {
         // La checklist del dashboard ofrece reintentar con su propio CTA.
       }

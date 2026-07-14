@@ -29,8 +29,9 @@ export type TenantSettings = {
     penalty_type: 'deposit' | 'full'
     penalty_amount: number | null
   }
-  // Tarea #5: el no-show ya no banea por días; genera deuda en
-  // player_tenant_relationships.balance. No hay configuración por complejo.
+  // No-show = softban por reincidencia (2da ausencia en 90 días → 14 días
+  // sin reserva online, vía tenant_player_bans). Sin deuda de dinero y sin
+  // configuración por complejo (revert de "no-show = deuda", 2026-07-11).
   accepts_cash: boolean
   accepts_transfer: boolean
   accepts_mercadopago: boolean

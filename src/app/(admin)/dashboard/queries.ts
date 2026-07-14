@@ -1,10 +1,10 @@
-import { and, count, eq, gt, isNull, sql } from 'drizzle-orm'
+import { and, count, eq, isNull, sql } from 'drizzle-orm'
 import { withTenantContext } from '@/shared/db/client'
 import {
   bookings,
   courts,
   players,
-  playerTenantRelationships,
+  tenantPlayerBans,
 } from '@/shared/db/schema'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { todayART } from '@/shared/time/art-date'
@@ -35,7 +35,8 @@ export interface DashboardData {
   /** true si hoy no hay oferta (closed_dates, día cerrado o sin horario válido). */
   dayIsClosed: boolean
   pendingDeposits: { count: number; amountCents: number }
-  debts: { players: number; totalCents: number }
+  /** Jugadores con softban activo por ausencias reiteradas (tenant_player_bans). */
+  blockedPlayers: number
   upcoming: DayBookingRow[]
   playedToday: number
   openHhmm: string
@@ -78,7 +79,7 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
   )
 
   return withTenantContext(tenant.id, async (tx) => {
-    const [summary, bookingRows, courtRows, debtRow] = await Promise.all([
+    const [summary, bookingRows, courtRows, blockedRow] = await Promise.all([
       getDaySummary(tenant.id, date, tx),
 
       tx
@@ -113,15 +114,12 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
         .where(eq(courts.tenantId, tenant.id)),
 
       tx
-        .select({
-          players: count(),
-          totalCents: sql<string>`COALESCE(SUM(${playerTenantRelationships.balance}), 0)`,
-        })
-        .from(playerTenantRelationships)
+        .select({ players: count() })
+        .from(tenantPlayerBans)
         .where(
           and(
-            eq(playerTenantRelationships.tenantId, tenant.id),
-            gt(playerTenantRelationships.balance, 0),
+            eq(tenantPlayerBans.tenantId, tenant.id),
+            sql`(${tenantPlayerBans.bannedUntil} IS NULL OR ${tenantPlayerBans.bannedUntil} > NOW())`,
           ),
         )
         .then((r) => r[0]),
@@ -155,10 +153,7 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
       occupancy: occupancyForDay(rows, slots.length, courtsOnline),
       dayIsClosed: slots.length === 0,
       pendingDeposits: pendingDeposits(rows),
-      debts: {
-        players: Number(debtRow?.players ?? 0),
-        totalCents: Number(debtRow?.totalCents ?? 0),
-      },
+      blockedPlayers: Number(blockedRow?.players ?? 0),
       upcoming: upcomingForDay(rows, nowHhmm, openHhmm, tenant.closesNextDay),
       playedToday: playedCount(rows),
       openHhmm,

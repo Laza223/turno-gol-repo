@@ -49,8 +49,8 @@ export class NoActiveAdminToProxyError extends Error {
  * Lee y verifica la cookie de impersonación del request. Solo integridad +
  * expiración; no chequea la sesión auth. null si no hay o es inválida.
  */
-export function readImpersonationCookie(): ImpersonationPayload | null {
-  const raw = cookies().get(IMPERSONATION_COOKIE_NAME)?.value
+export async function readImpersonationCookie(): Promise<ImpersonationPayload | null> {
+  const raw = (await cookies()).get(IMPERSONATION_COOKIE_NAME)?.value
   if (!raw) return null
   return verifyImpersonationCookie(raw)
 }
@@ -59,11 +59,11 @@ export function readImpersonationCookie(): ImpersonationPayload | null {
  * Sesión de impersonación dada la identidad REAL: requiere cookie válida y que
  * el usuario sea el mismo system_admin que la emitió. No toca la DB.
  */
-export function getImpersonationSessionFor(
+export async function getImpersonationSessionFor(
   realUser: AuthUser | null,
-): ImpersonationSession | null {
+): Promise<ImpersonationSession | null> {
   if (!realUser || realUser.type !== 'system_admin') return null
-  const payload = readImpersonationCookie()
+  const payload = await readImpersonationCookie()
   if (!payload) return null
   if (payload.systemAdminId !== realUser.systemAdminId) return null
   return { systemAdminId: payload.systemAdminId, tenantId: payload.tenantId }
@@ -78,7 +78,7 @@ export function getImpersonationSessionFor(
 export async function resolveImpersonatedStaffContextFor(
   realUser: AuthUser | null,
 ): Promise<ImpersonatedStaffContext | null> {
-  const session = getImpersonationSessionFor(realUser)
+  const session = await getImpersonationSessionFor(realUser)
   if (!session || !realUser || realUser.type !== 'system_admin') return null
 
   const tenant = await getTenantById(session.tenantId)

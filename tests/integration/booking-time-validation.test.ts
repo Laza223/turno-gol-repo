@@ -230,11 +230,20 @@ describe('createOnlineBooking: date window validation (BK-04)', () => {
   // (ej. la noche de ayer sigue abierta) era irreservable por API aunque la
   // grilla lo mostrara disponible.
   it('día operativo: no rechaza como past_date un slot de "ayer operativo" que sigue físicamente en el futuro', async () => {
-    // Evita el wrap de medianoche del slot sintético (start+60 cruzando 24:00)
-    // en vez de perseguir la fecha real: mismo criterio de tolerancia horaria
-    // que el test de arriba ("rejects today slot...").
+    // Evita el wrap de medianoche del slot sintético: abajo el slot arranca en
+    // `ahora + 10'` y dura 60', así que si `ahora + 70'` cruza las 24:00 el
+    // timeEnd wrapea a "00:xx", queda MENOR que el timeStart y viola
+    // `chk_time_valid` — un fallo del andamiaje del test, no de lo que quiere
+    // ejercitar.
+    //
+    // El guard viejo (`hora === 23 && minutos > 49`) tenía la condición al
+    // revés: salteaba 23:50–23:59, que es justo la franja donde NO hay wrap
+    // (ahí start ya arranca pasada la medianoche), y dejaba correr 22:50–23:49,
+    // que es donde el wrap efectivamente pasa. O sea el test venía roto ~1 hora
+    // por día desde que se escribió, y solo se veía si la corrida caía ahí.
     const nowGuard = artNow()
-    if (nowGuard.getUTCHours() === 23 && nowGuard.getUTCMinutes() > 49) return
+    const startMins = (nowGuard.getUTCHours() * 60 + nowGuard.getUTCMinutes() + 10) % (24 * 60)
+    if (startMins + 60 > 24 * 60) return
 
     const sql = getSql()
     const cndTenant = await createTestTenant(sql)

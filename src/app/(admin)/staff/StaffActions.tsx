@@ -13,7 +13,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole } from '@/modules/staff/roles'
-import { deactivateStaffAction, resendInviteAction, updateStaffRoleAction } from './actions'
+import type { StaffActionResult } from './actions'
 
 // The deactivate confirmation pulls in the Radix AlertDialog (~13KB). It is only
 // needed once an admin opens it, so lazy-load and mount it on demand instead of
@@ -22,6 +22,11 @@ const ConfirmDialog = dynamic(
   () => import('@/components/ui/confirm-dialog').then((m) => m.ConfirmDialog),
   { ssr: false },
 )
+
+/** Firmas de deactivateStaffAction/resendInviteAction/updateStaffRoleAction — DI, ver ReservasPolicyForm.tsx. */
+export type DeactivateStaffAction = (staffMemberId: string) => Promise<StaffActionResult>
+export type ResendInviteAction = (email: string) => Promise<StaffActionResult>
+export type UpdateStaffRoleAction = (staffMemberId: string, role: string) => Promise<StaffActionResult>
 
 interface StaffActionsProps {
   member: {
@@ -34,9 +39,19 @@ interface StaffActionsProps {
   }
   currentUserStaffId: string
   activeAdminCount: number
+  deactivateAction: DeactivateStaffAction
+  resendInviteAction: ResendInviteAction
+  updateRoleAction: UpdateStaffRoleAction
 }
 
-export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, activeAdminCount }: StaffActionsProps) {
+export function StaffActions({
+  member,
+  currentUserStaffId: _currentUserStaffId,
+  activeAdminCount,
+  deactivateAction,
+  resendInviteAction,
+  updateRoleAction,
+}: StaffActionsProps) {
   const [deactivateOpen, setDeactivateOpen] = useState(false)
   // Lockout: el último admin activo no se puede desactivar (misma regla que
   // valida el server en deactivateStaffAction).
@@ -44,7 +59,7 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
   const otherRoles = STAFF_ROLES.filter((role) => role !== member.role)
 
   async function handleChangeRole(role: StaffRole) {
-    const res = await updateStaffRoleAction(member.memberId, role)
+    const res = await updateRoleAction(member.memberId, role)
     if (res.success) {
       toast({
         title: `${member.firstName} ${member.lastName} ahora es ${STAFF_ROLE_LABELS[role]}.`,
@@ -56,7 +71,7 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
   }
 
   async function onConfirmDeactivate(): Promise<{ success: boolean; error?: string }> {
-    const res = await deactivateStaffAction(member.memberId)
+    const res = await deactivateAction(member.memberId)
     if (!res.success) {
       return { success: false, error: res.error }
     }
@@ -75,7 +90,12 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
 
   return (
     <>
-      <DropdownMenu>
+      {/* modal={false}: es un menú de acciones sobre la fila del staff, no un diálogo
+          que deba bloquear la página. Con el default (modal=true) Radix llama
+          hideOthers() y marca aria-hidden todo el árbol fuera del portal —incluido el
+          propio trigger, que sigue siendo focuseable— violando aria-hidden-focus (axe).
+          Mismo criterio que ShareButton, HeroSearch y SearchBar. */}
+      <DropdownMenu modal={false}>
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
@@ -101,7 +121,7 @@ export function StaffActions({ member, currentUserStaffId: _currentUserStaffId, 
                 </DropdownMenuItem>
               ))}
               <DropdownMenuItem
-                className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600"
+                className="cursor-pointer text-red-700 dark:text-red-400 focus:text-red-700"
                 disabled={isLastActiveAdmin}
                 onSelect={(e) => {
                   e.preventDefault()

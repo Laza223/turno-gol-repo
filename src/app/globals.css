@@ -1,6 +1,219 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/* Reemplaza a tailwindcss-animate, que es un plugin JS de Tailwind v3 y no
+   funciona en v4. Mismos nombres de clase: los `animate-in` / `animate-out` que
+   usan los primitives de Radix (dialog, sheet, dropdown, popover, tooltip) —29
+   ocurrencias— siguen andando sin tocar el markup. */
+@import 'tw-animate-css';
+
+/* ArticleShell usa `prose prose-lg prose-blue` para el blog MDX. En v4 los
+   plugins se declaran desde el CSS, no desde un tailwind.config. */
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:is(.dark *));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+@theme {
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-display:
+    var(--font-archivo), ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-logo:
+    var(--font-sora), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  /* ─── Paleta semántica pineada a los valores de Tailwind 3 ─────────────────
+   *
+   * Tailwind 4 reescribió su paleta default en OKLCH. Los colores quedan un
+   * toque más saturados, y eso ROMPIÓ WCAG AA en el design system, que pasaba
+   * al filo. Medido, no estimado (contraste real contra el fondo real):
+   *
+   *   text-red-600  12/14px  #dc2626 4.55 PASA  →  #e7000b 4.49 FALLA (min 4.5)
+   *   text-red-700  14px     #b91c1c 4.51 PASA  →  #c10007 4.47 FALLA
+   *   emerald-700   14px     #047857 4.57 PASA  →  #007a55 4.47 FALLA
+   *   emerald-600   96px b   #059669 3.03 PASA  →  #009966 2.94 FALLA (min 3.0)
+   *
+   * Son los mensajes de error de validación (caja, staff, auth) y los KPIs de
+   * métricas: texto que el usuario TIENE que poder leer. Lo cazó la suite de
+   * a11y de Storybook; ningún typecheck/lint/test lo veía.
+   *
+   * Se pinean las ESCALAS COMPLETAS de las 3 familias semánticas (emerald=marca,
+   * red=error, amber=warning), no solo los 4 tonos que fallaban: emerald-500
+   * (301 usos) y emerald-400 (246) son los más usados del repo, y dejarlos en
+   * OKLCH junto a un emerald-600 pineado partiría la escala — los hovers 500→600
+   * saltarían de una paleta a la otra.
+   *
+   * Precio: estas 3 familias quedan forkeadas de los defaults de Tailwind.
+   * Alternativa descartada: subir un tono donde falla (cambia el diseño).
+   */
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
+  --color-emerald-950: #022c22;
+
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+  --color-red-950: #450a0a;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-amber-950: #451a03;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-tg-float: tg-float 8s ease-in-out infinite;
+  --animate-tg-drift: tg-drift 18s ease-in-out infinite;
+  --animate-slot-pulse: slot-pulse 600ms ease-out 1;
+  --animate-faq-in: faq-in 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  @keyframes tg-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-12px);
+    }
+  }
+  @keyframes tg-drift {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(3%, -2%, 0);
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  @keyframes slot-pulse {
+    0% {
+      box-shadow: 0 0 0 0 hsl(160 84% 39% / 0.65);
+    }
+    100% {
+      box-shadow: 0 0 0 10px hsl(160 84% 39% / 0);
+    }
+  }
+  @keyframes faq-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 @layer base {
   :root {
@@ -21,7 +234,12 @@
     --secondary-foreground: 222 47% 11%; /* slate-900 */
 
     --muted: 214 32% 85%;             /* slate-300ish */
-    --muted-foreground: 215 20% 40%;  /* slate-600 — better contrast on new bg */
+    /* 36% (no 40%): con 40% el par muted-foreground/muted daba 4.24:1 y NO llegaba
+       al 4.5 de WCAG AA (MASTER §2.4) — lo detectó axe sobre los badges `bg-muted`
+       ("Turno fijo", chips de estado). A 36% queda en 4.93:1 sobre bg-muted, 7.16
+       sobre --card y 5.78 sobre --background. La diferencia visual es imperceptible;
+       la de accesibilidad, no. */
+    --muted-foreground: 215 20% 36%;  /* slate-600 */
 
     --accent: 214 32% 85%;            /* hover bg */
     --accent-foreground: 222 47% 11%;

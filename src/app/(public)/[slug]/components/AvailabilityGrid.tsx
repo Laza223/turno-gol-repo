@@ -250,7 +250,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
 
   return (
     <section
-      className="bg-card rounded-2xl border border-border shadow-sm p-4 sm:p-6 space-y-4"
+      className="bg-card rounded-2xl border border-border shadow-xs p-4 sm:p-6 space-y-4"
       aria-label="Grilla de disponibilidad"
     >
       {/* Date navigation */}
@@ -313,7 +313,8 @@ export default function AvailabilityGrid({ tenant }: Props) {
       {!loading && error && (
         <p
           role="alert"
-          className="text-sm text-red-600 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20"
+          // text-red-600 sobre bg-red-50 mide 4.41:1 — bajo AA. text-red-700 da 5.9:1.
+          className="text-sm text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20"
         >
           No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e
           intentá de nuevo.

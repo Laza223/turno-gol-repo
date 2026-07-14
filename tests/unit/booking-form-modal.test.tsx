@@ -11,13 +11,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
-const createBookingAction = vi.fn()
-vi.mock('@/app/(admin)/reservas/actions', () => ({
-  createBookingAction: (...args: unknown[]) => createBookingAction(...args),
-}))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 
 import { BookingFormModal } from '@/components/booking/BookingFormModal'
+
+// La action llega por PROP (no por import: ver el comentario en
+// BookingFormModal.tsx), así que el test la mockea como cualquier otro
+// callback — ya no hace falta vi.mock del módulo de actions.
+const createBookingAction = vi.fn()
 
 const slot = {
   courtId: 'court-1',
@@ -30,7 +31,16 @@ const slot = {
 function renderModal(overrides: Partial<React.ComponentProps<typeof BookingFormModal>> = {}) {
   const onClose = vi.fn()
   const onSuccess = vi.fn()
-  render(<BookingFormModal slot={slot} open onClose={onClose} onSuccess={onSuccess} {...overrides} />)
+  render(
+    <BookingFormModal
+      slot={slot}
+      open
+      onClose={onClose}
+      onSuccess={onSuccess}
+      action={createBookingAction}
+      {...overrides}
+    />,
+  )
   return { onClose, onSuccess }
 }
 
@@ -67,7 +77,14 @@ describe('BookingFormModal — loading recovery', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('Horario ocupado')
     })
-    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(false)
+    // Dentro de un waitFor: React 19 hizo las transiciones async de verdad, así que
+    // `isPending` sigue true un tick después de que el error ya está en el DOM. Si
+    // el botón nunca se recupera, el waitFor expira y el test falla igual.
+    await waitFor(() => {
+      expect(
+        (screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled,
+      ).toBe(false)
+    })
   })
 
   it('a successful action calls onSuccess with the booking', async () => {

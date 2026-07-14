@@ -74,14 +74,18 @@ export default function FavoriteButton({
         disabled={pending}
         aria-pressed={fav}
         className={cn(
-          'group inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-all duration-200 shadow-sm backdrop-blur-md active:scale-95 disabled:opacity-60 disabled:pointer-events-none hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+          'group inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-all duration-200 shadow-xs backdrop-blur-md active:scale-95 disabled:opacity-60 disabled:pointer-events-none hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500',
           fav
-            ? 'border-red-500/20 bg-red-500/10 text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500/20 dark:hover:bg-red-500/20'
+            ? // text-red-600 (#dc2626) sobre bg-red-500/10 compuesto con
+              // --background (#DDE3EC) da ~#E3D7DD de fondo real → 3.45:1, bajo
+              // AA. red-700 (#b91c1c) es el mismo idiom que status-badge/toast
+              // (texto rojo oscuro sobre fondo rojo tenue) y sí pasa.
+              'border-red-500/20 bg-red-500/10 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500/20 dark:hover:bg-red-500/20'
             : 'border-border/50 bg-card/60 text-foreground/90 hover:bg-card hover:border-red-500/30 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400',
           className,
         )}
       >
-        <Heart className={cn('h-4 w-4 transition-all duration-200 group-hover:scale-110', fav ? 'fill-current text-red-600 dark:text-red-400' : 'text-current')} aria-hidden />
+        <Heart className={cn('h-4 w-4 transition-all duration-200 group-hover:scale-110', fav ? 'fill-current text-red-700 dark:text-red-400' : 'text-current')} aria-hidden />
         {fav ? 'Guardado' : 'Guardar'}
       </button>
     )
@@ -96,8 +100,8 @@ export default function FavoriteButton({
       aria-label={label}
       title={label}
       className={cn(
-        'group inline-flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-full bg-card/85 text-foreground/70 border border-border/40 shadow-sm backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/30 active:scale-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
-        fav && 'text-red-600 border-red-500/30 bg-red-500/10 dark:text-red-400 dark:bg-red-500/25',
+        'group inline-flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-full bg-card/85 text-foreground/70 border border-border/40 shadow-xs backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/30 active:scale-90 disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500',
+        fav && 'text-red-700 border-red-500/30 bg-red-500/10 dark:text-red-400 dark:bg-red-500/25',
         className,
       )}
     >

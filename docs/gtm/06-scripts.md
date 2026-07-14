@@ -79,8 +79,8 @@ Cierre de la charla → demo:
 1. **(2 min) Recap del dolor:** "Me dijiste que [X]. Mirá cómo queda."
 2. **(3 min) La reserva del jugador** — el momento estrella, dárselo a él: "Tomá, hacé de cuenta que sos un cliente: entrá acá [su link], elegí cancha y hora." Que ÉL haga la reserva y llegue al pago de seña por MercadoPago. "Esa plata va a TU MercadoPago. Yo no la toco."
 3. **(2 min) El aviso y la grilla:** mostrar el push/la reserva apareciendo en la grilla. "Esto te suena en el celu estés donde estés. De madrugada no te molesta: te avisa a las 8."
-4. **(3 min) El clavo:** marcar un no-show en la grilla. "La seña quedó para vos. Y mirá: al tipo le quedó la deuda — no puede volver a reservar online acá hasta pagarte."
-5. **(2 min) Lo que le duela según la charla:** fijos (se repiten solos, quién pagó, saldo a favor) O caja (cierre del día, cantina, gastos) O métricas. **Solo UNO. No hacer el tour completo.**
+4. **(3 min) El clavo:** marcar un no-show en la grilla. "La seña quedó para vos. Y si el tipo clava de nuevo, el sistema solo le corta las reservas online acá por dos semanas."
+5. **(2 min) Lo que le duela según la charla:** fijos (se repiten solos, quién pagó cada sesión) O caja (cierre del día, cantina, gastos) O métricas. **Solo UNO. No hacer el tour completo.**
 6. **(3 min) Cierre con la oferta piloto** — texto exacto en [04-oferta-piloto.md](./04-oferta-piloto.md). Terminar con: "¿Lo dejamos andando esta semana? Decime qué día me pasás la foto del cuaderno y los precios."
 
 **Si duda:** "¿Qué te frena?" → [07-objeciones.md](./07-objeciones.md). **Si dice que sí:** conectar MercadoPago AHÍ MISMO si se puede (10 min) — cada día entre el sí y el setup enfría el piloto.
@@ -140,6 +140,6 @@ convierte en pago].
 
 ## 9. Respuestas rápidas (guardarlas en WhatsApp Business)
 
-- **"¿Cuánto sale?"** → "Depende de las canchas: hasta 3, $47.000/mes + IVA; de 4 a 6, $74.000 + IVA. Sin comisión por reserva: es un fijo, te claven o no. El primer mes es gratis para probarlo. ¿Cuántas canchas tenés?" *(actualizar montos si cambia el pricing — fuente doc4)*
+- **"¿Cuánto sale?"** → "Depende de las canchas: 1 o 2, $55.000/mes + IVA; de 3 a 5, $85.000 + IVA; 6 o más, $115.000 + IVA. Sin comisión por reserva: es un fijo, te claven o no. El primer mes es gratis para probarlo. ¿Cuántas canchas tenés?" *(actualizar montos si cambia el pricing — fuente: tabla `plans` / `plans-data.ts`, página `/precios`)*
 - **"¿Es una app que tienen que bajar?"** → "No, es un link. Lo abrís del navegador como una página. Tus clientes no bajan nada."
 - **"Mandame info"** → "Te mando un video de 1 minuto que lo muestra andando [link]. Pero te soy sincero: en 15 minutos en el complejo lo ves con TUS canchas y decidís mejor. ¿Cuándo estás?"

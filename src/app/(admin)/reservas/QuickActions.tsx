@@ -14,13 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
-import {
-  cancelBookingAction,
-  completeBookingAction,
-  confirmDepositPaymentAction,
-  markNoShowAction,
-} from './actions'
 import { hasQuickActions } from './quick-actions-helpers'
+import type { BookingActionResult } from './actions'
 
 type QuickActionsBooking = {
   id: string
@@ -31,7 +26,25 @@ type QuickActionsBooking = {
   paymentMethod: string | null
 }
 
-type Props = {
+type SimpleBookingFn = (bookingId: string) => Promise<BookingActionResult>
+type CancelBookingFn = (
+  bookingId: string,
+  reason: string,
+  cancellationType: 'complejo' | 'jugador',
+) => Promise<BookingActionResult>
+
+/**
+ * Firma de las 4 Server Actions que consume QuickActions. Se agrupan en un
+ * solo tipo para que BookingListItem las reciba y reenvíe de un solo prop.
+ */
+export type BookingQuickActions = {
+  cancelBookingAction: CancelBookingFn
+  completeBookingAction: SimpleBookingFn
+  confirmDepositPaymentAction: SimpleBookingFn
+  markNoShowAction: SimpleBookingFn
+}
+
+type Props = BookingQuickActions & {
   booking: QuickActionsBooking
   /** Nombre + horario para que el menú mobile y los toasts tengan contexto. */
   label: string
@@ -39,11 +52,24 @@ type Props = {
 
 /**
  * Acciones rápidas sin salir de la lista: confirmar pago / completar
- * directas, "ausente" con confirmación en dos pasos inline (genera deuda o
- * ban si hay penalidad — pero sin modal), cancelar con diálogo porque el
- * backend exige motivo. En mobile viven detrás de un menú contextual.
+ * directas, "ausente" con confirmación en dos pasos inline (captura la seña
+ * y a la 2da ausencia en 90 días aplica softban de 14 días — pero sin modal),
+ * cancelar con diálogo porque el backend exige motivo. En mobile viven detrás
+ * de un menú contextual.
+ *
+ * Las 4 Server Actions llegan por PROP, no por import. './actions' es
+ * `'use server'` y arrastra request-context → node:async_hooks, que Vite
+ * externaliza en el browser y rompe Storybook. El type import de
+ * BookingActionResult sí es seguro: se borra en compilación.
  */
-export function QuickActions({ booking, label }: Props) {
+export function QuickActions({
+  booking,
+  label,
+  cancelBookingAction,
+  completeBookingAction,
+  confirmDepositPaymentAction,
+  markNoShowAction,
+}: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [noShowArmed, setNoShowArmed] = useState(false)
@@ -130,7 +156,7 @@ export function QuickActions({ booking, label }: Props) {
   const isPendingPayment = booking.status === 'pending_payment'
 
   const inlineBtn =
-    'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
 
   return (
     <>
@@ -183,13 +209,18 @@ export function QuickActions({ booking, label }: Props) {
 
       {/* Mobile: menú contextual, sin botones siempre visibles. z-10: encima del Link estirado de la fila. */}
       <div className="absolute right-1.5 top-1.5 z-10 sm:hidden">
-        <DropdownMenu>
+        {/* modal={false}: menú de acciones rápidas de una fila, no un diálogo. Con el
+            default (modal=true) Radix llama hideOthers() y marca aria-hidden todo el
+            árbol fuera del portal —incluido el propio trigger, que sigue siendo
+            focuseable— violando aria-hidden-focus (axe). Mismo criterio que
+            StaffActions, ShareButton, HeroSearch y SearchBar. */}
+        <DropdownMenu modal={false}>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger
                 disabled={pending}
                 aria-label={`Acciones para ${label}`}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
               >
                 <MoreVertical aria-hidden className="h-5 w-5" />
               </DropdownMenuTrigger>
@@ -278,7 +309,7 @@ export function QuickActions({ booking, label }: Props) {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>

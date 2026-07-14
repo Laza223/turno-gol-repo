@@ -19,16 +19,16 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
   return (
     <Link
       href={`/${tenant.slug}`}
-      className="card-premium card-premium-interactive group block cursor-pointer overflow-hidden rounded-[20px] transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="card-premium card-premium-interactive group block cursor-pointer overflow-hidden rounded-[20px] transition-transform active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {/* Cover */}
       <div className="mockup-cover relative h-[168px] overflow-hidden">
         {/* Retícula decorativa */}
-        <div aria-hidden className="player-hero-grid absolute inset-0 bg-[length:28px_28px]" />
+        <div aria-hidden className="player-hero-grid absolute inset-0 bg-size-[28px_28px]" />
         {/* Iniciales fantasma */}
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-[14px] left-5 font-display font-black italic leading-none text-emerald-950/[.12] dark:text-white/[.14]"
+          className="pointer-events-none absolute bottom-[14px] left-5 font-display font-black italic leading-none text-emerald-950/12 dark:text-white/[.14]"
           style={{ fontSize: '56px', letterSpacing: '-0.04em' }}
         >
           {initials}
@@ -57,7 +57,7 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
 
         {/* Badge de rating */}
         {tenant.reviewCount > 0 && (
-          <div className="absolute right-[14px] top-[14px] inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-[10px] py-[5px] backdrop-blur-sm dark:border-white/[.14] dark:bg-slate-950/[.62]">
+          <div className="absolute right-[14px] top-[14px] inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-[10px] py-[5px] backdrop-blur-xs dark:border-white/[.14] dark:bg-slate-950/62">
             <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />
           </div>
         )}
@@ -80,7 +80,7 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
             {amenities.map((key) => (
               <span
                 key={key}
-                className="whitespace-nowrap rounded-lg border border-border bg-muted/60 px-[10px] py-[4px] text-xs font-semibold text-muted-foreground dark:border-white/[.08] dark:bg-white/[.05] dark:text-slate-300"
+                className="whitespace-nowrap rounded-lg border border-border bg-muted/60 px-[10px] py-[4px] text-xs font-semibold text-muted-foreground dark:border-white/8 dark:bg-white/5 dark:text-slate-300"
               >
                 {AMENITIES[key].label}
               </span>
@@ -89,7 +89,7 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
         )}
 
         {/* Pie */}
-        <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/[.08]">
+        <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/8">
           <div>
             {fromPrice && (
               <>

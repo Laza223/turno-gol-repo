@@ -4,6 +4,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import { markPublicLinkSharedAction } from '@/app/(admin)/dashboard/actions'
 import { WizardShell } from '../components/WizardShell'
 import { ShareActions } from './ShareActions'
 
@@ -39,7 +40,12 @@ export default async function OnboardingListoPage() {
           </p>
         </div>
 
-        <ShareActions appUrl={appUrl} slug={tenant.slug} tenantName={tenant.name} />
+        <ShareActions
+          appUrl={appUrl}
+          slug={tenant.slug}
+          tenantName={tenant.name}
+          action={markPublicLinkSharedAction}
+        />
 
         <p className="mt-6 text-xs text-muted-foreground">
           En tu panel te dejamos una checklist con lo que falta para el 100%.

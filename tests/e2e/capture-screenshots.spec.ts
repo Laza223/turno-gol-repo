@@ -56,6 +56,23 @@ test.describe('UX Audit Screenshot Capturer', () => {
     testBookingId = randomUUID()
     testAbonadoId = randomUUID()
 
+    // Dejá al fresh admin sin onboarding ANTES de empezar, no solo después.
+    //
+    // Este spec matchea DOS projects (chromium por descarte, mobile-chrome por su
+    // testMatch), asi que corre dos veces por suite. El afterAll que restaura al fresh
+    // admin no alcanza: no corre entre una pasada y la otra, asi que la segunda arrancaba
+    // con el tenant que dejó la primera, el wizard la mandaba derecho al paso 2 y el
+    // `expect(heading /tu complejo/i)` del paso 1 se caía por timeout.
+    //
+    // Limpiar tambien de entrada hace al spec idempotente: no depende del orden de los
+    // projects ni de que la corrida anterior haya terminado bien.
+    const bootSql = postgres(SEED_ADMIN_URL, { max: 1, prepare: false, onnotice: () => {} })
+    try {
+      await deleteFreshAdminTenants(bootSql, FRESH_STAFF_USER_ID)
+    } finally {
+      await bootSql.end()
+    }
+
     const { data: before } = await supabase.from('bookings').select('id')
     preexistingBookingIds = new Set((before ?? []).map((b) => b.id as string))
 
@@ -288,19 +305,29 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 2: horarios (general + excepciones; defaults saneados → Continuar directo)
-    await expect(freshAdminPage.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 15000 })
+    // `filter({ visible: true })`, no `.first()`: WizardShell pinta el label del paso DOS
+    // veces — en el <aside> (hidden, lg:flex) y en el <header> (lg:hidden). En DOM order el
+    // primero es el del aside, que en viewport mobile está oculto, asi que `.first()` daba
+    // "resolved to <p>...</p>" pero hidden. Este spec corre en chromium Y en mobile-chrome.
+    await expect(
+      freshAdminPage.getByText(/paso 2 de 4/i).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 15000 })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_2')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 3: canchas inline (nombre precargado; solo falta el precio)
-    await expect(freshAdminPage.getByText(/paso 3 de 4/i).first()).toBeVisible({ timeout: 15000 })
+    await expect(
+      freshAdminPage.getByText(/paso 3 de 4/i).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 15000 })
     await freshAdminPage.getByPlaceholder(/20\.000/).fill('20.000')
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_3')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 4: señas (cards de decisión)
     try {
-      await expect(freshAdminPage.getByText(/paso 4 de 4/i).first()).toBeVisible({ timeout: 15000 })
+      await expect(
+        freshAdminPage.getByText(/paso 4 de 4/i).filter({ visible: true }).first(),
+      ).toBeVisible({ timeout: 15000 })
     } catch (err) {
       console.log("=== STEP 4 VISIBILITY FAILURE DETAILS ===")
       console.log("Current URL:", freshAdminPage.url())

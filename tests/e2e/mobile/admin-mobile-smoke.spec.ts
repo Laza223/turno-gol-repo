@@ -223,9 +223,17 @@ test.describe('Admin mobile smoke', () => {
       const dialog = page.getByRole('dialog')
       await expect(dialog).toBeVisible({ timeout: 3000 })
 
+      // Poll, no boundingBox() directo: el dialog entra con `slide-in-from-left-1/2`,
+      // que lo anima desde un translateX(-50%) EXTRA sobre el centrado. Medirlo
+      // apenas es visible lo agarra a mitad de vuelo (x negativo) aunque termine
+      // centrado y dentro del viewport. Mismo motivo por el que el test de cantina
+      // de este archivo ya mide con expect.poll.
+      await expect
+        .poll(async () => (await dialog.boundingBox())?.x ?? -1, { message: 'x del dialog' })
+        .toBeGreaterThanOrEqual(0)
+
       const box = await dialog.boundingBox()
       expect(box).not.toBeNull()
-      expect(box!.x).toBeGreaterThanOrEqual(0)
       expect(box!.x + box!.width).toBeLessThanOrEqual(393 + 1)
     } else {
       test.skip(true, 'Movimiento trigger not found in /caja — UI structure may differ')

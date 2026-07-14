@@ -84,7 +84,14 @@ function initSentry(): void {
   })
 }
 
-if (isValidDsn(dsn)) {
+// Solo se inicializa en produccion. `beforeSend` ya descartaba TODO evento fuera
+// de produccion, asi que en dev el SDK no reportaba nada — pero igual abria el
+// transporte y mandaba envelopes de sesion/tracing al DSN, que en local es un
+// placeholder (dummy.ingest.sentry.io). Eso es un error de CORS en cada carga de
+// pagina: ruido en la consola del dev y fallo de los smoke tests que exigen 0
+// errores de consola. Preview de Vercel corre con NODE_ENV=production, asi que
+// sigue reportando.
+if (isValidDsn(dsn) && process.env.NODE_ENV === 'production') {
   const ric = (globalThis as { requestIdleCallback?: (cb: () => void) => void })
     .requestIdleCallback
   if (typeof ric === 'function') {

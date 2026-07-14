@@ -73,7 +73,9 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
     try {
       // Optional nod to "search → complejo" (as per spec)
       await page.goto(`/${DEPOSIT_TENANT_SLUG}`)
-      await expect(page.getByText('E2E Complejo Seña')).toBeVisible()
+      // Heading, no getByText: desde Next 16 el <title> streamea dentro del
+      // <body>, asi que getByText('E2E Complejo Seña') tambien lo matchea.
+      await expect(page.getByRole('heading', { name: 'E2E Complejo Seña' })).toBeVisible()
 
       // Navigate directly to the reservar page — the slug→grid→slot link flow is
       // covered by availability.spec.ts (F6). F7 new coverage starts at form→MP.
@@ -239,9 +241,17 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       )
       expect(webhookResp.ok()).toBeTruthy()
 
-      // The watcher polls every 3s — assert UI flips WITHOUT manual reload
+      // The watcher polls every 3s — assert UI flips WITHOUT manual reload.
+      //
+      // 30s, no 15s: PaymentStatusWatcher hace backoff EXPONENCIAL ante un fetch fallido
+      // (3s → 6s → 12s → 24s, corta a los 5 fallos). En dev el primer request a
+      // /api/player/bookings/[id]/status compila la ruta on-demand, y si ese intento no
+      // entra a tiempo el watcher ya se fue al segundo escalón: 3+6+12 = 21s > 15s, y el
+      // test fallaba aunque la UI SÍ flipeaba sola. La tolerancia tiene que cubrir al
+      // menos un ciclo de backoff del watcher, si no estamos midiendo la velocidad de
+      // compilación del dev server y no el polling.
       await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
-        timeout: 15_000,
+        timeout: 30_000,
       })
 
       // DB: confirmed after webhook

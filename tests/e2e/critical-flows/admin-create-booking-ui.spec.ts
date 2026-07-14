@@ -39,7 +39,11 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         await context.addCookies(JSON.parse(adminStorageState).cookies)
         const page = await context.newPage()
 
-        await page.goto(`/grilla?date=${tomorrow}`)
+        // networkidle, no el 'load' por default: el <button> del slot ya existe en
+        // el HTML del SSR y Playwright lo clickea apenas es visible, pero si React
+        // todavia no hidrato el click es un no-op silencioso y el modal nunca abre.
+        // Es el mismo waitUntil que usa el resto de los specs de admin.
+        await page.goto(`/grilla?date=${tomorrow}`, { waitUntil: 'networkidle' })
 
         // Wait for the grid table to render.
         await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })

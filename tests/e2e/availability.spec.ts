@@ -3,7 +3,11 @@ import { test, expect } from '@playwright/test'
 test.describe('public availability', () => {
   test('tenant page shows name + city + daily grid', async ({ page }) => {
     await page.goto('/e2e-complejo-demo')
-    await expect(page.getByText('E2E Complejo Demo')).toBeVisible()
+    // getByText matchea tambien el <title>: desde Next 16 la metadata streamea
+    // dentro del <body> (React la hoistea al <head> en el cliente), asi que el
+    // <title> es un nodo de texto mas del documento. Apuntamos al h1, que es lo
+    // que el test quiere verificar: el nombre visible para el usuario.
+    await expect(page.getByRole('heading', { name: 'E2E Complejo Demo' })).toBeVisible()
     await expect(page.getByText(/Buenos Aires/i)).toBeVisible()
     // Daily grid contains at least one slot label (HH:MM)
     await expect(page.getByText(/\b\d{2}:\d{2}\b/).first()).toBeVisible()

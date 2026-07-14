@@ -39,7 +39,16 @@ export type ServerEnv = z.infer<ReturnType<typeof makeSchema>>
 export function validateServerEnv(env: NodeJS.ProcessEnv | Record<string, string | undefined>): ServerEnv {
   const isProd = (env.NODE_ENV ?? 'development') === 'production'
   const schema = makeSchema(isProd)
-  const parsed = schema.safeParse(env)
+  // Una var seteada a "" es una var NO configurada, no una configurada con un
+  // valor inválido: todo el runtime la lee así (`!process.env.UPSTASH_...` en
+  // rate-limit/client.ts, slots-cache.ts, api/status). El schema era el único
+  // lugar que la trataba como presente, y por eso reventaba el arranque cuando
+  // Playwright pisa UPSTASH_* con "" para apagar el rate limiting.
+  // Las requeridas siguen fallando igual: pasan de "min 1 char" a "required".
+  const normalized = Object.fromEntries(
+    Object.entries(env).filter(([, value]) => value !== ''),
+  )
+  const parsed = schema.safeParse(normalized)
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
     throw new Error(`Invalid environment: ${issues}`)

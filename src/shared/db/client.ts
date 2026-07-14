@@ -83,11 +83,45 @@ export async function closeSql(): Promise<void> {
 export type Db = PostgresJsDatabase<typeof schema>
 export type DbTx = Parameters<Parameters<Db['transaction']>[0]>[0]
 
+/**
+ * Deshace la mutación que `drizzle(client)` le hace a la instancia de postgres-js.
+ *
+ * drizzle-orm 0.45 pisa los serializers de json (OID 114) y jsonb (3802) del
+ * cliente con una identidad (`postgres-js/driver.js`: `client.options
+ * .serializers["3802"] = transparentParser`). Lo hace porque su `jsonb` de
+ * pg-core ya stringify-ea en `toDriver` y, sin la identidad, postgres-js
+ * volvería a serializar → doble-encode.
+ *
+ * Pero acá hay UNA sola instancia de postgres-js compartida entre drizzle
+ * (`getDb`) y el SQL crudo (`getSql`), así que esa mutación es global: con los
+ * serializers en identidad, cualquier `sql.json(obj)` crudo manda el OBJETO al
+ * driver, que espera un string, y tira
+ * `ERR_INVALID_ARG_TYPE: The "string" argument must be of type string`.
+ *
+ * Restaurar JSON.stringify deja los dos caminos consistentes con el invariante
+ * que asume todo el código ("pasás el objeto, se serializa una vez"):
+ *   - drizzle  → `../jsonb` customType.toDriver devuelve el objeto crudo → acá se
+ *                serializa una vez.
+ *   - SQL crudo → `sql.json(obj)` → se serializa una vez.
+ *
+ * Es seguro porque NINGUNA columna del schema usa el `jsonb`/`json` nativo de
+ * pg-core (que sí double-encodearía): las 6 tablas con jsonb importan el
+ * customType de `../jsonb`. Si algún día se agrega una columna con el jsonb de
+ * pg-core, este restore la corrompe — usar siempre `../jsonb`.
+ */
+function restoreJsonSerializers(client: Sql): void {
+  const opts = (client as unknown as { options: { serializers: Record<string, (v: unknown) => unknown> } }).options
+  opts.serializers['114'] = (v) => JSON.stringify(v)
+  opts.serializers['3802'] = (v) => JSON.stringify(v)
+}
+
 let _db: Db | null = null
 
 export function getDb(): Db {
   if (_db) return _db
-  _db = drizzle(getSql(), { schema })
+  const client = getSql()
+  _db = drizzle(client, { schema })
+  restoreJsonSerializers(client)
   return _db
 }
 
@@ -129,7 +163,9 @@ let _workerDb: Db | null = null
 
 export function getWorkerDb(): Db {
   if (_workerDb) return _workerDb
-  _workerDb = drizzle(getWorkerSql(), { schema })
+  const client = getWorkerSql()
+  _workerDb = drizzle(client, { schema })
+  restoreJsonSerializers(client)
   return _workerDb
 }
 

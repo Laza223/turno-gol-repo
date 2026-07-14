@@ -39,12 +39,21 @@ const cardStyle = {
 const ctaClass =
   'mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0'
 
-export default async function VerifyPage(
-  props: {
-    searchParams: Promise<{ error?: string; status?: string; next?: string; intent?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
+type VerifySearchParams = {
+  error?: string
+  status?: string
+  next?: string
+  intent?: string
+}
+
+/**
+ * En Next 16 `searchParams` es una Promise, así que la page tiene que ser async.
+ * Un componente async NO se puede montar en el cliente ("Only Server Components
+ * can be async at the moment"), lo que dejaba la story de esta página sin poder
+ * renderizarla. La page queda como un cascarón que resuelve la Promise y delega
+ * en este componente sincrónico, que es el que la story monta.
+ */
+export function VerifyView({ searchParams }: { searchParams: VerifySearchParams }) {
   const isSuccess = searchParams.status === 'success'
   const errCode = searchParams.error
   const isError = Boolean(errCode)
@@ -81,6 +90,10 @@ export default async function VerifyPage(
       </div>
     </div>
   )
+}
+
+export default async function VerifyPage(props: { searchParams: Promise<VerifySearchParams> }) {
+  return <VerifyView searchParams={await props.searchParams} />
 }
 
 function SuccessState({ next, intent }: { next: string | undefined; intent: SuccessIntent }) {

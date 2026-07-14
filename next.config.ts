@@ -95,5 +95,7 @@ export default withSentryConfig(withBundleAnalyzer(nextConfig), {
   // es lo único que hace pasar el ingest. Si se saca o se pone en `true` (ruta
   // random), el CSP empieza a bloquear a Sentry en silencio.
   tunnelRoute: '/monitoring',
-  disableLogger: true,
+  // Reemplaza a `disableLogger`, deprecado en Sentry 10: saca los logs de debug
+  // del SDK del bundle de producción.
+  webpack: { treeshake: { removeDebugLogging: true } },
 })

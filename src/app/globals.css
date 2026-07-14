@@ -70,6 +70,66 @@
   --color-info: hsl(var(--info));
   --color-info-foreground: hsl(var(--info-foreground));
 
+  /* ─── Paleta semántica pineada a los valores de Tailwind 3 ─────────────────
+   *
+   * Tailwind 4 reescribió su paleta default en OKLCH. Los colores quedan un
+   * toque más saturados, y eso ROMPIÓ WCAG AA en el design system, que pasaba
+   * al filo. Medido, no estimado (contraste real contra el fondo real):
+   *
+   *   text-red-600  12/14px  #dc2626 4.55 PASA  →  #e7000b 4.49 FALLA (min 4.5)
+   *   text-red-700  14px     #b91c1c 4.51 PASA  →  #c10007 4.47 FALLA
+   *   emerald-700   14px     #047857 4.57 PASA  →  #007a55 4.47 FALLA
+   *   emerald-600   96px b   #059669 3.03 PASA  →  #009966 2.94 FALLA (min 3.0)
+   *
+   * Son los mensajes de error de validación (caja, staff, auth) y los KPIs de
+   * métricas: texto que el usuario TIENE que poder leer. Lo cazó la suite de
+   * a11y de Storybook; ningún typecheck/lint/test lo veía.
+   *
+   * Se pinean las ESCALAS COMPLETAS de las 3 familias semánticas (emerald=marca,
+   * red=error, amber=warning), no solo los 4 tonos que fallaban: emerald-500
+   * (301 usos) y emerald-400 (246) son los más usados del repo, y dejarlos en
+   * OKLCH junto a un emerald-600 pineado partiría la escala — los hovers 500→600
+   * saltarían de una paleta a la otra.
+   *
+   * Precio: estas 3 familias quedan forkeadas de los defaults de Tailwind.
+   * Alternativa descartada: subir un tono donde falla (cambia el diseño).
+   */
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
+  --color-emerald-950: #022c22;
+
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+  --color-red-950: #450a0a;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-amber-950: #451a03;
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);

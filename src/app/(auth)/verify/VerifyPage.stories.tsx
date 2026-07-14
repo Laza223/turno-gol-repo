@@ -1,9 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import VerifyPage from './page'
+import { VerifyView } from './page'
 
 /**
- * 100% presentacional pese a ser `page.tsx`: toda la lógica sale de
+ * Monta `VerifyView`, no el `export default` de page.tsx: en Next 16
+ * `searchParams` es una Promise, así que la page es async — y un componente
+ * async no se puede montar en el cliente ("Only Server Components can be async
+ * at the moment"). La page resuelve la Promise y delega en `VerifyView`, que es
+ * sincrónico y es lo que se testea acá.
+ *
+ * 100% presentacional pese a vivir en `page.tsx`: toda la lógica sale de
  * `searchParams`, sin fetch ni auth (ver isolationNotes en
  * docs/storybook/storybook-coverage.json). El estado `success` monta
  * <SuccessRedirect/> (client), que agenda un `window.location.assign(next)`
@@ -16,19 +22,19 @@ import VerifyPage from './page'
  */
 const meta = {
   title: 'Auth/VerifyPage',
-  component: VerifyPage,
+  component: VerifyView,
   parameters: { layout: 'fullscreen' },
-} satisfies Meta<typeof VerifyPage>
+} satisfies Meta<typeof VerifyView>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
 export const Cargando: Story = {
-  args: { searchParams: Promise.resolve({}) },
+  args: { searchParams: {} },
 }
 
 export const ExitoLogin: Story = {
-  args: { searchParams: Promise.resolve({ status: 'success', intent: 'login', next: '/mis-reservas' }) },
+  args: { searchParams: { status: 'success', intent: 'login', next: '/mis-reservas' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Listo!')).toBeInTheDocument()
@@ -40,7 +46,7 @@ export const ExitoLogin: Story = {
 }
 
 export const ExitoSignup: Story = {
-  args: { searchParams: Promise.resolve({ status: 'success', intent: 'signup', next: '/dashboard' }) },
+  args: { searchParams: { status: 'success', intent: 'signup', next: '/dashboard' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Bienvenido a TurnoGol!')).toBeInTheDocument()
@@ -48,7 +54,7 @@ export const ExitoSignup: Story = {
 }
 
 export const ExitoBooking: Story = {
-  args: { searchParams: Promise.resolve({ status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' }) },
+  args: { searchParams: { status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Cuenta confirmada!')).toBeInTheDocument()
@@ -57,7 +63,7 @@ export const ExitoBooking: Story = {
 }
 
 export const ErrorExpirado: Story = {
-  args: { searchParams: Promise.resolve({ error: 'expired' }) },
+  args: { searchParams: { error: 'expired' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Este enlace expiró. Generá uno nuevo desde Iniciar sesión.')).toBeInTheDocument()
@@ -65,11 +71,11 @@ export const ErrorExpirado: Story = {
 }
 
 export const ErrorUsado: Story = {
-  args: { searchParams: Promise.resolve({ error: 'used' }) },
+  args: { searchParams: { error: 'used' } },
 }
 
 export const ErrorInvalido: Story = {
-  args: { searchParams: Promise.resolve({ error: 'algo-no-mapeado' }) },
+  args: { searchParams: { error: 'algo-no-mapeado' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Código sin entrada en ERROR_COPY: cae al copy de 'invalid' (fallback).

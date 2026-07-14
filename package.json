@@ -151,6 +151,10 @@
     "vitest": "^3.2.7"
   },
   "pnpm": {
+    "overrides": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
     "onlyBuiltDependencies": [
       "@sentry/cli",
       "esbuild",

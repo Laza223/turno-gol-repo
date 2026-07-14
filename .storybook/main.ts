@@ -15,7 +15,11 @@ const config: StorybookConfig = {
   framework: {
     name: '@storybook/nextjs-vite',
     options: {
-      nextConfigPath: resolve(repoRoot, 'next.config.js'),
+      // .ts, no .js: el config de Next se migró a TypeScript al pasar a Next 16 y
+      // esto quedó apuntando a un archivo que ya no existe. Storybook no falla
+      // ruidosamente ante un nextConfigPath colgado — arranca igual, así que el
+      // desfasaje pasa desapercibido.
+      nextConfigPath: resolve(repoRoot, 'next.config.ts'),
     },
   },
 

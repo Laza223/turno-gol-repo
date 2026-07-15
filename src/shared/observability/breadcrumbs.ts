@@ -17,6 +17,7 @@ type PaymentEvent =
   | 'payment.deposit.rejected'
   | 'payment.saas.upgrade.approved'
   | 'payment.reconcile.confirmed'
+  | 'payment.refund.retry_succeeded'
 
 type WebhookEvent =
   | 'mp.webhook.received'

@@ -18,5 +18,10 @@ export function setBillingGateway(gw: PaymentGateway | null): void {
 export function getBillingGateway(): PaymentGateway {
   if (_override) return _override
   const token = process.env.MP_TURNOGOL_ACCESS_TOKEN ?? ''
-  return withCircuitBreaker(new MercadoPagoGateway(token), 'saas-master')
+  // ENS-22: el token master vive en el env EN CLARO (no es un token de tenant
+  // cifrado en DB) — sin el flag, el constructor lo mandaba a decrypt().
+  return withCircuitBreaker(
+    new MercadoPagoGateway(token, { plaintextToken: true }),
+    'saas-master',
+  )
 }

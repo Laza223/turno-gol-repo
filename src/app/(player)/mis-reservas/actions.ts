@@ -11,6 +11,7 @@ import { withPlayerContext, withTenantContext, getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { settleRefund } from '@/modules/payments/payment.service'
+import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotInConfirmedError,
@@ -79,7 +80,12 @@ export async function cancelMyBookingAction(
   const txResult = await withTenantContext(pre.tenant_id, async (tx) => {
     try {
       const outcome = await cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx)
-      return { success: true as const, booking: outcome.booking, pendingRefund: outcome.pendingRefund }
+      return {
+        success: true as const,
+        booking: outcome.booking,
+        pendingRefund: outcome.pendingRefund,
+        notificationIds: outcome.notificationIds,
+      }
     } catch (err) {
       if (err instanceof BookingNotOwnedByPlayerError) {
         return { success: false as const, error: 'No tenés permiso para cancelar esta reserva.' }
@@ -108,6 +114,24 @@ export async function cancelMyBookingAction(
   if (!txResult.success) return txResult
 
   revalidatePath('/mis-reservas')
+
+  // doc7 Flujo 4: booking_canceled encolado dentro de la tx (cancelByPlayer)
+  // se despacha recién ahora que commiteó. Si el dispatch falla, la cancelación
+  // ya es válida —no hay rollback— y el sweep por cron de send-email levanta la
+  // notificación 'queued' igual; nunca convertir esto en error para el usuario.
+  try {
+    await Promise.all(txResult.notificationIds.map((id) => dispatchEmail(id)))
+  } catch (err) {
+    captureMessage('email dispatch failed after player cancellation', {
+      level: 'warning',
+      extra: {
+        bookingId: parsed.data.bookingId,
+        tenantId: pre.tenant_id,
+        notificationIds: txResult.notificationIds,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+  }
 
   // caza-bugs #3: el refund a MP se resuelve DESPUÉS de que la cancelación ya
   // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la

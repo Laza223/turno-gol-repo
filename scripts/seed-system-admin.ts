@@ -4,7 +4,7 @@ config({ path: '.env.local' })
 
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { eq } from 'drizzle-orm'
-import { closeSql, getDb } from '@/shared/db/client'
+import { closeSql, getWorkerDb } from '@/shared/db/client'
 import { systemAdmins } from '@/shared/db/schema'
 
 /**
@@ -84,9 +84,13 @@ async function main(): Promise<void> {
       console.log(`[1/3] Auth user creado: ${authUser.id}`)
     }
 
-    // (b) Fila en system_admins (DATABASE_URL/drizzle). ON CONFLICT (email)
-    //     DO NOTHING + SELECT de respaldo para recuperar el id existente.
-    const db = getDb()
+    // (b) Fila en system_admins. La tabla tiene RLS + FORCE self-scoped (migr.
+    //     006 + 036) SIN policy de INSERT, así que el pool restringido
+    //     (turnogol_app / getDb) es rechazado con 42501. El bootstrap usa el pool
+    //     worker BYPASSRLS (getWorkerDb): en prod requiere WORKER_DATABASE_URL
+    //     apuntando a turnogol_worker; en local cae al superuser por defecto.
+    //     ON CONFLICT (email) DO NOTHING + SELECT de respaldo para el id existente.
+    const db = getWorkerDb()
     const inserted = await db
       .insert(systemAdmins)
       .values({ email, firstName, lastName })

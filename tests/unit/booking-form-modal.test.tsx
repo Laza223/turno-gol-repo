@@ -168,3 +168,36 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     expect(payload.guestPhone).toBeUndefined()
   })
 })
+
+describe('BookingFormModal — slot de medianoche (día operativo)', () => {
+  const midnightSlot = { ...slot, timeStart: '23:00' }
+
+  it('el slot 23:00 envía timeEnd="24:00", no "00:00" (chk_time_valid exige time_end > time_start)', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal({ slot: midnightSlot })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(createBookingAction).toHaveBeenCalledWith(
+      expect.objectContaining({ timeStart: '23:00', timeEnd: '24:00' }),
+    )
+  })
+
+  it('el bloqueo interno a las 23:00 no ofrece 120 min (cruzaría medianoche, rango inrepresentable)', async () => {
+    renderModal({ slot: midnightSlot })
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '60 min' })).toBeTruthy())
+    expect(screen.queryByRole('button', { name: '120 min' })).toBeNull()
+  })
+
+  it('un slot común (18:00) sigue ofreciendo 120 min para bloqueos internos', async () => {
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '120 min' })).toBeTruthy())
+  })
+})

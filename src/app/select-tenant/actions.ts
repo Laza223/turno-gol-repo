@@ -27,8 +27,10 @@ export async function selectTenantAction(formData: FormData): Promise<void> {
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
   const tenants = await resolveStaffTenants(user.staffUserId)
-  // Defensa: rechaza tenants a los que el staff no pertenece (o que quedaron
-  // suspended/blocked/etc. — resolveStaffTenants ya filtra por status).
+  // Defensa: rechaza tenants a los que el staff no pertenece. ENS-20:
+  // resolveStaffTenants ya NO filtra por status (solo excluye `deleted`) — un
+  // tenant suspended/blocked/etc. puede aparecer acá; entrar cae en
+  // (admin)/layout.tsx → /suspended → /reactivar, no es un bypass.
   if (!isMemberTenant(tenantId, tenants)) redirect('/select-tenant?error=invalid')
 
   await setStaffTenantClaim(user.id, tenantId, user.staffUserId)

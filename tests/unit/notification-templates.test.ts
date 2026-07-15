@@ -10,6 +10,7 @@ import {
   renderDepositExpired,
   renderAdminLatePayment,
   renderAdminTransferExpired,
+  renderAdminRefundFailed,
   renderTemplate,
   isTemplateName,
 } from '@/modules/notifications/templates'
@@ -268,6 +269,40 @@ describe('renderAdminTransferExpired', () => {
   })
 })
 
+describe('renderAdminRefundFailed (ENS-19)', () => {
+  const DATA = {
+    refundPaymentId: 'abcdef12-3456-7890-aaaa-bbbbbbbbbbbb',
+    bookingId: '11112222-3456-7890-aaaa-bbbbbbbbbbbb',
+    amountArs: '3.000,00',
+    courtName: 'Cancha 5',
+    date: '02/06/2027',
+  }
+
+  it('subject flags required action', () => {
+    const { subject } = renderAdminRefundFailed(DATA)
+    expect(subject.toLowerCase()).toContain('reembolso')
+    expect(subject).toContain('24h')
+  })
+
+  it('html demands manual resolution in MP and shows the amount', () => {
+    const { html } = renderAdminRefundFailed(DATA)
+    expect(html).toContain('3.000,00')
+    expect(html).toContain('acción manual')
+    expect(html).toContain('MercadoPago')
+    expect(html).toContain('Cancha 5')
+  })
+
+  it('text omits optional detail rows when absent', () => {
+    const { text } = renderAdminRefundFailed({
+      refundPaymentId: 'abcdef12-3456-7890-aaaa-bbbbbbbbbbbb',
+      bookingId: null,
+      amountArs: '500,00',
+    })
+    expect(text).toContain('500,00')
+    expect(text).not.toContain('Cancha')
+  })
+})
+
 describe('renderTemplate dispatcher', () => {
   it('routes booking_confirmed to correct renderer', () => {
     const result = renderTemplate('booking_confirmed', CONFIRMED_DATA)
@@ -299,6 +334,7 @@ describe('isTemplateName', () => {
       'deposit_expired',
       'admin_late_payment',
       'admin_transfer_expired',
+      'admin_refund_failed',
     ]
     for (const name of valid) {
       expect(isTemplateName(name)).toBe(true)

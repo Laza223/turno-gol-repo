@@ -9,6 +9,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { BookingActionResult } from '@/app/(admin)/reservas/actions'
 import { formatDateLong } from '@/lib/format'
+import { END_OF_DAY_MINS, endLabelFromMins } from '@/shared/time/operating-day'
 
 type Slot = {
   courtId: string
@@ -69,12 +70,6 @@ function timeToMins(hhmm: string): number {
   return (h ?? 0) * 60 + (m ?? 0)
 }
 
-function minsToTime(mins: number): string {
-  const h = Math.floor(mins / 60) % 24
-  const m = mins % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
 export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Props) {
   const [duration, setDuration] = useState<60 | 120>(slot.durationMins)
   const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
@@ -94,8 +89,12 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
   // Tarea #6: las reservas reales son de 60 min fijos. Solo los bloqueos internos
   // (mantenimiento, escuelita) pueden abarcar varias horas, así que el selector de
   // duración se muestra únicamente para ellos.
-  const effectiveDuration = isInternalBlock ? duration : 60
-  const timeEnd = minsToTime(timeToMins(slot.timeStart) + effectiveDuration)
+  const startMins = timeToMins(slot.timeStart)
+  // Un bloqueo que cruza medianoche (23:00→01:00) es inrepresentable en el modelo
+  // de storage (chk_time_valid exige time_end > time_start): no ofrecer 120'.
+  const canBlockTwoHours = startMins + 120 <= END_OF_DAY_MINS
+  const effectiveDuration = isInternalBlock && canBlockTwoHours ? duration : 60
+  const timeEnd = endLabelFromMins(startMins + effectiveDuration)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -207,7 +206,9 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
               <div>
                 <label id="duration-label" className="block text-sm font-medium text-foreground mb-1">Duración del bloqueo</label>
                 <div role="group" aria-labelledby="duration-label" className="flex gap-2">
-                  {([60, 120] as const).map((d) => (
+                  {([60, 120] as const)
+                    .filter((d) => d === 60 || canBlockTwoHours)
+                    .map((d) => (
                     <button
                       key={d}
                       type="button"

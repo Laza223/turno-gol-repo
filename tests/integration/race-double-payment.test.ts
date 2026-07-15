@@ -107,7 +107,7 @@ afterAll(async () => {
 })
 
 describe('race: webhook storm (mismo evento entregado N veces)', () => {
-  it('8 entregas idénticas del MISMO evento → 1 confirmación, 1 pago, 1 evento, 0 cashflow y NINGÚN job lanza error', async () => {
+  it('8 entregas idénticas del MISMO evento → 1 confirmación, 1 pago, 1 evento, 1 cashflow de seña (ENS-21) y NINGÚN job lanza error', async () => {
     const M = 8
     const jobs = Array.from({ length: M }, () => paymentJob('evt-race-1', '999000111'))
 
@@ -136,13 +136,16 @@ describe('race: webhook storm (mismo evento entregado N veces)', () => {
     expect(pays[0].c).toBe(1)
     expect(pays[0].approved).toBe(1)
 
-    // La seña NUNCA genera cash_flow (Fix #9: nunca tocó caja física, MP la procesa
-    // entre cuentas). `<= 1` toleraba 0 y 1: no detectaba ni una creación indebida
-    // ni la desaparición de una creación esperada. La invariante real es 0.
+    // ENS-21 (supersede Fix #9): la seña MP confirmada SÍ crea su cash_flow
+    // income/booking/mercadopago — la caja del día tiene que ver TODA la plata.
+    // La invariante de carrera ahora es "exactamente 1": recordDepositCashFlow
+    // corre solo en la rama won de handleApproved, y won gana UNA sola vez
+    // (UPDATE ... WHERE status='pending_payment'), así que el storm no puede
+    // duplicar el movimiento de caja.
     const cfs = await sql<{ c: number }[]>`
       SELECT COUNT(*)::int AS c FROM cash_flows WHERE booking_id = ${bookingId}
     `
-    expect(cfs[0].c).toBe(0)
+    expect(cfs[0].c).toBe(1)
 
     // Idempotencia a nivel evento: una sola fila en processed_webhooks.
     const evt = await sql<{ c: number }[]>`
@@ -205,10 +208,12 @@ describe('race: dos eventos DISTINTOS sobre la misma reserva (la UPDATE condicio
     `
     expect(evts[0].c).toBe(2)
 
+    // ENS-21: exactamente 1 cash_flow de la seña — solo el evento que ganó la
+    // transición lo crea (ver comentario en el primer test del archivo).
     const cfs = await sql<{ c: number }[]>`
       SELECT COUNT(*)::int AS c FROM cash_flows WHERE booking_id = ${bk}
     `
-    expect(cfs[0].c).toBe(0)
+    expect(cfs[0].c).toBe(1)
   }, 30_000)
 
   it('dos pagos DISTINTOS aprobados sobre la misma reserva, concurrentes → confirma una sola vez y registra ambos pagos', async () => {
@@ -261,9 +266,12 @@ describe('race: dos eventos DISTINTOS sobre la misma reserva (la UPDATE condicio
     `
     expect(active[0].c).toBe(1)
 
+    // ENS-21: aunque el jugador pagó DOS veces (dos payments approved), la caja
+    // registra UNA sola seña — el cash_flow nace en la rama won, y la UPDATE
+    // condicional garantiza un único ganador.
     const cfs = await sql<{ c: number }[]>`
       SELECT COUNT(*)::int AS c FROM cash_flows WHERE booking_id = ${bk}
     `
-    expect(cfs[0].c).toBe(0)
+    expect(cfs[0].c).toBe(1)
   }, 30_000)
 })

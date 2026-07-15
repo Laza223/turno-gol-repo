@@ -27,6 +27,10 @@ const DAYS = [
   { value: '4', label: 'Jueves' }, { value: '5', label: 'Viernes' }, { value: '6', label: 'Sábado' }, { value: '0', label: 'Domingo' },
 ]
 const initial: NewAbonadoState = { status: 'idle' }
+/** ENS-13: "00:00" tecleado como fin de turno significa "hasta medianoche". */
+function normalizeMidnightEnd(timeEnd: string): string {
+  return timeEnd === '00:00' ? '24:00' : timeEnd
+}
 const field = 'h-11 md:h-10 w-full rounded-lg border border-border px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
 const labelCls = 'space-y-1 text-sm block'
 const labelSpan = 'font-medium text-foreground'
@@ -141,7 +145,12 @@ export default function AbonadoForm({
       courtId: fd.get('courtId') as string,
       dayOfWeek: fd.get('dayOfWeek') as string,
       timeStart: fd.get('timeStart') as string,
-      timeEnd: fd.get('timeEnd') as string,
+      // ENS-13: el <input type="time"> nativo nunca produce "24:00" (tope
+      // 23:59), así que el admin elige "00:00" para decir "hasta medianoche".
+      // Normalizamos ACÁ (una sola vez) a '24:00' — el valor canónico que
+      // acepta el schema/DB para un fin de turno a medianoche (mismo patrón
+      // que ENS-12 en reservas comunes, ver operating-day.ts).
+      timeEnd: normalizeMidnightEnd(fd.get('timeEnd') as string),
       contactName: fd.get('contactName') as string,
       contactPhone: fd.get('contactPhone') as string,
       pricePerSession: fd.get('pricePerSession') as string,

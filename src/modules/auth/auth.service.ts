@@ -122,6 +122,12 @@ export async function resolveStaffTenants(
   // staff_users/tenant_staff_members requires app.current_tenant_id, which
   // doesn't exist yet here. Needs a bypass-capable pool, same as background
   // jobs (CLAUDE.md: "Workers usan rol de servicio separado").
+  //
+  // ENS-20: solo excluye `deleted` (datos ya eliminados/anonimizados). Antes
+  // excluía también suspended/blocked/churned — un dueño moroso ni siquiera
+  // podía loguearse a ver el aviso o pagar (provisionAndRouteStaff lo mandaba
+  // a /onboarding como si no tuviera complejo, tenants.length === 0). Ahora
+  // entra y el gate de (admin)/layout.tsx lo redirige a /suspended → /reactivar.
   const sql = getWorkerSql()
   const rows = await sql<StaffTenantRow[]>`
     SELECT
@@ -133,7 +139,7 @@ export async function resolveStaffTenants(
     JOIN tenants t ON t.id = tsm.tenant_id
     WHERE tsm.staff_user_id = ${staffUserId}
       AND tsm.is_active = true
-      AND t.status NOT IN ('suspended','blocked','churned','deleted')
+      AND t.status != 'deleted'
     ORDER BY tsm.created_at ASC
   `
   return rows

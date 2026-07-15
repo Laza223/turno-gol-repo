@@ -23,14 +23,21 @@ export default function SuspendedPage() {
         se perdió nada. En cuanto se regularice la situación vas a poder volver a operar normalmente.
       </p>
 
+      <Link
+        href="/reactivar"
+        className="mt-8 inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        Soy el dueño — regularizar el pago
+      </Link>
+
       <a
         href="mailto:soporte@turnogol.app"
-        className="mt-8 inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+        className="mt-4 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         Contactar a soporte
       </a>
 
-      <Link href="/" className="mt-4 text-sm font-medium text-muted-foreground hover:text-foreground">
+      <Link href="/" className="mt-2 text-sm font-medium text-muted-foreground hover:text-foreground">
         Volver al inicio
       </Link>
     </section>

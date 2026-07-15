@@ -71,7 +71,7 @@ export function StatusBanner({
           <strong>{formatDate(periodEnd)}</strong>.
         </span>
         <Link
-          href="/settings/facturacion"
+          href="/reactivar"
           className="font-medium underline underline-offset-2 hover:text-red-900 dark:hover:text-red-300 transition-colors duration-150 shrink-0"
         >
           Actualizar pago
@@ -80,7 +80,29 @@ export function StatusBanner({
     )
   }
 
-  // Priority 4: Suspended
+  // Priority 4: Canceled (voluntary, ENS-25/26). El acceso sigue intacto
+  // hasta `periodEnd` — el hard-lock del layout NO incluye `canceled` (el
+  // sweep `canceled → blocked` recién corta el acceso cuando vence el
+  // período; `blocked` sí sigue en el hard-lock).
+  if (tenantStatus === 'canceled' && periodEnd) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/25 dark:text-amber-200">
+        <XCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        <span className="flex-1">
+          Cancelaste tu suscripción. Tenés acceso hasta el{' '}
+          <strong>{formatDate(periodEnd)}</strong>. Podés reactivarla cuando quieras.
+        </span>
+        <Link
+          href="/reactivar"
+          className="font-medium underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300 transition-colors duration-150 shrink-0"
+        >
+          Reactivar
+        </Link>
+      </div>
+    )
+  }
+
+  // Priority 5: Suspended
   if (tenantStatus === 'suspended') {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200">

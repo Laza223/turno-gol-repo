@@ -78,6 +78,13 @@ export async function loginAction(
     redirect('/reset-password')
   }
 
+  // Un super admin (is_system_admin) va directo al panel /super-admin: no es
+  // staff de ningún complejo, así que provisionAndRouteStaff lo mandaría a
+  // /onboarding (0 tenants). El guard requireSystemAdmin del layout revalida.
+  if (result.user.app_metadata?.is_system_admin === true) {
+    redirect('/super-admin')
+  }
+
   const { path } = await provisionAndRouteStaff(result.user)
   redirect(path)
 }

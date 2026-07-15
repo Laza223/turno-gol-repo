@@ -92,8 +92,9 @@ describe('PushNotificationManager — enable() never hangs', () => {
     await act(async () => {
       btn.click()
     })
-    // Mid-flight the button shows the pending label.
-    expect(screen.getByRole('button').textContent).toMatch(/habilitando/i)
+    // Mid-flight the button shows the pending label. (name-scoped: ENS-11 added
+    // a second "Cerrar" button to the banner, so a bare getByRole is ambiguous.)
+    expect(screen.getByRole('button', { name: /habilitando/i })).toBeTruthy()
 
     // Advance past the safety deadline: the SW-ready wait times out, enable()
     // catches it and clears the pending state.
@@ -103,8 +104,10 @@ describe('PushNotificationManager — enable() never hangs', () => {
     vi.useRealTimers()
 
     // Assert synchronously (no waitFor) since state already settled.
-    expect(screen.getByRole('button').textContent).toMatch(/habilitar notificaciones/i)
-    expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(false)
+    const recovered = screen.getByRole('button', {
+      name: /habilitar notificaciones/i,
+    }) as HTMLButtonElement
+    expect(recovered.disabled).toBe(false)
   })
 
   it('recovers when the user dismisses the permission prompt (default)', async () => {
@@ -119,8 +122,11 @@ describe('PushNotificationManager — enable() never hangs', () => {
     // 'default' (dismissed) must not hide the button nor leave it pending — the
     // admin can try again.
     await waitFor(() => {
-      expect(screen.getByRole('button').textContent).toMatch(/habilitar notificaciones/i)
+      expect(screen.getByRole('button', { name: /habilitar notificaciones/i })).toBeTruthy()
     })
-    expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(false)
+    const recovered = screen.getByRole('button', {
+      name: /habilitar notificaciones/i,
+    }) as HTMLButtonElement
+    expect(recovered.disabled).toBe(false)
   })
 })

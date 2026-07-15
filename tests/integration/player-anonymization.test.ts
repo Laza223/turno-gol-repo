@@ -40,16 +40,18 @@ async function seedBooking(
   courtId: string,
   playerId: string,
   priceSnapshot = 800000,
+  timeStart = '18:00',
 ): Promise<string> {
+  const timeEnd = `${String(Number(timeStart.slice(0, 2)) + 1).padStart(2, '0')}:00`
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end, starts_at, ends_at,
       price_snapshot, status, type
     )
     VALUES (
-      ${tenantId}, ${courtId}, ${playerId}, '2026-06-01', '18:00', '19:00',
-      ('2026-06-01'::date + '18:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
-      ('2026-06-01'::date + '19:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      ${tenantId}, ${courtId}, ${playerId}, '2026-06-01', ${timeStart}, ${timeEnd},
+      ('2026-06-01'::date + ${timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      ('2026-06-01'::date + ${timeEnd}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
       ${priceSnapshot}, 'confirmed', 'spontaneous'
     )
     RETURNING id
@@ -275,5 +277,70 @@ describe('anonymizePlayer', () => {
     const player = await createTestPlayer(sql)
     await anonymizePlayer(player.id)
     await expect(anonymizePlayer(player.id)).rejects.toThrow(PlayerAlreadyAnonymizedError)
+  })
+
+  // ENS-27: enforce_booking_invariants_fn bloqueaba CUALQUIER UPDATE sobre un
+  // booking terminal (completed/canceled_*/no_show/expired). anonymizePlayer
+  // hace UPDATE bookings SET player_id = NULL sin filtrar por status (a
+  // propósito: filtrar dejaría el historial sin anonimizar, violando ARCO),
+  // así que un solo booking terminal abortaba toda la transacción y "Eliminar
+  // cuenta" fallaba en silencio. Migración 045 agrega la excepción quirúrgica.
+  it('anonimiza con éxito aunque el jugador tenga bookings en estado terminal', async () => {
+    const player = await createTestPlayer(sql)
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await seedCourt(tenant.id)
+
+    const pendingId = await seedBooking(tenant.id, courtId, player.id, 800000, '18:00')
+    const completedId = await seedBooking(tenant.id, courtId, player.id, 900000, '19:00')
+    const canceledId = await seedBooking(tenant.id, courtId, player.id, 700000, '20:00')
+
+    await sql`UPDATE bookings SET status = 'completed' WHERE id = ${completedId}`
+    await sql`UPDATE bookings SET status = 'canceled_no_refund' WHERE id = ${canceledId}`
+
+    await expect(anonymizePlayer(player.id)).resolves.not.toThrow()
+
+    const rows = await sql<{ id: string; player_id: string | null; status: string }[]>`
+      SELECT id, player_id, status FROM bookings WHERE tenant_id = ${tenant.id}
+    `
+    expect(rows).toHaveLength(3)
+    for (const row of rows) {
+      expect(row.player_id).toBeNull()
+    }
+    const byId = new Map(rows.map((r) => [r.id, r]))
+    // Status intacto: la excepción del trigger no tocó nada más que player_id.
+    expect(byId.get(pendingId)!.status).toBe('confirmed')
+    expect(byId.get(completedId)!.status).toBe('completed')
+    expect(byId.get(canceledId)!.status).toBe('canceled_no_refund')
+  })
+
+  // Control: la excepción del trigger NO afloja la inmutabilidad general de
+  // los bookings terminales — solo permite el UPDATE quirúrgico de player_id.
+  it('sigue bloqueando UPDATEs sobre bookings terminales que no son la anonimización', async () => {
+    const player = await createTestPlayer(sql)
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await seedCourt(tenant.id)
+    const bookingId = await seedBooking(tenant.id, courtId, player.id, 800000)
+    await sql`UPDATE bookings SET status = 'completed' WHERE id = ${bookingId}`
+
+    // Cambiar OTRA columna (time_start) sin tocar player_id → debe seguir bloqueado.
+    await expect(
+      sql`UPDATE bookings SET time_start = '20:00' WHERE id = ${bookingId}`,
+    ).rejects.toThrow(/estado terminal/)
+
+    // player_id → NULL pero ADEMÁS otra columna cambia a la vez → debe seguir bloqueado.
+    await expect(
+      sql`UPDATE bookings SET player_id = NULL, time_start = '20:00' WHERE id = ${bookingId}`,
+    ).rejects.toThrow(/estado terminal/)
+
+    const row = await sql<{ player_id: string | null; time_start: string }[]>`
+      SELECT player_id, time_start FROM bookings WHERE id = ${bookingId}
+    `
+    // Nada se modificó: ambos intentos fueron rechazados.
+    expect(row[0]!.player_id).toBe(player.id)
+    expect(row[0]!.time_start).toBe('18:00:00')
   })
 })

@@ -5,12 +5,13 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { subscribeSchema } from '@/modules/billing/billing.schema'
 import { subscribe } from '@/modules/billing/billing.service'
 import {
+  InvalidPayerEmailError,
   PlanNotFoundError,
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
-import { badRequest, validationError, notFound, conflict } from '@/shared/api-error'
+import { badRequest, businessRule, validationError, notFound, conflict } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +48,9 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
     }
     if (err instanceof SubscriptionNotFoundError) {
       return notFound(err.message, { code: 'NOT_FOUND' })
+    }
+    if (err instanceof InvalidPayerEmailError) {
+      return businessRule(err.message, { code: 'INVALID_PAYER_EMAIL' })
     }
     throw err
   }

@@ -60,7 +60,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   // Billing-driven hard lock: tenants in these terminal/restricted states cannot
   // access the admin panel regardless of the kill-switch flag (#64).
-  if (['blocked', 'churned', 'canceled', 'deleted'].includes(tenant.status)) {
+  // ENS-20: `suspended` se suma acá — antes quedaba afuera del hard-lock pese a
+  // ser "solo lectura" en doc4 §2, así que un tenant suspendido entraba al panel
+  // completo. `past_due` NO se agrega: sigue con acceso completo (gracia de 7
+  // días) — solo recibe el banner de StatusBanner con link a /reactivar.
+  // ENS-26: `canceled` se SACA del hard-lock. `lifecycle.service.ts` diseña la
+  // baja voluntaria con el período ya pagado intacto ("* → canceled; period_end
+  // intact") y expulsar al dueño al instante lo contradice — pagó hasta
+  // current_period_end. El sweep `canceled → blocked` recién corta el acceso
+  // cuando vence el período, y `blocked` sigue en esta lista.
+  if (['blocked', 'churned', 'deleted', 'suspended'].includes(tenant.status)) {
     redirect('/suspended')
   }
 

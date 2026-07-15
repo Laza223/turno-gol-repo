@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validation/primitives'
+import { uuid, dateStr } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
@@ -12,6 +12,7 @@ import {
   reactivateAbonado,
   cancelAbonado,
 } from '@/modules/abonados/abonado.service'
+import { createAbonadoSchema } from '@/modules/abonados/abonado.schema'
 import {
   AbonadoConflictError,
   AbonadoNotFoundError,
@@ -19,21 +20,6 @@ import {
   ReactivationConflictError,
 } from '@/modules/abonados/abonado.errors'
 import type { AbonadoRow, CreateAbonadoInput } from '@/modules/abonados/abonado.types'
-
-const createAbonadoSchema = z.object({
-  courtId: uuid,
-  playerId: uuid.optional(),
-  contactName: boundedText(120).min(1),
-  contactPhone: boundedText(40).min(1),
-  dayOfWeek: z.number().int().min(0).max(6),
-  timeStart: hhmm,
-  timeEnd: hhmm,
-  pricePerSession: moneyCents,
-  startsOn: dateStr,
-  endsOn: dateStr.optional(),
-  paymentMethod: z.enum(['cash', 'transfer']).optional(),
-  notes: boundedText(500).optional(),
-})
 
 export type AbonadoActionResult =
   | { success: true; abonado: AbonadoRow; slotsGenerated?: number; conflictDates?: string[] }

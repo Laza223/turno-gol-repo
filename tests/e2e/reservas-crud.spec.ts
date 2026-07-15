@@ -188,8 +188,10 @@ test.describe('reservas — edge: cancel with paid deposit', () => {
         await expect(page.locator('#cancel-reason')).toBeVisible()
 
         // Choose "jugador" — future date is well within any cancellation policy
-        // window, so this refunds (cash → informational, not automatic). The
-        // refund preview box only renders once cancelType is picked.
+        // window, so this refunds (cash → informational, not automatic). ENS-2:
+        // the preview box is visible as soon as the dialog opens (default
+        // preview under the "jugador" policy); picking a radio just refines
+        // the copy (e.g. mentions the payment method once cancelType is set).
         await page.getByRole('radio', { name: /El jugador pidió cancelar/i }).click()
 
         // Refund preview text must mention the deposit amount.

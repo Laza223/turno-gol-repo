@@ -1074,3 +1074,202 @@ describe('cancelByPlayer — audit trail metadata', () => {
     expect(meta).toMatchObject({ reason: null, inPolicy: false, depositStatus: 'captured' })
   })
 })
+
+// ─── doc7 Flujo 4: notificación al jugador en cancelaciones ────────────────
+// Bug raíz confirmado: cancelByPlayer/cancelByAdmin nunca avisaban al jugador
+// por email de que su reserva fue cancelada.
+async function insertConfirmedBookingNoPlayer(opts: {
+  tenantId: string
+  courtId: string
+  date: string
+  timeStart: string
+  timeEnd: string
+}): Promise<string> {
+  const sql = getSql()
+  const { startsAt, endsAt } = physicalRange({
+    date: opts.date,
+    timeStart: opts.timeStart,
+    timeEnd: opts.timeEnd,
+    physicallyNextDay: false,
+  })
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO bookings (
+      tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
+      price_snapshot, deposit_amount, deposit_status, payment_method, status,
+      guest_name
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.courtId}, NULL,
+      ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${startsAt.toISOString()}, ${endsAt.toISOString()},
+      ${800000}, ${0}, 'not_required', NULL, 'confirmed',
+      ${'Invitado sin cuenta'}
+    )
+    RETURNING id
+  `
+  return rows[0]!.id
+}
+
+async function getNotificationsByTemplate(
+  tenantId: string,
+  templateName: string,
+): Promise<
+  Array<{
+    recipient_type: string
+    recipient_id: string
+    content: Record<string, unknown>
+  }>
+> {
+  const sql = getSql()
+  const rows = await sql<
+    Array<{
+      recipient_type: string
+      recipient_id: string
+      content: Record<string, unknown> | string
+    }>
+  >`
+    SELECT recipient_type, recipient_id, content
+    FROM notifications
+    WHERE tenant_id = ${tenantId} AND template_name = ${templateName}
+  `
+  return rows.map((r) => ({
+    recipient_type: r.recipient_type,
+    recipient_id: r.recipient_id,
+    content: typeof r.content === 'string' ? (JSON.parse(r.content) as Record<string, unknown>) : r.content,
+  }))
+}
+
+describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
+  it('cancelByPlayer encola booking_canceled al jugador con canceledBy=player', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999)
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '09:00',
+      timeEnd: '10:00',
+      depositStatus: 'not_required',
+      depositAmount: 0,
+    })
+
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, 'no puedo ir', null, tx),
+    )
+
+    const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled')
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_type).toBe('player')
+    expect(notifs[0]!.recipient_id).toBe(player.id)
+    expect(notifs[0]!.content).toMatchObject({
+      canceledBy: 'player',
+      reason: 'no puedo ir',
+      timeStart: '09:00',
+      timeEnd: '10:00',
+    })
+  })
+
+  it('cancelByAdmin cancellationType=jugador encola booking_canceled al jugador con canceledBy=admin', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999)
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '11:00',
+      timeEnd: '12:00',
+      depositStatus: 'not_required',
+      depositAmount: 0,
+    })
+
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'avisó por teléfono', 'jugador', null, tx),
+    )
+
+    const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled')
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_type).toBe('player')
+    expect(notifs[0]!.recipient_id).toBe(player.id)
+    expect(notifs[0]!.content).toMatchObject({
+      canceledBy: 'admin',
+      reason: 'avisó por teléfono',
+    })
+    // Cuando cancela el jugador (aunque lo tipee el admin) NO es el template
+    // "por el complejo".
+    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')).toHaveLength(0)
+  })
+
+  it('cancelByAdmin cancellationType=complejo encola booking_canceled_by_complex al jugador', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999)
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '18:00',
+      timeEnd: '19:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-pay-notif-complejo-${bookingId.slice(0, 8)}`
+    const paymentId = await insertApprovedPayment({
+      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+    })
+    await linkPaymentToBooking(bookingId, paymentId)
+
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', mockGateway, tx),
+    )
+    expect(outcome.pendingRefund).toBeDefined()
+
+    const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_type).toBe('player')
+    expect(notifs[0]!.recipient_id).toBe(player.id)
+    expect(notifs[0]!.content).toMatchObject({ refundConfirmed: true })
+    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled')).toHaveLength(0)
+  })
+
+  it('cancelByAdmin sobre reserva sin jugador (guest) → cero notificaciones nuevas', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertConfirmedBookingNoPlayer({
+      tenantId: tenant.id,
+      courtId,
+      date: FUTURE_DATE,
+      timeStart: '19:00',
+      timeEnd: '20:00',
+    })
+
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'complejo cerrado', 'complejo', null, tx),
+    )
+
+    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled')).toHaveLength(0)
+    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')).toHaveLength(0)
+  })
+})

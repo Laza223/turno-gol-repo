@@ -55,3 +55,23 @@ export class PlanNotFoundError extends Error {
     this.name = 'PlanNotFoundError'
   }
 }
+
+/**
+ * ENS-23: MP rechaza el preapproval si `payer_email` (el email del dueño del
+ * tenant) no tiene cuenta de MercadoPago asociada ("Both payer and collector
+ * must be real or test users"). Mensaje en español porque llega directo al
+ * dueño vía `ActivatePlanSection` (`err.message` se muestra tal cual, mismo
+ * patrón que `AbonadoConflictError`).
+ */
+export class InvalidPayerEmailError extends Error {
+  readonly code = 'INVALID_PAYER_EMAIL'
+  constructor(
+    public readonly tenantId: string,
+    public readonly payerEmail: string,
+  ) {
+    super(
+      'El email de tu cuenta no tiene una cuenta de MercadoPago asociada. Creá una cuenta de MercadoPago con ese email o actualizá tu email.',
+    )
+    this.name = 'InvalidPayerEmailError'
+  }
+}

@@ -9,7 +9,8 @@
  *   dispatchEmail). pg-boss send is at-least-once; the worker is idempotent.
  */
 
-import { getWorkerSql } from '@/shared/db/client'
+import { sql as drizzleSql } from 'drizzle-orm'
+import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import {
   PUSH_SEND_SEND_OPTIONS,
@@ -88,4 +89,68 @@ export async function notifyStaffPush(
     payloadType: payload.type,
   })
   return { enqueued: subs.length }
+}
+
+/**
+ * Push al admin cuando una reserva con seña online queda confirmada — sea por
+ * el webhook de MP o por cualquiera de los caminos de reconciliación (ENS-15:
+ * el webhook ya disparaba este push, la reconciliación no). Extraído del
+ * handler del webhook para que expiry precheck / reconcile worker lo reusen
+ * sin triplicar la query de contexto + formateo de fecha/hora.
+ *
+ * Debe llamarse DESPUÉS de que la transacción que confirmó el booking haya
+ * hecho commit — reabre su propia tx corta vía `withTenantContext` (no
+ * comparte scope con la tx del caller). Nunca lanza: un fallo de push no debe
+ * tirar abajo la confirmación del pago.
+ */
+export async function notifyAdminBookingConfirmed(
+  tenantId: string,
+  bookingId: string,
+): Promise<void> {
+  try {
+    const bookingCtxRows = await withTenantContext(tenantId, (tx) =>
+      tx.execute(drizzleSql`
+        SELECT c.name AS court_name,
+               b.date::text AS date,
+               b.time_start AS time_start,
+               b.time_end AS time_end
+        FROM bookings b
+        JOIN courts c ON c.id = b.court_id
+        WHERE b.id = ${bookingId}
+        LIMIT 1
+      `),
+    )
+    const ctx = (bookingCtxRows as unknown as Array<{
+      court_name: string
+      date: string
+      time_start: string
+      time_end: string
+    }>)[0]
+    const ymd = ctx?.date?.slice(0, 10) ?? ''
+    const dateLabel = ctx?.date
+      ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('es-AR', {
+          day: 'numeric',
+          month: 'long',
+          timeZone: DEFAULT_TIMEZONE,
+        })
+      : ymd
+    const timeStart = ctx?.time_start ?? ''
+    const timeEnd = ctx?.time_end ?? ''
+    const timeLabel = timeStart && timeEnd ? `${timeStart}–${timeEnd}` : timeStart
+
+    await notifyAdminPush(tenantId, {
+      type: 'booking.confirmed_online',
+      bookingId,
+      courtName: ctx?.court_name,
+      dateLabel,
+      timeLabel,
+      url: `/admin/grilla?date=${ymd}&highlight=${bookingId}`,
+    })
+  } catch (err) {
+    logger.error('push dispatch after booking confirmation failed', {
+      module: 'push.service',
+      bookingId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 }

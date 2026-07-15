@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { chipClass } from '../caja-lib'
+import { chipClass, canteenStockBadge, type StockBadge } from '../caja-lib'
 import { formatArs } from '@/lib/format'
-import type { CanteenProductsActionResult } from '../actions'
-import type { CreateCashFlowAction } from './RegisterMovementModal'
+import type { CanteenProductsActionResult, SellCanteenProductResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenProduct } from '@/modules/tenants/tenant.types'
@@ -19,8 +18,16 @@ import type { CanteenProduct } from '@/modules/tenants/tenant.types'
  * `'use server'` y arrastra drizzle/postgres a cualquier bundle de browser.
  */
 export type SaveCanteenProductsAction = (
-  products: { id: string; name: string; price: number }[],
+  products: { id: string; name: string; price: number; stock?: number }[],
 ) => Promise<CanteenProductsActionResult>
+
+export type SellCanteenProductAction = (input: {
+  productId: string
+  qty: number
+  method: 'cash' | 'transfer' | 'mercadopago'
+  occurredAt?: Date
+  clientIdempotencyKey: string
+}) => Promise<SellCanteenProductResult>
 
 // Sugerencias para el primer uso: el admin ajusta nombres y precios antes de guardar.
 const SUGGESTED: Array<{ name: string; pricePesos: string }> = [
@@ -42,12 +49,12 @@ type SaleMethod = (typeof METHOD_OPTIONS)[number]['value']
 export function CanteenQuickSale({
   date,
   products,
-  createCashFlowAction,
+  sellCanteenProductAction,
   saveCanteenProductsAction,
 }: {
   date: string
   products: CanteenProduct[]
-  createCashFlowAction: CreateCashFlowAction
+  sellCanteenProductAction: SellCanteenProductAction
   saveCanteenProductsAction: SaveCanteenProductsAction
 }) {
   const router = useRouter()
@@ -82,17 +89,23 @@ export function CanteenQuickSale({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setSale(p)}
-              className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-emerald-400 hover:bg-primary/5 active:bg-primary/10 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10 dark:active:bg-emerald-500/15"
-            >
-              <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
-              <span className="block text-sm tabular-nums text-muted-foreground">{formatArs(p.price)}</span>
-            </button>
-          ))}
+          {products.map((p) => {
+            const badge = canteenStockBadge(p.stock)
+            const out = badge?.tone === 'out'
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSale(p)}
+                disabled={out}
+                className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-emerald-400 hover:bg-primary/5 active:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10 dark:active:bg-emerald-500/15"
+              >
+                <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
+                <span className="block text-sm tabular-nums text-muted-foreground">{formatArs(p.price)}</span>
+                {badge && <StockChip badge={badge} />}
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -101,7 +114,7 @@ export function CanteenQuickSale({
         product={sale}
         onClose={() => setSale(null)}
         onSold={() => router.refresh()}
-        createCashFlowAction={createCashFlowAction}
+        sellCanteenProductAction={sellCanteenProductAction}
       />
       <ProductsEditorDialog
         open={editorOpen}
@@ -114,18 +127,28 @@ export function CanteenQuickSale({
   )
 }
 
+function StockChip({ badge }: { badge: StockBadge }) {
+  const tone =
+    badge.tone === 'out'
+      ? 'text-red-600 dark:text-red-400'
+      : badge.tone === 'low'
+        ? 'text-amber-600 dark:text-amber-400'
+        : 'text-muted-foreground'
+  return <span className={`mt-0.5 block text-xs font-medium ${tone}`}>{badge.label}</span>
+}
+
 function QuickSaleDialog({
   date,
   product,
   onClose,
   onSold,
-  createCashFlowAction,
+  sellCanteenProductAction,
 }: {
   date: string
   product: CanteenProduct | null
   onClose: () => void
   onSold: () => void
-  createCashFlowAction: CreateCashFlowAction
+  sellCanteenProductAction: SellCanteenProductAction
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -145,6 +168,9 @@ function QuickSaleDialog({
   }
 
   const total = product ? product.price * qty : 0
+  // Tope de cantidad: si el producto controla stock, no se vende más de lo
+  // disponible; si no, tope duro de 99.
+  const maxQty = product && typeof product.stock === 'number' ? Math.max(1, product.stock) : 99
 
   function handleClose(next: boolean) {
     if (isPending) return
@@ -159,12 +185,10 @@ function QuickSaleDialog({
     setError(null)
     startTransition(async () => {
       try {
-        const res = await createCashFlowAction({
-          type: 'income',
-          category: 'product_sale',
+        const res = await sellCanteenProductAction({
+          productId: product.id,
+          qty,
           method,
-          amount: total,
-          description: qty === 1 ? product.name : `${product.name} x${qty}`,
           occurredAt: occurredAtForDate(date),
           clientIdempotencyKey: idempotencyKey,
         })
@@ -209,8 +233,8 @@ function QuickSaleDialog({
               <span className="w-8 text-center text-lg font-semibold tabular-nums">{qty}</span>
               <button
                 type="button"
-                onClick={() => setQty((q) => Math.min(99, q + 1))}
-                disabled={isPending}
+                onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                disabled={isPending || qty >= maxQty}
                 aria-label="Sumar uno"
                 className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-foreground hover:bg-accent disabled:opacity-40 transition-colors"
               >
@@ -218,6 +242,11 @@ function QuickSaleDialog({
               </button>
             </div>
           </div>
+          {product && typeof product.stock === 'number' && (
+            <p className="text-xs text-muted-foreground">
+              Stock disponible: <span className="tabular-nums">{product.stock}</span>
+            </p>
+          )}
           <fieldset>
             <legend className="mb-1.5 text-sm text-muted-foreground">Método de pago</legend>
             <div className="grid grid-cols-3 gap-2">
@@ -250,7 +279,7 @@ function QuickSaleDialog({
   )
 }
 
-type EditorRow = { id: string; name: string; pricePesos: string }
+type EditorRow = { id: string; name: string; pricePesos: string; stock: string }
 
 function ProductsEditorDialog({
   open,
@@ -271,18 +300,26 @@ function ProductsEditorDialog({
 
   // Las filas se inicializan desde props al abrir (estado derivado perezoso).
   const editing: EditorRow[] =
-    rows ?? products.map((p) => ({ id: p.id, name: p.name, pricePesos: String(p.price / 100) }))
+    rows ??
+    products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      pricePesos: String(p.price / 100),
+      stock: p.stock === undefined ? '' : String(p.stock),
+    }))
 
   function update(id: string, patch: Partial<EditorRow>) {
     setRows(editing.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   }
 
   function addRow(name = '', pricePesos = '') {
-    setRows([...editing, { id: crypto.randomUUID(), name, pricePesos }])
+    setRows([...editing, { id: crypto.randomUUID(), name, pricePesos, stock: '' }])
   }
 
   function loadSuggested() {
-    setRows(SUGGESTED.map((s) => ({ id: crypto.randomUUID(), name: s.name, pricePesos: s.pricePesos })))
+    setRows(
+      SUGGESTED.map((s) => ({ id: crypto.randomUUID(), name: s.name, pricePesos: s.pricePesos, stock: '' })),
+    )
   }
 
   function handleClose(next: boolean) {
@@ -304,12 +341,23 @@ function ProductsEditorDialog({
         setError(`Precio inválido para "${r.name.trim()}".`)
         return
       }
+      if (r.stock.trim() !== '') {
+        const s = Number(r.stock)
+        if (!Number.isInteger(s) || s < 0) {
+          setError(`Stock inválido para "${r.name.trim()}".`)
+          return
+        }
+      }
     }
-    const payload = cleaned.map((r) => ({
-      id: r.id,
-      name: r.name.trim(),
-      price: Math.round(Number(r.pricePesos) * 100),
-    }))
+    const payload = cleaned.map((r) => {
+      const item: { id: string; name: string; price: number; stock?: number } = {
+        id: r.id,
+        name: r.name.trim(),
+        price: Math.round(Number(r.pricePesos) * 100),
+      }
+      if (r.stock.trim() !== '') item.stock = Number(r.stock)
+      return item
+    })
     startTransition(async () => {
       try {
         const res = await saveCanteenProductsAction(payload)
@@ -336,7 +384,7 @@ function ProductsEditorDialog({
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Cada producto se vende con un toque desde la caja. El precio es por unidad, en pesos.
+            Cada producto se vende con un toque desde la caja. El precio es por unidad, en pesos. El stock es opcional: dejalo vacío si no querés controlarlo.
           </p>
           {editing.length === 0 ? (
             <button
@@ -367,7 +415,18 @@ function ProductsEditorDialog({
                     onChange={(e) => update(r.id, { pricePesos: e.target.value })}
                     placeholder="Precio"
                     aria-label="Precio en pesos"
-                    className="h-11 w-24 rounded-md border border-border px-3 text-sm tabular-nums"
+                    className="h-11 w-20 rounded-md border border-border px-3 text-sm tabular-nums"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={r.stock}
+                    onChange={(e) => update(r.id, { stock: e.target.value })}
+                    placeholder="Stock"
+                    aria-label="Stock (opcional)"
+                    className="h-11 w-16 rounded-md border border-border px-2 text-sm tabular-nums"
                   />
                   <button
                     type="button"

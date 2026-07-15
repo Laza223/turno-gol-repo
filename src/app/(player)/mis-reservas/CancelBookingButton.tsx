@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { formatArs } from '@/lib/format'
 import type { PlayerBookingActionResult } from './actions'
 
 /** Firma de la Server Action que ejecuta la cancelación. */
@@ -11,11 +12,21 @@ export type CancelMyBookingAction = (
   reason?: string,
 ) => Promise<PlayerBookingActionResult>
 
+/** ENS-2: consecuencia concreta de cancelar AHORA (getCancellationPreview). */
+type CancellationOutcome = 'no_deposit' | 'refund' | 'no_refund'
+
 type Props = {
   bookingId: string
   courtName: string
   dateLabel: string
   timeLabel: string
+  /**
+   * Consecuencia de cancelar ESTE turno AHORA, calculada server-side con la
+   * misma política que usa `cancelByPlayer` (no es una regla nueva del front).
+   */
+  cancellationOutcome: CancellationOutcome
+  /** Monto de la seña en centavos — solo relevante si cancellationOutcome !== 'no_deposit'. */
+  depositAmountCents: number
   /**
    * La action llega por PROP, no por import: './actions' es `'use server'` y
    * arrastra drizzle/postgres + `node:async_hooks` (vía request-context), lo
@@ -26,7 +37,23 @@ type Props = {
   action: CancelMyBookingAction
 }
 
-export function CancelBookingButton({ bookingId, courtName, dateLabel, timeLabel, action }: Props) {
+/** ENS-2: reemplaza el texto abstracto ("si estás en el plazo... fuera del
+ * plazo...") por la consecuencia concreta de cancelar ESTE turno. */
+function depositPreviewText(outcome: CancellationOutcome, amountCents: number): string {
+  if (outcome === 'no_deposit') return 'No hay seña que devolver.'
+  if (outcome === 'refund') return `Se te devuelve la seña de ${formatArs(amountCents)}.`
+  return `Perdés la seña de ${formatArs(amountCents)}.`
+}
+
+export function CancelBookingButton({
+  bookingId,
+  courtName,
+  dateLabel,
+  timeLabel,
+  cancellationOutcome,
+  depositAmountCents,
+  action,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const router = useRouter()
@@ -60,8 +87,7 @@ export function CancelBookingButton({ bookingId, courtName, dateLabel, timeLabel
             <strong>{timeLabel}</strong>.
             <br />
             <br />
-            Si estás <strong>en el plazo</strong> de cancelación que fijó el complejo, tu seña se
-            reembolsa. <strong>Fuera del plazo</strong>, la seña queda como cargo del complejo.
+            {depositPreviewText(cancellationOutcome, depositAmountCents)}
           </>
         }
         confirmLabel="Sí, cancelar"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { depositCashFlowDescription, summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 
 describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
   it('seña paga + sin cobros extra → pendiente = precio - seña', () => {
@@ -76,5 +76,23 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       chargesTotal: 60_000_00,
     })
     expect(s.pending).toBe(0)
+  })
+})
+
+describe('depositCashFlowDescription — ENS-21: marcador del cash_flow automático de la seña', () => {
+  it('es determinístico para el mismo bookingId', () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    expect(depositCashFlowDescription(id)).toBe(depositCashFlowDescription(id))
+  })
+
+  it('es distinto para bookings distintos (no colisiona entre turnos)', () => {
+    const a = depositCashFlowDescription('11111111-1111-4111-8111-111111111111')
+    const b = depositCashFlowDescription('22222222-2222-4222-8222-222222222222')
+    expect(a).not.toBe(b)
+  })
+
+  it('nunca coincide con la description por defecto de un cobro de mostrador', () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    expect(depositCashFlowDescription(id)).not.toBe('Cobro de turno')
   })
 })

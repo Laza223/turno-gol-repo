@@ -13,9 +13,8 @@ import {
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
-import { notifyAdminPush } from '@/modules/notifications/push.service'
+import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
 import { track } from '@/shared/observability'
-import { logger } from '@/shared/lib/logger'
 
 /**
  * Payload for the `process-mp-webhook` queue. The route enqueues this; the
@@ -96,6 +95,11 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       }
       const at = new Date()
       if (info.status === 'approved') {
+        // Fix 2b (billing R2 🔴): `info.mpPaymentId`/`info.preapprovalId`
+        // vienen de `gateway.getPaymentStatus` (real: point_of_interaction.
+        // linked_to — mp-gateway.implementation.ts) y le permiten a
+        // `onPaymentApproved` verificar que este pago es del preapproval
+        // VIGENTE de la suscripción antes de reactivarla.
         await onPaymentApproved(
           job.tenantId,
           job.mpEventId,
@@ -103,6 +107,8 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           job.rawPayload,
           at,
           tx,
+          info.mpPaymentId,
+          info.preapprovalId,
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
         await onPaymentRejected(
@@ -171,12 +177,18 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     }
 
     const depositOutcome = await dispatchPaymentInfo(info, job.tenantId, tx)
-    // Capture bookingId only when the booking transition actually succeeded (won).
-    // dispatchPaymentInfo returns result='confirmed' for the approved+won path.
+    // Capture bookingId only when the booking transition actually succeeded
+    // (won). R1-B (barrido de clase, rechazo review): `result === 'confirmed'`
+    // NO significa `won` — dispatchPaymentInfo lo devuelve para CUALQUIER pago
+    // approved, incluso el guard perdedor de transitionFromPendingPayment
+    // sobre un booking ya post-terminal (webhook que llega tarde, después de
+    // que booking.expiry.ts ya lo expiró). Ese caso ya dispara el email
+    // admin_late_payment correcto (notificationIds más abajo); pushear
+    // "Nueva reserva" además sería un falso positivo.
     if (
       depositOutcome &&
       !depositOutcome.alreadyProcessed &&
-      depositOutcome.result === 'confirmed'
+      depositOutcome.won === true
     ) {
       confirmedBookingId = info.externalReference
     }
@@ -191,59 +203,11 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   }
 
   // Push notification to admin when a booking deposit is confirmed.
-  // Fired AFTER the tx commits; wrapped in try/catch so a push failure never
-  // rolls back or fails the payment confirmation.
+  // Fired AFTER the tx commits — notifyAdminBookingConfirmed re-fetches the
+  // booking context in its own short tenant-scoped tx and never throws (a
+  // push failure must never fail the payment confirmation).
   if (confirmedBookingId) {
-    const bookingId = confirmedBookingId
-    try {
-      // Re-fetch booking context post-commit (no shared scope with withTenantContext
-      // above, its tx already closed) — job.tenantId is known, so this reopens a
-      // short tenant-scoped tx rather than reaching for the service-role pool.
-      const bookingCtxRows = await withTenantContext(job.tenantId, (tx) =>
-        tx.execute(sql`
-          SELECT c.name AS court_name,
-                 b.date::text AS date,
-                 b.time_start AS time_start,
-                 b.time_end AS time_end
-          FROM bookings b
-          JOIN courts c ON c.id = b.court_id
-          WHERE b.id = ${bookingId}
-          LIMIT 1
-        `),
-      )
-      const ctx = (bookingCtxRows as unknown as Array<{
-        court_name: string
-        date: string
-        time_start: string
-        time_end: string
-      }>)[0]
-      const ymd = ctx?.date?.slice(0, 10) ?? ''
-      const dateLabel = ctx?.date
-        ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('es-AR', {
-            day: 'numeric',
-            month: 'long',
-            timeZone: 'America/Argentina/Buenos_Aires',
-          })
-        : ymd
-      const timeStart = ctx?.time_start ?? ''
-      const timeEnd = ctx?.time_end ?? ''
-      const timeLabel = timeStart && timeEnd ? `${timeStart}–${timeEnd}` : timeStart
-
-      await notifyAdminPush(job.tenantId, {
-        type: 'booking.confirmed_online',
-        bookingId,
-        courtName: ctx?.court_name,
-        dateLabel,
-        timeLabel,
-        url: `/admin/grilla?date=${ymd}&highlight=${bookingId}`,
-      })
-    } catch (err) {
-      logger.error('push dispatch after booking confirmation failed', {
-        module: 'mp-webhook',
-        bookingId,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
+    await notifyAdminBookingConfirmed(job.tenantId, confirmedBookingId)
   }
 
   track.webhook('mp.webhook.processed', {

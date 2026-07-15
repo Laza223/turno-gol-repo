@@ -1,10 +1,16 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
+import type { CreatePreapprovalInput, PreapprovalResult } from '@/modules/payments/payment.types'
+import {
+  isMpInvalidPayerError,
+  isMpAlreadyCancelledPreapprovalError,
+} from '@/modules/payments/mp-token-refresh'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import {
   DowngradeBlockedError,
+  InvalidPayerEmailError,
   PlanNotFoundError,
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
@@ -15,6 +21,7 @@ import type {
   BillingCycle,
   CancelResult,
   DowngradeResult,
+  PlanSummary,
   SubscribeResult,
   SubscriptionState,
   SubscriptionStatus,
@@ -71,6 +78,22 @@ async function loadPlan(planId: string, tx: DbTx): Promise<PlanRow | null> {
     LIMIT 1
   `)
   return (rows as unknown as Array<PlanRow>)[0] ?? null
+}
+
+/**
+ * Planes activos ordenados (selector de "Activar plan" — Fix 1b). Mismo
+ * patrón que `loadPlan`: SQL crudo sobre la tx del caller. `plans` es tabla
+ * global sin RLS, así que no depende de que `app.current_tenant_id` esté seteado.
+ */
+export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
+  const rows = await tx.execute(sql`
+    SELECT id, slug, name, max_courts AS "maxCourts",
+           price_monthly AS "priceMonthly", price_annual AS "priceAnnual"
+    FROM plans
+    WHERE is_active = true
+    ORDER BY sort_order
+  `)
+  return rows as unknown as PlanSummary[]
 }
 
 async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
@@ -132,6 +155,28 @@ function computeNotificationUrl(tenantId: string): string {
   return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/mercadopago?tenant=${tenantId}`
 }
 
+/**
+ * ENS-23: subscribe() y reactivate() comparten esta llamada a MP. Si el
+ * `payer_email` (email del dueño) no tiene cuenta de MercadoPago, MP la
+ * rechaza con "Both payer and collector must be real or test users" — sin
+ * este catch, un `MpGatewayError` técnico burbujeaba hasta un 500 críptico en
+ * `ActivatePlanSection`. Cualquier OTRO error de MP (red, rate limit, etc.)
+ * sigue burbujeando sin tocar.
+ */
+async function createPreapprovalOrThrowFriendly(
+  gateway: PaymentGateway,
+  input: CreatePreapprovalInput,
+): Promise<PreapprovalResult> {
+  try {
+    return await gateway.createPreapproval(input)
+  } catch (err) {
+    if (isMpInvalidPayerError(err)) {
+      throw new InvalidPayerEmailError(input.tenantId, input.payerEmail)
+    }
+    throw err
+  }
+}
+
 // ─── subscribe ──────────────────────────────────────────────────────────────
 
 export async function subscribe(
@@ -157,7 +202,7 @@ export async function subscribe(
 
   const amount = planAmount(plan, billingCycle)
 
-  const preapproval = await gateway.createPreapproval({
+  const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
     payerEmail: owner.ownerEmail,
     amount,
@@ -382,10 +427,48 @@ export async function cancel(
   const sub = await loadSub(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
 
-  if (sub.mp_subscription_id) {
-    await gateway.cancelPreapproval(sub.mp_subscription_id)
+  const canceledMpSubscriptionId = sub.mp_subscription_id
+  if (canceledMpSubscriptionId) {
+    // Mismo riesgo menor que `reactivate()` (R5 lo señaló, ver Fix 1 más
+    // abajo): improbable acá (nadie más cancela el preapproval de este
+    // tenant entre lecturas), pero tolerar "ya estaba cancelado en MP" tiene
+    // costo cero y evita que una baja voluntaria reintentada por el dueño
+    // (ej. doble click, timeout de red en el primer intento que sí llegó a
+    // MP) quede trabada en el mismo error 400 que R2-2.
+    try {
+      await gateway.cancelPreapproval(canceledMpSubscriptionId)
+    } catch (err) {
+      if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+    }
   }
   await transitionToCanceled(tenantId, reason, tx)
+
+  // Fix 2a (R2 🔴, mitad 1 de "un pago en vuelo no deshace una baja
+  // voluntaria"): sin esto, un pago del preapproval VIEJO (cancelado arriba,
+  // pero autorizado por MP antes del cancel — "en vuelo") que llega tarde vía
+  // webhook encontraría `mp_subscription_id` todavía apuntando a él y
+  // `onPaymentApproved` (dunning.service.ts, Fix 2b) lo tomaría como "la
+  // suscripción actual" y reactivaría solo, sin que el dueño lo haya pedido
+  // (viola ENS-25/26, Res. 424/2020). `transitionToCanceled`
+  // (lifecycle.service.ts) ya audita 'tenant.canceled' con {reason}; ese
+  // archivo queda fuera del alcance de este fix, así que este es un UPDATE +
+  // audit log SEGUNDO y dedicado — misma tx que `transitionToCanceled`
+  // (todo-o-nada: si esto no corriera, el rollback se lleva puesto el cancel
+  // completo). Preserva el id cancelado en el audit trail antes de borrarlo.
+  if (canceledMpSubscriptionId) {
+    await tx.execute(sql`
+      UPDATE tenant_subscriptions
+      SET mp_subscription_id = NULL, updated_at = NOW()
+      WHERE tenant_id = ${tenantId} AND status = 'canceled'
+    `)
+    await insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'subscription.mp_preapproval_cleared',
+      resourceType: 'tenant_subscription',
+      resourceId: tenantId,
+      metadata: { canceledMpSubscriptionId },
+    })
+  }
 
   const owner = await loadTenantOwner(tenantId, tx)
   if (owner) {
@@ -407,7 +490,7 @@ export async function cancel(
   return { accessUntil: toDate(sub.current_period_end) }
 }
 
-// ─── reactivate (canceled or churned, before deletion_at) ───────────────────
+// ─── reactivate (canceled/churned/suspended/blocked, before deletion_at) ────
 
 export async function reactivate(
   tenantId: string,
@@ -420,7 +503,15 @@ export async function reactivate(
   const sub = await loadSub(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
 
-  const allowed: SubscriptionStatus[] = ['canceled', 'churned']
+  // ENS-20: se suman `suspended` y `blocked` — doc4 §2 los clasifica como
+  // "Reintento manual" y "Re-activación" respectivamente, así que necesitan el
+  // mismo botón de "pagar ahora" que ya tenían canceled/churned. `past_due`
+  // queda deliberadamente afuera: todavía tiene un preapproval de MP vivo
+  // reintentando automáticamente (doc4: "Reintento automático", día 0/2/5);
+  // pedir uno nuevo acá arriesgaría un doble cobro si el viejo también termina
+  // aprobándose. onPaymentApproved ya reactiva sea cual sea el origen
+  // (transitionToActiveFromAny) una vez que ESE pago se acredita.
+  const allowed: SubscriptionStatus[] = ['canceled', 'churned', 'suspended', 'blocked']
   if (!allowed.includes(sub.status)) {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
@@ -436,7 +527,46 @@ export async function reactivate(
 
   const amount = planAmount(plan, billingCycle)
 
-  const preapproval = await gateway.createPreapproval({
+  // Fix 1 (R2 🔴): el preapproval VIEJO puede seguir vivo en MP reintentando
+  // — el sweep de dunning (dunning-retry.worker.ts) solo escala estado
+  // local, JAMÁS llama a MP para cancelarlo (comentario en ese archivo: "MP
+  // itself handles charge retries ... this sweep only escalates state").
+  // Sin este cancel, pedir un preapproval nuevo pisa `mp_subscription_id` sin
+  // apagar el viejo → dos preapprovals cobrando el mismo plan. Mismo patrón
+  // que `cancel()` (arriba).
+  //
+  // "Ya estaba cancelado en MP" (Fix 1, R2-2 residual — reviewer R5, verificado
+  // contra MP real por el orquestador 2026-07-14, ver ENSAYO_GENERAL.md): SÍ
+  // lo distinguimos ahora. Escenario real: este mismo cancel corre, tiene
+  // éxito en MP (efecto externo NO transaccional — no hay rollback posible),
+  // pero `createPreapprovalOrThrowFriendly` de más abajo falla justo después
+  // → el rollback local de la tx deja `mp_subscription_id` intacto, apuntando
+  // a un preapproval que YA está `cancelled` en MP. El reintento del dueño
+  // vuelve a pasar por acá y MP rechaza el segundo cancel con HTTP 400 "You
+  // can not modify a cancelled preapproval." — sin esta tolerancia, el dueño
+  // queda trabado para siempre en el único flujo cuya razón de ser es
+  // dejarlo pagar. `isMpAlreadyCancelledPreapprovalError` matchea por mensaje
+  // (mismo patrón que `isMpInvalidPayerError`, validado contra la respuesta
+  // real de MP — no una suposición sobre el shape del SDK). El objetivo de
+  // este cancel ("el viejo no está vivo") ya se cumplió, así que se tolera y
+  // seguimos. Cualquier OTRO error sigue abortando la reactivación entera
+  // (bias sin cambios: nunca crear el nuevo con el viejo posiblemente vivo).
+  //
+  // Con el Fix 2 (`cancel()` limpia `mp_subscription_id` al dar de baja
+  // voluntariamente), el único camino real que llega acá con un id no nulo
+  // es: reintentos automáticos de MP nunca cancelados (suspended/blocked/
+  // churned vía dunning), datos legacy pre-fix, o el escenario de arriba
+  // (rollback tras un cancel exitoso); una baja voluntaria previa normal ya
+  // no deja nada que cancelar (ver test dedicado).
+  if (sub.mp_subscription_id) {
+    try {
+      await gateway.cancelPreapproval(sub.mp_subscription_id)
+    } catch (err) {
+      if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+    }
+  }
+
+  const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
     payerEmail: owner.ownerEmail,
     amount,

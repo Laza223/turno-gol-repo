@@ -1,5 +1,5 @@
 import { Payment, PaymentRefund, PreApproval, Preference } from 'mercadopago'
-import { mpClient } from '@/lib/mercadopago'
+import { mpClient, mpClientFromPlaintext } from '@/lib/mercadopago'
 import { MpGatewayError } from './payment.errors'
 import { withTokenRefresh } from './mp-token-refresh'
 import { centsToPesos, pesosToCents } from './money'
@@ -59,17 +59,21 @@ export class MercadoPagoGateway implements PaymentGateway {
   private readonly onUnauthorized?: () => Promise<string>
 
   /**
-   * @param encryptedAccessToken tenant's encrypted MP access token.
+   * @param accessToken tenant's encrypted MP access token (default), o el token
+   *   en claro si `options.plaintextToken` es true (ENS-22: el master del SaaS
+   *   viene del env sin cifrar; mandarlo a decrypt rompía todo billing).
    * @param options.onUnauthorized optional refresh hook (Hallazgo 4). Returns a
    *   fresh **encrypted** access token; invoked once on a 401, then the failing
    *   request is retried. Omit it for callers without a refresh path (e.g. the
    *   SaaS master account in `billing.gateway`).
    */
   constructor(
-    encryptedAccessToken: string,
-    options?: { onUnauthorized?: () => Promise<string> },
+    accessToken: string,
+    options?: { onUnauthorized?: () => Promise<string>; plaintextToken?: boolean },
   ) {
-    this.config = mpClient(encryptedAccessToken)
+    this.config = options?.plaintextToken
+      ? mpClientFromPlaintext(accessToken)
+      : mpClient(accessToken)
     this.onUnauthorized = options?.onUnauthorized
   }
 
@@ -157,6 +161,22 @@ export class MercadoPagoGateway implements PaymentGateway {
         amount: pesosToCents(res.transaction_amount),
         externalReference: res.external_reference ?? '',
         paymentMethodId: res.payment_method_id ?? 'unknown',
+        // Fix 2b (billing R2 🔴): para un cobro recurrente de suscripción
+        // (`subscription_authorized_payment`), MP liga el pago a su
+        // preapproval de origen en `point_of_interaction.transaction_data
+        // .subscription_id` — VERIFICADO contra un pago real de sandbox
+        // (operación 167921223525 del ensayo: trae subscription_id
+        // `e00ea2c8…`, el mismo preapproval que canceló K5; `linked_to` NO
+        // aparece en el payload real). El tipo `TransactionData` del SDK no
+        // declara el campo (SDK incompleto vs payload real), de ahí el cast
+        // estructural estrecho. Ausente (`undefined`) en pagos de
+        // booking-deposit normales — dunning.service.ts distingue
+        // "undefined = no lo sé" de "null/otro id = confirmé que no matchea".
+        preapprovalId: (
+          res.point_of_interaction?.transaction_data as
+            | { subscription_id?: string }
+            | undefined
+        )?.subscription_id,
       }
     } catch (err) {
       throw new MpGatewayError(

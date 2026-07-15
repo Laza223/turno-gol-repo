@@ -53,4 +53,28 @@ describe('CheckoutErrorBanner — alertas de error de checkout (#22)', () => {
     render(<CheckoutErrorBanner error="banned" />)
     expect(screen.getByRole('alert').textContent).toContain('No podés reservar')
   })
+
+  /**
+   * ENS-10: el mensaje hardcodeaba "por ausencias" sin importar la causa real
+   * del ban (softban automático, ban manual, ban global). Ahora muestra el
+   * `reason` real que ya calcula `checkPlayerBanned`/`PlayerBannedError`.
+   */
+  it('error=banned con `reason` muestra el motivo real, no "por ausencias" hardcodeado', () => {
+    render(
+      <CheckoutErrorBanner
+        error="banned"
+        reason="Ausencias reiteradas (2+ en 90 días)"
+        until="2026-03-28T12:00:00.000Z"
+      />,
+    )
+    const text = screen.getByRole('alert').textContent
+    expect(text).toContain('Ausencias reiteradas (2+ en 90 días)')
+    expect(text).toContain('28 mar')
+    expect(text).not.toContain('por ausencias')
+  })
+
+  it('error=banned con `reason` de ban global (sin `until`) igual muestra el motivo', () => {
+    render(<CheckoutErrorBanner error="banned" reason="Jugador suspendido globalmente." />)
+    expect(screen.getByRole('alert').textContent).toContain('Jugador suspendido globalmente.')
+  })
 })

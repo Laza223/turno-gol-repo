@@ -25,7 +25,12 @@ import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
 import { CanteenQuickSale } from './components/CanteenQuickSale'
 import { CierreCard } from './components/CierreCard'
-import { createCashFlowAction, closeDayAction, saveCanteenProductsAction } from './actions'
+import {
+  createCashFlowAction,
+  closeDayAction,
+  saveCanteenProductsAction,
+  sellCanteenProductAction,
+} from './actions'
 import { artDateOf } from '@/shared/time/art-date'
 import {
   addDays,
@@ -216,7 +221,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
         <CanteenQuickSale
           date={date}
           products={tenant.settings.canteen_products ?? []}
-          createCashFlowAction={createCashFlowAction}
+          sellCanteenProductAction={sellCanteenProductAction}
           saveCanteenProductsAction={saveCanteenProductsAction}
         />
       )}

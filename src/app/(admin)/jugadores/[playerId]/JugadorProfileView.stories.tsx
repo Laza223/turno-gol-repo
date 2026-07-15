@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, within } from 'storybook/test'
+import { expect, fn, within } from 'storybook/test'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import { uid } from '@/test/fixtures/ids'
 import { daysFromNow } from '@/test/fixtures/clock'
@@ -80,6 +80,8 @@ const meta = {
     stats: stats(),
     history: HISTORY,
     ban: NOT_BANNED,
+    banPlayerAction: fn(async () => ({ success: true })),
+    liftPlayerBanAction: fn(async () => ({ success: true })),
   },
   decorators: [
     (Story) => (

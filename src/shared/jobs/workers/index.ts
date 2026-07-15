@@ -9,6 +9,7 @@ import { registerDataRetentionCleanupWorker } from './data-retention-cleanup.wor
 import { registerExpirePendingBookingWorker } from './expire-pending-booking.worker'
 import { registerRefreshMpTokensWorker } from './refresh-mp-tokens.worker'
 import { registerReconcilePendingPaymentsWorker } from './reconcile-pending-payments.worker'
+import { registerRetryRefundsWorker } from './retry-refunds.worker'
 import { registerPushSendWorker } from './push.worker'
 import { registerHealthPingWorker } from './health-ping.worker'
 import { attachFailureHandlers } from '../dlq'
@@ -24,6 +25,7 @@ export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerExpirePendingBookingWorker(boss)
   await registerRefreshMpTokensWorker(boss)
   await registerReconcilePendingPaymentsWorker(boss)
+  await registerRetryRefundsWorker(boss)
   await registerPushSendWorker(boss)
   await registerHealthPingWorker(boss)
   // DLQ visibility (B10 T7): emit Sentry + structured log when a job exhausts

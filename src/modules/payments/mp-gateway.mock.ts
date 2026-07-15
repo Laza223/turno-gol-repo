@@ -90,6 +90,14 @@ export class MockGateway implements PaymentGateway {
   updatePreapprovalCalls: Array<{ preapprovalId: string; amount: number }> = []
   preapprovalCounter = 0
 
+  /**
+   * R5 residual (gap del mock, Fix 1 de M7): `cancelPreapproval` nunca podía
+   * fallar acá, así que ningún test de billing pasaba por el camino de error
+   * sin pisar el método a mano (`gateway.cancelPreapproval = vi.fn()...`).
+   * Mismo patrón que `statusOverride`: seteable por instancia, opcional.
+   */
+  cancelPreapprovalError?: unknown
+
   async createPreapproval(input: CreatePreapprovalInput): Promise<PreapprovalResult> {
     this.preapprovalCalls.push(input)
     this.preapprovalCounter += 1
@@ -102,6 +110,7 @@ export class MockGateway implements PaymentGateway {
 
   async cancelPreapproval(preapprovalId: string): Promise<void> {
     this.cancelPreapprovalCalls.push(preapprovalId)
+    if (this.cancelPreapprovalError !== undefined) throw this.cancelPreapprovalError
   }
 
   async updatePreapprovalAmount(

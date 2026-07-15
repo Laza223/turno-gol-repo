@@ -80,3 +80,15 @@ export type CancelResult = {
   /** When access ends — current_period_end. */
   accessUntil: Date
 }
+
+/** Plan activo, para selectores (activación de plan / cambio de plan). */
+export type PlanSummary = {
+  id: string
+  slug: string
+  name: string
+  maxCourts: number | null
+  /** Centavos ARS/mes. */
+  priceMonthly: number
+  /** Centavos ARS/mes pagando el ciclo anual. */
+  priceAnnual: number
+}

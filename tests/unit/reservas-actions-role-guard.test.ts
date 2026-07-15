@@ -126,7 +126,11 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
     vi.mocked(getDb).mockReturnValue({
       select: () => ({ from: () => ({ where: () => ({ limit: () => Promise.resolve([{ mpAccessToken: null }]) }) }) }),
     } as never)
-    vi.mocked(cancelByAdmin).mockResolvedValue({ booking: { id: 'b-1' }, pendingRefund: undefined } as never)
+    vi.mocked(cancelByAdmin).mockResolvedValue({
+      booking: { id: 'b-1' },
+      pendingRefund: undefined,
+      notificationIds: [],
+    } as never)
     const res = await cancelBookingAction('b-1', 'lluvia torrencial', 'jugador')
     expect(res.success).toBe(true)
     expect(vi.mocked(cancelByAdmin)).toHaveBeenCalledWith(

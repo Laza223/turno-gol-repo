@@ -184,6 +184,12 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
     if (err instanceof PlayerBannedError) {
       const untilParam = err.until ? `&until=${encodeURIComponent(err.until.toISOString())}` : ''
+      // R3-5: el `reason` YA NO viaja por la URL (antes permitía fabricar
+      // URLs con texto arbitrario mostrado en un dominio legítimo —
+      // ingeniería social — y lo filtraba a logs/analytics/referrers). El
+      // query param solo lleva el flag; `page.tsx` relee el motivo real de
+      // DB server-side vía `getActiveBanReason` cuando hay sesión de jugador
+      // válida (ver CheckoutStates.tsx).
       redirect(`${backTo}&error=banned${untilParam}`)
     }
     if (err instanceof TooManyActiveHoldsError) redirect(`${backTo}&error=too_many_holds`)

@@ -16,12 +16,15 @@ import type { StaffRole } from '@/modules/staff/roles'
  *                  blocked at that point).
  * - active/trialing/past_due → full access.
  */
-const BLOCKED_TENANT_STATUSES = new Set(['blocked', 'churned', 'deleted'])
-const READ_ONLY_TENANT_STATUSES = new Set(['suspended'])
+// Exportadas: `src/modules/staff/guards.ts` las reusa como fuente única para el
+// bloqueo de tenant lifecycle en Server Actions (hallazgo R2, ensayo general) en
+// vez de duplicar la lista de estados en un tercer lugar.
+export const BLOCKED_TENANT_STATUSES = new Set(['blocked', 'churned', 'deleted'])
+export const READ_ONLY_TENANT_STATUSES = new Set(['suspended'])
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
-const BILLING_REACTIVATE_ALLOWED = new Set(['canceled', 'churned'])
+const BILLING_REACTIVATE_ALLOWED = new Set(['canceled', 'churned', 'blocked'])
 
 // Default: cualquier miembro de staff activo (admin o manager). Pasar
 // `{ roles: ['admin'] }` en rutas de configuración/facturación restringe a admin.
@@ -102,9 +105,10 @@ export function withTenant(
 
 /**
  * Variant for `/api/billing/reactivate` that bypasses BLOCKED gating for
- * `canceled` and `churned` tenants (where the user must still be able to
- * pay to bring the tenant back). All other terminal states (`blocked`,
- * `deleted`) remain locked out.
+ * `canceled`, `churned` and `blocked` tenants (where the user must still be
+ * able to pay to bring the tenant back — ENS-20 widened `blocked` in from the
+ * old canceled/churned-only carve-out, matching billing.service.reactivate()'s
+ * own allowed-states list). Only `deleted` (data already wiped) stays locked out.
  */
 export function withBillingTenant(
   handler: TenantHandler,
@@ -135,10 +139,7 @@ export function withBillingTenant(
     if (status === 'deleted') {
       return forbidden('El complejo fue eliminado.', { code: 'TENANT_DELETED' })
     }
-    if (status === 'blocked') {
-      return forbidden('El complejo está bloqueado.', { code: 'TENANT_BLOCKED' })
-    }
-    // Allow canceled, churned, suspended, past_due, active, trialing.
+    // Allow canceled, churned, blocked, suspended, past_due, active, trialing.
     if (
       !BILLING_REACTIVATE_ALLOWED.has(status) &&
       !['active', 'trialing', 'past_due', 'suspended'].includes(status)

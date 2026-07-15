@@ -37,3 +37,28 @@ export function withRole(
     return handler(req, user, tx)
   }
 }
+
+/**
+ * Como `withRole` pero acepta cualquiera de varios roles. Para endpoints
+ * operator-level (admin + manager) — p.ej. las métricas de NEGOCIO del complejo,
+ * que el encargado ve igual que grilla/caja/reportes. El rol real se lee de
+ * `tenant_staff_members` (nunca del claim del JWT).
+ */
+export function withAnyRole(
+  allowed: readonly Role[],
+  handler: RoleInnerHandler,
+): RoleInnerHandler {
+  return async (req, user, tx) => {
+    if (!user.tenantId || !user.staffUserId) {
+      return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
+    }
+    const role = await getStaffRole(user.tenantId, user.staffUserId)
+    if (role === null || !allowed.includes(role)) {
+      return forbidden('No tenés el rol requerido para esta acción.', {
+        code: 'ROLE_REQUIRED',
+        details: { required: allowed },
+      })
+    }
+    return handler(req, user, tx)
+  }
+}

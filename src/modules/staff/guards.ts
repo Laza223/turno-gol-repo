@@ -1,6 +1,11 @@
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import {
+  BLOCKED_TENANT_STATUSES,
+  READ_ONLY_TENANT_STATUSES,
+} from '@/shared/middleware/with-tenant'
 import type { StaffUser } from '@/modules/auth/types'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
 import { getStaffRole } from './staff.service'
@@ -9,6 +14,38 @@ import type { StaffRole } from './roles'
 type AdminStaff = {
   user: StaffUser & { staffUserId: string }
   tenant: TenantRow
+}
+
+/**
+ * Estados de tenant que bloquean el panel admin: unión de BLOCKED_TENANT_STATUSES
+ * (blocked/churned/deleted) + READ_ONLY_TENANT_STATUSES (suspended) de
+ * with-tenant.ts (route handlers) — mismo conjunto que el hard-lock de
+ * (admin)/layout.tsx (ENS-20/ENS-26). Ahí `suspended` es solo-lectura para GET;
+ * acá todo lo que pasa por este guard es una mutación (Server Action) o una
+ * page/action de configuración, así que se trata como bloqueo total.
+ *
+ * Hallazgo R2 (ensayo general): los Server Actions no pasan por
+ * (admin)/layout.tsx, así que su hard-lock nunca corría para ellos — un tenant
+ * `blocked` por falta de pago podía seguir creando reservas o moviendo caja
+ * invocando la action por POST directo. Este check es el único punto por el
+ * que pasan requireOperatorStaff / requireAdminStaffAction / requireAdminStaff.
+ */
+const BLOCKED_STAFF_TENANT_STATUSES: ReadonlySet<string> = new Set([
+  ...BLOCKED_TENANT_STATUSES,
+  ...READ_ONLY_TENANT_STATUSES,
+])
+
+/**
+ * true si el tenant está en un estado bloqueante Y la sesión NO es una
+ * impersonación de SuperAdmin. La impersonación bypassea el lock a propósito
+ * ((admin)/layout.tsx:17-20, spec §6): necesita poder entrar a un tenant
+ * bloqueado para dar soporte (revisar/corregir datos antes de que el dueño
+ * reactive el pago).
+ */
+async function isBlockedForStaff(tenant: TenantRow): Promise<boolean> {
+  if (!BLOCKED_STAFF_TENANT_STATUSES.has(tenant.status)) return false
+  const impersonating = await getImpersonationSession()
+  return impersonating === null
 }
 
 /**
@@ -40,6 +77,10 @@ async function requireStaffWithRole(
   // requireAdminStaff). null = membresía inactiva o inexistente.
   const role = await getStaffRole(tenant.id, user.staffUserId)
   if (!role || !allowed.includes(role)) return { ok: false, error }
+
+  if (await isBlockedForStaff(tenant)) {
+    return { ok: false, error: 'El complejo está bloqueado por falta de pago.' }
+  }
 
   return { ok: true, user: { ...user, staffUserId: user.staffUserId }, tenant, role }
 }
@@ -81,6 +122,13 @@ export async function requireAdminStaff(): Promise<AdminStaff> {
 
   const role = await getStaffRole(tenant.id, user.staffUserId)
   if (role !== 'admin') redirect('/dashboard')
+
+  // Mismo bloqueo de tenant lifecycle que requireStaffWithRole (hallazgo R2):
+  // requireAdminStaff también se usa como guard de Server Actions fuera de
+  // (admin)/* (p. ej. finishOnboardingAction en src/app/onboarding/actions.ts),
+  // rutas que no pasan por el hard-lock de (admin)/layout.tsx. Mismo destino
+  // que el layout: /suspended.
+  if (await isBlockedForStaff(tenant)) redirect('/suspended')
 
   return { user: { ...user, staffUserId: user.staffUserId }, tenant }
 }

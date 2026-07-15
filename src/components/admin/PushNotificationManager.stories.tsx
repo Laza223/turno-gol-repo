@@ -97,7 +97,42 @@ export const SinSuscribir: Story = {
     const button = canvas.getByRole('button', { name: 'Habilitar notificaciones' })
     await expect(button).toBeVisible()
     await expect(button).not.toBeDisabled()
+    await expect(canvas.getByRole('button', { name: 'Cerrar' })).toBeVisible()
     await expect(getRegistrationSpy).toHaveBeenCalledWith('/admin/')
+  },
+}
+
+// Debe reflejar DISMISS_KEY de PushNotificationManager.tsx (no se exporta, mismo
+// patrón que SOUND_ENABLED_KEY: ninguna story de este archivo importa internals).
+const DISMISS_KEY = 'turnogol:notif-banner-dismissed-at'
+
+/**
+ * ENS-11: el botón "Cerrar" (X) desmonta el banner por completo — no lo
+ * oculta con `visibility`/`display` — así no queda residuo interceptando
+ * clicks de botones reales debajo suyo. La persistencia real en `localStorage`
+ * (timestamp + ventana de 7 días) se cubre en
+ * `tests/unit/push-notification-dismiss.test.tsx`; este `play` corre en un
+ * browser real (Playwright) donde `localStorage` persiste entre stories del
+ * mismo archivo, así que limpia `DISMISS_KEY` antes (por si una corrida
+ * previa quedó a mitad) y después (para no contaminar `Pendiente` /
+ * `YaSuscripto`, que también esperan ver el banner al montar).
+ */
+export const Descartado: Story = {
+  beforeEach: () => {
+    localStorage.removeItem(DISMISS_KEY)
+    getRegistrationSpy = fn(async () => undefined)
+    const restorePushApis = stubPushApis({ getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'] })
+    return () => {
+      restorePushApis()
+      localStorage.removeItem(DISMISS_KEY)
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const closeButton = await canvas.findByRole('button', { name: 'Cerrar' })
+    await userEvent.click(closeButton)
+    await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: 'Habilitar notificaciones' })).not.toBeInTheDocument()
   },
 }
 

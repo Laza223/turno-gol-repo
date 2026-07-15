@@ -3,6 +3,8 @@ import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { endLabelFromMins } from '@/shared/time/operating-day'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { withPlayerContext } from '@/shared/db/client'
+import { getActiveBanReason } from '@/modules/bans/ban.service'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
 import BookingSummary from './components/BookingSummary'
 import LoginGate from './components/LoginGate'
@@ -19,7 +21,14 @@ const TIME_RE = /^\d{2}:\d{2}$/
 
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ court?: string; date?: string; time?: string; dur?: string; error?: string; until?: string }>
+  searchParams: Promise<{
+    court?: string
+    date?: string
+    time?: string
+    dur?: string
+    error?: string
+    until?: string
+  }>
 }
 
 function addMinsToHHMM(hhmm: string, mins: number): string {
@@ -75,12 +84,23 @@ export default async function ReservarPage(props: Props) {
   const isPlayer = user?.type === 'player'
   const nextUrl = `/${params.slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${durNum}`
 
+  // R3-5: el `reason` del ban NUNCA viaja por query string (fabricable por
+  // URL + se filtra a logs/analytics/referrers) — se relee acá server-side.
+  // `withPlayerContext` alcanza sin setear tenant context: tanto `players`
+  // como `tenant_player_bans` tienen policy de RLS para que el jugador vea su
+  // propia fila (player_own_bans_select / id = current_player_id), sin
+  // importar el tenant — mismas policies que ya usa `checkPlayerBanned`.
+  const banReason =
+    searchParams.error === 'banned' && isPlayer
+      ? await withPlayerContext(user!.playerId, (tx) => getActiveBanReason(user!.playerId, tenant.id, tx))
+      : null
+
   return (
     <ReservaShell>
     <div className="mx-auto max-w-md space-y-5 px-4 py-10 sm:px-6">
       <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">Confirmá tu reserva</h1>
 
-      <CheckoutErrorBanner error={searchParams.error} until={searchParams.until} />
+      <CheckoutErrorBanner error={searchParams.error} until={searchParams.until} reason={banReason ?? undefined} />
 
       <BookingSummary
         data={{

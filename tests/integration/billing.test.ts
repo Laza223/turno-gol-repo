@@ -647,18 +647,59 @@ describe('reactivate', () => {
     expect(mockGateway.preapprovalCalls).toHaveLength(0)
   })
 
-  it('blocked → reactivate throws ReactivateNotAllowedError', async () => {
+  // ENS-20: blocked/suspended pasan a ser elegibles para reactivate() — doc4 §2
+  // los clasifica como "Re-activación"/"Reintento manual" respectivamente, el
+  // mismo botón de "pagar ahora" que ya tenían canceled/churned (ver
+  // billing.service.ts). Reemplaza el test viejo "blocked → throws".
+  it('blocked → reactivate crea un preapproval nuevo (no lanza)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'blocked', 'predio')
+    await seedSubscription(sql, tenant.id, 'blocked', 'predio', { mpSubscriptionId: 'mp-old' })
+
+    const result = await withTenantContext(tenant.id, async (tx) => {
+      return billingReactivate(tenant.id, plans.complejo, 'monthly', mockGateway, tx)
+    })
+
+    expect(result.checkoutUrl).toContain('mp.test')
+    expect(mockGateway.preapprovalCalls).toHaveLength(1)
+    const rows = await sql<{ plan_id: string; mp_subscription_id: string | null; status: string }[]>`
+      SELECT plan_id, mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(rows[0]!.plan_id).toBe(plans.complejo)
+    expect(rows[0]!.mp_subscription_id).not.toBe('mp-old')
+    expect(rows[0]!.status).toBe('blocked') // reactivate() no transiciona: eso lo hace onPaymentApproved
+  })
+
+  it('suspended → reactivate crea un preapproval nuevo (no lanza)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'suspended', 'predio', { mpSubscriptionId: 'mp-old' })
+
+    const result = await withTenantContext(tenant.id, async (tx) => {
+      return billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
+    })
+
+    expect(result.checkoutUrl).toContain('mp.test')
+    expect(mockGateway.preapprovalCalls).toHaveLength(1)
+  })
+
+  it('past_due → reactivate sigue lanzando ReactivateNotAllowedError (MP ya reintenta solo)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'past_due', 'predio')
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
         await billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+    expect(mockGateway.preapprovalCalls).toHaveLength(0)
   })
 })
 

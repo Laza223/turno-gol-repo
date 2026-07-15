@@ -3,8 +3,10 @@ import { CreditCard, CheckCircle2, ExternalLink } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
-import { getSubscriptionState } from '@/modules/billing/billing.service'
+import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
 import { SettingsTabs } from '../SettingsTabs'
+import { ActivatePlanSection } from './ActivatePlanSection'
+import { CancelSubscriptionSection } from './CancelSubscriptionSection'
 
 const STATUS_LABELS: Record<string, string> = {
   trialing: 'Período de prueba',
@@ -36,6 +38,14 @@ export default async function FacturacionPage() {
     sub = null
   }
 
+  // Bug raíz: createTenantWithTrial no insertaba tenant_subscriptions, así que
+  // subscribe() siempre tiraba SubscriptionNotFoundError (fix 1a). Con la fila
+  // ya sembrada en 'trialing', el admin necesita una forma de activar el plan.
+  const activePlans =
+    sub?.status === 'trialing'
+      ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx))
+      : []
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
@@ -48,14 +58,18 @@ export default async function FacturacionPage() {
             <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
               <div>
                 <dt className="text-muted-foreground">Plan</dt>
-                <dd className="font-medium text-foreground">{sub.planName}</dd>
+                <dd className="font-medium text-foreground">
+                  {sub.status === 'trialing' ? 'Sin plan elegido' : sub.planName}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Estado</dt>
                 <dd className="font-medium text-foreground">{STATUS_LABELS[sub.status] ?? sub.status}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Próximo cobro</dt>
+                <dt className="text-muted-foreground">
+                  {sub.status === 'trialing' ? 'Fin de la prueba' : 'Próximo cobro'}
+                </dt>
                 <dd className="font-medium text-foreground tabular-nums">{formatDate(sub.currentPeriodEnd)}</dd>
               </div>
             </dl>
@@ -65,6 +79,17 @@ export default async function FacturacionPage() {
             </p>
           )}
         </section>
+
+        {sub?.status === 'trialing' && activePlans.length > 0 && (
+          <ActivatePlanSection plans={activePlans} />
+        )}
+
+        {sub && (
+          <CancelSubscriptionSection
+            status={sub.status}
+            accessUntil={sub.currentPeriodEnd.toISOString()}
+          />
+        )}
 
         <section className="card-premium rounded-xl p-6">
           <div className="flex items-start justify-between gap-4">

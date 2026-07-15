@@ -19,6 +19,12 @@ export type CanteenProduct = {
   id: string
   name: string
   price: number
+  /**
+   * Stock disponible (unidades). Ausente/undefined = sin control de stock: la
+   * venta no descuenta ni se bloquea (comportamiento por defecto). Un número
+   * activa el control: la venta descuenta y se bloquea al llegar a 0.
+   */
+  stock?: number
 }
 
 export type TenantSettings = {

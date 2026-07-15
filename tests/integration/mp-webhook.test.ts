@@ -422,6 +422,68 @@ describe('handleMpWebhookJob — approved deposit (happy path)', () => {
     const audits = await getAuditLogs(bookingId)
     expect(audits.some((a) => a.action === 'payment.amount_discrepancy')).toBe(false)
   })
+
+  // doc7 Flujo 2: al aprobarse la seña, el jugador tiene que enterarse por
+  // email de que su reserva quedó confirmada — antes de este fix, handleApproved
+  // solo encolaba admin_late_payment (won=false) y nunca avisaba al jugador.
+  it('encola booking_confirmed al jugador (doc7 flujo 2)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '17:00',
+      timeEnd: '18:00',
+    })
+
+    const mpPaymentId = `mp-pay-conf-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-conf-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'account_money',
+    }
+
+    await handleMpWebhookJob({
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    })
+
+    const notifs = await sql<
+      Array<{
+        template_name: string
+        recipient_type: string
+        recipient_id: string
+        content: Record<string, unknown> | string
+      }>
+    >`
+      SELECT template_name, recipient_type, recipient_id, content
+      FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'booking_confirmed'
+    `
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_type).toBe('player')
+    expect(notifs[0]!.recipient_id).toBe(player.id)
+    const content =
+      typeof notifs[0]!.content === 'string'
+        ? (JSON.parse(notifs[0]!.content as string) as Record<string, unknown>)
+        : notifs[0]!.content
+    expect(content).toMatchObject({
+      courtName: 'Cancha Webhook',
+      timeStart: '17:00',
+      timeEnd: '18:00',
+    })
+  })
 })
 
 describe('handleMpWebhookJob — cross-tenant guard (IDOR)', () => {

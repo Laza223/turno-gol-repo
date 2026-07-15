@@ -40,21 +40,35 @@ function formatBannedUntilArt(iso: string): string | null {
 export function CheckoutErrorBanner({
   error,
   until,
+  reason,
 }: {
   error: CheckoutErrorCode | string | undefined
   /** ISO — solo aplica a `error=banned`, cuándo termina el softban. */
   until?: string
+  /**
+   * Motivo real del ban (ENS-10). `checkPlayerBanned` lo calcula (ban global,
+   * ban manual del complejo o el softban automático de `applyNoShowStrike`);
+   * antes se asumía siempre "ausencias", que es falso para un ban manual con
+   * otro motivo. R3-5: NUNCA lo pasa `page.tsx` desde el query string — lo
+   * relee de DB server-side vía `getActiveBanReason` (misma fuente que
+   * `checkPlayerBanned`), porque un `?reason=...` en la URL es fabricable
+   * (ingeniería social en dominio legítimo) y se filtra a logs/referrers.
+   */
+  reason?: string
 }) {
   if (error === 'slot_taken') {
     return <p role="alert" className={alertDestructive}>Ese turno acaba de ser tomado. Elegí otro horario.</p>
   }
   if (error === 'banned') {
     const untilLabel = until ? formatBannedUntilArt(until) : null
+    const untilSuffix = untilLabel ? ` Volvés a poder reservar el ${untilLabel}.` : ''
     return (
       <p role="alert" className={alertDestructive}>
-        {untilLabel
-          ? `Te bloqueamos temporalmente por ausencias. Volvés a poder reservar el ${untilLabel}.`
-          : 'No podés reservar en este complejo actualmente.'}
+        {reason
+          ? `El complejo restringió tu cuenta: ${reason.replace(/\.$/, '')}.${untilSuffix}`
+          : untilLabel
+            ? `Te bloqueamos temporalmente. Volvés a poder reservar el ${untilLabel}.`
+            : 'No podés reservar en este complejo actualmente.'}
       </p>
     )
   }

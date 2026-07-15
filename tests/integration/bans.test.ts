@@ -2,9 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { PlayerBannedError } from '@/modules/bookings/booking.errors'
+import { banPlayerManually, checkPlayerBanned, liftPlayerBan } from '@/modules/bans/ban.service'
 import {
   cleanupAll,
   createTestPlayer,
+  createTestStaffUser,
   createTestTenant,
   ensureRoles,
 } from '../helpers/tenant'
@@ -172,5 +174,182 @@ describe('ban service — createOnlineBooking integration', () => {
     expect(caught).toBeInstanceOf(PlayerBannedError)
     const err = caught as PlayerBannedError
     expect(err.bannedGlobal).toBe(true)
+  })
+})
+
+// R3-6: los tests de arriba cubren createOnlineBooking contra bans
+// PREEXISTENTES (insertados por SQL). El ciclo manual real
+// (banPlayerManually/liftPlayerBan, doc7 Flujo 5B) tenía cobertura unit con
+// un tx fake en memoria (tests/unit/ban-manual.test.ts) pero nada contra
+// Postgres real bajo RLS — acá se ejercita el service tal cual lo llaman las
+// Server Actions de /jugadores (withTenantContext real, trigger
+// enforce_single_active_ban real).
+describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS', () => {
+  it('crea la fila en tenant_player_bans y bloquea createOnlineBooking (bannedGlobal=false)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    await withTenantContext(tenant.id, (tx) =>
+      banPlayerManually(tenant.id, player.id, staff.id, 'Rotura de vidrios', null, tx),
+    )
+
+    const rows = await sql<{ c: string }[]>`
+      SELECT COUNT(*)::text AS c FROM tenant_player_bans
+      WHERE tenant_id = ${tenant.id} AND player_id = ${player.id}
+    `
+    expect(Number(rows[0]!.c)).toBe(1)
+
+    const checked = await withTenantContext(tenant.id, (tx) => checkPlayerBanned(player.id, tenant.id, tx))
+    expect(checked.banned).toBe(true)
+    if (checked.banned) {
+      expect(checked.bannedGlobal).toBe(false)
+      expect(checked.reason).toBe('Rotura de vidrios')
+    }
+
+    let caught: unknown = null
+    try {
+      await withTenantContext(tenant.id, (tx) =>
+        createOnlineBooking(
+          tenant.id,
+          {
+            playerId: player.id,
+            courtId,
+            date: FUTURE_DATE,
+            timeStart: '16:00',
+            timeEnd: '17:00',
+            requiresDeposit: false,
+            depositPercentage: 0,
+          },
+          tx,
+        ),
+      )
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(PlayerBannedError)
+    expect((caught as PlayerBannedError).bannedGlobal).toBe(false)
+  })
+
+  it('un segundo ban manual sobre un ban vigente actualiza la fila existente, no duplica', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+
+    await withTenantContext(tenant.id, (tx) =>
+      banPlayerManually(tenant.id, player.id, staff.id, 'Primer motivo', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), tx),
+    )
+    await withTenantContext(tenant.id, (tx) =>
+      banPlayerManually(tenant.id, player.id, staff.id, 'Segundo motivo', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), tx),
+    )
+
+    // El trigger enforce_single_active_ban (migración 005) ya rechazaría un
+    // 2do INSERT vigente; acá se confirma además que banPlayerManually ni
+    // siquiera lo intenta — solo hay UNA fila física para este jugador/tenant.
+    const rows = await sql<{ c: string; reason: string }[]>`
+      SELECT COUNT(*)::text AS c, MIN(reason) AS reason FROM tenant_player_bans
+      WHERE tenant_id = ${tenant.id} AND player_id = ${player.id}
+    `
+    expect(Number(rows[0]!.c)).toBe(1)
+
+    const checked = await withTenantContext(tenant.id, (tx) => checkPlayerBanned(player.id, tenant.id, tx))
+    expect(checked.banned).toBe(true)
+    if (checked.banned) expect(checked.reason).toBe('Segundo motivo')
+  })
+
+  it('liftPlayerBan levanta el ban y el jugador puede reservar de nuevo', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    await withTenantContext(tenant.id, (tx) =>
+      banPlayerManually(tenant.id, player.id, staff.id, 'Motivo temporal', null, tx),
+    )
+
+    let blockedFirst: unknown = null
+    try {
+      await withTenantContext(tenant.id, (tx) =>
+        createOnlineBooking(
+          tenant.id,
+          {
+            playerId: player.id,
+            courtId,
+            date: FUTURE_DATE,
+            timeStart: '18:00',
+            timeEnd: '19:00',
+            requiresDeposit: false,
+            depositPercentage: 0,
+          },
+          tx,
+        ),
+      )
+    } catch (e) {
+      blockedFirst = e
+    }
+    expect(blockedFirst).toBeInstanceOf(PlayerBannedError)
+
+    const lifted = await withTenantContext(tenant.id, (tx) => liftPlayerBan(tenant.id, player.id, tx))
+    expect(lifted).toBe(true)
+
+    const checked = await withTenantContext(tenant.id, (tx) => checkPlayerBanned(player.id, tenant.id, tx))
+    expect(checked.banned).toBe(false)
+
+    // Mismo slot que el intento bloqueado: el intento fallido rollbackeó su
+    // transacción entera (withTenantContext), así que no quedó ningún booking
+    // insertado que choque acá.
+    const booking = await withTenantContext(tenant.id, (tx) =>
+      createOnlineBooking(
+        tenant.id,
+        {
+          playerId: player.id,
+          courtId,
+          date: FUTURE_DATE,
+          timeStart: '18:00',
+          timeEnd: '19:00',
+          requiresDeposit: false,
+          depositPercentage: 0,
+        },
+        tx,
+      ),
+    )
+    expect(booking.status).toBe('confirmed')
+  })
+
+  it('aislamiento cross-tenant: un ban manual en el tenant A no afecta la reserva del mismo jugador en el tenant B', async () => {
+    const sql = getSql()
+    const tenantA = await createTestTenant(sql)
+    const tenantB = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    const courtB = await insertCourt(tenantB.id)
+
+    await withTenantContext(tenantA.id, (tx) =>
+      banPlayerManually(tenantA.id, player.id, staff.id, 'Ban solo en A', null, tx),
+    )
+
+    const checkedB = await withTenantContext(tenantB.id, (tx) => checkPlayerBanned(player.id, tenantB.id, tx))
+    expect(checkedB.banned).toBe(false)
+
+    const booking = await withTenantContext(tenantB.id, (tx) =>
+      createOnlineBooking(
+        tenantB.id,
+        {
+          playerId: player.id,
+          courtId: courtB,
+          date: FUTURE_DATE,
+          timeStart: '20:00',
+          timeEnd: '21:00',
+          requiresDeposit: false,
+          depositPercentage: 0,
+        },
+        tx,
+      ),
+    )
+    expect(booking.status).toBe('confirmed')
   })
 })

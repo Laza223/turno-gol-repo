@@ -1,22 +1,27 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 
 export type MarkSharedResult = { success: true } | { success: false; error: string }
 
+/**
+ * Fix 3 (R5 🟢 residual — R2-1 CERRADO salvo este): usaba extractAuthUser +
+ * getStaffTenant crudo, sin pasar por `isBlockedForStaff` — un tenant
+ * `blocked`/`suspended` podía tildar el checklist del dashboard por POST
+ * directo aunque el resto de las actions ya estuviera cerrado con M5.
+ * `requireOperatorStaff()` (mismo guard central que el resto de
+ * `(admin)/*\/actions.ts`) cubre sesión + rol + tenant.status en un solo
+ * punto.
+ */
 export async function markPublicLinkSharedAction(): Promise<MarkSharedResult> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return { success: false, error: 'No encontramos tu complejo.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) {

@@ -19,7 +19,7 @@ const STATUS_STYLES: Record<TenantStatus, string> = {
 const STATUS_LABELS: Record<TenantStatus, string> = {
   trialing: 'Trial',
   active: 'Activo',
-  past_due: 'Moroso',
+  past_due: 'Pago vencido',
   suspended: 'Suspendido',
   blocked: 'Bloqueado',
   canceled: 'Cancelado',

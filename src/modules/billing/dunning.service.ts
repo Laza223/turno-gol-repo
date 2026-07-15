@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { captureMessage } from '@/lib/sentry'
 import {
   transitionActiveToPastDue,
   transitionPastDueToActive,
@@ -104,6 +105,33 @@ function formatDate(d: Date): string {
 }
 
 /**
+ * Fix 2b (R2 🔴 — "un pago en vuelo no deshace una baja voluntaria"):
+ * `preapprovalId` es el preapproval que MP asocia al pago aprobado
+ * (`point_of_interaction.linked_to` en la respuesta de `getPaymentStatus`
+ * — ver `mp-gateway.implementation.ts`); `currentMpSubscriptionId` es
+ * `tenant_subscriptions.mp_subscription_id` HOY.
+ *
+ * `undefined` = el caller no conoce/no verificó el preapproval del pago
+ * (callers preexistentes que llaman esta función directo, sin pasar por
+ * `mp-webhook.handler.ts` — tests de FSM/idempotencia, o una respuesta real
+ * de MP que no trae el campo) → confiamos en la máquina de estados como
+ * antes de este fix (retrocompatible, nunca rompe un caller que no optó por
+ * el chequeo).
+ *
+ * `null` o un id distinto de `currentMpSubscriptionId` = el caller SÍ
+ * verificó y no matchea (incluye el caso central: `cancel()` puso
+ * `mp_subscription_id = NULL` — Fix 2a — así que CUALQUIER preapproval en el
+ * pago es, por definición, uno viejo) → no confiar, no reactivar.
+ */
+function preapprovalIdMatches(
+  currentMpSubscriptionId: string | null,
+  preapprovalId: string | null | undefined,
+): boolean {
+  if (preapprovalId === undefined) return true
+  return preapprovalId !== null && preapprovalId === currentMpSubscriptionId
+}
+
+/**
  * Recurring charge rejected. Drives `active → past_due`. Subsequent rejections
  * while in dunning are no-ops on state but bump `last_payment_failed_at`.
  */
@@ -161,9 +189,27 @@ export async function onPaymentRejected(
  * Recurring charge approved. Drives state forward:
  *   - trialing  → active (first authorized_payment after subscribe)
  *   - past_due  → active (recovery)
- *   - suspended/blocked/churned → active (late recovery)
+ *   - suspended/blocked/churned/canceled → active (late recovery)
  *   - active    → no transition; just extend period + bump last_payment_at
- *   - canceled  → no-op (preapproval should be canceled in MP already)
+ *
+ * ENS-20: `canceled` solía ser no-op ("preapproval debería estar cancelada en
+ * MP, ignorar") asumiendo que un tenant `canceled` nunca vuelve a generar un
+ * `subscription_authorized_payment`. Falso desde que billing.service.reactivate()
+ * permite pedir un preapproval NUEVO desde canceled/churned/suspended/blocked
+ * (recovery por UI, /reactivar): ese pago SÍ dispara este webhook, y quedaba
+ * ignorado — el tenant pagaba y seguía bloqueado. transitionToActiveFromAny ya
+ * soporta las 5 fuentes (canceled/churned/blocked/past_due/suspended).
+ *
+ * Fix 2b (R2 🔴): antes de tocar la FSM, `preapprovalIdMatches` verifica que
+ * el preapproval del PAGO sea el vigente en la fila — sin esto, un pago
+ * aprobado "en vuelo" de un preapproval que el dueño YA canceló
+ * voluntariamente (`cancel()`, Fix 2a, deja `mp_subscription_id = NULL`)
+ * reactivaba la suscripción sola, sin su consentimiento (viola ENS-25/26,
+ * Res. 424/2020). `mpPaymentId`/`preapprovalId` son parámetros nuevos y
+ * OPCIONALES: `mp-webhook.handler.ts` (el único caller real) siempre los
+ * pasa; callers preexistentes que no los conocen (tests de FSM/idempotencia)
+ * siguen confiando en la máquina de estados como antes — ver
+ * `preapprovalIdMatches`.
  */
 export async function onPaymentApproved(
   tenantId: string,
@@ -172,12 +218,35 @@ export async function onPaymentApproved(
   rawPayload: unknown,
   paidAt: Date,
   tx: DbTx,
+  mpPaymentId?: string,
+  preapprovalId?: string | null,
 ): Promise<{ alreadyProcessed: boolean }> {
   const fresh = await lockWebhook(mpEventId, eventType, rawPayload, tx)
   if (!fresh) return { alreadyProcessed: true }
 
   const sub = await loadSub(tenantId, tx)
   if (!sub) return { alreadyProcessed: false }
+
+  if (!preapprovalIdMatches(sub.mp_subscription_id, preapprovalId)) {
+    // Plata entró para una suscripción que ya no tiene ese preapproval como
+    // vigente (típicamente: baja voluntaria previa). No reactivamos ni
+    // mandamos `subscription_renewed` — el webhook igual se marca
+    // procesado (no reintenta infinito, `lockWebhook` ya insertó el evento);
+    // esto queda para conciliación/refund manual.
+    captureMessage(
+      'subscription_authorized_payment approved for a preapproval that does not match the tenant current subscription — likely an in-flight payment after a voluntary cancel',
+      {
+        level: 'warning',
+        extra: {
+          tenantId,
+          mpPaymentId: mpPaymentId ?? null,
+          preapprovalId: preapprovalId ?? null,
+          currentMpSubscriptionId: sub.mp_subscription_id,
+        },
+      },
+    )
+    return { alreadyProcessed: false }
+  }
 
   const newPeriodEnd = extendPeriod(toDate(sub.current_period_end), sub.billing_cycle)
 
@@ -192,12 +261,13 @@ export async function onPaymentApproved(
   } else if (
     sub.status === 'suspended' ||
     sub.status === 'blocked' ||
-    sub.status === 'churned'
+    sub.status === 'churned' ||
+    sub.status === 'canceled'
   ) {
     await transitionToActiveFromAny(tenantId, paidAt, newPeriodEnd, tx)
     template = 'subscription_renewed'
-  } else if (sub.status === 'active') {
-    // No transition — just extend period.
+  } else {
+    // active — no transition, solo extiende el período.
     await tx.execute(sql`
       UPDATE tenant_subscriptions
       SET current_period_end = ${newPeriodEnd.toISOString()}::timestamptz,
@@ -206,9 +276,6 @@ export async function onPaymentApproved(
       WHERE tenant_id = ${tenantId} AND status = 'active'
     `)
     template = 'subscription_renewed'
-  } else {
-    // canceled — preapproval should be canceled in MP, ignore.
-    return { alreadyProcessed: false }
   }
 
   const tenantInfo = await loadTenantInfo(tenantId, tx)

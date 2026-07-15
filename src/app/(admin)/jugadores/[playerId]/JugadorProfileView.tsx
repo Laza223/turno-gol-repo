@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
+import type { ManualBanDuration } from '@/modules/bans/ban.schema'
 import type { PlayerProfile, PlayerStats, PlayerBookingRow } from '../queries'
+import { BanPlayerControls } from './BanPlayerControls'
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -42,11 +44,19 @@ function formatDateArt(date: Date): string {
   )
 }
 
+type ActionResult = { success: boolean; error?: string }
+
 type Props = {
   profile: PlayerProfile
   stats: PlayerStats
   history: PlayerBookingRow[]
   ban: BanCheckResult
+  banPlayerAction: (
+    playerId: string,
+    reason: string,
+    duration: ManualBanDuration,
+  ) => Promise<ActionResult>
+  liftPlayerBanAction: (playerId: string) => Promise<ActionResult>
 }
 
 /**
@@ -55,7 +65,14 @@ type Props = {
  * de reservas. Extraída de page.tsx, que solo aporta auth (requireOperatorStaff)
  * + el fetch (getPlayerProfile/getPlayerStats/getPlayerBookingHistory/checkPlayerBanned).
  */
-export function JugadorProfileView({ profile, stats, history, ban }: Props) {
+export function JugadorProfileView({
+  profile,
+  stats,
+  history,
+  ban,
+  banPlayerAction,
+  liftPlayerBanAction,
+}: Props) {
   const statCards: Array<[string, string]> = [
     ['Reservas totales', String(stats.total)],
     ['Completadas', String(stats.completed)],
@@ -112,6 +129,13 @@ export function JugadorProfileView({ profile, stats, history, ban }: Props) {
           </p>
         </div>
       )}
+
+      <BanPlayerControls
+        playerId={profile.playerId}
+        ban={ban}
+        banPlayerAction={banPlayerAction}
+        liftPlayerBanAction={liftPlayerBanAction}
+      />
 
       <section className="card-premium rounded-xl p-6">
         <h2 className="text-sm font-semibold text-foreground">Historial de reservas</h2>

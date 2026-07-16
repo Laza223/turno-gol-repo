@@ -16,6 +16,16 @@ export type ReservaListRow = {
   depositAmount: number
   depositStatus: string
   paymentMethod: string | null
+  /**
+   * Instante físico absoluto del FIN del turno (TIMESTAMPTZ, migraciones
+   * 040/041) — fuente de verdad del guard "turno ya jugado" en el preview de
+   * reembolso (BookingActions/QuickActions, clase de B3): backend
+   * (`decideAdminRefund`) nunca reembolsa un turno terminado, ni para
+   * 'complejo'. Opcional/nullable a propósito: la query siempre lo trae
+   * (columna NOT NULL post-backfill), pero no rompe consumidores/stories que
+   * arman un `ReservaListRow` a mano sin este campo.
+   */
+  endsAt?: string | null
 }
 
 /** Rango temporal de la lista, relativo al día ART actual. */
@@ -75,7 +85,7 @@ export async function listTenantBookings(
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
-           b.payment_method AS "paymentMethod",
+           b.payment_method AS "paymentMethod", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            b.guest_name AS "guestName"
@@ -155,7 +165,7 @@ export async function getBookingDetail(
            b.canceled_reason AS "canceledReason",
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS "cancellationPolicyHours",
            b.abonado_id AS "abonadoId",
-           b.starts_at AS "startsAt",
+           b.starts_at AS "startsAt", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            p.phone AS "playerPhone"

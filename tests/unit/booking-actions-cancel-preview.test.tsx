@@ -123,3 +123,30 @@ describe('BookingActions — preview de plazo usa starts_at físico cuando está
     )
   })
 })
+
+/**
+ * Clase de B3: `decideAdminRefund` (backend, booking.cancellation.ts) NUNCA
+ * reembolsa un turno YA TERMINADO (`ends_at` físico ya pasó), ni para
+ * 'complejo'. Antes de este fix, `willRefund` acá era
+ * `cancelType === 'complejo' ? true : inPolicy` sin el guard: la UI le
+ * prometía al admin un reembolso ("Se reembolsará…") que el backend ya no iba
+ * a ejecutar.
+ */
+describe('BookingActions — turno ya terminado nunca promete reembolso (clase B3)', () => {
+  it('turno YA TERMINADO + complejo: el preview dice "sin reembolso", no "Se reembolsará"', () => {
+    const past = new Date(Date.now() - 3_600_000).toISOString()
+    renderActions({
+      startsAt: past,
+      endsAt: past,
+      depositStatus: 'paid',
+      depositAmount: 450_000,
+      paymentMethod: 'mercadopago',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('radio', { name: /El complejo necesita cancelar/i }))
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (sin reembolso).',
+    )
+    expect(screen.getByRole('dialog')).not.toHaveTextContent('Se reembolsará')
+  })
+})

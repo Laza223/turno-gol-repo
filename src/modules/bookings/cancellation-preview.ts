@@ -24,6 +24,11 @@ export function getCancellationPreview(opts: {
   const { inPolicy } = decideAdminRefund({
     cancellationType: 'jugador',
     bookingStartUtcMs: opts.bookingStartUtcMs,
+    // B3: decideAdminRefund ahora exige bookingEndUtcMs para el guard de
+    // "turno ya terminado" (afecta `shouldRefund`). Este preview solo lee
+    // `inPolicy`, que no depende de ese guard — Infinity preserva el
+    // comportamiento exacto de antes sin inventar una fecha de fin real.
+    bookingEndUtcMs: Number.POSITIVE_INFINITY,
     policyHours: opts.policyHours,
     nowMs: opts.nowMs,
   })

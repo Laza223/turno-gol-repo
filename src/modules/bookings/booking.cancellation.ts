@@ -30,16 +30,27 @@ export type AdminCancellationType = 'complejo' | 'jugador'
  *   plazo reembolsa, fuera retiene.
  * `inPolicy` se devuelve para el rastro de auditoría (también en el caso
  * 'complejo', donde no afecta la decisión pero documenta el contexto).
+ *
+ * Bug B3 (guard de turno YA TERMINADO): si `nowMs >= bookingEndUtcMs` el
+ * servicio ya se prestó — el admin puede cancelar sin reembolso, pero NUNCA
+ * reembolsar, ni siquiera con cancellationType='complejo'. Este guard corta
+ * el camino antes de mirar el motivo.
  */
 export function decideAdminRefund(opts: {
   cancellationType: AdminCancellationType
   bookingStartUtcMs: number
+  bookingEndUtcMs: number
   policyHours: number
   nowMs: number
 }): { shouldRefund: boolean; inPolicy: boolean } {
   const inPolicy =
     opts.nowMs < opts.bookingStartUtcMs - opts.policyHours * 3_600_000
-  const shouldRefund = opts.cancellationType === 'complejo' ? true : inPolicy
+  const turnoTermino = opts.nowMs >= opts.bookingEndUtcMs
+  const shouldRefund = turnoTermino
+    ? false
+    : opts.cancellationType === 'complejo'
+      ? true
+      : inPolicy
   return { shouldRefund, inPolicy }
 }
 
@@ -55,6 +66,7 @@ type LockedBooking = {
   date: string        // 'YYYY-MM-DD'
   time_start: string  // 'HH:MM:SS'
   starts_at: Date
+  ends_at: Date
 }
 
 async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking | undefined> {
@@ -70,7 +82,8 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       payment_id,
       date::text AS date,
       time_start::text AS time_start,
-      starts_at
+      starts_at,
+      ends_at
     FROM bookings
     WHERE id = ${bookingId}
     FOR UPDATE
@@ -290,10 +303,12 @@ export async function cancelByAdmin(
   // 'complejo' reembolsa siempre; 'jugador' aplica la política horaria del complejo.
   const settings = await loadSettings(b.tenant_id, tx)
   const bookingStartUtc = new Date(b.starts_at)
+  const bookingEndUtc = new Date(b.ends_at)
   const policyHours = settings.cancellation_policy.hours_before
   const { shouldRefund, inPolicy } = decideAdminRefund({
     cancellationType,
     bookingStartUtcMs: bookingStartUtc.getTime(),
+    bookingEndUtcMs: bookingEndUtc.getTime(),
     policyHours,
     nowMs: Date.now(),
   })

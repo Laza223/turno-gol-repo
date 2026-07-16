@@ -22,6 +22,7 @@ import { insertSystemAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import { MpGatewayError } from '@/modules/payments/payment.errors'
+import { InvalidTransitionError } from '@/modules/billing/billing.errors'
 import type { DbTx } from '@/shared/db/client'
 
 const TENANT_ID = 't-1'
@@ -103,15 +104,38 @@ describe('cancel — limpia mp_subscription_id al dar de baja voluntariamente (F
     )
   })
 
-  it('si cancelPreapproval falla, propaga y NUNCA transiciona a canceled (todo o nada)', async () => {
+  it('si cancelPreapproval falla, propaga y no deja el clear-audit a medias (atomicidad por rollback de tx, no por orden)', async () => {
     const tx = makeTx('mp-live-3')
     const gateway = new MockGateway()
-    gateway.cancelPreapproval = vi.fn().mockRejectedValue(new Error('MP 500'))
+    // cancelPreapprovalError (no pisar el método a mano) para que el mock
+    // registre la llamada en cancelPreapprovalCalls antes de tirar — ver el
+    // comentario del propio mock sobre este gap (R5/Fix 1 de M7).
+    gateway.cancelPreapprovalError = new Error('MP 500')
 
     await expect(cancel(TENANT_ID, 'Muy caro', gateway, tx)).rejects.toThrow('MP 500')
 
-    expect(transitionToCanceled).not.toHaveBeenCalled()
+    // B1: transitionToCanceled ahora corre PRIMERO (gate de la FSM antes de
+    // tocar MP), así que sí fue llamado acá. El "todo o nada" ya no lo
+    // garantiza el orden de llamadas del service sino el rollback de la tx
+    // del caller: si esto corriera fuera de una transacción real, el UPDATE
+    // de transitionToCanceled quedaría sin deshacer — acá el mock no lo
+    // revierte porque no es una tx real, pero el contrato de atomicidad es
+    // responsabilidad del wrapper de la route, no de este service.
+    expect(transitionToCanceled).toHaveBeenCalledWith(TENANT_ID, 'Muy caro', tx)
+    expect(gateway.cancelPreapprovalCalls).toEqual(['mp-live-3'])
     expect(insertSystemAuditLog).not.toHaveBeenCalled()
+  })
+
+  it('B1: estado NO cancelable → transitionToCanceled tira y NUNCA se llama a MP (sin divergencia)', async () => {
+    const tx = makeTx('mp-live-b1')
+    const gateway = new MockGateway()
+    vi.mocked(transitionToCanceled).mockRejectedValueOnce(
+      new InvalidTransitionError(TENANT_ID, 'blocked', 'canceled'),
+    )
+
+    await expect(cancel(TENANT_ID, 'baja', gateway, tx)).rejects.toBeInstanceOf(InvalidTransitionError)
+
+    expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
   })
 
   // Fix 1 (R2-2 residual — R5 señaló el mismo riesgo menor acá): tolerancia

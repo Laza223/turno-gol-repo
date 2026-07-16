@@ -428,6 +428,17 @@ export async function cancel(
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
 
   const canceledMpSubscriptionId = sub.mp_subscription_id
+
+  // B1 (🔴 divergencia MP↔DB): la FSM corre PRIMERO, antes de tocar MP. Si el
+  // tenant está en un estado no cancelable (ej. `blocked` — el sweep de
+  // dunning no limpia `mp_subscription_id`), `transitionToCanceled` tira acá
+  // y `cancelPreapproval` NUNCA se llama: MP queda intacto, sin divergencia.
+  // Si el estado sí es cancelable pero el gateway falla más abajo, la
+  // atomicidad ("todo o nada") ya no depende del orden de llamadas sino del
+  // rollback de la tx del caller: este UPDATE se deshace junto con todo lo
+  // demás.
+  await transitionToCanceled(tenantId, reason, tx)
+
   if (canceledMpSubscriptionId) {
     // Mismo riesgo menor que `reactivate()` (R5 lo señaló, ver Fix 1 más
     // abajo): improbable acá (nadie más cancela el preapproval de este
@@ -440,22 +451,21 @@ export async function cancel(
     } catch (err) {
       if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
     }
-  }
-  await transitionToCanceled(tenantId, reason, tx)
 
-  // Fix 2a (R2 🔴, mitad 1 de "un pago en vuelo no deshace una baja
-  // voluntaria"): sin esto, un pago del preapproval VIEJO (cancelado arriba,
-  // pero autorizado por MP antes del cancel — "en vuelo") que llega tarde vía
-  // webhook encontraría `mp_subscription_id` todavía apuntando a él y
-  // `onPaymentApproved` (dunning.service.ts, Fix 2b) lo tomaría como "la
-  // suscripción actual" y reactivaría solo, sin que el dueño lo haya pedido
-  // (viola ENS-25/26, Res. 424/2020). `transitionToCanceled`
-  // (lifecycle.service.ts) ya audita 'tenant.canceled' con {reason}; ese
-  // archivo queda fuera del alcance de este fix, así que este es un UPDATE +
-  // audit log SEGUNDO y dedicado — misma tx que `transitionToCanceled`
-  // (todo-o-nada: si esto no corriera, el rollback se lleva puesto el cancel
-  // completo). Preserva el id cancelado en el audit trail antes de borrarlo.
-  if (canceledMpSubscriptionId) {
+    // Fix 2a (R2 🔴, mitad 1 de "un pago en vuelo no deshace una baja
+    // voluntaria"): sin esto, un pago del preapproval VIEJO (cancelado
+    // arriba, pero autorizado por MP antes del cancel — "en vuelo") que
+    // llega tarde vía webhook encontraría `mp_subscription_id` todavía
+    // apuntando a él y `onPaymentApproved` (dunning.service.ts, Fix 2b) lo
+    // tomaría como "la suscripción actual" y reactivaría solo, sin que el
+    // dueño lo haya pedido (viola ENS-25/26, Res. 424/2020).
+    // `transitionToCanceled` (lifecycle.service.ts) ya audita
+    // 'tenant.canceled' con {reason}; ese archivo queda fuera del alcance de
+    // este fix, así que este es un UPDATE + audit log SEGUNDO y dedicado —
+    // misma tx que `transitionToCanceled` arriba (todo-o-nada por rollback).
+    // El `WHERE status = 'canceled'` sigue siendo correcto: para cuando se
+    // llega acá, `transitionToCanceled` ya dejó el status en 'canceled'.
+    // Preserva el id cancelado en el audit trail antes de borrarlo.
     await tx.execute(sql`
       UPDATE tenant_subscriptions
       SET mp_subscription_id = NULL, updated_at = NOW()

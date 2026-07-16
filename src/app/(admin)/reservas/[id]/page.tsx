@@ -66,6 +66,7 @@ export default async function ReservaDetailPage(props: Props) {
         bookingDate={booking.date}
         timeStart={booking.timeStart}
         startsAt={booking.startsAt}
+        endsAt={booking.endsAt}
         cancellationPolicyHours={booking.cancellationPolicyHours}
         completeBookingAction={completeBookingAction}
         markNoShowAction={markNoShowAction}

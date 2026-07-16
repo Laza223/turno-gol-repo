@@ -11,6 +11,7 @@ describe('decideAdminRefund — Tarea #3: motivo decide el reembolso', () => {
     const r = decideAdminRefund({
       cancellationType: 'complejo',
       bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
       policyHours: 24,
       nowMs: now(48),
     })
@@ -21,6 +22,7 @@ describe('decideAdminRefund — Tarea #3: motivo decide el reembolso', () => {
     const r = decideAdminRefund({
       cancellationType: 'complejo',
       bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
       policyHours: 24,
       nowMs: now(2), // ya pasó el plazo de 24h
     })
@@ -32,6 +34,7 @@ describe('decideAdminRefund — Tarea #3: motivo decide el reembolso', () => {
     const r = decideAdminRefund({
       cancellationType: 'jugador',
       bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
       policyHours: 24,
       nowMs: now(48),
     })
@@ -43,6 +46,7 @@ describe('decideAdminRefund — Tarea #3: motivo decide el reembolso', () => {
     const r = decideAdminRefund({
       cancellationType: 'jugador',
       bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
       policyHours: 24,
       nowMs: now(2),
     })
@@ -54,10 +58,57 @@ describe('decideAdminRefund — Tarea #3: motivo decide el reembolso', () => {
     const r = decideAdminRefund({
       cancellationType: 'jugador',
       bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
       policyHours: 24,
       nowMs: START - 24 * HOUR, // justo en el borde
     })
     expect(r.inPolicy).toBe(false)
+    expect(r.shouldRefund).toBe(false)
+  })
+})
+
+describe('decideAdminRefund — guard: turno YA TERMINADO nunca reembolsa', () => {
+  it('complejo + turno YA TERMINADO → shouldRefund=false (bug B3: hoy reembolsa incondicional)', () => {
+    const r = decideAdminRefund({
+      cancellationType: 'complejo',
+      bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
+      policyHours: 24,
+      nowMs: START + 2 * HOUR, // el turno ya terminó hace 1h
+    })
+    expect(r.shouldRefund).toBe(false)
+  })
+
+  it('complejo + turno futuro (aún no termina) → reembolso forzado (no-regresión)', () => {
+    const r = decideAdminRefund({
+      cancellationType: 'complejo',
+      bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
+      policyHours: 24,
+      nowMs: now(48),
+    })
+    expect(r.shouldRefund).toBe(true)
+  })
+
+  it('jugador + turno YA TERMINADO → shouldRefund=false', () => {
+    const r = decideAdminRefund({
+      cancellationType: 'jugador',
+      bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
+      policyHours: 24,
+      nowMs: START + 2 * HOUR,
+    })
+    expect(r.shouldRefund).toBe(false)
+  })
+
+  it('borde: nowMs === bookingEndUtcMs cuenta como terminado (>=) → shouldRefund=false', () => {
+    const r = decideAdminRefund({
+      cancellationType: 'complejo',
+      bookingStartUtcMs: START,
+      bookingEndUtcMs: START + HOUR,
+      policyHours: 24,
+      nowMs: START + HOUR, // justo el instante en que termina
+    })
     expect(r.shouldRefund).toBe(false)
   })
 })

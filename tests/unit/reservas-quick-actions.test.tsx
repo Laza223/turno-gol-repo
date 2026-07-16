@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
@@ -156,5 +157,60 @@ describe('QuickActions — confirmed', () => {
   it('el menú contextual mobile existe con aria-label descriptivo', () => {
     render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
     expect(screen.getByRole('button', { name: 'Acciones para Juan · 14:00' })).toBeTruthy()
+  })
+})
+
+/**
+ * Clase de B3: `decideAdminRefund` (backend) nunca reembolsa un turno YA
+ * TERMINADO, ni para 'complejo'. Antes de este fix, el warning para
+ * 'complejo' decía "Se reembolsará…" de forma incondicional (líneas
+ * 146-150), sin mirar si el turno ya se jugó.
+ */
+describe('QuickActions — turno ya terminado nunca promete reembolso (clase B3)', () => {
+  it('booking.endsAt en el pasado + complejo: warning dice "sin reembolso", no "Se reembolsará vía MercadoPago"', async () => {
+    const past = new Date(Date.now() - 3_600_000).toISOString()
+    render(
+      <QuickActions
+        booking={booking({
+          depositStatus: 'paid',
+          depositAmount: 450_000,
+          paymentMethod: 'mercadopago',
+          endsAt: past,
+        })}
+        label="Juan · 14:00"
+        {...quickActions}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(screen.getAllByRole('radio')[0]!) // complejo
+
+    expect(dialog).toHaveTextContent('El turno ya se jugó: la seña queda para el complejo (sin reembolso).')
+    expect(dialog).not.toHaveTextContent('Se reembolsará vía MercadoPago')
+  })
+
+  it('booking.endsAt en el pasado + sin seña pagada: el check de !hasPaidDeposit gana, warning dice "no tiene seña pagada"', async () => {
+    const past = new Date(Date.now() - 3_600_000).toISOString()
+    render(
+      <QuickActions
+        booking={booking({
+          depositStatus: 'not_required',
+          depositAmount: 0,
+          paymentMethod: null,
+          endsAt: past,
+        })}
+        label="Juan · 14:00"
+        {...quickActions}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(screen.getAllByRole('radio')[0]!) // complejo
+
+    expect(dialog).toHaveTextContent('Esta reserva no tiene seña pagada. Solo se libera el turno.')
+    expect(dialog).not.toHaveTextContent('El turno ya se jugó')
+    expect(dialog).not.toHaveTextContent('Se reembolsará')
   })
 })

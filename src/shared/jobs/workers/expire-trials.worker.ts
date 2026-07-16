@@ -1,36 +1,66 @@
 import type PgBoss from 'pg-boss'
-import { getWorkerSql } from '@/shared/db/client'
+import { sql } from 'drizzle-orm'
+import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
+import { insertSystemAuditLog } from '@/shared/db/audit'
 import { QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
-async function runExpireTrials(): Promise<void> {
-  // tenant_subscriptions UPDATE below touches many tenants at once — a single
-  // statement can't be scoped to one app.current_tenant_id (Fable 5 P0), so
-  // this needs the service-role pool.
-  const sql = getWorkerSql()
-  // Move trialing tenants whose trial_ends_at has passed to 'blocked'.
-  // Also update the linked tenant_subscription to keep status in sync.
-  const expired = await sql<{ id: string; name: string }[]>`
-    UPDATE tenants
-    SET status = 'blocked', updated_at = NOW()
+/**
+ * Mueve tenants trialing con trial_ends_at vencido a 'blocked' y sincroniza
+ * su tenant_subscriptions + audit log. La lectura de candidatos corre en el
+ * pool worker (BYPASSRLS, cross-tenant — Fable 5 P0, no scopeable a un solo
+ * app.current_tenant_id). Cada tenant abre su propia transacción corta
+ * (tenants + tenant_subscriptions + audit, todo-o-nada) con try/catch propio
+ * — mismo patrón que dunning-retry.worker.ts / data-retention-cleanup.worker.ts —
+ * así un blip de conexión o timeout de lock en UN tenant no revierte a los
+ * demás tenants vencidos de la misma corrida.
+ */
+export async function runExpireTrials(): Promise<void> {
+  const readSql = getWorkerSql()
+  const candidates = await readSql<{ id: string; name: string }[]>`
+    SELECT id, name FROM tenants
     WHERE status = 'trialing'
       AND trial_ends_at IS NOT NULL
       AND trial_ends_at < NOW()
-    RETURNING id, name
   `
 
-  if (expired.length === 0) return
+  if (candidates.length === 0) return
 
-  const ids = expired.map((r) => r.id)
-  await sql`
-    UPDATE tenant_subscriptions
-    SET status = 'blocked', updated_at = NOW()
-    WHERE tenant_id = ANY(${sql.array(ids)}::uuid[])
-      AND status = 'trialing'
-  `
+  const db = getWorkerDb()
 
-  for (const t of expired) {
-    logger.info('blocked tenant trial expired', { module: 'expire-trials', tenantId: t.id, tenantName: t.name })
+  for (const t of candidates) {
+    try {
+      await db.transaction(async (tx) => {
+        const res = await tx.execute(sql`
+          UPDATE tenants
+          SET status = 'blocked', updated_at = NOW()
+          WHERE id = ${t.id} AND status = 'trialing'
+          RETURNING id
+        `)
+        const updated = res as unknown as Array<{ id: string }>
+        if (updated.length === 0) return
+
+        await tx.execute(sql`
+          UPDATE tenant_subscriptions
+          SET status = 'blocked', updated_at = NOW()
+          WHERE tenant_id = ${t.id} AND status = 'trialing'
+        `)
+        await insertSystemAuditLog(tx, {
+          tenantId: t.id,
+          action: 'tenant.trial_expired',
+          resourceType: 'tenant',
+          resourceId: t.id,
+          metadata: { reason: 'trial_ends_at_passed' },
+        })
+      })
+      logger.info('blocked tenant trial expired', { module: 'expire-trials', tenantId: t.id, tenantName: t.name })
+    } catch (err) {
+      logger.error('failed expire for tenant', {
+        module: 'expire-trials',
+        tenantId: t.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
 }
 

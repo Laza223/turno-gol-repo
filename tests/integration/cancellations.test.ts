@@ -1273,3 +1273,73 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')).toHaveLength(0)
   })
 })
+
+// ─── B3: turno YA TERMINADO — el guard gana incluso sobre 'complejo' ───────
+// decideAdminRefund corta el camino en cuanto `nowMs >= bookingEndUtcMs`, sin
+// mirar el motivo. Hasta este gap solo estaba cubierto por unit puro de
+// decideAdminRefund; nunca se había ejercido el path real (cancelByAdmin +
+// lockBooking + DB) con un booking cuyo turno ya se jugó pero sigue
+// 'confirmed' (no hay auto-transición a completed a las 24h, ver CLAUDE.md).
+describe('cancelByAdmin — B3: turno ya terminado, nunca reembolsa (ni con complejo)', () => {
+  // Mismo patrón que insertPastConfirmed (describe handleNoShow): booking de
+  // ayer 20:00-21:00 ART, ya terminado. Acá con seña PAGA en efectivo (sin
+  // payment_id MP, así no hace falta que el gateway resuelva nada) para poder
+  // ejercer el guard sobre el camino de reembolso.
+  async function insertPastConfirmedWithCashDeposit(opts: {
+    tenantId: string
+    courtId: string
+    playerId: string
+    depositAmount: number
+  }): Promise<string> {
+    const sql = getSql()
+    const rows = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, status
+      ) VALUES (
+        ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+        CURRENT_DATE - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        (CURRENT_DATE - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (CURRENT_DATE - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ${800_000}, ${opts.depositAmount}, 'paid', 'confirmed'
+      )
+      RETURNING id
+    `
+    return rows[0]!.id
+  }
+
+  it("turno de ayer, seña paga en efectivo, motivo 'complejo' → canceled_no_refund + deposit captured, sin refund", async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    // La policy no importa: el turno ya terminó, el guard corta antes de mirarla.
+    await setTenantPolicy(tenant.id, 9999)
+
+    const bookingId = await insertPastConfirmedWithCashDeposit({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      depositAmount: 240_000,
+    })
+
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'se olvidaron de cerrar el turno', 'complejo', mockGateway, tx),
+    )
+
+    // Guard B3 gana: aunque 'complejo' normalmente fuerza el reembolso, el
+    // turno ya se jugó → no se prepara refund. Sin el guard, esto daría
+    // canceled_refunded + deposit_status='refunded' (el bug que B3 corrige).
+    expect(outcome.pendingRefund).toBeUndefined()
+    expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
+    expect(await getBookingDepositStatus(bookingId)).toBe('captured')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+    expect(await countCashFlows(bookingId)).toBe(0)
+
+    const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled_by_admin')
+    expect(meta).toMatchObject({ cancellationType: 'complejo', shouldRefund: false })
+  })
+})

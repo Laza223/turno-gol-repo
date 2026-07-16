@@ -340,18 +340,23 @@ export async function handleUpgradeApproved(
 
   const newAmount = planAmount(targetPlan, sub.billing_cycle)
 
-  if (sub.mp_subscription_id) {
-    await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
-  }
-
-  await tx.execute(sql`
+  // B4: el UPDATE local es el gate atómico — corre ANTES de tocar MP.
+  // El WHERE repite `status = 'active' AND pending_plan_change = targetPlanId`
+  // (los mismos guards de arriba, pero como condición de escritura): si entre
+  // el loadSub y este UPDATE una tx concurrente (ej. el sweep de dunning)
+  // sacó a la suscripción de ese estado, o un webhook duplicado ya consumió
+  // el pending_plan_change, el UPDATE afecta 0 filas y MP nunca se toca —
+  // evita la divergencia MP↔DB (mismo patrón que support.service.changePlanForSupport).
+  const updated = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET plan_id = ${targetPlanId},
         pending_plan_change = NULL,
         pending_change_at = NULL,
         updated_at = NOW()
-    WHERE tenant_id = ${tenantId} AND status = 'active'
+    WHERE tenant_id = ${tenantId} AND status = 'active' AND pending_plan_change = ${targetPlanId}
+    RETURNING id
   `)
+  if ((updated as unknown as Array<{ id: string }>).length === 0) return
 
   await insertSystemAuditLog(tx, {
     tenantId,
@@ -360,6 +365,14 @@ export async function handleUpgradeApproved(
     resourceId: tenantId,
     metadata: { fromPlanId: sub.plan_id, toPlanId: targetPlanId },
   })
+
+  // MP último: cualquier fallo previo rollbackea limpio (nada se tocó fuera
+  // de esta tx); si esta llamada falla, la tx entera (UPDATE + audit)
+  // rollbackea y el webhook reintenta (lock en `processed_webhooks`,
+  // mp-webhook.handler.ts).
+  if (sub.mp_subscription_id) {
+    await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
+  }
 }
 
 // ─── downgrade (deferred to period end) ─────────────────────────────────────

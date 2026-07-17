@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker'
 import type { Sql } from 'postgres'
+import { artDateOf } from '@/shared/time/art-date'
 
 const dayMs = 86400000
 
@@ -136,7 +137,11 @@ export async function insertDailyCashClose(
   sql: Sql,
   opts: { tenantId: string; closedBy: string; date?: string },
 ): Promise<string> {
-  const date = opts.date ?? new Date().toISOString().slice(0, 10)
+  // Día operativo ART pasado (no "hoy"): un cierre de caja sembrado nunca debe
+  // colisionar con los cash_flows que los tests crean "hoy" (p. ej. la seña MP
+  // confirmada en race-double-payment). Antes usaba fecha UTC de hoy → chocaba
+  // con assertDayOpen (que usa artDateOf) ~21 de 24 horas del día. Ver ENS-21.
+  const date = opts.date ?? artDateOf(new Date(Date.now() - 7 * dayMs))
   const rows = await sql<{ id: string }[]>`
     INSERT INTO daily_cash_closes (
       tenant_id, date, total_income, total_adjustments, balance,

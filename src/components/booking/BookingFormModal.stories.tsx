@@ -83,6 +83,34 @@ export const Default: Story = {
   args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
 }
 
+/**
+ * Fase 3 UX (progressive disclosure): teléfono y notas internas viven
+ * colapsados bajo "Opciones avanzadas" — click en el trigger los revela y
+ * siguen siendo campos normales del <form> (mismos name= que espera la action).
+ */
+export const OpcionesAvanzadasExpandidas: Story = {
+  name: 'Click en "Opciones avanzadas" — guestPhone y notesInternal quedan usables',
+  args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    // forceMount: el campo queda en el DOM (serializa en FormData aun
+    // colapsado), pero no visible hasta abrir "Opciones avanzadas".
+    await expect(body.getByLabelText(/Teléfono/)).not.toBeVisible()
+
+    await userEvent.click(body.getByRole('button', { name: 'Opciones avanzadas' }))
+
+    const phoneInput = await body.findByLabelText(/Teléfono/)
+    await waitFor(() => expect(phoneInput).toBeVisible())
+    await userEvent.type(phoneInput, '11 2233-4455')
+    await expect(phoneInput).toHaveValue('11 2233-4455')
+
+    const notes = body.getByLabelText(/Notas internas/)
+    await waitFor(() => expect(notes).toBeVisible())
+    await userEvent.type(notes, 'Cliente pidió pelota extra')
+    await expect(notes).toHaveValue('Cliente pidió pelota extra')
+  },
+}
+
 export const BloqueoInterno: Story = {
   name: 'Motivo "Mantenimiento": sin contacto, selector de duración 60/120',
   args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
@@ -115,7 +143,9 @@ export const ErrorDelServidor: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
-    await expect(await body.findByRole('alert')).toHaveTextContent('Este turno acaba de ser tomado.')
+    await expect(await body.findByRole('alert')).toHaveTextContent(
+      'Este turno acaba de ser tomado.'
+    )
   },
 }
 

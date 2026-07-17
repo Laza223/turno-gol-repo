@@ -46,11 +46,9 @@ export type MarkTourSeenResult = { success: true } | { success: false; error: st
 
 /** Persiste `admin_tour_seen_at`: el tour de coachmarks del dashboard no vuelve a mostrarse. */
 export async function markTourSeenAction(): Promise<MarkTourSeenResult> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return { success: false, error: 'No encontramos tu complejo.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) {
@@ -79,11 +77,9 @@ export type MarkChecklistDismissedResult = { success: true } | { success: false;
 
 /** Persiste `checklist_dismissed_at`: el admin descartó manualmente la checklist de onboarding. */
 export async function markChecklistDismissedAction(): Promise<MarkChecklistDismissedResult> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return { success: false, error: 'No encontramos tu complejo.' }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) {

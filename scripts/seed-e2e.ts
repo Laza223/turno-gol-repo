@@ -153,6 +153,10 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
     booking_advance_days: 6,
     auto_complete_minutes: 30,
     onboarding_completed: true,
+    // Sin esto el DashboardTour (3 coachmarks de primera visita) se monta en
+    // TODOS los specs e2e admin que aterrizan en /dashboard, tapando botones
+    // con el portal y rompiendo clicks que no lo esperan.
+    admin_tour_seen_at: new Date().toISOString(),
   }
   await sql`
     INSERT INTO tenants (
@@ -206,6 +210,7 @@ async function seedDepositTenantAndCourt(sql: SqlClient): Promise<void> {
     booking_advance_days: 6,
     auto_complete_minutes: 30,
     onboarding_completed: true,
+    admin_tour_seen_at: new Date().toISOString(),
   }
   await sql`
     INSERT INTO tenants (

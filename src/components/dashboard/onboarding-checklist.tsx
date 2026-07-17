@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
-import type { MarkSharedResult } from '@/app/(admin)/dashboard/actions'
+import type { MarkSharedResult, MarkChecklistDismissedResult } from '@/app/(admin)/dashboard/actions'
+
+/** localStorage key para el estado plegado/desplegado (bidireccional: se lee post-mount y se escribe en cada toggle). */
+const MINIMIZED_STORAGE_KEY = 'tg-hint-checklist-minimized'
 
 interface ChecklistItem {
   key: keyof ChecklistState
@@ -35,6 +38,8 @@ interface OnboardingChecklistProps {
    * browser de Storybook. El type import sí es seguro (se borra en compilación).
    */
   action: () => Promise<MarkSharedResult>
+  /** Server Action que persiste el descarte manual de la checklist (mismo motivo de PROP que `action`). */
+  onDismiss: () => Promise<MarkChecklistDismissedResult>
 }
 
 /**
@@ -42,7 +47,7 @@ interface OnboardingChecklistProps {
  * PENDIENTES quedan siempre visibles con su CTA; los completados se pliegan a
  * una fila-toggle para que el setup no entierre los KPIs del día.
  */
-export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: OnboardingChecklistProps) {
+export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismiss }: OnboardingChecklistProps) {
   const pendingItems = ITEMS.filter((i) => !state[i.key])
   const doneItems = ITEMS.filter((i) => state[i.key])
   const completed = doneItems.length
@@ -52,7 +57,50 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
   const [showDone, setShowDone] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+  const [hidden, setHidden] = useState(false)
   const [, startTransition] = useTransition()
+
+  // El default sigue siendo `completed === total` hasta hidratar (evita el
+  // flash pre-hidratación): recién acá, post-mount, se lee lo que el admin
+  // eligió en una visita anterior.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(MINIMIZED_STORAGE_KEY)
+      if (stored === '1') setMinimized(true)
+      else if (stored === '0') setMinimized(false)
+    } catch {
+      /* sin storage se mantiene el default */
+    }
+  }, [])
+
+  function toggleMinimized(next: boolean) {
+    setMinimized(next)
+    try {
+      localStorage.setItem(MINIMIZED_STORAGE_KEY, next ? '1' : '0')
+    } catch {
+      /* solo esta visita */
+    }
+  }
+
+  // Descarte manual (antes de completar el 100%): feedback transitorio
+  // ("Descartado ✓", 2s) igual que `copied`, y recién después se oculta
+  // localmente — best-effort como `persistShared`, si la Action falla la
+  // checklist igual desaparece (no tiene sentido reinsistir por un error
+  // transitorio de red/rate-limit).
+  function handleDismiss() {
+    setDismissed(true)
+    startTransition(async () => {
+      try {
+        await onDismiss()
+      } catch {
+        /* best-effort: se oculta igual aunque no se persista */
+      }
+    })
+    setTimeout(() => setHidden(true), 2000)
+  }
+
+  if (hidden) return null
 
   // Persist the "link shared" checklist step. The action can fail silently
   // (e.g. rate limit) so we surface its result instead of assuming success.
@@ -110,7 +158,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setMinimized(false)}
+          onClick={() => toggleMinimized(false)}
           className="text-xs text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
         >
           Ver checklist
@@ -143,6 +191,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
               variant="outline"
               size="sm"
               onClick={handleCopyLink}
+              data-tour-id="tour-share-link"
               className="h-11 md:h-8 text-xs"
             >
               <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
@@ -179,7 +228,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
 
   return (
     <div className="card-premium rounded-2xl">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+      <div data-tour-id="tour-checklist" className="flex items-center justify-between border-b border-border px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Configuración del complejo</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{completed} de {total} completados</p>
@@ -192,11 +241,20 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action }: Onboa
             />
           </div>
           <span className="text-xs font-medium tabular-nums text-muted-foreground">{pct}%</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDismiss}
+            disabled={dismissed}
+            className="text-xs"
+          >
+            {dismissed ? 'Descartado ✓' : 'Descartar'}
+          </Button>
           {completed === total && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setMinimized(true)}
+              onClick={() => toggleMinimized(true)}
               className="text-xs"
             >
               Minimizar

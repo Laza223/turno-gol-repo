@@ -40,3 +40,37 @@ describe('markPublicLinkSharedAction', () => {
     expect(res.success).toBe(true)
   })
 })
+
+describe('markTourSeenAction', () => {
+  it('returns success:false surfacing the rate-limit message when limited', async () => {
+    vi.mocked(adminRateLimited).mockResolvedValueOnce('Demasiados intentos. Esperá un momento.')
+    const { markTourSeenAction } = await import('@/app/(admin)/dashboard/actions')
+    const res = await markTourSeenAction()
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toBe('Demasiados intentos. Esperá un momento.')
+  })
+
+  it('returns success:true on the happy path (not rate limited)', async () => {
+    vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
+    const { markTourSeenAction } = await import('@/app/(admin)/dashboard/actions')
+    const res = await markTourSeenAction()
+    expect(res.success).toBe(true)
+  })
+})
+
+describe('markChecklistDismissedAction', () => {
+  it('returns success:false surfacing the rate-limit message when limited', async () => {
+    vi.mocked(adminRateLimited).mockResolvedValueOnce('Demasiados intentos. Esperá un momento.')
+    const { markChecklistDismissedAction } = await import('@/app/(admin)/dashboard/actions')
+    const res = await markChecklistDismissedAction()
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toBe('Demasiados intentos. Esperá un momento.')
+  })
+
+  it('returns success:true on the happy path (not rate limited)', async () => {
+    vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
+    const { markChecklistDismissedAction } = await import('@/app/(admin)/dashboard/actions')
+    const res = await markChecklistDismissedAction()
+    expect(res.success).toBe(true)
+  })
+})

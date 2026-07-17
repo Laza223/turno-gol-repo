@@ -344,6 +344,12 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_listo')
     await freshAdminPage.getByRole('link', { name: /ir a mi panel/i }).click()
     await expect(freshAdminPage).toHaveURL(/\/dashboard/, { timeout: 20000 })
+
+    // El primer /dashboard post-wizard dispara el tour de coachmarks (Fase 1
+    // UX): se lo descarta antes de capturar, o el globo tapa el estado vacío.
+    await freshAdminPage.getByRole('button', { name: /omitir recorrido/i }).click({ timeout: 15000 })
+    await expect(freshAdminPage.getByText(/abrí la grilla desde acá/i)).toBeHidden()
+
     await takeShot(freshAdminPage, 'special_states', 'dashboard_vacio')
 
     // Capture all other empty states using this brand new tenant

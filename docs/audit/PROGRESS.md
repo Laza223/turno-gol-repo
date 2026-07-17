@@ -580,4 +580,13 @@ Hallazgo (esfuerzo UX 5 pilares): `generateUniqueSlug` (`src/modules/tenants/ten
 
 Mantenimiento: al agregar una ruta top-level nueva en `src/app`, agregar el segmento a `RESERVED_SLUGS` (comentario en la constante lo indica).
 
+## 2026-07-17 — a11y: GhostKpis de /reportes bajo AA por opacity-50 (sesión fix puntual, worktree dazzling-goldwasser)
+
+Hallazgo derivado del fix de `GhostTopSlots` (/metricas, sesión UX paralela): `GhostKpis` en `src/app/(admin)/reportes/page.tsx` aplicaba `opacity-50` al grid entero — `text-foreground` de los StatCard componía ~3.79:1 sobre fondo blanco (AA exige 4.5:1). Nunca lo atrapó el gate a11y de Storybook porque la página no tenía story.
+
+- Fix (mismo criterio que GhostTopSlots): sin opacidad sobre el wrapper; valor del StatCard en `text-muted-foreground` (ya AA), `opacity-40` solo en el glifo del ícono (decorativo, sin texto). Comentario explicativo en el componente.
+- Cobertura del gate: `GhostKpis` extraído a `src/app/(admin)/reportes/GhostKpis.tsx` (la página es server component async con auth+DB, no storybook-able) + `GhostKpis.stories.tsx` (title `Admin/Reportes/GhostKpis`, play con smoke asserts). El a11y global (`preview.tsx` → `a11y.test: 'error'`) ahora la cubre.
+- Verificación: `pnpm typecheck` 🟢, `pnpm lint` 🟢 (0 errores; 27 warnings pre-existentes, ninguno en reportes), story 1/1 🟢. Test negativo: con el patrón viejo re-aplicado temporalmente la story FALLA con 3 violaciones `color-contrast` (axe 4.12) — el gate atrapa la regresión; restaurado el fix, verde.
+- Nota infra: la suite storybook no corre en este worktree anidado sin el plugin `resolveAddonVitestSetupFiles` (bug resolver Vitest, ya documentado); se corrió con config temporal portada del worktree ux-usability, borrada después. El fix de config pertenece a esa rama — no se duplicó acá.
+
 Nada commiteado.

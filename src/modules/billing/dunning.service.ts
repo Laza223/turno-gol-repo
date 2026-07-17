@@ -45,9 +45,13 @@ async function lockWebhook(
   rawPayload: unknown,
   tx: DbTx,
 ): Promise<boolean> {
+  // `payload` va como OBJETO crudo, NO `JSON.stringify(...)`: el serializer del
+  // OID jsonb 3802 (restaurado a JSON.stringify en client.ts) lo serializa una
+  // sola vez. Con `JSON.stringify` previo quedaba double-encoded (jsonb_typeof
+  // 'string', `payload->>` = NULL). Ver [[audit-logs-metadata-double-encoded]].
   const lock = await tx.execute(sql`
     INSERT INTO processed_webhooks (mp_event_id, event_type, payload)
-    VALUES (${mpEventId}, ${eventType}, ${JSON.stringify(rawPayload)}::jsonb)
+    VALUES (${mpEventId}, ${eventType}, ${rawPayload}::jsonb)
     ON CONFLICT (mp_event_id) DO NOTHING
     RETURNING id
   `)

@@ -194,9 +194,12 @@ export async function lockMpEvent(
   event: WebhookEvent,
   tx: DbTx,
 ): Promise<boolean> {
+  // `payload` va como OBJETO crudo, NO `JSON.stringify(...)`: el serializer del
+  // OID jsonb 3802 lo serializa una sola vez (con stringify previo quedaba
+  // double-encoded). Ver [[audit-logs-metadata-double-encoded]] + dunning.service.
   const lock = await tx.execute(sql`
     INSERT INTO processed_webhooks (mp_event_id, event_type, payload)
-    VALUES (${event.mpEventId}, ${event.eventType}, ${JSON.stringify(event.rawPayload)}::jsonb)
+    VALUES (${event.mpEventId}, ${event.eventType}, ${event.rawPayload}::jsonb)
     ON CONFLICT (mp_event_id) DO NOTHING
     RETURNING id
   `)

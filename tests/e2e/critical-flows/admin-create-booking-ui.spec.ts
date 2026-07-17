@@ -61,6 +61,10 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
 
         // Fill guest details (guestName requires guestPhone per modal validation).
         await page.fill('#guestName', 'E2E Admin Create')
+
+        // Fase 3 UX: el teléfono vive colapsado bajo "Opciones avanzadas"
+        // (progressive disclosure) — hay que abrirlo antes de llenarlo.
+        await page.getByRole('button', { name: 'Opciones avanzadas' }).click()
         await page.fill('#guestPhone', '+5491100000099')
 
         // Submit the form.

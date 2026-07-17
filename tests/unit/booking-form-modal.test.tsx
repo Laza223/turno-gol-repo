@@ -109,8 +109,16 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
     renderModal()
 
-    // Contact path: guest name/phone inputs are present by default.
+    // Contact path: guest name input is present by default; el teléfono es
+    // secundario (Fase 3 UX, progressive disclosure) y vive colapsado bajo
+    // "Opciones avanzadas". forceMount lo deja en el DOM aun colapsado (debe
+    // serializar en FormData), así que acá se asserta el estado del trigger,
+    // no la presencia del input (happy-dom no computa el CSS de Tailwind).
     expect(screen.queryByLabelText(/Nombre/i)).toBeTruthy()
+    const advancedTrigger = screen.getByRole('button', { name: 'Opciones avanzadas' })
+    expect(advancedTrigger.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(advancedTrigger)
+    expect(advancedTrigger.getAttribute('aria-expanded')).toBe('true')
     expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
@@ -122,6 +130,29 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
       type: 'spontaneous',
       guestName: 'Juan',
       guestPhone: '+54 11-1234-5678',
+    })
+  })
+
+  it('advanced fields filled then RE-collapsed still reach the payload (forceMount)', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    const advancedTrigger = screen.getByRole('button', { name: 'Opciones avanzadas' })
+    fireEvent.click(advancedTrigger)
+    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
+    fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), { target: { value: '11-1234-5678' } })
+    fireEvent.change(screen.getByLabelText(/Notas internas/i), { target: { value: 'llega tarde' } })
+    // Colapsar de nuevo ANTES de confirmar: sin forceMount, Radix desmontaba
+    // los inputs y el FormData perdía estos campos en silencio (bug real
+    // atrapado por verificación adversarial, Fase 3).
+    fireEvent.click(advancedTrigger)
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(lastPayload()).toMatchObject({
+      guestName: 'Juan',
+      guestPhone: '+54 11-1234-5678',
+      notesInternal: 'llega tarde',
     })
   })
 

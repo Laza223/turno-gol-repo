@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Sentry from '@sentry/nextjs'
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { BookingActionResult } from '@/app/(admin)/reservas/actions'
 import { formatDateLong } from '@/lib/format'
@@ -54,7 +55,12 @@ type Reason = {
 const REASONS: Reason[] = [
   { value: 'phone', label: 'Reserva Telefónica', kind: 'contact' },
   { value: 'maintenance', label: 'Mantenimiento', kind: 'internal', autoName: 'Mantenimiento' },
-  { value: 'school', label: 'Escuelita de Fútbol', kind: 'internal', autoName: 'Escuelita de Fútbol' },
+  {
+    value: 'school',
+    label: 'Escuelita de Fútbol',
+    kind: 'internal',
+    autoName: 'Escuelita de Fútbol',
+  },
   { value: 'teachers', label: 'Profesores', kind: 'internal', autoName: 'Profesores' },
   { value: 'other', label: 'Otro', kind: 'contact' },
 ]
@@ -176,10 +182,7 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label
-                htmlFor="reason"
-                className="block text-sm font-medium text-foreground mb-1"
-              >
+              <label htmlFor="reason" className="block text-sm font-medium text-foreground mb-1">
                 Motivo / Tipo de Bloqueo
               </label>
               <select
@@ -204,7 +207,12 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
 
             {isInternalBlock && (
               <div>
-                <label id="duration-label" className="block text-sm font-medium text-foreground mb-1">Duración del bloqueo</label>
+                <label
+                  id="duration-label"
+                  className="block text-sm font-medium text-foreground mb-1"
+                >
+                  Duración del bloqueo
+                </label>
                 <div role="group" aria-labelledby="duration-label" className="flex gap-2">
                   {([60, 120] as const)
                     .filter((d) => d === 60 || canBlockTwoHours)
@@ -228,53 +236,73 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
             )}
 
             {!isInternalBlock && (
-              <>
-                <div>
-                  <label
-                    htmlFor="guestName"
-                    className="block text-sm font-medium text-foreground mb-1"
-                  >
-                    Nombre <span className="text-muted-foreground">(opcional)</span>
-                  </label>
-                  <input
-                    id="guestName"
-                    name="guestName"
-                    type="text"
-                    maxLength={200}
-                    autoComplete="name"
-                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                    placeholder="Ej: Juan Pérez"
-                  />
-                </div>
-
-                <PhoneInput
-                  id="guestPhone"
-                  name="guestPhone"
-                  label="Teléfono (opcional)"
-                  placeholder="11 1234-5678"
+              <div>
+                <label
+                  htmlFor="guestName"
+                  className="block text-sm font-medium text-foreground mb-1"
+                >
+                  Nombre <span className="text-muted-foreground">(opcional)</span>
+                </label>
+                <input
+                  id="guestName"
+                  name="guestName"
+                  type="text"
+                  maxLength={200}
+                  autoComplete="name"
+                  className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Ej: Juan Pérez"
                 />
-              </>
+              </div>
             )}
 
-            <div>
-              <label
-                htmlFor="notesInternal"
-                className="block text-sm font-medium text-foreground mb-1"
-              >
-                Notas internas <span className="text-muted-foreground">(opcional)</span>
-              </label>
-              <textarea
-                id="notesInternal"
-                name="notesInternal"
-                maxLength={1000}
-                rows={2}
-                className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-9 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500 resize-none"
-                placeholder="Solo visible para el staff"
-              />
-            </div>
+            {/* Secundarios (Fase 3 UX, progressive disclosure): teléfono y notas
+                internas no son necesarios para cargar el turno rápido — se
+                colapsan bajo "Opciones avanzadas". El único error de esta action
+                es el genérico de abajo (result.error, sin atar a un campo
+                puntual) y vive FUERA de este Collapsible, siempre visible sea
+                cual sea su estado — no hace falta auto-expandirlo. */}
+            <Collapsible>
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
+                Opciones avanzadas
+                <ChevronDown
+                  aria-hidden="true"
+                  className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                {!isInternalBlock && (
+                  <PhoneInput
+                    id="guestPhone"
+                    name="guestPhone"
+                    label="Teléfono (opcional)"
+                    placeholder="11 1234-5678"
+                  />
+                )}
+
+                <div>
+                  <label
+                    htmlFor="notesInternal"
+                    className="block text-sm font-medium text-foreground mb-1"
+                  >
+                    Notas internas <span className="text-muted-foreground">(opcional)</span>
+                  </label>
+                  <textarea
+                    id="notesInternal"
+                    name="notesInternal"
+                    maxLength={1000}
+                    rows={2}
+                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-9 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500 resize-none"
+                    placeholder="Solo visible para el staff"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {error && (
-              <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25">
+              <p
+                role="alert"
+                className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25"
+              >
                 {error}
               </p>
             )}

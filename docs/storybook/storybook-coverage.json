@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO",
-  "total": 302,
+  "total": 304,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -293,6 +293,27 @@
         "Toaster"
       ],
       "isolationNotes": "useRouter (router.refresh); importa closeDayAction directamente de ../actions; Sentry.captureException en catch; usa ConfirmDialog con confirmationPhrase='CERRAR'."
+    },
+    {
+      "path": "src/app/(admin)/caja/components/EmptyMovementAction.tsx",
+      "name": "EmptyMovementAction",
+      "domain": "payments-caja",
+      "rendering": "client",
+      "role": "presentational",
+      "isolationDifficulty": "easy",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "botón visible",
+        "click abre RegisterMovementModal (code-split)"
+      ],
+      "proposedStoryTitle": "Admin/Caja/EmptyMovementAction",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "CTA del EmptyState 'Sin movimientos por ahora' (caja/page.tsx); dynamic(ssr:false) del mismo RegisterMovementModal que monta CajaActions, con el mismo par de props (date + createCashFlowAction) por PROP."
     },
     {
       "path": "src/app/(admin)/caja/components/RegisterMovementModal.tsx",
@@ -6454,6 +6475,30 @@
         "ninguno"
       ],
       "isolationNotes": "@radix-ui/react-popover puro (Root/Trigger/Anchor/Close/Content con Portal); sin hooks propios — para mostrar estados en la story hay que componer Trigger+Content igual que hacen combobox/date-picker/phone-input."
+    },
+    {
+      "path": "src/components/ui/collapsible.tsx",
+      "name": "Collapsible",
+      "domain": "design-system",
+      "rendering": "client",
+      "role": "presentational",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "cerrado (default)",
+        "abierto por click en el trigger",
+        "cerrado de nuevo por un segundo click"
+      ],
+      "proposedStoryTitle": "Design System/Collapsible",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [
+        "ninguno"
+      ],
+      "isolationNotes": "@radix-ui/react-collapsible puro (Root/Trigger/Content); base de progressive disclosure (Fase 3 UX) en BookingFormModal y ScheduleFields ('Opciones avanzadas' / 'Excepciones y detalles avanzados'). CollapsibleContent anima con accordion-down/up (globals.css) mapeando --accordion-content-height a --radix-collapsible-content-height vía inline style."
     },
     {
       "path": "src/components/ui/responsive-list.tsx",

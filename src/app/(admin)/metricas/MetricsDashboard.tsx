@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
   Bar,
   BarChart,
@@ -134,13 +135,63 @@ function RevenueChart({
   )
 }
 
+/**
+ * "Primera-vez espectral" (§7.2 MASTER) del ranking de horarios: mismo espíritu
+ * que GhostKpis en reportes/page.tsx (barras/valores fantasma + aria-hidden,
+ * con el CTA real debajo), replicado acá en chico en vez de extraído a
+ * compartido — el pedido explícitamente evita ese refactor.
+ *
+ * Diferencia deliberada con GhostKpis: acá NO se usa `opacity-50` sobre el
+ * texto. `text-foreground` (slate-950) al 50% de opacidad compone ~3.79:1
+ * contra el fondo blanco — bajo el mínimo AA 4.5:1 (axe lo marca real
+ * violation, no "incomplete"). El look "fantasma" sale de usar colores
+ * naturalmente atenuados (`text-muted-foreground`, ya AA en el resto de la
+ * app) y opacidad solo en el relleno de la barra (decorativo, sin texto).
+ */
+function GhostTopSlots() {
+  const ghosts = [
+    { time: '20:00', pct: 100 },
+    { time: '19:00', pct: 82 },
+    { time: '21:00', pct: 68 },
+    { time: '18:00', pct: 45 },
+    { time: '22:00', pct: 30 },
+  ]
+  return (
+    <div>
+      <ul className="space-y-2 select-none" aria-hidden="true">
+        {ghosts.map((g) => (
+          <li key={g.time} className="flex items-center gap-3 text-sm">
+            <span className="w-12 shrink-0 font-medium tabular-nums text-muted-foreground">{g.time}</span>
+            <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <span
+                className="block h-full rounded-full bg-emerald-500 opacity-40"
+                style={{ width: `${g.pct}%` }}
+              />
+            </span>
+            <span className="w-8 shrink-0 text-right tabular-nums text-muted-foreground">-</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-sm text-muted-foreground">
+        Así se van a ver tus horarios más reservados.
+      </p>
+      <Link
+        href="/grilla"
+        className="mt-1 inline-block text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
+      >
+        Cargá tu primera reserva desde la grilla
+      </Link>
+    </div>
+  )
+}
+
 /** Top 5 horarios de inicio más reservados, como barras horizontales simples. */
 function TopSlots({ metrics }: { metrics: TenantMetrics }) {
   const max = Math.max(1, ...metrics.topSlots.map((s) => s.count))
   return (
     <Card title="Top 5 horarios más reservados">
       {metrics.topSlots.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sin reservas en el período.</p>
+        <GhostTopSlots />
       ) : (
         <ul className="space-y-2">
           {metrics.topSlots.map((slot) => (

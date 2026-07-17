@@ -1,7 +1,8 @@
 import Link from 'next/link'
-import { Search, Contact } from 'lucide-react'
+import { Search, Contact, Users } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { PlayerListRow } from './queries'
 
 /**
@@ -30,11 +31,29 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
       </form>
 
       {players.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {q
-            ? 'No se encontraron jugadores que coincidan con la búsqueda.'
-            : 'Todavía no hay jugadores vinculados a este complejo. Aparecen cuando un jugador reserva online o lo vinculás a un abonado.'}
-        </p>
+        q ? (
+          <p className="text-sm text-muted-foreground">
+            No se encontraron jugadores que coincidan con la búsqueda.
+          </p>
+        ) : (
+          <EmptyState
+            icon={Users}
+            title="Todavía no tenés jugadores vinculados"
+            description="Aparecen acá cuando un jugador reserva online o lo vinculás a un abonado. Compartí el link público de tu complejo para que empiecen a llegar."
+            action={
+              // JugadoresView solo recibe `players`/`q` por prop (no slug ni
+              // appUrl): armar el link público acá duplicaría buildPublicLinkUrl
+              // fuera de su lugar. Menor acople: mandar al panel, que ya muestra
+              // y copia ese link (OnboardingChecklist/dashboard).
+              <Link
+                href="/dashboard"
+                className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
+              >
+                Compartí tu link desde el panel
+              </Link>
+            }
+          />
+        )
       ) : (
         <ResponsiveList
           className="overflow-hidden rounded-xl shadow-xs"

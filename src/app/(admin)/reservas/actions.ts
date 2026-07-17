@@ -3,14 +3,16 @@
 import { revalidatePath } from 'next/cache'
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { uuid, moneyCents, boundedText } from '@/shared/validation/primitives'
+import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
+import { enforce } from '@/shared/rate-limit/apply'
 import { tenants } from '@/shared/db/schema'
 import {
   createManualBooking,
   completeBooking,
+  getAvailableSlots,
 } from '@/modules/bookings/booking.service'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import {
@@ -24,7 +26,7 @@ import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { settleRefund } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
-import { captureMessage } from '@/lib/sentry'
+import { captureMessage, captureException } from '@/lib/sentry'
 import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import { validateApiOutput } from '@/shared/api-output'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
@@ -113,6 +115,59 @@ export async function createBookingAction(
     revalidatePath('/grilla')
   }
   return result
+}
+
+const checkSlotAvailabilitySchema = z.object({
+  courtId: uuid,
+  date: dateStr,
+  timeStart: hhmm,
+})
+
+export type CheckSlotAvailabilityInput = z.input<typeof checkSlotAvailabilitySchema>
+export type CheckSlotAvailabilityResult = { available: boolean }
+
+/**
+ * Chequeo optimista de disponibilidad al ABRIR BookingFormModal (Fase 4 UX):
+ * la grilla puede quedar desactualizada si otro admin toma el turno mientras
+ * el modal sigue cerrado. La colisión REAL la sigue validando el server en el
+ * submit (createManualBooking → checkOverlapOrThrow + EXCLUDE constraint,
+ * migr. 041) — esto es 100% aditivo, de solo lectura (reusa getAvailableSlots,
+ * el mismo cálculo que ya usan la grilla y el portal público) y NUNCA la
+ * fuente de verdad. Ante auth/rate-limit/parseo/DB caídos devuelve
+ * available:true: el chequeo optimista jamás debe bloquear el flujo por un
+ * fallo propio.
+ */
+export async function checkSlotAvailabilityAction(
+  input: CheckSlotAvailabilityInput,
+): Promise<CheckSlotAvailabilityResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { available: true }
+  const { tenant } = auth
+
+  // Balde propio (adminAvailabilityCheck), NO adminCrud: esta lectura se
+  // dispara sola en cada apertura del modal y compartir el límite de 100/60s
+  // por tenant dejaría sin cupo a las mutaciones reales de dinero del staff.
+  const outcome = await enforce('adminAvailabilityCheck', tenant.id)
+  if (!outcome.ok) return { available: true }
+
+  const parsed = checkSlotAvailabilitySchema.safeParse(input)
+  if (!parsed.success) return { available: true }
+  const { courtId, date, timeStart } = parsed.data
+
+  try {
+    const available = await withTenantContext(tenant.id, async (tx) => {
+      const slots = await getAvailableSlots(tenant.id, courtId, date, tx)
+      const slot = slots.find((s) => s.timeStart === timeStart)
+      // Sin match (cancha offline, fuera de horario, día cerrado): no es una
+      // colisión — el submit real ya reporta esos casos con su propio error
+      // específico (CourtOfflineError, etc.). No bloqueamos por eso acá.
+      return slot ? slot.available : true
+    })
+    return { available }
+  } catch (err) {
+    captureException(err)
+    return { available: true }
+  }
 }
 
 // NOTE: detail/action mutations also need to revalidate `/reservas/[id]`.

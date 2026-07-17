@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { chipClass } from '../caja-lib'
 import type { CashFlowActionResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
+import { isValidMovement } from './is-valid-movement'
 import { toast } from '@/hooks/use-toast'
 import type { CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
@@ -68,6 +69,10 @@ export function RegisterMovementModal({
   // Fix #55: UUID generado una sola vez por apertura del modal.
   // El server hace ON CONFLICT DO NOTHING con esta clave para ignorar reenvíos.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+
+  // Fase 4 UX: el botón "Guardar" arranca deshabilitado con campos vacíos, en
+  // vez de recién avisar el error al clickear.
+  const isValid = isValidMovement(amountPesos, description)
 
   function reset() {
     setType('income'); setCategory('booking'); setMethod('cash')
@@ -198,7 +203,7 @@ export function RegisterMovementModal({
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
               className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>
-            <button type="submit" disabled={isPending}
+            <button type="submit" disabled={isPending || !isValid}
               className="h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
               {isPending ? 'Guardando…' : 'Guardar'}</button>
           </div>

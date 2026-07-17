@@ -48,6 +48,12 @@ export const POLICIES = {
   // Server Actions del panel SuperAdmin: un solo operador humano (el dueño del
   // SaaS), 60 ops/min sobra. Fail open: si Upstash cae, no bloquear soporte.
   superAdminAction:   { limit: 60,  window: '60 s', keyBy: 'email',  failMode: 'open'   },
+  // Chequeo optimista de disponibilidad al abrir BookingFormModal (Fase 4 UX):
+  // lectura automática disparada por cada apertura del modal, NO un click de
+  // "Guardar". Balde propio para que un admin recorriendo la grilla no consuma
+  // el `adminCrud` (100/60s por tenant) que comparten TODAS las mutaciones
+  // reales de dinero del staff. Fail open: es solo un aviso temprano.
+  adminAvailabilityCheck: { limit: 120, window: '60 s', keyBy: 'tenant', failMode: 'open' },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

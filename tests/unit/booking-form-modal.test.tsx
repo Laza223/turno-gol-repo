@@ -199,3 +199,41 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     expect(payload.guestPhone).toBeUndefined()
   })
 })
+
+// Fase 4 UX — chequeo optimista de disponibilidad al abrir el modal. La prop
+// es opcional: sin ella, ningún caller/story vieja se rompe.
+describe('BookingFormModal — checkAvailabilityAction (Fase 4 UX)', () => {
+  it('available:false al abrir muestra el aviso de colisión (mismo copy que el server)', async () => {
+    const checkAvailabilityAction = vi.fn(async () => ({ available: false }))
+    renderModal({ checkAvailabilityAction })
+
+    await waitFor(() => expect(checkAvailabilityAction).toHaveBeenCalledWith({
+      courtId: slot.courtId,
+      date: slot.date,
+      timeStart: slot.timeStart,
+    }))
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Este turno acaba de ser tomado.')
+    })
+    // Es solo un aviso: el submit sigue habilitado, el server decide.
+    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    )
+  })
+
+  it('available:true al abrir no muestra ningún aviso', async () => {
+    const checkAvailabilityAction = vi.fn(async () => ({ available: true }))
+    renderModal({ checkAvailabilityAction })
+
+    await waitFor(() => expect(checkAvailabilityAction).toHaveBeenCalled())
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('sin la prop, el comportamiento queda intacto (no rompe nada existente)', async () => {
+    renderModal()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Confirmar' })).toBeTruthy()
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})

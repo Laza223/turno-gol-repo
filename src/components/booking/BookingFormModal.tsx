@@ -22,6 +22,13 @@ type Slot = {
 /** Firma de createBookingAction (@/app/(admin)/reservas/actions). */
 export type CreateBookingAction = (data: unknown) => Promise<BookingActionResult>
 
+/** Firma de checkSlotAvailabilityAction (@/app/(admin)/reservas/actions). */
+export type CheckSlotAvailabilityAction = (input: {
+  courtId: string
+  date: string
+  timeStart: string
+}) => Promise<{ available: boolean }>
+
 type Props = {
   slot: Slot
   open: boolean
@@ -34,6 +41,14 @@ type Props = {
    * BookingGrid (único caller) la recibe a su vez por prop y la reenvía acá.
    */
   action: CreateBookingAction
+  /**
+   * Chequeo optimista de disponibilidad (Fase 4 UX), opcional: sin esta prop
+   * (tests/stories viejas, o callers que todavía no la cablean) el modal se
+   * comporta exactamente igual que antes. Ver el comentario en
+   * checkSlotAvailabilityAction (@/app/(admin)/reservas/actions) — nunca
+   * reemplaza la validación real del server en el submit.
+   */
+  checkAvailabilityAction?: CheckSlotAvailabilityAction
 }
 
 // Motivo / Tipo de bloqueo del turno manual. Dos familias:
@@ -81,7 +96,14 @@ function minsToTime(mins: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Props) {
+export function BookingFormModal({
+  slot,
+  open,
+  onClose,
+  onSuccess,
+  action,
+  checkAvailabilityAction,
+}: Props) {
   const [duration, setDuration] = useState<60 | 120>(slot.durationMins)
   const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
   const [error, setError] = useState<string | null>(null)
@@ -95,6 +117,36 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
     setDuration(slot.durationMins)
   }, [slot.courtId, slot.date, slot.timeStart, slot.durationMins])
 
+  // Fase 4 UX: chequeo optimista de disponibilidad al abrir el modal (o si el
+  // caller lo reutiliza para otro slot sin desmontarlo). Solo un aviso
+  // temprano — el server sigue siendo quien decide en el submit — así que
+  // nunca deshabilita el botón, solo muestra el mismo alert inline de abajo.
+  // `cancelled` evita que una respuesta tardía (o el doble efecto de strict
+  // mode) pise el estado de un slot que ya no es el actual.
+  useEffect(() => {
+    if (!open || !checkAvailabilityAction) return
+    let cancelled = false
+    setError(null)
+    checkAvailabilityAction({
+      courtId: slot.courtId,
+      date: slot.date,
+      timeStart: slot.timeStart,
+    })
+      .then((result) => {
+        if (!cancelled && !result.available) {
+          setError('Este turno acaba de ser tomado.')
+        }
+      })
+      .catch(() => {
+        // Fail-open: un chequeo optimista roto (red, timeout) nunca debe
+        // bloquear ni mostrar error — el submit real sigue siendo la fuente
+        // de verdad.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, slot.courtId, slot.date, slot.timeStart, checkAvailabilityAction])
+
   const selectedReason = reasonFor(reason)
   const isInternalBlock = selectedReason.kind === 'internal'
   // Tarea #6: las reservas reales son de 60 min fijos. Solo los bloqueos internos
@@ -103,6 +155,12 @@ export function BookingFormModal({ slot, open, onClose, onSuccess, action }: Pro
   const effectiveDuration = isInternalBlock ? duration : 60
   const timeEnd = minsToTime(timeToMins(slot.timeStart) + effectiveDuration)
 
+  // Invariante: createManualBookingSchema tiene un .refine() que exige playerId
+  // XOR guestName/guestPhone (no se puede mezclar un jugador registrado con
+  // datos de invitado). Este form nunca setea `playerId` — no tiene selector de
+  // jugador, solo guestName/guestPhone sueltos — así que ese refine nunca puede
+  // fallar acá y no hace falta espejarlo del lado del cliente. Si algún día se
+  // agrega un selector de jugador, ahí sí replicar el refine en este handler.
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)

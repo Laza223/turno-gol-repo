@@ -161,6 +161,27 @@ export const Cerrado: Story = {
   },
 }
 
+/**
+ * Fase 4 UX: la grilla puede quedar desactualizada — este chequeo optimista
+ * (checkAvailabilityAction, prop opcional) avisa al abrir el modal si otro
+ * admin ya tomó el turno, sin bloquear el submit (el server sigue decidiendo).
+ */
+export const AvisoDeColisionOptimista: Story = {
+  name: 'checkAvailabilityAction → available:false — aviso temprano de colisión',
+  args: {
+    action: fn(async () => ({ success: true as const, booking: booking() })),
+    checkAvailabilityAction: fn(async () => ({ available: false })),
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(await body.findByRole('alert')).toHaveTextContent(
+      'Este turno acaba de ser tomado.',
+    )
+    // Es solo un aviso: el submit sigue habilitado, la fuente de verdad es el server.
+    await expect(body.getByRole('button', { name: 'Confirmar' })).toBeEnabled()
+  },
+}
+
 export const ExitoLlamaOnSuccess: Story = {
   name: 'La action resuelve success:true → onSuccess(booking), cierra el modal',
   args: { action: fn(async () => ({ success: true as const, booking: booking() })) },

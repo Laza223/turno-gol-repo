@@ -96,7 +96,11 @@ export async function registerAction(
       lastName: parsed.data.lastName,
       phone: parsed.data.phone,
     },
-    `${origin}/api/auth/callback`,
+    // El `?next=` es ignorado por la rama staff del callback (provisionAndRouteStaff
+    // calcula el path), pero es OBLIGATORIO: da el `?` separador para que
+    // confirmation.html pueda concatenar `&token_hash=…` sobre `{{ .RedirectTo }}`
+    // sin malformar la URL. Sin él, el link de confirmación del staff se rompería.
+    `${origin}/api/auth/callback?next=${encodeURIComponent('/onboarding')}`,
   )
   if (!result.ok) {
     return {

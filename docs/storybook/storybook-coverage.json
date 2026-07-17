@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO",
-  "total": 300,
+  "total": 302,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -5191,6 +5191,31 @@
       "isolationNotes": "addDays/mondayOf de @/lib/booking/grid-cells (cálculo puro de fechas, mockeable con una `date` fija); usa Tooltip de Radix en los chevrons — necesita TooltipProvider en el decorator."
     },
     {
+      "path": "src/components/dashboard/dashboard-tour.tsx",
+      "name": "DashboardTour",
+      "domain": "dashboard",
+      "rendering": "client",
+      "role": "presentational",
+      "isolationDifficulty": "medium",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "paso 1 de 3 (ancla tour-grilla)",
+        "paso 2 de 3 (ancla tour-checklist)",
+        "paso 3 de 3, dismissLabel='Entendido' (ancla tour-share-link)",
+        "'Siguiente' avanza de paso",
+        "'Omitir recorrido' corta el tour en cualquier paso",
+        "done=true tras terminar (no vuelve a renderizar)"
+      ],
+      "proposedStoryTitle": "Admin/Dashboard/DashboardTour",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": true,
+      "providers": [],
+      "isolationNotes": "Compone Coachmark + useCoachmarkTour (@/hooks/use-coachmark-tour); la Server Action markTourSeenAction llega por prop `action` (mockear con fn()), best-effort (si falla igual cierra el tour localmente). El decorator necesita los 3 anchors reales (`data-tour-id=\"tour-grilla|tour-checklist|tour-share-link\"`) para que cada paso encuentre su target vía getBoundingClientRect."
+    },
+    {
       "path": "src/components/dashboard/metric-card.tsx",
       "name": "MetricCard",
       "domain": "dashboard",
@@ -6064,6 +6089,32 @@
         "ninguno"
       ],
       "isolationNotes": "ninguno — forwardRef + cva; Loader2 de lucide-react solo se monta cuando isLoading=true."
+    },
+    {
+      "path": "src/components/ui/coachmark.tsx",
+      "name": "Coachmark",
+      "domain": "design-system",
+      "rendering": "client",
+      "role": "presentational",
+      "isolationDifficulty": "medium",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "target existe (renderiza el globo anclado)",
+        "target NO existe en el DOM (no renderiza nada)",
+        "con stepLabel ('1 de 3')",
+        "con onSkip ('Omitir recorrido' visible)",
+        "sin onSkip (solo el botón de dismiss)"
+      ],
+      "proposedStoryTitle": "Design System/Coachmark",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [
+        "ninguno"
+      ],
+      "isolationNotes": "Portal manual a document.body (createPortal, no Radix Popover) anclado por `[data-tour-id]`; mide con getBoundingClientRect en un layout effect isomórfico + ResizeObserver del target + listeners pasivos de resize/scroll — el decorator de la story debe renderizar el ancla real para que el selector encuentre algo."
     },
     {
       "path": "src/components/ui/combobox.tsx",

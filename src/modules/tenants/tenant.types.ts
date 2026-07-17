@@ -48,6 +48,10 @@ export type TenantSettings = {
   onboarding_completed?: boolean
   public_link_shared?: boolean
   canteen_products?: CanteenProduct[]
+  /** ISO timestamp: cuándo el admin vio/cerró el tour de coachmarks del dashboard (una sola vez). */
+  admin_tour_seen_at?: string
+  /** ISO timestamp: cuándo el admin descartó manualmente la checklist de onboarding. */
+  checklist_dismissed_at?: string
 }
 
 export type CreateTenantInput = {

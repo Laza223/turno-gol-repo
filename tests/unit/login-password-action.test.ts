@@ -14,6 +14,12 @@ vi.mock('@/modules/auth/auth.service', () => ({
 vi.mock('@/lib/supabase/server', () => ({ createClient: () => ({ auth: { resend: vi.fn() } }) }))
 vi.mock('next/navigation', () => ({ redirect }))
 vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://localhost:3000' }) }))
+// El rate limiter fail-closea sin Upstash y NODE_ENV='test' no dispara el bypass
+// de enforce → sin este mock, cada acción devuelve "Demasiados intentos". El
+// rate-limit real se cubre en tests/integration/login-rate-limit.test.ts.
+vi.mock('@/shared/rate-limit/apply', () => ({
+  enforce: vi.fn(async () => ({ ok: true, limit: 100, remaining: 99, reset: 0, unavailable: false })),
+}))
 
 import { loginAction } from '@/app/(auth)/login/actions'
 

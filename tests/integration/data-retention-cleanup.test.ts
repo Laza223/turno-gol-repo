@@ -19,7 +19,6 @@ import {
   insertPayment,
   insertAuditLog,
   insertAbonado,
-  insertProduct,
   insertBan,
   insertDailyCashClose,
   insertSubscription,
@@ -82,7 +81,6 @@ async function setupTenant(
     resourceId: bookingId,
   })
   await insertAbonado(sql, tenant.id, courtId)
-  await insertProduct(sql, tenant.id)
   await insertBan(sql, { tenantId: tenant.id, playerId: player.id, bannedBy: staff.id })
   await insertDailyCashClose(sql, { tenantId: tenant.id, closedBy: staff.id })
   const planId = await getOrCreatePlanId(sql)
@@ -157,7 +155,6 @@ type ChildCounts = {
   notifications: number
   auditLogs: number
   abonados: number
-  products: number
   bans: number
   closes: number
   courts: number
@@ -184,7 +181,6 @@ async function countChildren(
       (SELECT COUNT(*) FROM notifications WHERE tenant_id = ${tenantId})::text AS notifications,
       (SELECT COUNT(*) FROM audit_logs WHERE tenant_id = ${tenantId})::text AS "auditLogs",
       (SELECT COUNT(*) FROM abonados WHERE tenant_id = ${tenantId})::text AS abonados,
-      (SELECT COUNT(*) FROM products WHERE tenant_id = ${tenantId})::text AS products,
       (SELECT COUNT(*) FROM tenant_player_bans WHERE tenant_id = ${tenantId})::text AS bans,
       (SELECT COUNT(*) FROM daily_cash_closes WHERE tenant_id = ${tenantId})::text AS closes,
       (SELECT COUNT(*) FROM courts WHERE tenant_id = ${tenantId})::text AS courts,
@@ -203,7 +199,6 @@ async function countChildren(
     notifications: Number(r.notifications),
     auditLogs: Number(r.auditLogs),
     abonados: Number(r.abonados),
-    products: Number(r.products),
     bans: Number(r.bans),
     closes: Number(r.closes),
     courts: Number(r.courts),
@@ -257,7 +252,6 @@ const ZERO: ChildCounts = {
   notifications: 0,
   auditLogs: 0,
   abonados: 0,
-  products: 0,
   bans: 0,
   closes: 0,
   courts: 0,
@@ -277,7 +271,6 @@ const FULL: ChildCounts = {
   notifications: 1,
   auditLogs: 1,
   abonados: 1,
-  products: 1,
   bans: 1,
   closes: 1,
   courts: 1,

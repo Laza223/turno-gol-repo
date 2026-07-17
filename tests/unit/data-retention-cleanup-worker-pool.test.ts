@@ -88,8 +88,9 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     expect(h.getWorkerDb).toHaveBeenCalled()
     expect(transaction).toHaveBeenCalledTimes(1)
     // session_replication_role + FOR UPDATE ts + chequeo de elegibilidad +
-    // 17 DELETEs + 1 UPDATE tenants = 21 statements.
-    expect(txExecute.mock.calls.length).toBe(21)
+    // 16 DELETEs + 1 UPDATE tenants = 20 statements. (Era 17 DELETEs = 21 antes
+    // de deprecar la tabla `products`, migr. 046 — ver decisión 2026-07-17.)
+    expect(txExecute.mock.calls.length).toBe(20)
     expect(h.getSql).not.toHaveBeenCalled()
     expect(h.getDb).not.toHaveBeenCalled()
     expect(h.withTenantContext).not.toHaveBeenCalled()

@@ -25,15 +25,6 @@ export async function insertCourt(sql: Sql, tenantId: string): Promise<string> {
   return rows[0].id
 }
 
-export async function insertProduct(sql: Sql, tenantId: string): Promise<string> {
-  const rows = await sql<{ id: string }[]>`
-    INSERT INTO products (tenant_id, name, price)
-    VALUES (${tenantId}, ${faker.commerce.product()}, ${faker.number.int({ min: 100, max: 500000 })})
-    RETURNING id
-  `
-  return rows[0].id
-}
-
 /**
  * Abonado de relleno para los seeds (RLS, retención de datos): lo único que se
  * le pide es existir y tener id.

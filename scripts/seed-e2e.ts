@@ -73,7 +73,6 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.tenantId}`
-  await sql`DELETE FROM products WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM courts WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.tenantId}`
@@ -88,7 +87,6 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.depositTenantId}`
-  await sql`DELETE FROM products WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM courts WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.depositTenantId}`

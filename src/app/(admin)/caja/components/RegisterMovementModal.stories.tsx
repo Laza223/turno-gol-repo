@@ -58,7 +58,6 @@ const meta = {
           method: 'cash',
           description: 'Reserva 20:00',
           bookingId: null,
-          productId: null,
           registeredBy: 's-1',
           occurredAt: new Date(),
           createdAt: new Date(),

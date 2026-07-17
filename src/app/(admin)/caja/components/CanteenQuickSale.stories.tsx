@@ -26,7 +26,6 @@ const meta = {
           method: 'cash',
           description: 'Gatorade 500ml',
           bookingId: null,
-          productId: 'p-1',
           registeredBy: 's-1',
           occurredAt: new Date(),
           createdAt: new Date(),

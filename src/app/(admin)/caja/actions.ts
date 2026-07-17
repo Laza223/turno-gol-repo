@@ -41,7 +41,6 @@ const createCashFlowSchema = z.object({
   // invoca desde acá. El service (cashflow.service.ts) sigue aceptando
   // bookingId para sus callers legítimos (addBookingChargeAction,
   // recordDepositCashFlow) — no tocar esa firma.
-  productId: uuid.optional(),
   // coerce: a Server Action may deliver this as a Date or an ISO string across the boundary.
   occurredAt: z.coerce.date().optional(),
   // Cruce #10: sin esta clave en el schema, z.object() la strippeaba en

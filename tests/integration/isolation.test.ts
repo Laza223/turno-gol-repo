@@ -95,7 +95,6 @@ const tablesAll: TableDef[] = [
   { name: 'courts', ownId: () => A.courtId, otherId: () => B.courtId },
   { name: 'tenant_staff_members', ownId: () => A.staffMemberId, otherId: () => B.staffMemberId },
   { name: 'tenant_subscriptions', ownId: () => A.subscriptionId, otherId: () => B.subscriptionId },
-  { name: 'products', ownId: () => A.productId, otherId: () => B.productId },
   { name: 'abonados', ownId: () => A.abonadoId, otherId: () => B.abonadoId },
   { name: 'payments', ownId: () => A.paymentId, otherId: () => B.paymentId },
   { name: 'cash_flows', ownId: () => A.cashFlowId, otherId: () => B.cashFlowId },
@@ -170,8 +169,6 @@ const insertOps: Record<string, InsertFn> = {
     return tx`INSERT INTO tenant_subscriptions (tenant_id, plan_id, current_period_start, current_period_end)
       VALUES (${tid}, ${planId}, ${start}, ${end})`
   },
-  products: async (tx, tid) =>
-    tx`INSERT INTO products (tenant_id, name, price) VALUES (${tid}, 'spoof', 1000)`,
   abonados: async (tx, tid) =>
     tx`INSERT INTO abonados (
       tenant_id, court_id, contact_name, contact_phone,

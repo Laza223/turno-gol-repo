@@ -17,7 +17,6 @@ const cashFlowRowResponseSchema = z.strictObject({
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
   description: z.string(),
   bookingId: uuid.nullable(),
-  productId: uuid.nullable(),
   registeredBy: z.string(),
   occurredAt: z.string(),
   createdAt: z.string(),

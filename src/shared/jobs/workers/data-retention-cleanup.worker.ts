@@ -25,7 +25,7 @@ const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
  *
  * Order matters: the schema has a circular FK between bookings.payment_id and
  * payments.booking_id; bookings refer to courts/abonados; cash_flows refers
- * to bookings/products. Sequence is preserved per-tenant.
+ * to bookings. Sequence is preserved per-tenant.
  *
  * Pool (TG-P0-RETENTION-02): several of the DELETEs below hit tables the
  * restricted app role (`turnogol_app`) cannot write to under RLS/GRANTs —
@@ -244,7 +244,6 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM feature_flags WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM bookings WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM abonados WHERE tenant_id = ${tenantId}`)
-    await tx.execute(drizzleSql`DELETE FROM products WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM courts WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${tenantId}`)
 

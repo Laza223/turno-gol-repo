@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Builds the absolute public URL of a complex (`/c/{slug}`).
+ * Builds the absolute public URL of a complex (`/{slug}`).
  *
  * Prefers a configured absolute `appUrl` (NEXT_PUBLIC_APP_URL). When that is
  * missing or not absolute, falls back to the browser `origin`
@@ -24,5 +24,5 @@ export function buildPublicLinkUrl(
   const base = isAbsolute(appUrl) ? appUrl : isAbsolute(origin) ? origin : null
   if (!base) return null
 
-  return `${base.replace(/\/$/, '')}/c/${slug}`
+  return `${base.replace(/\/$/, '')}/${slug}`
 }

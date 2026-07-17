@@ -74,9 +74,12 @@ Ninguno tiene manejo de 40P01 hoy.
 ## Estado final: fix sistémico COMPLETO y verificado GO — SIN commitear
 6 archivos de producción (`billing.service.ts`, `dunning.service.ts`, `lifecycle.service.ts`, `support.service.ts`, `expire-trials.worker.ts`, `data-retention-cleanup.worker.ts`) + 6 de test. Cierra: cancel×subscribe/reactivate orphan (🔴 reproducido), webhook TOCTOU, upgrade/downgrade stale-read, sweep clobber de id reactivado, data-retention DELETE sin cancelar MP, data-loss por wipe incondicional, pending_plan_change stale, y los 2 deadlocks cross-tabla D1/D2. Fase 4 (retry 40P01) diferida. Pendiente: OK del dueño para commitear.
 
-## Backlog remanente (documentado, NO tocado)
-- 🟡 `forceTenantStatus('deleted')` (support) saltea el wipe real → sobre-retención (Ley 25.326) + posible huérfano MP permanente. Preexistente. Requiere decisión: ¿super-admin nunca fuerza 'deleted' manualmente, o transitionToDeleted debe disparar el wipe/cancel?
-- 🟡 Erasure procede ante fallo de cancel MP (solo log Sentry, sin backlog de reconciliación en DB). Defendible (compliance > plata) pero sin mecanismo activo de reconciliación.
+## Backlog remanente
+- ✅ **🟡 `forceTenantStatus('deleted')` CERRADO** (2026-07-17, decisión del usuario: quitar la capacidad). Quitado 'deleted' de FORCEABLE_TRANSITIONS (blocked/canceled/churned) + del switch de forceTenantStatus + import. El borrado real queda SOLO en el cron de retención. Tests: force→deleted ahora tira InvalidTransitionError. `transitionToDeleted` (lifecycle.service.ts:243) quedó SIN callers reachable — dejada como código muerto (borrado requiere OK aparte). Stories de ForceStatusSection ajustadas.
+- ✅ **🟡 Trail de cancel MP fallido CERRADO** (2026-07-17). `recordOrphanedMpPreapproval` inserta en `audit_logs` con `tenant_id=NULL` (sobrevive el wipe) `action='billing.mp_preapproval_orphaned'` + metadata {deletedTenantId, mpSubscriptionId, error}. Reconciliación: `SELECT * FROM audit_logs WHERE tenant_id IS NULL AND action='billing.mp_preapproval_orphaned'`. Best-effort (nunca throwea).
+- 🟡 **NUEVO — jsonb double-encode en inserts crudos**: `${JSON.stringify(x)}::jsonb` en `tx.execute(sql...)` bajo getWorkerDb/getDb double-codifica (el customType de src/shared/db/jsonb.ts solo cubre el query builder). Presente en `dunning.service.ts:50` (processed_webhooks.payload) y `payment.service.ts:199`. LATENTE (esas columnas no se leen con `->>` hoy). Fix: pasar el objeto crudo al template (como en recordOrphanedMpPreapproval). Requiere auditoría de la clase.
+- 🟢 Sin test determinístico del deadlock D1/D2 (timing, flaky).
+- 🟢 Pool=3: contención posible durante HTTP a MP (preexistente).
 - 🟢 Sin test determinístico del deadlock D1/D2 (timing, flaky) — la normalización se verifica por inspección de orden.
 - 🟢 Pool=3: más mutadores sostienen lock durante HTTP a MP → posible contención entre tenants distintos (preexistente, ya en el ledger B4).
 

@@ -238,33 +238,11 @@ export async function transitionBlockedToChurned(
   })
 }
 
-// ─── * → deleted (retention sweep at scheduled_deletion_at) ─────────────────
-
-export async function transitionToDeleted(
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
-  const result = await tx.execute(sql`
-    UPDATE tenants
-    SET status = 'deleted'::tenant_status, updated_at = NOW()
-    WHERE id = ${tenantId}
-      AND status IN ('churned', 'blocked', 'canceled')
-      AND scheduled_deletion_at IS NOT NULL
-      AND scheduled_deletion_at <= NOW()
-    RETURNING id
-  `)
-  if (rowsAffected(result) === 0) {
-    throw new InvalidTransitionError(tenantId, 'churned/blocked/canceled', 'deleted')
-  }
-  // tenant_subscriptions row is hard-deleted by retention worker (subscription_status enum has no 'deleted').
-  await insertSystemAuditLog(tx, {
-    tenantId,
-    action: 'tenant.deleted',
-    resourceType: 'tenant',
-    resourceId: tenantId,
-    metadata: { reason: 'data_retention_wipe' },
-  })
-}
+// El estado terminal `deleted` NO tiene función de transición: el borrado real
+// (hard-delete de filas hijas + soft-anonymize de tenants + cancel MP) lo hace
+// `data-retention-cleanup.worker.ts` con su propio UPDATE, no una transición
+// del FSM. Forzar 'deleted' manualmente fue eliminado (ver FORCEABLE_TRANSITIONS
+// en support.service.ts) por dejar tenants huérfanos.
 
 // ─── * → canceled (voluntary cancel; period_end intact) ─────────────────────
 

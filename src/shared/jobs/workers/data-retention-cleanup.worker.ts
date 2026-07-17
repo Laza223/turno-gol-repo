@@ -8,6 +8,13 @@ import { isMpAlreadyCancelledPreapprovalError } from '@/modules/payments/mp-toke
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 /**
+ * Sentinel de actor de sistema (mismo valor que `SYSTEM_ACTOR_ID` en
+ * `src/shared/db/audit.ts`, no exportado desde ahí — se duplica el literal en
+ * vez de importar un módulo fuera del scope de este fix).
+ */
+const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
+
+/**
  * Weekly Sun 07:00 ART. Hard-deletes child rows for tenants past their
  * `scheduled_deletion_at` and soft-anonymizes the tenants row (Ley 25.326
  * §16 right to erasure). Status transitions to `deleted`.
@@ -60,6 +67,62 @@ import type { PaymentGateway } from '@/modules/payments/mp-gateway'
  * nunca throwea — el llamador no debe sumar este error a `failures` (el wipe
  * en sí es el criterio de éxito del job).
  */
+/**
+ * Rastro durable del huérfano MP↔DB: el `audit_logs` del tenant ya se borró
+ * (el wipe corrió antes, en la misma tx que esta función ve post-commit), así
+ * que una fila tenant-scoped desaparecería de inmediato. Se inserta con
+ * `tenant_id = NULL` (system-level, `insertSystemAuditLog` no acepta NULL —
+ * de ahí el INSERT crudo) para que sobreviva y quede disponible para
+ * reconciliación manual:
+ *   SELECT * FROM audit_logs WHERE tenant_id IS NULL AND action = 'billing.mp_preapproval_orphaned'
+ *
+ * Best-effort: si el INSERT mismo falla, se loguea y se sigue — la erasure ya
+ * ocurrió, este trail es secundario y nunca debe hacer que el job explote.
+ */
+async function recordOrphanedMpPreapproval(
+  tenantId: string,
+  mpSubscriptionId: string,
+  errorMessage: string,
+): Promise<void> {
+  try {
+    const db = getWorkerDb()
+    // OJO doble-encode (variante del gotcha "jsonb doble-codificado" de
+    // src/shared/db/jsonb.ts, pero por otra vía): `getWorkerDb()` restaura el
+    // serializer del OID jsonb (3802) del cliente postgres-js compartido a
+    // `JSON.stringify` (ver `restoreJsonSerializers` en client.ts). postgres-js
+    // infiere ese OID del cast `::jsonb` pegado al placeholder — si acá se
+    // pasara `JSON.stringify(metadata)` (un string), el serializer lo
+    // volvería a stringify-ear (comillas escapadas adentro de comillas) y
+    // `metadata ->> 'x'` en SQL devolvería NULL siempre. Pasar el OBJETO
+    // crudo dentro del template: el serializer lo stringify-ea UNA sola vez.
+    const metadata = { deletedTenantId: tenantId, mpSubscriptionId, error: errorMessage }
+    await db.transaction(async (tx) => {
+      await tx.execute(drizzleSql`
+        INSERT INTO audit_logs (
+          tenant_id, actor_id, actor_type, action, resource_type, resource_id, metadata, created_at
+        ) VALUES (
+          NULL,
+          ${SYSTEM_ACTOR_ID}::uuid,
+          'system',
+          'billing.mp_preapproval_orphaned',
+          'tenant_subscription',
+          ${tenantId},
+          ${metadata}::jsonb,
+          NOW()
+        )
+      `)
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error('failed to record durable audit trail for orphaned MP preapproval', {
+      module: 'data-retention',
+      tenantId,
+      mpSubscriptionId,
+      error: message,
+    })
+  }
+}
+
 async function cancelPendingMpSubscription(
   gateway: PaymentGateway,
   tenantId: string,
@@ -78,6 +141,7 @@ async function cancelPendingMpSubscription(
       mpSubscriptionId,
       error: message,
     })
+    await recordOrphanedMpPreapproval(tenantId, mpSubscriptionId, message)
   }
 }
 

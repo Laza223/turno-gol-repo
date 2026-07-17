@@ -52,7 +52,7 @@ export const SinTransicionesForzables: Story = {
 export const DestinoNoDestructivo: Story = {
   args: {
     status: 'blocked',
-    forceableTargets: ['active', 'churned', 'deleted'],
+    forceableTargets: ['active', 'churned'],
     action: okAction("Estado forzado: 'blocked' → 'active'."),
   },
   play: async ({ canvasElement }) => {
@@ -64,23 +64,29 @@ export const DestinoNoDestructivo: Story = {
   },
 }
 
-/** Destino destructivo (blocked/deleted): exige tipear el nombre exacto antes de habilitar el botón. */
+/**
+ * Destino destructivo (blocked): exige tipear el nombre exacto antes de
+ * habilitar el botón. `deleted` YA NO es forzable desde ningún origen
+ * (FORCEABLE_TRANSITIONS lo excluye — el borrado real es exclusivo del cron
+ * de retención), así que el ejemplo de destino destructivo real es
+ * suspended→blocked, no blocked→deleted.
+ */
 export const DestinoDestructivoExigeConfirmacion: Story = {
   args: {
-    status: 'blocked',
-    forceableTargets: ['active', 'churned', 'deleted'],
-    action: okAction("Estado forzado: 'blocked' → 'deleted'."),
+    status: 'suspended',
+    forceableTargets: ['active', 'blocked'],
+    action: okAction("Estado forzado: 'suspended' → 'blocked'."),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.selectOptions(canvas.getByLabelText('Estado destino'), 'deleted')
+    await userEvent.selectOptions(canvas.getByLabelText('Estado destino'), 'blocked')
     const btn = canvas.getByRole('button', { name: 'Forzar estado' })
     await expect(btn).toBeDisabled()
 
     await userEvent.type(canvas.getByLabelText(/escribí el nombre exacto/i), 'Complejo Fénix')
     await expect(btn).toBeEnabled()
     await userEvent.click(btn)
-    await expect(await canvas.findByText(/'blocked' → 'deleted'/)).toBeInTheDocument()
+    await expect(await canvas.findByText(/'suspended' → 'blocked'/)).toBeInTheDocument()
   },
 }
 

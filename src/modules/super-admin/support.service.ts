@@ -8,7 +8,6 @@ import {
   transitionPastDueToSuspended,
   transitionSuspendedToBlocked,
   transitionToActiveFromAny,
-  transitionToDeleted,
   transitionTrialingToActive,
 } from '@/modules/billing/lifecycle.service'
 import { cancel as billingCancel } from '@/modules/billing/billing.service'
@@ -77,25 +76,31 @@ export class PlanAlreadyAssignedError extends Error {
  *   suspended→ blocked    transitionSuspendedToBlocked (gate: dunning ≥ 14d)
  *   blocked  → active     transitionToActiveFromAny
  *   blocked  → churned    transitionBlockedToChurned (gate: dunning ≥ 90d)
- *   blocked  → deleted    transitionToDeleted (gate: scheduled_deletion_at vencido)
  *   canceled → active     transitionToActiveFromAny
  *   canceled → blocked    transitionCanceledToBlocked (gate: period_end vencido)
- *   canceled → deleted    transitionToDeleted (gate: scheduled_deletion_at vencido)
  *   churned  → active     transitionToActiveFromAny
- *   churned  → deleted    transitionToDeleted (gate: scheduled_deletion_at vencido)
  *
  * `canceled` como DESTINO se maneja con `cancelSubscriptionForSupport` (además
  * cancela el preapproval MP), no desde acá. Los gates temporales del FSM se
  * respetan: si no se cumplen, la transición tira InvalidTransitionError.
+ *
+ * `deleted` NO es forzable desde acá (decisión de producto): forzar 'deleted'
+ * marcaba el status sin borrar filas hijas ni cancelar el preapproval MP,
+ * dejando al tenant con datos + suscripción MP vivos para siempre (sobre-
+ * retención Ley 25.326 + huérfano en MP), porque el sweep de retención excluye
+ * `status='deleted'` de sus targets. El borrado real (wipe completo + cancel
+ * MP) es responsabilidad EXCLUSIVA del cron de retención
+ * (`data-retention-cleanup.worker.ts`), que dispara sobre `scheduled_deletion_at`
+ * vencido — nunca manual.
  */
 export const FORCEABLE_TRANSITIONS: Record<TenantStatus, readonly TenantStatus[]> = {
   trialing: ['active'],
   active: ['past_due'],
   past_due: ['active', 'suspended'],
   suspended: ['active', 'blocked'],
-  blocked: ['active', 'churned', 'deleted'],
-  canceled: ['active', 'blocked', 'deleted'],
-  churned: ['active', 'deleted'],
+  blocked: ['active', 'churned'],
+  canceled: ['active', 'blocked'],
+  churned: ['active'],
   deleted: [],
 }
 
@@ -263,9 +268,6 @@ export async function forceTenantStatus(
         break
       case 'churned':
         await transitionBlockedToChurned(tenantId, tx)
-        break
-      case 'deleted':
-        await transitionToDeleted(tenantId, tx)
         break
       default:
         throw new InvalidTransitionError(tenantId, from, targetStatus)

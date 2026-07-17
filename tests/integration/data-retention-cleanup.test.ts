@@ -217,6 +217,39 @@ async function countChildren(
   }
 }
 
+type OrphanedMpAuditRow = {
+  tenant_id: string | null
+  actor_id: string
+  actor_type: string
+  action: string
+  resource_type: string
+  resource_id: string
+  metadata: Record<string, unknown> | null
+}
+
+/**
+ * Rastro durable (tenant_id NULL, sobrevive al wipe) del huérfano MP↔DB — ver
+ * `recordOrphanedMpPreapproval` en el worker. Filtra por `mpSubscriptionId` en
+ * vez de contar filas: el archivo no trunca `audit_logs` entre tests, así que
+ * varias corridas de este describe pueden convivir.
+ */
+async function fetchOrphanedMpAudit(
+  sql: ReturnType<typeof getSql>,
+  mpSubscriptionId: string,
+): Promise<OrphanedMpAuditRow[]> {
+  const rows = await sql<OrphanedMpAuditRow[]>`
+    SELECT tenant_id, actor_id, actor_type, action, resource_type, resource_id, metadata
+    FROM audit_logs
+    WHERE tenant_id IS NULL
+      AND action = 'billing.mp_preapproval_orphaned'
+      AND metadata ->> 'mpSubscriptionId' = ${mpSubscriptionId}
+  `
+  return rows.map((r) => ({
+    ...r,
+    metadata: typeof r.metadata === 'string' ? (JSON.parse(r.metadata) as Record<string, unknown>) : r.metadata,
+  }))
+}
+
 const ZERO: ChildCounts = {
   bookings: 0,
   payments: 0,
@@ -468,9 +501,41 @@ describe('data-retention-cleanup', () => {
     `
     expect(row.status).toBe('deleted')
     expect(await countChildren(sql, tenantId)).toEqual(ZERO)
+    // Cancel exitoso: sin rastro huérfano — el trail durable es SOLO para el
+    // camino de fallo (ver test de abajo).
+    expect(await fetchOrphanedMpAudit(sql, 'mp-live-1')).toHaveLength(0)
   }, 60_000)
 
-  it('si cancelar el preapproval MP falla con un error que NO es "ya cancelado", el wipe igual completa (erasure > cancelación best-effort)', async () => {
+  it('si cancelar el preapproval MP ya estaba cancelado, el wipe completa y NO deja rastro huérfano', async () => {
+    // Contraparte del test de fallo genérico de abajo: "ya cancelado" no es un
+    // huérfano real (MP y DB terminan consistentes en 'cancelado'), así que NO
+    // debe generar la fila de reconciliación — si el guard `isMpAlreadyCancel
+    // ledPreapprovalError` se rompiera y todo error escribiera el trail, este
+    // test caería mientras el de arriba seguiría en verde.
+    const gateway = new MockGateway()
+    gateway.cancelPreapprovalError = new Error('Can not modify a cancelled preapproval')
+    setBillingGateway(gateway)
+
+    const { tenantId } = await setupTenant({
+      scheduleDaysAgo: 3,
+      status: 'blocked',
+      mpSubscriptionId: 'mp-live-already-cancelled',
+    })
+    const sql = getSql()
+
+    await expect(runDataRetentionCleanup()).resolves.toBeUndefined()
+
+    expect(gateway.cancelPreapprovalCalls).toContain('mp-live-already-cancelled')
+
+    const [row] = await sql<{ status: string }[]>`
+      SELECT status FROM tenants WHERE id = ${tenantId}
+    `
+    expect(row.status).toBe('deleted')
+    expect(await countChildren(sql, tenantId)).toEqual(ZERO)
+    expect(await fetchOrphanedMpAudit(sql, 'mp-live-already-cancelled')).toHaveLength(0)
+  }, 60_000)
+
+  it('si cancelar el preapproval MP falla con un error que NO es "ya cancelado", el wipe igual completa Y deja un rastro durable en audit_logs (tenant_id NULL)', async () => {
     const gateway = new MockGateway()
     gateway.cancelPreapprovalError = new Error('MP 500 — timeout inesperado')
     setBillingGateway(gateway)
@@ -491,6 +556,24 @@ describe('data-retention-cleanup', () => {
     `
     expect(row.status).toBe('deleted')
     expect(await countChildren(sql, tenantId)).toEqual(ZERO)
+
+    // El audit_logs tenant-scoped ya se borró (countChildren.auditLogs===0
+    // arriba); el rastro del huérfano sobrevive porque vive con tenant_id
+    // NULL — reconciliación manual: SELECT * FROM audit_logs WHERE
+    // tenant_id IS NULL AND action='billing.mp_preapproval_orphaned'.
+    const orphanRows = await fetchOrphanedMpAudit(sql, 'mp-live-2')
+    expect(orphanRows).toHaveLength(1)
+    const orphan = orphanRows[0]!
+    expect(orphan.tenant_id).toBeNull()
+    expect(orphan.actor_type).toBe('system')
+    expect(orphan.resource_type).toBe('tenant_subscription')
+    expect(orphan.resource_id).toBe(tenantId)
+    expect(orphan.metadata).toMatchObject({
+      deletedTenantId: tenantId,
+      mpSubscriptionId: 'mp-live-2',
+    })
+    expect(typeof orphan.metadata?.error).toBe('string')
+    expect(orphan.metadata?.error as string).toContain('MP 500')
   }, 60_000)
 
   // ─── TG-P0-RETENTION-03 (🔴 data-loss, hallado por verificación adversarial) ──

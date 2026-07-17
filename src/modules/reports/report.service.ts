@@ -218,9 +218,7 @@ export async function getCashFlowsForExport(
       fecha: r.occurredAt.toISOString().split('T')[0],
       tipo: r.type,
       categoria: r.category,
-      // Pesos (el monto se guarda en centavos): dividir para que la columna
-      // `monto_ars` sea fiel a su nombre al abrir el CSV.
-      monto_ars: r.amount / 100,
+      monto_ars: r.amount,
       metodo: r.method,
       descripcion: r.description,
       cancha: r.courtName ?? '',

@@ -72,7 +72,7 @@ export const revenueReportFirstMonth = (): RevenueReport =>
     prevPeriod: null,
   })
 
-/** Fila de la exportación CSV de caja — `monto_ars` va en pesos, NO en centavos. */
+/** Fila de la exportación CSV de caja — `monto_ars` va en centavos (convención del repo). */
 export const cashFlowExportRow = (overrides: Partial<CashFlowExportRow> = {}): CashFlowExportRow => ({
   fecha: artDateString(hoursFromNow(-26)),
   tipo: 'Ingreso',

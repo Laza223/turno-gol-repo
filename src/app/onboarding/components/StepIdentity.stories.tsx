@@ -42,7 +42,7 @@ export const SinPreview: Story = {
   },
 }
 
-/** Nombre >=2 chars: aparece el preview `turnogol.app/c/<slug>`. */
+/** Nombre >=2 chars: aparece el preview `turnogol.app/<slug>`. */
 export const ConPreviewDeLink: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement }) => {

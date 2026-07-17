@@ -36,7 +36,7 @@ type Story = StoryObj<typeof meta>
 export const LinkListo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('turnogol.app/c/complejo-fenix')).toBeInTheDocument()
+    await expect(canvas.getByText('turnogol.app/complejo-fenix')).toBeInTheDocument()
 
     // CTA primario: WhatsApp con mensaje pre-armado (doc10 §3). Se deja INERTE
     // (no se clickea): es un <a target="_blank"> real, no una Server Action.
@@ -44,7 +44,7 @@ export const LinkListo: Story = {
     const href = wa.getAttribute('href') ?? ''
     await expect(href).toMatch(/^https:\/\/wa\.me\/\?text=/)
     await expect(decodeURIComponent(href)).toContain('Complejo Fénix')
-    await expect(decodeURIComponent(href)).toContain('https://turnogol.app/c/complejo-fenix')
+    await expect(decodeURIComponent(href)).toContain('https://turnogol.app/complejo-fenix')
 
     await expect(canvas.getByRole('button', { name: /copiar link/i })).toBeEnabled()
   },
@@ -64,7 +64,7 @@ export const CopiarLinkConClipboard: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /copiar link/i }))
 
     await expect(await canvas.findByRole('button', { name: /¡copiado!/i })).toBeInTheDocument()
-    await expect(writeText).toHaveBeenCalledWith('https://turnogol.app/c/complejo-fenix')
+    await expect(writeText).toHaveBeenCalledWith('https://turnogol.app/complejo-fenix')
     await waitFor(() => expect(args.action).toHaveBeenCalled())
   },
 }
@@ -87,7 +87,7 @@ export const CopiarLinkSinClipboard: Story = {
     await waitFor(() =>
       expect(prompt).toHaveBeenCalledWith(
         'Copiá el enlace público:',
-        'https://turnogol.app/c/complejo-fenix',
+        'https://turnogol.app/complejo-fenix',
       ),
     )
     await waitFor(() => expect(args.action).toHaveBeenCalled())

@@ -4,25 +4,25 @@ import { buildPublicLinkUrl } from '@/lib/utils'
 describe('buildPublicLinkUrl', () => {
   it('uses an absolute appUrl when provided', () => {
     expect(buildPublicLinkUrl('https://turnogol.app', 'https://admin.local', 'rincon')).toBe(
-      'https://turnogol.app/c/rincon',
+      'https://turnogol.app/rincon',
     )
   })
 
   it('normalizes a trailing slash on appUrl', () => {
     expect(buildPublicLinkUrl('https://turnogol.app/', null, 'rincon')).toBe(
-      'https://turnogol.app/c/rincon',
+      'https://turnogol.app/rincon',
     )
   })
 
   it('falls back to the browser origin when appUrl is empty', () => {
     expect(buildPublicLinkUrl('', 'https://app.turnogol.app', 'rincon')).toBe(
-      'https://app.turnogol.app/c/rincon',
+      'https://app.turnogol.app/rincon',
     )
   })
 
   it('falls back to the browser origin when appUrl is relative (not absolute)', () => {
     expect(buildPublicLinkUrl('/c', 'https://app.turnogol.app', 'rincon')).toBe(
-      'https://app.turnogol.app/c/rincon',
+      'https://app.turnogol.app/rincon',
     )
   })
 

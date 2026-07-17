@@ -228,6 +228,8 @@ export async function forceTenantStatus(
   now: Date = new Date(),
 ): Promise<{ from: TenantStatus; to: TenantStatus }> {
   return withTenantContext(tenantId, async (tx) => {
+    // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
+    const sub = await loadSubForUpdate(tx, tenantId)
     const tenant = await loadTenantForUpdate(tx, tenantId)
     const from = tenant.status
 
@@ -237,7 +239,6 @@ export async function forceTenantStatus(
 
     switch (targetStatus) {
       case 'active': {
-        const sub = await loadSubForUpdate(tx, tenantId)
         if (!sub) throw new SubscriptionNotFoundError(tenantId)
         const { start, end } = forcedPeriodWindow(sub.billing_cycle, now)
         if (from === 'trialing') {
@@ -287,8 +288,9 @@ export async function reactivateTenant(
   now: Date = new Date(),
 ): Promise<{ from: TenantStatus }> {
   return withTenantContext(tenantId, async (tx) => {
-    const tenant = await loadTenantForUpdate(tx, tenantId)
+    // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
     const sub = await loadSubForUpdate(tx, tenantId)
+    const tenant = await loadTenantForUpdate(tx, tenantId)
     if (!sub) throw new SubscriptionNotFoundError(tenantId)
 
     const { start, end } = forcedPeriodWindow(sub.billing_cycle, now)
@@ -391,6 +393,10 @@ export async function cancelSubscriptionForSupport(
   gateway: PaymentGateway,
 ): Promise<{ accessUntil: Date }> {
   return withTenantContext(tenantId, async (tx) => {
+    // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
+    // El resultado no se usa acá — billingCancel vuelve a leer/lockear la
+    // fila internamente; el único propósito es adquirir el lock primero.
+    await loadSubForUpdate(tx, tenantId)
     const tenant = await loadTenantForUpdate(tx, tenantId)
 
     // billing.cancel cancela el preapproval MP, corre transitionToCanceled

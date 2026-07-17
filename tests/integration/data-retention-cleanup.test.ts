@@ -1,5 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
+import { setBillingGateway } from '@/modules/billing/billing.gateway'
+import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   cleanupAll,
   createTestPlayer,
@@ -24,7 +26,10 @@ import {
   getOrCreatePlanId,
 } from '../helpers/factories'
 
-import { runDataRetentionCleanup } from '@/shared/jobs/workers/data-retention-cleanup.worker'
+import {
+  runDataRetentionCleanup,
+  wipeTenant,
+} from '@/shared/jobs/workers/data-retention-cleanup.worker'
 
 type TenantBundle = {
   tenantId: string
@@ -44,7 +49,11 @@ type TenantBundle = {
  *   deletion is scheduled, otherwise the table default (`'trialing'`).
  */
 async function setupTenant(
-  opts: { scheduleDaysAgo?: number | null; status?: string } = {},
+  opts: {
+    scheduleDaysAgo?: number | null
+    status?: string
+    mpSubscriptionId?: string
+  } = {},
 ): Promise<TenantBundle> {
   const sql = getSql()
   const tenant = await createTestTenant(sql)
@@ -78,6 +87,13 @@ async function setupTenant(
   await insertDailyCashClose(sql, { tenantId: tenant.id, closedBy: staff.id })
   const planId = await getOrCreatePlanId(sql)
   await insertSubscription(sql, { tenantId: tenant.id, planId })
+  if (opts.mpSubscriptionId) {
+    await sql`
+      UPDATE tenant_subscriptions
+      SET mp_subscription_id = ${opts.mpSubscriptionId}
+      WHERE tenant_id = ${tenant.id}
+    `
+  }
 
   // Hybrid / operational tenant-scoped rows the wipe must also clear.
   // reviews.booking_id is RESTRICT-FK to bookings: the wipe runs under
@@ -254,6 +270,13 @@ afterAll(async () => {
   await closeSql()
 })
 
+afterEach(() => {
+  // El worker llama getBillingGateway() internamente (B5 Fase 3); el override
+  // es un singleton de módulo (mismo patrón que tests/integration/billing.test.ts)
+  // y NO debe filtrar a otros tests/archivos de la misma corrida.
+  setBillingGateway(null)
+})
+
 describe('data-retention-cleanup', () => {
   it('borra TODA fila hija y anonimiza el tenant cuando scheduled_deletion_at <= NOW()', async () => {
     const { tenantId, playerId } = await setupTenant({ scheduleDaysAgo: 1 })
@@ -411,4 +434,108 @@ describe('data-retention-cleanup', () => {
     expect(row.name).toBe('[deleted]')
     expect(await countChildren(sql, tenantId)).toEqual(ZERO)
   }, 60_000)
+
+  // ─── B5 (Fase 3): cancelar el preapproval MP tras el wipe ──────────────────
+  // Los tenants escalados por dunning (past_due→suspended→blocked→churned)
+  // NUNCA cancelan MP en el camino, y `transitionCanceledToBlocked` ahora
+  // preserva `mp_subscription_id` a propósito (ver lifecycle.service.ts) — así
+  // que llegan acá con un preapproval potencialmente vivo. Sin este fix, el
+  // DELETE de `tenant_subscriptions` borraba la única referencia a ese
+  // preapproval y quedaba cobrando huérfano en MP.
+  //
+  // TG-P0-RETENTION-03 movió la cancelación de MP de ANTES a DESPUÉS del
+  // commit del wipe (el id se sigue capturando ANTES del DELETE, bajo el
+  // `FOR UPDATE` de `tenant_subscriptions` — ver `wipeTenant`); estos tests
+  // no cambian de aserciones, solo el momento real en que ocurre la llamada.
+
+  it('cancela el preapproval MP vivo tras completar el wipe (id capturado bajo lock antes del DELETE)', async () => {
+    const gateway = new MockGateway()
+    setBillingGateway(gateway)
+
+    const { tenantId } = await setupTenant({
+      scheduleDaysAgo: 3,
+      status: 'blocked',
+      mpSubscriptionId: 'mp-live-1',
+    })
+    const sql = getSql()
+
+    await runDataRetentionCleanup()
+
+    expect(gateway.cancelPreapprovalCalls).toContain('mp-live-1')
+
+    const [row] = await sql<{ status: string }[]>`
+      SELECT status FROM tenants WHERE id = ${tenantId}
+    `
+    expect(row.status).toBe('deleted')
+    expect(await countChildren(sql, tenantId)).toEqual(ZERO)
+  }, 60_000)
+
+  it('si cancelar el preapproval MP falla con un error que NO es "ya cancelado", el wipe igual completa (erasure > cancelación best-effort)', async () => {
+    const gateway = new MockGateway()
+    gateway.cancelPreapprovalError = new Error('MP 500 — timeout inesperado')
+    setBillingGateway(gateway)
+
+    const { tenantId } = await setupTenant({
+      scheduleDaysAgo: 3,
+      status: 'blocked',
+      mpSubscriptionId: 'mp-live-2',
+    })
+    const sql = getSql()
+
+    await expect(runDataRetentionCleanup()).resolves.toBeUndefined()
+
+    expect(gateway.cancelPreapprovalCalls).toContain('mp-live-2')
+
+    const [row] = await sql<{ status: string }[]>`
+      SELECT status FROM tenants WHERE id = ${tenantId}
+    `
+    expect(row.status).toBe('deleted')
+    expect(await countChildren(sql, tenantId)).toEqual(ZERO)
+  }, 60_000)
+
+  // ─── TG-P0-RETENTION-03 (🔴 data-loss, hallado por verificación adversarial) ──
+  // `targets` es un snapshot tomado al INICIO del job. Si entre ese snapshot y
+  // el wipe de ESE tenant una reactivación se COMPLETA (webhook
+  // `onPaymentApproved` → `transitionToActiveFromAny`, o un super-admin
+  // `forceTenantStatus('active')`/`reactivateTenant`), un wipe incondicional
+  // lo borraría igual: pérdida permanente de datos de un cliente
+  // activo/pagando. `wipeTenant` revalida bajo el `FOR UPDATE` de
+  // `tenant_subscriptions` (Orden A) justo antes de cualquier DELETE.
+  //
+  // Se llama a `wipeTenant` directamente (no `runDataRetentionCleanup`)
+  // porque el `targets` query YA excluye `status='active'` — un tenant activo
+  // nunca entra al loop del worker completo, así que la única forma
+  // determinística de ejercitar el guard es invocar el helper extraído sobre
+  // un tenant que "ganó la carrera" (activo con `scheduled_deletion_at`
+  // vencido, tal como quedaría si la reactivación llegó justo antes del
+  // wipe).
+  it('SKIP: no borra un tenant que dejó de ser elegible (reactivación ganó la carrera) y no cancela MP', async () => {
+    const gateway = new MockGateway()
+    const { tenantId } = await setupTenant({
+      scheduleDaysAgo: 3,
+      status: 'blocked',
+      mpSubscriptionId: 'mp-live-race',
+    })
+    const sql = getSql()
+
+    // Simula la reactivación que se COMPLETÓ entre el snapshot de `targets` y
+    // esta iteración: el tenant queda 'active' aunque `scheduled_deletion_at`
+    // siga vencido (el guard debe saltear por el status, no por
+    // `scheduled_deletion_at` — misma condición que el `targets` query).
+    await sql`UPDATE tenants SET status = 'active'::tenant_status WHERE id = ${tenantId}`
+
+    const result = await wipeTenant(tenantId, gateway)
+
+    expect(result).toBe('skipped')
+    expect(gateway.cancelPreapprovalCalls).not.toContain('mp-live-race')
+
+    const [row] = await sql<{ status: string }[]>`
+      SELECT status FROM tenants WHERE id = ${tenantId}
+    `
+    expect(row.status).toBe('active')
+    expect(row.status).not.toBe('deleted')
+    // tenant_subscriptions (con mp-live-race) y el resto de las filas hijas
+    // siguen intactas — el DELETE nunca corrió.
+    expect(await countChildren(sql, tenantId)).toEqual(FULL)
+  }, 30_000)
 })

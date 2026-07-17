@@ -54,6 +54,27 @@ async function lockWebhook(
   return (lock as unknown as Array<{ id: string }>).length > 0
 }
 
+/**
+ * Fase 2 (🔴 TOCTOU webhook↔reactivate): antes lockeaba nada (`loadSub` plano)
+ * — un `onPaymentApproved`/`onPaymentRejected` concurrente con un
+ * `reactivate()`/`subscribe()`/`cancel()` (que sí lockean via
+ * `billing.service.ts:loadSubForUpdate`) podía leer un `mp_subscription_id`
+ * STALE y decidir `preapprovalIdMatches`/la transición de la FSM sobre un
+ * valor que otra tx estaba a punto de pisar — activando (o no) la
+ * suscripción sobre un preapproval que ya no es el vigente.
+ *
+ * `FOR UPDATE OF ts` (no `FOR UPDATE` pelado): el SELECT hace JOIN con
+ * `plans`, tabla GLOBAL sin tenant_id compartida por todos los tenants del
+ * mismo plan. Un `FOR UPDATE` sin `OF` lockearía también la fila de `plans`
+ * — serializaría tenants no relacionados entre sí (y arriesgaría deadlock
+ * con cualquier otra tx que toque `plans` en otro orden). `OF ts` restringe
+ * el lock a `tenant_subscriptions`, la única tabla que este handler escribe.
+ *
+ * `LIMIT 1` + `FOR UPDATE OF ts`: `tenant_id` es único en `tenant_subscriptions`
+ * y el JOIN con `plans` es 1:1 (una sola fila candidata) — a diferencia de
+ * `billing.service.ts:loadSubForUpdate` (que saca el `LIMIT` por prudencia),
+ * acá no hay ambigüedad sobre qué fila lockear.
+ */
 async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
     SELECT ts.status, ts.billing_cycle, ts.current_period_end,
@@ -62,6 +83,7 @@ async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
     JOIN plans p ON p.id = ts.plan_id
     WHERE ts.tenant_id = ${tenantId}
     LIMIT 1
+    FOR UPDATE OF ts
   `)
   const row = (rows as unknown as Array<SubRow>)[0]
   return row ?? null
@@ -146,17 +168,29 @@ export async function onPaymentRejected(
   const fresh = await lockWebhook(mpEventId, eventType, rawPayload, tx)
   if (!fresh) return { alreadyProcessed: true }
 
+  // Fase 2 (🔴 TOCTOU): `loadSub` ahora lockea (`FOR UPDATE OF ts`) — si un
+  // `reactivate()`/`subscribe()`/`cancel()` concurrente tiene la fila
+  // lockeada, este SELECT espera y lee el estado FRESCO al desbloquearse, en
+  // vez de decidir la rama de abajo sobre un `status` que la otra tx está
+  // por pisar.
   const sub = await loadSub(tenantId, tx)
   if (!sub) return { alreadyProcessed: false }
 
   if (sub.status === 'active') {
     await transitionActiveToPastDue(tenantId, failedAt, tx)
   } else if (sub.status === 'past_due' || sub.status === 'suspended' || sub.status === 'blocked') {
+    // Guard de status en el WHERE (defensa en profundidad): con el `FOR
+    // UPDATE OF ts` de arriba ya no hay ventana entre la lectura y este
+    // UPDATE, pero repetir la condición que decidió esta rama deja el UPDATE
+    // consistente con lo que se leyó — nunca toca `last_payment_failed_at` de
+    // una fila que (por algún camino no contemplado) ya no está en uno de
+    // estos 3 estados.
     await tx.execute(sql`
       UPDATE tenant_subscriptions
       SET last_payment_failed_at = ${failedAt.toISOString()}::timestamptz,
           updated_at = NOW()
       WHERE tenant_id = ${tenantId}
+        AND status IN ('past_due', 'suspended', 'blocked')
     `)
   } else {
     // trialing/canceled/churned — spurious recurring rejection. Record but
@@ -224,6 +258,16 @@ export async function onPaymentApproved(
   const fresh = await lockWebhook(mpEventId, eventType, rawPayload, tx)
   if (!fresh) return { alreadyProcessed: true }
 
+  // Fase 2 (🔴 TOCTOU, cierra el residual de Fix 2b): `loadSub` ahora lockea
+  // (`FOR UPDATE OF ts`). Sin esto, un `reactivate()` concurrente (que ya
+  // lockea via `loadSubForUpdate`) podía commitear un `mp_subscription_id`
+  // NUEVO DESPUÉS de que este SELECT ya había leído el VIEJO (sin lock,
+  // lectura sucia de facto por el orden de commits) — `preapprovalIdMatches`
+  // decidía sobre ese valor stale y un pago del preapproval viejo "en vuelo"
+  // podía reactivar el tenant aunque el vigente ya fuera otro. Con el lock
+  // sostenido: si `reactivate()`/`subscribe()`/`cancel()` tiene la fila
+  // tomada, este SELECT espera hasta el commit y lee el `mp_subscription_id`
+  // FRESCO — `preapprovalIdMatches` compara contra el valor correcto.
   const sub = await loadSub(tenantId, tx)
   if (!sub) return { alreadyProcessed: false }
 

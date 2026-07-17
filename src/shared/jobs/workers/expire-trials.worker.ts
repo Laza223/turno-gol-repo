@@ -31,19 +31,20 @@ export async function runExpireTrials(): Promise<void> {
   for (const t of candidates) {
     try {
       await db.transaction(async (tx) => {
+        // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
         const res = await tx.execute(sql`
-          UPDATE tenants
+          UPDATE tenant_subscriptions
           SET status = 'blocked', updated_at = NOW()
-          WHERE id = ${t.id} AND status = 'trialing'
+          WHERE tenant_id = ${t.id} AND status = 'trialing'
           RETURNING id
         `)
         const updated = res as unknown as Array<{ id: string }>
         if (updated.length === 0) return
 
         await tx.execute(sql`
-          UPDATE tenant_subscriptions
+          UPDATE tenants
           SET status = 'blocked', updated_at = NOW()
-          WHERE tenant_id = ${t.id} AND status = 'trialing'
+          WHERE id = ${t.id} AND status = 'trialing'
         `)
         await insertSystemAuditLog(tx, {
           tenantId: t.id,

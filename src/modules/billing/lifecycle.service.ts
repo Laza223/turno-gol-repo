@@ -273,11 +273,18 @@ export async function transitionToCanceled(
   reason: string,
   tx: DbTx,
 ): Promise<void> {
+  // Residual B5 (upgrade/downgrade pendiente stale): un `pending_plan_change`
+  // que quedó sin aplicar (webhook de upgrade todavía en vuelo, o downgrade
+  // diferido a period_end) no debe sobrevivir la cancelación — si el tenant
+  // se reactiva después con otro plan, un CAS tardío (`handleUpgradeApproved`)
+  // o el sweep de dunning (`dunning-retry.worker.ts`) lo reaplicarían tarde.
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET status = 'canceled'::subscription_status,
         canceled_at = NOW(),
         cancellation_reason = ${reason},
+        pending_plan_change = NULL,
+        pending_change_at = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
       AND status IN ('active', 'past_due', 'suspended', 'trialing')
@@ -307,11 +314,23 @@ export async function transitionCanceledToBlocked(
   tenantId: string,
   tx: DbTx,
 ): Promise<void> {
+  // B5 (huérfano MP↔DB): NO nulear `mp_subscription_id` acá. El único camino
+  // a `status='canceled'` es `cancel()`/`cancelSubscriptionForSupport`, que ya
+  // dejan `mp_subscription_id = NULL` al cancelar voluntariamente. Por lo
+  // tanto una fila `canceled` con `mp_subscription_id` NO-nulo es SIEMPRE una
+  // reactivación en curso (`reactivate()` acepta `canceled` como origen y
+  // escribe un preapproval NUEVO sin cambiar el status, a la espera del
+  // webhook). Pisarlo con NULL en este sweep borraba la referencia al
+  // preapproval recién creado: `onPaymentApproved` no matcheaba después y el
+  // pago quedaba huérfano. Al preservarlo: si el pago llega, `onPaymentApproved`
+  // (acepta `blocked` vía `transitionToActiveFromAny`) activa correctamente;
+  // si nunca llega, el retention worker cancela el preapproval en MP antes de
+  // borrar la fila (data-retention-cleanup.worker.ts). Caso ya-abandonado (id
+  // ya NULL por `cancel()`) es no-op.
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET status = 'blocked'::subscription_status,
         scheduled_deletion_at = NOW() + (${CANCELED_BLOCKED_DELETION_DAYS} || ' days')::interval,
-        mp_subscription_id = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
       AND status = 'canceled'

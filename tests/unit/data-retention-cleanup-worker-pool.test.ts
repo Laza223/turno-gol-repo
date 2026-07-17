@@ -60,7 +60,18 @@ beforeEach(() => {
 describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca getSql/getDb/withTenantContext', () => {
   it('lee los targets y ejecuta el wipe transaccional vía getWorkerSql/getWorkerDb', async () => {
     h.getWorkerSql.mockReturnValue(makeSqlTag([{ id: 'tenant-1' }]))
-    const txExecute = vi.fn().mockResolvedValue(undefined)
+    // TG-P0-RETENTION-03: `wipeTenant` ahora hace 2 SELECT dentro de la tx
+    // (FOR UPDATE de tenant_subscriptions + el chequeo de elegibilidad fresco
+    // de tenants) ANTES de los DELETE — necesitan devolver una fila con
+    // `eligible: true` para que el wipe siga de largo (si no, el mock
+    // resolvería `undefined` y el guard nuevo lo tomaría como no-elegible,
+    // el test dejaría de ejercitar el wipe completo). `mp_subscription_id`
+    // en null evita que el post-commit intente llamar a MP acá — esto es un
+    // test de CABLEADO del pool, no de la lógica de cancelación (esa vive en
+    // tests/integration/data-retention-cleanup.test.ts).
+    const txExecute = vi
+      .fn()
+      .mockResolvedValue([{ mp_subscription_id: null, eligible: true }])
     const transaction = vi.fn(
       async (fn: (tx: { execute: typeof txExecute }) => Promise<void>) => {
         await fn({ execute: txExecute })
@@ -76,8 +87,9 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     expect(h.getWorkerSql).toHaveBeenCalled()
     expect(h.getWorkerDb).toHaveBeenCalled()
     expect(transaction).toHaveBeenCalledTimes(1)
-    // session_replication_role + 17 DELETEs + 1 UPDATE tenants = 19 statements.
-    expect(txExecute.mock.calls.length).toBe(19)
+    // session_replication_role + FOR UPDATE ts + chequeo de elegibilidad +
+    // 17 DELETEs + 1 UPDATE tenants = 21 statements.
+    expect(txExecute.mock.calls.length).toBe(21)
     expect(h.getSql).not.toHaveBeenCalled()
     expect(h.getDb).not.toHaveBeenCalled()
     expect(h.withTenantContext).not.toHaveBeenCalled()

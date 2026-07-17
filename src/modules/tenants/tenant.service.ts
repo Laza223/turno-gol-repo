@@ -1,7 +1,7 @@
 import { and, eq, like, or } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
-import { generateSlug } from './tenant.utils'
+import { generateSlug, RESERVED_SLUGS } from './tenant.utils'
 import type {
   CreateTenantInput,
   OpeningHours,
@@ -15,12 +15,16 @@ export { generateSlug } from './tenant.utils'
 
 export async function generateUniqueSlug(name: string): Promise<string> {
   const db = getDb()
-  const base = generateSlug(name)
+  let base = generateSlug(name)
+  // Un slug igual a un segmento estático del App Router queda shadowed (Next
+  // resuelve estático antes que (public)/[slug]): se sufija antes de buscar colisiones.
+  if (RESERVED_SLUGS.has(base)) base = `${base}-futbol`
   const existing = await db
     .select({ slug: tenants.slug })
     .from(tenants)
     .where(or(eq(tenants.slug, base), like(tenants.slug, `${base}-%`)))
   const slugSet = new Set(existing.map((r) => r.slug))
+  for (const reserved of RESERVED_SLUGS) slugSet.add(reserved)
   if (!slugSet.has(base)) return base
   for (let i = 2; i < 1000; i++) {
     const candidate = `${base}-${i}`

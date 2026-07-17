@@ -566,3 +566,18 @@ Continuación del esfuerzo docs/marketing/ (misma sesión que la estrategia). Co
 - NO tocado: template no-show-debt (lo eliminó la sesión paralela, verificado en código), testimonio de /login (decisión del dueño), doc4_monetizacion.md (precios viejos, pendiente).
 
 Nada commiteado.
+
+## 2026-07-17 — Slugs reservados: tenant con slug de ruta estática quedaba shadowed
+
+Hallazgo (esfuerzo UX 5 pilares): `generateUniqueSlug` (`src/modules/tenants/tenant.service.ts:16`) solo chequeaba colisión contra `tenants.slug`, nunca contra segmentos estáticos del App Router. Como `(public)/[slug]` vive en la raíz, un tenant llamado "Precios", "Login", "Grilla", etc. generaba un slug que Next resuelve como ruta estática (estático gana sobre dinámico) → página pública inalcanzable sin error visible.
+
+- `src/modules/tenants/tenant.utils.ts`: nueva constante `RESERVED_SLUGS` (49 entradas) — enumeración real de segmentos top-level de `src/app` (los 6 route groups aportan hijos top-level: `(admin)` grilla/caja/…, `(auth)` login/ingresar/…, `(business)` precios/blog/vs/…, `(player)`, `(public)` explorar/…, `(super-admin)`) + raíz (`api`, `home`, `mock-mp`, `onboarding`, `reserva`, `select-tenant`, `icon-*`) + `c` (prefijo del link público `/c/{slug}`).
+- `src/modules/tenants/tenant.service.ts`: `generateUniqueSlug` sufija base reservada con `-futbol` ("precios" → "precios-futbol", decisión de producto propuesta en el pedido: sufijo menos invasivo) y además une `RESERVED_SLUGS` al set de colisiones para que ningún candidato numérico caiga en un slug reservado (edge: `icon-192`/`icon-512` son rutas reales).
+- Tests: `tests/unit/tenant-service.test.ts` +4 casos (sufijo `-futbol`, barrido exhaustivo de las 49 reservas —ninguna puede salir como slug—, fallback numérico `grilla-futbol-2`, salto de candidato numérico reservado `icon-192`→`icon-193`). 14/14 🟢.
+- Migración para tenants existentes: NO hace falta — pre-deploy, sin tenants productivos; seeds usan `e2e-complejo-demo` / `e2e-complejo-sena` / `staging-demo` (ninguno reservado).
+- Verificación: `pnpm vitest run tests/unit/tenant-service.test.ts` → 14/14 🟢, `pnpm typecheck` 🟢, `pnpm lint` → 0 errors (27 warnings pre-existentes, ninguno en archivos tocados).
+- Nota colateral (NO tocado): `buildPublicLinkUrl` (`src/lib/utils.ts:27`) en este worktree todavía arma `/c/{slug}` — el fix Fase 0 UX que lo pasa a `/{slug}` vive en otro worktree/rama. La constante nueva cubre ambos mundos (`c` reservado).
+
+Mantenimiento: al agregar una ruta top-level nueva en `src/app`, agregar el segmento a `RESERVED_SLUGS` (comentario en la constante lo indica).
+
+Nada commiteado.

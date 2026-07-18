@@ -343,7 +343,7 @@ function Features() {
               Cada función está diseñada para aumentar tu ocupación.
             </h2>
             <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Herramientas que nacieron de la operación diaria de complejos como el tuyo. Todo lo que necesitás, nada que sobre.
+              Herramientas pensadas para la operación diaria de complejos como el tuyo. Todo lo que necesitás, nada que sobre.
             </p>
           </div>
         </Reveal>

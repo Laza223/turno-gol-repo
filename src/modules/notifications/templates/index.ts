@@ -10,6 +10,7 @@ import { renderDunningPaymentFailed, type DunningPaymentFailedData } from './dun
 import { renderDepositExpired, type DepositExpiredData } from './deposit-expired'
 import { renderAdminTransferExpired, type AdminTransferExpiredData } from './admin-transfer-expired'
 import { renderAdminLatePayment, type AdminLatePaymentData } from './admin-late-payment'
+import { renderAdminDepositAfterClose, type AdminDepositAfterCloseData } from './admin-deposit-after-close'
 import { renderAdminRefundFailed, type AdminRefundFailedData } from './admin-refund-failed'
 import { renderSubscriptionActivated, type SubscriptionActivatedData } from './subscription-activated'
 import { renderSubscriptionRenewed, type SubscriptionRenewedData } from './subscription-renewed'
@@ -29,6 +30,7 @@ export {
   renderDepositExpired,
   renderAdminTransferExpired,
   renderAdminLatePayment,
+  renderAdminDepositAfterClose,
   renderAdminRefundFailed,
 }
 
@@ -43,6 +45,7 @@ type TemplateDataMap = {
   deposit_expired: DepositExpiredData
   admin_transfer_expired: AdminTransferExpiredData
   admin_late_payment: AdminLatePaymentData
+  admin_deposit_after_close: AdminDepositAfterCloseData
   admin_refund_failed: AdminRefundFailedData
   subscription_activated: SubscriptionActivatedData
   subscription_renewed: SubscriptionRenewedData
@@ -65,6 +68,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   deposit_expired: renderDepositExpired,
   admin_transfer_expired: renderAdminTransferExpired,
   admin_late_payment: renderAdminLatePayment,
+  admin_deposit_after_close: renderAdminDepositAfterClose,
   admin_refund_failed: renderAdminRefundFailed,
   subscription_activated: renderSubscriptionActivated,
   subscription_renewed: renderSubscriptionRenewed,

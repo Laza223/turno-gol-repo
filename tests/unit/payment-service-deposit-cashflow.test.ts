@@ -17,7 +17,7 @@ vi.mock('@/shared/db/audit', () => ({
 }))
 vi.mock('@/modules/notifications/notification.service', () => ({
   enqueueNotification: vi.fn(),
-  enqueueTenantOwnerNotification: vi.fn(),
+  enqueueTenantOwnerNotification: vi.fn(async () => ['notif-owner-1']),
 }))
 vi.mock('@/modules/cashflow/cashflow.service', () => ({
   createCashFlow: vi.fn(),
@@ -35,6 +35,7 @@ vi.mock('@/shared/observability', () => ({
 import { dispatchPaymentInfo } from '@/modules/payments/payment.service'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
 import { captureMessage } from '@/lib/sentry'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
@@ -147,7 +148,7 @@ describe('dispatchPaymentInfo — ENS-21: cash_flow automático de la seña MP',
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
 
-  it('si la caja del día ya está cerrada, el cash_flow se salta pero la reserva igual confirma', async () => {
+  it('si la caja del día ya está cerrada, el cash_flow se salta pero la reserva igual confirma y se avisa al dueño', async () => {
     vi.mocked(transitionFromPendingPayment).mockResolvedValue({
       won: true,
       row: wonBookingRow(),
@@ -160,6 +161,18 @@ describe('dispatchPaymentInfo — ENS-21: cash_flow automático de la seña MP',
     expect(outcome.alreadyProcessed).toBe(false)
     if (!outcome.alreadyProcessed) expect(outcome.result).toBe('confirmed')
     expect(vi.mocked(captureMessage)).toHaveBeenCalled()
+    // La plata cobrada fuera de caja no puede quedar invisible: además del
+    // warning se encola el aviso al dueño y sus ids viajan en el outcome
+    // (el caller los despacha después del commit).
+    expect(vi.mocked(enqueueTenantOwnerNotification)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT_ID,
+        templateName: 'admin_deposit_after_close',
+        triggerEvent: 'payment.deposit_after_close',
+      }),
+      tx,
+    )
+    if (!outcome.alreadyProcessed) expect(outcome.notificationIds).toContain('notif-owner-1')
   })
 
   it('sin admin activo en el tenant, el cash_flow se salta sin romper la confirmación', async () => {

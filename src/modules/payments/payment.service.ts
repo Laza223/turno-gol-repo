@@ -316,11 +316,11 @@ async function handleApproved(
     tx,
   )
   if (result.won) {
-    await recordDepositCashFlow(info, tenantId, tx)
+    const wonNotificationIds: string[] = []
+    wonNotificationIds.push(...(await recordDepositCashFlow(info, tenantId, tx)))
     // doc7 Flujo 2 PASO 5: avisar al jugador por email que su reserva quedó
     // confirmada. Solo si el booking tiene jugador vinculado (las reservas
     // online siempre lo tienen; defensivo por si el tipo se relaja).
-    const wonNotificationIds: string[] = []
     if (result.row?.playerId) {
       const ctxRows = await tx.execute(sql`
         SELECT c.name AS court_name, t.name AS tenant_name, t.address AS tenant_address,
@@ -462,14 +462,14 @@ async function recordDepositCashFlow(
   info: GatewayPaymentInfo,
   tenantId: string,
   tx: DbTx,
-): Promise<void> {
+): Promise<string[]> {
   const proxyStaffUserId = await getFirstActiveAdminStaffUserId(tenantId)
   if (!proxyStaffUserId) {
     captureMessage('deposit cash_flow skipped: no active admin to attribute it to', {
       level: 'warning',
       extra: { bookingId: info.externalReference, tenantId, mpPaymentId: info.mpPaymentId },
     })
-    return
+    return []
   }
 
   try {
@@ -492,7 +492,23 @@ async function recordDepositCashFlow(
         level: 'warning',
         extra: { bookingId: info.externalReference, tenantId, mpPaymentId: info.mpPaymentId },
       })
-      return
+      // Las otras dos ramas de "plata sorpresa" (booking not found / late
+      // payment terminal) ya alertan al dueño; esta era la única que dejaba
+      // la plata invisible salvo por el warning de Sentry. Mismo contrato que
+      // admin_late_payment: el email se despacha DESPUÉS del commit de la tx
+      // (los ids viajan en WebhookOutcome.notificationIds).
+      return enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_deposit_after_close',
+          content: {
+            bookingId: info.externalReference,
+            amountArs: formatArs(info.amount),
+          },
+          triggerEvent: 'payment.deposit_after_close',
+        },
+        tx,
+      )
     }
     // R1-A (rechazo review): antes esto relanzaba CUALQUIER otro error, lo que
     // hacía ROLLBACK de la tx completa — incluida la transición
@@ -511,6 +527,7 @@ async function recordDepositCashFlow(
       },
     })
   }
+  return []
 }
 
 /**

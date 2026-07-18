@@ -8,7 +8,7 @@ import PaymentMethodSelector, { type PayMethod } from './PaymentMethodSelector'
 function Inner({ depositAmount }: { depositAmount: number }) {
   const { pending } = useFormStatus()
   return (
-    <button type="submit" disabled={pending} className="inline-flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] disabled:translate-y-0 disabled:opacity-60 motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25 dark:hover:shadow-emerald-500/30">
+    <button type="submit" disabled={pending} className="inline-flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] disabled:scale-100 disabled:opacity-60 whitespace-nowrap">
       {pending ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Procesando…</> : (
         <><ShieldCheck className="h-4 w-4" aria-hidden /> {depositAmount > 0 ? 'Pagar seña y reservar' : 'Confirmar reserva'}</>
       )}

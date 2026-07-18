@@ -35,6 +35,38 @@ export function formatFromPrice(cents: number | null | undefined): string | null
   return `Desde ${formatArs(cents)}`
 }
 
+/**
+ * Precio aproximado por jugador en centavos, redondeado hacia arriba al
+ * múltiplo de $100 (10.000 centavos) más cercano.
+ *
+ * Lógica: toma el formato más chico del complejo (el que más probablemente
+ * corresponde al `fromPriceCents`) y divide el precio entre el total de
+ * jugadores (formato × 2). Si no hay formatos o precio, retorna null.
+ *
+ * Ej: $60.000 (6.000.000¢) ÷ 14 jugadores (F7) = ~$4.286 → $4.300.
+ */
+export function perPlayerPriceCents(
+  fromPriceCents: number | null | undefined,
+  formats: number[],
+): number | null {
+  if (fromPriceCents == null || formats.length === 0) return null
+  const minFormat = Math.min(...formats)
+  const totalPlayers = minFormat * 2
+  const perPlayer = fromPriceCents / totalPlayers
+  // Redondear hacia arriba a la centena de pesos más cercana (= 10.000 centavos).
+  return Math.ceil(perPlayer / 10000) * 10000
+}
+
+/** Precio por jugador formateado: "~$4.300/jugador". Retorna null si no aplica. */
+export function formatPerPlayer(
+  fromPriceCents: number | null | undefined,
+  formats: number[],
+): string | null {
+  const pp = perPlayerPriceCents(fromPriceCents, formats)
+  if (pp == null) return null
+  return `~${formatArs(pp)}/jugador`
+}
+
 const dateFormatter = new Intl.DateTimeFormat('es-AR', {
   weekday: 'long',
   day: 'numeric',

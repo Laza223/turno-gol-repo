@@ -38,9 +38,9 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
             <div className="flex items-center gap-1 sm:gap-1.5">
               <Link
                 href="/explorar"
-                className="inline-flex items-center gap-2 rounded-full px-3 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4"
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm"
               >
-                <Search className="h-[17px] w-[17px]" aria-hidden />
+                <Search className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
                 Explorar
               </Link>
               <Link
@@ -63,7 +63,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
               ) : (
                 <Link
                   href="/ingresar"
-                  className="inline-flex h-11 items-center rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent active:scale-95 sm:px-6 dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10"
+                  className="inline-flex h-9 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent active:scale-95 sm:h-11 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap"
                 >
                   Ingresar
                 </Link>
@@ -76,7 +76,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
   }
 
   return (
-    <header className="sticky top-0 z-30 w-full px-4 py-3 bg-transparent">
+    <header className="sticky top-0 z-50 w-full px-4 py-3 bg-transparent">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full border border-border bg-card/80 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] backdrop-blur-md sm:px-6 lg:px-8">
         <Link href="/" aria-label="TurnoGol — inicio" className="transition-opacity hover:opacity-90">
           <Logo variant="horizontal" textClassName="text-foreground font-bold" iconClassName="bg-card border-border" />
@@ -118,10 +118,9 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
               </Link>
               <Link
                 href="/ingresar"
-                className="inline-flex h-11 md:h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs transition-all duration-200 hover:bg-primary/90 hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 md:text-sm"
+                className="inline-flex h-9 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent active:scale-95 sm:h-11 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap"
               >
-                <LogIn className="h-4 w-4" />
-                <span>Ingresar</span>
+                Ingresar
               </Link>
             </>
           )}

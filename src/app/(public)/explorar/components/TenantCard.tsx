@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import type { SlotPill } from '@/modules/tenants/availability-search.service'
-import { formatArs } from '@/lib/format'
+import { formatArs, formatPerPlayer } from '@/lib/format'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import { formatLabel, surfaceLabel } from '@/components/public/courtFacets'
 import RatingStars from '@/components/public/RatingStars'
@@ -32,6 +32,7 @@ export default function TenantCard({
   if (variant === 'compact') return <TenantCardCompact tenant={tenant} initialFavorited={initialFavorited} />
 
   const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
+  const perPlayer = formatPerPlayer(tenant.fromPriceCents, tenant.courtFormats)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
   const formats = tenant.courtFormats.slice(0, 3)
   const surfaces = tenant.courtSurfaces.slice(0, 1)
@@ -157,13 +158,18 @@ export default function TenantCard({
             <span />
           )}
           {fromPrice && (
-            <p className="flex items-baseline gap-1 text-right">
-              <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">desde</span>
-              <span className="font-display text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
-                {fromPrice}
-              </span>
-              <span className="text-xs text-muted-foreground">/turno</span>
-            </p>
+            <div className="text-right">
+              <p className="flex items-baseline justify-end gap-1">
+                <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">desde</span>
+                <span className="font-display text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
+                  {fromPrice}
+                </span>
+                <span className="text-xs text-muted-foreground">/turno</span>
+              </p>
+              {perPlayer && (
+                <p className="text-[11px] tabular-nums text-muted-foreground">{perPlayer}</p>
+              )}
+            </div>
           )}
         </div>
       </div>

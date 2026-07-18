@@ -363,8 +363,7 @@ function FinalCta() {
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-500"
-              style={{ boxShadow: '0 8px 30px rgba(16,185,129,.35)' }}
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-500/5 px-6 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] sm:px-8 sm:text-sm whitespace-nowrap"
             >
               Empezar 30 días gratis
               <ArrowRight className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0" aria-hidden />

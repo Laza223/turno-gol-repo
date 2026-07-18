@@ -123,7 +123,7 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         <p className="mt-3 text-sm text-muted-foreground">Tu pago fue acreditado.</p>
         <Link
           href="/mis-reservas"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
+          className="mt-8 inline-flex h-12 items-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] whitespace-nowrap"
         >
           Ver mis reservas
         </Link>

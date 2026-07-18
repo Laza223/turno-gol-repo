@@ -199,12 +199,11 @@ function PlanCardView({
       <div className="mt-6">
         <Link
           href="/register"
-          className={`group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+          className={`group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 whitespace-nowrap ${
             isActive
-              ? 'bg-primary text-primary-foreground hover:-translate-y-0.5 hover:bg-emerald-500'
-              : 'border border-white/15 bg-white/5 text-white hover:bg-white/10'
+              ? 'border border-emerald-400/60 bg-emerald-500/5 text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97]'
+              : 'border border-white/15 bg-white/5 text-white hover:bg-white/10 active:scale-[0.97]'
           }`}
-          style={isActive ? { boxShadow: '0 8px 30px rgba(16,185,129,.35)' } : undefined}
         >
           Empezar 30 días gratis
           <ArrowRight

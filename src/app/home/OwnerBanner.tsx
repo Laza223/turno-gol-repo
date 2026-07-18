@@ -64,7 +64,7 @@ export function OwnerBanner() {
 
               <Link
                 href="/para-complejos"
-                className="group inline-flex h-12 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 dark:shadow-emerald-500/25 sm:self-auto"
+                className="group inline-flex h-12 shrink-0 items-center justify-center gap-2 self-start rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-xs font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-300 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] sm:px-8 sm:text-sm whitespace-nowrap sm:self-auto"
               >
                 Registrá tu complejo
                 <ArrowRight

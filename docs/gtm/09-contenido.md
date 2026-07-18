@@ -38,6 +38,8 @@ Cadencia sostenida: **2 publicaciones/semana máximo.** El perfil debe verse viv
 
 > **⚠️ REVISIÓN 2026-07-12 — SEO/blog SALE de la lista negra.** Decisión del founder: la producción asistida por IA elimina el costo que justificaba diferirlo, y pre-lanzamiento es el momento de plantar activos de ciclo largo. La estrategia vive en [`docs/marketing/01-estrategia-contenido.md`](../marketing/01-estrategia-contenido.md). El racional original se conserva abajo como registro. **El resto de la lista negra (ads, TikTok, LinkedIn, prensa) sigue vigente.** El filtro de este doc (munición 1:1) sigue mandando para el contenido de venta; el contenido SEO es una vía paralela que no compite con horas de prospección porque la drafta la IA.
 
+> **⚠️ REVISIÓN 2026-07-18 — Contenido de ALCANCE en IG sale de la lista negra.** Decisión del founder: se activa una vía viral en el IG de TurnoGol (reels casi diarios producidos con IA + funnel de DMs "comentá YO") para generar consultas entrantes. Estrategia, guiones y reglas de claims en [11-contenido-viral-ig.md](./11-contenido-viral-ig.md). La cadencia "2 publicaciones/semana máx" de este doc deja de aplicar al IG; el filtro munición-1:1 sigue mandando para las 6 piezas núcleo, que ahora además se reciclan como reels (11 §4). Ads de Meta, TikTok, LinkedIn y prensa siguen vetados.
+
 - Ads de Meta/Google — hasta 10 pagos y mensajes calibrados con respuestas reales.
 - ~~SEO / blog — ciclo larguísimo, cero aporte a los primeros 100.~~ **Revertido 2026-07-12, ver arriba.**
 - TikTok / contenido de tendencias — audiencia equivocada (jugadores, no dueños; y jugadores sin marketplace no monetizan).

@@ -15,7 +15,7 @@
 2. **Nunca inventar métricas, clientes, casos o testimonios.** Sin datos reales de pilotos, no hay números de resultados en ningún mensaje. Los únicos números utilizables: precios (doc4), mecánica del producto, y datos que el propio prospecto dio.
 3. **Separar siempre `✅ FIRME` (mecánica verificable / dato real) de `⚠️ HIPÓTESIS` (a validar con dueños).** En cualquier análisis o recomendación nueva, etiquetar.
 4. **La IA no contacta a nadie.** Redacta borradores; el founder revisa y envía. Ningún mensaje sale sin ojos humanos.
-5. **No proponer canales nuevos (ads, partnerships) antes del gate correspondiente** ([08](./08-plan-7-30-90.md), [09](./09-contenido.md) lista negra). Excepción desde 2026-07-12: SEO/contenido web está ACTIVO por decisión del founder — estrategia en `docs/marketing/01-estrategia-contenido.md`. Si el founder pide otro canal vetado, recordarle el gate y después obedecer.
+5. **No proponer canales nuevos (ads, partnerships) antes del gate correspondiente** ([08](./08-plan-7-30-90.md), [09](./09-contenido.md) lista negra). Excepción desde 2026-07-12: SEO/contenido web está ACTIVO por decisión del founder — estrategia en `docs/marketing/01-estrategia-contenido.md`. Excepción desde 2026-07-18: la vía viral de IG está ACTIVA — guiones y reglas en [11-contenido-viral-ig.md](./11-contenido-viral-ig.md); la regla dura #2 (nada inventado) aplica a cada reel. Si el founder pide otro canal vetado, recordarle el gate y después obedecer.
 6. **Actualizar los docs es parte del trabajo**: objeción nueva → [07](./07-objeciones.md); dolor dominante distinto → [03](./03-posicionamiento.md); tasa real → [05](./05-funnel.md) y [08](./08-plan-7-30-90.md). Docs desactualizados = máquina rota.
 
 ## SE PUEDE PROMETER (verificado en código, julio 2026)
@@ -63,7 +63,7 @@
 
 - **CRM**: Google Sheet (fuente de verdad de prospectos). La IA no tiene acceso directo: el founder pega filas o exporta CSV a `docs/gtm/data/` (carpeta git-ignoreada si tiene datos personales — revisar antes de commitear teléfonos de terceros, Ley 25.326).
 - **Métricas semanales**: tabla al final de [08](./08-plan-7-30-90.md) → una fila por semana en el sheet.
-- **Aprendizajes**: directo en los docs 01-09. No crear archivos nuevos de notas sueltas; la doctrina vive en estos 11 archivos.
+- **Aprendizajes**: directo en los docs 01-11. No crear archivos nuevos de notas sueltas; la doctrina vive en estos 12 archivos.
 
 ## Criterio final (heredado del brief original)
 

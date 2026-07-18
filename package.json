@@ -92,7 +92,7 @@
     "lucide-react": "^1.24",
     "mercadopago": "^2.0",
     "next": "^16.2.10",
-    "next-mdx-remote": "^5",
+    "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
     "nextjs-toploader": "^3.9.17",
     "pg-boss": "^9.0",

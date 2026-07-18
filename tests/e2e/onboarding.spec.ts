@@ -126,6 +126,35 @@ test.describe('onboarding', () => {
       await page.getByRole('link', { name: /ir a mi panel/i }).click()
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
       await expect(page.getByText(/Complejo Wizard E2E/i).first()).toBeVisible({ timeout: 10_000 })
+
+      // Tour de coachmarks de primera visita (Fase 1 UX §7): 3 pasos NO
+      // bloqueantes, una sola vez (persiste admin_tour_seen_at). El wizard
+      // recién completado deja onboarding_completed=true sin esa marca, así
+      // que el primer /dashboard de un admin nuevo dispara el tour.
+      const step1Text = /abrí la grilla desde acá/i
+      const step2Text = /completá estos pasos/i
+      const step3Text = /compartí este link/i
+
+      await expect(page.getByText(step1Text)).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await expect(page.getByText(step2Text)).toBeVisible()
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await expect(page.getByText(step3Text)).toBeVisible()
+      // La persistencia de admin_tour_seen_at es una Server Action async
+      // disparada por el click: hay que esperar su round-trip ANTES del
+      // reload, o el tour puede reaparecer legítimamente (race, no bug).
+      const persistTour = page.waitForResponse(
+        (resp) => resp.request().method() === 'POST' && resp.url().includes('/dashboard'),
+        { timeout: 10_000 },
+      )
+      await page.getByRole('button', { name: 'Entendido' }).click()
+      await expect(page.getByText(step3Text)).toBeHidden()
+      await persistTour
+
+      // No vuelve a aparecer tras un reload: admin_tour_seen_at ya se persistió.
+      await page.reload()
+      await expect(page.getByText(/Complejo Wizard E2E/i).first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(step1Text)).toBeHidden()
     })
   })
 })

@@ -9,6 +9,8 @@ import { applyNoShowStrike } from '@/modules/relationships/ptr.service'
 import { markNoShow } from './booking.service'
 import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
+import { enqueueNotification } from '@/modules/notifications/notification.service'
+import { captureMessage } from '@/lib/sentry'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
@@ -28,16 +30,27 @@ export type AdminCancellationType = 'complejo' | 'jugador'
  *   plazo reembolsa, fuera retiene.
  * `inPolicy` se devuelve para el rastro de auditoría (también en el caso
  * 'complejo', donde no afecta la decisión pero documenta el contexto).
+ *
+ * Bug B3 (guard de turno YA TERMINADO): si `nowMs >= bookingEndUtcMs` el
+ * servicio ya se prestó — el admin puede cancelar sin reembolso, pero NUNCA
+ * reembolsar, ni siquiera con cancellationType='complejo'. Este guard corta
+ * el camino antes de mirar el motivo.
  */
 export function decideAdminRefund(opts: {
   cancellationType: AdminCancellationType
   bookingStartUtcMs: number
+  bookingEndUtcMs: number
   policyHours: number
   nowMs: number
 }): { shouldRefund: boolean; inPolicy: boolean } {
   const inPolicy =
     opts.nowMs < opts.bookingStartUtcMs - opts.policyHours * 3_600_000
-  const shouldRefund = opts.cancellationType === 'complejo' ? true : inPolicy
+  const turnoTermino = opts.nowMs >= opts.bookingEndUtcMs
+  const shouldRefund = turnoTermino
+    ? false
+    : opts.cancellationType === 'complejo'
+      ? true
+      : inPolicy
   return { shouldRefund, inPolicy }
 }
 
@@ -53,6 +66,7 @@ type LockedBooking = {
   date: string        // 'YYYY-MM-DD'
   time_start: string  // 'HH:MM:SS'
   starts_at: Date
+  ends_at: Date
 }
 
 async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking | undefined> {
@@ -68,7 +82,8 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       payment_id,
       date::text AS date,
       time_start::text AS time_start,
-      starts_at
+      starts_at,
+      ends_at
     FROM bookings
     WHERE id = ${bookingId}
     FOR UPDATE
@@ -85,12 +100,46 @@ async function loadSettings(tenantId: string, tx: DbTx): Promise<TenantSettings>
   return rows[0]!.settings as TenantSettings
 }
 
+/** Date (columna DATE, sin componente horario) → "DD/MM/YYYY". */
+function formatDateArs(d: Date): string {
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getUTCFullYear()}`
+}
+
+async function loadCancelEmailNames(
+  tenantId: string,
+  courtId: string,
+  playerId: string,
+  tx: DbTx,
+): Promise<{ courtName: string; tenantName: string; playerFirstName: string } | undefined> {
+  const rows = await tx.execute(sql`
+    SELECT c.name AS court_name, t.name AS tenant_name, p.first_name AS player_first_name
+    FROM courts c, tenants t, players p
+    WHERE c.id = ${courtId} AND t.id = ${tenantId} AND p.id = ${playerId}
+  `)
+  const row = (rows as unknown as Array<{
+    court_name: string
+    tenant_name: string
+    player_first_name: string
+  }>)[0]
+  if (!row) return undefined
+  return { courtName: row.court_name, tenantName: row.tenant_name, playerFirstName: row.player_first_name }
+}
+
 export type CancellationOutcome = {
   booking: BookingRow
   /** Set when a paid MP deposit was refunded. Caller must pass this to
    * `settleRefund` AFTER this function's transaction commits — see
    * `prepareRefund`'s doc comment for why the MP call can't happen in here. */
   pendingRefund?: PreparedRefund
+  /**
+   * IDs de notificaciones encoladas dentro de esta tx (doc7 Flujo 4:
+   * booking_canceled / booking_canceled_by_complex al jugador). El caller
+   * debe despacharlas con `dispatchEmail` DESPUÉS de que la tx commitee —
+   * mismo patrón que `admin_late_payment` en payment.service.ts.
+   */
+  notificationIds: string[]
 }
 
 export async function cancelByPlayer(
@@ -176,7 +225,44 @@ export async function cancelByPlayer(
 
   await invalidateCourtDateSlots(b.court_id, b.date)
 
-  return { booking: rowToBookingRow(updated[0]!), pendingRefund }
+  const bookingRow = rowToBookingRow(updated[0]!)
+
+  // doc7 Flujo 4: avisar al jugador de que su propia cancelación se procesó.
+  const notificationIds: string[] = []
+  const names = await loadCancelEmailNames(b.tenant_id, b.court_id, playerId, tx)
+  if (names) {
+    const id = await enqueueNotification(
+      {
+        tenantId: b.tenant_id,
+        recipientType: 'player',
+        recipientId: playerId,
+        templateName: 'booking_canceled',
+        content: {
+          playerFirstName: names.playerFirstName,
+          courtName: names.courtName,
+          date: formatDateArs(bookingRow.date),
+          timeStart: bookingRow.timeStart.slice(0, 5),
+          timeEnd: bookingRow.timeEnd.slice(0, 5),
+          tenantName: names.tenantName,
+          canceledBy: 'player',
+          ...(reason ? { reason } : {}),
+        },
+        triggerEvent: 'booking.canceled',
+      },
+      tx,
+    )
+    notificationIds.push(id)
+  } else {
+    // Bajo RLS real (policy staff_can_see_related_players) el jugador solo es
+    // visible si existe la fila PTR; si falta, el email de doc7 Flujo 4 se
+    // pierde en silencio — dejar rastro para no descubrirlo en producción.
+    captureMessage('cancel email skipped: player not visible under tenant context', {
+      level: 'warning',
+      extra: { bookingId: bookingRow.id, tenantId: b.tenant_id, playerId },
+    })
+  }
+
+  return { booking: bookingRow, pendingRefund, notificationIds }
 }
 
 // Etiqueta legible que se antepone al motivo para que `canceled_reason`
@@ -217,10 +303,12 @@ export async function cancelByAdmin(
   // 'complejo' reembolsa siempre; 'jugador' aplica la política horaria del complejo.
   const settings = await loadSettings(b.tenant_id, tx)
   const bookingStartUtc = new Date(b.starts_at)
+  const bookingEndUtc = new Date(b.ends_at)
   const policyHours = settings.cancellation_policy.hours_before
   const { shouldRefund, inPolicy } = decideAdminRefund({
     cancellationType,
     bookingStartUtcMs: bookingStartUtc.getTime(),
+    bookingEndUtcMs: bookingEndUtc.getTime(),
     policyHours,
     nowMs: Date.now(),
   })
@@ -273,7 +361,67 @@ export async function cancelByAdmin(
 
   await invalidateCourtDateSlots(b.court_id, b.date)
 
-  return { booking: rowToBookingRow(updated[0]!), pendingRefund }
+  const bookingRow = rowToBookingRow(updated[0]!)
+
+  // doc7 Flujo 4: avisar al jugador según quién decidió la cancelación.
+  // Reserva manual sin jugador (guest, doc7:327-328) → sin email.
+  const notificationIds: string[] = []
+  if (bookingRow.playerId) {
+    const names = await loadCancelEmailNames(b.tenant_id, b.court_id, bookingRow.playerId, tx)
+    if (names) {
+      const id =
+        cancellationType === 'complejo'
+          ? await enqueueNotification(
+              {
+                tenantId: b.tenant_id,
+                recipientType: 'player',
+                recipientId: bookingRow.playerId,
+                templateName: 'booking_canceled_by_complex',
+                content: {
+                  playerFirstName: names.playerFirstName,
+                  courtName: names.courtName,
+                  date: formatDateArs(bookingRow.date),
+                  timeStart: bookingRow.timeStart.slice(0, 5),
+                  timeEnd: bookingRow.timeEnd.slice(0, 5),
+                  tenantName: names.tenantName,
+                  refundConfirmed: newDepositStatus === 'refunded',
+                },
+                triggerEvent: 'booking.canceled_by_admin',
+              },
+              tx,
+            )
+          : await enqueueNotification(
+              {
+                tenantId: b.tenant_id,
+                recipientType: 'player',
+                recipientId: bookingRow.playerId,
+                templateName: 'booking_canceled',
+                content: {
+                  playerFirstName: names.playerFirstName,
+                  courtName: names.courtName,
+                  date: formatDateArs(bookingRow.date),
+                  timeStart: bookingRow.timeStart.slice(0, 5),
+                  timeEnd: bookingRow.timeEnd.slice(0, 5),
+                  tenantName: names.tenantName,
+                  canceledBy: 'admin',
+                  reason,
+                },
+                triggerEvent: 'booking.canceled_by_admin',
+              },
+              tx,
+            )
+      notificationIds.push(id)
+    } else {
+      // Ídem cancelByPlayer: sin fila PTR el jugador no es visible bajo el
+      // contexto de tenant y el email se saltearía en silencio.
+      captureMessage('cancel email skipped: player not visible under tenant context', {
+        level: 'warning',
+        extra: { bookingId: bookingRow.id, tenantId: b.tenant_id, playerId: bookingRow.playerId },
+      })
+    }
+  }
+
+  return { booking: bookingRow, pendingRefund, notificationIds }
 }
 
 /**

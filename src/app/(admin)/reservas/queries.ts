@@ -1,5 +1,6 @@
 import { sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
+import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
 
 export type ReservaListRow = {
   id: string
@@ -15,6 +16,16 @@ export type ReservaListRow = {
   depositAmount: number
   depositStatus: string
   paymentMethod: string | null
+  /**
+   * Instante físico absoluto del FIN del turno (TIMESTAMPTZ, migraciones
+   * 040/041) — fuente de verdad del guard "turno ya jugado" en el preview de
+   * reembolso (BookingActions/QuickActions, clase de B3): backend
+   * (`decideAdminRefund`) nunca reembolsa un turno terminado, ni para
+   * 'complejo'. Opcional/nullable a propósito: la query siempre lo trae
+   * (columna NOT NULL post-backfill), pero no rompe consumidores/stories que
+   * arman un `ReservaListRow` a mano sin este campo.
+   */
+  endsAt?: string | null
 }
 
 /** Rango temporal de la lista, relativo al día ART actual. */
@@ -74,7 +85,7 @@ export async function listTenantBookings(
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
-           b.payment_method AS "paymentMethod",
+           b.payment_method AS "paymentMethod", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            b.guest_name AS "guestName"
@@ -127,6 +138,17 @@ export type ReservaDetail = ReservaListRow & {
   cancellationPolicyHours: number
   /** Tarea #4 — id del abonado si el turno es de tipo fixed (NULL en otro caso). */
   abonadoId: string | null
+  /**
+   * Instante físico absoluto (TIMESTAMPTZ, migraciones 040/041) — fuente de
+   * verdad para el preview de plazo de cancelación en BookingActions (R3-1),
+   * evita el cálculo manual con offset fijo -3 que erraba en turnos de
+   * madrugada de complejos closes_next_day. Opcional/nullable a propósito:
+   * `getBookingDetail` siempre lo trae (columna NOT NULL post-backfill), pero
+   * BookingActions cae al cálculo manual si por algún motivo llegara ausente
+   * (y así no rompe consumidores/stories que arman un `ReservaDetail` a mano
+   * sin este campo).
+   */
+  startsAt?: string | null
 }
 
 export async function getBookingDetail(
@@ -143,6 +165,7 @@ export async function getBookingDetail(
            b.canceled_reason AS "canceledReason",
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS "cancellationPolicyHours",
            b.abonado_id AS "abonadoId",
+           b.starts_at AS "startsAt", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            p.phone AS "playerPhone"
@@ -175,6 +198,14 @@ export type BookingCharges = {
  * Tarea #8 — cobros de mostrador del turno: cash_flows income vinculados al
  * booking_id. NO incluye la seña (que se trackea aparte en deposit_amount), así
  * el resumen suma seña + cobros sin doble-contar.
+ *
+ * ENS-21: desde que `handleApproved` (payment.service.ts) inserta un cash_flow
+ * automático para la seña confirmada por MP (mismo category='booking' que un
+ * cobro de mostrador, para que el reporte de caja la vea), esa fila EXISTE en
+ * `cash_flows` con `booking_id` seteado — sin excluirla acá se sumaría de
+ * nuevo sobre `depositCounted` (que ya la cuenta vía deposit_status) y además
+ * aparecería duplicada en la lista de "cobros" de la UI. Se excluye por match
+ * exacto de `description` (depositCashFlowDescription, booking.charges.ts).
  */
 export async function getBookingCharges(
   tenantId: string,
@@ -185,6 +216,7 @@ export async function getBookingCharges(
     SELECT id, amount, method, description, occurred_at::text AS "occurredAt"
     FROM cash_flows
     WHERE tenant_id = ${tenantId} AND booking_id = ${bookingId} AND type = 'income'
+      AND description <> ${depositCashFlowDescription(bookingId)}
     ORDER BY occurred_at ASC
   `)
   const charges = rows as unknown as BookingChargeRow[]

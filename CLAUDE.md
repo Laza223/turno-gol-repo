@@ -27,7 +27,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - `doc11` — 12 ADRs (RLS, Magic Link, Resend, MercadoPago, pg-boss, monolito, AFIP out-of-scope, +18 declaración jurada). NOTA: ADR-002 (Magic Link) en migración — ver `docs/superpowers/specs/2026-06-16-auth-password-migration-design.md`.
 - `doc12` — Tenant isolation: 12 tablas RLS, 6 globales + 1 híbrida + system_admins, SET LOCAL, JWT, RLS dual para jugadores
 - `doc13` — SQL completo: 19 tablas + system_admins, ENUMs, exclusion constraints, índices, RLS policies
-- `doc14` — Tech stack: Next.js 14, TypeScript, Drizzle ORM, Supabase, pg-boss, shadcn/ui
+- `doc14` — Tech stack (doc desactualizado: el stack real migró a Next.js 16 / React 19 / Tailwind 4 / Zod 4 — ver "Stack confirmado" abajo)
 - `doc15` — API contracts: endpoints, payloads, auth, error codes
 
 ### Capa de Calidad & Operaciones
@@ -38,10 +38,10 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - `doc20` — Design System: `docs/spec/design-system/MASTER.md` como fuente de verdad visual
 
 ## Stack confirmado
-- Next.js 14 (App Router) + TypeScript strict
-- PostgreSQL via Supabase (Auth + Realtime + Storage)
-- Drizzle ORM + pg-boss (background jobs)
-- shadcn/ui + Tailwind CSS
+- Next.js 16 (App Router, Turbopack) + React 19 + TypeScript strict
+- PostgreSQL via Supabase (Auth + Realtime). **Storage de imágenes: Cloudflare R2** (`src/shared/storage/r2.ts`), NO Supabase Storage
+- Drizzle ORM + Zod 4 (validación) + pg-boss (background jobs)
+- shadcn/ui + Tailwind CSS v4
 - MercadoPago (Checkout Pro + Suscripciones; OAuth por complejo para señas)
 - Resend (email transaccional — WhatsApp descartado para v1, ver ADR-003)
 - Web Push API (notificaciones push al admin cuando llega reserva online)
@@ -68,7 +68,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 
 ### Migraciones (importante)
 - `db:push` y `db:migrate` son alias de `drizzle-kit push:pg` y están DENEGADOS por `.claude/settings.json` — no usarlos
-- Las migraciones reales son SQL escritas a mano en `src/shared/db/migrations/0*.sql` (numeradas 001–042; incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/` (`pnpm db:sync-supabase` sincroniza)
+- Las migraciones reales son SQL escritas a mano en `src/shared/db/migrations/0*.sql` (numeradas 001–045; incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/` (`pnpm db:sync-supabase` sincroniza)
 - CI las aplica en orden vía psql; NUNCA modificar migraciones existentes — crear una nueva
 
 ## Arquitectura del código
@@ -107,7 +107,7 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - Timestamps en UTC, conversión a ART solo en el frontend
 - UUIDs como primary keys, nunca autoincremental
 - `SET LOCAL` para tenant context, nunca `SET` sin LOCAL
-- Auth staff: email+password. Jugador sigue passwordless (Magic Link). SuperAdmin: script + MFA TOTP. La identidad sale del JWT (`app_metadata`), no del método de login.
+- Auth staff: email+password. Jugador sigue passwordless (Magic Link). SuperAdmin: script (`seed:system-admin`) + allowlist `SYSTEM_ADMIN_EMAILS` (MFA TOTP: columnas en schema, aún NO enforced en los guards). La identidad sale del JWT (`app_metadata`), no del método de login.
 - Correr `pnpm typecheck` después de cada cambio
 
 ## Convenciones de comunicación
@@ -117,18 +117,18 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - Si falta info, preguntar antes de inventar
 
 ## Multi-tenancy
-- Tablas aisladas (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, products, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions
+- Tablas aisladas (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions
 - Tablas globales (sin tenant_id): tenants, players, staff_users, plans, price_versions, processed_webhooks
 - Tablas híbridas (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (solo el jugador, por `app.current_player_id`)
 - Tabla operacional: feature_flags (fila con tenant_id NULL = default global; con tenant_id = override por complejo)
-- Tabla del sistema (sin RLS, acceso super admin): system_admins
+- Tabla del sistema: `system_admins` — **tiene RLS + FORCE self-scoped** (migr. 006+036: policies SELECT/UPDATE por `app.current_system_admin_id`, SIN policy de INSERT). El bootstrap (`seed:system-admin`) inserta vía pool worker BYPASSRLS (`getWorkerDb`), no vía `turnogol_app`.
 - NOTA: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció (reviews, player_favorites, push_subscriptions, feature_flags). Specs desactualizados respecto al código.
 - Players son cross-tenant: un jugador reserva en N complejos
 - El JWT del admin tiene tenant_id; el del jugador tiene player_id (sin tenant_id)
 - **RLS dual en `bookings` y `player_tenant_relationships`**: policy para admin (por `app.current_tenant_id`), policy para jugador (por `app.current_player_id`). Policy Realtime SOLO en `bookings` (grilla admin). `player_tenant_relationships` no necesita Realtime en v1.
 - Background jobs usan rol de servicio separado: `turnogol_worker` (BYPASSRLS, pool de `WORKER_DATABASE_URL`) vs `turnogol_app` (restringido, RLS enforced) — migr. 037–039
 - `tenants.mp_access_token` + `mp_refresh_token`: credenciales OAuth MP del complejo para cobrar señas (encriptadas at-rest)
-- **Super Admin**: tabla `system_admins`, panel en `/super-admin/*`, puede ver todos los tenants, métricas globales. Fase 2 (Impersonación) diferida.
+- **Super Admin**: tabla `system_admins`, panel en `/super-admin/*`, puede ver todos los tenants y métricas globales, y **impersonar** un complejo (cookie firmada `tg_sa_impersonate` HMAC, TTL 1h — `src/modules/auth/impersonation.ts` + `impersonation.server.ts`). El login de super-admin rutea a `/super-admin`.
 
 ## Convenciones críticas de schema
 - ENUMs usan `canceled` (americano, una L). NUNCA `cancelled` (británico, doble L)
@@ -154,7 +154,7 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - **No-show = softban por reincidencia (REVERTIDO de "no-show = deuda", 2026-07-11)**: el cambio #5 original (deuda financiera + bloqueo indefinido en `player_tenant_relationships.balance`) se consideró desproporcionado — cobraba plata nunca entregada y bloqueaba sin plazo. `player_tenant_relationships.balance` se ELIMINÓ (migr. 044); no existe deuda de dinero por no-show. Modelo actual: marcar no-show sigue capturando la seña pagada (`deposit_status='captured'`, único costo real) y registra la ausencia en `player_tenant_relationships.noshow_count`/`last_no_show_at`. La 1ra ausencia (o la 1ra después de `NO_SHOW_STRIKE_WINDOW_DAYS`=90 días sin faltar) solo se registra; la 2da dentro de esa ventana dispara un bloqueo de `NO_SHOW_SOFTBAN_DAYS`=14 días para reservar online, vía una fila en `tenant_player_bans` (mismo mecanismo que los bans manuales del complejo, `checkPlayerBanned` ya lo lee — no hay gate nuevo). Lógica en `handleNoShow` (`booking.cancellation.ts`) → `applyNoShowStrike` (`ptr.service.ts`). Constantes en `src/shared/constants.ts`.
 - **Abonados sin saldo a favor (REVERTIDO, 2026-07-10)**: el sistema de crédito/saldo a favor copiado de ATC (`abonados.credit_balance`, `bookings.credit_applied`, `CashFlow` categoría `abonado_payment`) fue eliminado — modelo ATC descartado para fútbol. El abonado NO tiene saldo a favor ni precio mensual: solo `price_per_session` (precio por sesión).
 - **Módulo Jugadores** (`/jugadores`, cambio #9): vista admin de jugadores vinculados al complejo (vía `player_tenant_relationships`, NUNCA guests). Ficha = stats + indicador de softban activo (si `tenant_player_bans` tiene una fila vigente) + Abonados + historial. Sin cobro de deuda (ver softban arriba). Protegido con `requireOperatorStaff()` (admin + manager).
-- Gestión de caja completa (decisión actualizada): incluye stock/cantina (productos con precio, stock y alertas; ventas → CashFlow categoría `product_sale`) y control de gastos (`cashflow_type` = `expense`, categoría `operating_expense`). `cashflow_type`: `income` | `adjustment` | `expense`. Más cierre de caja diario.
+- Gestión de caja completa: ventas de cantina/bar (productos en `tenants.settings.canteen_products` JSONB con precio y **stock opcional**: si el producto define `stock`, la venta lo descuenta atómicamente vía `sellCanteenProductAction` y se bloquea al llegar a 0; sin `stock` = venta sin límite; ventas → CashFlow categoría `product_sale`) y control de gastos (`cashflow_type` = `expense`, categoría `operating_expense`). `cashflow_type`: `income` | `adjustment` | `expense`. Más cierre de caja diario. NOTA: la tabla `products` fue ELIMINADA (migr. 046, deprecación #6, 2026-07-17) — estaba 100% muerta; la cantina siempre vivió en el JSONB `tenants.settings.canteen_products`. Con ella se borró la columna vestigial `cash_flows.product_id` (FK nunca poblada). Decisión: `docs/decisions/2026-07-17-deprecate-products-table.md`.
 - Realtime Supabase: solo para admin (grilla). Jugador NO tiene Realtime en v1 (polling/refresh).
 - Push notifications: Web Push API al admin cuando llega reserva online (sonido fijo, no configurable). **Horario silencioso (cambio #7)**: en madrugada (00:00–08:00 en la timezone del complejo) el push se agenda (`startAfter`) para las 08:00 locales en vez de sonar al instante. Implementado en `notifyAdminPush` vía `pushSendOptions`/`quietHoursReleaseAt` (`push-quiet-hours.ts`).
 - NO hay recordatorio 24hs al jugador en v1 (descartado en P9.2 por costo de email masivo; worker/template eliminados, cambio #18). Se reconstruye con WhatsApp post-v1.

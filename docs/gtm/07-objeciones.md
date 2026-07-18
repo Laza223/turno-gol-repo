@@ -5,16 +5,16 @@
 ## Las del dueño clásico (WhatsApp + cuaderno)
 
 **1. "Ya me arreglo con el WhatsApp / el cuaderno"**
-> "Y te funciona, no lo discuto. Una sola pregunta: ¿cuántos te clavaron este mes? Porque eso el cuaderno no te lo arregla. Yo no te saco el WhatsApp — el que te escribe le mandás el link y listo. Te agrego la seña: si no vienen, la plata queda para vos."
+> "Y te funciona, no lo discuto. Una sola pregunta: ¿cuántos turnos te colgaron este mes? Porque eso el cuaderno no te lo arregla. Yo no te saco el WhatsApp — el que te escribe le mandás el link y listo. Te agrego la seña: si no vienen, la plata queda para vos."
 
 **2. "Mis clientes no van a usar una app"**
 > "No es una app, no bajan nada. Es un link que abre una página, como ver un menú por QR. Y ojo: tus fijos y los de siempre siguen igual que ahora, los cargás vos o el encargado en dos toques. El link es para el que te escribe a las 11 de la noche preguntando si tenés cancha — ese reserva solo y vos ni te enterás hasta que te suena el celu."
 
 **3. "La seña me espanta clientes"**
-> "Puede pasar, por eso la manejás vos: elegís el porcentaje, o la apagás y usás el sistema solo para ordenar la grilla y la caja. Ahora, pensalo al revés: el que no quiere dejar ni una seña, ¿qué tan seguro está de venir? La seña no espanta clientes — espanta clavos." *(⚠️ HIPÓTESIS la última frase como argumento — medir si convence o irrita.)*
+> "Puede pasar, por eso la manejás vos: elegís el porcentaje, o la apagás y usás el sistema solo para ordenar la grilla y la caja. Ahora, pensalo al revés: el que no quiere dejar ni una seña, ¿qué tan seguro está de venir? La seña no espanta clientes — espanta a los que te cuelgan el turno." *(⚠️ HIPÓTESIS la última frase como argumento — medir si convence o irrita.)*
 
 **4. "¿Cuánto sale?" (con cara de caro)**
-> "1 o 2 canchas $55.000 al mes más IVA, de 3 a 5 $85.000 más IVA, 6 o más $115.000 más IVA. Sin comisión por reserva — es fijo. Hacé la cuenta conmigo: ¿a cuánto está tu turno? ¿$[X]? Un clavo por semana son $[4X] al mes. Si el sistema te salva UN clavo al mes, ya se pagó solo. Y el primer mes es gratis, así que la cuenta la hacés con tus números reales, no con los míos."
+> "1 o 2 canchas $55.000 al mes más IVA, de 3 a 5 $85.000 más IVA, 6 o más $115.000 más IVA. Sin comisión por reserva — es fijo. Hacé la cuenta conmigo: ¿a cuánto está tu turno? ¿$[X]? Un turno colgado por semana son $[4X] al mes. Si el sistema te salva UN turno colgado al mes, ya se pagó solo. Y el primer mes es gratis, así que la cuenta la hacés con tus números reales, no con los míos."
 
 **5. "No tengo tiempo de cargar todo / no me llevo con la tecnología"**
 > "Cero problema, de eso me ocupo yo. Vos me mandás una foto del cuaderno y los precios, y en 48 horas te lo entrego andando. Al encargado lo entreno yo en 20 minutos. Vos solo mirá el celu cuando suene."
@@ -23,7 +23,7 @@
 > "Perfecto. ¿Qué le va a preocupar a él? [escuchar, resolver] Hagamos esto: te dejo un texto cortito para reenviarle [el de [03](./03-posicionamiento.md)] y coordinamos 15 minutos los tres en el complejo — con las canchas de ustedes ya cargadas se decide más fácil que por teléfono."
 
 **7. "Ahora no, en [temporada baja/alta] veo"**
-> Temporada alta: "Justo ahora es cuando más te clavan y más plata perdés por turno. El sistema te lo dejo andando yo, a vos te lleva cero tiempo." / Temporada baja: "Mejor: lo armamos tranquilos ahora y llegás a la temporada con todo andando y los fijos cargados. Además el mes gratis te cae en el mes flojo."
+> Temporada alta: "Justo ahora es cuando más turnos te cuelgan y más plata perdés por turno. El sistema te lo dejo andando yo, a vos te lleva cero tiempo." / Temporada baja: "Mejor: lo armamos tranquilos ahora y llegás a la temporada con todo andando y los fijos cargados. Además el mes gratis te cae en el mes flojo."
 
 **8. "¿Y si se cae el sistema un sábado a la noche?"**
 > "La grilla la seguís viendo desde cualquier celu, y el encargado puede anotar reservas a mano en el sistema igual que siempre. Y tenés mi celular directo — no un mail de soporte que contesta el lunes. [Honesto:] Es un sistema nuevo, no te voy a decir que nunca va a tener un problema. Te digo que del otro lado estoy yo, no un robot."
@@ -49,7 +49,7 @@
 > "Tus datos son tuyos: los exportás cuando quieras [CSV]. Y la plata nunca pasa por nosotros — las señas van directo de tu cliente a tu MercadoPago. Si mañana TurnoGol desaparece, tu plata y tus clientes siguen siendo tuyos."
 
 **15. "¿Me avisa por WhatsApp al cliente?"**
-> [Honesto:] "Hoy el cliente recibe la confirmación por mail, y vos la reserva te llega al celu como notificación al instante. Aviso por WhatsApp no hay por ahora — no te vendo lo que no está. [Si insiste mucho: anotarlo — es señal de demanda real para post-v1, no prometer fecha.]"
+> [Honesto:] "Hoy el cliente recibe la confirmación por mail, y a vos la reserva te llega al celu como aviso al instante. Aviso por WhatsApp no hay por ahora — no te vendo lo que no está. [Si insiste mucho: anotarlo — es señal de demanda real para post-v1, no prometer fecha.]"
 
 ## Señales para NO perseguir
 

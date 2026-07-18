@@ -3,14 +3,16 @@
 import { revalidatePath } from 'next/cache'
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { uuid, moneyCents, boundedText } from '@/shared/validation/primitives'
+import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
+import { enforce } from '@/shared/rate-limit/apply'
 import { tenants } from '@/shared/db/schema'
 import {
   createManualBooking,
   completeBooking,
+  getAvailableSlots,
 } from '@/modules/bookings/booking.service'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import {
@@ -23,9 +25,13 @@ import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { settleRefund } from '@/modules/payments/payment.service'
-import { captureMessage } from '@/lib/sentry'
+import { dispatchEmail } from '@/modules/notifications/notification.service'
+import { captureMessage, captureException } from '@/lib/sentry'
 import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
 import { validateApiOutput } from '@/shared/api-output'
+import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { formatArs } from '@/lib/format'
+import { getBookingCharges } from './queries'
 import {
   SlotTakenError,
   CourtOfflineError,
@@ -109,6 +115,59 @@ export async function createBookingAction(
     revalidatePath('/grilla')
   }
   return result
+}
+
+const checkSlotAvailabilitySchema = z.object({
+  courtId: uuid,
+  date: dateStr,
+  timeStart: hhmm,
+})
+
+export type CheckSlotAvailabilityInput = z.input<typeof checkSlotAvailabilitySchema>
+export type CheckSlotAvailabilityResult = { available: boolean }
+
+/**
+ * Chequeo optimista de disponibilidad al ABRIR BookingFormModal (Fase 4 UX):
+ * la grilla puede quedar desactualizada si otro admin toma el turno mientras
+ * el modal sigue cerrado. La colisión REAL la sigue validando el server en el
+ * submit (createManualBooking → checkOverlapOrThrow + EXCLUDE constraint,
+ * migr. 041) — esto es 100% aditivo, de solo lectura (reusa getAvailableSlots,
+ * el mismo cálculo que ya usan la grilla y el portal público) y NUNCA la
+ * fuente de verdad. Ante auth/rate-limit/parseo/DB caídos devuelve
+ * available:true: el chequeo optimista jamás debe bloquear el flujo por un
+ * fallo propio.
+ */
+export async function checkSlotAvailabilityAction(
+  input: CheckSlotAvailabilityInput,
+): Promise<CheckSlotAvailabilityResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { available: true }
+  const { tenant } = auth
+
+  // Balde propio (adminAvailabilityCheck), NO adminCrud: esta lectura se
+  // dispara sola en cada apertura del modal y compartir el límite de 100/60s
+  // por tenant dejaría sin cupo a las mutaciones reales de dinero del staff.
+  const outcome = await enforce('adminAvailabilityCheck', tenant.id)
+  if (!outcome.ok) return { available: true }
+
+  const parsed = checkSlotAvailabilitySchema.safeParse(input)
+  if (!parsed.success) return { available: true }
+  const { courtId, date, timeStart } = parsed.data
+
+  try {
+    const available = await withTenantContext(tenant.id, async (tx) => {
+      const slots = await getAvailableSlots(tenant.id, courtId, date, tx)
+      const slot = slots.find((s) => s.timeStart === timeStart)
+      // Sin match (cancha offline, fuera de horario, día cerrado): no es una
+      // colisión — el submit real ya reporta esos casos con su propio error
+      // específico (CourtOfflineError, etc.). No bloqueamos por eso acá.
+      return slot ? slot.available : true
+    })
+    return { available }
+  } catch (err) {
+    captureException(err)
+    return { available: true }
+  }
 }
 
 // NOTE: detail/action mutations also need to revalidate `/reservas/[id]`.
@@ -269,7 +328,12 @@ export async function cancelBookingAction(
   const txResult = await withTenantContext(tenant.id, async (tx) => {
     try {
       const outcome = await cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx)
-      return { success: true as const, booking: outcome.booking, pendingRefund: outcome.pendingRefund }
+      return {
+        success: true as const,
+        booking: outcome.booking,
+        pendingRefund: outcome.pendingRefund,
+        notificationIds: outcome.notificationIds,
+      }
     } catch (err) {
       if (err instanceof BookingNotInConfirmedError) {
         return { success: false as const, error: 'La reserva no está en estado confirmado.' }
@@ -289,6 +353,25 @@ export async function cancelBookingAction(
 
   validateApiOutput(bookingResponseSchema, { data: txResult.booking }, 'cancelBookingAction')
   revalidateBooking(bookingId)
+
+  // doc7 Flujo 4: booking_canceled / booking_canceled_by_complex encolados
+  // dentro de la tx (cancelByAdmin) se despachan recién ahora que commiteó. Si
+  // el dispatch falla, la cancelación ya es válida —no hay rollback— y el sweep
+  // por cron de send-email levanta la notificación 'queued' igual; nunca
+  // convertir esto en error para el usuario.
+  try {
+    await Promise.all(txResult.notificationIds.map((id) => dispatchEmail(id)))
+  } catch (err) {
+    captureMessage('email dispatch failed after admin cancellation', {
+      level: 'warning',
+      extra: {
+        bookingId,
+        tenantId: tenant.id,
+        notificationIds: txResult.notificationIds,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+  }
 
   // caza-bugs #3: el refund a MP se resuelve DESPUÉS de que la cancelación ya
   // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
@@ -353,14 +436,74 @@ export async function addBookingChargeAction(
     // cobrable: no tiene sentido cobrar un turno cancelado/expirado o pendiente
     // de pago (todavía no hay turno confirmado).
     const bookingRows = await tx.execute(sql`
-      SELECT status FROM bookings WHERE id = ${bookingId} LIMIT 1
+      SELECT status, price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
+             deposit_status AS "depositStatus"
+      FROM bookings WHERE id = ${bookingId} LIMIT 1
     `)
-    const booking = (bookingRows as unknown as Array<{ status: string }>)[0]
+    const booking = (bookingRows as unknown as Array<{
+      status: string
+      priceSnapshot: number
+      depositAmount: number
+      depositStatus: string
+    }>)[0]
     if (!booking) {
       return { success: false as const, error: 'La reserva no existe.' }
     }
     if (!CHARGEABLE_STATUSES.includes(booking.status as (typeof CHARGEABLE_STATUSES)[number])) {
       return { success: false as const, error: 'No se puede cobrar una reserva en este estado.' }
+    }
+
+    // ENS-3 (ensayo real): el endpoint aceptaba cobros sin límite contra el
+    // saldo pendiente (turno de $100 aceptó $570 y la UI decía "Pagado
+    // completo"). La fuente de verdad es la DB, recalculada acá server-side,
+    // nunca lo que mande el cliente.
+    //
+    // Excepción: un reintento con la MISMA clientIdempotencyKey ya insertada
+    // (Fix #55, doble-submit/reintento de red) es el MISMO cobro ya aceptado
+    // — no hay que re-validar contra un pendiente que ya bajó por ese cobro,
+    // o un reintento legítimo se rechazaría por error.
+    let alreadyRegistered = false
+    if (clientIdempotencyKey) {
+      const dup = await tx.execute(sql`
+        SELECT 1 FROM cash_flows WHERE client_idempotency_key = ${clientIdempotencyKey} LIMIT 1
+      `)
+      alreadyRegistered = (dup as unknown[]).length > 0
+    }
+
+    if (!alreadyRegistered) {
+      // Hallazgo C (TOCTOU, ENS-3 real): dos cobros concurrentes del mismo
+      // booking leían el mismo `pending` sin lock y ambos pasaban la
+      // validación (turno de $10.000 aceptaba 2×$8.000). Lockear la fila del
+      // booking ANTES de leer los charges serializa los cobros: el segundo
+      // espera a que el primero commitee su cash_flow y relee el pendiente ya
+      // actualizado. Mismo patrón que createDepositPayment
+      // (payment.service.ts). Solo en este camino (valida+inserta) — el
+      // reintento idempotente (alreadyRegistered) no re-valida el pendiente,
+      // así que no necesita el lock.
+      //
+      // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
+      // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
+      // createCashFlow → assertDayOpen). Ningún otro caller de createCashFlow
+      // invierte ese orden (grep de pg_advisory_xact_lock + FOR UPDATE en
+      // cashflow/bookings/payments) — evita deadlock.
+      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
+      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+      const { pending } = summarizeBookingCharges({
+        priceSnapshot: booking.priceSnapshot,
+        depositAmount: booking.depositAmount,
+        depositStatus: booking.depositStatus,
+        chargesTotal,
+      })
+      if (pending <= 0) {
+        return { success: false as const, error: 'Este turno ya está pagado por completo.' }
+      }
+      if (amount > pending) {
+        return {
+          success: false as const,
+          error: `El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pending)}).`,
+        }
+      }
     }
 
     try {

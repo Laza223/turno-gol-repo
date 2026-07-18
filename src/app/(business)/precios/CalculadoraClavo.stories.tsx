@@ -35,7 +35,7 @@ export const Default: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: `$${nbsp}30.000`, pressed: true })).toBeInTheDocument()
     await expect(canvas.getByText(money(`$${nbsp}240.000`))).toBeInTheDocument()
-    await expect(canvas.getByText(/menos que lo que te llevan los clavos/i)).toBeInTheDocument()
+    await expect(canvas.getByText(/menos que lo que te llevan los turnos colgados/i)).toBeInTheDocument()
   },
 }
 
@@ -54,8 +54,8 @@ export const TurnoPersonalizado: Story = {
 export const CeroClavos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Un clavo menos por semana' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Un clavo menos por semana' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Un ausente menos por semana' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Un ausente menos por semana' }))
     await expect(canvas.getByText(/enhorabuena — sos la excepción/i)).toBeInTheDocument()
   },
 }
@@ -67,10 +67,10 @@ export const PerdidaMenorAlPlan: Story = {
     const input = canvas.getByLabelText(/a cuánto está tu turno/i)
     await userEvent.clear(input)
     await userEvent.type(input, '10000')
-    await userEvent.click(canvas.getByRole('button', { name: 'Un clavo menos por semana' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Un ausente menos por semana' }))
     // "$ 40.000" también es uno de los presets de turno: acotamos al resultado (role "status" del <output>).
     const resultado = within(canvas.getByRole('status'))
     await expect(resultado.getByText(money(`$${nbsp}40.000`))).toBeInTheDocument()
-    await expect(canvas.queryByText(/menos que lo que te llevan los clavos/i)).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/menos que lo que te llevan los turnos colgados/i)).not.toBeInTheDocument()
   },
 }

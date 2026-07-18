@@ -1,0 +1,393 @@
+src\app\(admin)\abonados\nuevo\actions.ts:76: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\abonados\nuevo\actions.ts:79: if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+src\app\(admin)\abonados\nuevo\actions.ts:138: return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+src\app\(admin)\abonados\nuevo\page.tsx:13: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\abonados\page.tsx:28: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\caja\actions.ts:26: category: z.enum(['booking', 'product_sale', 'other', 'no_show_correction', 'operating_expense']),
+src\app\(admin)\caja\actions.ts:129: settings: sql`settings || ${patch}::jsonb`,
+src\app\(admin)\caja\caja-lib.ts:44: if (category === 'booking') return 'Reserva'
+src\app\(admin)\caja\caja-lib.ts:124: * comparar (día y referencia en cero: tenant nuevo, "→ $ 0 vs ayer" es ruido).
+src\app\(admin)\caja\components\CloseDayButton.tsx:104: <span className="font-semibold tabular-nums text-foreground">{formatArsContable(balance)}</span>
+src\app\(admin)\caja\components\RegisterMovementModal.stories.tsx:136: expect.objectContaining({ type: 'income', category: 'booking', amount: 450000 }),
+src\app\(admin)\caja\components\RegisterMovementModal.tsx:31: { value: 'booking', label: 'Reserva' },
+src\app\(admin)\caja\components\RegisterMovementModal.tsx:73: setType('income'); setCategory('booking'); setMethod('cash')
+src\app\(admin)\caja\page.tsx:81: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\caja\page.tsx:203: delta={buildDelta(summary.balance, comparisons.yesterday.balance, 'vs ayer') ?? undefined}
+src\app\(admin)\caja\page.tsx:207: : `vs prom. semanal ${signedArs(summary.balance - comparisons.weekAvg.balance)}`
+src\app\(admin)\canchas\actions.ts:155: status: 'online' | 'offline',
+src\app\(admin)\canchas\actions.ts:203: inArray(bookings.status, ['confirmed', 'pending_payment']),
+src\app\(admin)\canchas\components\CourtList.tsx:28: status: 'online' | 'offline',
+src\app\(admin)\canchas\components\CourtList.tsx:230: const [currentStatus, setCurrentStatus] = useState<'online' | 'offline'>(court.status)
+src\app\(admin)\canchas\components\PricingSection.tsx:119: <Link href="/settings/horarios" className="font-medium underline underline-offset-2">
+src\app\(admin)\dashboard\actions.ts:16: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\dashboard\actions.ts:19: if (!tenant) return { success: false, error: 'No encontramos tu complejo.' }
+src\app\(admin)\dashboard\actions.ts:30: settings: sql`settings || '{"public_link_shared": true}'::jsonb`,
+src\app\(admin)\dashboard\dashboard-lib.ts:23: /** 'HH:MM' — puede ser '24:00' (slot que termina a medianoche). */
+src\app\(admin)\dashboard\dashboard-lib.ts:49: * Slots de 60' del día ART `dateStr` según horarios del tenant. `[]` si el día
+src\app\(admin)\dashboard\dashboard-lib.ts:116: (r.status === 'confirmed' || r.status === 'pending_payment') &&
+src\app\(admin)\dashboard\dashboard-lib.ts:148: return rows.filter((r) => r.type !== 'block' && r.status === 'completed').length
+src\app\(admin)\dashboard\dashboard-lib.ts:156: if (row.type === 'block' || row.status !== 'pending_payment') continue
+src\app\(admin)\dashboard\dashboard-lib.ts:178: row: Pick<DayBookingRow, 'status' | 'type' | 'depositStatus'>,
+src\app\(admin)\dashboard\dashboard-lib.ts:180: if (row.status === 'pending_payment') return 'esperando'
+src\app\(admin)\dashboard\page.tsx:35: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\dashboard\queries.ts:107: sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+src\app\(admin)\error.stories.tsx:8: * secundario ("Ir al dashboard") — ErrorState lo dibuja si secondaryHref
+src\app\(admin)\error.tsx:27: description="No pudimos cargar esta sección. El equipo ya fue notificado. Probá recargar; si el problema persiste, volvé al dashboard."
+src\app\(admin)\error.tsx:31: secondaryLabel="Ir al dashboard"
+src\app\(admin)\grilla\page.tsx:25: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\grilla\page.tsx:60: sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+src\app\(admin)\jugadores\[playerId]\JugadorProfileView.stories.tsx:49: bookingRow({ id: uid(1902), date: '2026-03-03', status: 'no_show', courtName: 'Cancha 2', priceSnapshot: 1_600_000 }),
+src\app\(admin)\jugadores\[playerId]\JugadorProfileView.tsx:76: <h1 className="text-2xl font-semibold text-foreground">{profile.name}</h1>
+src\app\(admin)\jugadores\[playerId]\JugadorProfileView.tsx:80: <dd className="text-foreground">{profile.email}</dd>
+src\app\(admin)\jugadores\[playerId]\JugadorProfileView.tsx:84: <dd className="text-foreground">{profile.phone ?? '—'}</dd>
+src\app\(admin)\jugadores\[playerId]\JugadorProfileView.tsx:89: <dd className="text-foreground">{formatDate(profile.firstSeenAt.slice(0, 10))}</dd>
+src\app\(admin)\jugadores\[playerId]\JugadorProfileView.tsx:111: {ban.until ? ` Hasta el ${formatDateArt(ban.until)}.` : ' Sin fecha de fin.'}
+src\app\(admin)\jugadores\[playerId]\JugadorProfileView.tsx:134: <p className="text-xs text-muted-foreground">{STATUS_LABELS[b.status] ?? b.status}</p>
+src\app\(admin)\layout.tsx:55: if (!user || user.type !== 'staff') redirect('/login')
+src\app\(admin)\layout.tsx:68: if (['blocked', 'churned', 'canceled', 'deleted'].includes(tenant.status)) {
+src\app\(admin)\metricas\MetricsDashboard.stories.tsx:12: * `fetch('/api/admin/metrics')` + `fetch('/api/admin/system-status')` propios
+src\app\(admin)\metricas\MetricsDashboard.stories.tsx:81: fetchMock: [{ match: '/api/admin/metrics', json: { error: 'internal' }, status: 500 }],
+src\app\(admin)\metricas\MetricsDashboard.tsx:147: <li key={slot.time} className="flex items-center gap-3 text-sm">
+src\app\(admin)\metricas\MetricsDashboard.tsx:154: style={{ width: `${Math.round((slot.count / max) * 100)}%` }}
+src\app\(admin)\metricas\MetricsDashboard.tsx:189: Operativa{status.db.latencyMs !== null ? ` · ${status.db.latencyMs} ms` : ''}
+src\app\(admin)\metricas\MetricsDashboard.tsx:258: const res = await fetch('/api/admin/system-status', { cache: 'no-store' })
+src\app\(admin)\metricas\MetricsDashboard.tsx:285: <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Cargando métricas">
+src\app\(admin)\metricas\MetricsDashboardLoader.tsx:11: <div className="space-y-4" role="status" aria-label="Cargando métricas">
+src\app\(admin)\metricas\page.tsx:17: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\reportes\page.tsx:79: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\reportes\page.tsx:171: accent={report.balance >= 0 ? 'emerald' : 'red'}
+src\app\(admin)\reportes\page.tsx:173: className={report.balance >= 0 ? 'ring-1 ring-emerald-600/20' : undefined}
+src\app\(admin)\reservas\actions.ts:301: captureMessage('mp refund settlement failed after admin cancellation', {
+src\app\(admin)\reservas\BookingListItem.tsx:10: function depositText(booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount'>): string {
+src\app\(admin)\reservas\BookingListItem.tsx:11: if (booking.depositAmount <= 0) return 'Sin seña'
+src\app\(admin)\reservas\BookingListItem.tsx:15: return `Seña pagada (${formatArs(booking.depositAmount)})`
+src\app\(admin)\reservas\BookingListItem.tsx:17: return `Seña pendiente (${formatArs(booking.depositAmount)})`
+src\app\(admin)\reservas\BookingListItem.tsx:25: function clientName(booking: Pick<ReservaListRow, 'playerName' | 'guestName' | 'type'>): string {
+src\app\(admin)\reservas\BookingListItem.tsx:26: if (booking.type === 'block') return 'Bloqueo'
+src\app\(admin)\reservas\BookingListItem.tsx:27: return booking.playerName ?? booking.guestName ?? 'Sin nombre'
+src\app\(admin)\reservas\BookingListItem.tsx:97: {isBlock && <Ban aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+src\app\(admin)\reservas\BookingListItem.tsx:141: {isBlock && <Ban aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+src\app\(admin)\reservas\BookingListItem.tsx:146: {!isBlock && <> · {depositText(booking)}</>}
+src\app\(admin)\reservas\page.tsx:96: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\reservas\queries.ts:42: return sql`AND b.status IN ('canceled_refunded', 'canceled_no_refund')`
+src\app\(admin)\reservas\queries.ts:44: return sql`AND b.status = ${status}::booking_status`
+src\app\(admin)\reservas\quick-actions-helpers.ts:10: return booking.status === 'pending_payment' || booking.status === 'confirmed'
+src\app\(admin)\reservas\QuickActions.tsx:116: run(() => markNoShowAction(booking.id), 'Marcada como ausente')
+src\app\(admin)\reservas\QuickActions.tsx:149: ? `Se reembolsará la seña de ${formatArs(booking.depositAmount)} vía MercadoPago.`
+src\app\(admin)\reservas\QuickActions.tsx:150: : `Coordiná el reembolso de ${formatArs(booking.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+src\app\(admin)\reservas\QuickActions.tsx:152: refundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount)} si está dentro del plazo, retención si no.`
+src\app\(admin)\reservas\QuickActions.tsx:169: onClick={() => run(() => confirmDepositPaymentAction(booking.id), 'Pago confirmado')}
+src\app\(admin)\reservas\QuickActions.tsx:179: onClick={() => run(() => completeBookingAction(booking.id), 'Marcada como completada')}
+src\app\(admin)\reservas\QuickActions.tsx:233: onSelect={() => run(() => confirmDepositPaymentAction(booking.id), 'Pago confirmado')}
+src\app\(admin)\reservas\QuickActions.tsx:240: onSelect={() => run(() => completeBookingAction(booking.id), 'Marcada como completada')}
+src\app\(admin)\reservas\QuickActions.tsx:245: onSelect={() => run(() => markNoShowAction(booking.id), 'Marcada como ausente')}
+src\app\(admin)\reservas\QuickActions.tsx:304: <label htmlFor={`cancel-reason-${booking.id}`} className="text-xs font-medium text-foreground">
+src\app\(admin)\reservas\status-visual.stories.tsx:7: * desde `{ status, type }` — las stories pasan por ahí en vez de fabricar el
+src\app\(admin)\reservas\status-visual.stories.tsx:23: args: { visual: reservaStatusVisual({ status: 'confirmed', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:37: args: { visual: reservaStatusVisual({ status: 'pending_payment', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:40: args: { visual: reservaStatusVisual({ status: 'confirmed', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:43: args: { visual: reservaStatusVisual({ status: 'completed', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:46: args: { visual: reservaStatusVisual({ status: 'no_show', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:49: args: { visual: reservaStatusVisual({ status: 'canceled_refunded', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:52: args: { visual: reservaStatusVisual({ status: 'canceled_no_refund', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:55: args: { visual: reservaStatusVisual({ status: 'expired', type: 'spontaneous' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:57: /** Bloqueo administrativo: el `type` gana por sobre cualquier `status`. */
+src\app\(admin)\reservas\status-visual.stories.tsx:59: args: { visual: reservaStatusVisual({ status: 'confirmed', type: 'block' }) },
+src\app\(admin)\reservas\status-visual.stories.tsx:65: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'pending_payment', type: 'spontaneous' })} />
+src\app\(admin)\reservas\status-visual.stories.tsx:66: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'confirmed', type: 'spontaneous' })} />
+src\app\(admin)\reservas\status-visual.stories.tsx:67: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'completed', type: 'spontaneous' })} />
+src\app\(admin)\reservas\status-visual.stories.tsx:68: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'no_show', type: 'spontaneous' })} />
+src\app\(admin)\reservas\status-visual.stories.tsx:69: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'canceled_refunded', type: 'spontaneous' })} />
+src\app\(admin)\reservas\status-visual.stories.tsx:70: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'canceled_no_refund', type: 'spontaneous' })} />
+src\app\(admin)\reservas\status-visual.stories.tsx:71: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'expired', type: 'spontaneous' })} />
+src\app\(admin)\reservas\status-visual.stories.tsx:72: <ReservaStatusBadge visual={reservaStatusVisual({ status: 'confirmed', type: 'block' })} />
+src\app\(admin)\reservas\[id]\BookingActions.stories.tsx:64: * Regla de negocio: el componente entero es `null` fuera de `status === 'confirmed'`.
+src\app\(admin)\reservas\[id]\BookingActions.stories.tsx:86: /** "Marcar ausente" abre confirmación (menciona la política de softban) antes de ejecutar. */
+src\app\(admin)\reservas\[id]\BookingDetailCard.tsx:31: ['Fecha', `${formatDateLong(booking.date)} · ${formatTime(booking.timeStart)}–${formatTime(booking.timeEnd)}`],
+src\app\(admin)\reservas\[id]\BookingDetailCard.tsx:33: ['Cliente', booking.playerName ?? booking.guestName ?? '—'],
+src\app\(admin)\reservas\[id]\BookingDetailCard.tsx:34: ['Teléfono', booking.playerPhone ?? booking.guestPhone ?? '—'],
+src\app\(admin)\reservas\[id]\BookingDetailCard.tsx:40: ? `${formatArs(booking.depositAmount)} (${DEPOSIT_LABEL[booking.depositStatus] ?? booking.depositStatus})`
+src\app\(admin)\reservas\[id]\BookingDetailCard.tsx:43: ['Método de pago', booking.paymentMethod ? (METHOD_LABEL[booking.paymentMethod] ?? booking.paymentMethod) : '—'],
+src\app\(admin)\reservas\[id]\BookingDetailCard.tsx:63: <dd className="mt-1 text-sm text-foreground">{booking.notesPlayer}</dd>
+src\app\(admin)\reservas\[id]\BookingDetailCard.tsx:69: <dd className="mt-1 text-sm text-foreground">{booking.canceledReason}</dd>
+src\app\(admin)\reservas\[id]\page.tsx:24: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\settings\facturacion\page.tsx:26: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\settings\facturacion\page.tsx:55: <dd className="font-medium text-foreground">{STATUS_LABELS[sub.status] ?? sub.status}</dd>
+src\app\(admin)\settings\horarios\AddClosedDateForm.stories.tsx:39: await expect(await canvas.findByRole('status')).toHaveTextContent('Día agregado.')
+src\app\(admin)\settings\horarios\AddClosedDateForm.tsx:45: <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">Día agregado.</p>
+src\app\(admin)\settings\horarios\HorariosForm.tsx:60: <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">Horarios guardados.</p>
+src\app\(admin)\settings\horarios\page.tsx:13: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\settings\perfil\page.tsx:10: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\settings\reservas\actions.ts:70: settings: sql`settings || ${patch}::jsonb`,
+src\app\(admin)\settings\reservas\page.tsx:10: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\settings\reservas\ReservasPolicyForm.stories.tsx:73: await expect(await canvas.findByRole('status')).toHaveTextContent('Políticas guardadas.')
+src\app\(admin)\settings\reservas\ReservasPolicyForm.tsx:277: <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
+src\app\(admin)\settings\SettingsTabs.tsx:4: { href: '/settings/perfil', label: 'Perfil' },
+src\app\(admin)\settings\SettingsTabs.tsx:5: { href: '/settings/reservas', label: 'Reservas' },
+src\app\(admin)\settings\SettingsTabs.tsx:6: { href: '/settings/horarios', label: 'Horarios' },
+src\app\(admin)\settings\SettingsTabs.tsx:7: { href: '/settings/facturacion', label: 'Facturación' },
+src\app\(admin)\staff\actions.test.ts:67: describe('staff actions — estado del tenant / kill-switch (#14)', () => {
+src\app\(admin)\staff\actions.test.ts:69: 'inviteStaffAction rechaza tenant en estado %s',
+src\app\(admin)\staff\actions.test.ts:78: it('deactivateStaffAction rechaza tenant bloqueado', async () => {
+src\app\(admin)\staff\actions.test.ts:86: it('rechaza un email que no es miembro activo del tenant', async () => {
+src\app\(admin)\staff\actions.test.ts:111: describe('staff actions — happy path supera los guards', () => {
+src\app\(admin)\staff\actions.test.ts:112: it('con tenant activo, deactivate avanza al rate-limit + DB', async () => {
+src\app\(admin)\staff\actions.ts:87: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\(admin)\staff\actions.ts:127: if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+src\app\(admin)\staff\actions.ts:248: if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+src\app\(admin)\staff\actions.ts:324: if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+src\app\(admin)\staff\actions.ts:380: if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+src\app\(admin)\staff\error.stories.tsx:19: error: Object.assign(new Error('failed to fetch staff roster'), { digest: undefined }),
+src\app\(admin)\staff\InviteStaffButton.stories.tsx:9: * slot `actions` de PageHeader, sobre `.page-header-band` — se reproduce acá
+src\app\(auth)\forgot-password\actions.ts:24: if (!email.success) return { status: 'error', message: 'Ingresá un email válido.' }
+src\app\(auth)\forgot-password\actions.ts:30: return { status: 'error', message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.' }
+src\app\(auth)\forgot-password\ForgotPasswordCard.stories.tsx:68: /** state.status === 'sent': la card entera cambia por el mensaje "Revisá tu email". */
+src\app\(auth)\forgot-password\ForgotPasswordCard.tsx:51: aria-invalid={state.status === 'error' ? 'true' : undefined}
+src\app\(auth)\ingresar\actions.ts:30: if (!email.success) return { status: 'error', message: 'Ingresá un email válido.' }
+src\app\(auth)\ingresar\actions.ts:34: return { status: 'error', message: 'Demasiados intentos. Esperá un minuto.' }
+src\app\(auth)\ingresar\actions.ts:42: return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.' }
+src\app\(auth)\ingresar\IngresarForm.stories.tsx:76: action: fn(async () => ({ status: 'sent' as const, email: 'tomas.ibanez@example.com' })),
+src\app\(auth)\ingresar\IngresarForm.tsx:121: aria-invalid={state.status === 'error' ? 'true' : undefined}
+src\app\(auth)\login\actions.ts:97: if (!email.success) return { status: 'error', message: 'Email inválido.' }
+src\app\(auth)\login\actions.ts:101: return { status: 'error', message: 'Demasiados intentos. Esperá un minuto.' }
+src\app\(auth)\register\RegisterCard.stories.tsx:66: /** state.status === 'confirm': reemplaza la card entera por "Confirmá tu email". */
+src\app\(auth)\register\RegisterCard.stories.tsx:69: action: fn(async () => ({ status: 'confirm' as const, email: 'marcelo@complejosanmartin.com' })),
+src\app\(auth)\register\RegisterCard.stories.tsx:82: action: fn(async () => ({ status: 'existing' as const, email: 'marcelo@complejosanmartin.com' })),
+src\app\(auth)\register\RegisterCard.tsx:112: <Link href="/login" className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline">
+src\app\(auth)\reset-password\actions.ts:35: return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+src\app\(auth)\reset-password\actions.ts:50: return { status: 'error', message: 'No pudimos actualizar la contraseña. Probá de nuevo.' }
+src\app\(auth)\reset-password\reset-form.tsx:41: aria-invalid={state.status === 'error' ? 'true' : undefined}
+src\app\(auth)\reset-password\reset-form.tsx:66: aria-invalid={state.status === 'error' ? 'true' : undefined}
+src\app\(auth)\verify\VerifyPage.stories.tsx:31: args: { searchParams: { status: 'success', intent: 'login', next: '/mis-reservas' } },
+src\app\(auth)\verify\VerifyPage.stories.tsx:43: args: { searchParams: { status: 'success', intent: 'signup', next: '/dashboard' } },
+src\app\(auth)\verify\VerifyPage.stories.tsx:51: args: { searchParams: { status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' } },
+src\app\(player)\configuracion\ConfiguracionView.stories.tsx:19: <div className="player-shell-bg min-h-dvh py-6">
+src\app\(player)\configuracion\DataExportButton.stories.tsx:46: fetchMock: [{ match: '/api/player/data-export', json: { error: 'server_error' }, status: 500 }],
+src\app\(player)\configuracion\DataExportButton.tsx:6: const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+src\app\(player)\configuracion\DataExportButton.tsx:14: const res = await fetch('/api/player/data-export', { credentials: 'include' })
+src\app\(player)\configuracion\DataExportButton.tsx:63: {status === 'loading' ? 'Generando...' : 'Descargar mis datos'}
+src\app\(player)\configuracion\Loading.stories.tsx:11: <div className="player-shell-bg min-h-dvh py-6">
+src\app\(player)\configuracion\loading.tsx:8: <div className="player-hero-band space-y-3 rounded-3xl border px-6 py-7" aria-hidden>
+src\app\(player)\configuracion\page.tsx:22: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(player)\eliminar-cuenta\EliminarCuentaView.stories.tsx:19: <div className="player-shell-bg min-h-dvh py-6">
+src\app\(player)\eliminar-cuenta\Loading.stories.tsx:11: <div className="player-shell-bg min-h-dvh py-6">
+src\app\(player)\eliminar-cuenta\page.tsx:22: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(player)\mis-reservas\actions.ts:36: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(player)\mis-reservas\actions.ts:120: captureMessage('mp refund settlement failed after player cancellation', {
+src\app\(player)\mis-reservas\LeaveReviewButton.stories.tsx:28: * Sin Server Action: hace `fetch('/api/player/reviews', {method:'POST'})`
+src\app\(player)\mis-reservas\LeaveReviewButton.stories.tsx:40: args: { bookingId: 'booking-5', tenantName: 'Complejo Fénix' },
+src\app\(player)\mis-reservas\LeaveReviewButton.stories.tsx:124: fetchMock: [{ match: '/api/player/reviews', json: { data: { id: 'review-1' } } }],
+src\app\(player)\mis-reservas\MisReservasView.stories.tsx:46: <div className="player-shell-bg min-h-dvh py-6">
+src\app\(player)\mis-reservas\MisReservasView.stories.tsx:61: row({ id: 'b-1', status: 'confirmed', date: artDateString(daysFromNow(1)) }),
+src\app\(player)\mis-reservas\MisReservasView.stories.tsx:81: bookings: [row({ id: 'b-fixed', type: 'fixed', status: 'confirmed' })],
+src\app\(player)\mis-reservas\MisReservasView.stories.tsx:116: row({ id: 'h-no-show', status: 'no_show', date: artDateString(daysFromNow(-4)) }),
+src\app\(player)\mis-reservas\MisReservasView.stories.tsx:127: row({ id: 'h-expired', status: 'expired', date: artDateString(daysFromNow(-7)) }),
+src\app\(player)\mis-reservas\MisReservasView.tsx:124: <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-6 py-7">
+src\app\(player)\mis-reservas\MisReservasView.tsx:131: className="player-hero-grid pointer-events-none absolute inset-0 -z-10"
+src\app\(player)\mis-reservas\page.tsx:18: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(player)\perfil\actions.ts:26: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(player)\perfil\actions.ts:88: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(player)\perfil\Loading.stories.tsx:11: <div className="player-shell-bg min-h-dvh py-6">
+src\app\(player)\perfil\loading.tsx:8: <div className="player-hero-band flex items-center gap-4 rounded-3xl border px-6 py-7" aria-hidden>
+src\app\(player)\perfil\page.tsx:65: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(player)\perfil\page.tsx:116: {player.termsVersion ? ` (versión ${player.termsVersion})` : ''}.
+src\app\(player)\perfil\ProfileForm.stories.tsx:63: await expect(await canvas.findByRole('status')).toHaveTextContent('Perfil actualizado')
+src\app\(player)\perfil\ProfileForm.tsx:127: <p role="status" className="text-xs text-emerald-700 dark:text-emerald-400">
+src\app\(player)\perfil\ProfileHeaderNav.stories.tsx:13: <div className="player-shell-bg min-h-dvh px-4 py-6">
+src\app\(public)\explorar\components\ExplorarMap.stories.tsx:8: * react-leaflet: mismo enfoque que `BookingMiniMap.stories.tsx` (`src/components/booking/`).
+src\app\(public)\explorar\components\SearchBand.tsx:14: <section className="player-hero-band relative isolate z-30 rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
+src\app\(public)\explorar\components\SearchBar.stories.tsx:15: decorators: [(Story) => <div className="player-hero-band max-w-3xl rounded-3xl border p-6"><Story /></div>],
+src\app\(public)\explorar\components\TenantCard.stories.tsx:62: args: { tenant: publicTenantCard({ coverUrl: '/bg-hero.png' }), variant: 'compact' },
+src\app\(public)\explorar\components\TenantCard.tsx:79: <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-3 top-3 z-20" />
+src\app\(public)\explorar\components\TenantCard.tsx:85: <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0 focus-visible:outline-none">
+src\app\(public)\explorar\components\TenantCard.tsx:101: <span className="tabular-nums"> · a {tenant.distanceKm} km</span>
+src\app\(public)\explorar\components\TenantCard.tsx:186: <Image src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} fill sizes="112px" className="object-cover" />
+src\app\(public)\explorar\components\TenantCard.tsx:196: <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0">
+src\app\(public)\explorar\components\TenantCard.tsx:206: <p className="truncate text-xs text-muted-foreground">{tenant.city}, {tenant.province}</p>
+src\app\(public)\explorar\components\TenantCard.tsx:214: <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-2 top-2 z-20" />
+src\app\(public)\explorar\loading.tsx:7: <div className="player-hero-band rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
+src\app\(public)\privacidad\page.tsx:59: De los <strong>dueños y staff de complejos</strong> recolectamos nombre, email, teléfono,
+src\app\(public)\terminos\page.tsx:149: Ban global del jugador en el sistema (estado <em>banned</em>) ante conductas graves o
+src\app\(public)\[slug]\components\TenantHeader.tsx:32: `Hola, quiero consultar disponibilidad en ${tenant.name}.`,
+src\app\(public)\[slug]\components\TenantHeader.tsx:37: : encodeURIComponent(`${tenant.address}, ${tenant.city}, ${tenant.province}`)
+src\app\(public)\[slug]\components\TenantHeader.tsx:51: alt={`Logo de ${tenant.name}`}
+src\app\(public)\[slug]\components\TenantHeader.tsx:68: <p className="text-sm text-muted-foreground">{tenant.description}</p>
+src\app\(public)\[slug]\components\TenantHeader.tsx:76: <ShareButton message={`Reservá tu cancha en ${tenant.name}`} />
+src\app\(public)\[slug]\disponibilidad\page.tsx:36: <Link href={`/${tenant.slug}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+src\app\(public)\[slug]\disponibilidad\page.tsx:37: <ChevronLeft className="h-4 w-4" aria-hidden /> {tenant.name}
+src\app\(public)\[slug]\disponibilidad\page.tsx:50: title: `Disponibilidad — ${tenant.name}`,
+src\app\(public)\[slug]\disponibilidad\page.tsx:51: description: `Mirá los turnos disponibles esta semana en ${tenant.name}, ${tenant.city}.`,
+src\app\(public)\[slug]\disponibilidad\page.tsx:57: title: `Disponibilidad — ${tenant.name}`,
+src\app\(public)\[slug]\disponibilidad\page.tsx:58: description: `Mirá los turnos disponibles esta semana en ${tenant.name}, ${tenant.city}.`,
+src\app\(public)\[slug]\page.tsx:55: <h1 className="text-xl font-semibold text-foreground">{tenant.name}</h1>
+src\app\(public)\[slug]\page.tsx:132: description: `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+src\app\(public)\[slug]\page.tsx:139: description: tenant.description ?? `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+src\app\(public)\[slug]\reservar\actions.ts:54: return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+src\app\(public)\[slug]\reservar\actions.ts:61: return { status: 'error', message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.' }
+src\app\(public)\[slug]\reservar\actions.ts:74: if (!result.ok) return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.' }
+src\app\(public)\[slug]\reservar\actions.ts:147: await tx.execute(sql`SELECT set_config('app.current_tenant_id', ${tenant!.id}, true)`)
+src\app\(public)\[slug]\reservar\actions.ts:198: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\(public)\[slug]\reservar\actions.ts:206: SELECT b.status, b.player_id AS "playerId", b.tenant_id AS "tenantId"
+src\app\(public)\[slug]\reservar\CheckoutStates.stories.tsx:43: args: { error: 'banned', until: '2026-03-28T00:00:00.000Z' },
+src\app\(public)\[slug]\reservar\components\LoginGate.stories.tsx:43: action: fn(async () => ({ status: 'sent' as const, email: 'tomas.ibanez@example.com' })),
+src\app\(public)\[slug]\reservar\components\LoginGate.tsx:71: {state.status === 'error' && <p role="alert" className="text-xs text-destructive dark:text-red-300">{state.message}</p>}
+src\app\(super-admin)\super-admin\page.tsx:15: title="Dashboard global"
+src\app\(super-admin)\super-admin\page.tsx:16: subtitle="Métricas cross-tenant de la plataforma"
+src\app\(super-admin)\super-admin\tenants\[id]\actions.ts:101: error: `Solo se puede extender el trial de un complejo en estado 'trialing' (actual: '${err.status}').`,
+src\app\(super-admin)\super-admin\tenants\[id]\actions.ts:249: return { success: false, error: 'Datos inválidos: solo campos whitelisteados de settings.' }
+src\app\(super-admin)\super-admin\tenants\[id]\actions.ts:259: return { success: true, message: 'Settings actualizados.' }
+src\app\(super-admin)\super-admin\tenants\[id]\actions.ts:391: if (!parsed.success) return { success: false, error: 'Tenant inválido.' }
+src\app\(super-admin)\super-admin\tenants\[id]\page.tsx:107: <nav aria-label="Secciones del tenant" className="flex gap-1 border-b border-border">
+src\app\(super-admin)\super-admin\tenants\[id]\_components\actividad-tab.tsx:124: <td className="py-2 pr-4 text-muted-foreground">{b.status}</td>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\impersonate-button.tsx:57: <LogIn className="h-4 w-4" aria-hidden="true" />
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:32: <Dt label="Teléfono">{tenant.phone}</Dt>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:33: <Dt label="Email">{tenant.email}</Dt>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:34: <Dt label="Creado">{formatDateTimeArt(tenant.createdAt)}</Dt>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:35: <Dt label="Fin de trial">{formatDateArt(tenant.trialEndsAt)}</Dt>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:38: ? `Conectado el ${formatDateArt(tenant.mpConnectedAt)}`
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:43: <span className="text-red-600 dark:text-red-400">{formatDateTimeArt(tenant.scheduledDeletionAt)}</span>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:46: {tenant.description && <Dt label="Descripción">{tenant.description}</Dt>}
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:121: <Card title={`Staff (${staff.length})`}>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:123: <p className="text-sm text-muted-foreground">Sin staff vinculado.</p>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\resumen-tab.tsx:133: <th className="py-2">Último login</th>
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\CancelSection.tsx:29: description="Cancela el preapproval de MercadoPago y pasa el tenant a 'canceled'. El acceso sigue hasta el fin del período pagado. Irreversible sin reactivación."
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\ForceStatusSection.tsx:51: description={`Estado actual: ${STATUS_LABELS[status]}. Solo se ofrecen destinos válidos según el ciclo de vida; las ventanas temporales del FSM (dunning/retención) se siguen respetando.`}
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\ReactivateSection.tsx:22: description="Vuelve el tenant a 'active' (transitionToActiveFromAny): limpia dunning, cancelación y fecha de eliminación programada."
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\ResetPasswordSection.stories.tsx:50: await userEvent.type(canvas.getByLabelText('Email del staff'), 'rodrigo@complejofenix.com.ar')
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\ResetPasswordSection.stories.tsx:61: await userEvent.type(canvas.getByLabelText('Email del staff'), 'exempleado@complejofenix.com.ar')
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\ResetPasswordSection.tsx:22: title="Resetear contraseña de staff"
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\ResetPasswordSection.tsx:23: description="Genera una contraseña temporal para un miembro del complejo (soporte telefónico). El titular entra con la temporal y el sistema lo obliga a cambiarla. Solo staff activo de este complejo."
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SectionCard.stories.tsx:28: title: 'Resetear contraseña de staff',
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SettingsSection.stories.tsx:34: action: okAction('Settings actualizados.'),
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SettingsSection.stories.tsx:58: await userEvent.click(canvas.getByRole('button', { name: 'Guardar settings' }))
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SettingsSection.stories.tsx:59: await expect(await canvas.findByText('Settings actualizados.')).toBeInTheDocument()
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SettingsSection.stories.tsx:64: args: { action: errorAction('Datos inválidos: solo campos whitelisteados de settings.') },
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SettingsSection.stories.tsx:67: await userEvent.click(canvas.getByRole('button', { name: 'Guardar settings' }))
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SettingsSection.tsx:38: title="Editar settings del complejo"
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions\SettingsSection.tsx:57: <label htmlFor="deposit-pct" className="text-xs font-medium text-foreground">
+src\app\(super-admin)\super-admin\tenants\[id]\_components\support-actions-panel.stories.tsx:22: updateSettings: ok('Settings actualizados.'),
+src\app\(super-admin)\super-admin\tenants\_components\tenants-filters.stories.tsx:30: args: { q: 'fénix', status: 'past_due', planSlug: 'complejo' },
+src\app\(super-admin)\super-admin\tenants\_components\tenants-filters.tsx:48: <label htmlFor="status" className="text-sm font-medium text-foreground">
+src\app\(super-admin)\super-admin\_components\tenant-status-badge.stories.tsx:6: * Badge de estado del dashboard global (grilla "Tenants por estado" + lista de
+src\app\(super-admin)\super-admin\_components\tenant-status-badge.stories.tsx:34: /** Con contador — como en "Tenants por estado" del dashboard. */
+src\app\(super-admin)\super-admin\_components\tenant-status-badge.tsx:39: className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLES[status]}`}
+src\app\api\admin\system-status\route.ts:16: db: { status: 'ok' | 'down'; latencyMs: number | null }
+src\app\api\admin\system-status\route.ts:87: return forbidden('Se requiere una cuenta de staff.', { code: 'STAFF_REQUIRED' })
+src\app\api\bookings\route.ts:44: ...(status ? [sql`${bookings.status} = ${status}::booking_status`] : []),
+src\app\api\player\bookings\[id]\status\route.ts:21: SELECT status, deposit_status AS "depositStatus", created_at AS "createdAt"
+src\app\api\player\bookings\[id]\status\route.ts:44: 'GET /api/player/bookings/:id/status',
+src\app\api\player\data-export\route.ts:38: return notFound('Player no encontrado.')
+src\app\api\player\favorites\toggle\route.ts:47: 'POST /api/player/favorites/toggle',
+src\app\api\player\reviews\route.ts:46: 'POST /api/player/reviews',
+src\app\api\status\route.ts:29: return { name: 'database', status: 'ok', latencyMs: Date.now() - t0 }
+src\app\api\status\route.ts:32: return { name: 'database', status: 'down', error: GENERIC_CHECK_ERROR }
+src\app\api\status\route.ts:46: return { name: 'pg-boss', status: 'ok', latencyMs: Date.now() - t0 }
+src\app\api\status\route.ts:50: return { name: 'pg-boss', status: 'ok', latencyMs: Date.now() - t0 }
+src\app\api\status\route.ts:53: return { name: 'pg-boss', status: 'down', error: GENERIC_CHECK_ERROR }
+src\app\api\status\route.ts:63: return { name: 'upstash', status: 'ok', note: 'not configured (rate limiting degrades gracefully)' }
+src\app\api\status\route.ts:68: return { name: 'upstash', status: 'ok', latencyMs: Date.now() - t0 }
+src\app\api\status\route.ts:71: return { name: 'upstash', status: 'down', error: GENERIC_CHECK_ERROR }
+src\app\api\status\route.ts:83: status: ok ? ('ok' as const) : ('down' as const),
+src\app\api\status\route.ts:88: if (checks.every((c) => c.status === 'ok')) return 'ok'
+src\app\api\status\route.ts:89: if (checks.some((c) => c.status === 'down')) return 'down'
+src\app\api\webhooks\mercadopago\route.ts:22: return NextResponse.json({ error: 'missing tenant' }, { status: 400 })
+src\app\api\webhooks\mercadopago\route.ts:29: return NextResponse.json({ error: 'invalid json' }, { status: 400 })
+src\app\api\webhooks\mercadopago\route.ts:34: return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
+src\app\api\webhooks\mercadopago\route.ts:43: return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
+src\app\api\webhooks\mercadopago\route.ts:90: return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
+src\app\home\BookingCardMockup.tsx:49: className="player-hero-grid absolute inset-0 bg-[length:30px_30px]"
+src\app\home\OwnerBanner.tsx:31: className="player-hero-grid pointer-events-none absolute inset-0 z-[-1] bg-[length:40px_40px]"
+src\app\mock-mp\checkout\MockCheckoutView.stories.tsx:44: booking: bookingSummary({ deposit_amount: 540000, court_name: 'Cancha 3 - Fútbol 11', time_start: '11:00:00', time_end: '12:00:00' }),
+src\app\mock-mp\checkout\MockCheckoutView.tsx:51: <dd className="font-medium text-slate-800">{booking.tenant_name}</dd>
+src\app\mock-mp\checkout\MockCheckoutView.tsx:55: <dd className="font-medium text-slate-800">{booking.court_name}</dd>
+src\app\mock-mp\checkout\MockCheckoutView.tsx:59: <dd className="font-medium text-slate-800">{formatDateLong(booking.date)}</dd>
+src\app\mock-mp\checkout\MockCheckoutView.tsx:77: <input type="hidden" name="booking" value={bookingId} />
+src\app\onboarding\actions.ts:46: if (!user || user.type !== 'staff') redirect('/login')
+src\app\onboarding\actions.ts:47: if (!user.staffUserId) return { success: false, error: 'Staff ID no disponible' }
+src\app\onboarding\actions.ts:248: * un dashboard mudo. El camino "Sí, cobrar seña" termina en /api/mp/callback.
+src\app\onboarding\components\step-courts\CourtDraftCard.stories.tsx:106: /** Con foto ya subida (max=1): el slot de carga desaparece, queda "Quitar imagen". */
+src\app\onboarding\components\StepPayments.tsx:43: const [choice, setChoice] = useState<'deposit' | 'none'>('deposit')
+src\app\onboarding\components\StepPayments.tsx:121: choice === 'deposit' ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
+src\app\onboarding\listo\page.tsx:18: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\onboarding\page.tsx:30: if (!user || user.type !== 'staff') redirect('/login')
+src\app\reserva\[bookingId]\error\page.tsx:17: SELECT b.status, b.created_at AS "createdAt", t.slug AS "tenantSlug"
+src\app\reserva\[bookingId]\error\page.tsx:28: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\reserva\[bookingId]\exito\BookingSuccessCard.stories.tsx:26: * → `.player-shell-bg` (mint claro / `#020617` oscuro), con `<ReservaDarkShell>`
+src\app\reserva\[bookingId]\exito\BookingSuccessCard.stories.tsx:41: <div className="player-shell-bg min-h-dvh">
+src\app\reserva\[bookingId]\exito\BookingSuccessCard.tsx:28: * Card de éxito para un booking ya `confirmed` — variantes por `depositStatus`
+src\app\reserva\[bookingId]\exito\BookingSuccessCard.tsx:48: <span className="reserva-success-badge relative flex h-20 w-20 animate-slot-pulse items-center justify-center rounded-full text-emerald-600 dark:text-emerald-400 motion-reduce:animate-none">
+src\app\reserva\[bookingId]\exito\BookingSuccessCard.tsx:56: <span className="font-semibold text-foreground">{booking.tenantName}</span> · {booking.courtName}
+src\app\reserva\[bookingId]\exito\BookingSuccessCard.tsx:62: Pagás <span className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</span> al llegar al complejo.
+src\app\reserva\[bookingId]\exito\BookingSuccessCard.tsx:66: <p>Seña pagada: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{formatArs(booking.depositAmount)}</span></p>
+src\app\reserva\[bookingId]\exito\page.tsx:61: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\reserva\[bookingId]\pendiente\page.tsx:26: if (!user || user.type !== 'player') redirect('/ingresar')
+src\app\reserva\[bookingId]\verificar\VerificationCard.tsx:76: <dd className="font-medium text-foreground">{booking.tenantName} · {booking.city}</dd>
+src\app\reserva\[bookingId]\verificar\VerificationCard.tsx:80: <dd className="font-medium text-foreground">{booking.courtName}</dd>
+src\app\reserva\[bookingId]\verificar\VerificationCard.tsx:84: <dd className="font-medium text-foreground tabular-nums">{booking.date.split('-').reverse().join('/')}</dd>
+src\app\select-tenant\actions.ts:27: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\app\select-tenant\page.tsx:21: if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+src\components\admin\PushNotificationManager.tsx:7: type Status = 'idle' | 'unsupported' | 'denied' | 'unsubscribed' | 'subscribed' | 'pending'
+src\components\admin\PushNotificationManager.tsx:214: if (status === 'unsupported' || status === 'denied' || status === 'subscribed' || status === 'idle') {
+src\components\admin\PushNotificationManager.tsx:236: {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
+src\components\booking\BookingCard.stories.tsx:133: name: 'Recién llegada por Realtime (animate-slot-pulse)',
+src\components\booking\BookingCard.stories.tsx:150: name: 'Click en slot libre dispara onSlotClick(courtId, timeStart)',
+src\components\booking\BookingCard.tsx:102: if (booking.depositStatus === 'paid' || booking.depositStatus === 'captured') {
+src\components\booking\BookingCard.tsx:132: return `${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim().slice(0, 24)
+src\components\booking\BookingCard.tsx:263: aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label}` : visual.label}`}
+src\components\booking\BookingFormModal.stories.tsx:135: name: 'La action resuelve success:true → onSuccess(booking), cierra el modal',
+src\components\booking\BookingFormModal.tsx:138: description: `${slot.courtName} · ${slot.timeStart}–${timeEnd}`,
+src\components\booking\BookingFormModal.tsx:271: placeholder="Solo visible para el staff"
+src\components\booking\BookingGrid.stories.tsx:99: name: 'status=OFFLINE — banner ámbar de reconexión',
+src\components\booking\BookingGrid.tsx:205: <p aria-live="polite" role="status" className="sr-only">
+src\components\booking\BookingPopover.stories.tsx:38: booking({ paymentMethod: 'cash', depositStatus: 'pending', depositAmount: 300000 }),
+src\components\booking\BookingPopover.tsx:89: <dd className="font-medium text-popover-foreground">{depositLabel(booking)}</dd>
+src\components\booking\BookingReceipt.stories.tsx:12: * `#booking-receipt` vive oculto por defecto (`@media screen { display: none }`
+src\components\booking\BookingReceipt.stories.tsx:40: <style>{'#booking-receipt { display: block !important; }'}</style>
+src\components\booking\BookingReceipt.tsx:49: <div id="booking-receipt" aria-hidden className="bg-white p-2 text-left">
+src\components\booking\PaymentStatusWatcher.stories.tsx:15: * en la primera línea (`if (TERMINAL_STATUSES.has(status)) return`), así que
+src\components\booking\PaymentStatusWatcher.stories.tsx:34: json: { data: { status: 'pending_payment', depositStatus: 'pending', expiresAt: minutesFromNow(6).toISOString() } },
+src\components\booking\PaymentStatusWatcher.tsx:154: if (status === 'canceled_refunded' || status === 'canceled_no_refund') {
+src\components\booking\PaymentStatusWatcher.tsx:174: <div className="flex flex-col items-center text-center" aria-live="polite" role="status">
+src\components\dashboard\onboarding-checklist.tsx:21: { key: 'hasSchedule',          label: 'Horarios definidos',                 href: '/settings/horarios' },
+src\components\dashboard\onboarding-checklist.tsx:22: { key: 'mpConnected',          label: 'MercadoPago conectado',              href: '/settings/facturacion' },
+src\components\dashboard\upcoming-bookings.stories.tsx:56: row({ id: 'b-1', timeStart: '15:00', timeEnd: '16:00', status: 'pending_payment', depositStatus: 'pending', guestName: null, playerFirstName: null, playerLastName: null }),
+src\components\dashboard\upcoming-bookings.tsx:84: * "Quién viene" — próximos turnos de hoy desde ahora (pages/dashboard.md §3).
+src\components\layout\admin-header.tsx:48: <LogOut className="h-4 w-4" />
+src\components\layout\admin-sidebar.tsx:37: { href: '/dashboard', icon: LayoutDashboard, label: 'Inicio' },
+src\components\layout\admin-sidebar.tsx:46: { href: '/staff', icon: UserCog, label: 'Equipo' },
+src\components\layout\admin-sidebar.tsx:47: { href: '/settings', icon: Settings, label: 'Configuración' },
+src\components\layout\admin-sidebar.tsx:66: <Link href="/dashboard" className="block outline-none rounded-sm">
+src\components\layout\admin-sidebar.tsx:94: (href !== '/dashboard' && pathname.startsWith(href + '/'))
+src\components\layout\super-admin-layout-shell.tsx:34: { href: '/super-admin', icon: LayoutDashboard, label: 'Dashboard' },
+src\components\layout\super-admin-layout-shell.tsx:195: <LogOut className="h-4 w-4" />
+src\components\public\FavoriteButton.stories.tsx:62: fetchMock: [{ match: '/api/player/favorites/toggle', json: { error: 'fail' }, status: 500 }],
+src\components\public\PitchLines.stories.tsx:7: * dentro de `.player-hero-band`) y `EmptyResults` (`variant="empty"`, contenedor
+src\components\public\PitchLines.stories.tsx:22: <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-9 py-9">
+src\components\site\AccountMenu.tsx:104: <Settings className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
+src\components\site\AccountMenu.tsx:118: <LogOut className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
+src\components\site\FeaturedComplexCard.tsx:27: <div aria-hidden className="player-hero-grid absolute inset-0 bg-[length:28px_28px]" />
+src\components\site\FeaturedComplexCard.tsx:41: alt={`Cancha de ${tenant.name}`}
+src\components\site\FeaturedComplexCard.tsx:68: <h3 className="font-display text-[18px] font-bold text-foreground">{tenant.name}</h3>
+src\components\site\FeaturedComplexCard.tsx:72: {tenant.address ? `${tenant.address} · ` : ''}
+src\components\site\HeroSearch.tsx:236: <p id="hero-city-v-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-muted-foreground">
+src\components\site\HeroSearch.tsx:374: <p id="hero-city-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-muted-foreground">
+src\components\site\PlayerHeroBand.tsx:24: <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-6 py-7">
+src\components\site\PlayerHeroBand.tsx:31: className="player-hero-grid pointer-events-none absolute inset-0 -z-10"
+src\components\site\PortalFrame.tsx:26: 'flex min-h-dvh flex-col player-shell-bg',
+src\components\site\PortalHeader.tsx:123: <LogIn className="h-4 w-4" />
+src\components\site\PortalSessionProvider.tsx:55: fetch('/api/player/session', { cache: 'no-store' })
+src\components\ui\combobox.tsx:304: <div role="status" aria-live="polite" className="sr-only">
+src\components\ui\error-state.stories.tsx:44: 'No pudimos cargar esta sección. El equipo ya fue notificado. Probá recargar; si el problema persiste, volvé al dashboard.',
+src\components\ui\error-state.stories.tsx:47: secondaryLabel: 'Ir al dashboard',
+src\components\ui\scroll-tabs.stories.tsx:5: { href: '/settings/perfil', label: 'Perfil' },
+src\components\ui\scroll-tabs.stories.tsx:6: { href: '/settings/reservas', label: 'Reservas' },
+src\components\ui\scroll-tabs.stories.tsx:7: { href: '/settings/horarios', label: 'Horarios' },
+src\components\ui\scroll-tabs.stories.tsx:8: { href: '/settings/facturacion', label: 'Facturación' },
+src\components\ui\scroll-tabs.stories.tsx:40: { href: '/settings/equipo', label: 'Equipo' },
+src\components\ui\scroll-tabs.stories.tsx:41: { href: '/settings/notificaciones', label: 'Notificaciones' },
+src\components\ui\scroll-tabs.stories.tsx:42: { href: '/settings/integraciones', label: 'Integraciones' },
+src\components\ui\sheet.stories.tsx:32: <a className="rounded-lg px-3 py-2 hover:bg-accent" href="#dashboard">Dashboard</a>
+src\components\ui\skeleton.stories.tsx:21: /** `role="status"` + `aria-label="Cargando…"` por default — anunciado a lectores de pantalla. */
+src\components\ui\skeleton.stories.tsx:25: const status = canvas.getByRole('status', { name: 'Cargando…' })
+src\components\ui\skeleton.stories.tsx:26: await expect(status).toHaveAttribute('aria-busy', 'true')
+src\components\ui\skeleton.stories.tsx:34: await expect(canvas.getByRole('status', { name: 'Cargando reservas…' })).toBeInTheDocument()

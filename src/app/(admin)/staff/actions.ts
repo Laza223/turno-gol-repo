@@ -8,6 +8,10 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
+import {
+  BLOCKED_TENANT_STATUSES,
+  READ_ONLY_TENANT_STATUSES,
+} from '@/shared/middleware/with-tenant'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
 import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
@@ -43,29 +47,40 @@ export type StaffActionResult =
   | { success: false; error: string }
 
 /**
- * Estados de tenant que bloquean la gestion de staff (Fase 3 #14). Mismo
- * criterio que la reserva online ((public)/[slug]/reservar/actions.ts): solo
- * trialing/active/past_due pueden mutar staff.
+ * Estados de tenant que bloquean la gestión de staff (Fase 3 #14).
+ *
+ * Fix 4 (M7, ENS-26): este archivo NO pasa por `requireAdminStaffAction` /
+ * `requireOperatorStaff` (los guards centrales de M5) — tiene su propio
+ * guard de sesión (`requireStaffTenant`) y de rol (`assertActorIsAdmin`,
+ * dentro de la tx). Este chequeo de tenant lifecycle es, por lo tanto, el
+ * ÚNICO punto que lo cubre acá — NO es redundante con el guard central
+ * (nunca se invoca en este archivo), así que no se elimina. Lo que sí se
+ * alinea es la FUENTE: antes era una 3ra copia local (`STAFF_WRITE_BLOCKED_
+ * STATUSES` hardcodeada) que además incluía `canceled` — contradiciendo
+ * ENS-26 (`canceled` = acceso completo hasta `current_period_end`, ya
+ * pagó; el sweep recién lo pasa a `blocked` al vencer, doc4 §2 /
+ * with-tenant.ts). Ahora deriva de `BLOCKED_TENANT_STATUSES` +
+ * `READ_ONLY_TENANT_STATUSES` (with-tenant.ts), la misma fuente única que
+ * ya usa `guards.ts` (`BLOCKED_STAFF_TENANT_STATUSES`) — `canceled` deja de
+ * bloquear la gestión de equipo.
  */
-const STAFF_WRITE_BLOCKED_STATUSES = [
-  'deleted',
-  'blocked',
-  'canceled',
-  'churned',
-  'suspended',
-]
+const STAFF_WRITE_BLOCKED_STATUSES: ReadonlySet<string> = new Set([
+  ...BLOCKED_TENANT_STATUSES,
+  ...READ_ONLY_TENANT_STATUSES,
+])
 
 /**
  * Guard server-side compartido para mutaciones de staff (Fase 3 #14):
- * bloquea tenants en estado no operativo (suspended/blocked/canceled/churned/
- * deleted), que getStaffTenant no filtra. La autorización por rol (solo admin)
- * la aplica assertActorIsAdmin dentro de la transacción.
+ * bloquea tenants en estado no operativo (suspended/blocked/churned/
+ * deleted — ver STAFF_WRITE_BLOCKED_STATUSES arriba), que getStaffTenant no
+ * filtra. La autorización por rol (solo admin) la aplica assertActorIsAdmin
+ * dentro de la transacción.
  * Devuelve un StaffActionResult de error, o null si la mutacion puede continuar.
  */
 async function guardStaffMutation(tenant: {
   status: string
 }): Promise<{ success: false; error: string } | null> {
-  if (STAFF_WRITE_BLOCKED_STATUSES.includes(tenant.status)) {
+  if (STAFF_WRITE_BLOCKED_STATUSES.has(tenant.status)) {
     return { success: false, error: 'El complejo no está activo.' }
   }
   return null

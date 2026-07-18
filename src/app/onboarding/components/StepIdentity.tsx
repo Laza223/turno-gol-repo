@@ -81,7 +81,7 @@ export function StepIdentity({ action }: { action: CreateTenantAction }) {
             <p className="text-xs text-muted-foreground mt-1.5">
               Tu link público:{' '}
               <span className="text-foreground">
-                turnogol.app/c/<strong className="text-emerald-700 dark:text-emerald-400">{slugPreview}</strong>
+                turnogol.app/<strong className="text-emerald-700 dark:text-emerald-400">{slugPreview}</strong>
               </span>
             </p>
           )}

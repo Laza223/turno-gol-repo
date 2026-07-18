@@ -6,7 +6,7 @@
 
 - TurnoGol: SaaS de gestión para complejos de fútbol en Argentina. Suscripción mensual: Predio $55.000 (1-2 canchas), Complejo $85.000 (3-5), Estadio $115.000 (6+), + IVA 21%, anual -20%. Trial 30 días sin tarjeta. (Fuente de verdad: tabla `plans` / `src/app/(business)/precios/plans-data.ts` — verificar ahí si hubo actualización por inflación.)
 - Competidor principal: ATC Sports (multi-deporte, marketplace de jugadores establecido, más caro — verificar precio vigente antes de citarlo).
-- Estrategia: founder-led, hiperlocal, presencial. Wedge: el clavo (no-show) y el teléfono. Docs 01-09 de esta carpeta son la doctrina.
+- Estrategia: founder-led, hiperlocal, presencial. Gancho: el ausente y el teléfono. Docs 01-09 de esta carpeta son la doctrina.
 - Idioma: español rioplatense, voseo, cero corporate. Vocabulario y frases: [03-posicionamiento.md](./03-posicionamiento.md).
 
 ## Reglas duras (violarlas = romper la venta)
@@ -22,7 +22,7 @@
 
 - Reserva online por link web (`turnogol.app/[slug]`) — sin app para el jugador.
 - Seña por MercadoPago **a la cuenta MP del complejo** (OAuth); % configurable; se puede apagar; si el jugador no paga en minutos el turno se libera.
-- No-show: seña queda para el complejo + a la 2da ausencia en 90 días, bloqueo automático de 14 días para reservar online en ese complejo. **NO existe deuda de dinero por no-show** (revertido 2026-07-11).
+- Ausencia: seña queda para el complejo + a la 2da ausencia en 90 días, bloqueo automático de 14 días para reservar online en ese complejo. **NO existe deuda de dinero por ausencia** (revertido 2026-07-11).
 - Grilla en tiempo real mobile-first; push al admin con cada reserva (silencio de madrugada, avisa 8am); email de confirmación al jugador.
 - Turnos fijos (abonados): generación semanal automática, precio por sesión, control de quién pagó cada sesión. **El cobro se REGISTRA a mano. NO existe saldo a favor ni ledger de deudas** (eliminados).
 - Caja: ingresos, gastos, cantina con stock y alertas, cierre diario. Módulo Jugadores: ficha, historial, stats, abonados del jugador, indicador de bloqueo por ausencias.
@@ -37,7 +37,7 @@
 - ❌ "Te traemos jugadores" / marketplace con tráfico (la búsqueda cross-complejo existe como feature, pero sin masa de jugadores no genera demanda — no venderla).
 - ❌ Importador automático de datos de ATC (la migración la hace el founder a mano — se ofrece como servicio, no como feature).
 - ❌ Facturación AFIP, torneos/ligas, partidos abiertos, app nativa, billetera del jugador.
-- ❌ Cualquier porcentaje de mejora ("reducís X% los clavos") sin datos propios publicables.
+- ❌ Cualquier porcentaje de mejora ("reducís X% los ausentes") sin datos propios publicables.
 
 ## Sesiones tipo (prompts listos para el founder)
 
@@ -45,7 +45,7 @@
 > "Leé docs/gtm/10-playbook-ia.md y docs/gtm/05-funnel.md. Te pego el CRM [pegar filas o CSV]. Decime: (a) las 10 filas sin próxima acción o vencidas, (b) los 20 mejores targets nuevos por score para esta semana, (c) borradores de primer mensaje para cada uno usando 06-scripts.md — personalizados con el dato de la columna `notas`/`ig`, listos para revisar y enviar."
 
 **2. Pre-demo — brief (10 min por demo):**
-> "Demo mañana con [complejo]. Datos: [pegar: IG, charla previa, canchas, precios si se saben]. Armame: (a) brief de 10 líneas (dolor probable, qué mostrar en el paso 5 de la demo según 06-scripts.md §5, objeciones probables de 07 con la respuesta), (b) checklist de datos para cargar el tenant demo, (c) el texto de cierre de oferta de 04 con los números de ESTE complejo."
+> "Demo mañana con [complejo]. Datos: [pegar: IG, charla previa, canchas, precios si se saben]. Armame: (a) brief de 10 líneas (dolor probable, qué mostrar en el paso 5 de la demo según 06-scripts.md §5, objeciones probables de 07 con la respuesta), (b) checklist de datos para cargar la cuenta de prueba, (c) el texto de cierre de oferta de 04 con los números de ESTE complejo."
 
 **3. Post-conversación — registro y ajuste:**
 > "Te pego una conversación de WhatsApp con un prospecto [pegar]. Decime: (a) etapa del funnel y próxima acción con fecha, (b) dolor y objeción detectados (para el CRM), (c) si la objeción no está en 07-objeciones.md, redactá la entrada nueva, (d) borrador de la próxima respuesta."

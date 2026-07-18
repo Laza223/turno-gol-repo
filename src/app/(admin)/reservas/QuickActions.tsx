@@ -24,6 +24,12 @@ type QuickActionsBooking = {
   depositStatus: string
   depositAmount: number
   paymentMethod: string | null
+  /**
+   * Instante físico absoluto del FIN del turno (TIMESTAMPTZ ISO, migraciones
+   * 040/041) — fuente de verdad del guard "turno ya jugado" (clase de B3):
+   * ver comentario homólogo en BookingActions.tsx.
+   */
+  endsAt?: string | null
 }
 
 type SimpleBookingFn = (bookingId: string) => Promise<BookingActionResult>
@@ -87,6 +93,7 @@ export function QuickActions({
   if (!hasQuickActions(booking)) return null
 
   const hasPaidDeposit = booking.depositStatus === 'paid' && booking.depositAmount > 0
+  const turnoEnded = booking.endsAt ? Date.now() >= new Date(booking.endsAt).getTime() : false
 
   function run(fn: () => Promise<{ success: boolean; error?: string }>, successTitle: string) {
     startTransition(async () => {
@@ -142,7 +149,11 @@ export function QuickActions({
   let refundWarning: string | null = null
   if (cancelType) {
     if (!hasPaidDeposit) {
+      // Sin seña pagada no hay nada que reembolsar ni retener — el timing del
+      // turno es irrelevante, así que este check va ANTES que `turnoEnded`.
       refundWarning = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
+    } else if (turnoEnded) {
+      refundWarning = 'El turno ya se jugó: la seña queda para el complejo (sin reembolso).'
     } else if (cancelType === 'complejo') {
       refundWarning =
         booking.paymentMethod === 'mercadopago'

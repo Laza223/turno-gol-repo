@@ -68,6 +68,7 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
         depositStatus: booking.depositStatus,
         depositAmount: booking.depositAmount,
         paymentMethod: booking.paymentMethod,
+        endsAt: booking.endsAt,
       }}
       label={`${name} · ${timeRange}`}
       {...actions}

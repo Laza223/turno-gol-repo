@@ -88,7 +88,7 @@ export const ErrorSinDatosPrevios: Story = {
   },
 }
 
-/** Complejo recién arrancado: series en cero, sin top-5 horarios. */
+/** Complejo recién arrancado: series en cero, sin top-5 horarios → ghost + CTA a la grilla. */
 export const SinDatos: Story = {
   parameters: {
     fetchMock: [
@@ -98,7 +98,12 @@ export const SinDatos: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Sin reservas en el período.')).toBeVisible()
+    await expect(
+      await canvas.findByText('Así se van a ver tus horarios más reservados.'),
+    ).toBeVisible()
+    await expect(
+      canvas.getByRole('link', { name: 'Cargá tu primera reserva desde la grilla' }),
+    ).toHaveAttribute('href', '/grilla')
   },
 }
 

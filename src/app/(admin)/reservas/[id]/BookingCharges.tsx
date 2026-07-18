@@ -79,6 +79,13 @@ export default function BookingCharges({
       return
     }
     const amount = Math.round(pesos * 100)
+    // ENS-3 (UX): valida contra el pendiente ANTES de pegarle al server — la
+    // garantía real es la de addBookingChargeAction (fuente de verdad la DB),
+    // esto solo evita el viaje al server para el caso obvio.
+    if (amount > pendingAmount) {
+      setError(`El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pendingAmount)}).`)
+      return
+    }
     const clientIdempotencyKey =
       typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
 
@@ -153,7 +160,9 @@ export default function BookingCharges({
         <button
           type="button"
           onClick={openForm}
-          className="mt-4 h-11 md:h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+          disabled={isPaidInFull}
+          title={isPaidInFull ? 'Este turno ya está pagado por completo.' : undefined}
+          className="mt-4 h-11 md:h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-card"
         >
           + Agregar cobro
         </button>
@@ -169,10 +178,14 @@ export default function BookingCharges({
                 type="number"
                 inputMode="numeric"
                 min={1}
+                max={Math.round(pendingAmount / 100)}
                 value={amountPesos}
                 onChange={(e) => setAmountPesos(e.target.value)}
                 className="h-11 md:h-9 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               />
+              <p className="text-xs text-muted-foreground">
+                Máximo cobrable: {formatArs(pendingAmount)}
+              </p>
             </div>
             <div className="flex-1 space-y-1">
               <label htmlFor="charge-method" className="text-xs font-medium text-foreground">

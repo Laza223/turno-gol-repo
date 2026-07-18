@@ -238,33 +238,11 @@ export async function transitionBlockedToChurned(
   })
 }
 
-// ─── * → deleted (retention sweep at scheduled_deletion_at) ─────────────────
-
-export async function transitionToDeleted(
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
-  const result = await tx.execute(sql`
-    UPDATE tenants
-    SET status = 'deleted'::tenant_status, updated_at = NOW()
-    WHERE id = ${tenantId}
-      AND status IN ('churned', 'blocked', 'canceled')
-      AND scheduled_deletion_at IS NOT NULL
-      AND scheduled_deletion_at <= NOW()
-    RETURNING id
-  `)
-  if (rowsAffected(result) === 0) {
-    throw new InvalidTransitionError(tenantId, 'churned/blocked/canceled', 'deleted')
-  }
-  // tenant_subscriptions row is hard-deleted by retention worker (subscription_status enum has no 'deleted').
-  await insertSystemAuditLog(tx, {
-    tenantId,
-    action: 'tenant.deleted',
-    resourceType: 'tenant',
-    resourceId: tenantId,
-    metadata: { reason: 'data_retention_wipe' },
-  })
-}
+// El estado terminal `deleted` NO tiene función de transición: el borrado real
+// (hard-delete de filas hijas + soft-anonymize de tenants + cancel MP) lo hace
+// `data-retention-cleanup.worker.ts` con su propio UPDATE, no una transición
+// del FSM. Forzar 'deleted' manualmente fue eliminado (ver FORCEABLE_TRANSITIONS
+// en support.service.ts) por dejar tenants huérfanos.
 
 // ─── * → canceled (voluntary cancel; period_end intact) ─────────────────────
 
@@ -273,11 +251,18 @@ export async function transitionToCanceled(
   reason: string,
   tx: DbTx,
 ): Promise<void> {
+  // Residual B5 (upgrade/downgrade pendiente stale): un `pending_plan_change`
+  // que quedó sin aplicar (webhook de upgrade todavía en vuelo, o downgrade
+  // diferido a period_end) no debe sobrevivir la cancelación — si el tenant
+  // se reactiva después con otro plan, un CAS tardío (`handleUpgradeApproved`)
+  // o el sweep de dunning (`dunning-retry.worker.ts`) lo reaplicarían tarde.
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET status = 'canceled'::subscription_status,
         canceled_at = NOW(),
         cancellation_reason = ${reason},
+        pending_plan_change = NULL,
+        pending_change_at = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
       AND status IN ('active', 'past_due', 'suspended', 'trialing')
@@ -307,11 +292,23 @@ export async function transitionCanceledToBlocked(
   tenantId: string,
   tx: DbTx,
 ): Promise<void> {
+  // B5 (huérfano MP↔DB): NO nulear `mp_subscription_id` acá. El único camino
+  // a `status='canceled'` es `cancel()`/`cancelSubscriptionForSupport`, que ya
+  // dejan `mp_subscription_id = NULL` al cancelar voluntariamente. Por lo
+  // tanto una fila `canceled` con `mp_subscription_id` NO-nulo es SIEMPRE una
+  // reactivación en curso (`reactivate()` acepta `canceled` como origen y
+  // escribe un preapproval NUEVO sin cambiar el status, a la espera del
+  // webhook). Pisarlo con NULL en este sweep borraba la referencia al
+  // preapproval recién creado: `onPaymentApproved` no matcheaba después y el
+  // pago quedaba huérfano. Al preservarlo: si el pago llega, `onPaymentApproved`
+  // (acepta `blocked` vía `transitionToActiveFromAny`) activa correctamente;
+  // si nunca llega, el retention worker cancela el preapproval en MP antes de
+  // borrar la fila (data-retention-cleanup.worker.ts). Caso ya-abandonado (id
+  // ya NULL por `cancel()`) es no-op.
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET status = 'blocked'::subscription_status,
         scheduled_deletion_at = NOW() + (${CANCELED_BLOCKED_DELETION_DAYS} || ' days')::interval,
-        mp_subscription_id = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
       AND status = 'canceled'

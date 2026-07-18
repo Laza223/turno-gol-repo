@@ -33,6 +33,13 @@ export type MisReservasBookingRow = {
   tenant_name: string
   tenant_slug: string
   has_review: boolean
+  /**
+   * ENS-2: consecuencia concreta de cancelar AHORA, calculada server-side en
+   * page.tsx (getCancellationPreview, misma política que cancelByPlayer).
+   */
+  cancellation_outcome: 'no_deposit' | 'refund' | 'no_refund'
+  /** Monto de la seña en centavos — solo relevante si cancellation_outcome !== 'no_deposit'. */
+  deposit_amount: number
 }
 
 const AR_TZ = 'America/Argentina/Buenos_Aires'
@@ -259,6 +266,8 @@ export function MisReservasView({
                             courtName={b.court_name}
                             dateLabel={formatDate(b.date)}
                             timeLabel={`${b.time_start.slice(0, 5)}–${b.time_end.slice(0, 5)}`}
+                            cancellationOutcome={b.cancellation_outcome}
+                            depositAmountCents={b.deposit_amount}
                             action={cancelAction}
                           />
                         )}

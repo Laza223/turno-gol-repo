@@ -24,6 +24,8 @@ const row = (overrides: Partial<MisReservasBookingRow> = {}): MisReservasBooking
   tenant_name: tenant().name,
   tenant_slug: tenant().slug,
   has_review: false,
+  cancellation_outcome: 'no_deposit',
+  deposit_amount: 0,
   ...overrides,
 })
 

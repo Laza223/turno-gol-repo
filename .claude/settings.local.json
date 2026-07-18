@@ -99,7 +99,13 @@
       "Bash(gh api *)",
       "Bash(Invoke-WebRequest -Uri https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 -OutFile install.ps1)",
       "Bash(powershell.exe -Command \"Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1' -OutFile 'install.ps1'; Write-Host 'Downloaded'\")",
-      "Bash(powershell.exe *)"
+      "Bash(powershell.exe *)",
+      "Bash(pnpm lint *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(grep -c \"error\" /tmp_lint_out.txt)",
+      "Bash(rm -f /tmp_lint_out.txt)",
+      "Bash(curl -s -o /dev/null -w \"status:%{http_code}\\\\n\" http://localhost:3000/api/status)",
+      "Bash(curl -s http://localhost:3000/api/status)"
     ]
   }
 }

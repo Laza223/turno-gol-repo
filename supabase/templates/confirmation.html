@@ -1,13 +1,20 @@
 <!--
-  Confirmación de alta de STAFF (enable_confirmations=true).
+  Confirmación de alta (enable_confirmations=true). Con este flag, GoTrue manda
+  ESTE template para CUALQUIER email nuevo: staff (auth.signUp) Y jugador nuevo
+  vía LoginGate del flujo de reserva (auth.signInWithOtp sobre email nuevo). El
+  callback ramifica por user_metadata.is_player, no por `type`.
   Patrón token_hash (NO PKCE `.ConfirmationURL`): el callback solo soporta
-  token_hash + verifyOtp tras quitar la rama `code`. type=signup → rama staff
-  (provisionAndRouteStaff). Ver docs/superpowers/specs/2026-06-16-auth-password-migration-design.md §3.2/§5.
+  token_hash + verifyOtp tras quitar la rama `code`.
+  IMPORTANTE: usa `{{ .RedirectTo }}` (no `.SiteURL`) para PRESERVAR el `next`
+  del jugador nuevo (vuelta a /reservar tras firmar — Aha Moment, doc10). El
+  staff pasa `?next=/onboarding` (ignorado por su rama, solo aporta el `?`
+  separador). Ambos flujos arman redirectTo = `/api/auth/callback?next=…`.
+  Ver docs/superpowers/specs/2026-06-16-auth-password-migration-design.md §3.2/§5.
 -->
 <h2>Confirmá tu cuenta en TurnoGol</h2>
 <p>¡Bienvenido! Hacé click para activar tu cuenta y empezar a gestionar tu complejo:</p>
 <p>
-  <a href="{{ .SiteURL }}/api/auth/callback?token_hash={{ .TokenHash }}&type=signup">
+  <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=signup">
     Confirmar mi cuenta
   </a>
 </p>

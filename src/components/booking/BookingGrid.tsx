@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { LayoutGrid, MoonStar } from 'lucide-react'
 import { useArtNow } from '@/hooks/use-art-now'
@@ -20,7 +21,7 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import type { CreateBookingAction } from './BookingFormModal'
+import type { CheckSlotAvailabilityAction, CreateBookingAction } from './BookingFormModal'
 
 // Re-export GridBooking so BookingCard (and others) can import it from here.
 export type { GridBooking } from '@/lib/booking/grid-cells'
@@ -55,6 +56,8 @@ type Props = {
   closesNextDay: boolean
   /** Reenviada al BookingFormModal cargado por dynamic import (ver el comentario ahí). */
   action: CreateBookingAction
+  /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
+  checkAvailabilityAction?: CheckSlotAvailabilityAction
 }
 
 export function BookingGrid({
@@ -66,6 +69,7 @@ export function BookingGrid({
   closedDates,
   closesNextDay,
   action,
+  checkAvailabilityAction,
 }: Props) {
   const router = useRouter()
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
@@ -234,6 +238,20 @@ export function BookingGrid({
           icon={LayoutGrid}
           title="Sin canchas configuradas"
           description="Todavía no agregaste ninguna cancha. Configurá al menos una para empezar a tomar turnos."
+          action={
+            // BookingGrid no recibe el rol del staff logueado (grilla/page.tsx solo
+            // valida `user.type === 'staff'`, sin re-chequear admin/manager) y
+            // agregar esa prop es scope creep para este cambio. Se muestra igual
+            // para cualquier staff: /canchas es de solo-lectura para el manager
+            // (CourtList ya oculta "+ Nueva cancha" si !isAdmin), así que navegar
+            // ahí nunca habilita una escritura no autorizada.
+            <Link
+              href="/canchas"
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
+            >
+              Configurar la primera cancha
+            </Link>
+          }
         />
       )}
 
@@ -242,6 +260,18 @@ export function BookingGrid({
           icon={MoonStar}
           title="Complejo cerrado este día"
           description="Este día está marcado como cerrado en la configuración de horarios."
+          action={
+            // Mismo razonamiento que arriba: sin flag de rol a mano. A diferencia
+            // de /canchas, /settings/* completo es solo-admin (SettingsLayout hace
+            // requireAdminStaff) — si un manager toca este link rebota a /dashboard
+            // sin romper nada, así que sigue siendo inofensivo dejarlo visible.
+            <Link
+              href="/settings/horarios"
+              className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
+            >
+              Revisar horarios
+            </Link>
+          }
         />
       )}
 
@@ -283,6 +313,7 @@ export function BookingGrid({
           onClose={() => setSelectedSlot(null)}
           onSuccess={handleBookingSuccess}
           action={action}
+          checkAvailabilityAction={checkAvailabilityAction}
         />
       )}
     </div>

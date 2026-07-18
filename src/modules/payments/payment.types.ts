@@ -20,6 +20,17 @@ export type GatewayPaymentInfo = {
   /** Booking id. */
   externalReference: string
   paymentMethodId: string
+  /**
+   * Billing Fix 2b (R2 🔴): preapproval de origen para un cobro recurrente
+   * (`subscription_authorized_payment`) — MP lo trae en
+   * `point_of_interaction.linked_to` (ver `mp-gateway.implementation.ts`).
+   * `undefined` = el campo no vino (pagos de booking-deposit normales, sin
+   * preapproval detrás, o callers/mocks preexistentes que no lo conocen) —
+   * distinto de `null` explícito. Opcional a propósito: agregar un campo
+   * requerido acá rompería los ~15 archivos de test que construyen
+   * `GatewayPaymentInfo` sin conocerlo.
+   */
+  preapprovalId?: string | null
 }
 
 export type CreatePreferenceInput = {
@@ -61,6 +72,17 @@ export type WebhookOutcome =
        * alert, Hallazgo 3). The caller dispatches the emails AFTER commit.
        */
       notificationIds?: string[]
+      /**
+       * R1-B (rechazo review de ENS-16): solo tiene sentido cuando
+       * `result==='confirmed'`. `result==='confirmed'` únicamente dice que MP
+       * aprobó el PAGO — no dice si transitionFromPendingPayment ganó la
+       * transición del booking (el guard `WHERE status='pending_payment'`
+       * puede fallar sobre un booking ya post-terminal). `won` es la ÚNICA
+       * fuente de verdad de "esta corrida confirmó la reserva"; consumidores
+       * que gatean un side-effect en eso (push de admin, etc.) DEBEN chequear
+       * `won === true`, no `result`.
+       */
+      won?: boolean
     }
 
 // ─── SaaS recurring billing (P18) ──────────────────────────────

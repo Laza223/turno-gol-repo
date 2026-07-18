@@ -43,7 +43,6 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
     method: r.method,
     description: r.description,
     bookingId: r.bookingId ?? null,
-    productId: r.productId ?? null,
     registeredBy: r.registeredBy,
     occurredAt: r.occurredAt,
     createdAt: r.createdAt,
@@ -98,11 +97,11 @@ export async function createCashFlow(
     const result = await tx.execute(sql`
       INSERT INTO cash_flows (
         tenant_id, type, category, amount, method, description,
-        booking_id, product_id, registered_by, occurred_at, client_idempotency_key
+        booking_id, registered_by, occurred_at, client_idempotency_key
       ) VALUES (
         ${tenantId}, ${input.type}::cashflow_type, ${input.category}::cashflow_category,
         ${input.amount}, ${input.method}::payment_method, ${input.description},
-        ${input.bookingId ?? null}, ${input.productId ?? null},
+        ${input.bookingId ?? null},
         ${staffUserId}, ${occurredAt.toISOString()},
         ${input.clientIdempotencyKey}
       )
@@ -131,7 +130,6 @@ export async function createCashFlow(
       method: input.method,
       description: input.description,
       bookingId: input.bookingId ?? null,
-      productId: input.productId ?? null,
       registeredBy: staffUserId,
       occurredAt,
     })
@@ -160,7 +158,6 @@ export async function getCashFlows(
     method: 'cash' | 'transfer' | 'mercadopago' | 'other'
     description: string
     booking_id: string | null
-    product_id: string | null
     registered_by: string
     occurred_at: Date
     created_at: Date
@@ -173,7 +170,6 @@ export async function getCashFlows(
     method: r.method,
     description: r.description,
     bookingId: r.booking_id,
-    productId: r.product_id,
     registeredBy: r.registered_by,
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),

@@ -647,18 +647,59 @@ describe('reactivate', () => {
     expect(mockGateway.preapprovalCalls).toHaveLength(0)
   })
 
-  it('blocked → reactivate throws ReactivateNotAllowedError', async () => {
+  // ENS-20: blocked/suspended pasan a ser elegibles para reactivate() — doc4 §2
+  // los clasifica como "Re-activación"/"Reintento manual" respectivamente, el
+  // mismo botón de "pagar ahora" que ya tenían canceled/churned (ver
+  // billing.service.ts). Reemplaza el test viejo "blocked → throws".
+  it('blocked → reactivate crea un preapproval nuevo (no lanza)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'blocked', 'predio')
+    await seedSubscription(sql, tenant.id, 'blocked', 'predio', { mpSubscriptionId: 'mp-old' })
+
+    const result = await withTenantContext(tenant.id, async (tx) => {
+      return billingReactivate(tenant.id, plans.complejo, 'monthly', mockGateway, tx)
+    })
+
+    expect(result.checkoutUrl).toContain('mp.test')
+    expect(mockGateway.preapprovalCalls).toHaveLength(1)
+    const rows = await sql<{ plan_id: string; mp_subscription_id: string | null; status: string }[]>`
+      SELECT plan_id, mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(rows[0]!.plan_id).toBe(plans.complejo)
+    expect(rows[0]!.mp_subscription_id).not.toBe('mp-old')
+    expect(rows[0]!.status).toBe('blocked') // reactivate() no transiciona: eso lo hace onPaymentApproved
+  })
+
+  it('suspended → reactivate crea un preapproval nuevo (no lanza)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'suspended', 'predio', { mpSubscriptionId: 'mp-old' })
+
+    const result = await withTenantContext(tenant.id, async (tx) => {
+      return billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
+    })
+
+    expect(result.checkoutUrl).toContain('mp.test')
+    expect(mockGateway.preapprovalCalls).toHaveLength(1)
+  })
+
+  it('past_due → reactivate sigue lanzando ReactivateNotAllowedError (MP ya reintenta solo)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'past_due', 'predio')
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
         await billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+    expect(mockGateway.preapprovalCalls).toHaveLength(0)
   })
 })
 
@@ -790,5 +831,121 @@ describe('handleUpgradeApproved guard de idempotencia/stale', () => {
       SELECT plan_id FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
     `
     expect(rows[0]!.plan_id).toBe(plans.predio) // plan NO cambió
+  })
+})
+
+// ─── Residual B5: pending_plan_change stale sobrevive cancel→reactivate ────
+// cancel() y reactivate() no limpiaban `pending_plan_change`/`pending_change_at`.
+// Un upgrade pedido y no confirmado (webhook en vuelo) dejaba el pending vivo
+// a través de un ciclo cancel→reactivate con OTRO plan; cuando el webhook
+// tardío llegaba, `handleUpgradeApproved` volvía a matchear su CAS-WHERE
+// (`status='active' AND pending_plan_change=target`) y reaplicaba el plan
+// viejo + cobraba de más en MP. Fix: limpiar pending en los dos puntos que no
+// lo hacían — así el CAS tardío ve 0 filas y no toca nada.
+
+describe('cancel() limpia pending_plan_change stale (residuo B5)', () => {
+  it('sub active con upgrade pendiente → tras cancel(), pending_plan_change y pending_change_at quedan NULL', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, 'predio', {
+      mpSubscriptionId: 'mp-cancel-pending-test',
+    })
+
+    // Simula un upgrade pedido y no confirmado (pending_change_at NULL, como
+    // deja `upgrade()` real — ver comentario en billing.service.ts:upgrade).
+    await sql`
+      UPDATE tenant_subscriptions
+      SET pending_plan_change = ${plans.complejo}, pending_change_at = NULL
+      WHERE tenant_id = ${tenantId}
+    `
+
+    await withTenantContext(tenantId, async (tx) => {
+      await billingCancel(tenantId, 'me arrepentí', mockGateway, tx)
+    })
+
+    const rows = await sql<{
+      pending_plan_change: string | null
+      pending_change_at: Date | null
+    }[]>`
+      SELECT pending_plan_change, pending_change_at
+      FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(rows[0]!.pending_plan_change).toBeNull()
+    expect(rows[0]!.pending_change_at).toBeNull()
+  })
+})
+
+describe('reactivate() limpia pending_plan_change stale (residuo B5)', () => {
+  it('sub canceled con downgrade pendiente stale → tras reactivate(), pending_plan_change y pending_change_at quedan NULL', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'canceled', 'predio', {
+      mpSubscriptionId: 'mp-old-pending',
+      canceledAt: new Date(),
+      scheduledDeletionAt: new Date(Date.now() + 30 * 86_400_000),
+    })
+    // Simula un downgrade programado stale (pending_change_at en el pasado,
+    // como dejaría un `downgrade()` cuyo period_end ya venció sin que el
+    // sweep lo haya limpiado todavía).
+    await sql`
+      UPDATE tenant_subscriptions
+      SET pending_plan_change = ${plans.estadio}, pending_change_at = NOW() - INTERVAL '1 hour'
+      WHERE tenant_id = ${tenant.id}
+    `
+
+    await withTenantContext(tenant.id, async (tx) => {
+      await billingReactivate(tenant.id, plans.complejo, 'monthly', mockGateway, tx)
+    })
+
+    const rows = await sql<{
+      pending_plan_change: string | null
+      pending_change_at: Date | null
+    }[]>`
+      SELECT pending_plan_change, pending_change_at
+      FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(rows[0]!.pending_plan_change).toBeNull()
+    expect(rows[0]!.pending_change_at).toBeNull()
+  })
+})
+
+describe('B5 residual — extremo a extremo: upgrade pendiente + cancel + reactivate a otro plan', () => {
+  it('el webhook tardío de la upgrade original NO reaplica el plan viejo ni toca MP', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, 'predio')
+
+    // 1. El dueño pide upgrade a estadio → pending_plan_change='estadio'.
+    await withTenantContext(tenantId, async (tx) => {
+      await billingUpgrade(tenantId, plans.estadio, mockGateway, tx)
+    })
+    const pendingRows = await sql<{ pending_plan_change: string | null }[]>`
+      SELECT pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(pendingRows[0]!.pending_plan_change).toBe(plans.estadio)
+
+    // 2. Antes de que llegue el webhook, el dueño cancela.
+    await withTenantContext(tenantId, async (tx) => {
+      await billingCancel(tenantId, 'me arrepentí', mockGateway, tx)
+    })
+
+    // 3. Y reactiva con un plan DISTINTO (complejo, no el 'estadio' pendiente).
+    await withTenantContext(tenantId, async (tx) => {
+      await billingReactivate(tenantId, plans.complejo, 'monthly', mockGateway, tx)
+    })
+
+    // 4. Llega el webhook tardío de la upgrade original (a estadio).
+    await withTenantContext(tenantId, async (tx) => {
+      await handleUpgradeApproved(tenantId, plans.estadio, mockGateway, tx)
+    })
+
+    // Con el fix (cancel limpia pending): el CAS-WHERE de handleUpgradeApproved
+    // (`status='active' AND pending_plan_change='estadio'`) no matchea → 0
+    // filas → nunca toca MP ni pisa el plan de la reactivación.
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+    const finalRows = await sql<{ plan_id: string }[]>`
+      SELECT plan_id FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(finalRows[0]!.plan_id).toBe(plans.complejo)
   })
 })

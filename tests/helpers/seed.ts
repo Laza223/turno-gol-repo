@@ -11,7 +11,6 @@ import {
   insertDailyCashClose,
   insertNotification,
   insertPayment,
-  insertProduct,
   insertSubscription,
 } from './factories'
 
@@ -22,7 +21,6 @@ export type IsolationSeed = {
   playerId: string
   ptrId: string
   courtId: string
-  productId: string
   abonadoId: string
   bookingId: string
   paymentId: string
@@ -50,7 +48,6 @@ export async function seedIsolationData(
   const ptrId = await linkPlayerToTenant(sql, tenantId, player.id)
 
   const courtId = await insertCourt(sql, tenantId)
-  const productId = await insertProduct(sql, tenantId)
   const abonadoId = await insertAbonado(sql, tenantId, courtId)
   const bookingId = await insertBooking(sql, { tenantId, courtId, playerId: player.id })
   const paymentId = await insertPayment(sql, { tenantId, bookingId, playerId: player.id })
@@ -78,7 +75,6 @@ export async function seedIsolationData(
     playerId: player.id,
     ptrId,
     courtId,
-    productId,
     abonadoId,
     bookingId,
     paymentId,

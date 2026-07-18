@@ -2,6 +2,7 @@
 import { defineConfig } from 'vitest/config'
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
 import path from 'node:path'
+import { createRequire } from 'node:module'
 
 /**
  * Config SEPARADA a propósito. `vitest.config.ts` no crece una key `browser` y
@@ -22,8 +23,74 @@ import path from 'node:path'
  * preview (tema, reloj congelado, Toaster, fetch mockeado) solo. Un
  * `setProjectAnnotations` a mano lo DESACTIVA y pasa a pisarlo.
  */
+
+const require = createRequire(import.meta.url)
+
+/**
+ * Workaround para un bug de resolución de módulos en el worktree ANIDADO
+ * (`.claude/worktrees/<nombre>` dentro del propio repo TurnoGol).
+ *
+ * `@storybook/addon-vitest`'s `storybookTest()` inyecta sus setup files como bare
+ * specifiers ("@storybook/addon-vitest/internal/setup-file") en `test.setupFiles`
+ * (ver su `config()` hook). Vitest los resuelve con su propio resolver ESM
+ * vendorizado (mlly-style, en vitest/dist/chunks/coverage.*.js: `_resolve$1` /
+ * `normalizeid` / `packageResolve`), que arma el `base` con
+ * `"file://" + encodeURI(path)` SIN trailing slash. Al hacer
+ * `new URL('./node_modules/pkg/package.json', base)` sobre una base sin `/` final,
+ * la URL trata el ÚLTIMO SEGMENTO del path (el nombre de la carpeta del worktree)
+ * como si fuera un archivo y lo descarta — la búsqueda ascendente de node_modules
+ * pierde un nivel de directorio en cada vuelta.
+ *
+ * Confirmado con logging instrumentado (recorrido real, root = este worktree):
+ *   .claude/worktrees/<worktree>/node_modules/@storybook/addon-vitest  (correcto, nunca se prueba)
+ *   .claude/worktrees/node_modules/@storybook/addon-vitest             (1er intento, no existe)
+ *   .claude/node_modules/@storybook/addon-vitest                       (2do intento, no existe)
+ *   TurnoGol/node_modules/@storybook/addon-vitest                      (3er intento, SÍ EXISTE — repo padre)
+ *
+ * Como este worktree está anidado 3 niveles dentro del repo padre Y el padre
+ * también tiene `@storybook/addon-vitest` instalado (mismo lockfile → mismo hash
+ * de `.pnpm`), el off-by-one aterriza silenciosamente en el `node_modules` del
+ * PADRE en vez de tirar `ERR_MODULE_NOT_FOUND`. El browser (Playwright) termina
+ * pidiendo `/@fs/<repo padre>/node_modules/.../setup-file.js`, que el dev server
+ * de Vite (root = este worktree) rechaza por `server.fs.allow` → 229/229 archivos
+ * fallan antes de correr ningún test.
+ *
+ * Fix: post-resolvemos esos bare specifiers a rutas absolutas con el
+ * `require.resolve` NATIVO de Node (que sí sigue el symlink de este worktree
+ * correctamente — no tiene el bug de off-by-one) y sobreescribimos
+ * `test.setupFiles`. `_resolve$1` de Vitest hace un fast-path
+ * (`isAbsolute(id) && statSync(id).isFile()`) que devuelve el path tal cual sin
+ * pasar por `packageResolve`, así que el bug ya no se dispara.
+ *
+ * `enforce: 'post'` para correr DESPUÉS del `config()` hook de `storybookTest()`
+ * (que agrega los bare specifiers) y así poder reescribirlos.
+ */
+function resolveAddonVitestSetupFiles() {
+  return {
+    name: 'turnogol-fix-addon-vitest-nested-worktree-resolution',
+    enforce: 'post' as const,
+    config(config: { test?: { setupFiles?: unknown } }) {
+      const setupFiles = config.test?.setupFiles
+      if (!Array.isArray(setupFiles)) return
+      config.test!.setupFiles = setupFiles.map((file) => {
+        if (typeof file === 'string' && file.startsWith('@storybook/addon-vitest/internal/')) {
+          try {
+            return require.resolve(file)
+          } catch {
+            return file
+          }
+        }
+        return file
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [storybookTest({ configDir: path.join(process.cwd(), '.storybook') })],
+  plugins: [
+    storybookTest({ configDir: path.join(process.cwd(), '.storybook') }),
+    resolveAddonVitestSetupFiles(),
+  ],
   test: {
     name: 'storybook',
 

@@ -58,7 +58,6 @@ const meta = {
           method: 'cash',
           description: 'Reserva 20:00',
           bookingId: null,
-          productId: null,
           registeredBy: 's-1',
           occurredAt: new Date(),
           createdAt: new Date(),
@@ -112,12 +111,23 @@ export const TipoAjuste: Story = {
   },
 }
 
-/** Monto vacío o descripción vacía: error inline, no dispara la action. */
+/**
+ * Fase 4 UX: monto o descripción vacíos deshabilitan "Guardar" desde el
+ * primer render, en vez de recién avisar el error al clickear.
+ */
 export const ErrorDeValidacion: Story = {
+  name: 'Campos vacíos — botón "Guardar" deshabilitado (Fase 4 UX)',
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Guardar' }))
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(/monto válido/i)
+    await expect(canvas.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+
+    await userEvent.type(canvas.getByLabelText('Monto (pesos)'), '4500')
+    // Todavía falta la descripción: sigue deshabilitado.
+    await expect(canvas.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+
+    await userEvent.type(canvas.getByLabelText('Descripción'), 'Seña turno 20:00')
+    await expect(canvas.getByRole('button', { name: 'Guardar' })).toBeEnabled()
+
     await expect(args.createCashFlowAction).not.toHaveBeenCalled()
   },
 }

@@ -22,3 +22,20 @@ export function summarizeBookingCharges(opts: {
   const pending = Math.max(0, opts.priceSnapshot - totalPaid)
   return { depositCounted, totalPaid, pending }
 }
+
+/**
+ * ENS-21: marcador determinístico y único por booking para el cash_flow
+ * automático que `handleApproved` (payment.service.ts) inserta cuando MP
+ * confirma la seña. `getBookingCharges` (reservas/queries.ts) lo usa para
+ * EXCLUIR esa fila de "cobros de mostrador": la seña ya se cuenta vía
+ * `deposit_status`/`deposit_amount` en `summarizeBookingCharges` de arriba,
+ * así que dejarla entrar en `chargesTotal` la duplicaría (contrato exige
+ * category='booking' para esa fila, igual que un cobro manual — no hay una
+ * columna/categoría propia para diferenciarla sin migración de schema, así
+ * que el match exacto de `description`, con el bookingId completo embebido,
+ * es la vía de exclusión: mismo idiom que `prepareRefund`'s
+ * `description = 'Refund of ' + original.id`, Fix #53).
+ */
+export function depositCashFlowDescription(bookingId: string): string {
+  return `Seña MercadoPago — turno ${bookingId}`
+}

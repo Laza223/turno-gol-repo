@@ -3,6 +3,7 @@ import {
   uuid,
   dateStr,
   hhmm,
+  hhmmEnd,
   moneyCents,
   boundedText,
   slug,
@@ -30,6 +31,18 @@ describe('shared validation primitives', () => {
   it('hhmm: rejects 24:00 and 12:60', () => {
     expect(hhmm.safeParse('24:00').success).toBe(false)
     expect(hhmm.safeParse('12:60').success).toBe(false)
+  })
+  it('hhmmEnd: accepts 00:00 to 23:59 same as hhmm', () => {
+    expect(hhmmEnd.safeParse('00:00').success).toBe(true)
+    expect(hhmmEnd.safeParse('23:59').success).toBe(true)
+  })
+  it('hhmmEnd: accepts 24:00 (ENS-13, medianoche)', () => {
+    expect(hhmmEnd.safeParse('24:00').success).toBe(true)
+  })
+  it('hhmmEnd: rejects 25:00, 24:01 and 12:60', () => {
+    expect(hhmmEnd.safeParse('25:00').success).toBe(false)
+    expect(hhmmEnd.safeParse('24:01').success).toBe(false)
+    expect(hhmmEnd.safeParse('12:60').success).toBe(false)
   })
   it('moneyCents: integer >= 0', () => {
     expect(moneyCents.safeParse(0).success).toBe(true)

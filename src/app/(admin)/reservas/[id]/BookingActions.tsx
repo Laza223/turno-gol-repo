@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import type { BookingActionResult } from '../actions'
 
 type CancellationType = 'complejo' | 'jugador'
@@ -26,6 +27,23 @@ type Props = {
   bookingDate: string
   /** Hora de inicio (HH:MM:SS). */
   timeStart: string
+  /**
+   * Instante físico absoluto del inicio del turno (TIMESTAMPTZ ISO,
+   * migraciones 040/041) — fuente de verdad para el preview de plazo (R3-1).
+   * Si falta (no debería: NOT NULL post-backfill), cae al cálculo manual con
+   * offset fijo -3 vía `bookingDate`/`timeStart`.
+   */
+  startsAt?: string | null
+  /**
+   * Instante físico absoluto del FIN del turno (TIMESTAMPTZ ISO, migraciones
+   * 040/041) — fuente de verdad del guard "turno ya jugado" (clase de B3): si
+   * el turno ya terminó, nunca se reembolsa, ni eligiendo 'complejo' (el
+   * backend, `decideAdminRefund`, ya lo aplica; acá solo evitamos prometerle
+   * al admin un reembolso que el backend no va a ejecutar). Si falta, cae al
+   * fallback inicio + `SLOT_DURATION_MINUTES` (el turno es siempre de 60 min
+   * fijos).
+   */
+  endsAt?: string | null
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
   completeBookingAction: SimpleBookingFn
@@ -33,8 +51,12 @@ type Props = {
   cancelBookingAction: CancelBookingFn
 }
 
-// ART = UTC-3. Mismo cálculo que el server (artDateAt) para que el preview de
-// "dentro/fuera de plazo" coincida con la decisión real de cancelByAdmin.
+// ART = UTC-3. Fallback cuando no llega `starts_at` — mismo cálculo que usaba
+// el server antes de los instantes físicos (artDateAt). No contempla
+// complejos `closes_next_day`: un slot de madrugada guarda `bookingDate` =
+// día OPERATIVO (la noche anterior), no el día calendario real, así que este
+// cálculo puede errar por 24hs para esos turnos (R3-1) — por eso `starts_at`
+// es la fuente preferida y este cálculo queda solo de resguardo.
 function bookingStartMs(dateStr: string, hhmmss: string): number {
   const [y, mo, d] = dateStr.split('-').map(Number)
   const [h, m] = hhmmss.split(':').map(Number)
@@ -54,6 +76,8 @@ export default function BookingActions({
   paymentMethod,
   bookingDate,
   timeStart,
+  startsAt,
+  endsAt,
   cancellationPolicyHours,
   completeBookingAction,
   markNoShowAction,
@@ -70,8 +94,9 @@ export default function BookingActions({
   if (status !== 'confirmed') return null
 
   const hasPaidDeposit = depositStatus === 'paid' && depositAmount > 0
-  const inPolicy =
-    Date.now() < bookingStartMs(bookingDate, timeStart) - cancellationPolicyHours * 3_600_000
+  const bookingStartUtcMs = startsAt ? new Date(startsAt).getTime() : bookingStartMs(bookingDate, timeStart)
+  const bookingEndUtcMs = endsAt ? new Date(endsAt).getTime() : bookingStartUtcMs + SLOT_DURATION_MINUTES * 60_000
+  const inPolicy = Date.now() < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
 
   function runDirect(fn: () => Promise<{ success: boolean; error?: string }>) {
     setError(null)
@@ -102,19 +127,28 @@ export default function BookingActions({
     return res
   }
 
-  // Paso 2: qué pasa con la seña según el motivo elegido. El complejo reembolsa
-  // siempre; el jugador, según la política horaria del complejo.
-  const willRefund = cancelType === 'complejo' ? true : cancelType === 'jugador' ? inPolicy : false
-
-  let refundPreview: string | null = null
-  if (cancelType) {
-    if (!hasPaidDeposit) {
-      refundPreview = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
-    } else if (willRefund) {
+  // ENS-2: qué pasa con la seña de ESTE turno si se cancela AHORA. Visible
+  // desde que se abre el diálogo (antes solo aparecía tras elegir "quién
+  // cancela"), usando la política real: sin seña no hay nada que decidir;
+  // con seña, la ventana horaria decide salvo que el complejo asuma la culpa
+  // (reembolsa siempre, Tarea #3).
+  let refundPreview: string
+  if (!hasPaidDeposit) {
+    refundPreview = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
+  } else if (!cancelType) {
+    refundPreview = inPolicy
+      ? `Corresponde devolver la seña de ${formatArs(depositAmount)} (dentro del plazo de cancelación).`
+      : `La seña de ${formatArs(depositAmount)} quedó fuera de la ventana de devolución (política de ${cancellationPolicyHours}h).`
+  } else {
+    const turnoEnded = Date.now() >= bookingEndUtcMs
+    const willRefund = turnoEnded ? false : cancelType === 'complejo' ? true : inPolicy
+    if (willRefund) {
       refundPreview =
         paymentMethod === 'mercadopago'
           ? `Se reembolsará la seña de ${formatArs(depositAmount)} vía MercadoPago.`
           : `Coordiná el reembolso de ${formatArs(depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+    } else if (turnoEnded) {
+      refundPreview = `El turno ya se jugó: la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
     } else {
       refundPreview = `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
     }
@@ -191,11 +225,9 @@ export default function BookingActions({
             </label>
           </fieldset>
 
-          {refundPreview && (
-            <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
-              {refundPreview}
-            </div>
-          )}
+          <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
+            {refundPreview}
+          </div>
 
           <div className="space-y-1">
             <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">Motivo (obligatorio)</label>

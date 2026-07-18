@@ -1,6 +1,6 @@
 # 04 — Oferta Piloto Fundador (para cerrar en la demo)
 
-> Objetivo de la oferta: que decir "sí" sea más fácil que decir "lo pienso". Toda la fricción la absorbés vos, todo el riesgo lo absorbe el trial.
+> Objetivo de la oferta: que decir "sí" sea más fácil que decir "lo pienso". Toda la fricción la absorbés vos, todo el riesgo lo absorbe la prueba gratis.
 
 ## La oferta (texto para decir en la demo)
 
@@ -10,9 +10,9 @@
 
 | Componente | Detalle | Costo founder |
 |---|---|---|
-| Trial 30 días sin tarjeta | Ya existe en el producto (doc4) | $0 |
-| Setup done-for-you en 48h | Vos cargás canchas, horarios, precios (foto del cuaderno/pizarra/Excel del dueño) y los turnos fijos | 1-2 horas por complejo |
-| Conexión de MercadoPago | Sentarte con el dueño 10 min a conectar su cuenta MP (OAuth) y elegir % de seña | 15 min presencial o videollamada |
+| Prueba gratis 30 días sin tarjeta | Ya existe en el producto (doc4) | $0 |
+| Te lo dejamos andando en 48h | Vos cargás canchas, horarios, precios (foto del cuaderno/pizarra/Excel del dueño) y los turnos fijos | 1-2 horas por complejo |
+| Conexión de MercadoPago | Sentarte con el dueño 10 min a conectar su cuenta MP (conectás tu MP) y elegir % de seña | 15 min presencial o videollamada |
 | Kit de lanzamiento | QR impreso para el mostrador + 3 textos listos para IG/estado de WA + respuesta guardada para WhatsApp Business del complejo ([09-contenido.md](./09-contenido.md)) | 30 min una vez, reutilizable |
 | Entrenamiento del encargado | 20 min: grilla, reserva manual, cobrar, cerrar caja | 20-30 min |
 | Soporte directo | Tu WhatsApp personal durante el piloto | Variable — razón del límite de pilotos simultáneos |
@@ -40,14 +40,14 @@ Decirlo explícito en el cierre — filtra a los que no van a activar:
 
 **Día 21 del piloto** (no el 30 — no negociar contra el vencimiento): visita o llamada de conversión.
 
-> "Van [N] reservas online y [M] señas cobradas — eso ya son $[X] que antes eran riesgo de clavo. El plan para tus [C] canchas sale $[precio]/mes + IVA. Como estás entrando primero, [oferta fundador]. ¿Lo dejamos andando?"
+> "Van [N] reservas online y [M] señas cobradas — eso ya son $[X] que antes eran riesgo de turno colgado. El plan para tus [C] canchas sale $[precio]/mes + IVA. Como estás entrando primero, [oferta fundador]. ¿Lo dejamos andando?"
 
 **Precio fundador — REQUIERE INPUT (decisión de negocio tuya, no la tomo yo):**
 - Opción A (recomendada): 20-30% de descuento por 6 meses para los primeros 20 complejos, con precio de lista después. Simple, con fecha de fin, no destruye el pricing.
 - Opción B: precio de lista desde el día 1, y el "extra fundador" es el setup + soporte directo. Más sano a largo plazo, más difícil de cerrar sin casos de éxito.
-- NO recomendado: gratis extendido o "de por vida" — atrae a los que no valoran y regala MRR que después cuesta recuperar con la inflación.
+- NO recomendado: gratis extendido o "de por vida" — atrae a los que no valoran y regala lo que facturás por mes que después cuesta recuperar con la inflación.
 
-Recordar SIEMPRE: precios +21% IVA en el checkout (doc4). Decirlo antes del checkout, nunca que lo descubra solo.
+Recordar SIEMPRE: precios +21% IVA en la pantalla de pago (doc4). Decirlo antes de la pantalla de pago, nunca que lo descubra solo.
 
 ## Criterios de kill del piloto (protegé tus horas)
 

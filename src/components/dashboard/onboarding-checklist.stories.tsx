@@ -15,12 +15,14 @@ import { OnboardingChecklist } from './onboarding-checklist'
  * `content-area-gradient` del dashboard igual que en la app real.
  */
 type Action = ComponentProps<typeof OnboardingChecklist>['action']
+type DismissAction = ComponentProps<typeof OnboardingChecklist>['onDismiss']
 
 const markShared: Action = async () => ({ success: true })
 const markSharedError: Action = async () => ({
   success: false,
   error: 'No pudimos guardar el paso ahora.',
 })
+const markDismissed: DismissAction = async () => ({ success: true })
 
 const PENDING_STATE: ChecklistState = {
   accountCreated: true,
@@ -43,10 +45,18 @@ const meta = {
       </div>
     ),
   ],
+  // El estado plegado/desplegado persiste en localStorage (`minimized` lee
+  // `tg-hint-checklist-minimized` post-mount): sin este reset, una story
+  // "Completo" corrida antes deja la key en '1' y la siguiente story arranca
+  // ya minimizada, aunque su `state` diga lo contrario.
+  beforeEach: () => {
+    window.localStorage.removeItem('tg-hint-checklist-minimized')
+  },
   args: {
     tenantSlug: 'complejo-fenix',
     appUrl: 'https://turnogol.app',
     action: fn(markShared),
+    onDismiss: fn(markDismissed),
   },
 } satisfies Meta<typeof OnboardingChecklist>
 
@@ -123,5 +133,18 @@ export const VerCompletados: Story = {
     await userEvent.click(toggle)
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
     await expect(canvas.getByText('Cuenta creada')).toBeVisible()
+  },
+}
+
+/** Descarte manual: feedback transitorio "Descartado ✓" y persiste checklist_dismissed_at. */
+export const Descartar: Story = {
+  args: { state: PENDING_STATE },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Descartar' }))
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Descartado ✓' })).toBeInTheDocument(),
+    )
+    await expect(args.onDismiss).toHaveBeenCalledOnce()
   },
 }

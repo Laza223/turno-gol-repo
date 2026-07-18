@@ -122,6 +122,13 @@ export async function cleanupBookingsByIds(
 ): Promise<void> {
   for (const id of ids) {
     try {
+      // Delete the mirror payments row FIRST: payments.booking_id → bookings.id
+      // is a NO ACTION FK, so a leftover payment (created by a real webhook/
+      // checkout) BLOCKS the bookings DELETE below. Without this, the DELETE
+      // fails silently (only console.warn), leaving the booking — and its slot —
+      // alive, which then collides with the exclusion constraint on any retry.
+      await supabase.from('payments').delete().eq('booking_id', id)
+
       // Null out payment FK before delete to avoid constraint violations.
       await supabase
         .from('bookings')

@@ -73,7 +73,6 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.tenantId}`
-  await sql`DELETE FROM products WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM courts WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.tenantId}`
@@ -88,7 +87,6 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.depositTenantId}`
-  await sql`DELETE FROM products WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM courts WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.depositTenantId}`
@@ -153,6 +151,10 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
     booking_advance_days: 6,
     auto_complete_minutes: 30,
     onboarding_completed: true,
+    // Sin esto el DashboardTour (3 coachmarks de primera visita) se monta en
+    // TODOS los specs e2e admin que aterrizan en /dashboard, tapando botones
+    // con el portal y rompiendo clicks que no lo esperan.
+    admin_tour_seen_at: new Date().toISOString(),
   }
   await sql`
     INSERT INTO tenants (
@@ -206,6 +208,7 @@ async function seedDepositTenantAndCourt(sql: SqlClient): Promise<void> {
     booking_advance_days: 6,
     auto_complete_minutes: 30,
     onboarding_completed: true,
+    admin_tour_seen_at: new Date().toISOString(),
   }
   await sql`
     INSERT INTO tenants (

@@ -1,7 +1,7 @@
 import { and, eq, like, or } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
-import { tenants, tenantStaffMembers } from '@/shared/db/schema'
-import { generateSlug } from './tenant.utils'
+import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
+import { generateSlug, RESERVED_SLUGS } from './tenant.utils'
 import type {
   CreateTenantInput,
   OpeningHours,
@@ -15,12 +15,16 @@ export { generateSlug } from './tenant.utils'
 
 export async function generateUniqueSlug(name: string): Promise<string> {
   const db = getDb()
-  const base = generateSlug(name)
+  let base = generateSlug(name)
+  // Un slug igual a un segmento estático del App Router queda shadowed (Next
+  // resuelve estático antes que (public)/[slug]): se sufija antes de buscar colisiones.
+  if (RESERVED_SLUGS.has(base)) base = `${base}-futbol`
   const existing = await db
     .select({ slug: tenants.slug })
     .from(tenants)
     .where(or(eq(tenants.slug, base), like(tenants.slug, `${base}-%`)))
   const slugSet = new Set(existing.map((r) => r.slug))
+  for (const reserved of RESERVED_SLUGS) slugSet.add(reserved)
   if (!slugSet.has(base)) return base
   for (let i = 2; i < 1000; i++) {
     const candidate = `${base}-${i}`
@@ -70,17 +74,37 @@ export async function createTenantWithTrial(
     })
     .returning({ id: tenants.id, slug: tenants.slug })
 
+  // Plan default del trial: 'predio' (el plan real se elige recién al
+  // suscribirse — subscribe() hace UPDATE de plan_id). Sin esta fila,
+  // subscribe() no encuentra suscripción y tira SubscriptionNotFoundError
+  // para todo tenant nuevo.
+  const [predioPlan] = await db
+    .select({ id: plans.id })
+    .from(plans)
+    .where(and(eq(plans.slug, 'predio'), eq(plans.isActive, true)))
+    .limit(1)
+  if (!predioPlan) {
+    throw new Error("Plan 'predio' no encontrado o inactivo — no se puede crear el trial")
+  }
+
   // tenant.id was just generated — there's no pre-existing tenant context to
-  // inherit, so RLS on tenant_staff_members (tenant_id = app.current_tenant_id)
-  // needs it set explicitly to this brand-new id before the INSERT.
-  await withTenantContext(tenant.id, (tx) =>
-    tx.insert(tenantStaffMembers).values({
+  // inherit, so RLS on tenant_staff_members / tenant_subscriptions
+  // (tenant_id = app.current_tenant_id) needs it set explicitly to this
+  // brand-new id before the INSERTs.
+  await withTenantContext(tenant.id, async (tx) => {
+    await tx.insert(tenantStaffMembers).values({
       tenantId: tenant.id,
       staffUserId: input.staffUserId,
       role: 'admin',
       isActive: true,
-    }),
-  )
+    })
+    await tx.insert(tenantSubscriptions).values({
+      tenantId: tenant.id,
+      planId: predioPlan.id,
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: trialEndsAt,
+    })
+  })
 
   return tenant
 }

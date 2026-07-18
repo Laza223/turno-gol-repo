@@ -73,6 +73,83 @@ function fillFormAndSubmit() {
   fireEvent.submit(form)
 }
 
+describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
+  it('normaliza timeEnd "00:00" a "24:00" antes de llamar a previewAction', async () => {
+    previewAbonadoSlotsAction.mockResolvedValue({
+      success: true,
+      dates: MOCK_DATES,
+      conflicts: MOCK_CONFLICTS,
+    })
+
+    renderForm()
+    const form = document.querySelector('form')!
+
+    fireEvent.change(screen.getByRole('combobox', { name: /Cancha/i }), {
+      target: { value: mockCourts[0]!.id },
+    })
+    fireEvent.change(form.querySelector('input[name="timeStart"]') as HTMLInputElement, {
+      target: { value: '23:00' },
+    })
+    // El input type="time" nativo nunca produce "24:00" — el admin elige
+    // "00:00" para decir "hasta medianoche" y el form lo normaliza.
+    fireEvent.change(form.querySelector('input[name="timeEnd"]') as HTMLInputElement, {
+      target: { value: '00:00' },
+    })
+    fireEvent.change(form.querySelector('input[name="contactName"]') as HTMLInputElement, {
+      target: { value: 'Grupo Medianoche' },
+    })
+    fireEvent.change(form.querySelector('input[name="contactPhone"]') as HTMLInputElement, {
+      target: { value: '1199887766' },
+    })
+    fireEvent.change(form.querySelector('input[name="pricePerSession"]') as HTMLInputElement, {
+      target: { value: '5000' },
+    })
+    fireEvent.change(form.querySelector('input[name="startsOn"]') as HTMLInputElement, {
+      target: { value: '2026-06-01' },
+    })
+    fireEvent.submit(form)
+
+    await waitFor(() => {
+      expect(previewAbonadoSlotsAction).toHaveBeenCalledTimes(1)
+    })
+
+    expect(previewAbonadoSlotsAction).toHaveBeenCalledWith(
+      expect.objectContaining({ timeStart: '23:00', timeEnd: '24:00' }),
+    )
+
+    // La confirmación posterior también debe mandar '24:00', no '00:00'.
+    submitNewAbonado.mockResolvedValue({ status: 'idle' })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Crear abonado' })).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Crear abonado' }))
+
+    await waitFor(() => {
+      expect(submitNewAbonado).toHaveBeenCalledTimes(1)
+    })
+    const [, fd] = submitNewAbonado.mock.calls[0]!
+    expect((fd as FormData).get('timeEnd')).toBe('24:00')
+  })
+
+  it('no toca un timeEnd normal (11:00 queda igual)', async () => {
+    previewAbonadoSlotsAction.mockResolvedValue({
+      success: true,
+      dates: MOCK_DATES,
+      conflicts: MOCK_CONFLICTS,
+    })
+
+    renderForm()
+    fillFormAndSubmit()
+
+    await waitFor(() => {
+      expect(previewAbonadoSlotsAction).toHaveBeenCalledTimes(1)
+    })
+    expect(previewAbonadoSlotsAction).toHaveBeenCalledWith(
+      expect.objectContaining({ timeEnd: '11:00' }),
+    )
+  })
+})
+
 describe('AbonadoForm — preview phase', () => {
   it('shows phase 2 after successful preview call with correct badges and summary', async () => {
     previewAbonadoSlotsAction.mockResolvedValue({

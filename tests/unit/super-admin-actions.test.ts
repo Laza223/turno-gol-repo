@@ -136,6 +136,13 @@ describe('FORCEABLE_TRANSITIONS (espejo del FSM de lifecycle.service)', () => {
   it('trialing solo puede forzarse a active (transitionTrialingToActive)', () => {
     expect(FORCEABLE_TRANSITIONS.trialing).toEqual(['active'])
   })
+
+  it("'deleted' ya no es forzable manualmente desde ningún origen (el borrado real es exclusivo del cron de retención)", () => {
+    for (const [from, targets] of Object.entries(FORCEABLE_TRANSITIONS)) {
+      if (from === 'deleted') continue // terminal: ya cubierto arriba
+      expect(targets).not.toContain('deleted')
+    }
+  })
 })
 
 describe('isDestructiveTargetStatus', () => {

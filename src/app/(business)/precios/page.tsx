@@ -18,7 +18,7 @@ const HERO_CHIPS = ['30 días gratis, sin tarjeta', 'Mes a mes, sin permanencia'
 const INCLUDED = [
   'Reservas online 24/7 con tu link propio — el jugador no baja ninguna app',
   'Señas por MercadoPago que van directo a tu cuenta',
-  'El que te clava pierde la seña; si reincide, queda 14 días sin poder reservarte online',
+  'El que te cuelga el turno pierde la seña; si reincide, queda 14 días sin poder reservarte online',
   'Grilla en vivo desde el celular',
   'Aviso al instante con cada reserva (de madrugada espera a las 8)',
   'Caja completa: turnos, cantina con stock, gastos y cierre diario',

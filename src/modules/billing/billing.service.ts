@@ -1,10 +1,16 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
+import type { CreatePreapprovalInput, PreapprovalResult } from '@/modules/payments/payment.types'
+import {
+  isMpInvalidPayerError,
+  isMpAlreadyCancelledPreapprovalError,
+} from '@/modules/payments/mp-token-refresh'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import {
   DowngradeBlockedError,
+  InvalidPayerEmailError,
   PlanNotFoundError,
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
@@ -15,6 +21,7 @@ import type {
   BillingCycle,
   CancelResult,
   DowngradeResult,
+  PlanSummary,
   SubscribeResult,
   SubscriptionState,
   SubscriptionStatus,
@@ -73,6 +80,22 @@ async function loadPlan(planId: string, tx: DbTx): Promise<PlanRow | null> {
   return (rows as unknown as Array<PlanRow>)[0] ?? null
 }
 
+/**
+ * Planes activos ordenados (selector de "Activar plan" — Fix 1b). Mismo
+ * patrón que `loadPlan`: SQL crudo sobre la tx del caller. `plans` es tabla
+ * global sin RLS, así que no depende de que `app.current_tenant_id` esté seteado.
+ */
+export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
+  const rows = await tx.execute(sql`
+    SELECT id, slug, name, max_courts AS "maxCourts",
+           price_monthly AS "priceMonthly", price_annual AS "priceAnnual"
+    FROM plans
+    WHERE is_active = true
+    ORDER BY sort_order
+  `)
+  return rows as unknown as PlanSummary[]
+}
+
 async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
     SELECT status, plan_id, billing_cycle,
@@ -83,6 +106,35 @@ async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
     FROM tenant_subscriptions
     WHERE tenant_id = ${tenantId}
     LIMIT 1
+  `)
+  return (rows as unknown as Array<SubRow>)[0] ?? null
+}
+
+/**
+ * B5 (🔴 huérfano MP↔DB): mismas columnas y forma de retorno que `loadSub`,
+ * pero con `FOR UPDATE` — usada por `subscribe()`/`reactivate()`, que leen el
+ * estado, tocan MP (efecto externo irreversible) y recién después escriben.
+ * Sin lock, dos llamadas concurrentes sobre el mismo tenant (doble click, o
+ * un re-subscribe durante el trial) leen ambas el mismo estado, crean CADA
+ * UNA un preapproval en MP, y el UPDATE local solo guarda el último id — el
+ * otro preapproval queda huérfano en MP, cobrando sin que la DB lo
+ * referencie. El `FOR UPDATE` serializa: la segunda tx bloquea hasta que la
+ * primera commitea, y ve el `mp_subscription_id` que la primera dejó. Sin
+ * `LIMIT` (tenant_id es único y `FOR UPDATE` + `LIMIT` es frágil); el
+ * `[0] ?? null` ya maneja "no hay fila". Mismo patrón que
+ * `support.service.ts:loadSubForUpdate`. `loadSub` (lecturas read-only como
+ * `getSubscriptionState`) queda intacto — no debe lockear.
+ */
+async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | null> {
+  const rows = await tx.execute(sql`
+    SELECT status, plan_id, billing_cycle,
+           current_period_start, current_period_end,
+           mp_subscription_id, pending_plan_change, pending_change_at,
+           canceled_at, cancellation_reason, scheduled_deletion_at,
+           dunning_started_at, last_payment_failed_at, last_payment_at
+    FROM tenant_subscriptions
+    WHERE tenant_id = ${tenantId}
+    FOR UPDATE
   `)
   return (rows as unknown as Array<SubRow>)[0] ?? null
 }
@@ -132,6 +184,28 @@ function computeNotificationUrl(tenantId: string): string {
   return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/mercadopago?tenant=${tenantId}`
 }
 
+/**
+ * ENS-23: subscribe() y reactivate() comparten esta llamada a MP. Si el
+ * `payer_email` (email del dueño) no tiene cuenta de MercadoPago, MP la
+ * rechaza con "Both payer and collector must be real or test users" — sin
+ * este catch, un `MpGatewayError` técnico burbujeaba hasta un 500 críptico en
+ * `ActivatePlanSection`. Cualquier OTRO error de MP (red, rate limit, etc.)
+ * sigue burbujeando sin tocar.
+ */
+async function createPreapprovalOrThrowFriendly(
+  gateway: PaymentGateway,
+  input: CreatePreapprovalInput,
+): Promise<PreapprovalResult> {
+  try {
+    return await gateway.createPreapproval(input)
+  } catch (err) {
+    if (isMpInvalidPayerError(err)) {
+      throw new InvalidPayerEmailError(input.tenantId, input.payerEmail)
+    }
+    throw err
+  }
+}
+
 // ─── subscribe ──────────────────────────────────────────────────────────────
 
 export async function subscribe(
@@ -141,7 +215,7 @@ export async function subscribe(
   gateway: PaymentGateway,
   tx: DbTx,
 ): Promise<SubscribeResult> {
-  const sub = await loadSub(tenantId, tx)
+  const sub = await loadSubForUpdate(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
   if (sub.status !== 'trialing') {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
@@ -157,7 +231,23 @@ export async function subscribe(
 
   const amount = planAmount(plan, billingCycle)
 
-  const preapproval = await gateway.createPreapproval({
+  // B5 (🔴 huérfano MP↔DB): un `mp_subscription_id` previo significa que un
+  // subscribe anterior (re-subscribe durante el trial, o el perdedor de una
+  // carrera concurrente ahora serializada por el `FOR UPDATE` de
+  // `loadSubForUpdate`) ya dejó un preapproval vivo en MP. Sin este cancel,
+  // pedir uno nuevo lo pisa en la DB sin apagarlo — queda huérfano cobrando.
+  // Mismo patrón que `reactivate()` (líneas más abajo): tolera "ya estaba
+  // cancelado en MP" (`isMpAlreadyCancelledPreapprovalError`), cualquier otro
+  // error aborta el subscribe entero.
+  if (sub.mp_subscription_id) {
+    try {
+      await gateway.cancelPreapproval(sub.mp_subscription_id)
+    } catch (err) {
+      if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+    }
+  }
+
+  const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
     payerEmail: owner.ownerEmail,
     amount,
@@ -204,7 +294,11 @@ export async function upgrade(
   tx: DbTx,
   now: Date = new Date(),
 ): Promise<UpgradeResult> {
-  const sub = await loadSub(tenantId, tx)
+  // B5 (🔴 huérfano MP↔DB, misma causa raíz que en `cancel()`): `loadSubForUpdate`
+  // en vez de `loadSub` — la proración/monto se calculan sobre una lectura
+  // lockeada, serializada contra `subscribe()`/`reactivate()`/`cancel()`
+  // concurrentes sobre la misma fila.
+  const sub = await loadSubForUpdate(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
   if (sub.status !== 'active') {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
@@ -295,18 +389,23 @@ export async function handleUpgradeApproved(
 
   const newAmount = planAmount(targetPlan, sub.billing_cycle)
 
-  if (sub.mp_subscription_id) {
-    await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
-  }
-
-  await tx.execute(sql`
+  // B4: el UPDATE local es el gate atómico — corre ANTES de tocar MP.
+  // El WHERE repite `status = 'active' AND pending_plan_change = targetPlanId`
+  // (los mismos guards de arriba, pero como condición de escritura): si entre
+  // el loadSub y este UPDATE una tx concurrente (ej. el sweep de dunning)
+  // sacó a la suscripción de ese estado, o un webhook duplicado ya consumió
+  // el pending_plan_change, el UPDATE afecta 0 filas y MP nunca se toca —
+  // evita la divergencia MP↔DB (mismo patrón que support.service.changePlanForSupport).
+  const updated = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET plan_id = ${targetPlanId},
         pending_plan_change = NULL,
         pending_change_at = NULL,
         updated_at = NOW()
-    WHERE tenant_id = ${tenantId} AND status = 'active'
+    WHERE tenant_id = ${tenantId} AND status = 'active' AND pending_plan_change = ${targetPlanId}
+    RETURNING id
   `)
+  if ((updated as unknown as Array<{ id: string }>).length === 0) return
 
   await insertSystemAuditLog(tx, {
     tenantId,
@@ -315,6 +414,14 @@ export async function handleUpgradeApproved(
     resourceId: tenantId,
     metadata: { fromPlanId: sub.plan_id, toPlanId: targetPlanId },
   })
+
+  // MP último: cualquier fallo previo rollbackea limpio (nada se tocó fuera
+  // de esta tx); si esta llamada falla, la tx entera (UPDATE + audit)
+  // rollbackea y el webhook reintenta (lock en `processed_webhooks`,
+  // mp-webhook.handler.ts).
+  if (sub.mp_subscription_id) {
+    await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
+  }
 }
 
 // ─── downgrade (deferred to period end) ─────────────────────────────────────
@@ -324,7 +431,11 @@ export async function downgrade(
   targetPlanId: string,
   tx: DbTx,
 ): Promise<DowngradeResult> {
-  const sub = await loadSub(tenantId, tx)
+  // B5 (🔴 huérfano MP↔DB, misma causa raíz que en `cancel()`): `loadSubForUpdate`
+  // en vez de `loadSub` — cierra el race sobre `pending_plan_change` y el
+  // `fromPlanId` del audit contra `subscribe()`/`reactivate()`/`cancel()`
+  // concurrentes. Sin llamada a MP acá, pero la fila igual se serializa.
+  const sub = await loadSubForUpdate(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
   if (sub.status !== 'active') {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
@@ -379,13 +490,73 @@ export async function cancel(
   gateway: PaymentGateway,
   tx: DbTx,
 ): Promise<CancelResult> {
-  const sub = await loadSub(tenantId, tx)
+  // B5 (🔴 huérfano MP↔DB, causa raíz): `loadSub` (SIN lock) dejaba leer acá
+  // un `mp_subscription_id` STALE — si un `subscribe()`/`reactivate()`
+  // concurrente (que SÍ locquea con `loadSubForUpdate`) escribía un
+  // preapproval nuevo entre esta lectura y el UPDATE de limpieza de abajo, el
+  // `canceledMpSubscriptionId` capturado acá quedaba apuntando al preapproval
+  // VIEJO; `cancelPreapproval` cancelaba el viejo (ya cancelado por el otro
+  // lado) y el UPDATE de limpieza pisaba `mp_subscription_id` a NULL sin
+  // cancelar el NUEVO — huérfano vivo en MP, cobrando sin referencia en la
+  // DB. `loadSubForUpdate` serializa: esta tx sostiene el lock desde acá
+  // hasta el commit, así que `sub.mp_subscription_id` (y todo lo que se
+  // deriva de él, incluido `transitionToCanceled` más abajo) siempre refleja
+  // el último estado escrito, gane quien gane la carrera.
+  const sub = await loadSubForUpdate(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
 
-  if (sub.mp_subscription_id) {
-    await gateway.cancelPreapproval(sub.mp_subscription_id)
-  }
+  const canceledMpSubscriptionId = sub.mp_subscription_id
+
+  // B1 (🔴 divergencia MP↔DB): la FSM corre PRIMERO, antes de tocar MP. Si el
+  // tenant está en un estado no cancelable (ej. `blocked` — el sweep de
+  // dunning no limpia `mp_subscription_id`), `transitionToCanceled` tira acá
+  // y `cancelPreapproval` NUNCA se llama: MP queda intacto, sin divergencia.
+  // Si el estado sí es cancelable pero el gateway falla más abajo, la
+  // atomicidad ("todo o nada") ya no depende del orden de llamadas sino del
+  // rollback de la tx del caller: este UPDATE se deshace junto con todo lo
+  // demás.
   await transitionToCanceled(tenantId, reason, tx)
+
+  if (canceledMpSubscriptionId) {
+    // Mismo riesgo menor que `reactivate()` (R5 lo señaló, ver Fix 1 más
+    // abajo): improbable acá (nadie más cancela el preapproval de este
+    // tenant entre lecturas), pero tolerar "ya estaba cancelado en MP" tiene
+    // costo cero y evita que una baja voluntaria reintentada por el dueño
+    // (ej. doble click, timeout de red en el primer intento que sí llegó a
+    // MP) quede trabada en el mismo error 400 que R2-2.
+    try {
+      await gateway.cancelPreapproval(canceledMpSubscriptionId)
+    } catch (err) {
+      if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+    }
+
+    // Fix 2a (R2 🔴, mitad 1 de "un pago en vuelo no deshace una baja
+    // voluntaria"): sin esto, un pago del preapproval VIEJO (cancelado
+    // arriba, pero autorizado por MP antes del cancel — "en vuelo") que
+    // llega tarde vía webhook encontraría `mp_subscription_id` todavía
+    // apuntando a él y `onPaymentApproved` (dunning.service.ts, Fix 2b) lo
+    // tomaría como "la suscripción actual" y reactivaría solo, sin que el
+    // dueño lo haya pedido (viola ENS-25/26, Res. 424/2020).
+    // `transitionToCanceled` (lifecycle.service.ts) ya audita
+    // 'tenant.canceled' con {reason}; ese archivo queda fuera del alcance de
+    // este fix, así que este es un UPDATE + audit log SEGUNDO y dedicado —
+    // misma tx que `transitionToCanceled` arriba (todo-o-nada por rollback).
+    // El `WHERE status = 'canceled'` sigue siendo correcto: para cuando se
+    // llega acá, `transitionToCanceled` ya dejó el status en 'canceled'.
+    // Preserva el id cancelado en el audit trail antes de borrarlo.
+    await tx.execute(sql`
+      UPDATE tenant_subscriptions
+      SET mp_subscription_id = NULL, updated_at = NOW()
+      WHERE tenant_id = ${tenantId} AND status = 'canceled'
+    `)
+    await insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'subscription.mp_preapproval_cleared',
+      resourceType: 'tenant_subscription',
+      resourceId: tenantId,
+      metadata: { canceledMpSubscriptionId },
+    })
+  }
 
   const owner = await loadTenantOwner(tenantId, tx)
   if (owner) {
@@ -407,7 +578,7 @@ export async function cancel(
   return { accessUntil: toDate(sub.current_period_end) }
 }
 
-// ─── reactivate (canceled or churned, before deletion_at) ───────────────────
+// ─── reactivate (canceled/churned/suspended/blocked, before deletion_at) ────
 
 export async function reactivate(
   tenantId: string,
@@ -417,10 +588,18 @@ export async function reactivate(
   tx: DbTx,
   now: Date = new Date(),
 ): Promise<SubscribeResult> {
-  const sub = await loadSub(tenantId, tx)
+  const sub = await loadSubForUpdate(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
 
-  const allowed: SubscriptionStatus[] = ['canceled', 'churned']
+  // ENS-20: se suman `suspended` y `blocked` — doc4 §2 los clasifica como
+  // "Reintento manual" y "Re-activación" respectivamente, así que necesitan el
+  // mismo botón de "pagar ahora" que ya tenían canceled/churned. `past_due`
+  // queda deliberadamente afuera: todavía tiene un preapproval de MP vivo
+  // reintentando automáticamente (doc4: "Reintento automático", día 0/2/5);
+  // pedir uno nuevo acá arriesgaría un doble cobro si el viejo también termina
+  // aprobándose. onPaymentApproved ya reactiva sea cual sea el origen
+  // (transitionToActiveFromAny) una vez que ESE pago se acredita.
+  const allowed: SubscriptionStatus[] = ['canceled', 'churned', 'suspended', 'blocked']
   if (!allowed.includes(sub.status)) {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
@@ -436,7 +615,46 @@ export async function reactivate(
 
   const amount = planAmount(plan, billingCycle)
 
-  const preapproval = await gateway.createPreapproval({
+  // Fix 1 (R2 🔴): el preapproval VIEJO puede seguir vivo en MP reintentando
+  // — el sweep de dunning (dunning-retry.worker.ts) solo escala estado
+  // local, JAMÁS llama a MP para cancelarlo (comentario en ese archivo: "MP
+  // itself handles charge retries ... this sweep only escalates state").
+  // Sin este cancel, pedir un preapproval nuevo pisa `mp_subscription_id` sin
+  // apagar el viejo → dos preapprovals cobrando el mismo plan. Mismo patrón
+  // que `cancel()` (arriba).
+  //
+  // "Ya estaba cancelado en MP" (Fix 1, R2-2 residual — reviewer R5, verificado
+  // contra MP real por el orquestador 2026-07-14, ver ENSAYO_GENERAL.md): SÍ
+  // lo distinguimos ahora. Escenario real: este mismo cancel corre, tiene
+  // éxito en MP (efecto externo NO transaccional — no hay rollback posible),
+  // pero `createPreapprovalOrThrowFriendly` de más abajo falla justo después
+  // → el rollback local de la tx deja `mp_subscription_id` intacto, apuntando
+  // a un preapproval que YA está `cancelled` en MP. El reintento del dueño
+  // vuelve a pasar por acá y MP rechaza el segundo cancel con HTTP 400 "You
+  // can not modify a cancelled preapproval." — sin esta tolerancia, el dueño
+  // queda trabado para siempre en el único flujo cuya razón de ser es
+  // dejarlo pagar. `isMpAlreadyCancelledPreapprovalError` matchea por mensaje
+  // (mismo patrón que `isMpInvalidPayerError`, validado contra la respuesta
+  // real de MP — no una suposición sobre el shape del SDK). El objetivo de
+  // este cancel ("el viejo no está vivo") ya se cumplió, así que se tolera y
+  // seguimos. Cualquier OTRO error sigue abortando la reactivación entera
+  // (bias sin cambios: nunca crear el nuevo con el viejo posiblemente vivo).
+  //
+  // Con el Fix 2 (`cancel()` limpia `mp_subscription_id` al dar de baja
+  // voluntariamente), el único camino real que llega acá con un id no nulo
+  // es: reintentos automáticos de MP nunca cancelados (suspended/blocked/
+  // churned vía dunning), datos legacy pre-fix, o el escenario de arriba
+  // (rollback tras un cancel exitoso); una baja voluntaria previa normal ya
+  // no deja nada que cancelar (ver test dedicado).
+  if (sub.mp_subscription_id) {
+    try {
+      await gateway.cancelPreapproval(sub.mp_subscription_id)
+    } catch (err) {
+      if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+    }
+  }
+
+  const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
     payerEmail: owner.ownerEmail,
     amount,
@@ -447,11 +665,19 @@ export async function reactivate(
     notificationUrl: computeNotificationUrl(tenantId),
   })
 
+  // Residual B5 (upgrade/downgrade pendiente stale): reactivar establece un
+  // plan fresco (`planId` arriba, elegido por el dueño ahora); cualquier
+  // `pending_plan_change` que haya sobrevivido desde antes del cancel (fix
+  // gemelo en `transitionToCanceled`, o legado pre-fix) es stale y no debe
+  // reaplicarse tarde vía un CAS de `handleUpgradeApproved` o el sweep de
+  // dunning.
   await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET plan_id = ${planId},
         billing_cycle = ${billingCycle}::billing_cycle,
         mp_subscription_id = ${preapproval.preapprovalId},
+        pending_plan_change = NULL,
+        pending_change_at = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
   `)

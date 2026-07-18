@@ -566,3 +566,41 @@ Continuación del esfuerzo docs/marketing/ (misma sesión que la estrategia). Co
 - NO tocado: template no-show-debt (lo eliminó la sesión paralela, verificado en código), testimonio de /login (decisión del dueño), doc4_monetizacion.md (precios viejos, pendiente).
 
 Nada commiteado.
+
+## 2026-07-17 — Slugs reservados: tenant con slug de ruta estática quedaba shadowed
+
+Hallazgo (esfuerzo UX 5 pilares): `generateUniqueSlug` (`src/modules/tenants/tenant.service.ts:16`) solo chequeaba colisión contra `tenants.slug`, nunca contra segmentos estáticos del App Router. Como `(public)/[slug]` vive en la raíz, un tenant llamado "Precios", "Login", "Grilla", etc. generaba un slug que Next resuelve como ruta estática (estático gana sobre dinámico) → página pública inalcanzable sin error visible.
+
+- `src/modules/tenants/tenant.utils.ts`: nueva constante `RESERVED_SLUGS` (49 entradas) — enumeración real de segmentos top-level de `src/app` (los 6 route groups aportan hijos top-level: `(admin)` grilla/caja/…, `(auth)` login/ingresar/…, `(business)` precios/blog/vs/…, `(player)`, `(public)` explorar/…, `(super-admin)`) + raíz (`api`, `home`, `mock-mp`, `onboarding`, `reserva`, `select-tenant`, `icon-*`) + `c` (prefijo del link público `/c/{slug}`).
+- `src/modules/tenants/tenant.service.ts`: `generateUniqueSlug` sufija base reservada con `-futbol` ("precios" → "precios-futbol", decisión de producto propuesta en el pedido: sufijo menos invasivo) y además une `RESERVED_SLUGS` al set de colisiones para que ningún candidato numérico caiga en un slug reservado (edge: `icon-192`/`icon-512` son rutas reales).
+- Tests: `tests/unit/tenant-service.test.ts` +4 casos (sufijo `-futbol`, barrido exhaustivo de las 49 reservas —ninguna puede salir como slug—, fallback numérico `grilla-futbol-2`, salto de candidato numérico reservado `icon-192`→`icon-193`). 14/14 🟢.
+- Migración para tenants existentes: NO hace falta — pre-deploy, sin tenants productivos; seeds usan `e2e-complejo-demo` / `e2e-complejo-sena` / `staging-demo` (ninguno reservado).
+- Verificación: `pnpm vitest run tests/unit/tenant-service.test.ts` → 14/14 🟢, `pnpm typecheck` 🟢, `pnpm lint` → 0 errors (27 warnings pre-existentes, ninguno en archivos tocados).
+- Nota colateral (NO tocado): `buildPublicLinkUrl` (`src/lib/utils.ts:27`) en este worktree todavía arma `/c/{slug}` — el fix Fase 0 UX que lo pasa a `/{slug}` vive en otro worktree/rama. La constante nueva cubre ambos mundos (`c` reservado).
+
+Mantenimiento: al agregar una ruta top-level nueva en `src/app`, agregar el segmento a `RESERVED_SLUGS` (comentario en la constante lo indica).
+
+## 2026-07-17 — a11y: GhostKpis de /reportes bajo AA por opacity-50 (sesión fix puntual, worktree dazzling-goldwasser)
+
+Hallazgo derivado del fix de `GhostTopSlots` (/metricas, sesión UX paralela): `GhostKpis` en `src/app/(admin)/reportes/page.tsx` aplicaba `opacity-50` al grid entero — `text-foreground` de los StatCard componía ~3.79:1 sobre fondo blanco (AA exige 4.5:1). Nunca lo atrapó el gate a11y de Storybook porque la página no tenía story.
+
+- Fix (mismo criterio que GhostTopSlots): sin opacidad sobre el wrapper; valor del StatCard en `text-muted-foreground` (ya AA), `opacity-40` solo en el glifo del ícono (decorativo, sin texto). Comentario explicativo en el componente.
+- Cobertura del gate: `GhostKpis` extraído a `src/app/(admin)/reportes/GhostKpis.tsx` (la página es server component async con auth+DB, no storybook-able) + `GhostKpis.stories.tsx` (title `Admin/Reportes/GhostKpis`, play con smoke asserts). El a11y global (`preview.tsx` → `a11y.test: 'error'`) ahora la cubre.
+- Verificación: `pnpm typecheck` 🟢, `pnpm lint` 🟢 (0 errores; 27 warnings pre-existentes, ninguno en reportes), story 1/1 🟢. Test negativo: con el patrón viejo re-aplicado temporalmente la story FALLA con 3 violaciones `color-contrast` (axe 4.12) — el gate atrapa la regresión; restaurado el fix, verde.
+- Nota infra: la suite storybook no corre en este worktree anidado sin el plugin `resolveAddonVitestSetupFiles` (bug resolver Vitest, ya documentado); se corrió con config temporal portada del worktree ux-usability, borrada después. El fix de config pertenece a esa rama — no se duplicó acá.
+
+Nada commiteado.
+
+## 2026-07-13 — Auditoría psicológica de /para-complejos (skill marketing-psychology, solo report)
+
+**Contexto:** encargo /marketing-psychology → landing B2B, alcance "solo auditoría" elegido por el dueño. Report nuevo: `docs/audit/AUDIT_PSICOLOGIA_PARA_COMPLEJOS.md`. Capa siguiente al sweep 5eb5eca (2026-07-12): aquel mató la lista negra literal; este audita claims residuales + efectividad psicológica del copy vigente.
+
+**Hallazgos:** 1 🔴 (H-05: "Herramientas que nacieron de la operación diaria de complejos como el tuyo", `page.tsx:346` — claim de origen falso con cero clientes; viola regla dura #2 del playbook y piso legal MASTER §9) · 6 🟡 (H-02 H1 aspiracional vs loss aversion REQUIERE INPUT; H-03 "Soporte dedicado" sin canal comprometido; H-04 softban ausente en toda la landing — diferenciador #1 sin vender; H-06 corporate-speak en Features; H-12 mock grilla 15 min = triage #92 con peso subido; H-13/H-14 REQUIERE INPUT) · 5 🟢 (pulido). + 3 gaps estructurales REQUIERE INPUT (contraste vs status quo, objeción seña, pratfall del pionero) + sección "lo que ya está bien" (subhead hero, StatsBar mecánico, risk reversal del cierre — no romper).
+
+**Claims verificados contra código antes de afirmar:** trial 30 días (`tenant.service.ts:55` ✅), TTL hold 6 min = "en minutos" (`booking.expiry.ts:81` ✅), quiet hours 8AM (`push-quiet-hours.ts:17` ✅), sin application_fee = "100% de la seña" (grep `mercadopago.ts` ✅), "20 minutos" permitido por decisión (gtm 03:51).
+
+**Cross-refs:** MASTER §13 P2.7 desactualizado (5eb5eca ya eliminó los stats que lista — cerrarlo o reescribirlo, REQUIERE INPUT); triage #92/#134 referenciados, no duplicados. Contratos de test para el fix futuro documentados en el report (story fija H1 + "Reservas online 24/7" + CTAs→/register).
+
+**Delegaciones:** 2 Explore (Sonnet, exploración landing + docs marketing/gtm) en fase de planning.
+
+Sin código tocado. Nada commiteado (report + esta entrada solamente).

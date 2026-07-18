@@ -82,8 +82,11 @@ export const Vacio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByText(/todavía no hay jugadores vinculados a este complejo/i),
+      canvas.getByText('Todavía no tenés jugadores vinculados'),
     ).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('link', { name: 'Compartí tu link desde el panel' }),
+    ).toHaveAttribute('href', '/dashboard')
   },
 }
 

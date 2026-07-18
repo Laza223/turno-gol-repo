@@ -12,11 +12,12 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
+import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { UpcomingBookings } from '@/components/dashboard/upcoming-bookings'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
-import { markPublicLinkSharedAction } from './actions'
+import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -37,10 +38,6 @@ export default async function DashboardPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const allDone =
-    tenant.settings.onboarding_completed === true &&
-    tenant.settings.public_link_shared === true
-
   const [data, checklistState] = await Promise.all([
     getDashboardData({
       id: tenant.id,
@@ -50,6 +47,13 @@ export default async function DashboardPage() {
     }),
     getChecklistState(tenant.id, tenant.settings, !!tenant.mpConnectedAt),
   ])
+
+  // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
+  // podía dar "por terminado" el onboarding con canchas/horarios sin cargar).
+  const allDone = Object.values(checklistState).every(Boolean)
+  const showChecklist = !allDone && !tenant.settings.checklist_dismissed_at
+  const showTour =
+    tenant.settings.onboarding_completed === true && !tenant.settings.admin_tour_seen_at
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const { caja, occupancy, pendingDeposits, blockedPlayers } = data
@@ -68,6 +72,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {showTour && <DashboardTour action={markTourSeenAction} />}
+
       <PageHeader
         title="Inicio"
         subtitle={todayMediumArt()}
@@ -75,6 +81,7 @@ export default async function DashboardPage() {
         actions={
           <Link
             href="/grilla"
+            data-tour-id="tour-grilla"
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
@@ -83,12 +90,13 @@ export default async function DashboardPage() {
         }
       />
 
-      {!allDone && (
+      {showChecklist && (
         <OnboardingChecklist
           state={checklistState}
           tenantSlug={tenant.slug}
           appUrl={appUrl}
           action={markPublicLinkSharedAction}
+          onDismiss={markChecklistDismissedAction}
         />
       )}
 

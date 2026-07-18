@@ -376,6 +376,36 @@ describe('forceTenantStatus', () => {
     expect(await fetchTenantStatus(sql, tenantId)).toBe('trialing')
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
   })
+
+  // 'deleted' YA NO es un destino forzable manualmente (ver comentario de
+  // FORCEABLE_TRANSITIONS): forzarlo marcaba el status sin borrar filas hijas
+  // ni cancelar el preapproval MP, y el sweep de retención excluye
+  // status='deleted' de sus targets → tenant huérfano para siempre. El borrado
+  // real es responsabilidad exclusiva del cron de retención.
+  //
+  // scheduled_deletion_at se fija en el PASADO para que el tenant sea, en
+  // todo lo demás, elegible para el borrado real del cron de retención — así
+  // el test confirma que aun siendo elegible, forzar 'deleted' a mano se
+  // rechaza por el bloqueo de FORCEABLE_TRANSITIONS (única guarda tras quitar
+  // el force-'deleted'; el estado terminal ya no tiene transición de FSM).
+  it.each(['blocked', 'canceled', 'churned'] as const)(
+    '%s → deleted ya NO es forzable: InvalidTransitionError sin audit ni cambio',
+    async (fromStatus) => {
+      const sql = getSql()
+      const tenantId = await seedTenantWithStaff(sql)
+      await seedSubscription(sql, tenantId, fromStatus, 'predio')
+      await sql`
+        UPDATE tenants SET scheduled_deletion_at = NOW() - INTERVAL '1 day' WHERE id = ${tenantId}
+      `
+
+      await expect(
+        forceTenantStatus(tenantId, 'deleted', systemAdminId),
+      ).rejects.toBeInstanceOf(InvalidTransitionError)
+
+      expect(await fetchTenantStatus(sql, tenantId)).toBe(fromStatus)
+      expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
+    },
+  )
 })
 
 // ─── reactivateTenant ────────────────────────────────────────────────────────

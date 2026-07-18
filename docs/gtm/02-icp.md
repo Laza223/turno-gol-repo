@@ -8,10 +8,10 @@
 
 | Criterio | Valor objetivo | Por qué |
 |---|---|---|
-| Canchas de fútbol | 3 a 6 | Suficiente volumen para sufrir clavos y caos; suficientemente chico para que el dueño decida solo. Plan Complejo ($85k, 3-5 canchas) o Estadio ($115k, 6+). |
+| Canchas de fútbol | 3 a 6 | Suficiente volumen para sufrir ausentes y caos; suficientemente chico para que el dueño decida solo. Plan Complejo ($85k, 3-5 canchas) o Estadio ($115k, 6+). |
 | Quién decide | El dueño, y está en el complejo casi todos los días | Ciclo de venta corto: una charla + una demo. Sin socios lejanos ni gerentes. |
 | Gestión actual | WhatsApp + cuaderno/Excel/Google Calendar | El 60% del mercado (doc1). Sin switching cost de datos. |
-| Demanda | Finde lleno, con gente que queda afuera | El clavo duele el doble: cada turno clavado era plata segura de otro grupo. |
+| Demanda | Finde lleno, con gente que queda afuera | El turno colgado duele el doble: cada turno colgado era plata segura de otro grupo. |
 | Digital | Instagram activo (publica seguido), usa MercadoPago en el negocio | Si ya cobra por MP, la seña es natural. Si publica en IG, va a compartir su link. |
 | Horario | Cierra tarde (00:00-02:00) | El "día operativo" de TurnoGol es diferencial exclusivo; las turneras genéricas se lo rompen. |
 | Zona | **Una sola zona geográfica, la tuya** (donde puedas caer en bici/auto en <40 min) | Presencial gana, y los dueños de una zona se conocen: cada cliente es un referido potencial. ⚠️ HIPÓTESIS: definir la zona concreta es decisión tuya — GBA corredor X o tu ciudad. |
@@ -22,7 +22,7 @@
 - Bio de IG dice "reservas por WhatsApp al 11-XXXX" → gestiona a mano. 🎯
 - Historias mostrando la grilla en pizarra/cuaderno/planilla. 🎯
 - Reviews de Google que mencionan "nunca atienden el teléfono", "me cancelaron el turno". 🎯
-- Publica "se liberó cancha hoy 22hs" → sufre clavos en vivo. 🎯🎯
+- Publica "se liberó cancha hoy 22hs" → sufre turnos que le cuelgan en vivo. 🎯🎯
 - Responde comentarios/DMs rápido → dueño encima del negocio.
 - Fotos solo de fútbol (sin paletas de pádel a la vista).
 

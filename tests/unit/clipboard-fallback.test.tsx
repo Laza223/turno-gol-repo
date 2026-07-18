@@ -23,6 +23,7 @@ const baseProps = {
   tenantSlug: 'test-slug',
   appUrl: 'https://turnogol.app',
   action: vi.fn(async () => ({ success: true as const })),
+  onDismiss: vi.fn(async () => ({ success: true as const })),
 }
 
 describe('OnboardingChecklist clipboard fallback', () => {
@@ -67,7 +68,7 @@ describe('OnboardingChecklist clipboard fallback', () => {
     fireEvent.click(copyBtn)
 
     await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith('https://turnogol.app/c/test-slug'),
+      expect(writeText).toHaveBeenCalledWith('https://turnogol.app/test-slug'),
     )
     expect(window.prompt).not.toHaveBeenCalled()
   })
@@ -88,7 +89,7 @@ describe('OnboardingChecklist clipboard fallback', () => {
     await waitFor(() =>
       expect(promptMock).toHaveBeenCalledWith(
         'Copiá el enlace público:',
-        'https://turnogol.app/c/test-slug',
+        'https://turnogol.app/test-slug',
       ),
     )
   })
@@ -110,7 +111,7 @@ describe('OnboardingChecklist clipboard fallback', () => {
     await waitFor(() =>
       expect(promptMock).toHaveBeenCalledWith(
         'Copiá el enlace público:',
-        'https://turnogol.app/c/test-slug',
+        'https://turnogol.app/test-slug',
       ),
     )
   })

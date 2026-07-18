@@ -11,7 +11,6 @@ import {
 } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { bookings } from './bookings'
-import { products } from './products'
 import { staffUsers } from './staff-users'
 import {
   cashflowCategoryEnum,
@@ -36,7 +35,6 @@ export const cashFlows = pgTable(
     description: text('description').notNull(),
 
     bookingId: uuid('booking_id').references(() => bookings.id),
-    productId: uuid('product_id').references(() => products.id),
 
     registeredBy: uuid('registered_by')
       .notNull()

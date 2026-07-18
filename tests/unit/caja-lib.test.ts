@@ -8,6 +8,7 @@ import {
   addDays,
   buildDelta,
   cajaDateLabel,
+  canteenStockBadge,
   categoryLabel,
   chipClass,
   closeView,
@@ -19,6 +20,27 @@ import {
 
 // Intl es-AR usa espacio no separable tras "$"; normalizar para comparar.
 const flat = (s: string) => s.replace(/ /g, ' ')
+
+describe('canteenStockBadge', () => {
+  it('devuelve null cuando el producto no controla stock (undefined)', () => {
+    expect(canteenStockBadge(undefined)).toBeNull()
+  })
+
+  it('marca "Sin stock" (out) en 0 o negativo', () => {
+    expect(canteenStockBadge(0)).toEqual({ label: 'Sin stock', tone: 'out' })
+    expect(canteenStockBadge(-2)).toEqual({ label: 'Sin stock', tone: 'out' })
+  })
+
+  it('marca stock bajo (low) en el umbral (3) y por debajo', () => {
+    expect(canteenStockBadge(1)).toEqual({ label: 'Quedan 1', tone: 'low' })
+    expect(canteenStockBadge(3)).toEqual({ label: 'Quedan 3', tone: 'low' })
+  })
+
+  it('marca stock ok por encima del umbral', () => {
+    expect(canteenStockBadge(4)).toEqual({ label: 'Stock 4', tone: 'ok' })
+    expect(canteenStockBadge(20)).toEqual({ label: 'Stock 20', tone: 'ok' })
+  })
+})
 
 describe('mediumDateLabel / cajaDateLabel', () => {
   it('formatea "YYYY-MM-DD" al formato medio §8.3 sin ISO ni coma', () => {

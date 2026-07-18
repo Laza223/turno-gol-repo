@@ -34,6 +34,24 @@ export function methodBreakdown(
   }))
 }
 
+// ── Stock de cantina (opcional) ───────────────────────────────────────────────
+
+/** Umbral de "stock bajo": el badge pasa a ámbar cuando quedan ≤ N unidades. */
+export const CANTEEN_LOW_STOCK_THRESHOLD = 3
+
+export type StockBadge = { label: string; tone: 'ok' | 'low' | 'out' }
+
+/**
+ * Badge de stock para un producto de cantina. `undefined` = sin control de
+ * stock → null (no se muestra badge). 0 = sin stock. ≤ umbral = stock bajo.
+ */
+export function canteenStockBadge(stock: number | undefined): StockBadge | null {
+  if (typeof stock !== 'number') return null
+  if (stock <= 0) return { label: 'Sin stock', tone: 'out' }
+  if (stock <= CANTEEN_LOW_STOCK_THRESHOLD) return { label: `Quedan ${stock}`, tone: 'low' }
+  return { label: `Stock ${stock}`, tone: 'ok' }
+}
+
 // ── Categorías ───────────────────────────────────────────────────────────────
 
 /**

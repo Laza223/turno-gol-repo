@@ -56,6 +56,31 @@ export const BaneadoSinFecha: Story = {
   },
 }
 
+/** ENS-10: motivo real del softban (applyNoShowStrike), no "por ausencias" hardcodeado. */
+export const BaneadoConMotivo: Story = {
+  args: {
+    error: 'banned',
+    reason: 'Ausencias reiteradas (2+ en 90 días)',
+    until: '2026-03-28T00:00:00.000Z',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Ausencias reiteradas (2+ en 90 días)')
+    await expect(canvas.getByRole('alert')).toHaveTextContent(/volvés a poder reservar el/i)
+  },
+}
+
+/** Ban manual del complejo con un motivo arbitrario — el banner ya no asume "ausencias". */
+export const BaneadoConMotivoManual: Story = {
+  args: { error: 'banned', reason: 'Conducta indebida en la cancha', until: undefined },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent(
+      'El complejo restringió tu cuenta: Conducta indebida en la cancha.',
+    )
+  },
+}
+
 export const DemasiadosHolds: Story = {
   args: { error: 'too_many_holds' },
   play: async ({ canvasElement }) => {

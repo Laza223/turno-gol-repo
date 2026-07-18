@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { artDateString, tenantSettings } from '@/test/fixtures'
 import { CanteenQuickSale } from './CanteenQuickSale'
-import type { CanteenProductsActionResult, CashFlowActionResult } from '../actions'
+import type { CanteenProductsActionResult, SellCanteenProductResult } from '../actions'
 
 const PRODUCTS = tenantSettings().canteen_products ?? []
 
@@ -14,8 +14,8 @@ const meta = {
   args: {
     date: artDateString(),
     products: PRODUCTS,
-    createCashFlowAction: fn(
-      async (): Promise<CashFlowActionResult> => ({
+    sellCanteenProductAction: fn(
+      async (): Promise<SellCanteenProductResult> => ({
         success: true,
         cashFlow: {
           id: 'cf-1',
@@ -26,7 +26,6 @@ const meta = {
           method: 'cash',
           description: 'Gatorade 500ml',
           bookingId: null,
-          productId: 'p-1',
           registeredBy: 's-1',
           occurredAt: new Date(),
           createdAt: new Date(),
@@ -77,12 +76,11 @@ export const VentaRapida: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Transferencia' }))
     await userEvent.click(await dialog.findByRole('button', { name: /registrar venta/i }))
 
-    await expect(args.createCashFlowAction).toHaveBeenCalledWith(
+    await expect(args.sellCanteenProductAction).toHaveBeenCalledWith(
       expect.objectContaining({
-        category: 'product_sale',
+        productId: PRODUCTS[0]!.id,
         method: 'transfer',
-        description: `${PRODUCTS[0]!.name} x2`,
-        amount: PRODUCTS[0]!.price * 2,
+        qty: 2,
       }),
     )
     // La venta OK cierra el diálogo (onClose): esperar a que termine su
@@ -156,8 +154,8 @@ export const EditorSinProductosCargaSugeridos: Story = {
 /** La venta falla del lado del servidor: error inline, el diálogo sigue abierto. */
 export const ErrorDeVenta: Story = {
   args: {
-    createCashFlowAction: fn(
-      async (): Promise<CashFlowActionResult> => ({
+    sellCanteenProductAction: fn(
+      async (): Promise<SellCanteenProductResult> => ({
         success: false,
         error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
       }),

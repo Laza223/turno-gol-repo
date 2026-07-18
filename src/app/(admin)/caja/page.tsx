@@ -25,7 +25,13 @@ import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
 import { CanteenQuickSale } from './components/CanteenQuickSale'
 import { CierreCard } from './components/CierreCard'
-import { createCashFlowAction, closeDayAction, saveCanteenProductsAction } from './actions'
+import { EmptyMovementAction } from './components/EmptyMovementAction'
+import {
+  createCashFlowAction,
+  closeDayAction,
+  saveCanteenProductsAction,
+  sellCanteenProductAction,
+} from './actions'
 import { artDateOf } from '@/shared/time/art-date'
 import {
   addDays,
@@ -216,7 +222,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
         <CanteenQuickSale
           date={date}
           products={tenant.settings.canteen_products ?? []}
-          createCashFlowAction={createCashFlowAction}
+          sellCanteenProductAction={sellCanteenProductAction}
           saveCanteenProductsAction={saveCanteenProductsAction}
         />
       )}
@@ -256,12 +262,16 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
             <h2 className="font-medium text-foreground">Movimientos del día</h2>
           </div>
           {summary.isClosed ? (
+            // Día cerrado: no hay nada para registrar, así que sin action.
             <EmptyState icon={Receipt} title="Este día no tuvo movimientos." />
           ) : (
             <EmptyState
               icon={Receipt}
               title="Sin movimientos por ahora"
               description="Los cobros de reservas se registran solos. Las ventas de cantina y los gastos se cargan desde los botones de arriba."
+              action={
+                <EmptyMovementAction date={date} createCashFlowAction={createCashFlowAction} />
+              }
             />
           )}
         </div>

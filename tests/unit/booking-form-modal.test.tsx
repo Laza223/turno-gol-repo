@@ -109,8 +109,16 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
     renderModal()
 
-    // Contact path: guest name/phone inputs are present by default.
+    // Contact path: guest name input is present by default; el teléfono es
+    // secundario (Fase 3 UX, progressive disclosure) y vive colapsado bajo
+    // "Opciones avanzadas". forceMount lo deja en el DOM aun colapsado (debe
+    // serializar en FormData), así que acá se asserta el estado del trigger,
+    // no la presencia del input (happy-dom no computa el CSS de Tailwind).
     expect(screen.queryByLabelText(/Nombre/i)).toBeTruthy()
+    const advancedTrigger = screen.getByRole('button', { name: 'Opciones avanzadas' })
+    expect(advancedTrigger.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(advancedTrigger)
+    expect(advancedTrigger.getAttribute('aria-expanded')).toBe('true')
     expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
@@ -122,6 +130,29 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
       type: 'spontaneous',
       guestName: 'Juan',
       guestPhone: '+54 11-1234-5678',
+    })
+  })
+
+  it('advanced fields filled then RE-collapsed still reach the payload (forceMount)', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    const advancedTrigger = screen.getByRole('button', { name: 'Opciones avanzadas' })
+    fireEvent.click(advancedTrigger)
+    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
+    fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), { target: { value: '11-1234-5678' } })
+    fireEvent.change(screen.getByLabelText(/Notas internas/i), { target: { value: 'llega tarde' } })
+    // Colapsar de nuevo ANTES de confirmar: sin forceMount, Radix desmontaba
+    // los inputs y el FormData perdía estos campos en silencio (bug real
+    // atrapado por verificación adversarial, Fase 3).
+    fireEvent.click(advancedTrigger)
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(lastPayload()).toMatchObject({
+      guestName: 'Juan',
+      guestPhone: '+54 11-1234-5678',
+      notesInternal: 'llega tarde',
     })
   })
 
@@ -166,5 +197,76 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     const payload = lastPayload()
     expect(payload).toMatchObject({ type: 'spontaneous', guestName: 'Pepe' })
     expect(payload.guestPhone).toBeUndefined()
+  })
+})
+
+describe('BookingFormModal — slot de medianoche (día operativo)', () => {
+  const midnightSlot = { ...slot, timeStart: '23:00' }
+
+  it('el slot 23:00 envía timeEnd="24:00", no "00:00" (chk_time_valid exige time_end > time_start)', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal({ slot: midnightSlot })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(createBookingAction).toHaveBeenCalledWith(
+      expect.objectContaining({ timeStart: '23:00', timeEnd: '24:00' }),
+    )
+  })
+
+  it('el bloqueo interno a las 23:00 no ofrece 120 min (cruzaría medianoche, rango inrepresentable)', async () => {
+    renderModal({ slot: midnightSlot })
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '60 min' })).toBeTruthy())
+    expect(screen.queryByRole('button', { name: '120 min' })).toBeNull()
+  })
+
+  it('un slot común (18:00) sigue ofreciendo 120 min para bloqueos internos', async () => {
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '120 min' })).toBeTruthy())
+  })
+})
+
+// Fase 4 UX — chequeo optimista de disponibilidad al abrir el modal. La prop
+// es opcional: sin ella, ningún caller/story vieja se rompe.
+describe('BookingFormModal — checkAvailabilityAction (Fase 4 UX)', () => {
+  it('available:false al abrir muestra el aviso de colisión (mismo copy que el server)', async () => {
+    const checkAvailabilityAction = vi.fn(async () => ({ available: false }))
+    renderModal({ checkAvailabilityAction })
+
+    await waitFor(() => expect(checkAvailabilityAction).toHaveBeenCalledWith({
+      courtId: slot.courtId,
+      date: slot.date,
+      timeStart: slot.timeStart,
+    }))
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain('Este turno acaba de ser tomado.')
+    })
+    // Es solo un aviso: el submit sigue habilitado, el server decide.
+    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    )
+  })
+
+  it('available:true al abrir no muestra ningún aviso', async () => {
+    const checkAvailabilityAction = vi.fn(async () => ({ available: true }))
+    renderModal({ checkAvailabilityAction })
+
+    await waitFor(() => expect(checkAvailabilityAction).toHaveBeenCalled())
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('sin la prop, el comportamiento queda intacto (no rompe nada existente)', async () => {
+    renderModal()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Confirmar' })).toBeTruthy()
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })

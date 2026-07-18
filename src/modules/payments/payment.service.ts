@@ -4,6 +4,10 @@ import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import type { BookingRow } from '@/modules/bookings/booking.types'
+import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
+import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
+import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
 import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import type { PaymentGateway } from './mp-gateway'
 import type {
@@ -19,7 +23,10 @@ import {
   RefundAmountExceedsOriginalError,
   RefundInvalidStateError,
 } from './payment.errors'
-import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import {
+  enqueueNotification,
+  enqueueTenantOwnerNotification,
+} from '@/modules/notifications/notification.service'
 import { track } from '@/shared/observability'
 import { captureMessage } from '@/lib/sentry'
 
@@ -187,9 +194,12 @@ export async function lockMpEvent(
   event: WebhookEvent,
   tx: DbTx,
 ): Promise<boolean> {
+  // `payload` va como OBJETO crudo, NO `JSON.stringify(...)`: el serializer del
+  // OID jsonb 3802 lo serializa una sola vez (con stringify previo quedaba
+  // double-encoded). Ver [[audit-logs-metadata-double-encoded]] + dunning.service.
   const lock = await tx.execute(sql`
     INSERT INTO processed_webhooks (mp_event_id, event_type, payload)
-    VALUES (${event.mpEventId}, ${event.eventType}, ${JSON.stringify(event.rawPayload)}::jsonb)
+    VALUES (${event.mpEventId}, ${event.eventType}, ${event.rawPayload}::jsonb)
     ON CONFLICT (mp_event_id) DO NOTHING
     RETURNING id
   `)
@@ -226,6 +236,11 @@ export async function dispatchPaymentInfo(
       alreadyProcessed: false,
       result: 'confirmed',
       notificationIds: approved.notificationIds,
+      // R1-B: exponer `won` de verdad (antes el comentario de más abajo lo
+      // prometía pero `result` no lo reflejaba — result es 'confirmed' para
+      // CUALQUIER pago approved, incluso el guard perdedor de
+      // transitionFromPendingPayment sobre un booking ya post-terminal).
+      won: approved.won,
     }
   }
   if (info.status === 'in_process') {
@@ -255,9 +270,11 @@ export async function dispatchPaymentInfo(
  *   2. transitionFromPendingPayment(bookingId, 'confirmed', tx) — race-safe.
  *
  * INVIOLABLE (Pilar C): caller fires email + audit ONLY when `won === true`.
- * Returned `won` flag is exposed via `WebhookOutcome.result` (the payment row
- * is upserted regardless to preserve audit trail; only the booking transition
- * gates side effects).
+ * Returned `won` flag is exposed via `WebhookOutcome.won` (R1-B: NOT via
+ * `result`, which stays 'confirmed' for any approved payment regardless of
+ * whether the booking transition actually won — the payment row is upserted
+ * regardless to preserve audit trail; only the booking transition gates side
+ * effects).
  *
  * Fix #52: compara info.amount con booking.deposit_amount antes de confirmar.
  * Si el monto recibido es menor al esperado, se registra en audit_logs para
@@ -298,7 +315,54 @@ async function handleApproved(
     'confirmed',
     tx,
   )
-  if (result.won) return { won: true, row: result.row, notificationIds: [] }
+  if (result.won) {
+    const wonNotificationIds: string[] = []
+    wonNotificationIds.push(...(await recordDepositCashFlow(info, tenantId, tx)))
+    // doc7 Flujo 2 PASO 5: avisar al jugador por email que su reserva quedó
+    // confirmada. Solo si el booking tiene jugador vinculado (las reservas
+    // online siempre lo tienen; defensivo por si el tipo se relaja).
+    if (result.row?.playerId) {
+      const ctxRows = await tx.execute(sql`
+        SELECT c.name AS court_name, t.name AS tenant_name, t.address AS tenant_address,
+               p.first_name AS player_first_name
+        FROM bookings b
+        JOIN courts c ON c.id = b.court_id
+        JOIN tenants t ON t.id = b.tenant_id
+        JOIN players p ON p.id = b.player_id
+        WHERE b.id = ${info.externalReference}
+        LIMIT 1
+      `)
+      const ctx = (ctxRows as unknown as Array<{
+        court_name: string
+        tenant_name: string
+        tenant_address: string
+        player_first_name: string
+      }>)[0]
+      if (ctx) {
+        const id = await enqueueNotification(
+          {
+            tenantId,
+            recipientType: 'player',
+            recipientId: result.row.playerId,
+            templateName: 'booking_confirmed',
+            content: {
+              playerFirstName: ctx.player_first_name,
+              courtName: ctx.court_name,
+              date: formatDateArs(result.row.date),
+              timeStart: result.row.timeStart.slice(0, 5),
+              timeEnd: result.row.timeEnd.slice(0, 5),
+              tenantName: ctx.tenant_name,
+              tenantAddress: ctx.tenant_address,
+            },
+            triggerEvent: 'booking.confirmed',
+          },
+          tx,
+        )
+        wonNotificationIds.push(id)
+      }
+    }
+    return { won: true, row: result.row, notificationIds: wonNotificationIds }
+  }
 
   // Won=false: another worker (or expiry job) already moved the booking out of
   // pending_payment. If the current state is terminal, record a late-payment
@@ -367,12 +431,122 @@ async function handleApproved(
   return { won: false, notificationIds }
 }
 
-/** Centavos ARS → es-AR string, e.g. 300000 → "3.000,00". */
-function formatArs(cents: number): string {
+/**
+ * ENS-21 (hallazgo de ensayo real): la seña cobrada por MP al confirmarse la
+ * reserva no generaba fila en `cash_flows`, así que el reporte de caja del
+ * día no la veía (el modelo ya lo contempla: `cash_flows.method` tiene
+ * 'mercadopago' y `getDaySummary` la desglosa en `byMethod`). Se llama SOLO
+ * desde la rama `won` de `handleApproved` — el guard de
+ * `transitionFromPendingPayment` (won=false si el booking ya salió de
+ * `pending_payment`) es lo que impide que un segundo evento MP distinto para
+ * el mismo pago dispare esto una segunda vez, no hay idempotencia propia acá.
+ *
+ * `cash_flows.registered_by` es NOT NULL FK a `staff_users` y este evento lo
+ * dispara el webhook, sin staff en contexto — se usa el primer admin activo
+ * del tenant como actor "proxy", el mismo patrón ya establecido para
+ * impersonación de SuperAdmin (`getFirstActiveAdminStaffUserId`,
+ * impersonation.server.ts: "la identidad real queda en el audit log, pero
+ * las filas necesitan un staff_user_id que exista en ese tenant"). Si el
+ * tenant no tiene admin activo, o si la caja del día ya está cerrada
+ * (`assertDayOpen` dentro de `createCashFlow`), esto se salta sin romper la
+ * confirmación del booking — nunca vale la pena perder la confirmación (ya
+ * pagada en MP) por un problema de atribución contable.
+ *
+ * `description` lleva el bookingId completo embebido (`depositCashFlowDescription`,
+ * booking.charges.ts) — `getBookingCharges` (reservas/queries.ts) la excluye
+ * por match exacto para no sumarla de nuevo sobre `depositCounted` (que ya
+ * cuenta la seña vía `deposit_status`/`deposit_amount`) ni duplicarla en la
+ * lista de "cobros de mostrador" de la UI.
+ */
+async function recordDepositCashFlow(
+  info: GatewayPaymentInfo,
+  tenantId: string,
+  tx: DbTx,
+): Promise<string[]> {
+  const proxyStaffUserId = await getFirstActiveAdminStaffUserId(tenantId)
+  if (!proxyStaffUserId) {
+    captureMessage('deposit cash_flow skipped: no active admin to attribute it to', {
+      level: 'warning',
+      extra: { bookingId: info.externalReference, tenantId, mpPaymentId: info.mpPaymentId },
+    })
+    return []
+  }
+
+  try {
+    await createCashFlow(
+      tenantId,
+      proxyStaffUserId,
+      {
+        type: 'income',
+        category: 'booking',
+        amount: info.amount,
+        method: 'mercadopago',
+        description: depositCashFlowDescription(info.externalReference),
+        bookingId: info.externalReference,
+      },
+      tx,
+    )
+  } catch (err) {
+    if (err instanceof DayAlreadyClosedError) {
+      captureMessage('deposit cash_flow skipped: cash register already closed for the day', {
+        level: 'warning',
+        extra: { bookingId: info.externalReference, tenantId, mpPaymentId: info.mpPaymentId },
+      })
+      // Las otras dos ramas de "plata sorpresa" (booking not found / late
+      // payment terminal) ya alertan al dueño; esta era la única que dejaba
+      // la plata invisible salvo por el warning de Sentry. Mismo contrato que
+      // admin_late_payment: el email se despacha DESPUÉS del commit de la tx
+      // (los ids viajan en WebhookOutcome.notificationIds).
+      return enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_deposit_after_close',
+          content: {
+            bookingId: info.externalReference,
+            amountArs: formatArs(info.amount),
+          },
+          triggerEvent: 'payment.deposit_after_close',
+        },
+        tx,
+      )
+    }
+    // R1-A (rechazo review): antes esto relanzaba CUALQUIER otro error, lo que
+    // hacía ROLLBACK de la tx completa — incluida la transición
+    // pending_payment→confirmed que YA había ganado unas líneas más arriba
+    // (handleApproved solo llega acá dentro de la rama `won`). Un pago que MP
+    // ya capturó nunca puede perderse por un problema de contabilidad
+    // secundaria (el cash_flow es reconstruible a mano desde la fila
+    // `payments` approved; la confirmación del booking, no).
+    captureMessage('deposit cash_flow skipped: unexpected error recording it', {
+      level: 'warning',
+      extra: {
+        bookingId: info.externalReference,
+        tenantId,
+        mpPaymentId: info.mpPaymentId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+  }
+  return []
+}
+
+/**
+ * Centavos ARS → es-AR string, e.g. 300000 → "3.000,00". Exportado (ENS-19):
+ * el worker de retry de refunds arma el mismo formato para su alerta al
+ * dueño, sin duplicar el helper.
+ */
+export function formatArs(cents: number): string {
   return (Math.round(cents) / 100).toLocaleString('es-AR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
+}
+
+/** Date (columna DATE, sin componente horario) → "DD/MM/YYYY". */
+function formatDateArs(d: Date): string {
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getUTCFullYear()}`
 }
 
 /**

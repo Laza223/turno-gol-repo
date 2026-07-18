@@ -170,6 +170,11 @@ export async function insertPlayerBooking(
 export async function cleanupPlayerBookings(
   supabase: ReturnType<typeof makeServiceClient>,
 ): Promise<void> {
+  // Delete the player's payments FIRST: payments.booking_id → bookings.id is a
+  // NO ACTION FK, so leftover payments (from a real webhook/checkout) block the
+  // bookings DELETE below and leave orphan bookings occupying their slots.
+  await supabase.from('payments').delete().eq('player_id', E2E_PLAYER_ID)
+
   // NULL out payment_id (FK to payments) before deleting
   await supabase
     .from('bookings')

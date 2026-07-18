@@ -108,6 +108,16 @@ describe('markTourSeenAction', () => {
     const res = await markTourSeenAction()
     expect(res.success).toBe(true)
   })
+
+  it('tenant blocked: rebota con ok:false y NO muta (misma clase que Fix 3)', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('blocked') as never)
+    const { markTourSeenAction } = await import('@/app/(admin)/dashboard/actions')
+
+    const res = await markTourSeenAction()
+
+    expect(res).toEqual({ success: false, error: 'El complejo está bloqueado por falta de pago.' })
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
+  })
 })
 
 describe('markChecklistDismissedAction', () => {
@@ -124,5 +134,15 @@ describe('markChecklistDismissedAction', () => {
     const { markChecklistDismissedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markChecklistDismissedAction()
     expect(res.success).toBe(true)
+  })
+
+  it('tenant suspended: rebota con ok:false y NO muta (misma clase que Fix 3)', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('suspended') as never)
+    const { markChecklistDismissedAction } = await import('@/app/(admin)/dashboard/actions')
+
+    const res = await markChecklistDismissedAction()
+
+    expect(res).toEqual({ success: false, error: 'El complejo está bloqueado por falta de pago.' })
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 })

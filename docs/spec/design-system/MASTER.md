@@ -158,7 +158,7 @@ Mapa 1:1 con `booking_status` + estado de pago. Siempre color + ícono + texto.
 | Confirmada sin seña (efectivo) | borde-l 3px `info` + texto normal | ídem | `HandCoins` |
 | Confirmada con seña (`confirmed`) | borde-l 3px + tinte `success` suave | ídem | `CheckCircle2` |
 | Completada + cobrada | fill `success` 10–15 % + check sólido | ídem | `CheckCheck` |
-| No-show / deuda | borde-l 3px + tinte `destructive` | ídem | `UserX` |
+| No-show / softban | borde-l 3px + tinte `destructive` | ídem | `UserX` |
 | Cancelada | neutro `muted`, texto tachado opcional | ídem | `XCircle` |
 | Pasado (sin acción) | desaturado, opacidad 60 % | ídem | — |
 | Bloqueado / cancha offline | patrón rayado diagonal `muted` | ídem | `Ban` |
@@ -437,7 +437,7 @@ flujo (`$ 100` → `$50,00` → `$ 100,00`), fechas ISO cara al usuario (`Caja �
 ### 8.1 Voz
 
 - **Voseo rioplatense** siempre: "Reservá", "Cargá", "Tenés". Nunca tuteo ni usted.
-- Admin: operativo y directo ("Cobrar deuda", "Cerrar caja"). Player: cercano sin caretear ("Tenés 2 turnos por jugar", "Mostrá este código al llegar").
+- Admin: operativo y directo ("Marcar no-show", "Cerrar caja"). Player: cercano sin caretear ("Tenés 2 turnos por jugar", "Mostrá este código al llegar").
 - Anglicismos PROHIBIDOS en UI: Revenue → **Ingresos** · Dashboard → **Inicio** · Booking → **Reserva** · Balance → **Saldo** · No-show → **Ausente** (en UI; el término técnico vive en código/docs). Excepciones de marca: MercadoPago, email, link, online.
 
 ### 8.2 Plata (ARS, centavos internos → presentación única)

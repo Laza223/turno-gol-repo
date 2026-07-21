@@ -650,8 +650,10 @@ ALTER TABLE tenant_player_bans ENABLE ROW LEVEL SECURITY;
 Agustín intenta reservar en Complejo A
       │
       ▼
-  1. ¿players.status == 'banned'?         → ERROR "Tu cuenta está suspendida"
+  1. ¿players.status == 'banned' y         → ERROR "Tu cuenta está suspendida"
+     ban_until vigente (NULL o > NOW())?
       │ no
+
       ▼
   2. ¿Existe en tenant_player_bans       → ERROR "No podés reservar en este complejo"
      para Complejo A y aún vigente?

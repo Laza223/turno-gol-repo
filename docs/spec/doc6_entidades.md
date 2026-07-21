@@ -297,7 +297,7 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | `confirmed` | `canceled_no_refund` | Admin cancela con cargo | Sin reembolso |
 | `confirmed` | `canceled_refunded` | Admin cancela sin cargo | Reembolso si había seña, email disculpa |
 | `confirmed` | `completed` | Auto-complete: 30 min después de `time_end` si nadie marcó (job cada 30 min) | Ninguno (caja no se mueve automáticamente) |
-| `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Deuda por no-show (cambio #5, modelo ATC): captura seña (`deposit_status='captured'`) y suma `price_snapshot − deposit_amount` a `player_tenant_relationships.balance`. Si `balance > 0`, el jugador queda bloqueado para reservar online en este complejo hasta saldar la deuda. Lógica en `handleNoShow` (`booking.cancellation.ts`). |
+| `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Softban por reincidencia (cambio #5, revisado 2026-07-11): captura la seña (`deposit_status='captured'`, único costo real) y registra la ausencia en `player_tenant_relationships.noshow_count` + `last_no_show_at`. La 2da ausencia dentro de `NO_SHOW_STRIKE_WINDOW_DAYS` (90 días) dispara un bloqueo de `NO_SHOW_SOFTBAN_DAYS` (14 días) para reservar online, vía una fila en `tenant_player_bans`. Lógica en `handleNoShow` (`booking.cancellation.ts`) → `applyNoShowStrike` (`ptr.service.ts`). |
 | `completed` | — | — | Estado final inmutable |
 | `expired` | — | — | Estado final |
 | `no_show` | — | — | Estado final inmutable |
@@ -410,8 +410,9 @@ PAUSED ──── admin cancela ────── ┘
 
 > **Sin saldo a favor**: el abonado NO lleva `credit_balance` ni precio mensual — el sistema de
 > crédito estilo ATC (carga de saldo + "Mantener saldo") fue evaluado y **eliminado** (2026-07-10,
-> ver `docs/planning/cambios-reglas-negocio.md` cambio #4). Distinto del mecanismo de deuda por
-> no-show (`player_tenant_relationships.balance`, cambio #5), que sí se conserva.
+> ver `docs/planning/cambios-reglas-negocio.md` cambio #4). La deuda de dinero por no-show
+> (`player_tenant_relationships.balance`, cambio #5 original) **también fue revertida** (2026-07-11,
+> migr. 044): hoy el no-show es un softban por reincidencia, sin deuda (ver ENTIDAD 6).
 
 ---
 
@@ -469,19 +470,21 @@ tenant_id         UUID          FK → tenants
 status            enum          'active' | 'blocked'
 first_seen_at     timestamp     Primera reserva en este complejo
 bookings_count    integer       Total de reservas (actualizado por triggers)
-noshow_count      integer       Total de no-shows (actualizado por triggers)
+noshow_count      integer       No-shows dentro de la ventana de reincidencia (escrito por applyNoShowStrike; se reinicia tras 90 días sin faltar)
+last_no_show_at   timestamp?    Fecha del último no-show (para la ventana de reincidencia)
 last_booking_at   timestamp?    Última reserva en este complejo
-balance           integer       Saldo deudor en centavos ARS (no-show). Si > 0, jugador bloqueado para reservar online. CHECK >= 0
 data_consent_at   timestamp     Consent de datos Ley 25.326 (set en primera reserva)
 created_at        timestamp     UTC
 ```
 
 > [!NOTE]
-> Los contadores `bookings_count` y `noshow_count` se actualizan por triggers en INSERT/UPDATE
-> de bookings. `balance` se incrementa atómicamente al marcar un no-show (`addNoShowDebt`):
-> suma `price_snapshot − deposit_amount` del booking. Si `balance > 0`, el jugador queda
-> bloqueado para reservar online en este complejo hasta que un admin cobre la deuda
-> (desde la ficha del jugador, Módulo Jugadores `/jugadores`).
+> `bookings_count` se actualiza por triggers en INSERT/UPDATE de bookings. `noshow_count` y
+> `last_no_show_at` los escribe la app (`applyNoShowStrike`, `ptr.service.ts`) al marcar un no-show,
+> NO un trigger: `noshow_count` cuenta las ausencias dentro de la ventana de reincidencia
+> (`NO_SHOW_STRIKE_WINDOW_DAYS` = 90 días); la 1ra ausencia (o la 1ra tras 90 días sin faltar) solo
+> se registra, y la 2da dentro de la ventana dispara un softban de `NO_SHOW_SOFTBAN_DAYS` = 14 días
+> para reservar online, insertando una fila en `tenant_player_bans` (mismo gate que `checkPlayerBanned`
+> ya lee — no hay deuda de dinero). La columna `balance` fue eliminada (migr. 044).
 > `data_consent_at` es evidencia de consent por-complejo para Ley 25.326.
 
 ---
@@ -672,7 +675,7 @@ Definición global de un plan de suscripción (no por tenant). Los precios y fea
 id                    UUID          PK
 name                  string        'predio' | 'complejo' | 'estadio'
 display_name          string        'Predio' | 'Complejo' | 'Estadio'
-max_courts            integer       3 | 6 | 999 (ilimitado)
+max_courts            integer       2 | 5 | NULL (ilimitado)
 monthly_price         integer       Precio mensual en centavos (sin IVA)
 annual_monthly_price  integer       Precio mensual del plan anual en centavos (sin IVA)
 features              JSONB         Feature flags por plan

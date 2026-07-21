@@ -1140,8 +1140,8 @@ Con 10-20 clientes activos de TurnoGol ($160-320 USD/mes en MRR al precio más b
 | Worker para pg-boss (Railway/Fly) | Basic | $10-20 |
 | **Total** | | **$206-366/mes** |
 
-**Comparación con revenue**: Con 500 complejos al precio más bajo ($47.000 ARS/mes = ~$47 USD):
-MRR estimado = 500 × $47 = **$23.500 USD/mes**. Infra = 0.8-1.5% del MRR. **Margen excelente.**
+**Comparación con revenue**: Con 500 complejos al precio más bajo ($55.000 ARS/mes = ~$55 USD):
+MRR estimado = 500 × $55 = **$27.500 USD/mes**. Infra = 0.7-1.3% del MRR. **Margen excelente.**
 
 ---
 

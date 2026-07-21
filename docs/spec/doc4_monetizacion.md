@@ -27,9 +27,9 @@
 
 | Plan | Canchas | Precio mensual | Precio anual (por mes) | Ahorro anual |
 |---|---|---|---|---|
-| **Predio** | 1 – 3 canchas | $47.000 ARS | $37.600 ARS (20% off) | $112.800 ARS |
-| **Complejo** | 4 – 6 canchas | $74.000 ARS | $59.200 ARS (20% off) | $177.600 ARS |
-| **Estadio** | 7+ canchas | $101.000 ARS | $80.800 ARS (20% off) | $242.400 ARS |
+| **Predio** | 1 – 2 canchas | $55.000 ARS | $44.000 ARS (20% off) | $132.000 ARS |
+| **Complejo** | 3 – 5 canchas | $85.000 ARS | $68.000 ARS (20% off) | $204.000 ARS |
+| **Estadio** | 6+ canchas | $115.000 ARS | $92.000 ARS (20% off) | $276.000 ARS |
 
 > [!NOTE]
 > Precios establecidos ligeramente por debajo de ATC Sports como estrategia de captación inicial.
@@ -258,9 +258,9 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 ```
 Admin intenta crear la cancha N+1 (supera el límite del plan)
       ↓
-Sistema muestra modal: "Tu plan Predio permite hasta 3 canchas.
+Sistema muestra modal: "Tu plan Predio permite hasta 2 canchas.
 Actualizá a Complejo para agregar más canchas."
-[CTA: Actualizar a Complejo - $74.000/mes + IVA]
+[CTA: Actualizar a Complejo - $85.000/mes + IVA]
       ↓
 Si confirma:
   - Calcula el prorrateo de días restantes del período actual
@@ -281,7 +281,7 @@ cargo_extra = (precio_día_nuevo - precio_día_viejo) * días_restantes
 
 **Regla**: No se puede hacer downgrade si tenés más canchas activas de las que permite el plan inferior.
 ```
-Admin intenta bajar de Complejo (4-6 canchas) a Predio (1-3) pero tiene 4 canchas configuradas
+Admin intenta bajar de Complejo (3-5 canchas) a Predio (1-2) pero tiene 4 canchas configuradas
       ↓
 Sistema: "Para cambiar al plan Predio necesitás tener máximo 3 canchas activas.
 Desactivá 1 cancha primero."
@@ -460,10 +460,10 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 | Plan | Clientes | Precio/mes (sin IVA) | MRR |
 |---|---|---|---|
-| Predio (mensual) | 50 | $47.000 | $2.350.000 |
-| Complejo (mensual) | 35 | $74.000 | $2.590.000 |
-| Estadio (mensual) | 15 | $101.000 | $1.515.000 |
-| **Total MRR** | **100** | | **$6.455.000 ARS** |
+| Predio (mensual) | 50 | $55.000 | $2.750.000 |
+| Complejo (mensual) | 35 | $85.000 | $2.975.000 |
+| Estadio (mensual) | 15 | $115.000 | $1.725.000 |
+| **Total MRR** | **100** | | **$7.450.000 ARS** |
 
 ### Costos fijos estimados (infraestructura, sin equipo)
 - Hosting/infra (Vercel + Supabase Pro): ~$150.000-300.000 ARS/mes

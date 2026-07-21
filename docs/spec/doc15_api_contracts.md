@@ -546,15 +546,15 @@ Errors:
 Response 200:
 {
   "data": {
-    "plan": { "name": "Complejo", "slug": "complejo", "max_courts": 6 },
+    "plan": { "name": "Complejo", "slug": "complejo", "max_courts": 5 },
     "billing_cycle": "monthly",
     "status": "active",
     "current_period_start": "2026-04-01T00:00:00Z",
     "current_period_end": "2026-05-01T00:00:00Z",
-    "price_monthly": 7400000,
+    "price_monthly": 8500000,
     "pending_plan_change": null,
     "usage": {
-      "courts": { "used": 4, "limit": 6 },
+      "courts": { "used": 4, "limit": 5 },
       "staff": { "used": 2, "limit": null }
     }
   }
@@ -633,26 +633,8 @@ Response 200:
 |---|---|---|---|
 | `GET` | `/api/players` | staff | Listar y buscar jugadores vinculados al complejo |
 | `GET` | `/api/players/:id` | staff | Ver detalle, estadísticas y abonos de un jugador |
-| `POST` | `/api/players/:id/collect-debt` | staff | Registrar cobro de deuda de no-show (genera CashFlow) |
 | `POST` | `/api/players/:id/bans` | staff | Banear jugador para reservas online |
 | `DELETE` | `/api/players/:id/bans/:banId` | staff | Levantar ban a un jugador |
-
-#### `POST /api/players/:id/collect-debt`
-```
-Request:
-{
-  "amount": 800000,                  // Centavos de ARS
-  "payment_method": "cash" | "transfer"
-}
-Response 200:
-{
-  "data": {
-    "player_id": "uuid",
-    "new_balance": 0,
-    "cashflow_id": "uuid"
-  }
-}
-```
 
 #### `POST /api/players/:id/bans`
 ```

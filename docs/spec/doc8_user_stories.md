@@ -498,7 +498,7 @@ para que la caja y las estadísticas se actualicen correctamente.
 ✅ Happy Path
 - [ ] Dado que una reserva confirmada tiene `time_end` en el pasado, cuando hago click en ella, entonces veo dos botones: "✅ Jugó" y "❌ No se presentó".
 - [ ] Dado que hago click en "✅ Jugó", entonces el booking pasa a status=`completed`. Estado final inmutable.
-- [ ] Dado que hago click en "❌ No se presentó", entonces el booking pasa a status=`no_show`, se incrementa el contador de ausencias del jugador y se genera la deuda correspondiente en `player_tenant_relationships.balance`.
+- [ ] Dado que hago click en "❌ No se presentó", entonces el booking pasa a status=`no_show`, se captura la seña y se registra la ausencia (`noshow_count` + `last_no_show_at`); la 2da ausencia en 90 días dispara un softban de 14 días (`tenant_player_bans`).
 
 ❌ Edge Cases
 - [ ] Si nadie marca asistencia en los 30 minutos posteriores a `time_end` → el sistema auto-completa como `completed` (benefit of the doubt). AuditLog: `booking.auto_completed` con actor=system.
@@ -623,7 +623,7 @@ para mantener trazabilidad y evitar decisiones financieras manuales.
 
 ---
 
-## US-CAN-004: Deuda por No-Show (cambio #5)
+## US-CAN-004: No-Show y softban por reincidencia (cambio #5)
 
 **Epic**: Cancelaciones
 **Persona**: Rodrigo (Recepcionista) + Sistema
@@ -633,23 +633,23 @@ para mantener trazabilidad y evitar decisiones financieras manuales.
 **Historia**:
 Como Rodrigo,
 cuando un jugador no se presentó a su turno,
-quiero marcarlo como "no se presentó" para que se registre la deuda correspondiente y se le bloquee reservar online hasta saldarla,
-para desincentivar los no-shows y recuperar el dinero perdido.
+quiero marcarlo como "no se presentó" para que quede registrada la ausencia y, si reincide, se le bloquee reservar online por un tiempo,
+para desincentivar los no-shows sin cobrarle plata que no se entregó.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
 - [ ] Dado que la hora de fin del turno ya pasó, cuando hago click en "No se presentó", entonces booking.status → `no_show`.
-- [ ] Dado que se marca como no_show, entonces se incrementa `noshow_count` en `player_tenant_relationships` y se suma `price_snapshot − deposit_amount` a `balance`.
-- [ ] Dado que `balance > 0`, cuando el jugador intenta reservar online en ESTE complejo, entonces ve error: "Tenés una deuda pendiente en este complejo. Contactá al complejo para regularizarla."
-- [ ] Dado que un admin cobra la deuda desde la ficha del jugador (Módulo Jugadores), entonces `balance` se reduce y si llega a 0 el jugador puede volver a reservar.
+- [ ] Dado que se marca como no_show, entonces se captura la seña (`deposit_status='captured'`) y se registra la ausencia en `player_tenant_relationships` (`noshow_count` + `last_no_show_at`) vía `applyNoShowStrike`.
+- [ ] Dado que es la 2da ausencia dentro de 90 días (`NO_SHOW_STRIKE_WINDOW_DAYS`), entonces se inserta una fila en `tenant_player_bans` que bloquea reservar online por 14 días (`NO_SHOW_SOFTBAN_DAYS`); la 1ra ausencia solo se registra.
+- [ ] Dado que el softban está vigente, cuando el jugador intenta reservar online en ESTE complejo, entonces ve el error de ban (`checkPlayerBanned`); el bloqueo se levanta solo al vencer los 14 días, sin cobro de por medio.
 
 ❌ Edge Cases
 - [ ] Si nadie marca en 30 minutos post-time_end → el sistema auto-completa como `completed` (NO como no_show). El admin tiene 24hs para corregir.
 - [ ] Si el jugador no tiene cuenta (reserva manual sin Player) → no se puede generar un ban en el sistema. Se marca como no_show sin bloqueo.
 
 🚫 Out of Scope
-- NO incluye cobro online de la deuda (se cobra en persona en el mostrador).
+- NO hay deuda de dinero por no-show (revertido 2026-07-11, migr. 044): el único costo es la seña ya retenida.
 - NO incluye bans globales automáticos (el ban es solo para este complejo).
 
 **Dependencias**: US-RES-007
@@ -873,7 +873,7 @@ para ver su historial, gestionar sus bans de no-show y cargar saldo de sus abono
 🚫 Out of Scope
 - NO crea perfiles automáticamente para invitados telefónicos (decisión #10 cancelada).
 
-**Dependencias**: US-ABO-005, cambio #5 (ban temporal por no-show)
+**Dependencias**: US-ABO-005, cambio #5 (softban por reincidencia de no-show)
 **Bloquea**: Ninguna
 
 ---
@@ -977,7 +977,7 @@ para tener un registro oficial inmutable de lo que pasó financieramente cada d�
 ❌ Edge Cases
 - [ ] Si el efectivo real difiere del calculado → warning: "Diferencia de ${diff}." + campo de nota obligatoria explicando la diferencia.
 - [ ] Si ya existe un cierre para ese día → error: "La caja del {fecha} ya fue cerrada por {staff}."
-- [ ] Si el admin quiere reabrir la caja → permitido solo para rol `admin`. Se registra AuditLog: `cashflow.reopen`.
+- [ ] El cierre es **inmutable**: NO existe "reabrir caja". Las migraciones 008/037/038 revocan `UPDATE`/`DELETE` sobre `daily_cash_closes` para los roles `turnogol_app` y `turnogol_worker`, así que ningún flujo puede modificarlo tras el INSERT. Un error se corrige con un CashFlow de ajuste al día siguiente, no reabriendo.
 - [ ] Si hay reservas completadas sin pago registrado → warning antes de cerrar.
 
 🚫 Out of Scope
@@ -1537,7 +1537,7 @@ para tener acceso completo sin interrupciones después del trial.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Predio (1-3 canchas), Complejo (4-6 canchas), Estadio (7+ canchas), con el plan que corresponde pre-seleccionado.
+- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Predio (1-2 canchas), Complejo (3-5 canchas), Estadio (6+ canchas), con el plan que corresponde pre-seleccionado.
 - [ ] Dado que selecciono un plan y ciclo (mensual/anual), cuando hago click en "Continuar al pago", entonces soy redirigido al checkout de MercadoPago para registrar mi medio de pago.
 - [ ] Si selecciono anual → mostrar ahorro: "Ahorrás ${diferencia}/año (20% descuento)".
 - [ ] Dado que el pago se aprobó via webhook, cuando se actualiza el sistema, entonces: TenantSubscription.status → `active`, Tenant.status → `active`.

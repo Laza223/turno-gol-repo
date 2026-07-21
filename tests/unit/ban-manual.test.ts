@@ -6,6 +6,7 @@ import {
   liftPlayerBan,
   checkPlayerBanned,
   getActiveBanReason,
+  isGlobalBanActive,
   resolveManualBanUntil,
 } from '@/modules/bans/ban.service'
 
@@ -41,13 +42,15 @@ function isVigente(b: FakeBan, now: Date): boolean {
  * predicado documentado que la SQL real) — la correctitud del WHERE real
  * está verificada en vivo (contrato ENS-8), esto ejercita el control flow.
  */
-function makeFakeTx(opts: { playerStatus?: string } = {}) {
+function makeFakeTx(opts: { playerStatus?: string; playerBanUntil?: Date | null } = {}) {
   const store: FakeBan[] = []
   let seq = 0
 
   function rowsFor(table: unknown): unknown[] {
     if (table === players) {
-      return opts.playerStatus ? [{ status: opts.playerStatus }] : []
+      return opts.playerStatus
+        ? [{ status: opts.playerStatus, banUntil: opts.playerBanUntil ?? null }]
+        : []
     }
     if (table === tenantPlayerBans) {
       const now = new Date()
@@ -208,6 +211,52 @@ describe('banPlayerManually + checkPlayerBanned', () => {
     const result = await checkPlayerBanned(PLAYER_ID, TENANT_ID, tx)
     expect(result.banned).toBe(true)
     if (result.banned) expect(result.bannedGlobal).toBe(true)
+  })
+})
+
+describe('isGlobalBanActive (LOG-11: el ban global temporal debe expirar)', () => {
+  const now = new Date('2026-07-21T12:00:00Z')
+  const past = new Date('2026-07-20T12:00:00Z')
+  const future = new Date('2026-07-22T12:00:00Z')
+
+  it('status=banned + ban_until NULL → vigente (permanente)', () => {
+    expect(isGlobalBanActive('banned', null, now)).toBe(true)
+  })
+
+  it('status=banned + ban_until futuro → vigente', () => {
+    expect(isGlobalBanActive('banned', future, now)).toBe(true)
+  })
+
+  it('status=banned + ban_until vencido → NO vigente (era el bug LOG-11)', () => {
+    expect(isGlobalBanActive('banned', past, now)).toBe(false)
+  })
+
+  it('status=active → nunca vigente, aunque ban_until tenga fecha', () => {
+    expect(isGlobalBanActive('active', future, now)).toBe(false)
+  })
+
+  it('status=anonymized → nunca vigente', () => {
+    expect(isGlobalBanActive('anonymized', null, now)).toBe(false)
+  })
+})
+
+describe('checkPlayerBanned — ban global temporal (LOG-11)', () => {
+  it('ban global con ban_until vencido: NO bloquea (antes bloqueaba para siempre)', async () => {
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const { tx } = makeFakeTx({ playerStatus: 'banned', playerBanUntil: past })
+    const result = await checkPlayerBanned(PLAYER_ID, TENANT_ID, tx)
+    expect(result.banned).toBe(false)
+  })
+
+  it('ban global con ban_until futuro: bloquea y expone la fecha de fin', async () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const { tx } = makeFakeTx({ playerStatus: 'banned', playerBanUntil: future })
+    const result = await checkPlayerBanned(PLAYER_ID, TENANT_ID, tx)
+    expect(result.banned).toBe(true)
+    if (result.banned) {
+      expect(result.bannedGlobal).toBe(true)
+      expect(result.until?.getTime()).toBe(future.getTime())
+    }
   })
 })
 

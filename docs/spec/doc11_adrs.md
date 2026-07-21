@@ -378,7 +378,7 @@ TurnoGol procesa pagos en dos contextos completamente separados:
 
 1. **Señas de reservas (B2C)**: El jugador paga un porcentaje (default 30%) al reservar una cancha. Son pagos únicos, de montos variables ($2.400-4.500 ARS por seña típica). Necesitan checkout rápido, mobile-first.
 
-2. **Suscripciones SaaS (B2B)**: El dueño del complejo paga $55.000-120.000 ARS/mes por usar TurnoGol. Son cobros recurrentes, automáticos, con necesidad de reintentos, dunning y cancelación.
+2. **Suscripciones SaaS (B2B)**: El dueño del complejo paga $55.000-115.000 ARS/mes por usar TurnoGol. Son cobros recurrentes, automáticos, con necesidad de reintentos, dunning y cancelación.
 
 El Doc 5 establece: timeout de 8 segundos en llamadas a MP, webhooks idempotentes, y modo fallback "sin seña digital" si MP está caído.
 
@@ -1258,11 +1258,11 @@ function createCourt(courtData: CourtInput, ctx: TenantContext) {
 ┌──────────────────────────────────────────────┐
 │  ⬆ Necesitás más canchas                     │
 │                                              │
-│  Tu plan Predio permite hasta 3 canchas.     │
+│  Tu plan Predio permite hasta 2 canchas.     │
 │  Para agregar más canchas, actualizá a Complejo. │
 │                                              │
-│  Plan Complejo: hasta 6 canchas              │
-│  $74.000/mes (ahorrá con plan anual)         │
+│  Plan Complejo: hasta 5 canchas              │
+│  $85.000/mes (ahorrá con plan anual)         │
 │                                              │
 │  [Actualizar a Complejo →]  [Ahora no]       │
 └──────────────────────────────────────────────┘

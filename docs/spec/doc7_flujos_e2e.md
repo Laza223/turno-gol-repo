@@ -691,12 +691,12 @@ ESCENARIO A — El recepcionista marca "No vino" (antes de los 30 min post-turno
   ├── Panel admin → Grilla → Reserva pasada → Botón "No se presentó"
   ├── Confirmación: "¿Confirmar que {jugador} no se presentó?"
   ├── Actualizar Booking: status → 'no_show'
-  ├── Generar deuda por no-show (Modelo ATC, cambio #5):
-  │     ├── Si deposit_status = 'paid' → actualizar a 'captured' (retiene seña)
-  │     ├── Incrementar noshow_count del jugador en player_tenant_relationships
-  │     ├── Sumar (price_snapshot − deposit_amount) a player_tenant_relationships.balance (atómico vía addNoShowDebt)
-  │     └── Si balance > 0 → jugador bloqueado para reservar online en este complejo hasta saldar la deuda
-  └── Output: booking marcado como no_show, deuda registrada
+  ├── Softban por reincidencia (cambio #5, revisado 2026-07-11 — sin deuda de dinero):
+  │     ├── Si deposit_status = 'paid' → actualizar a 'captured' (retiene la seña, único costo real)
+  │     ├── Registrar la ausencia en player_tenant_relationships: noshow_count + last_no_show_at (applyNoShowStrike)
+  │     ├── 1ra ausencia (o la 1ra tras 90 días sin faltar): solo se registra
+  │     └── 2da ausencia dentro de NO_SHOW_STRIKE_WINDOW_DAYS (90d) → softban de NO_SHOW_SOFTBAN_DAYS (14d) para reservar online, vía una fila en tenant_player_bans
+  └── Output: booking marcado como no_show, ausencia registrada (softban si es reincidente)
 
 ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
   ├── Job programado: buscar bookings con status='confirmed' AND time_end < NOW() - 30min
@@ -709,7 +709,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 
 | Evento | Efecto |
 |---|---|
-| Booking marcado como no_show | 📩 Email al jugador: "Fuiste registrado como No-Show (ausente) para tu turno del {fecha} {hora}. Se ha generado una deuda por la diferencia del turno." |
+| Booking marcado como no_show | 📩 Email al jugador: "Fuiste registrado como No-Show (ausente) para tu turno del {fecha} {hora}. La seña queda retenida; si es tu 2da ausencia en 90 días no vas a poder reservar online por 14 días." |
 | Seña retenida | La seña ya fue registrada como ingreso (`booking`). No genera un nuevo CashFlow (evita duplicación). |
 | Corrección de `completed` a `no_show` (dentro de 24hs) | 💰 CashFlow: adjustment (negativo), category='no_show_correction', description='Reversión de cobro por no-show de reserva autocompletada' |
 
@@ -1078,9 +1078,9 @@ PASO 4 — Generación del cierre
 ```
 PASO 1 — Selección de plan
   ├── Vista: tabla comparativa de planes
-  │     ├── Plan Predio (1-3 canchas): $47.000/mes | $37.600/mes pago anual
-  │     ├── Plan Complejo (4-6 canchas): $74.000/mes | $59.200/mes pago anual
-  │     └── Plan Estadio (7+ canchas): $101.000/mes | $80.800/mes pago anual
+  │     ├── Plan Predio (1-2 canchas): $55.000/mes | $44.000/mes pago anual
+  │     ├── Plan Complejo (3-5 canchas): $85.000/mes | $68.000/mes pago anual
+  │     └── Plan Estadio (6+ canchas): $115.000/mes | $92.000/mes pago anual
   ├── Pre-seleccionado: el plan que corresponde según la cantidad de canchas activas del complejo
   ├── Selector: ciclo de facturación (mensual | anual)
   │     └── Si anual: mostrar ahorro: "Ahorrás ${diferencia}/año (20% descuento)"

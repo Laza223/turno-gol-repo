@@ -1207,11 +1207,10 @@ CREATE TABLE player_tenant_relationships (
   tenant_id        UUID NOT NULL REFERENCES tenants(id),
   player_id        UUID NOT NULL REFERENCES players(id),
 
-  -- Métricas de comportamiento (actualizadas por triggers/jobs)
+  -- Métricas de comportamiento (bookings_count por trigger; noshow_count/last_no_show_at por applyNoShowStrike)
   bookings_count   INTEGER NOT NULL DEFAULT 0,      -- Total de reservas
-  noshow_count     INTEGER NOT NULL DEFAULT 0,      -- Total de no-shows
-  balance          INTEGER NOT NULL DEFAULT 0       -- Saldo deudor en centavos ARS (no-show). CHECK >= 0
-                   CHECK (balance >= 0),
+  noshow_count     INTEGER NOT NULL DEFAULT 0,      -- No-shows en la ventana de reincidencia (escrito por applyNoShowStrike, reset a 90 días)
+  last_no_show_at  TIMESTAMPTZ,                     -- Fecha del último no-show (para la ventana de reincidencia; migr. 044)
   last_booking_at  TIMESTAMPTZ,
   first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -1681,23 +1680,23 @@ CREATE TRIGGER enforce_booking_invariants
 -- ============================================================
 INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, sort_order, features) VALUES
 (
-  'Predio', 'predio', 3,
-  4700000,   -- $47.000 ARS en centavos
-  3760000,   -- $37.600 ARS en centavos (mensualizado, 20% descuento anual)
+  'Predio', 'predio', 2,
+  5500000,   -- $55.000 ARS en centavos
+  4400000,   -- $44.000 ARS en centavos (mensualizado, 20% descuento anual)
   1,
   '{"history_months": 6, "export_formats": ["csv"], "api_access": false, "support_channels": ["email"]}'
 ),
 (
-  'Complejo', 'complejo', 6,
-  7400000,   -- $74.000 ARS
-  5920000,   -- $59.200 ARS (20% descuento anual)
+  'Complejo', 'complejo', 5,
+  8500000,   -- $85.000 ARS
+  6800000,   -- $68.000 ARS (20% descuento anual)
   2,
   '{"history_months": 12, "export_formats": ["csv", "excel"], "api_access": false, "support_channels": ["email"]}'
 ),
 (
   'Estadio', 'estadio', NULL,  -- NULL = ilimitado
-  10100000,  -- $101.000 ARS
-  8080000,   -- $80.800 ARS (20% descuento anual)
+  11500000,  -- $115.000 ARS
+  9200000,   -- $92.000 ARS (20% descuento anual)
   3,
   '{"history_months": null, "export_formats": ["csv", "excel"], "api_access": true, "support_channels": ["email", "priority_email"]}'
 );

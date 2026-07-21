@@ -6,6 +6,7 @@ import * as Sentry from '@sentry/nextjs'
 import {
   AlertCircle,
   Calendar,
+  Check,
   ChevronDown,
   Clock,
   GraduationCap,
@@ -21,6 +22,7 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -121,6 +123,7 @@ export function BookingFormModal({
 }: Props) {
   const [duration, setDuration] = useState<number>(slot.durationMins)
   const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
+  const [isDurationOpen, setIsDurationOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
@@ -343,29 +346,83 @@ export function BookingFormModal({
 
             {allowsCustomDuration && (
               <div className="space-y-1.5">
-                <Label htmlFor="duration" className="flex items-center justify-between text-sm font-semibold text-foreground">
+                <Label htmlFor="duration-select-trigger" className="flex items-center justify-between text-sm font-semibold text-foreground">
                   <span>Duración {reason === 'other' ? 'de la reserva' : 'del bloqueo / evento'}</span>
                   <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
                     Hasta las {timeEnd} ({effectiveDuration / 60} hs)
                   </span>
                 </Label>
 
-                <div className="relative">
-                  <select
-                    id="duration"
-                    name="duration"
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full appearance-none rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 text-foreground px-3.5 py-2.5 pr-10 text-sm font-medium transition-all focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer"
-                  >
-                    {allDurations.map((d) => (
-                      <option key={d} value={d} className="bg-background text-foreground py-1">
-                        {d / 60} {d === 60 ? 'hora' : 'horas'} — (hasta las {endLabelFromMins(startMins + d)})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                </div>
+                {/* Hidden native select for form serialization & accessible test queries */}
+                <select
+                  id="duration"
+                  name="duration"
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="sr-only"
+                >
+                  {allDurations.map((d) => (
+                    <option key={d} value={d}>
+                      {d / 60} {d === 60 ? 'hora' : 'horas'}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Modern Popover Selector Custom UI */}
+                <Popover open={isDurationOpen} onOpenChange={setIsDurationOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      id="duration-select-trigger"
+                      type="button"
+                      aria-label="Seleccionar duración"
+                      className="flex w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/40 shadow-xs cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span className="font-semibold text-foreground">
+                          {duration / 60} {duration === 60 ? 'hora' : 'horas'}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          (hasta las {endLabelFromMins(startMins + duration)})
+                        </span>
+                      </div>
+                      <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isDurationOpen && "rotate-180")} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5">
+                    {allDurations.map((d) => {
+                      const isSelected = duration === d
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => {
+                            setDuration(d)
+                            setIsDurationOpen(false)
+                          }}
+                          className={cn(
+                            'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer text-left',
+                            isSelected
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
+                              : 'hover:bg-accent text-foreground'
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isSelected ? (
+                              <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            ) : (
+                              <div className="h-4 w-4 shrink-0" />
+                            )}
+                            <span>{d / 60} {d === 60 ? 'hora' : 'horas'}</span>
+                          </div>
+                          <span className="text-xs font-medium text-muted-foreground">
+                            hasta {endLabelFromMins(startMins + d)}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
 

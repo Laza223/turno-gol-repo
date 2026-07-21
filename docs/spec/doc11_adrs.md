@@ -1411,10 +1411,15 @@ Razones:
 
 ### Contexto
 
-La Ley 26.061 de Protección Integral de los Derechos de Niñas, Niños y Adolescentes
-establece que los servicios digitales deben tomar recaudos para no capturar datos de
-menores sin consentimiento parental. TurnoGol captura datos de jugadores (nombre, email,
-teléfono) y procesa transacciones económicas.
+TurnoGol captura datos de jugadores (nombre, email, teléfono) y procesa transacciones
+económicas. La base legal de la restricción +18 es doble: (a) la **capacidad para contratar**
+del Código Civil y Comercial (la mayoría de edad plena es a los 18 años, Ley 26.579), y
+(b) el marco de **consentimiento de la Ley 25.326** de Protección de Datos Personales que
+TurnoGol ya adopta (ver doc18). NO se funda en la Ley 26.061 (protección institucional de la
+niñez), que no regula la verificación de edad para la contratación de servicios digitales.
+
+> (Decisión de auditoría 2026-07-21 — ARG-03/CONS-09: corregida la cita legal de la 26.061 a
+> 25.326 + CCyC, unificando con doc18/CLAUDE.md. **Validar con asesoría legal antes del launch.**)
 
 ### Opciones consideradas
 

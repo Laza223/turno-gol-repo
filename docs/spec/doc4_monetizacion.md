@@ -255,6 +255,24 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 - Tabla `price_versions` con fecha de vigencia
 - Middleware que determina qué precio aplica a cada tenant según su `subscription_start_date`
 
+### Devaluación brusca (step-devaluation) — política v1
+
+La estrategia de arriba cubre la inflación *gradual*. Aparte queda el escenario, recurrente en
+Argentina, de una **devaluación brusca** del ARS que encarece de un día para el otro los costos
+dolarizados (Vercel, Supabase, Resend, dominio) mientras el ingreso en pesos queda congelado
+(anuales hasta 12 meses; mensuales con 30 días de preaviso).
+
+Política v1 (Decisión de auditoría 2026-07-21 — ARG-07):
+- **Sin hedging financiero** ni colchón en USD en v1: es complejidad operativa que un equipo de
+  1-3 personas no va a sostener.
+- **Gatillo de repricing extraordinario** para clientes MENSUALES: ante un salto de tipo de cambio
+  material (fuera del ciclo normal de revisión de precios), se puede subir el precio antes de los
+  3 meses, respetando **siempre** el preaviso de 30 días. Es la misma mecánica de la Estrategia de
+  arriba, disparada por FX en vez de por calendario.
+- **Clientes ANUALES**: el prepago los deja expuestos al costo dolarizado del período ya cobrado,
+  pero ese prepago **es en sí un hedge** — ya cobramos los pesos por adelantado y podemos
+  desplegarlos; la exposición se acota a ese período (riesgo ya aceptado en el WARNING de arriba).
+
 ---
 
 ## 6. Upgrades y Downgrades
@@ -299,6 +317,13 @@ Si el dueño desactiva la cancha → puede hacer downgrade
 El downgrade aplica al inicio del próximo período (no inmediato)
 No se genera reembolso por días no usados del plan superior
 ```
+
+> [!NOTE]
+> **Downgrade con plan ANUAL vigente** (Decisión de auditoría 2026-07-21 — LOG-09/GAP-10):
+> el downgrade de un cliente anual **aplica recién en la renovación** (fin del término pagado),
+> nunca a mitad del año. NO se recalcula ni se reembolsa el prepago (consistente con la regla
+> general "sin reembolso"), y el precio congelado por `price_locked_until` rige hasta el
+> vencimiento. En la renovación se le ofrece el plan inferior al precio vigente de ese momento.
 
 ### Efectos cascada de cambio de plan
 

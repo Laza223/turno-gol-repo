@@ -297,7 +297,7 @@ CREATE TABLE players (
   ban_reason      TEXT,
   ban_until       TIMESTAMPTZ,                   -- NULL = ban permanente
 
-  -- Términos y condiciones (Ley 26.061 — declaración jurada +18)
+  -- Términos y condiciones (declaración jurada +18: capacidad CCyC/Ley 26.579 + consentimiento Ley 25.326; NO 26.061)
   agreed_to_terms_at TIMESTAMPTZ,               -- Cuándo aceptó los TyC (incluye declaración jurada de mayoría de edad)
   terms_version   TEXT,                         -- Versión de los TyC aceptados (ej: '2026-04')
 

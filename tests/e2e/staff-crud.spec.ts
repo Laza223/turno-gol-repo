@@ -1,19 +1,19 @@
 /**
  * E2E — Staff CRUD (audit T6, fase F5)
  *
- * Happy + 3 edge cases for the admin /staff UI (T3):
+ * Happy + 3 edge cases for the admin /settings/equipo UI (T3):
  *   #1  Happy — invite admin: open dialog → fill firstName/lastName/email → submit → row
  *              appears with "Inactivo" badge (invite sent, not yet activated).
  *   #2  Edge — desactivar con ConfirmDialog: pre-link a 2nd admin via service-role →
  *              open dropdown → "Desactivar" → type email → confirm → badge "Inactivo".
  *   #3  Edge — sole-admin disable guard: with the current admin as the only active member,
  *              the dropdown is hidden for self (m.staffUserId !== currentUser); the
- *              backend constraint (>1 active) is exercised by tests/integration/staff-actions.test.ts.
+ *              backend constraint (>1 active) is exercised by tests/integration/settings/equipo-actions.test.ts.
  *              We assert here that the dropdown column for self renders empty.
  *   #4  Edge — reenviar invitación: 2nd admin inactive → dropdown → "Reenviar invitación"
  *              → success toast. May fail in CI if Resend rate-limits; skipped if env flag off.
  *
- * The /staff page is admin-only (requireAdminStaff). The adminStorageState
+ * The /settings/equipo page is admin-only (requireAdminStaff). The adminStorageState
  * fixture already provides an authenticated admin session — no extra gate.
  *
  * ISOLATION: each test allocates a fresh email (timestamp suffix). Cleanup deletes
@@ -66,7 +66,7 @@ test.describe('Staff CRUD', () => {
 
     await addAdminCookies(page, adminStorageState)
     try {
-      await page.goto('/staff')
+      await page.goto('/settings/equipo')
       await page.getByRole('button', { name: /Agregar miembro del equipo/i }).click()
       await page.fill('input[name="firstName"]', 'Invitado')
       await page.fill('input[name="lastName"]', 'E2E')
@@ -107,7 +107,7 @@ test.describe('Staff CRUD', () => {
         is_active: true,
       })
 
-      await page.goto('/staff')
+      await page.goto('/settings/equipo')
       // Find the row for this email + click its dropdown trigger
       const row = page.locator('tr').filter({ hasText: email })
       await row.getByRole('button', { name: /Opciones/i }).click()
@@ -134,7 +134,7 @@ test.describe('Staff CRUD', () => {
     adminStorageState,
   }) => {
     await addAdminCookies(page, adminStorageState)
-    await page.goto('/staff')
+    await page.goto('/settings/equipo')
 
     // The current user row is marked with "(vos)". The dropdown button is only rendered
     // when m.staffUserId !== user.staffUserId. So the self row should not have a
@@ -143,7 +143,7 @@ test.describe('Staff CRUD', () => {
     await expect(selfRow).toBeVisible()
     await expect(selfRow.getByRole('button', { name: /Opciones/i })).toHaveCount(0)
 
-    // Backend >1 admin constraint is covered by tests/integration/staff-actions.test.ts.
+    // Backend >1 admin constraint is covered by tests/integration/settings/equipo-actions.test.ts.
   })
 
   test('#4 edge — reenviar invitación shows toast', async ({ page, adminStorageState }) => {
@@ -168,7 +168,7 @@ test.describe('Staff CRUD', () => {
         is_active: false, // inactive → "Reenviar invitación" is the visible action
       })
 
-      await page.goto('/staff')
+      await page.goto('/settings/equipo')
       const row = page.locator('tr').filter({ hasText: email })
       await row.getByRole('button', { name: /Opciones/i }).click()
       await page.getByRole('menuitem', { name: /Reenviar invitación/i }).click()

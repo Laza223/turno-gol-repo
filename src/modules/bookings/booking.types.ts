@@ -44,6 +44,7 @@ export type BookingRow = {
   canceledReason: string | null
   canceledBy: CancellationActor | null
   canceledAt: Date | null
+  completedByStaff: string | null
   createdAt: Date
   updatedAt: Date
 }

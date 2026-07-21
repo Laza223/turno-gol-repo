@@ -44,6 +44,9 @@ const CONFIRMADA_SENA_MP = {
   depositStatus: 'paid',
   depositAmount: 450_000,
   paymentMethod: 'mercadopago',
+  priceSnapshot: 1500000,
+  guestName: null,
+  guestPhone: null,
 }
 
 const PENDIENTE_PAGO = {
@@ -53,6 +56,9 @@ const PENDIENTE_PAGO = {
   depositStatus: 'pending',
   depositAmount: 450_000,
   paymentMethod: null,
+  priceSnapshot: 1500000,
+  guestName: null,
+  guestPhone: null,
 }
 
 /**
@@ -74,7 +80,7 @@ const meta = {
   args: {
     label: 'Julián Álvarez · 19:00–20:00',
     cancelBookingAction: fn(async () => SUCCESS),
-    completeBookingAction: fn(async () => SUCCESS),
+    completeAndChargeBookingAction: fn(async () => SUCCESS),
     confirmDepositPaymentAction: fn(async () => SUCCESS),
     markNoShowAction: fn(async () => SUCCESS),
   },
@@ -151,15 +157,19 @@ export const ConfirmarPagoLlamaLaAction: Story = {
   },
 }
 
-export const CompletarLlamaLaAction: Story = {
+/**
+ * "Completada" NUNCA llama una action directa: abre CompleteBookingDialog
+ * (Completar + Cobrar). `./actions` ya no expone `completeBookingAction` a
+ * QuickActions (quedó muerto tras el rediseño, ver comentario en
+ * QuickActions.tsx).
+ */
+export const CompletarAbreElDialogoDeCobro: Story = {
   args: { booking: CONFIRMADA_SENA_MP },
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Completada' }))
-    await waitFor(() =>
-      expect(args.completeBookingAction).toHaveBeenCalledWith(CONFIRMADA_SENA_MP.id)
-    )
-    await closeToast('Marcada como completada')
+    const body = within(document.body)
+    await expect(await body.findByRole('heading', { name: 'Completar turno' })).toBeInTheDocument()
   },
 }
 
@@ -180,18 +190,18 @@ export const AusenteRequiereDobleClick: Story = {
 /** Si la Server Action devuelve error, el toast es destructivo y NO se refresca el router. */
 export const AccionFallidaMuestraError: Story = {
   args: {
-    booking: CONFIRMADA_SENA_MP,
-    completeBookingAction: fn(
+    booking: PENDIENTE_PAGO,
+    confirmDepositPaymentAction: fn(
       async (): Promise<BookingActionResult> => ({
         success: false,
-        error: 'El turno todavía no terminó.',
+        error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
       })
     ),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Completada' }))
-    await closeToast('El turno todavía no terminó.')
+    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar pago' }))
+    await closeToast('La reserva ya no está pendiente de pago (pudo confirmarse o expirar).')
     await expect(getRouter().refresh).not.toHaveBeenCalled()
   },
 }

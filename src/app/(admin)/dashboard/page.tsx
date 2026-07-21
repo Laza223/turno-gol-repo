@@ -1,12 +1,10 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
   Banknote,
   CalendarCheck,
-  CalendarDays,
   Clock,
   LayoutDashboard,
-  UserX,
+  ShoppingBag,
 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -14,10 +12,12 @@ import { MetricCard } from '@/components/dashboard/metric-card'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { UpcomingBookings } from '@/components/dashboard/upcoming-bookings'
+import { DashboardCanteenButton } from '@/components/dashboard/DashboardCanteenButton'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
 import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
+import { saveCanteenProductsAction, sellCanteenProductAction } from '@/app/(admin)/caja/actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
     tenant.settings.onboarding_completed === true && !tenant.settings.admin_tour_seen_at
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const { caja, occupancy, pendingDeposits, blockedPlayers } = data
+  const { caja, occupancy, pendingDeposits, canteenSales } = data
 
   const cajaValue =
     caja.balanceCents < 0 ? (
@@ -79,14 +79,12 @@ export default async function DashboardPage() {
         subtitle={todayMediumArt()}
         icon={<LayoutDashboard className="h-6 w-6" aria-hidden="true" />}
         actions={
-          <Link
-            href="/grilla"
-            data-tour-id="tour-grilla"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <CalendarDays className="h-4 w-4" aria-hidden="true" />
-            Ir a la grilla
-          </Link>
+          <DashboardCanteenButton
+            date={data.date}
+            products={tenant.settings.canteen_products ?? []}
+            sellCanteenProductAction={sellCanteenProductAction}
+            saveCanteenProductsAction={saveCanteenProductsAction}
+          />
         }
       />
 
@@ -99,6 +97,15 @@ export default async function DashboardPage() {
           onDismiss={markChecklistDismissedAction}
         />
       )}
+
+      <UpcomingBookings
+        upcoming={data.upcoming}
+        playedToday={data.playedToday}
+        dayIsClosed={data.dayIsClosed}
+        nowHhmm={data.nowHhmm}
+        openHhmm={data.openHhmm}
+        closesNextDay={data.closesNextDay}
+      />
 
       {/* 4 KPIs, orden fijo §2: la plata primero (serial position §9). */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
@@ -134,24 +141,19 @@ export default async function DashboardPage() {
           ariaLabel={`Esperando seña: ${pendingDeposits.count} — ver reservas pendientes`}
         />
         <MetricCard
-          label="Jugadores bloqueados"
-          value={String(blockedPlayers)}
-          icon={<UserX className="h-5 w-5" aria-hidden="true" />}
-          sub={blockedPlayers > 0 ? 'Por ausencias reiteradas u otros motivos' : 'Nadie bloqueado'}
-          accent="red"
-          href="/jugadores"
-          ariaLabel={`Jugadores bloqueados: ${blockedPlayers} — ver jugadores`}
+          label="Cantina hoy"
+          value={String(canteenSales.count)}
+          icon={<ShoppingBag className="h-5 w-5" aria-hidden="true" />}
+          sub={
+            canteenSales.count > 0
+              ? `${formatArs(canteenSales.amountCents)} en ventas de hoy`
+              : 'Sin ventas hoy'
+          }
+          accent="emerald"
+          href="/caja"
+          ariaLabel={`Cantina hoy: ${canteenSales.count} ventas — ver caja`}
         />
       </div>
-
-      <UpcomingBookings
-        upcoming={data.upcoming}
-        playedToday={data.playedToday}
-        dayIsClosed={data.dayIsClosed}
-        nowHhmm={data.nowHhmm}
-        openHhmm={data.openHhmm}
-        closesNextDay={data.closesNextDay}
-      />
     </div>
   )
 }

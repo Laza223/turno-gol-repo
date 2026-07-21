@@ -17,11 +17,21 @@ describe('settings — acceso solo admin (roles 026)', () => {
     expect(src).toMatch(/await requireAdminStaff\(\)/)
   })
 
-  it('staff/page.tsx (Vista Equipo) aplica requireAdminStaff', () => {
+  it('settings/equipo/page.tsx (Vista Equipo) aplica requireAdminStaff', () => {
+    // /staff se reubicó a /settings/equipo (redirect permanente en staff/page.tsx);
+    // el guard real ahora vive acá.
+    const src = readFileSync(
+      join(process.cwd(), 'src/app/(admin)/settings/equipo/page.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('requireAdminStaff')
+  })
+
+  it('staff/page.tsx redirige a /settings/equipo (no duplica el guard)', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/app/(admin)/staff/page.tsx'),
       'utf8',
     )
-    expect(src).toContain('requireAdminStaff')
+    expect(src).toContain("redirect('/settings/equipo')")
   })
 })

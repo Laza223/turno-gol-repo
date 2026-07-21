@@ -85,6 +85,7 @@ const bookingRowResponseSchema = z.strictObject({
   canceledReason: z.string().nullable(),
   canceledBy: z.enum(['player', 'admin', 'system']).nullable(),
   canceledAt: z.string().nullable(),
+  completedByStaff: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })

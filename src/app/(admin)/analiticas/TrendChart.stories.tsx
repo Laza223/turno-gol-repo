@@ -9,7 +9,7 @@ import { TrendChart } from './ReportCharts'
  * acá (ese caso es la ausencia total del chart, cubierto por ReportView).
  */
 const meta = {
-  title: 'Admin/Reportes/ReportCharts/TrendChart',
+  title: 'Admin/Analiticas/ReportCharts/TrendChart',
   component: TrendChart,
   parameters: { layout: 'padded' },
   args: {

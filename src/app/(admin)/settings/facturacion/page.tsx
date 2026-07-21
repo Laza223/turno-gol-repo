@@ -4,6 +4,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
+import { listCourts } from '@/modules/courts/court.service'
 import { SettingsTabs } from '../SettingsTabs'
 import { ActivatePlanSection } from './ActivatePlanSection'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
@@ -37,6 +38,9 @@ export default async function FacturacionPage() {
   } catch {
     sub = null
   }
+
+  const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
+  const defaultCourts = courts.length || 3
 
   // Bug raíz: createTenantWithTrial no insertaba tenant_subscriptions, así que
   // subscribe() siempre tiraba SubscriptionNotFoundError (fix 1a). Con la fila
@@ -81,13 +85,13 @@ export default async function FacturacionPage() {
         </section>
 
         {sub?.status === 'trialing' && activePlans.length > 0 && (
-          <ActivatePlanSection plans={activePlans} />
+          <ActivatePlanSection plans={activePlans} defaultCourts={defaultCourts} />
         )}
 
         {sub && (
           <CancelSubscriptionSection
             status={sub.status}
-            accessUntil={sub.currentPeriodEnd.toISOString()}
+            accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
           />
         )}
 

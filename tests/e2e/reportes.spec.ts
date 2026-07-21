@@ -2,8 +2,8 @@
  * E2E — Reportes (audit T6, fase F5)
  *
  *   #1  Happy — mes con datos: pre-seed 1 confirmed booking + 1 income cashflow this month
- *              → /reportes → KPI "Ingresos" non-zero + "Por cancha" row visible.
- *   #2  Edge — mes vacío: /reportes?month=2019-01 → "Sin movimientos en este período."
+ *              → /analiticas → KPI "Ingresos" non-zero + "Por cancha" row visible.
+ *   #2  Edge — mes vacío: /analiticas?month=2019-01 → "Sin movimientos en este período."
  *   #3  Edge — nav prev/next: click prev → URL ?month=YYYY-MM-(prev); next button is
  *              disabled when target month > current.
  *   #4  Edge — CSV export: click "Exportar CSV" → download event fires with non-empty CSV.
@@ -85,7 +85,7 @@ test.describe('Reportes', () => {
         occurred_at: isoMidMonth(month),
       })
 
-      await page.goto('/reportes')
+      await page.goto('/analiticas')
 
       // KPIs render with non-zero values.
       // Use the KPI <p> specifically: "Ingresos"/"Reservas" also appear as <th>
@@ -109,7 +109,7 @@ test.describe('Reportes', () => {
     adminStorageState,
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
-    await page.goto('/reportes?month=2019-01')
+    await page.goto('/analiticas?month=2019-01')
     await expect(page.getByText('Así se verá tu mes cuando cargues reservas')).toBeVisible()
     await expect(page.getByText('Todavía no hay movimientos en este período.')).toBeVisible()
   })
@@ -119,7 +119,7 @@ test.describe('Reportes', () => {
     adminStorageState,
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
-    await page.goto('/reportes?month=2020-06')
+    await page.goto('/analiticas?month=2020-06')
 
     // prev arrow
     await page.getByRole('button', { name: 'Mes anterior' }).click()
@@ -131,7 +131,7 @@ test.describe('Reportes', () => {
 
     // Navigate to current month — next must be disabled
     const cur = currentMonthStr()
-    await page.goto(`/reportes?month=${cur}`)
+    await page.goto(`/analiticas?month=${cur}`)
     await expect(page.getByRole('button', { name: 'Mes siguiente' })).toBeDisabled()
   })
 
@@ -156,7 +156,7 @@ test.describe('Reportes', () => {
         occurred_at: isoMidMonth(month),
       })
 
-      await page.goto('/reportes')
+      await page.goto('/analiticas')
 
       const [download] = await Promise.all([
         page.waitForEvent('download', { timeout: 10000 }),

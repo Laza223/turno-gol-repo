@@ -1,22 +1,20 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
-  ArrowDownToLine,
   ArrowRightLeft,
-  ArrowUpFromLine,
   Banknote,
   Coins,
   CreditCard,
   Receipt,
-  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { StatCard } from '@/components/admin/StatCard'
+
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
-import { getDaySummary, getCashFlows, getDayComparisons } from '@/modules/cashflow/cashflow.service'
+import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
@@ -35,12 +33,10 @@ import {
 import { artDateOf } from '@/shared/time/art-date'
 import {
   addDays,
-  buildDelta,
   cajaDateLabel,
   categoryLabel,
   formatTimeArt,
   methodBreakdown,
-  signedArs,
   CATEGORY_BADGE,
   METHOD_LABELS,
   type MethodKey,
@@ -95,13 +91,12 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
   // reventaba el cast SQL ::date y addDays(); degradar a hoy (ART) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
-  const { summary, cashFlows, comparisons } = await withTenantContext(tenant.id, async (tx) => {
-    const [s, cf, comp] = await Promise.all([
+  const { summary, cashFlows } = await withTenantContext(tenant.id, async (tx) => {
+    const [s, cf] = await Promise.all([
       getDaySummary(tenant.id, date, tx),
       getCashFlows(tenant.id, date, tx),
-      getDayComparisons(tenant.id, date, tx),
     ])
-    return { summary: s, cashFlows: cf, comparisons: comp }
+    return { summary: s, cashFlows: cf }
   })
 
   const ingresos = summary.totalIncome + summary.totalAdjustments
@@ -163,97 +158,18 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
       {/* Peak-end (§5): el cierre abre la vista — recibo verde e inmutable. */}
       {summary.isClosed && summary.close && <CierreCard close={summary.close} />}
 
-      {/* KPIs (§3): orden aritmético Ingresos − Egresos = Saldo en desktop;
-          en mobile el saldo (la pregunta №1) va primero y a lo ancho. */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <StatCard
-          label="Ingresos"
-          value={formatArsContable(ingresos)}
-          icon={<ArrowDownToLine className="h-5 w-5" aria-hidden="true" />}
-          accent="emerald"
-          delta={buildDelta(ingresos, comparisons.yesterday.totalIncome, 'vs ayer') ?? undefined}
-          sub={
-            ingresos === 0 && comparisons.weekAvg.totalIncome === 0
-              ? undefined
-              : `vs prom. semanal ${signedArs(ingresos - comparisons.weekAvg.totalIncome)}`
-          }
-        />
-        <StatCard
-          label="Egresos"
-          value={formatArsContable(summary.totalExpense)}
-          icon={<ArrowUpFromLine className="h-5 w-5" aria-hidden="true" />}
-          accent="red"
-          delta={
-            buildDelta(summary.totalExpense, comparisons.yesterday.totalExpense, 'vs ayer', {
-              invert: true,
-            }) ?? undefined
-          }
-          sub={
-            summary.totalExpense === 0 && comparisons.weekAvg.totalExpense === 0
-              ? undefined
-              : `vs prom. semanal ${signedArs(summary.totalExpense - comparisons.weekAvg.totalExpense)}`
-          }
-        />
-        <StatCard
-          label="Saldo neto del día"
-          value={
-            summary.balance < 0 ? (
-              <span className="text-red-700 dark:text-red-400">
-                −{formatArsContable(-summary.balance)}
-              </span>
-            ) : (
-              formatArsContable(summary.balance)
-            )
-          }
-          icon={<Wallet className="h-5 w-5" aria-hidden="true" />}
-          accent="emerald"
-          delta={buildDelta(summary.balance, comparisons.yesterday.balance, 'vs ayer') ?? undefined}
-          sub={
-            summary.balance === 0 && comparisons.weekAvg.balance === 0
-              ? undefined
-              : `vs prom. semanal ${signedArs(summary.balance - comparisons.weekAvg.balance)}`
-          }
-          className="order-first col-span-2 ring-1 ring-emerald-600/20 dark:ring-emerald-500/25 lg:order-0 lg:col-span-1"
-        />
-      </div>
-
       {/* Cantina/Bar: venta rápida con un toque (oculta con caja cerrada) */}
       {!summary.isClosed && (
-        <CanteenQuickSale
-          date={date}
-          products={tenant.settings.canteen_products ?? []}
-          sellCanteenProductAction={sellCanteenProductAction}
-          saveCanteenProductsAction={saveCanteenProductsAction}
-        />
+        <Suspense fallback={null}>
+          <CanteenQuickSale
+            date={date}
+            products={tenant.settings.canteen_products ?? []}
+            sellCanteenProductAction={sellCanteenProductAction}
+            saveCanteenProductsAction={saveCanteenProductsAction}
+          />
+        </Suspense>
       )}
 
-      {/* Desglose por método (§4): la referencia del arqueo. */}
-      {methods.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4 shadow-xs">
-          <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold text-foreground">Desglose por método</h2>
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              Neto del día: ingresos menos gastos por método.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {methods.map(({ key, label, total }) => {
-              const Icon = METHOD_ICON[key]
-              return (
-                <div key={key} className="flex items-center gap-2.5">
-                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{label}</p>
-                    <p className="truncate text-sm font-semibold tabular-nums text-foreground">
-                      {total < 0 ? `−${formatArsContable(-total)}` : formatArsContable(total)}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Movimientos del día */}
       {cashFlows.length === 0 ? (
@@ -346,6 +262,34 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
             </table>
           }
         />
+      )}
+
+      {/* Desglose por método: referencia del arqueo, al final para no abrumar. */}
+      {methods.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-4 shadow-xs">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground">Desglose por método</h2>
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              Neto del día: ingresos menos gastos por método.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {methods.map(({ key, label, total }) => {
+              const Icon = METHOD_ICON[key]
+              return (
+                <div key={key} className="flex items-center gap-2.5">
+                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="truncate text-sm font-semibold tabular-nums text-foreground">
+                      {total < 0 ? `−${formatArsContable(-total)}` : formatArsContable(total)}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
     </div>
   )

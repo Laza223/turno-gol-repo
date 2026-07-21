@@ -78,7 +78,7 @@ describe('uploadCourtPhotoAction', () => {
     expect(vi.mocked(putImage)).toHaveBeenCalledTimes(1)
     const [key] = vi.mocked(putImage).mock.calls[0]
     expect(key).toMatch(/^tenant-1\/courts\/court-1\/.+\.webp$/)
-    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/canchas')
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/canchas')
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
   })
 
@@ -109,7 +109,7 @@ describe('removeCourtPhotoAction', () => {
     )
     expect(res.success).toBe(true)
     expect(vi.mocked(deleteImage)).toHaveBeenCalledWith('tenant-1/courts/court-1/x.webp')
-    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/canchas')
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/canchas')
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
   })
 
@@ -146,7 +146,7 @@ describe('reorderCourtPhotosAction', () => {
     const res = await reorderCourtPhotosAction('court-1', ['b.webp', 'a.webp'])
     expect(res.success).toBe(true)
     expect(res.success && res.photos).toEqual(['b.webp', 'a.webp'])
-    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/canchas')
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/canchas')
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
   })
 })

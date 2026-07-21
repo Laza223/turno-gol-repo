@@ -18,13 +18,13 @@ const ROUTES = [
   '/grilla',
   '/caja',
   '/reservas',
-  '/canchas',
-  // /staff siempre tiene datos (el admin seedeado); /abonados con datos se
-  // cubre en su test propio (seed service-role). /jugadores y /reportes
-  // renderizan igual con o sin datos.
-  '/staff',
+  '/settings/canchas',
+  // /settings/equipo siempre tiene datos (el admin seedeado); /abonados con datos se
+  // cubre en su test propio (seed service-role). /jugadores renderizan
+  // igual con o sin datos.
+  '/settings/equipo',
   '/jugadores',
-  '/reportes',
+  '/analiticas',
 ] as const
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
@@ -124,13 +124,13 @@ test.describe('Admin mobile smoke', () => {
     }
   })
 
-  test('/staff: la card mobile muestra al miembro con su email', async ({
+  test('/settings/equipo: la card mobile muestra al miembro con su email', async ({
     browser,
     adminStorageState,
   }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
-    await page.goto('/staff', { waitUntil: 'networkidle' })
+    await page.goto('/settings/equipo', { waitUntil: 'networkidle' })
 
     // El tenant seedeado siempre tiene al admin: su card (li, no tr) es la
     // vista activa en mobile y no clipea el email.

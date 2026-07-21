@@ -287,7 +287,7 @@ function CourtCard({
       `Hay ${impact.futureBookings} reserva(s) futura(s) en esta cancha. Gestionalas antes (las existentes se mantienen hasta que las canceles).`,
     )
   if (impact && impact.activeAbonados > 0)
-    warningLines.push(`Hay ${impact.activeAbonados} abonado(s) activo(s) en esta cancha.`)
+    warningLines.push(`Hay ${impact.activeAbonados} turno(s) fijo(s) activo(s) en esta cancha.`)
 
   return (
     // rounded-lg (no rounded-xl pese a §4.2/card-premium): e2e canchas-crud

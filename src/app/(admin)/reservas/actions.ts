@@ -221,14 +221,14 @@ export async function completeBookingAction(
 ): Promise<BookingActionResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
-  const { tenant } = auth
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     try {
-      const booking = await completeBooking(bookingId, 'admin', tx)
+      const booking = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
       return { success: true as const, booking }
     } catch (err) {
       if (err instanceof BookingNotInConfirmedError) {
@@ -534,6 +534,152 @@ export async function addBookingChargeAction(
   })
 
   if (result.success) {
+    revalidateBooking(bookingId)
+    revalidatePath('/caja')
+  }
+  return result
+}
+
+// ─── completeAndChargeBookingAction ─────────────────────────────────
+// Unified "Complete + Charge" flow: completes the booking and registers
+// N split charges in a single transaction. Used by CompleteBookingDialog.
+
+const chargeLineSchema = z.object({
+  amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
+  method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+})
+
+const completeAndChargeSchema = z.object({
+  bookingId: uuid,
+  charges: z.array(chargeLineSchema).max(10),
+  debtNote: boundedText(500).optional(),
+  clientIdempotencyKey: uuid.optional(),
+})
+
+export type CompleteAndChargeInput = z.input<typeof completeAndChargeSchema>
+
+export type CompleteAndChargeResult =
+  | { success: true; booking: BookingRow }
+  | { success: false; error: string }
+
+export async function completeAndChargeBookingAction(
+  input: CompleteAndChargeInput,
+): Promise<CompleteAndChargeResult> {
+  const parsed = completeAndChargeSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { bookingId, charges, debtNote, clientIdempotencyKey } = parsed.data
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    // 1. Complete the booking (validates ends_at, status)
+    let booking: BookingRow
+    try {
+      booking = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
+    } catch (err) {
+      if (err instanceof BookingNotInConfirmedError) {
+        return { success: false as const, error: 'La reserva no está en estado confirmado.' }
+      }
+      if (err instanceof BookingNotYetEndedError) {
+        return {
+          success: false as const,
+          error: 'El turno todavía no terminó. Podés marcarla completada recién después del horario de fin.',
+        }
+      }
+      throw err
+    }
+
+    // 2. Validate total charges don't exceed pending amount
+    if (charges.length > 0) {
+      // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
+      // más arriba en este archivo): la lectura de charges tiene que ocurrir
+      // DESPUÉS de lockear la fila. completeBooking() de arriba ya lo hace
+      // implícitamente (su UPDATE ... WHERE status='confirmed' toma el row
+      // lock y lo mantiene hasta el commit de esta tx) — el FOR UPDATE acá es
+      // explícito y redundante a propósito: documenta la dependencia y blinda
+      // el código si completeBooking() dejara de hacer ese UPDATE. Mismo
+      // orden de locks que addBookingChargeAction: booking FOR UPDATE antes
+      // que el advisory lock diario de createCashFlow → assertDayOpen.
+      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
+      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+      const { pending } = summarizeBookingCharges({
+        priceSnapshot: booking.priceSnapshot,
+        depositAmount: booking.depositAmount,
+        depositStatus: booking.depositStatus,
+        chargesTotal,
+      })
+
+      const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
+      if (totalCharging > pending) {
+        return {
+          success: false as const,
+          error: `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`,
+        }
+      }
+
+      // 3. Register each charge as a cash_flow
+      for (let i = 0; i < charges.length; i++) {
+        const charge = charges[i]!
+        const description = charges.length === 1
+          ? 'Cobro de turno'
+          : `Cobro de turno (${i + 1}/${charges.length})`
+
+        // Unique idempotency key per charge line (derived from the base key)
+        const lineKey = clientIdempotencyKey
+          ? `${clientIdempotencyKey}-${i}`
+          : undefined
+
+        try {
+          await createCashFlow(
+            tenant.id,
+            user.staffUserId,
+            {
+              type: 'income',
+              category: 'booking',
+              amount: charge.amount,
+              method: charge.method,
+              description,
+              bookingId,
+              clientIdempotencyKey: lineKey,
+            },
+            tx,
+          )
+        } catch (err) {
+          if (err instanceof DayAlreadyClosedError) {
+            return {
+              success: false as const,
+              error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
+            }
+          }
+          throw err
+        }
+      }
+    }
+
+    // 4. If there's a debt note, save it in notes_internal
+    if (debtNote?.trim()) {
+      const existingNotes = booking.notesInternal ?? ''
+      const newNote = existingNotes
+        ? `${existingNotes}\n[Deuda] ${debtNote.trim()}`
+        : `[Deuda] ${debtNote.trim()}`
+      await tx.execute(
+        sql`UPDATE bookings SET notes_internal = ${newNote} WHERE id = ${bookingId}`,
+      )
+    }
+
+    return { success: true as const, booking }
+  })
+
+  if (result.success) {
+    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'completeAndChargeBookingAction')
     revalidateBooking(bookingId)
     revalidatePath('/caja')
   }

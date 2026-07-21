@@ -67,7 +67,11 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
         type: booking.type,
         depositStatus: booking.depositStatus,
         depositAmount: booking.depositAmount,
+        priceSnapshot: booking.priceSnapshot,
         paymentMethod: booking.paymentMethod,
+        guestName: booking.guestName ?? null,
+        guestPhone: null,
+        playerName: booking.playerName,
         endsAt: booking.endsAt,
       }}
       label={`${name} · ${timeRange}`}
@@ -152,7 +156,7 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
             <ReservaStatusBadge visual={visual} />
             {isAbonado && (
               <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/30">
-                Abonado
+                Turno fijo
               </span>
             )}
           </div>

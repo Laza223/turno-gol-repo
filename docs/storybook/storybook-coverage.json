@@ -852,70 +852,7 @@
       "isolationNotes": ""
     },
     {
-      "path": "src/app/(admin)/reportes/error.tsx",
-      "name": "ReportesError",
-      "domain": "reportes",
-      "rendering": "client",
-      "role": "error-boundary",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": [
-        "variant=inline con h1 propio (distinto del patrón contained de otras secciones)"
-      ],
-      "proposedStoryTitle": "Admin/Reportes/Error",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "Sentry.captureException en useEffect; usa error.message directo como description (no un texto fijo)."
-    },
-    {
-      "path": "src/app/(admin)/reportes/loading.tsx",
-      "name": "ReportesLoading",
-      "domain": "reportes",
-      "rendering": "server",
-      "role": "loading-skeleton",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": [
-        "skeleton único (KPIs + tabla por cancha + tabla por método + CSV)"
-      ],
-      "proposedStoryTitle": "Admin/Reportes/Loading",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": ""
-    },
-    {
-      "path": "src/app/(admin)/reportes/page.tsx",
-      "name": "ReportesPage",
-      "domain": "reportes",
-      "rendering": "server",
-      "role": "page",
-      "isolationDifficulty": "hard",
-      "classification": "PRESENTATIONAL_EXTRACTION_REQUIRED",
-      "exclusionReason": "Mezcla auth+fetch (getRevenueReport) con presentación sustancial: define inline GhostKpis (estado 'primera vez espectral' totalmente presentacional, con datos hardcodeados, sin dependencia de fetch) y signedArsContable, más el grid de 4 StatCard, la navegación de mes y las tablas/cards por cancha y por método de pago — vale la pena extraer, y GhostKpis en particular es una story standalone trivial.",
-      "relevantStates": [
-        "isEmpty=true (GhostKpis)",
-        "isEmpty=false con prevPeriod",
-        "isEmpty=false sin prevPeriod (sin TrendChart)",
-        "byCourt/byMethod vacío vs con datos"
-      ],
-      "proposedStoryTitle": "Admin/Reportes/ReportView + Admin/Reportes/GhostKpis (a extraer)",
-      "usesNetwork": false,
-      "usesSession": true,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": ""
-    },
-    {
-      "path": "src/app/(admin)/reportes/ReportCharts.tsx",
+      "path": "src/app/(admin)/analiticas/ReportCharts.tsx",
       "name": "ReportCharts (OccupancyChart, TrendChart)",
       "domain": "reportes",
       "rendering": "client",

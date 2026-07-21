@@ -32,6 +32,12 @@ function mapStatus(raw: string | undefined): MpPaymentStatus {
   return 'pending'
 }
 
+function normalizeUrl(url: string): string
+function normalizeUrl(url: string | undefined): string | undefined {
+  if (!url) return url
+  return url.replace(/:\/\/localhost\b/i, '://127.0.0.1')
+}
+
 const MP_ID_RE = /^\d{1,32}$/
 
 /**
@@ -105,13 +111,13 @@ export class MercadoPagoGateway implements PaymentGateway {
             },
           ],
           back_urls: {
-            success: input.successUrl,
-            failure: input.failureUrl,
-            pending: input.pendingUrl,
+            success: normalizeUrl(input.successUrl),
+            failure: normalizeUrl(input.failureUrl),
+            pending: normalizeUrl(input.pendingUrl),
           },
           auto_return: 'approved',
           external_reference: input.bookingId,
-          notification_url: input.notificationUrl,
+          notification_url: normalizeUrl(input.notificationUrl),
           expires: true,
           expiration_date_to: input.expiresAt.toISOString(),
           // Fable 5 P0: a booking deposit only has a 6min hold — deferred
@@ -257,7 +263,7 @@ export class MercadoPagoGateway implements PaymentGateway {
       const res = await preapproval.create({
         body: {
           payer_email: input.payerEmail,
-          back_url: input.returnUrl,
+          back_url: normalizeUrl(input.returnUrl),
           reason: input.reason,
           external_reference: input.tenantId,
           status: 'pending',
@@ -341,13 +347,13 @@ export class MercadoPagoGateway implements PaymentGateway {
             },
           ],
           back_urls: {
-            success: input.returnUrl,
-            failure: input.returnUrl,
-            pending: input.returnUrl,
+            success: normalizeUrl(input.returnUrl),
+            failure: normalizeUrl(input.returnUrl),
+            pending: normalizeUrl(input.returnUrl),
           },
           auto_return: 'approved',
           external_reference: externalRef,
-          notification_url: input.notificationUrl,
+          notification_url: normalizeUrl(input.notificationUrl),
           expires: true,
           expiration_date_to: input.expiresAt.toISOString(),
         },

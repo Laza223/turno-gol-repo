@@ -18,7 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const TYPE_LABELS: Record<string, string> = {
   spontaneous: 'Online',
-  fixed: 'Abonado',
+  fixed: 'Turno fijo',
   block: 'Bloqueo',
 }
 

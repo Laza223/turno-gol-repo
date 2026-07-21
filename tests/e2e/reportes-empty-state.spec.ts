@@ -1,5 +1,5 @@
 /**
- * E2E — Reportes empty state (pages/reportes.md §6, "primera-vez espectral")
+ * E2E — Reportes empty state (pages/analiticas.md §6, "primera-vez espectral")
  *
  * Navigating to a month with no movements must show ghost example KPIs
  * (opacity 50%, non-interactive) with the "así se verá tu mes" label instead
@@ -16,7 +16,7 @@ test('reportes — mes sin movimientos muestra KPIs de ejemplo (primera-vez espe
 }) => {
   await page.context().addCookies(JSON.parse(adminStorageState).cookies)
 
-  await page.goto('/reportes?month=2020-01')
+  await page.goto('/analiticas?month=2020-01')
 
   await expect(page.getByText('Así se verá tu mes cuando cargues reservas')).toBeVisible()
   await expect(page.getByText('Todavía no hay movimientos en este período.')).toBeVisible()

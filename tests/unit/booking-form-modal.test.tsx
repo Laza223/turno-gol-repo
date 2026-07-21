@@ -198,6 +198,27 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     expect(payload).toMatchObject({ type: 'spontaneous', guestName: 'Pepe' })
     expect(payload.guestPhone).toBeUndefined()
   })
+
+  /**
+   * El server (createManualBooking → assertSlotDuration) rechaza SIEMPRE
+   * turnos que no sean de 60 min cuando type !== 'block'. "Otro" viaja como
+   * type='spontaneous' (no 'block'), así que nunca puede durar más de 1 hora
+   * aunque el kind sea 'contact' como una reserva telefónica normal. Ofrecer
+   * un selector de duración ahí prometía algo que el server siempre rechaza.
+   */
+  it('"Otro" no ofrece selector de duración custom: queda fijo en 1 hora', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'other' } })
+
+    expect(screen.queryByRole('button', { name: 'Seleccionar duración' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(lastPayload()).toMatchObject({ timeStart: '18:00', timeEnd: '19:00' })
+  })
 })
 
 describe('BookingFormModal — slot de medianoche (día operativo)', () => {
@@ -215,21 +236,21 @@ describe('BookingFormModal — slot de medianoche (día operativo)', () => {
     )
   })
 
-  it('el bloqueo interno a las 23:00 no ofrece 120 min (cruzaría medianoche, rango inrepresentable)', async () => {
+  it('el bloqueo interno a las 23:00 no ofrece 2 horas (cruzaría medianoche, rango inrepresentable)', async () => {
     renderModal({ slot: midnightSlot })
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
 
-    await waitFor(() => expect(screen.getByRole('button', { name: '60 min' })).toBeTruthy())
-    expect(screen.queryByRole('button', { name: '120 min' })).toBeNull()
+    await waitFor(() => expect(screen.getByRole('option', { name: /1 hora/i })).toBeTruthy())
+    expect(screen.queryByRole('option', { name: /2 horas/i })).toBeNull()
   })
 
-  it('un slot común (18:00) sigue ofreciendo 120 min para bloqueos internos', async () => {
+  it('un slot común (18:00) sigue ofreciendo 2 horas para bloqueos internos', async () => {
     renderModal()
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
 
-    await waitFor(() => expect(screen.getByRole('button', { name: '120 min' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('option', { name: /2 horas/i })).toBeTruthy())
   })
 })
 

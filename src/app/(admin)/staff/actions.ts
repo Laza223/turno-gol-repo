@@ -250,7 +250,7 @@ export async function inviteStaffAction(
     return { success: true as const }
   })
 
-  if (result.success) revalidatePath('/staff')
+  if (result.success) revalidatePath('/settings/equipo')
   return result
 }
 
@@ -321,7 +321,7 @@ export async function deactivateStaffAction(
     return { success: true as const }
   })
 
-  if (result.success) revalidatePath('/staff')
+  if (result.success) revalidatePath('/settings/equipo')
   return result
 }
 
@@ -382,7 +382,7 @@ export async function updateStaffRoleAction(
     return { success: true as const }
   })
 
-  if (result.success) revalidatePath('/staff')
+  if (result.success) revalidatePath('/settings/equipo')
   return result
 }
 

@@ -532,6 +532,7 @@ export async function completeBooking(
   bookingId: string,
   actor: 'admin' | 'system',
   tx: DbTx,
+  staffUserId?: string,
 ): Promise<BookingRow> {
   assertTransition('confirmed', 'completed', { actor })
 
@@ -552,7 +553,11 @@ export async function completeBooking(
 
   const rows = await tx
     .update(bookings)
-    .set({ status: 'completed', updatedAt: new Date() })
+    .set({
+      status: 'completed',
+      completedByStaff: staffUserId ?? null,
+      updatedAt: new Date(),
+    })
     .where(and(eq(bookings.id, bookingId), eq(bookings.status, 'confirmed')))
     .returning()
 

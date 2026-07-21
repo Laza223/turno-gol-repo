@@ -9,7 +9,6 @@ import {
   Shield,
   Users,
   Wallet,
-  Zap,
 } from 'lucide-react'
 import { buildMetadata } from '@/lib/seo/metadata'
 import Reveal from '@/components/site/Reveal'
@@ -124,15 +123,6 @@ function Hero() {
 
       <div className="relative z-10 mx-auto w-full max-w-[1240px] grid grid-cols-1 items-center gap-14 lg:grid-cols-[1.04fr_0.96fr]">
         <div className="min-w-0">
-          {/* KIT-PILL-LIVE */}
-          <div
-            className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[13px] font-semibold text-[#6ee7b7] backdrop-blur-xs"
-            style={{ boxShadow: 'inset 0 0 30px rgba(16,185,129,.14)', whiteSpace: 'nowrap' }}
-          >
-            <Zap className="h-3.5 w-3.5" aria-hidden />
-            Para dueños y encargados
-          </div>
-
           <h1
             className="mt-[22px] font-display font-black italic text-[#f8fafc]"
             style={{

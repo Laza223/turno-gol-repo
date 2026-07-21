@@ -20,14 +20,23 @@ vi.mock('@/shared/storage/r2', () => ({
   publicUrl: vi.fn((key: string) => `https://media.turnogol.com/${key}`),
   keyFromPublicUrl: vi.fn((url: string) => url.replace('https://media.turnogol.com/', '')),
 }))
+vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://localhost:3000' }) }))
+vi.mock('@/modules/auth/auth.service', () => ({ isStaffEmailTaken: vi.fn() }))
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 
 import { revalidatePath } from 'next/cache'
-import { setTenantImageAction, removeTenantImageAction } from '@/app/(admin)/settings/perfil/actions'
+import {
+  setTenantImageAction,
+  removeTenantImageAction,
+  updateUserEmailAction,
+} from '@/app/(admin)/settings/perfil/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant, updateTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { isR2Configured, putImage, deleteImage } from '@/shared/storage/r2'
+import { isStaffEmailTaken } from '@/modules/auth/auth.service'
+import { createClient } from '@/lib/supabase/server'
 
 const STAFF_USER = { type: 'staff', staffUserId: 'staff-1' }
 const TENANT = { id: 'tenant-1', slug: 'demo' }
@@ -137,5 +146,42 @@ describe('removeTenantImageAction', () => {
     expect(res).toEqual({ success: false, error: 'Storage no configurado en este entorno' })
     expect(vi.mocked(deleteImage)).not.toHaveBeenCalled()
     expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateUserEmailAction', () => {
+  const updateUser = vi.fn()
+
+  beforeEach(() => {
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+    vi.mocked(isStaffEmailTaken).mockResolvedValue(false)
+    updateUser.mockReset().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ auth: { updateUser } } as never)
+  })
+
+  it('email ya usado por otra cuenta (staff_users UNIQUE) → error limpio, sin tocar Supabase Auth', async () => {
+    vi.mocked(isStaffEmailTaken).mockResolvedValue(true)
+    const res = await updateUserEmailAction('otro@complejo.com')
+    expect(res).toEqual({ success: false, error: 'Ese email ya está en uso por otra cuenta.' })
+    expect(vi.mocked(isStaffEmailTaken)).toHaveBeenCalledWith('otro@complejo.com', 'staff-1')
+    expect(updateUser).not.toHaveBeenCalled()
+  })
+
+  it('email disponible → pide el cambio a Supabase con el redirect al callback', async () => {
+    const res = await updateUserEmailAction('nuevo@complejo.com')
+    expect(res.success).toBe(true)
+    expect(updateUser).toHaveBeenCalledWith(
+      { email: 'nuevo@complejo.com' },
+      expect.objectContaining({ emailRedirectTo: expect.stringContaining('/api/auth/callback') }),
+    )
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/perfil')
+  })
+
+  it('manager no puede cambiar el email de la cuenta', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
+    const res = await updateUserEmailAction('nuevo@complejo.com')
+    expect(res.success).toBe(false)
+    expect(vi.mocked(isStaffEmailTaken)).not.toHaveBeenCalled()
+    expect(updateUser).not.toHaveBeenCalled()
   })
 })

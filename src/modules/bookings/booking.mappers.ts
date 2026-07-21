@@ -35,6 +35,7 @@ export function rowToBookingRow(row: BookingDbRow): BookingRow {
     canceledReason: row.canceledReason ?? null,
     canceledBy: (row.canceledBy as CancellationActor | null) ?? null,
     canceledAt: row.canceledAt ?? null,
+    completedByStaff: row.completedByStaff ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }

@@ -105,7 +105,7 @@ describe('AbonadosList — rendering', () => {
 
   it('renders EmptyState when no abonados', () => {
     renderList([])
-    expect(screen.getByText('Sin abonados registrados')).toBeTruthy()
+    expect(screen.getByText('Sin turnos fijos registrados')).toBeTruthy()
   })
 })
 
@@ -123,7 +123,7 @@ describe('AbonadosList — Cancel action', () => {
     await waitFor(
       () => {
         // Dialog title is in a heading element
-        expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy()
+        expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy()
       },
       { timeout: 5000 },
     )
@@ -138,11 +138,11 @@ describe('AbonadosList — Cancel action', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy()
     })
 
     // Find the confirm button inside the dialog (not the row button)
-    const confirmBtn = screen.getByRole('button', { name: 'Cancelar abonado' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Cancelar turno fijo' }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(true)
 
     // Type the phrase
@@ -163,13 +163,13 @@ describe('AbonadosList — Cancel action', () => {
     renderList([ACTIVE_ABONADO])
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy())
 
     // Type phrase to enable confirm
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
     fireEvent.change(phraseInput, { target: { value: 'CANCELAR' } })
 
-    const confirmBtn = screen.getByRole('button', { name: 'Cancelar abonado' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Cancelar turno fijo' }) as HTMLButtonElement
 
     await waitFor(() => {
       expect(confirmBtn.disabled).toBe(false)
@@ -183,7 +183,7 @@ describe('AbonadosList — Cancel action', () => {
     })
 
     // Dialog stays open — heading still visible
-    expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy()
   })
 
   it('successful cancel calls cancelAbonadoAction with id and fromDate', async () => {
@@ -195,13 +195,13 @@ describe('AbonadosList — Cancel action', () => {
     renderList([ACTIVE_ABONADO])
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar abonado' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy())
 
     // Type phrase
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
     fireEvent.change(phraseInput, { target: { value: 'CANCELAR' } })
 
-    const confirmBtn = screen.getByRole('button', { name: 'Cancelar abonado' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Cancelar turno fijo' }) as HTMLButtonElement
 
     await waitFor(() => {
       expect(confirmBtn.disabled).toBe(false)
@@ -225,7 +225,7 @@ describe('AbonadosList — Pause action', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Pausar' })[0]!)
 
     await waitFor(() => {
-      expect(screen.getByText('Pausar abonado')).toBeTruthy()
+      expect(screen.getByText('Pausar turno fijo')).toBeTruthy()
     })
 
     // No phrase input for pause
@@ -241,7 +241,7 @@ describe('AbonadosList — Pause action', () => {
     renderList([ACTIVE_ABONADO])
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Pausar' })[0]!)
-    await waitFor(() => expect(screen.getByText('Pausar abonado')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Pausar turno fijo')).toBeTruthy())
 
     // Dialog abierto: Radix deja el resto aria-hidden → un solo "Pausar" accesible.
     fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
@@ -265,7 +265,7 @@ describe('AbonadosList — Reactivate action', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Reactivar' })[0]!)
 
     await waitFor(() => {
-      expect(screen.getByText('Reactivar abonado')).toBeTruthy()
+      expect(screen.getByText('Reactivar turno fijo')).toBeTruthy()
     })
 
     await waitFor(() => {
@@ -288,7 +288,7 @@ describe('AbonadosList — Reactivate action', () => {
     renderList([PAUSED_ABONADO])
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Reactivar' })[0]!)
-    await waitFor(() => expect(screen.getByText('Reactivar abonado')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Reactivar turno fijo')).toBeTruthy())
 
     await waitFor(() => {
       expect(screen.getByText(/Se generarán/)).toBeTruthy()

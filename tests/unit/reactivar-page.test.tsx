@@ -20,8 +20,23 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
+// listCourts (llamada desde ReactivarPage para defaultCourts) hace
+// tx.select().from(courts).where(...).orderBy(...) — el tx fake tiene que
+// implementar esa cadena, no un objeto vacío.
+function fakeTenantTx() {
+  return {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          orderBy: vi.fn(async () => []),
+        })),
+      })),
+    })),
+  }
+}
+
 vi.mock('@/shared/db/client', () => ({
-  withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
+  withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb(fakeTenantTx())),
   getDb: vi.fn(),
 }))
 vi.mock('@/modules/billing/billing.service', () => ({

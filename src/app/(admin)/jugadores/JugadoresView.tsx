@@ -3,10 +3,11 @@ import { Search, Contact, Users } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
+import { JugadoresTabs } from './JugadoresTabs'
 import type { PlayerListRow } from './queries'
 
 /**
- * Vista presentacional de /jugadores: header, buscador (form GET, sin JS) y
+ * Vista presentacional de /jugadores: header, tabs, buscador (form GET, sin JS) y
  * el listado responsive (cards/tabla). Extraída de page.tsx, que solo aporta
  * auth (requireOperatorStaff) + el fetch (listTenantPlayers).
  */
@@ -17,6 +18,8 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
         title="Jugadores"
         icon={<Contact className="h-6 w-6" aria-hidden="true" />}
       />
+
+      <JugadoresTabs active="/jugadores" />
 
       <form method="GET" className="relative max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -39,7 +42,7 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
           <EmptyState
             icon={Users}
             title="Todavía no tenés jugadores vinculados"
-            description="Aparecen acá cuando un jugador reserva online o lo vinculás a un abonado. Compartí el link público de tu complejo para que empiecen a llegar."
+            description="Aparecen acá cuando un jugador reserva online o lo vinculás a un turno fijo. Compartí el link público de tu complejo para que empiecen a llegar."
             action={
               // JugadoresView solo recibe `players`/`q` por prop (no slug ni
               // appUrl): armar el link público acá duplicaría buildPublicLinkUrl

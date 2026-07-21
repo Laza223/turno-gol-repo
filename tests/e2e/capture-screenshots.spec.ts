@@ -362,13 +362,13 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await freshAdminPage.goto('/caja')
     await takeShot(freshAdminPage, 'special_states', 'caja_vacio')
 
-    await freshAdminPage.goto('/canchas')
+    await freshAdminPage.goto('/settings/canchas')
     await takeShot(freshAdminPage, 'special_states', 'canchas_vacio')
 
     await freshAdminPage.goto('/abonados')
     await takeShot(freshAdminPage, 'special_states', 'abonados_vacio')
 
-    await freshAdminPage.goto('/reportes')
+    await freshAdminPage.goto('/analiticas')
     await takeShot(freshAdminPage, 'special_states', 'reportes_vacio')
 
     // ───────────────────────────────────────────────────────────────────────
@@ -419,7 +419,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await adminPage.keyboard.press('Escape')
 
     // Canchas list
-    await adminPage.goto('/canchas')
+    await adminPage.goto('/settings/canchas')
     await takeShot(adminPage, 'admin', 'canchas_listado')
 
     // Canchas Nueva Cancha form/modal
@@ -450,7 +450,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await takeShot(adminPage, 'admin', 'settings_politicas_pin')
 
     // Staff list
-    await adminPage.goto('/staff')
+    await adminPage.goto('/settings/equipo')
     await takeShot(adminPage, 'admin', 'staff_listado')
 
     // Staff Invitation modal
@@ -463,7 +463,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     }
 
     // Reports page (with data)
-    await adminPage.goto('/reportes')
+    await adminPage.goto('/analiticas')
     await takeShot(adminPage, 'admin', 'reportes')
 
     // ───────────────────────────────────────────────────────────────────────

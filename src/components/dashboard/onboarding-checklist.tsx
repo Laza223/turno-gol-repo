@@ -20,7 +20,7 @@ interface ChecklistItem {
 const ITEMS: ChecklistItem[] = [
   { key: 'accountCreated',       label: 'Cuenta creada' },
   { key: 'complexData',          label: 'Datos del complejo completados' },
-  { key: 'hasCourts',            label: 'Al menos una cancha configurada',    href: '/canchas' },
+  { key: 'hasCourts',            label: 'Al menos una cancha configurada',    href: '/settings/canchas' },
   { key: 'hasSchedule',          label: 'Horarios definidos',                 href: '/settings/horarios' },
   { key: 'mpConnected',          label: 'MercadoPago conectado',              href: '/settings/facturacion' },
   { key: 'publicLinkShared',     label: 'Link público compartido',            action: 'copy-link' },

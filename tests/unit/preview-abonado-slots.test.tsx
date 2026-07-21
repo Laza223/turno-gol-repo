@@ -45,29 +45,49 @@ afterEach(() => {
   cleanup()
 })
 
-function fillFormAndSubmit() {
+// Cancha / Hora inicio / Hora fin son ahora un Combobox custom (patrón ARIA
+// 1.2: input role="combobox" + listbox propio, ver src/components/ui/combobox.tsx),
+// no un <select> nativo — ya no aceptan un fireEvent.change directo con el
+// value crudo. Hay que abrir la lista (click en el input) y clickear la
+// opción por su label visible.
+async function selectCombobox(labelName: RegExp, optionName: string) {
+  const combo = screen.getByRole('combobox', { name: labelName })
+  fireEvent.click(combo)
+  const option = await screen.findByRole('option', { name: optionName })
+  fireEvent.click(option)
+}
+
+// "Empieza el" (startsOn) es un DatePicker con calendario propio (botón +
+// diálogo Radix), no un <input type="date">. "Hoy" evita tener que navegar
+// el calendario a un mes fijo (no controlamos el reloj del test).
+async function selectStartsOnToday() {
+  fireEvent.click(screen.getByRole('button', { name: 'Seleccionar fecha' }))
+  const hoy = await screen.findByRole('button', { name: 'Hoy' })
+  fireEvent.click(hoy)
+}
+
+async function fillFormAndSubmit() {
   const form = document.querySelector('form')!
 
-  fireEvent.change(screen.getByRole('combobox', { name: /Cancha/i }), {
-    target: { value: mockCourts[0]!.id },
-  })
-  fireEvent.change(form.querySelector('input[name="timeStart"]') as HTMLInputElement, {
-    target: { value: '10:00' },
-  })
-  fireEvent.change(form.querySelector('input[name="timeEnd"]') as HTMLInputElement, {
-    target: { value: '11:00' },
-  })
+  await selectCombobox(/Cancha/i, 'Cancha A')
+  // Elegir "10:00" en Hora inicio auto-completa Hora fin a "11:00"
+  // (onChange de Hora inicio llama addOneHour) — justo el valor que
+  // este helper necesita, sin tocar el combobox de Hora fin aparte.
+  await selectCombobox(/Hora inicio/i, '10:00')
+  await selectStartsOnToday()
+
   fireEvent.change(form.querySelector('input[name="contactName"]') as HTMLInputElement, {
     target: { value: 'Grupo Test' },
   })
-  fireEvent.change(form.querySelector('input[name="contactPhone"]') as HTMLInputElement, {
+  // PhoneInput serializa vía un <input type="hidden"> espejo (sin onChange)
+  // que solo refleja el estado interno del componente — hay que tipear en el
+  // input VISIBLE (por label), no pisar el hidden a mano (un re-render por
+  // cualquier otro campo controlado lo resetea al valor real del componente).
+  fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), {
     target: { value: '1199887766' },
   })
   fireEvent.change(form.querySelector('input[name="pricePerSession"]') as HTMLInputElement, {
     target: { value: '5000' },
-  })
-  fireEvent.change(form.querySelector('input[name="startsOn"]') as HTMLInputElement, {
-    target: { value: '2026-06-01' },
   })
 
   fireEvent.submit(form)
@@ -84,28 +104,23 @@ describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
     renderForm()
     const form = document.querySelector('form')!
 
-    fireEvent.change(screen.getByRole('combobox', { name: /Cancha/i }), {
-      target: { value: mockCourts[0]!.id },
-    })
-    fireEvent.change(form.querySelector('input[name="timeStart"]') as HTMLInputElement, {
-      target: { value: '23:00' },
-    })
-    // El input type="time" nativo nunca produce "24:00" — el admin elige
-    // "00:00" para decir "hasta medianoche" y el form lo normaliza.
-    fireEvent.change(form.querySelector('input[name="timeEnd"]') as HTMLInputElement, {
-      target: { value: '00:00' },
-    })
+    await selectCombobox(/Cancha/i, 'Cancha A')
+    await selectCombobox(/Hora inicio/i, '23:00')
+    // El auto-link de "Hora inicio" ya deja Hora fin en "00:00"
+    // (addOneHour('23:00')), pero se selecciona explícito acá para no
+    // depender de ese efecto lateral y mantener el intent del test claro:
+    // el admin elige "00:00" para decir "hasta medianoche".
+    await selectCombobox(/Hora fin/i, '00:00')
+    await selectStartsOnToday()
+
     fireEvent.change(form.querySelector('input[name="contactName"]') as HTMLInputElement, {
       target: { value: 'Grupo Medianoche' },
     })
-    fireEvent.change(form.querySelector('input[name="contactPhone"]') as HTMLInputElement, {
+    fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), {
       target: { value: '1199887766' },
     })
     fireEvent.change(form.querySelector('input[name="pricePerSession"]') as HTMLInputElement, {
       target: { value: '5000' },
-    })
-    fireEvent.change(form.querySelector('input[name="startsOn"]') as HTMLInputElement, {
-      target: { value: '2026-06-01' },
     })
     fireEvent.submit(form)
 
@@ -120,9 +135,9 @@ describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
     // La confirmación posterior también debe mandar '24:00', no '00:00'.
     submitNewAbonado.mockResolvedValue({ status: 'idle' })
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Crear abonado' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeTruthy()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Crear abonado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }))
 
     await waitFor(() => {
       expect(submitNewAbonado).toHaveBeenCalledTimes(1)
@@ -139,7 +154,7 @@ describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
     })
 
     renderForm()
-    fillFormAndSubmit()
+    await fillFormAndSubmit()
 
     await waitFor(() => {
       expect(previewAbonadoSlotsAction).toHaveBeenCalledTimes(1)
@@ -159,11 +174,11 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     renderForm()
-    fillFormAndSubmit()
+    await fillFormAndSubmit()
 
     // Wait for phase 2 heading
     await waitFor(() => {
-      expect(screen.getByText('Fechas del turno fijo')).toBeTruthy()
+      expect(screen.getByRole('heading', { name: 'Vista previa de fechas' })).toBeTruthy()
     })
 
     // Assert all 8 dates are rendered
@@ -178,13 +193,14 @@ describe('AbonadoForm — preview phase', () => {
     const conflictBadges = screen.getAllByText('Ocupado')
     expect(conflictBadges).toHaveLength(MOCK_CONFLICTS.length)
 
-    // Summary text
+    // Summary: badge de turnos libres + aviso de fechas en conflicto
+    expect(screen.getByText('7 turnos libres')).toBeTruthy()
     expect(
-      screen.getByText('Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar.'),
+      screen.getByText(/Hay 1 fecha que ya está ocupada por otra reserva\./),
     ).toBeTruthy()
 
     // Confirm button enabled
-    const confirmBtn = screen.getByRole('button', { name: 'Crear abonado' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(false)
 
     // Back button present
@@ -199,7 +215,7 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     renderForm()
-    fillFormAndSubmit()
+    await fillFormAndSubmit()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Volver a editar' })).toBeTruthy()
@@ -208,7 +224,7 @@ describe('AbonadoForm — preview phase', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Volver a editar' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Ver fechas del turno' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Continuar' })).toBeTruthy()
     })
   })
 
@@ -220,15 +236,15 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     renderForm()
-    fillFormAndSubmit()
+    await fillFormAndSubmit()
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeTruthy()
     })
 
-    expect(screen.getByText(/No se va a crear ningún turno/)).toBeTruthy()
+    expect(screen.getByText(/No se creará ningún turno/)).toBeTruthy()
 
-    const confirmBtn = screen.getByRole('button', { name: 'Crear abonado' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(true)
   })
 
@@ -239,7 +255,7 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     renderForm()
-    fillFormAndSubmit()
+    await fillFormAndSubmit()
 
     await waitFor(() => {
       const alert = screen.getByRole('alert')
@@ -250,7 +266,7 @@ describe('AbonadoForm — preview phase', () => {
     // findByRole y no getByRole: React 19 hizo las transiciones async de verdad, así
     // que el botón vuelve de su estado pending un tick después de que el error ya
     // está en el DOM. Si nunca vuelve, el findByRole expira y el test falla igual.
-    expect(await screen.findByRole('button', { name: /Ver fechas/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Continuar' })).toBeTruthy()
   })
 
   it('calls submitNewAbonado with reconstructed FormData when "Crear abonado" clicked', async () => {
@@ -263,13 +279,13 @@ describe('AbonadoForm — preview phase', () => {
     submitNewAbonado.mockResolvedValue({ status: 'idle' })
 
     renderForm()
-    fillFormAndSubmit()
+    await fillFormAndSubmit()
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Crear abonado' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Crear abonado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }))
 
     await waitFor(() => {
       expect(submitNewAbonado).toHaveBeenCalledTimes(1)
@@ -282,10 +298,15 @@ describe('AbonadoForm — preview phase', () => {
     expect((fd as FormData).get('timeStart')).toBe('10:00')
     expect((fd as FormData).get('timeEnd')).toBe('11:00')
     expect((fd as FormData).get('contactName')).toBe('Grupo Test')
-    expect((fd as FormData).get('contactPhone')).toBe('1199887766')
+    // PhoneInput antepone el prefijo del país seleccionado (default Argentina).
+    expect((fd as FormData).get('contactPhone')).toBe('+54 1199887766')
     expect((fd as FormData).get('pricePerSession')).toBe('5000')
-    expect((fd as FormData).get('startsOn')).toBe('2026-06-01')
-    expect((fd as FormData).get('paymentMethod')).toBe('cash')
+    // startsOn viene de "Hoy" (DatePicker) — no se controla la fecha exacta,
+    // solo que el formato sobrevive a la reconstrucción de FormData.
+    expect((fd as FormData).get('startsOn')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    // paymentMethod: el campo se sacó del formulario (el server lo defaultea a
+    // 'cash' vía Zod, ver actions.ts) — ya no viaja en el FormData del cliente.
+    expect((fd as FormData).get('paymentMethod')).toBeNull()
   })
 
   it('returns to form phase with error when submitNewAbonado returns error', async () => {
@@ -300,21 +321,24 @@ describe('AbonadoForm — preview phase', () => {
     })
 
     renderForm()
-    fillFormAndSubmit()
+    await fillFormAndSubmit()
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Crear abonado' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Crear abonado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }))
 
     await waitFor(() => {
       const alert = screen.getByRole('alert')
       expect(alert.textContent).toContain('Conflicto al crear')
     })
 
-    // Should be back on form phase
-    expect(screen.getByRole('button', { name: /Ver fechas/i })).toBeTruthy()
+    // Should be back on form phase.
+    // findByRole y no getByRole: React 19 hizo las transiciones async de verdad, así
+    // que el botón vuelve de su estado pending un tick después de que el error ya
+    // está en el DOM (mismo motivo documentado arriba, en "shows inline error...").
+    expect(await screen.findByRole('button', { name: 'Continuar' })).toBeTruthy()
   })
 })
 
@@ -333,8 +357,9 @@ describe('PreviewSlotsView — isolated', () => {
 
     expect(screen.getAllByText('Libre')).toHaveLength(7)
     expect(screen.getAllByText('Ocupado')).toHaveLength(1)
+    expect(screen.getByText('7 turnos libres')).toBeTruthy()
     expect(
-      screen.getByText('Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar.'),
+      screen.getByText(/Hay 1 fecha que ya está ocupada por otra reserva\./),
     ).toBeTruthy()
   })
 })

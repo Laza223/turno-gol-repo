@@ -569,7 +569,6 @@ amount            integer       En centavos de ARS
 method            enum          'cash' | 'transfer' | 'mercadopago' | 'other'
 description       string        Descripción del movimiento
 booking_id        UUID?         FK → bookings (cobro de turno vinculado, cambio #8)
-product_id        UUID?         FK → products (si es venta de producto)
 registered_by     UUID          FK → staff_users
 occurred_at       timestamp     Cuándo ocurrió el movimiento
 created_at        timestamp     UTC
@@ -613,23 +612,9 @@ created_at        timestamp     UTC
 
 ---
 
-## ENTIDAD 11: Product (Producto de Cantina/Stock)
+## ENTIDAD 11: Product — ELIMINADA (cantina en JSONB)
 
-### Definición
-Producto vendido en la cantina del complejo (bebidas, comida, equipamiento). Registra stock y genera CashFlows de tipo `product_sale`.
-
-### Atributos propios
-```
-id                UUID          PK
-tenant_id         UUID          FK → tenants
-name              string        "Gaseosa", "Pancho", "Pelota"
-category          string?       "bebida" | "comida" | "equipamiento"
-price             integer       En centavos de ARS
-stock             integer       Cantidad actual
-low_stock_alert   integer       DEFAULT 5. Alerta cuando stock < este número
-is_active         boolean       DEFAULT true
-created_at        timestamp     UTC
-```
+La tabla `products` fue **eliminada** (migr. 046, 2026-07-17). La cantina vive en `tenants.settings.canteen_products` (JSONB: `name`, `price` en centavos, `stock` opcional); la venta se hace con `sellCanteenProductAction` (descuenta stock atómicamente si el producto lo define) → `CashFlow` categoría `product_sale`. Ver doc13 §3.6.
 
 ---
 
@@ -932,7 +917,6 @@ Este glosario se traduce directamente en las siguientes tablas:
 | Payment | `payments` |
 | CashFlow | `cash_flows` |
 | DailyCashClose | `daily_cash_closes` |
-| Product | `products` |
 | TenantSubscription | `tenant_subscriptions` |
 | Plan | `plans` |
 | Notification | `notifications` |
@@ -946,10 +930,10 @@ Este glosario se traduce directamente en las siguientes tablas:
 | FeatureFlag | `feature_flags` |
 | SystemAdmin | `system_admins` |
 
-**Total: 23 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
-(13 aisladas con RLS + 6 globales + 3 híbridas + 1 operacional + 1 sistema)
+**Total: 22 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
+(12 aisladas con RLS + 6 globales + 3 híbridas + 1 operacional + 1 sistema)
 
-> Aisladas (13): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, products,
+> Aisladas (12): courts, bookings, abonados, payments, cash_flows, daily_cash_closes,
 > tenant_staff_members, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, push_subscriptions.
 > Globales (6): tenants, players, staff_users, plans, price_versions, processed_webhooks.
 > Híbridas (3, RLS por jugador): player_tenant_relationships, reviews, player_favorites.

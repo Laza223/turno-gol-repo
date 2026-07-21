@@ -260,8 +260,6 @@ turnogol/
 │   │   │   │   └── route.ts
 │   │   │   ├── cash-flows/
 │   │   │   │   └── route.ts
-│   │   │   ├── products/
-│   │   │   │   └── route.ts
 │   │   │   ├── notifications/
 │   │   │   │   └── route.ts
 │   │   │   ├── reports/

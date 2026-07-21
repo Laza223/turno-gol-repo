@@ -47,7 +47,7 @@ Módulos:
 | Notificaciones | NOT | US-NOT-001 a 003 | P0-P1 |
 | SaaS Lifecycle | SAS | US-SAS-001 a 005 | P0-P1 |
 
-**Total estimado: ~40 user stories para la v1.0**
+**Total estimado: ~41 user stories activas para la v1.0** (US-ABO-005 revertida no cuenta)
 
 > [!NOTE]
 > **Cambios respecto a la versión anterior**: Se eliminaron los epics de Partidos Abiertos (PAR)
@@ -117,7 +117,7 @@ para tener mi complejo operativo en menos de 20 minutos.
 ✅ Happy Path
 - [ ] Dado que estoy autenticado y no tengo un Tenant creado, cuando entro al panel, entonces soy redirigido automáticamente al wizard de onboarding (paso 1 de 4).
 - [ ] **Paso 1 (Datos del complejo)**: Dado que estoy en el paso 1, cuando ingreso nombre + dirección + ciudad + provincia, entonces se crea un Tenant con status=`trialing`, trial_ends_at=NOW()+30 días, y un slug auto-generado desde el nombre.
-- [ ] **Paso 2 (Canchas)**: Dado que estoy en el paso 2, cuando creo al menos 1 cancha con nombre + tipo de superficie + capacidad, entonces se crea un Court con status=`online` y pricing pre-cargado según franja horaria.
+- [ ] **Paso 2 (Canchas)**: Dado que estoy en el paso 2, cuando creo al menos 1 cancha con nombre + tipo de superficie + formato, entonces se crea un Court con status=`online` y pricing pre-cargado según franja horaria.
 - [ ] **Paso 2 (Canchas)**: Los precios default son: mañana $8.000, tarde $10.000, noche $12.000 (weekday), mañana $10.000, noche $15.000 (weekend). Editables por el usuario.
 - [ ] **Paso 3 (Horarios)**: Dado que estoy en el paso 3, cuando veo los horarios pre-cargados (Lun-Dom 08:00-00:00), entonces puedo editarlos por día o dejar los default.
 - [ ] **Paso 4 (Seña)**: Dado que estoy en el paso 4, cuando elijo "Sí, cobrar seña", entonces soy redirigido al OAuth de MercadoPago para conectar mi cuenta.
@@ -1079,8 +1079,8 @@ para mantener mi complejo actualizado sin llamar a soporte.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Canchas, cuando hago click en "+ Nueva cancha", entonces veo formulario con: nombre, tipo de superficie (césped sintético, cemento, etc.), capacidad (5, 7, 8, 9, 11), y si es cubierta o no.
-- [ ] Dado que creo una cancha, cuando confirmo, entonces Court se crea con status=`online`, con pricing default (weekday/weekend × franja horaria) editable.
+- [ ] Dado que estoy en Settings → Canchas, cuando hago click en "+ Nueva cancha", entonces veo formulario con: nombre, tipo de superficie (césped sintético, cemento, etc.), formato de fútbol (5, 7, 8, 9, 11), y si es cubierta o no.
+- [ ] Dado que creo una cancha, cuando confirmo, entonces Court se crea con status=`online`, con pricing default (reglas `{rules}` por día/franja horaria) editable.
 - [ ] Dado que quiero editar una cancha existente, cuando hago click en ella, entonces puedo editar: nombre, superficie, precio por franja, estado (`online`/`offline`).
 - [ ] Dado que pongo una cancha en `offline`, entonces los slots futuros desaparecen de la grilla y las reservas existentes se mantienen hasta que el admin las gestione.
 - [ ] Dado que agrego una cancha y mi plan no la cubre (ej: plan Predio con 3 canchas y quiero la 4ta), entonces veo: "Tu plan soporta hasta {N} canchas. Upgrade para agregar más."
@@ -1421,7 +1421,7 @@ para que las notificaciones lleguen de forma confiable.
   - Bienvenida al complejo (dueño)
   - Cierre de caja diario
   - Factura/recibo de suscripción
-  - Notificaciones de trial (día 7, 14, 21, 28, 30, 31)
+  - Notificaciones de trial (cronograma único de doc4 §3: días 0, 1, 7, 14, 21, 25, 28, 30, 31, 37)
   - Dunning (cobro fallido de suscripción — día 0, 2, 5, 7, 14)
   - Pre-eliminación de cuenta (día 30, 55 post-cancelación)
 
@@ -1716,13 +1716,15 @@ para irme sin sorpresas y poder volver si cambio de opinión.
 | Onboarding | ONB | 5 | P0 |
 | Reservas | RES | 6 | P0 |
 | Cancelaciones | CAN | 4 | P0-P1 |
-| Abonados | ABO | 5 | P1 |
+| Abonados | ABO | 4 | P1 |
 | Caja y Pagos | CAJ | 5 | P0-P2 |
 | Administración | ADM | 5 | P0-P2 |
 | App del Jugador | JUG | 4 | P0-P3 |
 | Notificaciones | NOT | 3 | P0-P1 |
 | SaaS Lifecycle | SAS | 5 | P0-P1 |
-| **TOTAL** | | **42** | |
+| **TOTAL** | | **41** | |
+
+> Nota: US-ABO-005 ("Saldo a favor del abonado") está ⛔ REVERTIDA (cambio #4) y no se cuenta en el total.
 
 ## Mapa de Prioridades para Sprint Planning
 

@@ -40,16 +40,15 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 3 | `abonados` | Abonado | Los turnos fijos son acuerdos del complejo |
 | 4 | `payments` | Payment | Transacciones financieras del complejo |
 | 5 | `cash_flows` | CashFlow | Movimientos de caja del complejo |
-| 6 | `products` | Product | Stock de cantina del complejo |
-| 7 | `tenant_staff_members` | StaffUser ↔ Tenant | Relación staff-complejo |
-| 8 | `notifications` | Notification | Mensajes enviados por el complejo |
-| 9 | `audit_logs` | AuditLog | Registro de acciones del complejo |
-| 10 | `tenant_subscriptions` | TenantSubscription | Suscripción SaaS del complejo |
-| 11 | `tenant_player_bans` | TenantPlayerBan | Bans de jugadores por complejo |
-| 12 | `daily_cash_closes` | DailyCashClose | Cierre de caja diario del complejo (INMUTABLE post-cierre) |
-| 13 | `push_subscriptions` | PushSubscription | Suscripciones Web Push del staff (aviso de reserva online) |
+| 6 | `tenant_staff_members` | StaffUser ↔ Tenant | Relación staff-complejo |
+| 7 | `notifications` | Notification | Mensajes enviados por el complejo |
+| 8 | `audit_logs` | AuditLog | Registro de acciones del complejo |
+| 9 | `tenant_subscriptions` | TenantSubscription | Suscripción SaaS del complejo |
+| 10 | `tenant_player_bans` | TenantPlayerBan | Bans de jugadores por complejo |
+| 11 | `daily_cash_closes` | DailyCashClose | Cierre de caja diario del complejo (INMUTABLE post-cierre) |
+| 12 | `push_subscriptions` | PushSubscription | Suscripciones Web Push del staff (aviso de reserva online) |
 
-**Total: 13 tablas aisladas con RLS.**
+**Total: 12 tablas aisladas con RLS.**
 
 ### Tablas SIN `tenant_id` — Datos globales (cross-tenant o del sistema)
 
@@ -101,7 +100,6 @@ ALTER TABLE courts ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
 ALTER TABLE abonados ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
 ALTER TABLE payments ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
 ALTER TABLE cash_flows ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
-ALTER TABLE products ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
 ALTER TABLE tenant_staff_members ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
 ALTER TABLE notifications ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
 ALTER TABLE audit_logs ADD COLUMN tenant_id UUID NOT NULL REFERENCES tenants(id);
@@ -121,7 +119,6 @@ CREATE INDEX idx_courts_tenant ON courts(tenant_id);
 CREATE INDEX idx_abonados_tenant ON abonados(tenant_id);
 CREATE INDEX idx_payments_tenant ON payments(tenant_id);
 CREATE INDEX idx_cash_flows_tenant ON cash_flows(tenant_id);
-CREATE INDEX idx_products_tenant ON products(tenant_id);
 CREATE INDEX idx_tenant_staff_members_tenant ON tenant_staff_members(tenant_id);
 CREATE INDEX idx_notifications_tenant ON notifications(tenant_id);
 CREATE INDEX idx_audit_logs_tenant ON audit_logs(tenant_id);
@@ -148,7 +145,7 @@ CREATE INDEX idx_audit_logs_tenant_created ON audit_logs(tenant_id, created_at);
 ```sql
 -- ================================================
 -- PATRÓN: Activar RLS y crear policies para cada tabla aislada
--- Se repite para las 13 tablas aisladas (las híbridas agregan policies de jugador)
+-- Se repite para las 12 tablas aisladas (las híbridas agregan policies de jugador)
 -- ================================================
 
 -- 1. Activar RLS (la tabla rechaza acceso por defecto hasta que exista un policy)
@@ -710,7 +707,7 @@ async function getBookingsForDate(date: string, tenantId: string) {
 > **Recomendación: usar el patrón de doble filtro (8.2) para tablas sensibles**
 > (bookings, payments, cash_flows). El WHERE explícito con `tenant_id` es redundante
 > si RLS funciona, pero actúa como safety net si algo falla en el RLS.
-> Para tablas menos sensibles (products, notifications), confiar en RLS solo (8.1) es suficiente.
+> Para tablas menos sensibles (notifications), confiar en RLS solo (8.1) es suficiente.
 
 ### 8.3 El antipatrón: query sin contexto
 
@@ -1020,10 +1017,10 @@ describe('Tenant Isolation', () => {
 ### 10.2 Test de aislamiento para CADA tabla
 
 ```typescript
-// Generar tests de aislamiento automáticamente para las 13 tablas aisladas
+// Generar tests de aislamiento automáticamente para las 12 tablas aisladas
 const ISOLATED_TABLES = [
   'courts', 'bookings', 'abonados', 'payments', 'cash_flows',
-  'products', 'tenant_staff_members', 'daily_cash_closes',
+  'tenant_staff_members', 'daily_cash_closes',
   'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans',
   'push_subscriptions'
 ];

@@ -670,7 +670,7 @@ FROM pg_tables
 WHERE schemaname = 'public'
 AND tablename IN (
   'courts', 'bookings', 'abonados', 'payments', 'cash_flows',
-  'products', 'tenant_staff_members', 'daily_cash_closes',
+  'tenant_staff_members', 'daily_cash_closes',
   'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans',
   'push_subscriptions'
 );

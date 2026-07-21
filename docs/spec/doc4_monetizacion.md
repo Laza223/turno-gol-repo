@@ -33,7 +33,7 @@
 
 > [!NOTE]
 > Precios establecidos ligeramente por debajo de ATC Sports como estrategia de captación inicial.
-> ATC cobra $60.500 / $95.000 / $125.000 ARS/mes (datos Q1 2025).
+> ATC cobra $66.000 / $104.000 / $136.000 ARS/mes (relevamiento 2026-07, ver doc2).
 > Revisar precios cada 3 meses dado el IPC argentino (ver sección 5: ARS volátil).
 > **Precios NO incluyen IVA** — se agrega 21% en el checkout.
 
@@ -218,7 +218,7 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 > Este es un problema específico de Argentina que la mayoría de los SaaS internacionales ignoran.
 
 ### El problema
-- La inflación en Argentina obliga a actualizar precios frecuentemente (cada 3-6 meses estimado)
+- La inflación en Argentina obliga a actualizar precios frecuentemente (cada 3 meses, ver la nota de revisión de precios en §Planes)
 - MercadoPago Suscripciones permite actualizar el precio de una suscripción existente
 - Hay que notificar al cliente con anticipación (ética + legal)
 - Los clientes con plan anual pagaron por adelantado → precio fijo todo el año
@@ -357,7 +357,7 @@ Si la seña fue pagada en efectivo (reserva manual del admin):
   → Mensaje: "Contactá al complejo para el reembolso de tu seña."
 ```
 
-**Comisión MP:** la absorbe el complejo (~5-7%). El complejo recibe el monto neto.
+**Comisión MP:** la absorbe el complejo (~5% de Checkout Pro sobre la seña; distinta del 2.99% de MP Suscripciones sobre la cuota SaaS). El complejo recibe el monto neto.
 No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita en su cuenta.
 
 **Chargeback/disputa:** responsabilidad del complejo (es su cuenta MP). TurnoGol puede proveer audit trail (booking + timestamps + confirmaciones) como evidencia para la disputa.
@@ -501,7 +501,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 ```
 TenantSubscription
   ├── plan_id ──────────────→ Plan (global)
-  ├── status: trialing | active | past_due | suspended | canceled | churned
+  ├── status: trialing | active | past_due | suspended | blocked | canceled | churned
   ├── billing_cycle: monthly | annual
   ├── mp_subscription_id ──→ MercadoPago Suscripción
   ├── current_period_start

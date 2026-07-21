@@ -359,7 +359,7 @@ Errors:
 Request:
 {
   "reason": "Lluvia",                    // requerido
-  "canceled_by": "complex" | "player"    // quién cancela; el servidor decide el reembolso según política
+  "cancellation_type": "complex" | "player"  // quién decide (distinto de la columna DB canceled_by, ENUM cancellation_actor player/admin/system)
 }
 
 Response 200:
@@ -446,7 +446,6 @@ Response 201:
   "data": {
     "id": "uuid",
     "status": "active",
-    "monthly_price": 4330000,        // ≈ price × 4.33
     "generated_bookings": 8,         // slots generados para 8 semanas
     "next_booking": {
       "date": "2026-04-24",
@@ -488,14 +487,9 @@ Response 200:
 }
 ```
 
-### 5.5 Productos
+### 5.5 Cantina (productos en JSONB, sin tabla)
 
-| Método | Ruta | Rol mínimo | Descripción |
-|---|---|---|---|
-| `GET` | `/api/products` | staff | Listar productos |
-| `POST` | `/api/products` | staff | Crear producto |
-| `PATCH` | `/api/products/:id` | staff | Editar producto |
-| `POST` | `/api/products/:id/sell` | staff | Registrar venta (→ cash_flow) |
+La tabla `products` fue eliminada (migr. 046): los productos viven en `tenants.settings.canteen_products` (JSONB). **No hay endpoints REST `/api/products`.** La venta se hace con el Server Action `sellCanteenProductAction` (descuenta el stock atómicamente si el producto lo define, se bloquea al llegar a 0) → `CashFlow` categoría `product_sale`; el alta/edición de productos es parte de la configuración del complejo (`settings.canteen_products`).
 
 ### 5.6 Configuración del Complejo
 
@@ -847,6 +841,8 @@ Request:
   "owner_email": "marcelo@gmail.com",
   "owner_first_name": "Marcelo",
   "owner_last_name": "García",
+  "phone": "+54 9 11 5555-5555",
+  "password": "••••••••",
   "complex_name": "Complejo San Martín"
 }
 
@@ -860,7 +856,7 @@ Response 201:
     "message": "Te enviamos un email para acceder a tu cuenta."
   }
 }
-// Se envía email de verificación. El staff crea su contraseña en el primer acceso.
+// Implementado como Server Action (register/actions.ts), no como Route Handler REST. El owner fija email/password/phone en el registro (ADR-013); se envía email para verificar la cuenta.
 ```
 
 ---

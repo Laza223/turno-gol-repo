@@ -41,7 +41,7 @@
 | Grafana Cloud | $0-50 | Más razonable, pero agrega complejidad operacional (configurar collectors, dashboards). |
 | **Sentry + Vercel + logs** | **$0-26** | **Suficiente para Year 1.** Sentry para errores y performance, Vercel para logs e infra, logs propios para negocio. |
 
-**La regla**: No agregamos infra de observabilidad que cueste más que la infra que observamos. Con hosting total de ~$120-220 USD/mes (Doc 14 §12), gastar $300 en monitoreo es desproporcionado.
+**La regla**: No agregamos infra de observabilidad que cueste más que la infra que observamos. Con hosting total de ~$126-151 USD/mes (Doc 14 §12), gastar $300 en monitoreo es desproporcionado.
 
 ---
 
@@ -162,7 +162,7 @@ Cada evento que cambia el estado del sistema genera un log `info`. Estos logs so
 
 | Evento | campos extra | Cuándo |
 |---|---|---|
-| `auth.login.success` | `user_id`, `user_type`, `method` (magic_link/oauth) | Login exitoso |
+| `auth.login.success` | `user_id`, `user_type`, `method` (magic_link/oauth/password) | Login exitoso |
 | `auth.login.failed` | `email`, `reason` | Login fallido |
 | `auth.magic_link.sent` | `email`, `user_type` | Magic link enviado |
 | `auth.magic_link.expired` | `email` | Magic link expirado sin uso |
@@ -882,7 +882,7 @@ Cuando un servicio está degradado, el panel admin muestra un banner NO intrusiv
 Con 50 complejos: **$0/mes** (Sentry free, UptimeRobot free).
 Con 200+ complejos: **~$33/mes** (Sentry Team + UptimeRobot Pro).
 
-Comparación: el hosting total es ~$120-350/mes. La observabilidad agrega 0-10% del costo de infra. **Acceptable.**
+Comparación: el hosting total es ~$126-151/mes. La observabilidad agrega 0-10% del costo de infra. **Acceptable.**
 
 ---
 

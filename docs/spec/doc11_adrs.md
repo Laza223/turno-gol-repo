@@ -121,7 +121,7 @@ CREATE POLICY tenant_insert ON bookings
 - `price_versions` — precios globales por plan
 
 **Tablas con `tenant_id` (aisladas, 13 tablas):**
-- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `products`, `tenant_staff_members`, `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`, `push_subscriptions`
+- `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `tenant_staff_members`, `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`, `push_subscriptions`
 
 ### Consecuencias
 
@@ -238,7 +238,7 @@ Refresh Token:
 
 **Positivas:**
 - Zero passwords almacenados = zero riesgo de leak de contraseñas.
-- UX optimizada por segmento: magic link para staff (simple), OAuth para jugadores (rápido).
+- UX optimizada por segmento: email+password para staff (ADR-013), magic link para jugadores.
 - Supabase Auth maneja el 90% de la implementación (magic link, OAuth, JWT, refresh tokens).
 - Refresh token rotation previene robos de sesión.
 
@@ -392,7 +392,7 @@ El mercado argentino tiene una particularidad: MercadoPago tiene un 70%+ de pene
 - Pro: El jugador ya tiene cuenta MP (70%+ penetración). 0 fricción para pagar.
 - Pro: MP maneja PCI DSS — nosotros no almacenamos datos de tarjeta.
 - Pro: Webhooks para cada evento de pago (approved, rejected, refunded).
-- Pro: Comisión de 2.99% + IVA por transacción (estándar de mercado).
+- Pro: Comisión de 2.99% + IVA por transacción (comisión de MP Suscripciones sobre la cuota SaaS; distinta de la comisión de Checkout Pro sobre la seña —~5%— que absorbe el complejo) (estándar de mercado).
 - Con: No tenemos control del UI de checkout (es la pantalla de MP).
 - Con: MP Suscripciones tiene limitaciones en la API (no soporta prorrateo nativo, hay que calcularlo).
 - Con: Los webhooks de MP pueden llegar duplicados, fuera de orden, o con demora.

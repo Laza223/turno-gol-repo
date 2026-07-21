@@ -827,7 +827,6 @@ CREATE TABLE cash_flows (
 
   -- Relaciones opcionales
   booking_id      UUID REFERENCES bookings(id),
-  product_id      UUID REFERENCES products(id),  -- Venta de cantina
 
   registered_by   UUID NOT NULL REFERENCES staff_users(id),
   occurred_at     TIMESTAMPTZ NOT NULL,          -- Cuándo ocurrió (puede diferir de created_at)
@@ -866,46 +865,9 @@ CREATE POLICY tenant_isolation_delete ON cash_flows FOR DELETE
 COMMENT ON TABLE cash_flows IS 'Movimientos de caja. Ingresos, ajustes y egresos (gastos).';
 ```
 
-### 3.6 `products` — Productos de cantina/stock
+### 3.6 Cantina — sin tabla (JSONB en `tenants.settings`)
 
-```sql
--- ============================================================
--- TABLA: products
--- Stock de cantina del complejo (bebidas, comida, equipamiento).
--- ============================================================
-CREATE TABLE products (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id       UUID NOT NULL REFERENCES tenants(id),
-  name            TEXT NOT NULL,                 -- "Gaseosa", "Pelota"
-  sku             TEXT,                          -- Código interno
-  category        TEXT,                          -- "bebida", "comida", "equipamiento"
-  price           INTEGER NOT NULL,              -- Centavos ARS
-  stock           INTEGER NOT NULL DEFAULT 0,
-  low_stock_alert INTEGER NOT NULL DEFAULT 5,
-  is_active       BOOLEAN NOT NULL DEFAULT true,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  CONSTRAINT chk_product_price_positive CHECK (price > 0),
-  CONSTRAINT chk_product_stock_non_negative CHECK (stock >= 0)
-);
-
--- Índices
-CREATE INDEX idx_products_tenant ON products(tenant_id);
-CREATE INDEX idx_products_tenant_active ON products(tenant_id, is_active);
-
--- RLS
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation_select ON products FOR SELECT
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
-CREATE POLICY tenant_isolation_insert ON products FOR INSERT
-  WITH CHECK (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
-CREATE POLICY tenant_isolation_update ON products FOR UPDATE
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID)
-  WITH CHECK (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
-CREATE POLICY tenant_isolation_delete ON products FOR DELETE
-  USING (tenant_id = current_setting('app.current_tenant_id', true)::UUID);
-```
+La tabla `products` fue **eliminada** (migr. 046, 2026-07-17): la cantina nunca necesitó una tabla propia. Los productos viven en `tenants.settings.canteen_products` (JSONB: `name`, `price` en centavos, `stock` opcional). La venta se registra con `sellCanteenProductAction` (descuenta el stock atómicamente si el producto lo define, se bloquea al llegar a 0; sin `stock` = sin límite) y genera un `CashFlow` categoría `product_sale`. Con la tabla se borró también la columna `cash_flows.product_id` (FK nunca poblada). Decisión: `docs/decisions/2026-07-17-deprecate-products-table.md`.
 
 
 ### 3.7 `tenant_staff_members` — Relación staff ↔ tenant
@@ -1745,7 +1707,6 @@ FROM plans;
 │                │                                               │
 │                ├── cash_flows (N)                              │
 │                ├── daily_cash_closes (N)                       │
-│                ├── products (N)                                │
 │                ├── notifications (N)                           │
 │                ├── audit_logs (N)                              │
 │                ├── tenant_player_bans (N)                      │
@@ -1776,18 +1737,17 @@ FROM plans;
 | 11 | `payments` | Aislada | Sí | ~1.200.000/año |
 | 12 | `cash_flows` | Aislada | Sí | ~500.000/año |
 | 13 | `daily_cash_closes` | Aislada | Sí | ~70.000/año |
-| 14 | `products` | Aislada | Sí | ~2.000 |
-| 15 | `tenant_staff_members` | Aislada | Sí | 500 |
-| 16 | `tenant_subscriptions` | Aislada | Sí | 200 |
-| 17 | `notifications` | Aislada | Sí | ~1.500.000/año |
-| 18 | `audit_logs` | Aislada | Sí | ~3.000.000/año |
-| 19 | `tenant_player_bans` | Aislada | Sí | ~500 |
-| 20 | `push_subscriptions` | Aislada | Sí | ~1.000 |
-| 21 | `reviews` | Híbrida | Pública + jugador‡ | ~200.000/año |
-| 22 | `player_favorites` | Híbrida | Jugador‡ | ~120.000 |
-| 23 | `feature_flags` | Operacional | No (service role) | ~50 |
+| 14 | `tenant_staff_members` | Aislada | Sí | 500 |
+| 15 | `tenant_subscriptions` | Aislada | Sí | 200 |
+| 16 | `notifications` | Aislada | Sí | ~1.500.000/año |
+| 17 | `audit_logs` | Aislada | Sí | ~3.000.000/año |
+| 18 | `tenant_player_bans` | Aislada | Sí | ~500 |
+| 19 | `push_subscriptions` | Aislada | Sí | ~1.000 |
+| 20 | `reviews` | Híbrida | Pública + jugador‡ | ~200.000/año |
+| 21 | `player_favorites` | Híbrida | Jugador‡ | ~120.000 |
+| 22 | `feature_flags` | Operacional | No (service role) | ~50 |
 
-**Total: 23 tablas de negocio + 1 tabla de sistema (`system_admins`)** (6 globales + 13 aisladas con RLS + 3 híbridas + 1 operacional + 1 sistema).
+**Total: 22 tablas de negocio + 1 tabla de sistema (`system_admins`)** (6 globales + 12 aisladas con RLS + 3 híbridas + 1 operacional + 1 sistema).
 
 > [!NOTE]
 > **‡ Tablas híbridas**: tienen `tenant_id` y RLS por jugador (`app.current_player_id`):
@@ -1939,15 +1899,14 @@ Las migrations deben ejecutarse en este orden por dependencias de foreign keys:
    4.1  courts (FK → tenants)
    4.2  tenant_staff_members (FK → tenants, staff_users)
    4.3  tenant_subscriptions (FK → tenants, plans)
-   4.4  products (FK → tenants)
-   4.5  tenant_player_bans (FK → tenants, players)
-   4.6  player_tenant_relationships (FK → tenants, players)
+   4.4  tenant_player_bans (FK → tenants, players)
+   4.5  player_tenant_relationships (FK → tenants, players)
 5. Tablas aisladas con FK cruzadas
    5.1  abonados (FK → tenants, courts, players)
    5.2  bookings (FK → tenants, courts, players, abonados) — SIN FK a payments aún
    5.3  payments (FK → tenants, bookings, players)
    5.4  ALTER bookings ADD FK payment_id → payments (referencia circular resuelta)
-   5.5  cash_flows (FK → tenants, bookings, products, abonados)
+   5.5  cash_flows (FK → tenants, bookings, abonados)
    5.6  daily_cash_closes (FK → tenants, staff_users)
    5.7  notifications (FK → tenants)
    5.8  audit_logs (FK → tenants)

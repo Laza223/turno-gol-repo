@@ -75,11 +75,12 @@ PASO 3 — Datos del complejo (wizard paso 1 de 4)
   └── Output: avanzar al paso 2
 
 PASO 4 — Crear primera cancha (wizard paso 2 de 4)
-  ├── Input: nombre de la cancha, tipo de superficie, capacidad (5/7/11)
+  ├── Input: nombre de la cancha, tipo de superficie, formato de fútbol (5/7/11)
   ├── Valores pre-cargados: 
-  │     pricing default basado en el promedio del mercado AR
-  │     {weekday_morning: 8000, weekday_afternoon: 10000, weekday_night: 12000, 
-  │      weekend_morning: 10000, weekend_night: 15000}
+  │     pricing default basado en el promedio del mercado AR (centavos ARS)
+  │     {rules: [{days:['mon','tue','wed','thu','fri'], from:'08:00', to:'18:00', price:800000},
+  │             {days:['mon','tue','wed','thu','fri'], from:'18:00', to:'24:00', price:1200000},
+  │             {days:['sat','sun'], from:'08:00', to:'24:00', price:1500000}]}
   ├── El usuario puede editar los precios o dejar los default
   ├── Botón "Agregar otra cancha" (puede agregar N canchas)
   ├── Acción: crear Court con status='online' para cada cancha
@@ -103,7 +104,7 @@ PASO 6 — Configurar seña (wizard paso 4 de 4)
   └── Output: wizard completo → redirect al dashboard
 
 PASO 7 — Dashboard con checklist
-  ├── Mostrar: "Tu complejo está al 80% listo" (barra de progreso)
+  ├── Mostrar: "Tu complejo está al 75% listo" (barra de progreso)
   ├── Checklist visible:
   │     ✅ Cuenta creada
   │     ✅ Datos del complejo
@@ -147,7 +148,7 @@ PASO 7 — Dashboard con checklist
 |---|---|
 | Tenant creado | 📩 Email de bienvenida al dueño con guía rápida |
 | Tenant creado | 📊 AuditLog: `tenant.created` |
-| Trial iniciado | ⏰ Cron job programado: notificación día 7, 21, 28, 30, 31 |
+| Trial iniciado | ⏰ Cron job programado: notificaciones según el cronograma único de doc4 §3 (días 0, 1, 7, 14, 21, 25, 28, 30, 31, 37) |
 | Primera cancha creada | 📊 AuditLog: `court.created` |
 | MP conectado | 📊 AuditLog: `tenant.mp_connected` |
 | Wizard completado | 📩 Email: "Tu complejo está listo. Compartí tu link: turnogol.app/{slug}" |
@@ -379,7 +380,7 @@ PASO — Cobro presencial
 - ❌ Lista de espera si el slot está ocupado
 - ❌ Modificar fecha/hora de una reserva ya confirmada (tiene que cancelar y hacer otra)
 - ❌ Reservar en el pasado (validación: `date >= hoy`)
-- ❌ Elegir duración variable (el slot tiene duración fija: 1 hora por defecto, configurable por cancha)
+- ❌ Elegir duración variable (el slot tiene duración fija de 60 min, `SLOT_DURATION_MINUTES`, cambio #14 — NO configurable por cancha)
 
 ---
 
@@ -460,7 +461,7 @@ PASO 5 — Confirmación
 | Jugador con ban en este complejo | Warning: "Baneaste a este jugador el {fecha}. ¿Crear igual?" |
 | Precio editado por el admin | Se guarda el precio manual como `price_snapshot` (override del pricing de la cancha) |
 | Tipo = 'block' | No se envía email al jugador (no hay jugador). No genera CashFlow. |
-| El admin quiere una reserva de 2 horas | `time_end = time_start + 2h`. No hay restricción de duración en reserva manual. |
+| El admin quiere una reserva de 2 horas | Crea dos turnos de 60 min consecutivos, o un `block`. `assertSlotDuration` rechaza cualquier turno ≠ 60 min, también en reserva manual (cambio #14). |
 | El slot ya está ocupado | Error: "Este horario ya tiene una reserva. ¿Querés ver los horarios libres?" |
 
 ### Cobro del resto del turno (cambio #8)

@@ -333,7 +333,7 @@ En conclusión: Política de Cancelación (Abonados): Decisión estratégica óp
 
 ### P6.3 — ¿Cuántas franjas de precios hay?
 
-**Estado actual**: 5 franjas fijas: weekday_morning, weekday_afternoon, weekday_night, weekend_morning, weekend_night.
+**Estado actual** (resuelto): reglas flexibles `{rules}` por día/franja — puntos de corte horarios, un precio por franja (`court.schema.ts`). La versión vieja de 5 franjas fijas nombradas (weekday_morning, etc.) fue reemplazada.
 **Pregunta**: ¿Están bien esas 5? ¿Necesitás más flexibilidad (ej: un precio distinto por cada hora)?
 
 **Tu respuesta**: En ATC lo manejan así: "Estructura de Tarifas: Las franjas son ilimitadas y se definen mediante "puntos de corte" horarios; el administrador configura manualmente el precio para cada combinación de franja y duración (60/90/120 min) de forma independiente.", sinceramente no sé bien que decidir acá.

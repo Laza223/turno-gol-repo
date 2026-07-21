@@ -198,7 +198,7 @@ import { db } from '@/shared/db/client';
 // Las 13 tablas aisladas
 const ISOLATED_TABLES = [
   'courts', 'bookings', 'abonados', 'payments', 'cash_flows',
-  'products', 'tenant_staff_members', 'daily_cash_closes',
+  'tenant_staff_members', 'daily_cash_closes',
   'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans',
   'push_subscriptions',
 ];
@@ -396,7 +396,7 @@ beforeAll(async () => {
   const tables = await db.query(`
     SELECT tablename FROM pg_tables WHERE schemaname = 'public'
   `);
-  expect(tables.rows.length).toBeGreaterThan(10); // Al menos nuestras 19 tablas
+  expect(tables.rows.length).toBeGreaterThan(10); // Al menos nuestras 22 tablas de negocio (+ system_admins)
 });
 
 // Después de cada test: limpiar datos sin droppear tablas
@@ -406,7 +406,7 @@ afterEach(async () => {
   await db.query(`
     TRUNCATE TABLE
       audit_logs, notifications, daily_cash_closes,
-      cash_flows, payments, bookings, abonados, products,
+      cash_flows, payments, bookings, abonados,
       tenant_player_bans, player_tenant_relationships,
       tenant_staff_members, tenant_subscriptions,
       courts, staff_users, players, tenants, plans,
@@ -456,7 +456,7 @@ Solo los flujos críticos de negocio, end-to-end, desde el browser hasta la DB. 
 | `booking-online.spec.ts` | Jugador reserva online → checkout MP (mock) → confirmación | 🔴 Crítico |
 | `cancellation.spec.ts` | Admin cancela reserva → slot se libera → aparece disponible | 🟡 Alto |
 | `abonado.spec.ts` | Admin crea abonado → se generan bookings futuros en la grilla | 🟡 Alto |
-| `auth-flow.spec.ts` | Magic link → login → dashboard visible → logout | 🟡 Alto |
+| `auth-flow.spec.ts` | Login staff (email+password) → dashboard visible → logout | 🟡 Alto |
 | `billing.spec.ts` | Trial → pantalla de upgrade → (mock MP) → plan activo | 🟢 Medio |
 
 **Total estimado: 7-10 e2e tests.**

@@ -8,7 +8,6 @@ import { getBookingDetail, getBookingCharges } from '../queries'
 import {
   addBookingChargeAction,
   cancelBookingAction,
-  completeBookingAction,
   completeAndChargeBookingAction,
   markNoShowAction,
 } from '../actions'
@@ -75,7 +74,6 @@ export default async function ReservaDetailPage(props: Props) {
         playerPhone={booking.playerPhone}
         priceSnapshot={booking.priceSnapshot}
         chargesTotal={charges?.chargesTotal ?? 0}
-        completeBookingAction={completeBookingAction}
         completeAndChargeBookingAction={completeAndChargeBookingAction}
         markNoShowAction={markNoShowAction}
         cancelBookingAction={cancelBookingAction}

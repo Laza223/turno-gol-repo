@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import { formatArs } from '@/lib/format'
 import { artDateString } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
@@ -16,24 +16,6 @@ const SUCCESS = { success: true as const, booking: {} as never }
  * como matcher — así que hay que normalizarlo acá también o nunca matchea.
  */
 const money = (cents: number): string => formatArs(cents).replace(/\u00A0/g, ' ')
-
-/**
- * Cierra el toast por su botón "Cerrar" y espera a que desaparezca del DOM del
- * todo: el `data-state=closed` no es instantáneo (use-toast.ts lo saca del store
- * recién a los 200ms reales, sin relación con `reducedMotion`), y si el scan de
- * axe (que corre DESPUÉS del `play`) lo agarra a mitad de esa transición, mide un
- * contraste falso. Mismo patrón que QuickActions.stories.tsx / CourtList.stories.tsx.
- */
-async function closeToast(text: string): Promise<void> {
-  const body = within(document.body)
-  const matches = await body.findAllByText(text)
-  const toastItem = matches
-    .map((el) => el.closest('li'))
-    .find((li): li is HTMLLIElement => li !== null)
-  if (!toastItem) throw new Error(`No se encontró el toast: ${text}`)
-  await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
-  await waitFor(() => expect(body.queryByText(text)).not.toBeInTheDocument())
-}
 
 /**
  * `ReservaListRow` es el shape que arma `queries.ts` vía JOIN (courts + players),
@@ -186,8 +168,7 @@ const meta = {
   args: {
     actions: {
       cancelBookingAction: fn(async () => SUCCESS),
-      completeBookingAction: fn(async () => SUCCESS),
-      completeAndChargeBookingAction: fn(async () => SUCCESS) as any,
+      completeAndChargeBookingAction: fn(async () => SUCCESS),
       confirmDepositPaymentAction: fn(async () => SUCCESS),
       markNoShowAction: fn(async () => SUCCESS),
     },
@@ -363,15 +344,19 @@ export const VistaCompacta: Story = {
 
 // ─── `actions` se reenvía tal cual a QuickActions ──────────────────────────
 
-/** Confirma que el prop `actions` (Server Component → Client Component) llega intacto hasta QuickActions. */
+/**
+ * Confirma que el prop `actions` (Server Component → Client Component) llega
+ * intacto hasta QuickActions: "Completada" abre CompleteBookingDialog
+ * (Completar + Cobrar), nunca llama una action directa — `./actions` ya no
+ * expone `completeBookingAction` a QuickActions (quedó muerto tras el
+ * rediseño a "Completar + Cobrar", ver comentario en QuickActions.tsx).
+ */
 export const AccionRapidaCompletarSePropaga: Story = {
   args: { booking: ROW_CONFIRMADA },
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Completada' }))
-    await waitFor(() =>
-      expect(args.actions.completeBookingAction).toHaveBeenCalledWith(ROW_CONFIRMADA.id)
-    )
-    await closeToast('Marcada como completada')
+    const body = within(document.body)
+    await expect(await body.findByRole('heading', { name: 'Completar turno' })).toBeInTheDocument()
   },
 }

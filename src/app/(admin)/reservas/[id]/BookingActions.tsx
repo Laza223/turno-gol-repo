@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
@@ -53,7 +53,6 @@ type Props = {
   endsAt?: string | null
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
-  completeBookingAction: SimpleBookingFn
   completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
   markNoShowAction: SimpleBookingFn
   cancelBookingAction: CancelBookingFn
@@ -93,14 +92,11 @@ export default function BookingActions({
   guestPhone,
   playerName,
   playerPhone,
-  completeBookingAction,
   completeAndChargeBookingAction,
   markNoShowAction,
   cancelBookingAction,
 }: Props) {
   const router = useRouter()
-  const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [noShowOpen, setNoShowOpen] = useState(false)
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
@@ -113,15 +109,6 @@ export default function BookingActions({
   const bookingStartUtcMs = startsAt ? new Date(startsAt).getTime() : bookingStartMs(bookingDate, timeStart)
   const bookingEndUtcMs = endsAt ? new Date(endsAt).getTime() : bookingStartUtcMs + SLOT_DURATION_MINUTES * 60_000
   const inPolicy = Date.now() < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
-
-  function runDirect(fn: () => Promise<{ success: boolean; error?: string }>) {
-    setError(null)
-    startTransition(async () => {
-      const res = await fn()
-      if (!res.success) setError(res.error ?? 'No se pudo completar la acción.')
-      else router.refresh()
-    })
-  }
 
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
@@ -175,7 +162,6 @@ export default function BookingActions({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={pending}
           onClick={() => setCompleteDialogOpen(true)}
           className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
@@ -183,7 +169,6 @@ export default function BookingActions({
         </button>
         <button
           type="button"
-          disabled={pending}
           onClick={() => setNoShowOpen(true)}
           className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
         >
@@ -191,14 +176,12 @@ export default function BookingActions({
         </button>
         <button
           type="button"
-          disabled={pending}
           onClick={() => { setReason(''); setCancelType(null); setCancelOpen(true) }}
           className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
         >
           Cancelar
         </button>
       </div>
-      {error && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
       <ConfirmDialog
         open={cancelOpen}

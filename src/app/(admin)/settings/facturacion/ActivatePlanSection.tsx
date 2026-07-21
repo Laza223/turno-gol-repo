@@ -86,7 +86,10 @@ export function ActivatePlanSection({
       </div>
 
       {error && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3.5 text-sm font-medium text-red-600 dark:text-red-400">
+        <div
+          role="alert"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3.5 text-sm font-medium text-red-600 dark:text-red-400"
+        >
           <span>{error}</span>
           {error.toLowerCase().includes('email') && (
             <a

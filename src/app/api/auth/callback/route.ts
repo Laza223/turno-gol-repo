@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { provisionAndRouteStaff } from '@/modules/auth/auth.service'
+import { provisionAndRouteStaff, syncStaffUserEmail } from '@/modules/auth/auth.service'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
@@ -100,9 +100,21 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL(successVerifyPath(next, intent), req.url))
   }
 
-  // Staff: confirmación de alta (type=signup). Provisión + claims + ruteo en el
-  // helper único (compartido con loginAction).
+  // Staff: confirmación de alta (type=signup) o de cambio de email
+  // (type=email_change, disparado por updateUserEmailAction). Provisión +
+  // claims + ruteo en el helper único (compartido con loginAction).
   if (!user.email) return redirectVerifyError(req, 'invalid')
+
+  // email_change confirmado: sincronizar staff_users.email al nuevo email ANTES
+  // de provisionAndRouteStaff. La identidad se resuelve por staff_user_id (ya
+  // seteado en app_metadata de un login previo), así que el orden no evita el
+  // huérfano — pero deja staff_users.email consistente con Supabase Auth
+  // apenas se confirma, no un request después.
+  if (otpType === 'email_change') {
+    const staffUserId = typeof meta.staff_user_id === 'string' ? meta.staff_user_id : null
+    if (staffUserId) await syncStaffUserEmail(staffUserId, user.email)
+  }
+
   const { path } = await provisionAndRouteStaff(user)
   return NextResponse.redirect(new URL(successVerifyPath(path, 'signup'), req.url))
 }

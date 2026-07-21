@@ -103,6 +103,19 @@ export async function chargeDebtAction(
       return { success: false as const, error: 'Solo se pueden saldar deudas de reservas completadas.' }
     }
 
+    // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
+    // en reservas/actions.ts): dos cobros concurrentes del mismo booking leían
+    // el mismo `pending` sin lock y ambos pasaban la validación. Lockear la
+    // fila del booking ANTES de leer los charges serializa los cobros: el
+    // segundo espera a que el primero commitee su cash_flow y relee el
+    // pendiente ya actualizado.
+    //
+    // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
+    // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
+    // createCashFlow → assertDayOpen) — mismo orden que addBookingChargeAction,
+    // evita deadlock.
+    await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
     const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
     const { pending } = summarizeBookingCharges({
       priceSnapshot: booking.priceSnapshot,

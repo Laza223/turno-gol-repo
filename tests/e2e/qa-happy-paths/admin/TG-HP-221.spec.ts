@@ -11,16 +11,20 @@ import { randomUUID } from 'node:crypto'
 import { suppressPushPrompt } from '../_qa/session'
 
 /**
- * TG-HP-221 — Métricas `/metricas` (sesión ADMIN, ve negocio + sistema).
+ * TG-HP-221 — Métricas (sesión ADMIN, ve negocio + sistema).
+ * `/metricas` fue reubicado a `/analiticas` (redirect permanente,
+ * src/app/(admin)/metricas/page.tsx es ahora solo el stub de redirect) — el
+ * contenido real (MetricsDashboard) se embebe ahí vía MetricsDashboardLoader.
  * Rol: Admin — `getStaffRole(...) === 'admin'` habilita además el panel
- * "Estado del sistema" (`canSeeSystem`, `page.tsx:22`).
+ * "Estado del sistema" (`canSeeSystem`, `analiticas/page.tsx`).
  * NOTA (verificación fresca de código, no del manual): `GET /api/admin/metrics`
  * usa `withAnyRole(['admin','manager'])` (`route.ts:21`) — NO `withRole('admin')`
  * como decía el GAP #2 del manual (ya desactualizado respecto al código actual).
  * Prereq: actividad en los últimos 30 días — se siembra acá mismo (1 booking
  * `completed` + 1 cash_flow `income` con fecha/hora de HOY en ART) para no
  * depender de residuos de otros specs de la corrida QA.
- * Evidence anchors: src/app/(admin)/metricas/page.tsx:1-33,
+ * Evidence anchors: src/app/(admin)/analiticas/page.tsx,
+ *   src/app/(admin)/metricas/MetricsDashboardLoader.tsx,
  *   src/app/(admin)/metricas/MetricsDashboard.tsx:231-349,
  *   src/app/api/admin/metrics/route.ts:1-28,
  *   src/modules/metrics/metrics.service.ts:115-278.
@@ -82,13 +86,13 @@ test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
       })
       expect(cashflowErr).toBeNull()
 
-      // ── UI: header + subtítulo ─────────────────────────────────────────
-      await page.goto('/metricas')
-      await expect(page.getByRole('heading', { name: 'Métricas', level: 1 })).toBeVisible({
+      // ── UI: header + subtítulo (/analiticas, destino real de /metricas) ──
+      await page.goto('/analiticas')
+      await expect(page.getByRole('heading', { name: 'Analíticas', level: 1 })).toBeVisible({
         timeout: 15_000,
       })
       await expect(
-        page.getByText('Actividad del complejo en los últimos 30 días. Se actualiza cada minuto.'),
+        page.getByText('Actividad del complejo en tiempo real y reporte mensual de ingresos.'),
       ).toBeVisible()
 
       // Esperar a que resuelva el primer fetch (spinner → contenido real, no el banner de error).

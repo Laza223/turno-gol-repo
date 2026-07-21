@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
+import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import {
   isR2Configured,
   putImage,
@@ -139,6 +140,15 @@ export async function updateUserEmailAction(
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
+
+  // Pre-check ANTES de tocar Supabase Auth: staff_users.email tiene UNIQUE y
+  // la sync post-confirmación (syncStaffUserEmail, api/auth/callback) corre
+  // recién cuando el usuario confirma el link — si el email ya está tomado
+  // acá, avisar ahora es mejor que dejar la confirmación rota más tarde.
+  const taken = await isStaffEmailTaken(parsed.data, auth.user.staffUserId)
+  if (taken) {
+    return { success: false, error: 'Ese email ya está en uso por otra cuenta.' }
+  }
 
   const supabase = await createClient()
   const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'

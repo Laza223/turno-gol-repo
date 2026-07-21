@@ -355,7 +355,7 @@ export default function AbonadoForm({
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <label htmlFor="courtId" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-primary" /> Cancha
                 </label>
                 <Combobox
@@ -371,7 +371,7 @@ export default function AbonadoForm({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <label htmlFor="dayOfWeek" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <CalendarDays className="h-3.5 w-3.5 text-primary" /> Día semanal
                   </label>
                   <Combobox
@@ -400,7 +400,7 @@ export default function AbonadoForm({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <label htmlFor="timeStart" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-primary" /> Hora inicio
                   </label>
                   <Combobox
@@ -422,7 +422,7 @@ export default function AbonadoForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <label htmlFor="timeEnd" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-primary" /> Hora fin
                   </label>
                   <Combobox
@@ -516,7 +516,10 @@ export default function AbonadoForm({
           </div>
 
           {previewError && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-700 dark:text-red-300">
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-700 dark:text-red-300"
+            >
               <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
               <span>{previewError}</span>
             </div>

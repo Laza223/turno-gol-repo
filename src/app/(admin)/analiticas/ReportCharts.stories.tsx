@@ -11,7 +11,7 @@ import { OccupancyChart } from './ReportCharts'
  * corrida daría una captura distinta.
  */
 const meta = {
-  title: 'Admin/Reportes/ReportCharts/OccupancyChart',
+  title: 'Admin/Analiticas/ReportCharts/OccupancyChart',
   component: OccupancyChart,
   parameters: { layout: 'padded' },
   args: { byCourt: courtReports(), isAnimationActive: false },

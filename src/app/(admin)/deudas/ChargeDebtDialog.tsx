@@ -6,7 +6,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
-import { chargeDebtAction, type ChargeDebtInput, type ChargeDebtResult } from './actions'
+import { chargeDebtAction, type ChargeDebtResult } from './actions'
 import type { DebtRow } from './queries'
 
 const METHOD_OPTIONS = [
@@ -198,7 +198,7 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Ingresar pago(s) de deuda
             </label>
-            {charges.map((line, idx) => (
+            {charges.map((line) => (
               <div key={line.id} className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">

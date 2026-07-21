@@ -20,18 +20,18 @@ import { ReservasToolbar } from './ReservasToolbar'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   cancelBookingAction,
-  completeBookingAction,
   completeAndChargeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
 } from './actions'
+import { getBookingChargesAction } from './charges-actions'
 
 const QUICK_ACTIONS = {
   cancelBookingAction,
-  completeBookingAction,
   completeAndChargeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
+  getBookingChargesAction,
 }
 
 const SCOPES: Array<{ value: ReservaScope; label: string }> = [

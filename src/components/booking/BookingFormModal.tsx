@@ -177,9 +177,12 @@ export function BookingFormModal({
 
   const selectedReason = reasonFor(reason)
   const isInternalBlock = selectedReason.kind === 'internal'
-  const allowsCustomDuration = isInternalBlock || reason === 'other'
-  // Bloqueos internos y "Otro" (torneos, eventos) pueden abarcar
-  // desde 1 hora hasta la jornada completa (varias horas).
+  const allowsCustomDuration = isInternalBlock
+  // Solo los bloqueos internos (type='block') pueden abarcar desde 1 hora
+  // hasta la jornada completa: el server (createManualBooking →
+  // assertSlotDuration) SIEMPRE exige turnos de 60 min para cualquier otro
+  // type, incluido 'other' (viaja como type='spontaneous') — ofrecerle acá un
+  // selector de duración prometería algo que el submit real siempre rechaza.
   const startMins = timeToMins(slot.timeStart)
   const maxHours = Math.max(1, Math.floor((END_OF_DAY_MINS - startMins) / 60))
   const allDurations = Array.from({ length: maxHours }, (_, i) => (i + 1) * 60)
@@ -347,7 +350,7 @@ export function BookingFormModal({
             {allowsCustomDuration && (
               <div className="space-y-1.5">
                 <Label htmlFor="duration-select-trigger" className="flex items-center justify-between text-sm font-semibold text-foreground">
-                  <span>Duración {reason === 'other' ? 'de la reserva' : 'del bloqueo / evento'}</span>
+                  <span>Duración del bloqueo / evento</span>
                   <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
                     Hasta las {timeEnd} ({effectiveDuration / 60} hs)
                   </span>

@@ -10,7 +10,6 @@ import {
   Users,
   Contact,
   Banknote,
-  Receipt,
   ChartLine,
   Settings,
   X,

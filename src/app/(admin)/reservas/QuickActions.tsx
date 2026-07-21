@@ -17,6 +17,7 @@ import { toast } from '@/hooks/use-toast'
 import { hasQuickActions } from './quick-actions-helpers'
 import CompleteBookingDialog from './CompleteBookingDialog'
 import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
+import type { GetBookingChargesResult } from './charges-actions'
 
 type QuickActionsBooking = {
   id: string
@@ -46,15 +47,33 @@ type CancelBookingFn = (
 ) => Promise<BookingActionResult>
 
 /**
- * Firma de las 4 Server Actions que consume QuickActions. Se agrupan en un
+ * Firma de las Server Actions que consume QuickActions. Se agrupan en un
  * solo tipo para que BookingListItem las reciba y reenvíe de un solo prop.
+ *
+ * `getBookingChargesAction` es OPCIONAL (mismo criterio que
+ * `checkAvailabilityAction` en BookingFormModal): sin ella (stories/tests
+ * viejas, o callers que todavía no la cablean) el diálogo de "Completada"
+ * abre igual, con chargesTotal=0 — el comportamiento previo al fix, no un
+ * crash. `./actions` NO exporta ya `completeBookingAction` acá: el botón
+ * "Completada" siempre abre CompleteBookingDialog (nunca completa directo),
+ * así que ese prop había quedado muerto tras el rediseño a "Completar +
+ * Cobrar".
  */
 export type BookingQuickActions = {
   cancelBookingAction: CancelBookingFn
-  completeBookingAction: SimpleBookingFn
   confirmDepositPaymentAction: SimpleBookingFn
   markNoShowAction: SimpleBookingFn
   completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
+  /**
+   * Lectura de los cobros de mostrador ya registrados del turno (sin la
+   * seña), para que el diálogo de "Completada" abierto desde la LISTA arranque
+   * con el mismo saldo pendiente real que ve el detalle (`reservas/[id]`) en
+   * vez de asumir chargesTotal=0 (bug: turnos con cobros parciales previos
+   * mostraban un pendiente inflado). Fail-open a 0 si la action no está o
+   * falla — el server igual re-valida el monto real al cobrar
+   * (completeAndChargeBookingAction).
+   */
+  getBookingChargesAction?: (bookingId: string) => Promise<GetBookingChargesResult>
 }
 
 type Props = BookingQuickActions & {
@@ -64,13 +83,13 @@ type Props = BookingQuickActions & {
 }
 
 /**
- * Acciones rápidas sin salir de la lista: confirmar pago / completar
- * directas, "ausente" con confirmación en dos pasos inline (captura la seña
- * y a la 2da ausencia en 90 días aplica softban de 14 días — pero sin modal),
- * cancelar con diálogo porque el backend exige motivo. En mobile viven detrás
- * de un menú contextual.
+ * Acciones rápidas sin salir de la lista: confirmar pago directa, "completada"
+ * abre CompleteBookingDialog (Completar + Cobrar), "ausente" con confirmación
+ * en dos pasos inline (captura la seña y a la 2da ausencia en 90 días aplica
+ * softban de 14 días — pero sin modal), cancelar con diálogo porque el
+ * backend exige motivo. En mobile viven detrás de un menú contextual.
  *
- * Las 4 Server Actions llegan por PROP, no por import. './actions' es
+ * Las Server Actions llegan por PROP, no por import. './actions' es
  * `'use server'` y arrastra request-context → node:async_hooks, que Vite
  * externaliza en el browser y rompe Storybook. El type import de
  * BookingActionResult sí es seguro: se borra en compilación.
@@ -79,10 +98,10 @@ export function QuickActions({
   booking,
   label,
   cancelBookingAction,
-  completeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
   completeAndChargeBookingAction,
+  getBookingChargesAction,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -91,6 +110,7 @@ export function QuickActions({
   const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
   const [reason, setReason] = useState('')
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
+  const [chargesTotal, setChargesTotal] = useState(0)
   const disarmRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -153,6 +173,26 @@ export function QuickActions({
     setCancelOpen(true)
   }
 
+  /**
+   * Trae los cobros de mostrador ya registrados ANTES de abrir el diálogo de
+   * "Completada" — sin esto, el diálogo arrancaba siempre con chargesTotal=0
+   * hardcodeado, inflando el saldo pendiente si el turno ya tenía cobros
+   * parciales. Sin `getBookingChargesAction` (stories/tests viejas) abre
+   * directo con 0, igual que antes del fix.
+   */
+  function openCompleteDialog() {
+    if (!getBookingChargesAction) {
+      setChargesTotal(0)
+      setCompleteDialogOpen(true)
+      return
+    }
+    startTransition(async () => {
+      const res = await getBookingChargesAction(booking.id)
+      setChargesTotal(res.ok ? res.chargesTotal : 0)
+      setCompleteDialogOpen(true)
+    })
+  }
+
   // Preview del destino de la seña según el motivo. En la grilla no calculamos
   // el plazo (no tenemos la política a mano); el server resuelve la retención.
   let refundWarning: string | null = null
@@ -196,7 +236,7 @@ export function QuickActions({
             <button
               type="button"
               disabled={pending}
-              onClick={() => setCompleteDialogOpen(true)}
+              onClick={openCompleteDialog}
               className={cn(inlineBtn, 'border border-border bg-card text-foreground hover:bg-accent')}
             >
               Completada
@@ -257,7 +297,7 @@ export function QuickActions({
             ) : (
               <>
                 <DropdownMenuItem
-                  onSelect={() => setCompleteDialogOpen(true)}
+                  onSelect={openCompleteDialog}
                 >
                   Marcar completada
                 </DropdownMenuItem>
@@ -347,7 +387,7 @@ export function QuickActions({
             guestPhone: booking.guestPhone,
             playerName: booking.playerName,
             playerPhone: booking.playerPhone,
-            chargesTotal: 0,
+            chargesTotal,
           }}
           label={label}
           onClose={() => setCompleteDialogOpen(false)}

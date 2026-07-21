@@ -198,6 +198,27 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     expect(payload).toMatchObject({ type: 'spontaneous', guestName: 'Pepe' })
     expect(payload.guestPhone).toBeUndefined()
   })
+
+  /**
+   * El server (createManualBooking → assertSlotDuration) rechaza SIEMPRE
+   * turnos que no sean de 60 min cuando type !== 'block'. "Otro" viaja como
+   * type='spontaneous' (no 'block'), así que nunca puede durar más de 1 hora
+   * aunque el kind sea 'contact' como una reserva telefónica normal. Ofrecer
+   * un selector de duración ahí prometía algo que el server siempre rechaza.
+   */
+  it('"Otro" no ofrece selector de duración custom: queda fijo en 1 hora', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'other' } })
+
+    expect(screen.queryByRole('button', { name: 'Seleccionar duración' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(lastPayload()).toMatchObject({ timeStart: '18:00', timeEnd: '19:00' })
+  })
 })
 
 describe('BookingFormModal — slot de medianoche (día operativo)', () => {

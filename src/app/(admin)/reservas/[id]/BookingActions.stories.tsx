@@ -3,7 +3,7 @@ import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } fro
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { artDateString, daysFromNow } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
-import type { BookingActionResult } from '../actions'
+import type { BookingActionResult, CompleteAndChargeResult } from '../actions'
 import BookingActions from './BookingActions'
 
 const BOOKING_ID = uid(1001)
@@ -34,8 +34,7 @@ const meta = {
     chargesTotal: 0,
     guestName: null,
     guestPhone: null,
-    completeBookingAction: fn(async (): Promise<BookingActionResult> => okResult),
-    completeAndChargeBookingAction: fn(async (): Promise<any> => okResult) as any,
+    completeAndChargeBookingAction: fn(async (): Promise<CompleteAndChargeResult> => okResult),
     markNoShowAction: fn(async (): Promise<BookingActionResult> => okResult),
     cancelBookingAction: fn(async (): Promise<BookingActionResult> => okResult),
   },
@@ -78,13 +77,17 @@ export const SinAccionesSiNoEstaConfirmada: Story = {
   },
 }
 
-/** "Marcar completada" actúa directo, sin diálogo de confirmación. */
-export const MarcarCompletada: Story = {
-  play: async ({ args, canvasElement }) => {
+/**
+ * "Marcar completada" NUNCA llama una action directa: abre CompleteBookingDialog
+ * (Completar + Cobrar). `completeBookingAction` quedó muerto tras el rediseño
+ * (mismo criterio que QuickActions.stories.tsx → CompletarAbreElDialogoDeCobro).
+ */
+export const MarcarCompletadaAbreElDialogoDeCobro: Story = {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Marcar completada' }))
-    await waitFor(() => expect(args.completeBookingAction).toHaveBeenCalledWith(BOOKING_ID))
-    await waitFor(() => expect(getRouter().refresh).toHaveBeenCalled())
+    const body = within(document.body)
+    await expect(await body.findByRole('heading', { name: 'Completar turno' })).toBeInTheDocument()
   },
 }
 

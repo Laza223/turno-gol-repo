@@ -3,15 +3,15 @@ import { expect, within } from 'storybook/test'
 import { GhostKpis } from './GhostKpis'
 
 /**
- * Estado vacío de /reportes (mes sin movimientos). La página en sí es un
- * server component async (auth + DB), no storybook-able: esta story existe
- * sobre todo para que el gate a11y cubra el patrón fantasma — la versión
- * original (`opacity-50` sobre el grid entero) componía ~3.79:1 sobre el
- * `text-foreground` de los StatCard, bajo AA, y nunca la atrapó el runner
- * porque page.tsx no tenía story propia.
+ * Estado vacío del reporte mensual de /analiticas (mes sin movimientos). La
+ * página en sí es un server component async (auth + DB), no storybook-able:
+ * esta story existe sobre todo para que el gate a11y cubra el patrón
+ * fantasma — la versión original (`opacity-50` sobre el grid entero)
+ * componía ~3.79:1 sobre el `text-foreground` de los StatCard, bajo AA, y
+ * nunca la atrapó el runner porque page.tsx no tenía story propia.
  */
 const meta = {
-  title: 'Admin/Reportes/GhostKpis',
+  title: 'Admin/Analiticas/GhostKpis',
   component: GhostKpis,
   parameters: { layout: 'padded' },
 } satisfies Meta<typeof GhostKpis>

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 const refreshMock = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -18,13 +18,18 @@ vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
 import { QuickActions } from '@/app/(admin)/reservas/QuickActions'
 import { hasQuickActions } from '@/app/(admin)/reservas/quick-actions-helpers'
 
-// Las 4 Server Actions se inyectan por PROP (no por vi.mock de './actions'):
+// Las Server Actions se inyectan por PROP (no por vi.mock de './actions'):
 // QuickActions ya no importa el módulo 'use server' como valor, así que no
 // hace falta mockearlo para evitar cargar drizzle.
 const confirmDepositMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
 const completeMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
 const noShowMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
 const cancelMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
+// Fix chargesTotal real (revisión adversarial): lectura de cobros previos que
+// QuickActions fetchea ANTES de abrir CompleteBookingDialog. Default sin
+// cobros previos — los tests que necesitan un valor puntual lo overridean con
+// mockResolvedValueOnce.
+const getBookingChargesMock = vi.fn(async () => ({ ok: true as const, chargesTotal: 0 }))
 
 function booking(overrides: Partial<Parameters<typeof QuickActions>[0]['booking']> = {}) {
   return {
@@ -43,10 +48,10 @@ function booking(overrides: Partial<Parameters<typeof QuickActions>[0]['booking'
 
 const quickActions = {
   confirmDepositPaymentAction: confirmDepositMock,
-  completeBookingAction: completeMock,
   completeAndChargeBookingAction: completeMock as any,
   markNoShowAction: noShowMock,
   cancelBookingAction: cancelMock,
+  getBookingChargesAction: getBookingChargesMock,
 }
 
 beforeEach(() => {
@@ -109,10 +114,59 @@ describe('QuickActions — confirmed', () => {
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy()
   })
 
-  it('Completada dispara la action directa', async () => {
+  /**
+   * Fix chargesTotal real (revisión adversarial): antes, "Completada" abría
+   * CompleteBookingDialog con `chargesTotal: 0` hardcodeado — si el turno ya
+   * tenía cobros de mostrador previos, el saldo pendiente se mostraba
+   * INFLADO (sumaba de nuevo lo que ya se había cobrado). Ahora fetchea
+   * `getBookingChargesAction` antes de abrir y el diálogo arranca con el
+   * saldo real: priceSnapshot (1.500.000) − cobros previos (500.000) = pendiente
+   * de 1.000.000 ($10.000), no de 1.500.000 ($15.000).
+   */
+  it('Completada fetchea los cobros reales y abre el diálogo con el saldo pendiente correcto', async () => {
+    getBookingChargesMock.mockResolvedValueOnce({ ok: true, chargesTotal: 500000 })
     render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
+
     fireEvent.click(screen.getByRole('button', { name: 'Completada' }))
-    await waitFor(() => expect(completeMock).toHaveBeenCalledWith('b1'))
+
+    await waitFor(() => expect(getBookingChargesMock).toHaveBeenCalledWith('b1'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Completar turno')).toBeTruthy()
+    // "Cobros previos" solo se muestra cuando chargesTotal > 0 (CompleteBookingDialog).
+    expect(within(dialog).getByText('Cobros previos')).toBeTruthy()
+    // Saldo a cobrar = precio (1.500.000) − cobros previos (500.000) =
+    // 1.000.000 ($10.000). Con el bug (chargesTotal:0 hardcodeado) esta fila
+    // mostraba $15.000 — el precio COMPLETO como si nada se hubiera cobrado.
+    const saldoRow = within(dialog).getByText('Saldo a cobrar').closest('div')
+    expect(saldoRow).toHaveTextContent('$ 10.000')
+    expect(saldoRow).not.toHaveTextContent('$ 15.000')
+    expect(completeMock).not.toHaveBeenCalled()
+  })
+
+  it('si getBookingChargesAction falla, abre igual con chargesTotal=0 (fail-open — el server re-valida al cobrar)', async () => {
+    getBookingChargesMock.mockResolvedValueOnce({ ok: false, error: 'boom' } as never)
+    render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Completada' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText('Cobros previos')).toBeNull()
+  })
+
+  it('sin getBookingChargesAction (prop opcional), abre directo con chargesTotal=0', async () => {
+    render(
+      <QuickActions
+        booking={booking()}
+        label="Juan · 14:00"
+        {...quickActions}
+        getBookingChargesAction={undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Completada' }))
+
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(getBookingChargesMock).not.toHaveBeenCalled()
   })
 
   it('Ausente pide confirmación en dos pasos (sin modal)', async () => {

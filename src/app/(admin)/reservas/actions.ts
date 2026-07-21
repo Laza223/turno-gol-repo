@@ -598,6 +598,17 @@ export async function completeAndChargeBookingAction(
 
     // 2. Validate total charges don't exceed pending amount
     if (charges.length > 0) {
+      // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
+      // más arriba en este archivo): la lectura de charges tiene que ocurrir
+      // DESPUÉS de lockear la fila. completeBooking() de arriba ya lo hace
+      // implícitamente (su UPDATE ... WHERE status='confirmed' toma el row
+      // lock y lo mantiene hasta el commit de esta tx) — el FOR UPDATE acá es
+      // explícito y redundante a propósito: documenta la dependencia y blinda
+      // el código si completeBooking() dejara de hacer ese UPDATE. Mismo
+      // orden de locks que addBookingChargeAction: booking FOR UPDATE antes
+      // que el advisory lock diario de createCashFlow → assertDayOpen.
+      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
       const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
       const { pending } = summarizeBookingCharges({
         priceSnapshot: booking.priceSnapshot,

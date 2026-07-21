@@ -181,6 +181,46 @@ async function getOrCreateStaffUser(
   return created[0]
 }
 
+async function getStaffUserById(id: string): Promise<{ id: string } | null> {
+  const sql = getWorkerSql()
+  const rows = await sql<{ id: string }[]>`
+    SELECT id FROM staff_users WHERE id = ${id} LIMIT 1
+  `
+  return rows[0] ?? null
+}
+
+/**
+ * ¿El email ya pertenece a OTRO staff_user? Lo usa `updateUserEmailAction`
+ * ANTES de pedirle el cambio a Supabase Auth — `staff_users.email` tiene
+ * UNIQUE, así que sin este pre-check `syncStaffUserEmail` fallaría al
+ * confirmar (el UPDATE violaría la constraint) con el usuario ya pensando
+ * que el cambio quedó en curso.
+ */
+export async function isStaffEmailTaken(
+  email: string,
+  excludeStaffUserId: string,
+): Promise<boolean> {
+  const sql = getWorkerSql()
+  const lower = email.trim().toLowerCase()
+  const rows = await sql<{ id: string }[]>`
+    SELECT id FROM staff_users WHERE email = ${lower} AND id != ${excludeStaffUserId} LIMIT 1
+  `
+  return rows.length > 0
+}
+
+/**
+ * Sincroniza `staff_users.email` tras un cambio de email confirmado en
+ * Supabase Auth (`type=email_change` en el callback). NO se llama al pedir el
+ * cambio (`updateUserEmailAction`) — recién en la confirmación el email nuevo
+ * es real; sincronizarlo antes dejaría el login roto con el email viejo
+ * mientras la confirmación está pendiente.
+ */
+export async function syncStaffUserEmail(staffUserId: string, email: string): Promise<void> {
+  const sql = getWorkerSql()
+  const lower = email.trim().toLowerCase()
+  await sql`UPDATE staff_users SET email = ${lower} WHERE id = ${staffUserId}`
+}
+
 /**
  * Única fuente de verdad de provisión + claims + ruteo del staff. Antes vivía
  * inline en el callback; ahora la invocan el callback (confirmación de alta,
@@ -202,7 +242,26 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   const firstName = firstNameMeta ?? givenName ?? email.split('@')[0]
   const lastName = lastNameMeta ?? familyName ?? ''
 
-  const ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
+  // Resolución robusta: si el JWT ya trae `staff_user_id` (login/confirmación
+  // previa), resolver por ESE id en vez de por email. Un cambio de email
+  // confirmado (`type=email_change`) llega acá con `user.email` YA actualizado
+  // en Supabase Auth pero, en el momento en que esto corre, `staff_users.email`
+  // todavía tiene el email viejo (la sync ocurre en el callback, no acá) — si
+  // se resolviera por email se creaba un staff_user huérfano sin tenants.
+  // Fallback a email solo cuando no hay staff_user_id en metadata (alta nueva).
+  const staffUserIdMeta = typeof meta.staff_user_id === 'string' ? meta.staff_user_id : null
+  let ourStaff: { id: string }
+  if (staffUserIdMeta) {
+    const existing = await getStaffUserById(staffUserIdMeta)
+    if (!existing) {
+      throw new Error(
+        `provisionAndRouteStaff: staff_user_id ${staffUserIdMeta} en metadata no existe en staff_users`,
+      )
+    }
+    ourStaff = existing
+  } else {
+    ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
+  }
   const tenants = await resolveStaffTenants(ourStaff.id)
 
   const supabase = await createClient()

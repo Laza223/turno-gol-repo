@@ -46,7 +46,7 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
       const page = await context.newPage()
 
       await page.goto('/analiticas')
-      await expect(page.getByRole('heading', { name: 'Reportes' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Analíticas' })).toBeVisible({
         timeout: 15_000,
       })
 

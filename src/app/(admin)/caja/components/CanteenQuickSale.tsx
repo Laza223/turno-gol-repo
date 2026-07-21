@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useTransition } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -11,6 +11,7 @@ import type { CanteenProductsActionResult, SellCanteenProductResult } from '../a
 import { occurredAtForDate } from './occurred-at'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenProduct } from '@/modules/tenants/tenant.types'
+import { cn } from '@/lib/utils'
 
 /**
  * saveCanteenProductsAction llega por PROP, mismo motivo que
@@ -51,15 +52,32 @@ export function CanteenQuickSale({
   products,
   sellCanteenProductAction,
   saveCanteenProductsAction,
+  onConfigureClick,
+  isInDialog,
 }: {
   date: string
   products: CanteenProduct[]
   sellCanteenProductAction: SellCanteenProductAction
   saveCanteenProductsAction: SaveCanteenProductsAction
+  onConfigureClick?: () => void
+  isInDialog?: boolean
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [sale, setSale] = useState<CanteenProduct | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
+
+  useEffect(() => {
+    if (searchParams?.get('configureCanteen') === 'true') {
+      setEditorOpen(true)
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+    }
+  }, [searchParams])
+
+  const handleConfigure = onConfigureClick ?? (() => setEditorOpen(true))
+  const inDialog = isInDialog ?? Boolean(onConfigureClick)
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-xs">
@@ -67,8 +85,11 @@ export function CanteenQuickSale({
         <h2 className="font-medium text-foreground">Cantina/Bar</h2>
         <button
           type="button"
-          onClick={() => setEditorOpen(true)}
-          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          onClick={handleConfigure}
+          className={cn(
+            'inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
+            inDialog && 'mr-7 sm:mr-8',
+          )}
         >
           <Pencil className="h-4 w-4" aria-hidden="true" />
           Configurar
@@ -81,7 +102,7 @@ export function CanteenQuickSale({
           </p>
           <button
             type="button"
-            onClick={() => setEditorOpen(true)}
+            onClick={handleConfigure}
             className="mt-3 h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Configurar productos

@@ -18,11 +18,19 @@ export default async function NuevoAbonadoPage() {
   const courtOptions = courts.map((c) => ({ id: c.id, name: c.name }))
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <Link href="/abonados" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-        <ChevronLeft className="h-4 w-4" aria-hidden /> Abonados
-      </Link>
-      <h1 className="text-2xl font-semibold text-foreground">Nuevo abonado</h1>
+    <div className="max-w-6xl space-y-6">
+      <div className="space-y-1">
+        <Link
+          href="/abonados"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-1"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> Volver a Abonados
+        </Link>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">Nuevo Abonado</h1>
+        <p className="text-xs text-muted-foreground">
+          Configurá la reserva fija semanal y los datos del cliente regular.
+        </p>
+      </div>
       <AbonadoForm
         courts={courtOptions}
         submitAction={submitNewAbonado}

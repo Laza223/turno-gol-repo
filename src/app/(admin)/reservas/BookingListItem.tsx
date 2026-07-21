@@ -67,7 +67,11 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
         type: booking.type,
         depositStatus: booking.depositStatus,
         depositAmount: booking.depositAmount,
+        priceSnapshot: booking.priceSnapshot,
         paymentMethod: booking.paymentMethod,
+        guestName: booking.guestName ?? null,
+        guestPhone: null,
+        playerName: booking.playerName,
         endsAt: booking.endsAt,
       }}
       label={`${name} · ${timeRange}`}

@@ -5,8 +5,8 @@ import { newAuthedContext, suppressPushPrompt } from '../_qa/session'
 import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
 
 /**
- * TG-HP-226 — Equipo `/staff`: invitar miembro (rol manager) + gate solo-admin.
- * Rol: solo Admin ve/muta `/staff` (`requireAdminStaff`, `page.tsx:14` +
+ * TG-HP-226 — Equipo `/settings/equipo`: invitar miembro (rol manager) + gate solo-admin.
+ * Rol: solo Admin ve/muta `/settings/equipo` (`requireAdminStaff`, `page.tsx:14` +
  * `assertActorIsAdmin` dentro de cada Server Action, `actions.ts:115-134`).
  * Prereq: sesión admin del tenant Demo.
  * Flujo: botón "Agregar miembro del equipo" (label real en código —
@@ -15,17 +15,17 @@ import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
  * `DEFAULT_INVITE_ROLE='manager'`) → Enviar invitación.
  * Gate: se mintea sesión para el manager recién invitado (ya provisionado en
  * Supabase Auth por `inviteUserByEmail`, con `app_metadata.role='manager'`
- * seteado por la propia action) y se confirma que `/staff` y `/settings/*`
+ * seteado por la propia action) y se confirma que `/settings/equipo` y `/settings/*`
  * redirigen a `/dashboard` (`SettingsLayout` + `requireAdminStaff`).
  * NO-PLATA: se borra `tenant_staff_members`/`staff_users` del invitado en
  * `finally` (mismo alcance de limpieza que `staff-crud.spec.ts`, que tampoco
  * borra el auth user creado — deuda preexistente, no de este spec).
- * Evidence anchors: src/app/(admin)/staff/actions.ts:1-256,
- *   src/app/(admin)/staff/InviteStaffDialog.tsx:58-158,
- *   src/app/(admin)/settings/layout.tsx:1-13, src/modules/staff/roles.ts:1-22.
+ * Evidence anchors: src/app/(admin)/settings/equipo/actions.ts:1-256,
+ *   src/app/(admin)/settings/equipo/InviteStaffDialog.tsx:58-158,
+ *   src/app/(admin)/settings/layout.tsx:1-13, src/modules/settings/equipo/roles.ts:1-22.
  */
 test.describe('TG-HP-226 — Equipo: invitar Encargado + gate solo-admin', () => {
-  test('admin invita a un manager → fila activa en DB; el manager no accede a /staff ni /settings', async ({
+  test('admin invita a un manager → fila activa en DB; el manager no accede a /settings/equipo ni /settings', async ({
     browser,
     adminStorageState,
   }) => {
@@ -38,7 +38,7 @@ test.describe('TG-HP-226 — Equipo: invitar Encargado + gate solo-admin', () =>
       await adminContext.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await adminContext.newPage()
 
-      await page.goto('/staff')
+      await page.goto('/settings/equipo')
       await page.getByRole('button', { name: 'Agregar miembro del equipo' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Invitar miembro del equipo' })).toBeVisible()
@@ -79,7 +79,7 @@ test.describe('TG-HP-226 — Equipo: invitar Encargado + gate solo-admin', () =>
       await suppressPushPrompt(managerContext)
       const managerPage = await managerContext.newPage()
 
-      await managerPage.goto('/staff')
+      await managerPage.goto('/settings/equipo')
       await expect(managerPage).toHaveURL(/\/dashboard/, { timeout: 15_000 })
 
       await managerPage.goto('/settings/reservas')
@@ -89,7 +89,7 @@ test.describe('TG-HP-226 — Equipo: invitar Encargado + gate solo-admin', () =>
         status: 'pass',
         invitedEmail: email,
         dbRow: member,
-        gate: 'manager GET /staff → redirect /dashboard (requireAdminStaff); manager GET /settings/reservas → redirect /dashboard (SettingsLayout requireAdminStaff)',
+        gate: 'manager GET /settings/equipo → redirect /dashboard (requireAdminStaff); manager GET /settings/reservas → redirect /dashboard (SettingsLayout requireAdminStaff)',
       })
     } finally {
       await runSql(

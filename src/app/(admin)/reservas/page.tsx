@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import {
   cancelBookingAction,
   completeBookingAction,
+  completeAndChargeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
 } from './actions'
@@ -28,6 +29,7 @@ import {
 const QUICK_ACTIONS = {
   cancelBookingAction,
   completeBookingAction,
+  completeAndChargeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
 }

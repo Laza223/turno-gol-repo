@@ -187,6 +187,7 @@ const meta = {
     actions: {
       cancelBookingAction: fn(async () => SUCCESS),
       completeBookingAction: fn(async () => SUCCESS),
+      completeAndChargeBookingAction: fn(async () => SUCCESS) as any,
       confirmDepositPaymentAction: fn(async () => SUCCESS),
       markNoShowAction: fn(async () => SUCCESS),
     },

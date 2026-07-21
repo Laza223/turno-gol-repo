@@ -6,7 +6,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
-import type { BookingActionResult } from '../actions'
+import CompleteBookingDialog from '../CompleteBookingDialog'
+import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from '../actions'
 
 type CancellationType = 'complejo' | 'jugador'
 
@@ -23,6 +24,12 @@ type Props = {
   depositStatus: string
   depositAmount: number
   paymentMethod: string | null
+  priceSnapshot: number
+  chargesTotal: number
+  guestName: string | null
+  guestPhone: string | null
+  playerName?: string | null
+  playerPhone?: string | null
   /** Fecha del turno (YYYY-MM-DD) para evaluar la política de cancelación. */
   bookingDate: string
   /** Hora de inicio (HH:MM:SS). */
@@ -47,6 +54,7 @@ type Props = {
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
   completeBookingAction: SimpleBookingFn
+  completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
   markNoShowAction: SimpleBookingFn
   cancelBookingAction: CancelBookingFn
 }
@@ -79,7 +87,14 @@ export default function BookingActions({
   startsAt,
   endsAt,
   cancellationPolicyHours,
+  priceSnapshot,
+  chargesTotal,
+  guestName,
+  guestPhone,
+  playerName,
+  playerPhone,
   completeBookingAction,
+  completeAndChargeBookingAction,
   markNoShowAction,
   cancelBookingAction,
 }: Props) {
@@ -88,6 +103,7 @@ export default function BookingActions({
   const [error, setError] = useState<string | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [noShowOpen, setNoShowOpen] = useState(false)
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
   const [cancelType, setCancelType] = useState<CancellationType | null>(null)
   const [reason, setReason] = useState('')
 
@@ -160,7 +176,7 @@ export default function BookingActions({
         <button
           type="button"
           disabled={pending}
-          onClick={() => runDirect(() => completeBookingAction(bookingId))}
+          onClick={() => setCompleteDialogOpen(true)}
           className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
           Marcar completada
@@ -252,6 +268,26 @@ export default function BookingActions({
         cancelLabel="Volver"
         onConfirm={onConfirmNoShow}
       />
+
+      {completeDialogOpen && (
+        <CompleteBookingDialog
+          booking={{
+            id: bookingId,
+            priceSnapshot,
+            depositAmount,
+            depositStatus,
+            paymentMethod,
+            guestName,
+            guestPhone,
+            playerName,
+            playerPhone,
+            chargesTotal,
+          }}
+          label={`Reserva`}
+          onClose={() => setCompleteDialogOpen(false)}
+          completeAndChargeAction={completeAndChargeBookingAction}
+        />
+      )}
     </div>
   )
 }

@@ -63,6 +63,7 @@ function wonBookingRow(): BookingRow {
     playerId: null, // sin jugador vinculado: evita la rama de notificación/ctxRows
     abonadoId: null,
     createdByStaff: null,
+    completedByStaff: null,
     date: new Date('2027-01-01T00:00:00Z'),
     timeStart: '10:00',
     timeEnd: '11:00',

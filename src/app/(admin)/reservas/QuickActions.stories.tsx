@@ -44,6 +44,9 @@ const CONFIRMADA_SENA_MP = {
   depositStatus: 'paid',
   depositAmount: 450_000,
   paymentMethod: 'mercadopago',
+  priceSnapshot: 1500000,
+  guestName: null,
+  guestPhone: null,
 }
 
 const PENDIENTE_PAGO = {
@@ -53,6 +56,9 @@ const PENDIENTE_PAGO = {
   depositStatus: 'pending',
   depositAmount: 450_000,
   paymentMethod: null,
+  priceSnapshot: 1500000,
+  guestName: null,
+  guestPhone: null,
 }
 
 /**
@@ -75,6 +81,7 @@ const meta = {
     label: 'Julián Álvarez · 19:00–20:00',
     cancelBookingAction: fn(async () => SUCCESS),
     completeBookingAction: fn(async () => SUCCESS),
+    completeAndChargeBookingAction: fn(async () => SUCCESS) as any,
     confirmDepositPaymentAction: fn(async () => SUCCESS),
     markNoShowAction: fn(async () => SUCCESS),
   },

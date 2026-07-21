@@ -4,7 +4,7 @@ import {
   bookings,
   courts,
   players,
-  tenantPlayerBans,
+  cashFlows,
 } from '@/shared/db/schema'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { todayART } from '@/shared/time/art-date'
@@ -35,8 +35,8 @@ export interface DashboardData {
   /** true si hoy no hay oferta (closed_dates, día cerrado o sin horario válido). */
   dayIsClosed: boolean
   pendingDeposits: { count: number; amountCents: number }
-  /** Jugadores con softban activo por ausencias reiteradas (tenant_player_bans). */
-  blockedPlayers: number
+  /** Ventas de cantina/bar registradas hoy. */
+  canteenSales: { count: number; amountCents: number }
   upcoming: DayBookingRow[]
   playedToday: number
   openHhmm: string
@@ -79,7 +79,7 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
   )
 
   return withTenantContext(tenant.id, async (tx) => {
-    const [summary, bookingRows, courtRows, blockedRow] = await Promise.all([
+    const [summary, bookingRows, courtRows, canteenRow] = await Promise.all([
       getDaySummary(tenant.id, date, tx),
 
       tx
@@ -114,12 +114,16 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
         .where(eq(courts.tenantId, tenant.id)),
 
       tx
-        .select({ players: count() })
-        .from(tenantPlayerBans)
+        .select({
+          count: count(),
+          amount: sql<number>`COALESCE(SUM(${cashFlows.amount}), 0)::int`,
+        })
+        .from(cashFlows)
         .where(
           and(
-            eq(tenantPlayerBans.tenantId, tenant.id),
-            sql`(${tenantPlayerBans.bannedUntil} IS NULL OR ${tenantPlayerBans.bannedUntil} > NOW())`,
+            eq(cashFlows.tenantId, tenant.id),
+            sql`(${cashFlows.occurredAt} AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date`,
+            eq(cashFlows.category, 'product_sale'),
           ),
         )
         .then((r) => r[0]),
@@ -153,7 +157,10 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
       occupancy: occupancyForDay(rows, slots.length, courtsOnline),
       dayIsClosed: slots.length === 0,
       pendingDeposits: pendingDeposits(rows),
-      blockedPlayers: Number(blockedRow?.players ?? 0),
+      canteenSales: {
+        count: Number(canteenRow?.count ?? 0),
+        amountCents: Number(canteenRow?.amount ?? 0),
+      },
       upcoming: upcomingForDay(rows, nowHhmm, openHhmm, tenant.closesNextDay),
       playedToday: playedCount(rows),
       openHhmm,

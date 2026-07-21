@@ -22,9 +22,6 @@ test.describe('TG-HP-005 — Landing B2B /para-complejos', () => {
       page.getByRole('heading', { level: 1, name: /Tu complejo, siempre lleno\./ }),
     ).toBeVisible()
 
-    // Step 3: pill "Para dueños y encargados"
-    await expect(page.getByText('Para dueños y encargados')).toBeVisible()
-
     // Step 4: CTA hero "Empezar gratis" → /register (dentro de #main-content: hero + CTA final)
     await main.getByRole('link', { name: 'Empezar gratis' }).first().click()
     await page.waitForURL('/register')

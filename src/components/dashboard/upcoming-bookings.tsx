@@ -125,13 +125,7 @@ export function UpcomingBookings({
           </EmptyRow>
         ) : (
           <EmptyRow icon={CalendarPlus}>
-            Todavía no hay reservas para hoy.{' '}
-            <Link
-              href="/grilla"
-              className="font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
-            >
-              Cargar la primera desde la grilla
-            </Link>
+            Todavía no hay reservas para hoy.
           </EmptyRow>
         )
       ) : (

@@ -86,7 +86,7 @@ export async function createCourtAction(formData: FormData): Promise<CourtAction
     return { success: true as const, courtId: court.id }
   })
 
-  if (result.success) revalidatePath('/canchas')
+  if (result.success) revalidatePath('/settings/canchas')
   return result
 }
 
@@ -144,7 +144,7 @@ export async function updateCourtAction(
     return { success: true as const, courtId: court.id }
   })
 
-  if (result.success) revalidatePath('/canchas')
+  if (result.success) revalidatePath('/settings/canchas')
   return result
 }
 
@@ -167,7 +167,7 @@ export async function toggleCourtStatusAction(
     return { success: true as const, courtId: court.id }
   })
 
-  if (result.success) revalidatePath('/canchas')
+  if (result.success) revalidatePath('/settings/canchas')
   return result
 }
 
@@ -268,7 +268,7 @@ export async function uploadCourtPhotoAction(
       appendCourtPhoto(courtId, tenant.id, url, tx),
     )
     if (photos === null) return { success: false, error: 'Cancha no encontrada' }
-    revalidatePath('/canchas')
+    revalidatePath('/settings/canchas')
     revalidatePath(`/${tenant.slug}`)
     return { success: true, photos }
   } catch (e) {
@@ -313,7 +313,7 @@ export async function removeCourtPhotoAction(
 
   await deleteImage(key)
 
-  revalidatePath('/canchas')
+  revalidatePath('/settings/canchas')
   revalidatePath(`/${tenant.slug}`)
   return { success: true, photos }
 }
@@ -334,7 +334,7 @@ export async function reorderCourtPhotosAction(
       reorderCourtPhotos(courtId, tenant.id, urls, tx),
     )
     if (photos === null) return { success: false, error: 'Cancha no encontrada' }
-    revalidatePath('/canchas')
+    revalidatePath('/settings/canchas')
     revalidatePath(`/${tenant.slug}`)
     return { success: true, photos }
   } catch (e) {

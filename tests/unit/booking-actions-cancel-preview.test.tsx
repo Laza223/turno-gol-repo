@@ -33,9 +33,14 @@ function renderActions(overrides: Partial<Parameters<typeof BookingActions>[0]> 
       bookingDate="2026-03-14"
       timeStart="20:00:00"
       cancellationPolicyHours={12}
+      priceSnapshot={1500000}
+      chargesTotal={0}
+      guestName={null}
+      guestPhone={null}
       completeBookingAction={noop}
+      completeAndChargeBookingAction={noop}
       markNoShowAction={noop}
-      cancelBookingAction={noop}
+      cancelBookingAction={noop as any}
       {...overrides}
     />,
   )

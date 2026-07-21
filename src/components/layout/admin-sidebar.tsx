@@ -9,11 +9,9 @@ import {
   CalendarCheck,
   Users,
   Contact,
-  Trophy,
   Banknote,
-  BarChart3,
+  Receipt,
   ChartLine,
-  UserCog,
   Settings,
   X,
 } from 'lucide-react'
@@ -37,13 +35,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Inicio' },
   { href: '/grilla', icon: CalendarDays, label: 'Grilla' },
   { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
+  { href: '/deudas', icon: Receipt, label: 'Deudas' },
   { href: '/abonados', icon: Users, label: 'Abonados' },
   { href: '/jugadores', icon: Contact, label: 'Jugadores' },
-  { href: '/canchas', icon: Trophy, label: 'Canchas' },
   { href: '/caja', icon: Banknote, label: 'Caja' },
-  { href: '/reportes', icon: BarChart3, label: 'Reportes' },
-  { href: '/metricas', icon: ChartLine, label: 'Métricas' },
-  { href: '/staff', icon: UserCog, label: 'Equipo' },
+  { href: '/analiticas', icon: ChartLine, label: 'Analíticas' },
   { href: '/settings', icon: Settings, label: 'Configuración' },
 ]
 
@@ -61,29 +57,41 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-5 border-b border-border">
-        <div className="min-w-0">
+      <div className="flex flex-col gap-4 px-4 py-5 border-b border-border">
+        <div className="flex items-center justify-between w-full">
           <Link href="/dashboard" className="block outline-hidden rounded-sm">
             <Logo variant="horizontal" textClassName="text-foreground" />
           </Link>
-          <div className="mt-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground hover:bg-accent"
+              aria-label="Cerrar menú"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/40 p-2.5 dark:bg-zinc-950/20">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 text-white font-bold text-sm shadow-md shadow-emerald-500/10">
+            {tenantName.slice(0, 2).toUpperCase()}
+            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 leading-none">
               Complejo
             </p>
-            <p className="text-sm font-medium text-foreground truncate">{tenantName}</p>
+            <p className="mt-1 text-sm font-semibold text-foreground truncate leading-tight tracking-tight">
+              {tenantName}
+            </p>
           </div>
         </div>
-        {isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="ml-2 text-muted-foreground hover:text-foreground hover:bg-accent"
-            aria-label="Cerrar menú"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
       </div>
 
       {/* Nav */}

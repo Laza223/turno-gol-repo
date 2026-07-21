@@ -15,7 +15,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import { hasQuickActions } from './quick-actions-helpers'
-import type { BookingActionResult } from './actions'
+import CompleteBookingDialog from './CompleteBookingDialog'
+import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
 
 type QuickActionsBooking = {
   id: string
@@ -23,7 +24,12 @@ type QuickActionsBooking = {
   type: string
   depositStatus: string
   depositAmount: number
+  priceSnapshot: number
   paymentMethod: string | null
+  guestName: string | null
+  guestPhone: string | null
+  playerName?: string | null
+  playerPhone?: string | null
   /**
    * Instante físico absoluto del FIN del turno (TIMESTAMPTZ ISO, migraciones
    * 040/041) — fuente de verdad del guard "turno ya jugado" (clase de B3):
@@ -48,6 +54,7 @@ export type BookingQuickActions = {
   completeBookingAction: SimpleBookingFn
   confirmDepositPaymentAction: SimpleBookingFn
   markNoShowAction: SimpleBookingFn
+  completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
 }
 
 type Props = BookingQuickActions & {
@@ -75,6 +82,7 @@ export function QuickActions({
   completeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
+  completeAndChargeBookingAction,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -82,6 +90,7 @@ export function QuickActions({
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
   const [reason, setReason] = useState('')
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
   const disarmRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -187,7 +196,7 @@ export function QuickActions({
             <button
               type="button"
               disabled={pending}
-              onClick={() => run(() => completeBookingAction(booking.id), 'Marcada como completada')}
+              onClick={() => setCompleteDialogOpen(true)}
               className={cn(inlineBtn, 'border border-border bg-card text-foreground hover:bg-accent')}
             >
               Completada
@@ -248,7 +257,7 @@ export function QuickActions({
             ) : (
               <>
                 <DropdownMenuItem
-                  onSelect={() => run(() => completeBookingAction(booking.id), 'Marcada como completada')}
+                  onSelect={() => setCompleteDialogOpen(true)}
                 >
                   Marcar completada
                 </DropdownMenuItem>
@@ -325,6 +334,26 @@ export function QuickActions({
           </div>
         </div>
       </ConfirmDialog>
+
+      {completeDialogOpen && (
+        <CompleteBookingDialog
+          booking={{
+            id: booking.id,
+            priceSnapshot: booking.priceSnapshot,
+            depositAmount: booking.depositAmount,
+            depositStatus: booking.depositStatus,
+            paymentMethod: booking.paymentMethod,
+            guestName: booking.guestName,
+            guestPhone: booking.guestPhone,
+            playerName: booking.playerName,
+            playerPhone: booking.playerPhone,
+            chargesTotal: 0,
+          }}
+          label={label}
+          onClose={() => setCompleteDialogOpen(false)}
+          completeAndChargeAction={completeAndChargeBookingAction}
+        />
+      )}
     </>
   )
 }

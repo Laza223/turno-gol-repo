@@ -242,11 +242,11 @@ export function BookingGrid({
             // BookingGrid no recibe el rol del staff logueado (grilla/page.tsx solo
             // valida `user.type === 'staff'`, sin re-chequear admin/manager) y
             // agregar esa prop es scope creep para este cambio. Se muestra igual
-            // para cualquier staff: /canchas es de solo-lectura para el manager
+            // para cualquier staff: /settings/canchas es de solo-lectura para el manager
             // (CourtList ya oculta "+ Nueva cancha" si !isAdmin), así que navegar
             // ahí nunca habilita una escritura no autorizada.
             <Link
-              href="/canchas"
+              href="/settings/canchas"
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
             >
               Configurar la primera cancha

@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { PerfilImagesForm } from './PerfilImagesForm'
-import { setTenantImageAction, removeTenantImageAction } from './actions'
+import { AccountEmailForm } from './AccountEmailForm'
+import { setTenantImageAction, removeTenantImageAction, updateUserEmailAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function PerfilPage() {
@@ -17,6 +18,11 @@ export default async function PerfilPage() {
       <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
       <SettingsTabs active="/settings/perfil" />
+
+      <AccountEmailForm
+        currentEmail={user.email}
+        updateEmailAction={updateUserEmailAction}
+      />
 
       <div className="card-premium rounded-lg p-6">
         <h2 className="mb-6 text-base font-semibold text-foreground">Perfil público</h2>

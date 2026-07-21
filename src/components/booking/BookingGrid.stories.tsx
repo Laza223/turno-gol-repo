@@ -78,14 +78,14 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 
 export const SinCanchas: Story = {
-  name: 'courts=[] — EmptyState "Sin canchas configuradas" con CTA a /canchas',
+  name: 'courts=[] — EmptyState "Sin canchas configuradas" con CTA a /settings/canchas',
   args: { courts: [], initialBookings: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Sin canchas configuradas')).toBeInTheDocument()
     await expect(
       canvas.getByRole('link', { name: 'Configurar la primera cancha' }),
-    ).toHaveAttribute('href', '/canchas')
+    ).toHaveAttribute('href', '/settings/canchas')
   },
 }
 

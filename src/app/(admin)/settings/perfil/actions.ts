@@ -1,6 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
+import { headers } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
@@ -110,4 +113,48 @@ export async function removeTenantImageAction(
   revalidatePath('/settings/perfil')
   revalidatePath(`/${tenant.slug}`)
   return { success: true }
+}
+
+export type UpdateEmailActionResult =
+  | { success: true; message: string }
+  | { success: false; error: string }
+
+export async function updateUserEmailAction(
+  newEmail: string,
+): Promise<UpdateEmailActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const parsed = z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email({ message: 'Ingresá un email válido' }))
+    .safeParse(newEmail)
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Email inválido' }
+  }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const supabase = await createClient()
+  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+
+  const { error } = await supabase.auth.updateUser(
+    { email: parsed.data },
+    { emailRedirectTo: `${origin}/api/auth/callback` },
+  )
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath('/settings/perfil')
+  return {
+    success: true,
+    message: `Te enviamos un correo de confirmación a ${parsed.data}. Hacé click en el enlace para completar la actualización.`,
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * TG-HP-220 — Reportes `/reportes` + exportar CSV.
+ * TG-HP-220 — Reportes `/analiticas` + exportar CSV.
  * Rol: cualquier staff autenticado (sin gate de rol a nivel página — admin y
  * manager acceden). Prereq: al menos 1 cash_flow en el mes actual para que se
  * muestren los KPIs reales (si el mes está vacío, se ve el estado fantasma y
@@ -14,7 +14,7 @@
  * real hoy (ver notes en writeEvidence). Reportar esta discrepancia manual↔código.
  *
  * No-plata: se limpia el cash_flow sembrado en finally.
- * Evidencia: src/app/(admin)/reportes/page.tsx:73-294,
+ * Evidencia: src/app/(admin)/analiticas/page.tsx:73-294,
  * src/app/api/reports/revenue/route.ts:1-51,
  * src/modules/reports/report.service.ts:195-229.
  */
@@ -45,7 +45,7 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/reportes')
+      await page.goto('/analiticas')
       await expect(page.getByRole('heading', { name: 'Reportes' })).toBeVisible({
         timeout: 15_000,
       })

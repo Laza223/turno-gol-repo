@@ -33,7 +33,10 @@ function booking(overrides: Partial<Parameters<typeof QuickActions>[0]['booking'
     type: 'spontaneous',
     depositStatus: 'not_required',
     depositAmount: 0,
+    priceSnapshot: 1500000,
     paymentMethod: null,
+    guestName: null,
+    guestPhone: null,
     ...overrides,
   }
 }
@@ -41,6 +44,7 @@ function booking(overrides: Partial<Parameters<typeof QuickActions>[0]['booking'
 const quickActions = {
   confirmDepositPaymentAction: confirmDepositMock,
   completeBookingAction: completeMock,
+  completeAndChargeBookingAction: completeMock as any,
   markNoShowAction: noShowMock,
   cancelBookingAction: cancelMock,
 }

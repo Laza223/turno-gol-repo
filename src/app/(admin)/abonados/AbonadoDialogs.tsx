@@ -1,6 +1,7 @@
 'use client'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import DatePicker from '@/components/ui/date-picker'
 
 type DialogKind = 'pause' | 'reactivate' | 'cancel' | null
 
@@ -102,17 +103,16 @@ export function AbonadoDialogs({
         confirmationPhrase="CANCELAR"
         onConfirm={onConfirmCancel}
       >
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label htmlFor={`cancel-date-${abonadoId}`} className="text-xs font-medium text-foreground">
             Cancelar desde
           </label>
-          <input
+          <DatePicker
             id={`cancel-date-${abonadoId}`}
-            type="date"
-            min={todayART()}
             value={cancelFromDate}
-            onChange={(e) => onCancelFromDateChange(e.target.value)}
-            className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+            onChange={onCancelFromDateChange}
+            min={todayART()}
+            placeholder="Seleccionar fecha"
           />
         </div>
       </ConfirmDialog>

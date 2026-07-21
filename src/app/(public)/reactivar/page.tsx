@@ -8,6 +8,7 @@ import { getStaffRole } from '@/modules/staff/staff.service'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { plans } from '@/shared/db/schema'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
+import { listCourts } from '@/modules/courts/court.service'
 import { ActivatePlanSection, type ActivatePlanOption } from '@/app/(admin)/settings/facturacion/ActivatePlanSection'
 import { CancelSubscriptionSection, CANCELABLE } from '@/app/(admin)/settings/facturacion/CancelSubscriptionSection'
 
@@ -112,6 +113,9 @@ export default async function ReactivarPage() {
     sub = null
   }
 
+  const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
+  const defaultCourts = courts.length || 3
+
   const copy = STATUS_COPY[tenant.status] ?? DEFAULT_COPY
   const deadline = sub?.scheduledDeletionAt ?? null
   const deadlinePassed = deadline ? new Date(deadline).getTime() <= Date.now() : false
@@ -120,7 +124,7 @@ export default async function ReactivarPage() {
   const activePlans = canReactivate ? await loadActivePlans() : []
 
   return (
-    <section className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center gap-6 px-6 py-16">
+    <section className="mx-auto flex min-h-[70vh] max-w-4xl flex-col justify-center gap-6 px-6 py-16">
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{copy.title}</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{copy.description}</p>
@@ -143,6 +147,7 @@ export default async function ReactivarPage() {
       {canReactivate && activePlans.length > 0 && (
         <ActivatePlanSection
           plans={activePlans}
+          defaultCourts={defaultCourts}
           endpoint="/api/billing/reactivate"
           title="Reactivar plan"
           description="Elegí tu plan para volver a operar."
@@ -182,7 +187,7 @@ export default async function ReactivarPage() {
       {sub && CANCELABLE.has(sub.status) && (
         <CancelSubscriptionSection
           status={sub.status}
-          accessUntil={sub.currentPeriodEnd.toISOString()}
+          accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
           context="reactivar"
         />
       )}

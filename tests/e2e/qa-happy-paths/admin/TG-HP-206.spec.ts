@@ -10,7 +10,7 @@ import { suppressPushPrompt } from '../_qa/session'
  * GAP importante (documentado, no es bug): el uploader de fotos SOLO aparece en
  * modo EDICIÓN (CourtForm.tsx:250-268) — hay que crear la cancha primero y
  * reabrirla en "Editar" para subir fotos.
- * Evidence anchors: src/app/(admin)/canchas/actions.ts:34-91,226-277,
+ * Evidence anchors: src/app/(admin)/settings/canchas/actions.ts:34-91,226-277,
  *   CourtForm.tsx:162-283, CourtList.tsx:128-149.
  */
 
@@ -35,10 +35,10 @@ test.describe('TG-HP-206 — Crear cancha + subir fotos a R2', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      // Step 1-2: /canchas → "+ Nueva cancha". networkidle: el uploader de
+      // Step 1-2: /settings/canchas → "+ Nueva cancha". networkidle: el uploader de
       // fotos es un componente cliente — setInputFiles antes de hidratar es
       // un no-op silencioso (mismo gotcha de admin-create-booking-ui.spec.ts).
-      await page.goto('/canchas', { waitUntil: 'networkidle' })
+      await page.goto('/settings/canchas', { waitUntil: 'networkidle' })
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({ timeout: 15_000 })
       await page.getByRole('button', { name: '+ Nueva cancha' }).click()
       await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()

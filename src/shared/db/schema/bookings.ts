@@ -72,6 +72,8 @@ export const bookings = pgTable(
     canceledBy: cancellationActorEnum('canceled_by'),
     canceledAt: timestamp('canceled_at', { withTimezone: true, mode: 'date' }),
 
+    completedByStaff: uuid('completed_by_staff').references(() => staffUsers.id),
+
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),

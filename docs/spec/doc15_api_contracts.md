@@ -614,6 +614,31 @@ Response 200:
 }
 ```
 
+> [!NOTE]
+> **Fórmula real (verificado contra código — la respuesta de arriba es un ejemplo ilustrativo).**
+> El endpoint JSON `GET /api/reports/occupancy` con esta forma exacta (por *slots*, ratio 0-1) **no
+> está implementado**; las métricas reales viven en dos superficies con criterios distintos:
+>
+> - **Ocupación** — `getRevenueReport` (`src/modules/reports/report.service.ts`), consumida por la
+>   página server-component `/reportes` (no un endpoint JSON). Se calcula **por minutos, no por
+>   slots**, y devuelve **porcentaje 0-100** (no ratio 0-1):
+>   `occupancyPct = round((minutos_reservados / minutos_disponibles) × 1000) / 10` (0 si el
+>   denominador es 0).
+>   - **Numerador** = minutos reservados por cancha, contando solo bookings en estados "activos":
+>     `confirmed`, `completed`, `no_show` (`ACTIVE_STATUSES`). Se cuenta desde `bookings`
+>     directamente (no desde `cash_flows`) para no doble-contar reservas con varios cobros.
+>   - **Denominador** = suma de las `opening_hours` del complejo por día en el rango × cantidad de
+>     canchas con `status = 'online'`, prorrateado por cancha.
+> - **Horas pico** (`peak_hours`) — `topSlots` (`src/modules/metrics/metrics.service.ts`, expuesto
+>   por `GET /api/admin/metrics`): **top-5 horarios de inicio por cantidad de reservas** (no por
+>   ingresos ni por % de ocupación), ventana de **30 días** (`METRICS_WINDOW_DAYS`), **global por
+>   complejo** (no per-court). El conteo usa `COUNTED_BOOKING_STATUSES`, que **incluye canceladas** —
+>   criterio distinto del de ocupación.
+> - **`weakest_hours` (horas valle): NO existe en el código.** Solo aparece en este ejemplo; si se
+>   necesita, hay que implementarlo (p. ej. el bottom-N de la misma distribución de `topSlots`).
+> - **`revenue`** — suma de `cash_flows.amount` con `type = 'income'` (métricas globales, agrupado
+>   por categoría; el income per-court del reporte financiero mapea a `byCourt[].income`).
+
 ### 5.10 Notificaciones y Audit Logs
 
 | Método | Ruta | Rol mínimo | Descripción |

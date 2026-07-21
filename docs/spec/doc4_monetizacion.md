@@ -165,9 +165,11 @@
 
 > [!NOTE]
 > **Canal v1: solo email.** WhatsApp Business API se evalúa para v1.5 cuando haya escala para
-> negociar tarifas con un BSP argentino. Los costos de WA a escala (estimados en 30-300x más
-> de lo presupuestado originalmente) hacen inviable usarlo como canal primario en fase temprana.
-> Email es gratuito hasta ~100 envíos/día con Resend/SendGrid tiers free.
+> negociar tarifas con un BSP argentino. Su modelo de costos lo hace inviable como canal primario
+> en fase temprana: Meta tarifa **por conversación iniciada** (ventana de 24 h) más el markup del
+> BSP, y exige contrato con un BSP + aprobación de plantillas — frente al costo marginal casi nulo
+> del email. Sin volumen para negociar tarifa, el costo por notificación es sustancialmente mayor.
+> Email es gratuito hasta ~100 envíos/día con los tiers free de Resend/SendGrid. (Ver ADR-003.)
 
 ---
 

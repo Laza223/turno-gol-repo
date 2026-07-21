@@ -532,15 +532,53 @@ TurnoGol. Nuestra app sólo verifica JWTs emitidos por Supabase Auth.
 
 ---
 
+### 3.13 Worker de pg-boss Caído (SEV-2)
+
+**Síntoma**: Las reservas `pending_payment` no expiran (los slots quedan "ocupados" y no reservables aunque nadie pagó la seña), los emails de confirmación no salen, no se generan los turnos de abonados, el dunning no reintenta. El cron `health-ping` deja de reportar.
+
+**Contexto**: El worker es la **única** pieza del stack que corre fuera de Vercel/Supabase — Railway, `Dockerfile.worker`, `startCommand = "pnpm jobs:start"` (→ `src/shared/jobs/run-workers.ts`). Es un **punto único de falla**: `numReplicas = 1`, `restartPolicyType = "ON_FAILURE"` (máx 10 reintentos). Corre los 13 workers (expiración de bookings, envío de emails, webhooks MP, generación de slots de abonados, expiración de trials, auto-completar, dunning, retención, refresh/reconcile/refund de MP, push, health-ping).
+
+**Por qué es crítico para las reservas**: el exclusion constraint `no_overlapping_bookings` bloquea el slot mientras el booking siga en `pending_payment` (`WHERE status IN ('pending_payment','confirmed')`). Las **dos** rutas de expiración —el job diferido por-booking (`expire-pending-booking`) y el barrido `*/5` (`expire-pending-booking-sweep`)— viven **solo** en el worker; no hay trigger de DB ni barrido web de respaldo. Además, el job por-booking se auto-descarta en pg-boss a la hora (`expireInHours: 1`): si el worker está caído **>1h**, ese job nunca corre y el slot solo se libera cuando el worker vuelve y el barrido de 5 min lo recoge.
+
+```
+DIAGNÓSTICO:
+
+  1. Railway Dashboard → servicio del worker → ver estado y logs.
+     → ¿Está "Crashed"/"Stopped"? ¿Agotó los 10 reintentos de ON_FAILURE?
+  2. ¿Cuántos jobs sin procesar hay en pg-boss?
+     SELECT name, state, count(*) FROM pgboss.job
+       WHERE state IN ('created','retry') GROUP BY name, state ORDER BY 3 DESC;
+  3. ¿Cuántas reservas quedaron colgadas?
+     SELECT count(*) FROM bookings
+       WHERE status = 'pending_payment' AND created_at < NOW() - INTERVAL '6 minutes';
+
+SOLUCIÓN:
+
+  1. Reiniciar el worker en Railway (Restart) o redeploy si el crash es por código/env.
+     → Verificar que WORKER_DATABASE_URL (rol turnogol_worker, BYPASSRLS) esté seteada.
+  2. Al volver, el worker retoma los jobs persistidos en Postgres (pg-boss los guarda en la DB).
+     → Los jobs por-booking aún dentro de su ventana de 1h corren; el barrido `*/5` recoge el resto.
+     → Las reservas colgadas > 6 min pasan a `expired` en el próximo barrido y liberan el slot.
+  3. Si el worker no arranca, expirar manualmente para desbloquear slots (último recurso):
+     UPDATE bookings SET status = 'expired'
+       WHERE status = 'pending_payment' AND created_at < NOW() - INTERVAL '6 minutes';
+     (revisar antes que no haya pagos aprobados sin conciliar para esas reservas.)
+
+PREVENCIÓN: para HA, subir numReplicas a 2 (railway.toml). pg-boss coordina los consumers,
+            así que 2 réplicas no duplican el trabajo.
+```
+
+---
+
 ## 4. Mantenimiento Programado
 
 ### 4.1 Tareas diarias (automáticas)
 
 | Tarea | Horario | Ejecutor | Qué hace |
 |---|---|---|---|
-| Backup de DB | Automático (Supabase) | Supabase | Backup diario, retención 30 días |
+| Backup de DB | Automático (Supabase) | Supabase | Backup diario, retención 7 días (plan Pro) |
 | Health check | Cada 1-5 min | UptimeRobot | Verifica que la app responde |
-| Expiración de bookings | Cada 1 min | pg-boss worker | Expira reservas `pending_payment` > 6 min |
+| Expiración de bookings | Job por-booking (+6 min) + barrido `*/5` | pg-boss worker | Expira reservas `pending_payment` > 6 min. Job diferido al crear el booking + cron de barrido cada 5 min como red de seguridad |
 | Envío de emails programados | Continuo | pg-boss worker | Procesa cola de notificaciones email |
 | Métricas de negocio | Cada 1 hora | pg-boss cron | Recolecta y loguea métricas hourly |
 
@@ -699,6 +737,45 @@ PROCESO:
 
   REGLA: Nunca hacer un restore completo sobre producción sin haber
          verificado el backup en un entorno separado primero.
+```
+
+### 5.4 Bootstrap del primer Super-Admin (`system_admins`)
+
+```
+CUÁNDO: Alta del primer (o un nuevo) miembro del equipo interno de TurnoGol con acceso al
+        panel /super-admin. NO es un tenant ni staff de un complejo.
+
+COMANDO:
+  pnpm seed:system-admin <email> [firstName] [lastName]
+  (script: scripts/seed-system-admin.ts; idempotente — se puede correr de nuevo sin duplicar)
+
+QUÉ HACE (3 efectos):
+  1. Crea el usuario de Supabase Auth si no existe (email_confirm=true). Password opcional vía
+     env SUPERADMIN_SEED_PASSWORD; sin ella, el login es passwordless (magic link).
+  2. Inserta la fila en system_admins vía el pool worker BYPASSRLS (getWorkerDb), NO turnogol_app:
+     la tabla tiene RLS + FORCE self-scoped (migr. 006 + 036) SIN policy de INSERT, así que el
+     pool restringido de la app sería rechazado con 42501 (insufficient privilege). En prod
+     requiere WORKER_DATABASE_URL apuntando a turnogol_worker.
+  3. Setea app_metadata en el JWT: { is_system_admin: true, system_admin_id: <uuid de la fila> }.
+
+RELACIÓN CON auth.users:
+  system_admins.id  ≠  auth.users.id  (son UUIDs distintos, generados por separado).
+  El vínculo es el claim app_metadata.system_admin_id, que el guard usa para localizar la fila.
+
+PASO MANUAL OBLIGATORIO (el seed NO lo hace):
+  Agregar el email a la env SYSTEM_ADMIN_EMAILS (en .env.local y en las env vars de producción).
+  El guard (src/modules/auth/system-admin.guards.ts) es fail-closed: si la env está ausente o la
+  lista vacía → NADIE pasa. Triple check al acceder: (1) claim JWT is_system_admin,
+  (2) fila con status='active', (3) allowlist comparada contra el email de la FILA (no el del JWT).
+
+PRIMER LOGIN:
+  Login por el flujo normal (magic link, o password si se seteó SUPERADMIN_SEED_PASSWORD).
+  El login de un super-admin rutea a /super-admin.
+
+MFA / TOTP:
+  DEFERIDO en v1. Las columnas system_admins.mfa_secret / mfa_verified_at existen pero NO se
+  enrolan ni se verifican en los guards. Habilitar MFA requiere código nuevo (enrolar el secret
+  en el primer login + verificar el TOTP en el guard) que hoy no existe.
 ```
 
 ---
@@ -991,8 +1068,9 @@ PROBLEMA: Emails llegan a spam
 
 ```
 BACKUPS AUTOMÁTICOS (Supabase):
-  → Plan Pro: Point-in-Time Recovery (PITR) con retención de 30 días
-  → Plan Free: Backup diario con retención de 7 días
+  → Plan Pro: backups diarios automáticos con retención de 7 días (incluido en el plan)
+  → PITR (Point-in-Time Recovery): add-on pago del plan Pro. Restaura a cualquier
+    timestamp; retención configurable (7 días por defecto). Ver §10.3.
   → Los backups se ejecutan automáticamente — no requieren acción manual
 
 BACKUPS MANUALES (recomendado antes de cambios críticos):

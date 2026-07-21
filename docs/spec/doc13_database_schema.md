@@ -565,8 +565,10 @@ CREATE TABLE bookings (
   payment_id      UUID REFERENCES payments(id),  -- Cobro de la seña (MP)
 
   -- Notas
-  notes_internal  TEXT,                          -- Solo visible para staff
-  notes_player    TEXT,                          -- Visible para el jugador
+  notes_internal  TEXT,                          -- Solo visible para staff. Largo validado en la
+                                                 -- capa app (Zod max 1000, createManualBookingSchema);
+                                                 -- sin CHECK en DB (a diferencia de reviews.comment).
+  notes_player    TEXT,                          -- Visible para el jugador (Zod max 1000)
 
   -- Datos del jugador no registrado (reserva manual sin player_id)
   guest_name      TEXT,                          -- Nombre del jugador si player_id IS NULL

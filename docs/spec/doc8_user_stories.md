@@ -469,8 +469,8 @@ para que otro jugador pueda reservar y el complejo no pierda turnos.
 **Bloquea**: Ninguna
 
 **Notas de implementación**:
-- El job se ejecuta cada 1 minuto (cron job de la tabla de Doc 7)
-- Alternativa: delayed job programado al crear el booking (más preciso)
+- Mecanismo primario: **job diferido agendado por-booking** al crear la reserva (`scheduleBookingExpiry` → `boss.send('expire-pending-booking', …, { startAfter: 6 min })`). Se vuelve no-op si el pago llegó antes (la transición chequea que el booking siga en `pending_payment`).
+- Red de seguridad: un cron de barrido (`expire-pending-booking-sweep`, `*/5 * * * *`, cada 5 min) recoge jobs que nunca corrieron. **No hay cron "cada 1 minuto"** para expiración (el único `* * * * *` es el envío de emails).
 
 ---
 

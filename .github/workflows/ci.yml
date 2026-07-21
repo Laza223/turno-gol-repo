@@ -132,24 +132,19 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     needs: [lint-and-types, unit-tests, integration-and-isolation]
+    timeout-minutes: 20
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 54322:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
+    # NOTA: reemplaza el service container postgres:15-alpine (job anterior) por
+    # el stack completo de Supabase CLI local. Los e2e usan Supabase Auth REAL
+    # (tests/e2e/_helpers/auth-state.ts: admin.generateLink + verifyOtp contra la
+    # API de GoTrue), no solo Postgres — un Postgres pelado nunca alcanzó.
     env:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres
+      # Dummies solo-test, no secretos reales (ver src/shared/env.ts). El resto
+      # (NEXT_PUBLIC_SUPABASE_URL/ANON_KEY/SERVICE_ROLE_KEY) sale del stack local
+      # recién levantado — no se conocen hasta el paso "Export Supabase local env".
+      IMPERSONATION_COOKIE_SECRET: e2e-ci-dummy-impersonation-secret
+      ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
 
     steps:
       - uses: actions/checkout@v4
@@ -169,7 +164,28 @@ jobs:
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Create roles
+      # Versión pinneada a la resuelta en pnpm-lock.yaml (devDependency `supabase`)
+      # para no depender de "latest" en un paso crítico de CI.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 1.226.4
+
+      # supabase/migrations/ (espejo de src/shared/db/migrations/, ver
+      # db:sync-supabase) se auto-aplica en el primer `start` sobre una DB
+      # fresca — y rompe en 008_revokes.sql porque el rol turnogol_app todavía
+      # no existe (lo crea el paso "Create roles" de más abajo, después de
+      # start). Se saca del paso momentáneamente para que `start` solo levante
+      # el stack de Supabase (Postgres + GoTrue + Kong + Realtime + Inbucket)
+      # sin tocar el schema de la app; "Apply migrations" sigue aplicando
+      # src/shared/db/migrations/0*.sql a mano vía psql, igual que el job de
+      # integración.
+      - name: Start Supabase local stack
+        run: |
+          mv supabase/migrations supabase/migrations.disabled
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+          mv supabase/migrations.disabled supabase/migrations
+
+      - name: Create roles required by 008_revokes.sql
         env:
           PGPASSWORD: postgres
         run: |
@@ -193,6 +209,21 @@ jobs:
             echo ">>> $f"
             psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
           done
+
+      # Las keys demo del CLI local son fijas (mismo JWT_SECRET default en
+      # supabase/config.toml), pero se leen del stack recién levantado en vez
+      # de hardcodearlas: `--override-name` las mapea directo a los nombres que
+      # espera la app (src/shared/env.ts) y se agregan a $GITHUB_ENV para que
+      # los pasos siguientes (Playwright: globalSetup + webServer `pnpm dev`,
+      # que mergea su env con el del proceso padre) las hereden.
+      - name: Export Supabase local env
+        run: |
+          supabase status -o env \
+            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' \
+            | sed 's/"//g' >> "$GITHUB_ENV"
 
       - name: Install Playwright browsers
         # Only chromium is installed in CI. Projects webkit/firefox/mobile-safari

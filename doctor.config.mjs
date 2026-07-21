@@ -317,6 +317,76 @@ export default {
         files: ['**/mis-reservas/actions.ts'],
         rules: ['react-doctor/server-auth-actions'],
       },
+
+      // ─── Re-scan v0.7.6 — triage 2026-07-21 (ver PROGRESS.md) ───
+      // Los 2 hallazgos REALES del re-scan se arreglaron en código:
+      // use-persisted-density.ts (no-impure-state-updater: setItem fuera del
+      // updater + trap test StrictMode) y PaymentStatusWatcher.tsx
+      // (effect-needs-cleanup: hardening clearTimeout del timer vigente).
+      {
+        // effect-needs-cleanup en PaymentStatusWatcher: FALSO POSITIVO
+        // POST-HARDENING. El effect SÍ retorna cleanup (cancelled = true +
+        // clearTimeout(timerId)); el timer se asigna a `timerId` DENTRO de
+        // scheduleNext (setTimeout recursivo con backoff — no se puede
+        // pre-capturar un id que aún no existe) y la regla no sigue esa
+        // asignación a través de la función anidada: su mensaje ("without
+        // returning cleanup") es literalmente falso contra el código actual.
+        // Misma limitación de indirección que use-booking-realtime abajo.
+        files: ['**/PaymentStatusWatcher.tsx'],
+        rules: ['react-doctor/effect-needs-cleanup'],
+      },
+      {
+        // FALSO POSITIVO verificado: el único `document` del archivo es el
+        // `document.body` de createPortal en AbonadoActionDialogs, detrás del
+        // early-return `if (actions.state.dialog === null) return null` —
+        // dialog arranca null y solo cambia por click, así que en SSR la
+        // función retorna antes de tocar document. Además AbonadoDialogs se
+        // carga con dynamic({ ssr: false }). La regla no reconoce el
+        // early-return como guard (espera typeof document !== 'undefined').
+        files: ['**/AbonadosList.tsx'],
+        rules: ['react-doctor/no-unguarded-browser-global-in-render-or-hook-init'],
+      },
+      {
+        // FALSO POSITIVO verificado: el subscribe SÍ se limpia — el teardown
+        // captura `supabase.removeChannel(channel)` y el return del effect lo
+        // invoca (`teardown?.()`), más clearInterval del poll y clearTimeout
+        // del reconcile. Cubierto por use-booking-realtime.test.ts case 7
+        // (removeChannel 1× + 0 fetches post-unmount). El linter no sigue la
+        // indirección IIFE-async + variable `teardown`. Un "fix" acá rompería
+        // ese test (segundo removeChannel).
+        files: ['**/use-booking-realtime.ts'],
+        rules: ['react-doctor/effect-needs-cleanup'],
+      },
+      {
+        // 7 hallazgos en el CREATE TABLE de las tablas globales — 2 grupos,
+        // rationale distinto (verificado tabla por tabla, ambos árboles de
+        // migraciones):
+        //  (a) players / staff_users / system_admins: FALSO POSITIVO de
+        //      aislamiento de archivo — RLS SÍ existe: ENABLE + policies en
+        //      006_rls_policies.sql y FORCE en 036_force_rls_remaining_tables.sql.
+        //      El tool lintea 003 en aislamiento y no ve migraciones posteriores.
+        //  (b) plans / tenants / price_versions / processed_webhooks: sin RLS
+        //      POR DISEÑO, no FP — tablas globales/de sistema sin tenant_id
+        //      (doc12 §2; catálogo público de planes, idempotencia de webhooks,
+        //      historial de precios). `tenants` guarda los tokens OAuth de MP
+        //      encriptados at-rest; su aislamiento es app-layer (WHERE id =
+        //      tenantId) — aceptado explícitamente en doc12 §7.2/§9.2.
+        // El glob cubre el archivo en supabase/migrations/ y su espejo
+        // src/shared/db/migrations/003_global_tables.sql.
+        files: ['**/*_global_tables.sql'],
+        rules: ['react-doctor/supabase-table-missing-rls'],
+      },
+      {
+        // server-auth-actions FALSO POSITIVO — misma familia que el batch 7
+        // de arriba (wrapper custom no reconocido). Las 3 actions del archivo
+        // (markPublicLinkSharedAction, markTourSeenAction,
+        // markChecklistDismissedAction) llaman requireOperatorStaff() +
+        // adminRateLimited() ANTES de tocar DB; el propio archivo documenta
+        // (Fix 3 / R5) que una ronda previa lo cerró con el guard central.
+        // Verificado leyendo los 3 exports completos (2026-07-21).
+        files: ['**/dashboard/actions.ts'],
+        rules: ['react-doctor/server-auth-actions'],
+      },
     ],
   },
 }

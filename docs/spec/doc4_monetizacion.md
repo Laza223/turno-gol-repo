@@ -94,7 +94,7 @@
    │ BLOCKED  │ (sin acceso total)      │
    └────┬─────┘                         │
         │                               │
-  [60 días en BLOCKED]                  │
+  [90 días sin pago]                    │
         │                               │
         ▼                               │
    ┌──────────┐                         │
@@ -116,10 +116,16 @@
 ```
 
 > [!NOTE]
-> **BLOCKED → CHURNED = 60 días para TODAS las rutas** (cancelación voluntaria, trial vencido y dunning).
-> (Decisión de auditoría 2026-07-21: unificado desde los ~76-90 días que usaba la ruta de dunning,
-> para simplificar los crons de churn y alinear con la minimización de datos. En la ruta de dunning,
-> con BLOCKED iniciando el día 14, CHURNED cae el día 74 y DELETED el día 81.)
+> **BLOCKED → CHURNED (ruta dunning) = 90 días**, contados desde el primer cobro fallido
+> (`dunning_started_at`; `BLOCKED_TO_CHURNED_DAYS = 90` en
+> `src/modules/billing/lifecycle.service.ts:23`): BLOCKED cae el día 14, CHURNED el día 90,
+> DELETED el día 97. La ruta de cancelación voluntaria usa una constante distinta
+> (`CANCELED_BLOCKED_DELETION_DAYS = 67`, 60 días de retención + 7 días de espera de borrado,
+> contados desde el bloqueo) y no pasa por un estado `churned` explícito antes de eliminarse.
+>
+> Decisión de auditoría 2026-07-21: reducir la ruta de dunning a 60 días para simplificar los
+> crons de churn y alinear con la minimización de datos — **implementación de código PENDIENTE**
+> (`lifecycle.service.ts` sigue en 90; `BLOCKED_TO_CHURNED_DAYS` no fue tocado).
 
 ### Estados y comportamiento del sistema
 
@@ -191,13 +197,13 @@
 | Gracia con acceso completo | 7 días (estado PAST_DUE) | No |
 | Solo lectura admin | Día 7-14 (estado SUSPENDED) | No |
 | Bloqueo total | Día 14+ (estado BLOCKED) | No |
-| Churn | Día 74 (estado CHURNED) | No |
-| Eliminación de datos | Día 81 (estado DELETED) | No |
+| Churn | Día 90 (estado CHURNED) | No |
+| Eliminación de datos | Día 97 (estado DELETED) | No |
 
 ### Timeline Visual
 
 ```
-DÍA 0      DÍA 2      DÍA 5      DÍA 7       DÍA 14      DÍA 74     DÍA 81
+DÍA 0      DÍA 2      DÍA 5      DÍA 7       DÍA 14      DÍA 90     DÍA 97
   │          │          │          │            │            │           │
   ▼          ▼          ▼          ▼            ▼            ▼           ▼
 FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──── CHURNED ── DELETED
@@ -215,9 +221,9 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 | 5 | "Tercer intento fallido. Tu cuenta se suspende en 2 días." | Último reintento |
 | 7 | "Tu cuenta fue suspendida. Podés ver tus datos pero no operar." | Estado → SUSPENDED |
 | 14 | "Tu cuenta fue bloqueada por falta de pago. Regularizá para recuperar acceso." | Estado → BLOCKED |
-| 44 | "Tus datos se eliminan en 30 días. ¿Querés recuperar tu cuenta?" | Recordatorio de eliminación |
-| 74 | "Tus datos se borran en 7 días. Recuperá tu cuenta ahora →" | Estado → CHURNED |
-| 81 | (no se envía) | Estado → DELETED, datos eliminados |
+| 60 | "Tus datos se eliminan en 30 días. ¿Querés recuperar tu cuenta?" | Recordatorio de eliminación |
+| 90 | "Tus datos se borran en 7 días. Recuperá tu cuenta ahora →" | Estado → CHURNED |
+| 97 | (no se envía) | Estado → DELETED, datos eliminados |
 
 ---
 
@@ -379,11 +385,12 @@ Si el jugador no paga en 6 minutos → Booking.status = 'expired', slot se liber
 
 > [!IMPORTANT]
 > **La Preference de la seña excluye medios diferidos/offline.** Se restringe a medios instantáneos
-> (tarjeta de crédito/débito + dinero en cuenta de MP) excluyendo `ticket` (Rapipago, PagoFácil) y `atm`
-> (transferencia/cajero offline) vía `excluded_payment_types`. Un medio offline es incompatible con el
-> timeout de 6 minutos: el jugador se llevaría un cupón para pagar horas después, dejando el slot en un
-> limbo (bloqueado o con confirmación tardía). Config concreta de la Preference en doc11 ADR-004.
-> (Decisión de auditoría 2026-07-21; implementación de código pendiente en la creación de la Preference.)
+> (tarjeta de crédito/débito + dinero en cuenta de MP) excluyendo `ticket` (Rapipago, PagoFácil), `atm`
+> (cajero offline) y `bank_transfer` (transferencia/CBU) vía `excluded_payment_types`. Un medio offline
+> es incompatible con el timeout de 6 minutos: el jugador se llevaría un cupón para pagar horas después,
+> dejando el slot en un limbo (bloqueado o con confirmación tardía). Config concreta de la Preference en
+> doc11 ADR-004. Implementado: `DEPOSIT_EXCLUDED_PAYMENT_TYPES` en
+> `src/modules/payments/mp-gateway.implementation.ts` (`createPreference`).
 
 **Flujo de cancelación con seña:**
 ```
@@ -489,7 +496,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | 8 estados del tenant | ENUM `tenant_status` con 8 valores. Middleware en todos los endpoints que verifica estado. |
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
 | Dunning: 3 reintentos en 5 días | MP lo maneja los reintentos. Nosotros procesamos webhooks de `payment.rejected`. |
-| Datos conservados post-churn | **60 días en BLOCKED → CHURNED → 7d → DELETED para TODAS las rutas** (Decisión de auditoría 2026-07-21: unificado). Cancelación voluntaria: 60d en BLOCKED → CHURNED → 7d → DELETED (67d desde el bloqueo). Dunning: día 14 BLOCKED → +60d CHURNED (día 74) → 7d → DELETED (día 81). Campo `scheduled_deletion_at` en `tenants`. |
+| Datos conservados post-churn | Cancelación voluntaria: 60d BLOCKED → CHURNED → 7d → DELETED (67d total). Dunning: 90d post-primer-fallo → CHURNED → 7d → DELETED (97d total). Campo `scheduled_deletion_at` en `tenants`. (Decisión de auditoría 2026-07-21: evaluar reducir la ruta de dunning a 60 días — implementación de código PENDIENTE, ver nota en §2.) |
 | Notificaciones de trial por email | Scheduled jobs en pg-boss (tabla `pgboss.job`). Ver ADR-005. |
 | Upgrade con prorrateo | Cálculo al momento del upgrade. Cargo vía MP Checkout (no suscripción). |
 | Downgrade solo al inicio del próximo período | Campo `pending_plan_change` + cron job que lo aplica en la fecha de renovación. |

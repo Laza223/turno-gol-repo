@@ -213,8 +213,8 @@ Response 200:
 |---|---|---|---|
 | `POST` | `/api/auth/magic-link` | Ninguna | Enviar magic link por email (solo jugadores) |
 | `POST` | `/api/auth/login` | Ninguna | Login con email + password (solo staff) |
-| `POST` | `/api/auth/forgot-password` | Ninguna | Solicitar reset de contraseña (solo staff) — envía email con token |
-| `POST` | `/api/auth/reset-password` | Ninguna | Establecer nueva contraseña con token del email (solo staff) |
+| `POST` | `/api/auth/forgot-password`¹ | Ninguna | Solicitar reset de contraseña (solo staff) — envía email con token |
+| `POST` | `/api/auth/reset-password`¹ | Ninguna | Establecer nueva contraseña con token del email (solo staff) |
 | `POST` | `/api/auth/verify` | Ninguna | Verificar token de magic link (jugadores) |
 | `GET` | `/api/auth/callback` | Ninguna | OAuth callback (Google) |
 | `POST` | `/api/auth/refresh` | Refresh token | Renovar access token |
@@ -277,7 +277,12 @@ Response 200 (jugador):
 #### `POST /api/auth/forgot-password` y `POST /api/auth/reset-password` (solo staff)
 
 Recuperación de contraseña para staff (el jugador usa Magic Link, no tiene password).
-(Decisión de auditoría 2026-07-21 — GAP-04. Implementación de código pendiente.)
+
+¹ (Decisión de auditoría 2026-07-21 — GAP-04): **implementado** — no como Route Handlers
+`/api/auth/*` sino como **Next.js Server Actions** co-locadas (mismo patrón que doc15 §5):
+`forgotPasswordAction` en `src/app/(auth)/forgot-password/actions.ts` y `resetPasswordAction`
+en `src/app/(auth)/reset-password/actions.ts`. Las rutas de la tabla arriba son la abstracción
+de contrato (REST-style), no rutas reales.
 
 ```
 POST /api/auth/forgot-password
@@ -295,9 +300,11 @@ Errors:
 ```
 
 - **TTL del token**: 15-30 min, single-use.
-- **Rate limit**: aplica el límite del grupo Auth (§9).
-- **Implementación**: Server Action o Route Handler según corresponda — la pantalla pública
-  `/reset-password` dispara el reset; el envío del email usa el worker de notificaciones.
+- **Rate limit**: aplica el límite del grupo Auth (§9); `forgotPasswordAction` reusa el bucket
+  `authMagicLink` (keyBy email, fail-closed).
+- **Implementación**: Server Actions (ver ¹ arriba). El email de reset lo envía Supabase Auth
+  (`supabase.auth.resetPasswordForEmail`) apuntando a `/api/auth/callback`, NO el worker de
+  notificaciones de TurnoGol/Resend.
 
 ---
 

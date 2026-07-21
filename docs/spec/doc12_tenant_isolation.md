@@ -64,7 +64,7 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 8 | `reviews` | Review | Reseñas post-partido. `tenant_id` + RLS híbrida: lectura **pública** + INSERT del jugador dueño del booking. |
 | 9 | `player_favorites` | PlayerFavorite | Favoritos del jugador. `tenant_id` + RLS por jugador (`app.current_player_id`). Sin lectura pública. |
 | 10 | `feature_flags` | FeatureFlag | Toggle operacional. Fila `tenant_id` NULL = default global; seteado = override por complejo. Acceso vía service role. |
-| 11 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel de super-admin; login por magic link + allowlist `SYSTEM_ADMIN_EMAILS` + fila `active` (MFA TOTP deferido, IP whitelist descartada en v1 — ver §4.4). |
+| 11 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel de super-admin; login por email+password (igual que staff, ADR-013) + allowlist `SYSTEM_ADMIN_EMAILS` + fila `active` (MFA TOTP deferido, IP whitelist descartada en v1 — ver §4.4). |
 
 **Total: 6 tablas globales + 3 híbridas (RLS por jugador: `player_tenant_relationships`, `reviews`, `player_favorites`) + 1 operacional (`feature_flags`) + 1 sistema (`system_admins`).**
 
@@ -341,7 +341,7 @@ El panel interno es una ruta separada para el equipo de TurnoGol (no es accesibl
 Request HTTP al panel de super-admin
       │
       ▼
-  1. Auth Middleware        (magic link existente → verifica JWT con app_metadata.is_system_admin)
+  1. Auth Middleware        (login email+password, igual que staff — ADR-013 — verifica JWT con app_metadata.is_system_admin)
       │
       ▼
   2. Guard requireSystemAdmin — TRIPLE chequeo (ninguno se confía solo del JWT):
@@ -361,7 +361,11 @@ Request HTTP al panel de super-admin
 > El diseño original pedía IP whitelist + MFA TOTP obligatorios antes de lanzar. Realidad v1:
 > - **MFA TOTP: DEFERIDO** — la columna `system_admins.mfa_secret` queda lista en el schema pero NO se enforcea en los guards.
 > - **IP whitelist: DESCARTADA** — las IPs dinámicas de los ISP argentinos generan lockouts; no aporta seguridad neta.
-> - El login usa el **magic link existente** (sin flujo nuevo) + la allowlist `SYSTEM_ADMIN_EMAILS` + el chequeo de fila `active` en `system_admins`. El bootstrap del primer admin es por script (`seed:system-admin`); no hay ruta de auto-promoción.
+> - El login usa **email + password** (`signInWithPassword`, mismo `loginAction` de
+> `src/app/(auth)/login/actions.ts` que usa el staff — ADR-013), NO magic link: tras autenticar,
+> `app_metadata.is_system_admin === true` redirige a `/super-admin` en vez de al flujo de staff.
+> Se suma la allowlist `SYSTEM_ADMIN_EMAILS` + el chequeo de fila `active` en `system_admins`.
+> El bootstrap del primer admin es por script (`seed:system-admin`); no hay ruta de auto-promoción.
 > Fuente: `docs/superpowers/specs/2026-06-12-super-admin-design.md` §3.
 
 **Diferencias clave vs staff y jugador:**

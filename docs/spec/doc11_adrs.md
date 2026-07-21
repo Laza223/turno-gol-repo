@@ -345,7 +345,7 @@ Evento de negocio (booking.confirmed)
 | `trial_ending` | `{owner_name}`, `{days_left}` | Día 21, 28, 30 |
 | `deposit_expired` | `{player_name}`, `{court_name}`, `{date}`, `{time}` | Timeout 6min sin seña |
 | `magic_link` | `{user_name}`, `{login_url}`, `{expires_in}` | Login (jugador) |
-| `password_reset` | `{user_name}`, `{reset_url}`, `{expires_in}` | Reset de contraseña de staff — link con token de un solo uso, TTL corto (Decisión de auditoría 2026-07-21; endpoints en doc15; implementación de código pendiente) |
+| `password_reset` | `{user_name}`, `{reset_url}`, `{expires_in}` | Reset de contraseña de staff — link con token de un solo uso, TTL corto (Decisión de auditoría 2026-07-21; Server Actions en doc15/GAP-04: `forgot-password/actions.ts` + `reset-password/actions.ts`. El email lo envía Supabase Auth (`resetPasswordForEmail`), no un template Resend propio) |
 
 ### Consecuencias
 
@@ -439,7 +439,7 @@ Razones:
      expiration_date_to: booking.created_at + 6 minutos,
      payment_methods: {
        // Solo medios instantáneos: excluir diferidos/offline incompatibles con el timeout de 6 min
-       excluded_payment_types: [{ id: "ticket" }, { id: "atm" }]  // Rapipago, PagoFácil, transferencia/cajero offline
+       excluded_payment_types: [{ id: "ticket" }, { id: "atm" }, { id: "bank_transfer" }]  // Rapipago, PagoFácil, cajero offline, transferencia/CBU
      }
    }
 3. Jugador es redirigido a MP → paga → MP redirige de vuelta
@@ -450,9 +450,10 @@ Razones:
 > [!NOTE]
 > **Exclusión de medios offline en la Preference de la seña (Decisión de auditoría 2026-07-21).** La Preference
 > restringe los medios de pago a instantáneos (tarjeta de crédito/débito + dinero en cuenta de MP) vía
-> `excluded_payment_types` (`ticket`, `atm`). Los medios diferidos/offline (Rapipago, PagoFácil, transferencia
-> offline) son incompatibles con el `expiration_date_to` de 6 minutos: el jugador recibiría un cupón para pagar
-> horas más tarde, dejando el slot en un limbo. Implementación de código pendiente en la creación de la Preference.
+> `excluded_payment_types` (`ticket`, `atm`, `bank_transfer`). Los medios diferidos/offline (Rapipago, PagoFácil,
+> transferencia offline) son incompatibles con el `expiration_date_to` de 6 minutos: el jugador recibiría un
+> cupón para pagar horas más tarde, dejando el slot en un limbo. Implementado en
+> `DEPOSIT_EXCLUDED_PAYMENT_TYPES` (`src/modules/payments/mp-gateway.implementation.ts`, `createPreference`).
 
 **Suscripciones SaaS (Preapproval / Suscripción):**
 ```
@@ -1476,7 +1477,7 @@ En el diseño inicial (ADR-002), se decidió utilizar Magic Link para toda auten
 
 1. **Seguridad y Control de Sesión**: Los Magic Links por email introducen dependencias externas que ralentizan el ingreso diario de los operarios en horas pico y exponen las cuentas a mayor riesgo si el email corporativo del complejo queda abierto en navegadores de mostrador.
 2. **Roles y Autorización Gating**: Con la eliminación de PINs (decisión #8) y la definición clara de roles (`admin` y `manager`), la autenticación debe ser robusta, instantánea y controlable a nivel backend mediante credenciales estáticas cuya revocación sea determinista y efectiva en el próximo request (ver Consecuencias — la re-lectura de `tenant_staff_members` por request es el mecanismo de revocación, no una blacklist de tokens).
-3. **Fricción baja (con salvaguardas)**: Para el staff del complejo, que trabaja 8-12 horas diarias frente a la grilla, ingresar una contraseña estática al inicio del turno es un flujo estándar y de baja fricción frente a tener que esperar el envío y apertura de un correo cada vez que expira la sesión en el mostrador. Dado el nivel de alfabetización tecnológica de Marcelo (2.5/5), el riesgo de contraseña olvidada y del mostrador compartido se mitiga con: (a) un **reset asistido** por email (link con token de un solo uso, TTL corto — ver GAP-04 / template `password_reset` en ADR-003), y (b) una opción **"recordarme"** opcional en dispositivos de confianza que extiende la sesión y reduce los re-logins. (Decisión de auditoría 2026-07-21: se suaviza la afirmación de "fricción nula"; el reset asistido tiene implementación de código pendiente.)
+3. **Fricción baja (con salvaguardas)**: Para el staff del complejo, que trabaja 8-12 horas diarias frente a la grilla, ingresar una contraseña estática al inicio del turno es un flujo estándar y de baja fricción frente a tener que esperar el envío y apertura de un correo cada vez que expira la sesión en el mostrador. Dado el nivel de alfabetización tecnológica de Marcelo (2.5/5), el riesgo de contraseña olvidada y del mostrador compartido se mitiga con: (a) un **reset asistido** por email (link con token de un solo uso, TTL corto — ver GAP-04 / template `password_reset` en ADR-003), y (b) una opción **"recordarme"** opcional en dispositivos de confianza que extiende la sesión y reduce los re-logins. (Decisión de auditoría 2026-07-21: se suaviza la afirmación de "fricción nula". El reset asistido YA está implementado vía Server Actions: `src/app/(auth)/forgot-password/actions.ts` [forgotPasswordAction] + `src/app/(auth)/reset-password/actions.ts` [resetPasswordAction] — no como rutas REST `/api/auth/*`.)
 
 ### Opciones consideradas
 

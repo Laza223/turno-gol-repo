@@ -342,41 +342,29 @@ export function BookingFormModal({
             </div>
 
             {allowsCustomDuration && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label id="duration-label" className="block text-sm font-semibold text-foreground">
-                    Duración {reason === 'other' ? 'de la reserva' : 'del bloqueo / evento'}
-                  </Label>
-                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+              <div className="space-y-1.5">
+                <Label htmlFor="duration" className="flex items-center justify-between text-sm font-semibold text-foreground">
+                  <span>Duración {reason === 'other' ? 'de la reserva' : 'del bloqueo / evento'}</span>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
                     Hasta las {timeEnd} ({effectiveDuration / 60} hs)
                   </span>
-                </div>
+                </Label>
 
-                <div role="group" aria-labelledby="duration-label" className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {allDurations.map((d) => {
-                    const isActive = duration === d
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        aria-pressed={isActive}
-                        onClick={() => setDuration(d)}
-                        className={cn(
-                          'flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl border transition-all duration-200 cursor-pointer',
-                          isActive
-                            ? 'bg-primary text-primary-foreground border-emerald-600 shadow-md ring-1 ring-emerald-500/50'
-                            : 'bg-background hover:bg-accent border-border/80 text-foreground hover:border-border'
-                        )}
-                      >
-                        <span className={cn("text-sm font-semibold tracking-tight", isActive ? "text-primary-foreground" : "text-foreground")}>
-                          {d / 60} {d === 60 ? 'hora' : 'horas'}
-                        </span>
-                        <span className={cn('text-[11px] font-medium', isActive ? 'text-primary-foreground/90' : 'text-muted-foreground')}>
-                          hasta {endLabelFromMins(startMins + d)}
-                        </span>
-                      </button>
-                    )
-                  })}
+                <div className="relative">
+                  <select
+                    id="duration"
+                    name="duration"
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
+                    className="w-full appearance-none rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 text-foreground px-3.5 py-2.5 pr-10 text-sm font-medium transition-all focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 shadow-xs cursor-pointer"
+                  >
+                    {allDurations.map((d) => (
+                      <option key={d} value={d} className="bg-background text-foreground py-1">
+                        {d / 60} {d === 60 ? 'hora' : 'horas'} — (hasta las {endLabelFromMins(startMins + d)})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
             )}

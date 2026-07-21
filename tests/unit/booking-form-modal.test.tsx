@@ -220,8 +220,8 @@ describe('BookingFormModal — slot de medianoche (día operativo)', () => {
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /1 hora/i })).toBeTruthy())
-    expect(screen.queryByRole('button', { name: /2 horas/i })).toBeNull()
+    await waitFor(() => expect(screen.getByRole('option', { name: /1 hora/i })).toBeTruthy())
+    expect(screen.queryByRole('option', { name: /2 horas/i })).toBeNull()
   })
 
   it('un slot común (18:00) sigue ofreciendo 2 horas para bloqueos internos', async () => {
@@ -229,7 +229,7 @@ describe('BookingFormModal — slot de medianoche (día operativo)', () => {
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /2 horas/i })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('option', { name: /2 horas/i })).toBeTruthy())
   })
 })
 

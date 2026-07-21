@@ -64,7 +64,7 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 8 | `reviews` | Review | Reseñas post-partido. `tenant_id` + RLS híbrida: lectura **pública** + INSERT del jugador dueño del booking. |
 | 9 | `player_favorites` | PlayerFavorite | Favoritos del jugador. `tenant_id` + RLS por jugador (`app.current_player_id`). Sin lectura pública. |
 | 10 | `feature_flags` | FeatureFlag | Toggle operacional. Fila `tenant_id` NULL = default global; seteado = override por complejo. Acceso vía service role. |
-| 11 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel `/internal` con MFA + IP whitelist. |
+| 11 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel de super-admin; login por magic link + allowlist `SYSTEM_ADMIN_EMAILS` + fila `active` (MFA TOTP deferido, IP whitelist descartada en v1 — ver §4.4). |
 
 **Total: 6 tablas globales + 3 híbridas (RLS por jugador: `player_tenant_relationships`, `reviews`, `player_favorites`) + 1 operacional (`feature_flags`) + 1 sistema (`system_admins`).**
 
@@ -270,6 +270,16 @@ export async function tenantContextMiddleware(req: Request, res: Response, next:
 }
 ```
 
+> [!IMPORTANT]
+> **Revocación de sesión de staff — re-lectura por request (Decisión de auditoría 2026-07-21, GAP-05).**
+> El claim `role` del JWT NUNCA se confía. En cada request de staff, además de setear el contexto,
+> el flujo `withTenant()` re-lee el rol y el estado del staff desde `tenant_staff_members`
+> (`getStaffRole()`: exige fila con `is_active = true` para el `staff_user_id` + `tenant_id` del JWT).
+> Consecuencia: un staff **dado de baja o marcado inactivo** es rechazado en su **próximo request**,
+> sin esperar a que expire el JWT. **Ese es el mecanismo de revocación** — la DB manda; no hay
+> blacklist de tokens ni lista de sesiones revocadas. (Mismo principio que el guard de super-admin
+> en §4.4: nunca confiar solo en el JWT.)
+
 ### 4.2 `SET LOCAL` vs `SET`
 
 ```sql
@@ -328,30 +338,56 @@ Request HTTP entrante
 El panel interno es una ruta separada para el equipo de TurnoGol (no es accesible por staff ni jugadores).
 
 ```
-Request HTTP a /internal/*
+Request HTTP al panel de super-admin
       │
       ▼
-  1. IP Whitelist          (solo IPs autorizadas del equipo TurnoGol)
+  1. Auth Middleware        (magic link existente → verifica JWT con app_metadata.is_system_admin)
       │
       ▼
-  2. Auth Middleware        (verifica JWT de tipo 'system_admin')
+  2. Guard requireSystemAdmin — TRIPLE chequeo (ninguno se confía solo del JWT):
+        a. claim JWT is_system_admin
+        b. fila en system_admins con status='active' (la DB manda → revocación inmediata)
+        c. email ∈ allowlist SYSTEM_ADMIN_EMAILS (env)
       │
       ▼
-  3. MFA Check             (verifica que el system_admin tiene MFA habilitado y activo)
+  3. System Admin Context  (setea app.current_system_admin_id con SET LOCAL)
       │
       ▼
-  4. System Admin Context  (setea app.current_system_admin_id con SET LOCAL)
-      │
-      ▼
-  5. Route Handler         (acceso cross-tenant via service role para dashboard interno)
+  4. Route Handler         (acceso cross-tenant via service role para dashboard interno)
 ```
 
+> [!NOTE]
+> **Scope de auth v1 (Decisión de auditoría 2026-07-21 — alinea el doc con lo shippeado).**
+> El diseño original pedía IP whitelist + MFA TOTP obligatorios antes de lanzar. Realidad v1:
+> - **MFA TOTP: DEFERIDO** — la columna `system_admins.mfa_secret` queda lista en el schema pero NO se enforcea en los guards.
+> - **IP whitelist: DESCARTADA** — las IPs dinámicas de los ISP argentinos generan lockouts; no aporta seguridad neta.
+> - El login usa el **magic link existente** (sin flujo nuevo) + la allowlist `SYSTEM_ADMIN_EMAILS` + el chequeo de fila `active` en `system_admins`. El bootstrap del primer admin es por script (`seed:system-admin`); no hay ruta de auto-promoción.
+> Fuente: `docs/superpowers/specs/2026-06-12-super-admin-design.md` §3.
+
 **Diferencias clave vs staff y jugador:**
-- Step 4 setea `app.current_system_admin_id`, NO `app.current_tenant_id` ni `app.current_player_id`.
+- El paso de System Admin Context setea `app.current_system_admin_id`, NO `app.current_tenant_id` ni `app.current_player_id`.
 - El service role se usa para acceder cross-tenant (ver métricas globales de la plataforma).
 - Los steps de Subscription Guard y Feature Gate no aplican (el sistema no tiene suscripción SaaS).
 - La variable `app.current_system_admin_id` protege la tabla `system_admins` (un admin solo lee su propio registro).
 - Las queries del panel interno que acceden a datos de tenants usan el service role de Supabase (bypasea RLS), NO `app.current_tenant_id`.
+
+### 4.5 Modo jugador-en-complejo (helper de primera clase)
+
+Algunos requests del jugador operan **dentro de un complejo puntual**: crear un booking en el complejo del `slug` validado, o verificar un ban propio antes de reservar. Estos requests necesitan setear **a la vez** `app.current_player_id` (para las policies de jugador) y `app.current_tenant_id` (para insertar/leer las filas del tenant). Hasta ahora esto se resolvió con parches ad-hoc repartidos por endpoint (Fix #5 §2, Fix #7 §7.4, Fix B06 + B07 §7.3).
+
+**Decisión de auditoría 2026-07-21**: formalizar un helper único, reusable y testeado — `withPlayerInTenantContext(playerId, tenantId, cb)` — que abre la transacción y ejecuta ambos `SET LOCAL` (`app.current_player_id` + `app.current_tenant_id`) antes de correr el callback. Es el **patrón de primera clase** para el modo jugador-en-complejo y reemplaza los `SET LOCAL` sueltos por-endpoint.
+
+```typescript
+// Patrón de primera clase (reemplaza los parches por-endpoint)
+await withPlayerInTenantContext(playerId, tenantId, async (tx) => {
+  // Ambas variables seteadas: policies de jugador (por player_id) Y de tenant (por tenant_id)
+  // Ej.: verificar el ban propio + crear el booking en el mismo contexto atómico
+});
+```
+
+**Invariante**: el `tenantId` SIEMPRE se deriva de un dato validado server-side (el `slug` del complejo resuelto contra `tenants`), NUNCA de un valor arbitrario del cliente. Es la única excepción a "un request es de staff, jugador O system_admin, nunca combinados" (§4.3): el sujeto sigue siendo el jugador; el `tenant_id` solo acota las filas que puede tocar dentro de ese complejo.
+
+(Implementación de código pendiente: consolidar los Fix #5 / #7 / B06 + B07 en el helper `withPlayerInTenantContext`.)
 
 ---
 
@@ -918,9 +954,10 @@ async function getDashboardMetrics() {
 
 > [!WARNING]
 > **El panel de admin interno es un riesgo de seguridad si se expone.**
-> Debe estar en una ruta separada (`/internal/dashboard`), protegida por una autenticación
-> adicional (IP whitelist + 2FA + rol de super-admin). Nunca compartir endpoints con el panel admin
-> de un tenant.
+> Debe estar en una ruta separada (panel de super-admin), protegida por el guard `requireSystemAdmin`
+> (triple chequeo: claim JWT `is_system_admin` + fila `active` en `system_admins` + allowlist
+> `SYSTEM_ADMIN_EMAILS`), más `noindex` y rate-limit. En v1 el MFA TOTP está deferido y la IP whitelist
+> descartada (ver §4.4). Nunca compartir endpoints con el panel admin de un tenant.
 
 ---
 

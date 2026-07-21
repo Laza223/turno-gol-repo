@@ -48,7 +48,7 @@
 - Reservas online con pago de seña vía MercadoPago
 - Gestión de turnos fijos (abonados) desde la grilla del admin
 - Reportes completos (mismo nivel para todos los planes)
-- Sin límite de staff (una sola cuenta admin por complejo con privilegios completos, el resto managers permisivos sin necesidad de PIN)
+- Sin límite de staff: se permiten **múltiples cuentas admin** por complejo con privilegios completos (sin límite duro; única regla: debe quedar ≥1 admin activo), más managers permisivos sin necesidad de PIN (Decisión de auditoría 2026-07-21: corregido de "una sola cuenta admin por complejo" a multi-admin, alineado con US-ADM-003 y el código)
 
 ---
 
@@ -94,7 +94,7 @@
    │ BLOCKED  │ (sin acceso total)      │
    └────┬─────┘                         │
         │                               │
-  [90 días sin pago]                    │
+  [60 días en BLOCKED]                  │
         │                               │
         ▼                               │
    ┌──────────┐                         │
@@ -114,6 +114,12 @@
  CANCELACIÓN VOLUNTARIA:
    ACTIVE ──[cancela]──→ CANCELED ──[fin período]──→ BLOCKED ──[60d]──→ CHURNED ──[7d]──→ DELETED
 ```
+
+> [!NOTE]
+> **BLOCKED → CHURNED = 60 días para TODAS las rutas** (cancelación voluntaria, trial vencido y dunning).
+> (Decisión de auditoría 2026-07-21: unificado desde los ~76-90 días que usaba la ruta de dunning,
+> para simplificar los crons de churn y alinear con la minimización de datos. En la ruta de dunning,
+> con BLOCKED iniciando el día 14, CHURNED cae el día 74 y DELETED el día 81.)
 
 ### Estados y comportamiento del sistema
 
@@ -185,13 +191,13 @@
 | Gracia con acceso completo | 7 días (estado PAST_DUE) | No |
 | Solo lectura admin | Día 7-14 (estado SUSPENDED) | No |
 | Bloqueo total | Día 14+ (estado BLOCKED) | No |
-| Churn | Día 90 (estado CHURNED) | No |
-| Eliminación de datos | Día 97 (estado DELETED) | No |
+| Churn | Día 74 (estado CHURNED) | No |
+| Eliminación de datos | Día 81 (estado DELETED) | No |
 
 ### Timeline Visual
 
 ```
-DÍA 0      DÍA 2      DÍA 5      DÍA 7       DÍA 14      DÍA 90     DÍA 97
+DÍA 0      DÍA 2      DÍA 5      DÍA 7       DÍA 14      DÍA 74     DÍA 81
   │          │          │          │            │            │           │
   ▼          ▼          ▼          ▼            ▼            ▼           ▼
 FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──── CHURNED ── DELETED
@@ -209,9 +215,9 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 | 5 | "Tercer intento fallido. Tu cuenta se suspende en 2 días." | Último reintento |
 | 7 | "Tu cuenta fue suspendida. Podés ver tus datos pero no operar." | Estado → SUSPENDED |
 | 14 | "Tu cuenta fue bloqueada por falta de pago. Regularizá para recuperar acceso." | Estado → BLOCKED |
-| 60 | "Tus datos se eliminan en 30 días. ¿Querés recuperar tu cuenta?" | Recordatorio de eliminación |
-| 90 | "Tus datos se borran en 7 días. Recuperá tu cuenta ahora →" | Estado → CHURNED |
-| 97 | (no se envía) | Estado → DELETED, datos eliminados |
+| 44 | "Tus datos se eliminan en 30 días. ¿Querés recuperar tu cuenta?" | Recordatorio de eliminación |
+| 74 | "Tus datos se borran en 7 días. Recuperá tu cuenta ahora →" | Estado → CHURNED |
+| 81 | (no se envía) | Estado → DELETED, datos eliminados |
 
 ---
 
@@ -323,7 +329,7 @@ TurnoGol usa MercadoPago en **dos contextos completamente distintos**:
 ### Flujo de señas — Spec de referencia
 
 **Configuración del complejo (en el wizard de onboarding):**
-- `deposit_percentage`: porcentaje de seña (default 30%, configurable 0-100%)
+- `deposit_percentage`: porcentaje de seña (default 30%, configurable **10-100%** cuando `requires_deposit` está ON). "Sin seña" se expresa con el toggle `requires_deposit` en OFF, NUNCA con 0% (un 0% dispararía un checkout de MP por $0). (Decisión de auditoría 2026-07-21: rango unificado a 10-100%, consistente con doc8)
 - `cancellation_policy_hours`: horas antes para cancelar con reembolso (configurable, default 12hs)
 - `cancellation_refund_percentage`: % de reembolso si cancela dentro del plazo (configurable)
 - `requires_deposit`: boolean — si el complejo cobra seña online o no
@@ -346,6 +352,14 @@ Email al jugador: "Tu reserva está confirmada 🎉"
 Si el jugador no paga en 6 minutos → Booking.status = 'expired', slot se libera
 ```
 
+> [!IMPORTANT]
+> **La Preference de la seña excluye medios diferidos/offline.** Se restringe a medios instantáneos
+> (tarjeta de crédito/débito + dinero en cuenta de MP) excluyendo `ticket` (Rapipago, PagoFácil) y `atm`
+> (transferencia/cajero offline) vía `excluded_payment_types`. Un medio offline es incompatible con el
+> timeout de 6 minutos: el jugador se llevaría un cupón para pagar horas después, dejando el slot en un
+> limbo (bloqueado o con confirmación tardía). Config concreta de la Preference en doc11 ADR-004.
+> (Decisión de auditoría 2026-07-21; implementación de código pendiente en la creación de la Preference.)
+
 **Flujo de cancelación con seña:**
 ```
 Jugador cancela la reserva
@@ -361,6 +375,14 @@ Si la seña fue pagada en efectivo (reserva manual del admin):
 
 **Comisión MP:** la absorbe el complejo (~5% de Checkout Pro sobre la seña; distinta del 2.99% de MP Suscripciones sobre la cuota SaaS). El complejo recibe el monto neto.
 No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita en su cuenta.
+
+> [!NOTE]
+> **Retención de fondos / KYC de MP (cuentas nuevas).** MercadoPago puede retener temporalmente el dinero
+> de las señas ("dinero a liberar") en cuentas recién conectadas o de bajo volumen que aún están pendientes
+> de verificación (KYC / validación de CUIT). La disponibilidad efectiva del dinero depende exclusivamente
+> de MP, no de TurnoGol: TurnoGol no intermedia ni acelera esos fondos (ver §7, "TurnoGol NUNCA toca el
+> dinero de las señas"). (Decisión de auditoría 2026-07-21. La copy de onboarding que le explica esto al
+> dueño vive en doc10.)
 
 **Chargeback/disputa:** responsabilidad del complejo (es su cuenta MP). TurnoGol puede proveer audit trail (booking + timestamps + confirmaciones) como evidencia para la disputa.
 
@@ -442,7 +464,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | 8 estados del tenant | ENUM `tenant_status` con 8 valores. Middleware en todos los endpoints que verifica estado. |
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
 | Dunning: 3 reintentos en 5 días | MP lo maneja los reintentos. Nosotros procesamos webhooks de `payment.rejected`. |
-| Datos conservados post-churn | Cancelación voluntaria: 60d BLOCKED → CHURNED → 7d → DELETED (67d total). Dunning: 90d post-primer-fallo → CHURNED → 7d → DELETED (97d total). Campo `scheduled_deletion_at` en `tenants`. |
+| Datos conservados post-churn | **60 días en BLOCKED → CHURNED → 7d → DELETED para TODAS las rutas** (Decisión de auditoría 2026-07-21: unificado). Cancelación voluntaria: 60d en BLOCKED → CHURNED → 7d → DELETED (67d desde el bloqueo). Dunning: día 14 BLOCKED → +60d CHURNED (día 74) → 7d → DELETED (día 81). Campo `scheduled_deletion_at` en `tenants`. |
 | Notificaciones de trial por email | Scheduled jobs en pg-boss (tabla `pgboss.job`). Ver ADR-005. |
 | Upgrade con prorrateo | Cálculo al momento del upgrade. Cargo vía MP Checkout (no suscripción). |
 | Downgrade solo al inicio del próximo período | Campo `pending_plan_change` + cron job que lo aplica en la fecha de renovación. |

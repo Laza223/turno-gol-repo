@@ -249,7 +249,7 @@ para decidir rápido si reservo ahí y en qué horario.
 
 🚫 Out of Scope
 - NO incluye mapa interactivo con ubicación del complejo (v2)
-- NO incluye reviews/calificaciones de jugadores
+- El display de reviews/calificaciones en ESTA página no entra en esta story (se especifica aparte). La **captura** de reviews SÍ es feature v1 (doc6 ENTIDAD 19; endpoints en doc15); su **moderación** (reportar / ocultar / responder) se **difiere a v1.5** (Decisión de auditoría 2026-07-21).
 - NO incluye comparación con otros complejos cercanos
 - NO incluye chat en vivo con el complejo
 
@@ -1118,7 +1118,7 @@ para que el sistema aplique mis reglas automáticamente sin intervención manual
 ✅ Happy Path
 - [ ] Dado que estoy en Settings → Políticas, cuando veo la sección "Reservas", entonces puedo configurar:
   - `requires_deposit` (sí/no)
-  - `deposit_percentage` (10%-100%, default 30%)
+  - `deposit_percentage` (10%-100%, default 30%) — **"sin seña" NO es 0%**: se expresa apagando el toggle `requires_deposit` (OFF); el porcentaje siempre está entre 10 y 100 (Decisión de auditoría 2026-07-21)
   - `allow_online_booking` (sí/no)
   - `cancellation_hours_before` (0-72h, default 12h)
 - [ ] Dado que cambio una configuración, cuando guardo, entonces todos los flujos futuros usan la nueva configuración (las reservas existentes NO se afectan retroactivamente).

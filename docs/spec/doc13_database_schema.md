@@ -421,6 +421,15 @@ COMMENT ON COLUMN plans.price_monthly IS 'Precio mensual en centavos ARS. Ej: $8
 COMMENT ON COLUMN plans.max_courts IS 'NULL = ilimitado. Valor numérico = límite del plan.';
 ```
 
+> [!NOTE]
+> **`features.history_months` es un soft-limit de query, NUNCA un borrado físico** (Decisión de auditoría 2026-07-21).
+> El valor (6 / 12 / `null` = ilimitado) solo acota **hasta dónde hacia atrás** puede consultar y exportar
+> el complejo su historial en la UI y los reportes. NO dispara ninguna purga ni `DELETE` de `bookings`,
+> `payments`, `cash_flows` ni `audit_logs`: los datos viejos quedan intactos en la DB (los requiere la
+> Ley 25.326 y la trazabilidad contable). Si el complejo sube de plan, el historial más antiguo vuelve a
+> ser visible sin restaurar nada. Consistente con doc6 (entidad Plan, desglose de `features`).
+> (Implementación de código pendiente: el gate se aplica en la capa de query/reportes, no en el schema.)
+
 ### 2.5 `price_versions` — Historial de precios de planes
 
 ```sql

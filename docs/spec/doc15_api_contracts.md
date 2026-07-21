@@ -213,6 +213,8 @@ Response 200:
 |---|---|---|---|
 | `POST` | `/api/auth/magic-link` | Ninguna | Enviar magic link por email (solo jugadores) |
 | `POST` | `/api/auth/login` | Ninguna | Login con email + password (solo staff) |
+| `POST` | `/api/auth/forgot-password` | Ninguna | Solicitar reset de contraseña (solo staff) — envía email con token |
+| `POST` | `/api/auth/reset-password` | Ninguna | Establecer nueva contraseña con token del email (solo staff) |
 | `POST` | `/api/auth/verify` | Ninguna | Verificar token de magic link (jugadores) |
 | `GET` | `/api/auth/callback` | Ninguna | OAuth callback (Google) |
 | `POST` | `/api/auth/refresh` | Refresh token | Renovar access token |
@@ -271,6 +273,31 @@ Response 200 (jugador):
   }
 }
 ```
+
+#### `POST /api/auth/forgot-password` y `POST /api/auth/reset-password` (solo staff)
+
+Recuperación de contraseña para staff (el jugador usa Magic Link, no tiene password).
+(Decisión de auditoría 2026-07-21 — GAP-04. Implementación de código pendiente.)
+
+```
+POST /api/auth/forgot-password
+Request:  { "email": "marcelo@complejo.com" }
+Response 200 (siempre igual, no revela si el email existe):
+  { "data": { "message": "Si el email está registrado, te enviamos instrucciones." } }
+
+POST /api/auth/reset-password
+Request:  { "token": "reset-token-del-email", "password": "nuevaClave123" }
+Response 200:
+  { "data": { "message": "Contraseña actualizada. Ya podés iniciar sesión." } }
+Errors:
+  400 VALIDATION_ERROR → la contraseña no cumple requisitos
+  401 UNAUTHORIZED     → token inválido, ya usado o vencido
+```
+
+- **TTL del token**: 15-30 min, single-use.
+- **Rate limit**: aplica el límite del grupo Auth (§9).
+- **Implementación**: Server Action o Route Handler según corresponda — la pantalla pública
+  `/reset-password` dispara el reset; el envío del email usa el worker de notificaciones.
 
 ---
 
@@ -646,6 +673,15 @@ Response 200:
 | `GET` | `/api/notifications` | staff | Historial de notificaciones |
 | `GET` | `/api/audit-logs` | staff | Historial de auditoría |
 
+> [!NOTE]
+> **`history_months` (límite de plan).** Los planes definen `features.history_months`
+> (doc6/doc13): la antigüedad máxima de datos que el complejo puede consultar en reportes
+> (§5.9) e historiales (§5.10) — Predio 6 meses, Complejo 12, Estadio sin límite (`null`).
+> Se aplica como **soft-limit de query** (un filtro sobre la fecha/rango, p. ej.
+> `WHERE created_at >= now() - history_months`); NO borra datos, solo acota la ventana visible.
+> Consistente con doc6/doc13. (Decisión de auditoría 2026-07-21 — GAP-07. Implementación de
+> código pendiente.)
+
 ### 5.11 Jugadores (Players)
 
 | Método | Ruta | Rol mínimo | Descripción |
@@ -890,7 +926,7 @@ Response 201:
 
 | Endpoint group | Límite | Ventana | Por |
 |---|---|---|---|
-| Auth (magic link, login) | 5 requests | 1 minuto | email |
+| Auth (magic link, login, forgot/reset password) | 5 requests | 1 minuto | email |
 | Auth (verify, callback) | 10 requests | 1 minuto | IP |
 | Public (availability) | 30 requests | 1 minuto | IP |
 | Admin API (CRUD) | 100 requests | 1 minuto | tenant_id |

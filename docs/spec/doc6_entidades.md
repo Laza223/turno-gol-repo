@@ -289,7 +289,7 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | Desde | Hacia | Trigger | Efecto secundario |
 |---|---|---|---|
 | `pending_payment` | `confirmed` | Pago de seña procesado por MP | Email confirmación al jugador |
-| `pending_payment` | `confirmed` | No requiere seña (depósito 0% o reserva manual sin seña) | Email confirmación |
+| `pending_payment` | `confirmed` | Sin seña: `requires_deposit=false` o reserva manual sin seña (NO existe "depósito 0%": el porcentaje válido es 10-100; "sin seña" es el toggle OFF) | Email confirmación |
 | `pending_payment` | `expired` | Timeout 6 min sin pago | Slot liberado |
 | `pending_payment` | `expired` | Admin fuerza expiración manualmente | Slot liberado, email al jugador |
 | `confirmed` | `canceled_refunded` | Jugador cancela dentro del plazo de la política | Refund de seña vía MP, email confirmación. Si seña efectivo: "Contactá al complejo" |
@@ -300,20 +300,24 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Softban por reincidencia (cambio #5, revisado 2026-07-11): captura la seña (`deposit_status='captured'`, único costo real) y registra la ausencia en `player_tenant_relationships.noshow_count` + `last_no_show_at`. La 2da ausencia dentro de `NO_SHOW_STRIKE_WINDOW_DAYS` (90 días) dispara un bloqueo de `NO_SHOW_SOFTBAN_DAYS` (14 días) para reservar online, vía una fila en `tenant_player_bans`. Lógica en `handleNoShow` (`booking.cancellation.ts`) → `applyNoShowStrike` (`ptr.service.ts`). |
 | `completed` | — | — | Estado final inmutable |
 | `expired` | — | — | Estado final |
-| `no_show` | — | — | Estado final inmutable |
+| `no_show` | `completed` | Admin corrige "No vino" marcado por error, dentro de la ventana de corrección de 24h | Limpia el strike: revierte/decrementa `noshow_count` + `last_no_show_at` y **levanta la fila de softban** en `tenant_player_bans` si fue auto-creada por ese strike. La seña ya capturada NO se auto-reembolsa (se resuelve entre jugador y complejo). (Decisión de auditoría 2026-07-21; implementación de código pendiente) |
+| `no_show` | — | — | Estado final pasadas las 24h (salvo la corrección de la fila anterior) |
 
 > [!NOTE]
 > **Estados terminales**: `completed`, `no_show` y `expired` son finales con una excepción:
-> la transición `completed → no_show` está **permitida dentro de las 24 horas** posteriores
-> al auto-complete (corrección de asistencia, habilitada por trigger `enforce_booking_invariants_fn`).
-> Pasadas las 24h, `completed` es inmutable. `no_show` y `expired` son siempre inmutables.
+> la **corrección de asistencia** entre `completed` y `no_show` está **permitida dentro de las 24 horas**
+> posteriores al auto-complete, en ambos sentidos (`completed → no_show` y `no_show → completed`,
+> habilitada por trigger `enforce_booking_invariants_fn`). La reversa `no_show → completed` (no-show
+> marcado por error) limpia el strike y levanta el softban auto-creado por ese strike; la seña ya
+> capturada NO se auto-reembolsa (Decisión de auditoría 2026-07-21; implementación de código pendiente).
+> Pasadas las 24h, `completed` y `no_show` son inmutables. `expired` es siempre inmutable.
 > Cualquier ajuste contable posterior al cierre de caja se registra como un `CashFlow` `adjustment` NUEVO.
 
 ### Invariantes de la Reserva
 
 1. **No pueden existir dos reservas en estado `confirmed` o `pending_payment` en la misma cancha con overlap de horario** (DB constraint de exclusión con `btree_gist`).
 2. **`price_snapshot` nunca se modifica después de la creación**.
-3. **Una reserva en estado `no_show` es completamente inmutable** (no se puede volver a `completed`).
+3. **Una reserva en estado `no_show` es inmutable pasadas las 24h** de la marca; dentro de esa ventana de corrección el admin puede revertirla a `completed` (no-show marcado por error), lo que limpia el strike y levanta el softban auto-creado (Decisión de auditoría 2026-07-21; ver la nota de estados terminales, implementación de código pendiente).
 4. **`time_end` debe ser mayor a `time_start`** (`chk_time_valid`, validación obligatoria). El slot que termina en la medianoche calendario se guarda con `time_end='24:00'` — un TIME válido y `> '23:00'`, por lo que satisface el constraint (no se usa `'00:00'`, que lo violaría). Día operativo: ver la nota de "Horarios que cruzan medianoche".
 5. **`date` debe ser mayor o igual a hoy** al crear (se admiten reservas retroactivas del mismo día operativo).
 
@@ -679,6 +683,13 @@ created_at            timestamp     UTC
 }
 ```
 
+> [!NOTE]
+> **Enforcement de `history_months` (GAP-07, Decisión de auditoría 2026-07-21)**: es un **soft-limit a nivel
+> QUERY** — acota los reportes/historial visibles a la ventana del plan (Predio 6 / Complejo 12 / Estadio
+> ilimitado, es decir sin filtro). NUNCA es un borrado físico ni una purga de datos: el borrado físico
+> complicaría las obligaciones de la Ley 25.326 y la trazabilidad de auditoría. Los datos se conservan
+> siempre; solo se filtra lo que se muestra/consulta. (implementación de código pendiente)
+
 ---
 
 ## ENTIDAD 14: Notification (Notificación)
@@ -812,6 +823,17 @@ comment           text?         Máx 500 caracteres
 created_at        timestamp     UTC
 ```
 
+> [!NOTE]
+> **Corrección `completed → no_show` oculta la review (LOG-10, Decisión de auditoría 2026-07-21)**: si un
+> booking con review publicada se corrige a `no_show` (dentro de la ventana de 24h; ver ENTIDAD 6), la
+> review asociada se **oculta / soft-borra** — un jugador que no se presentó no debería conservar una
+> reseña pública. Requiere un flag de visibilidad (p. ej. `hidden_at` / `is_hidden`) en `reviews`.
+> (implementación de código pendiente)
+>
+> **Moderación de reviews diferida a v1.5 (GAP-12, Decisión de auditoría 2026-07-21)**: reportar, ocultar
+> manualmente o responder reseñas queda **fuera de scope v1**; se evalúa en v1.5. En v1 solo existe el
+> INSERT del jugador dueño del booking `completed` y la lectura pública.
+
 ---
 
 ## ENTIDAD 20: PushSubscription (Suscripción Web Push del Staff)
@@ -858,6 +880,13 @@ UNIQUE (player_id, tenant_id)
 
 ### Definición
 Toggle operacional del sistema (Fase 6). **No** son los feature flags por plan (esos viven en `plans.features`, ADR-010). Fila con `tenant_id` NULL = default global; con `tenant_id` seteado = override por complejo (p. ej. kill switch de `suspended`).
+
+> [!NOTE]
+> **Dos sistemas de flags coexisten a propósito (TEC-11, Decisión de auditoría 2026-07-21)**, con propósitos
+> distintos y NO se unifican: `plans.features` (JSONB en ENTIDAD 13) = **entitlement / gating por plan**,
+> declarativo (qué capacidades incluye cada plan de suscripción); la tabla `feature_flags` = **kill-switch
+> operacional**, con override por tenant (encender/apagar funcionalidad en runtime, p. ej. ante incidentes
+> o para el estado `suspended`).
 
 ### Atributos propios
 ```

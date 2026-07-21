@@ -70,6 +70,7 @@ Registro (1 min)
 **Principios UX**:
 - Solo 4 campos (nombre, dirección, ciudad, provincia)
 - Autocompletado de dirección con Google Places API
+- **Fallback de carga manual** (Decisión de auditoría 2026-07-21): si Google Places no encuentra el domicilio (frecuente en interior/zonas rurales), el dueño ingresa la dirección como texto libre + lat/lng opcional. El Paso 1 nunca queda bloqueado por depender de Places. (Implementación de código pendiente.)
 - Provincia: selector pre-cargado (24 provincias argentinas)
 - NO pedir: CUIT, teléfono del complejo, email del complejo, fotos (todo opcional, después)
 - El slug se genera automáticamente del nombre (visible como preview: "turnogol.app/complejo-san-martin")
@@ -168,6 +169,13 @@ Registro (1 min)
 - Si elige "No": wizard termina inmediatamente
 - Si el OAuth de MP falla: wizard termina sin MP, se puede configurar después
 - NO pedir: porcentaje de seña (default 30%), política de cancelación (default 12hs)
+
+> [!NOTE]
+> **Los "2 minutos" son solo la conexión OAuth, no la habilitación de cobros de MP** (Decisión de auditoría 2026-07-21).
+> En cuentas nuevas de MercadoPago pueden aplicar la verificación de identidad (KYC/CUIT) y
+> períodos de "dinero a liberar" antes de que el dueño pueda efectivamente **retirar** la plata de las señas.
+> Esto depende de MercadoPago, no de TurnoGol. El copy del paso debe aclararlo para no prometer
+> retiros inmediatos y evitar frustración cuando el dinero de la primera seña queda retenido.
 
 ---
 

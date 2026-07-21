@@ -271,7 +271,8 @@ El email es el canal principal de comunicación transaccional con dueños de com
 - **Comunicaciones de dunning** al dueño del complejo (cobro fallido)
 - **Notificaciones de trial/onboarding** (cadencia programada, Doc 4/10)
 - **Cancelaciones y reembolsos** al jugador
-- **Magic links** de autenticación (ADR-002)
+- **Magic links** de autenticación de jugadores (ADR-002)
+- **Reset de contraseña** de staff (ADR-013 — link con token de un solo uso, TTL corto)
 
 El Doc 5 establece: "Los emails se envían de forma asincrónica (queue). No bloquean el flujo de reserva. Retry automático en caso de falla del servicio."
 
@@ -343,7 +344,8 @@ Evento de negocio (booking.confirmed)
 | `trial_welcome` | `{owner_name}`, `{complex_name}` | Registro |
 | `trial_ending` | `{owner_name}`, `{days_left}` | Día 21, 28, 30 |
 | `deposit_expired` | `{player_name}`, `{court_name}`, `{date}`, `{time}` | Timeout 6min sin seña |
-| `magic_link` | `{user_name}`, `{login_url}`, `{expires_in}` | Login |
+| `magic_link` | `{user_name}`, `{login_url}`, `{expires_in}` | Login (jugador) |
+| `password_reset` | `{user_name}`, `{reset_url}`, `{expires_in}` | Reset de contraseña de staff — link con token de un solo uso, TTL corto (Decisión de auditoría 2026-07-21; endpoints en doc15; implementación de código pendiente) |
 
 ### Consecuencias
 
@@ -434,12 +436,23 @@ Razones:
      notification_url: "https://api.turnogol.app/webhooks/mercadopago",
      external_reference: booking_uuid,
      expires: true,
-     expiration_date_to: booking.created_at + 6 minutos
+     expiration_date_to: booking.created_at + 6 minutos,
+     payment_methods: {
+       // Solo medios instantáneos: excluir diferidos/offline incompatibles con el timeout de 6 min
+       excluded_payment_types: [{ id: "ticket" }, { id: "atm" }]  // Rapipago, PagoFácil, transferencia/cajero offline
+     }
    }
 3. Jugador es redirigido a MP → paga → MP redirige de vuelta
 4. Webhook `payment.approved` → TurnoGol cambia booking a 'confirmed'
 5. Si timeout 6min sin pago → booking pasa a 'expired', slot liberado
 ```
+
+> [!NOTE]
+> **Exclusión de medios offline en la Preference de la seña (Decisión de auditoría 2026-07-21).** La Preference
+> restringe los medios de pago a instantáneos (tarjeta de crédito/débito + dinero en cuenta de MP) vía
+> `excluded_payment_types` (`ticket`, `atm`). Los medios diferidos/offline (Rapipago, PagoFácil, transferencia
+> offline) son incompatibles con el `expiration_date_to` de 6 minutos: el jugador recibiría un cupón para pagar
+> horas más tarde, dejando el slot en un limbo. Implementación de código pendiente en la creación de la Preference.
 
 **Suscripciones SaaS (Preapproval / Suscripción):**
 ```
@@ -1457,8 +1470,8 @@ Razones:
 En el diseño inicial (ADR-002), se decidió utilizar Magic Link para toda autenticación por email (B2C y B2B) para evitar el soporte de contraseñas olvidadas. Sin embargo, al implementar el modelo multi-tenant con aislamiento relacional RLS en Supabase/PostgreSQL y auditoría inmutable, surgieron varios inconvenientes con el uso de Magic Links para el Staff:
 
 1. **Seguridad y Control de Sesión**: Los Magic Links por email introducen dependencias externas que ralentizan el ingreso diario de los operarios en horas pico y exponen las cuentas a mayor riesgo si el email corporativo del complejo queda abierto en navegadores de mostrador.
-2. **Roles y Autorización Gating**: Con la eliminación de PINs (decisión #8) y la definición clara de roles (`admin` y `manager`), la autenticación debe ser robusta, instantánea y controlable a nivel backend mediante credenciales estáticas que puedan ser revocadas e invalidadas inmediatamente de forma determinista.
-3. **Fricción nula**: Para el staff del complejo, que trabaja 8-12 horas diarias frente a la grilla, ingresar una contraseña estática al inicio del turno es un flujo estándar y de nula fricción en comparación con tener que esperar el envío y apertura de un correo cada vez que expira la sesión en el mostrador.
+2. **Roles y Autorización Gating**: Con la eliminación de PINs (decisión #8) y la definición clara de roles (`admin` y `manager`), la autenticación debe ser robusta, instantánea y controlable a nivel backend mediante credenciales estáticas cuya revocación sea determinista y efectiva en el próximo request (ver Consecuencias — la re-lectura de `tenant_staff_members` por request es el mecanismo de revocación, no una blacklist de tokens).
+3. **Fricción baja (con salvaguardas)**: Para el staff del complejo, que trabaja 8-12 horas diarias frente a la grilla, ingresar una contraseña estática al inicio del turno es un flujo estándar y de baja fricción frente a tener que esperar el envío y apertura de un correo cada vez que expira la sesión en el mostrador. Dado el nivel de alfabetización tecnológica de Marcelo (2.5/5), el riesgo de contraseña olvidada y del mostrador compartido se mitiga con: (a) un **reset asistido** por email (link con token de un solo uso, TTL corto — ver GAP-04 / template `password_reset` en ADR-003), y (b) una opción **"recordarme"** opcional en dispositivos de confianza que extiende la sesión y reduce los re-logins. (Decisión de auditoría 2026-07-21: se suaviza la afirmación de "fricción nula"; el reset asistido tiene implementación de código pendiente.)
 
 ### Opciones consideradas
 
@@ -1487,7 +1500,7 @@ Razones:
 **Positivas:**
 - Mayor seguridad y auditoría en el panel de administración.
 - Mayor confiabilidad al no depender de la latencia de entrega de correos de Resend para el trabajo diario.
-- Facilidad para dar de baja a miembros de staff con invalidación inmediata de tokens de sesión.
+- Facilidad para dar de baja a miembros de staff: la revocación es **efectiva en el próximo request** (no hay blacklist de tokens). Como el rol y el status del staff se re-leen de `tenant_staff_members` en cada request (el claim `role` del JWT nunca se confía), un staff dado de baja o inactivado queda rechazado en su siguiente request; el JWT vive 1h pero no habilita ninguna acción tras la baja. Esta re-lectura por request es el mecanismo de revocación (no se requiere blacklist de tokens). (Decisión de auditoría 2026-07-21: se suaviza "invalidación inmediata de tokens de sesión"; implementación: extender el re-read para rechazar staff inactivo si aún no lo hace — pendiente.)
 
 **Negativas:**
 - Requiere implementar un flujo de restablecimiento de contraseña para el staff (envío de email con token de reset y pantalla de nueva contraseña). Esto es manejado nativamente por Supabase Auth.

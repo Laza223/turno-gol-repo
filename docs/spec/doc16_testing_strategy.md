@@ -30,23 +30,29 @@ TurnoGol no es Google. No podemos tener 95% de coverage ni una suite de 10.000 t
 ```
                 ┌──────────┐
                 │   E2E    │  ~10% del esfuerzo
-                │ (Playwright)│  5-10 tests de happy path
+                │ (Playwright)│  7-10 tests de happy path
                 ├──────────┤
                 │          │
             ┌───┤Integration├───┐  ~25% del esfuerzo
-            │   │(Vitest+DB)│   │  30-50 tests con DB real
+            │   │(Vitest+DB)│   │  35-50 tests con DB real
             │   ├──────────┤   │
             │   │          │   │
         ┌───┤   │   Unit   │   ├───┐  ~65% del esfuerzo
-        │   │   │ (Vitest) │   │   │  100-200 tests de lógica pura
+        │   │   │ (Vitest) │   │   │  100-140 tests de lógica pura
         └───┴───┴──────────┴───┴───┘
 ```
 
 | Capa | Framework | DB | Red | Velocidad | Cuántos |
 |---|---|---|---|---|---|
-| **Unit** | Vitest | ❌ No | ❌ No | < 50ms/test | 100-200 |
-| **Integration** | Vitest | ✅ PostgreSQL real (Supabase local) | ❌ No (mocks) | < 500ms/test | 30-50 |
-| **E2E** | Playwright | ✅ Sí (app completa) | ✅ Sí | 5-15s/test | 5-10 |
+| **Unit** | Vitest | ❌ No | ❌ No | < 50ms/test | 100-140 |
+| **Integration** | Vitest | ✅ PostgreSQL real (Supabase local) | ❌ No (mocks) | < 500ms/test | 35-50 |
+| **E2E** | Playwright | ✅ Sí (app completa) | ✅ Sí | 5-15s/test | 7-10 |
+
+> [!NOTE]
+> **Totales reconciliados (Decisión de auditoría 2026-07-21 — TEC-02):** unit **100-140**,
+> integration **35-50**, e2e **7-10** → **~142-200 tests** para v1. Estos son los números que
+> usan §2.1, §3.1, §4.1 y el resumen §13; cualquier otra cifra en el doc es un remanente a
+> corregir.
 
 ---
 
@@ -176,14 +182,26 @@ Flujos que involucran la base de datos, incluyendo transacciones, RLS, constrain
 | Test suite | Qué valida | Criticidad |
 |---|---|---|
 | `isolation.test.ts` | Aislamiento cross-tenant (Doc 12 §10) | 🔴 BLOQUEANTE |
-| `booking-flow.test.ts` | Flujo completo: crear → confirmar → completar/cancelar | 🔴 BLOQUEANTE |
-| `booking-concurrency.test.ts` | Doble booking simultáneo → exclusion constraint + SELECT FOR UPDATE | 🔴 BLOQUEANTE |
-| `abonado-flow.test.ts` | Crear abonado → genera slots → cancela → elimina futuros | 🟡 Alto |
-| `payment-webhook.test.ts` | Webhook MP → actualiza booking → idempotencia | 🟡 Alto |
-| `billing-lifecycle.test.ts` | Trial → active → past_due → suspended → active | 🟡 Alto |
 | `rls-policies.test.ts` | Cada tabla aislada rechaza cross-tenant CRUD | 🔴 BLOQUEANTE |
+| `booking-concurrency.test.ts` | Doble booking simultáneo → exclusion constraint + SELECT FOR UPDATE | 🔴 BLOQUEANTE |
+| `payment-webhook.test.ts` | Webhook MP → actualiza booking → idempotencia | 🔴 BLOQUEANTE |
+| `booking-flow.test.ts` | Flujo completo: crear → confirmar → completar/cancelar | 🟡 Alto (no gate) |
+| `abonado-flow.test.ts` | Crear abonado → genera slots → cancela → elimina futuros | 🟡 Alto (no gate) |
+| `billing-lifecycle.test.ts` | Trial → active → past_due → suspended → active | 🟢 Incremental (post-launch) |
 
 **Total estimado: 35-50 integration tests.**
+
+> [!IMPORTANT]
+> **Scope de v1 — qué BLOQUEA el deploy (Decisión de auditoría 2026-07-21 — TEC-02).**
+> El gate de deploy en CI debe ser **solo** lo que toca dinero, aislamiento o concurrencia:
+> `isolation`, `rls-policies`, `booking-concurrency` y la **idempotencia de `payment-webhook`**.
+> El resto —`booking-flow`, `abonado-flow`, `billing-lifecycle`, y la cobertura periférica de
+> notifications/cashflow/billing— es **importante pero NO bloqueante**: cobertura **incremental
+> post-lanzamiento**. La garantía crítica de `booking-flow` (no doble booking, cobro correcto) ya
+> la cubren los tests bloqueantes de concurrencia y webhook. Recortar el gate mantiene el CI dentro
+> del target de tiempo (§1.1) sin resignar las protecciones que importan. Separar el job de CI en
+> "bloqueante vs incremental" (hoy el job de integración corre y bloquea todo junto) queda como
+> implementación de código pendiente.
 
 ### 3.2 Tests de aislamiento — El guardián (BLOQUEANTE)
 
@@ -1103,7 +1121,7 @@ Requisitos de infra local:
 │                  TESTING MAP - TURNOGOL                        │
 │                                                                │
 │  ┌────────────────────┐                                        │
-│  │    UNIT TESTS       │  100-200 tests · Vitest · < 30s      │
+│  │    UNIT TESTS       │  100-140 tests · Vitest · < 30s      │
 │  │                     │                                        │
 │  │  • State machines   │  Sin DB, sin red, sin filesystem      │
 │  │  • Pricing logic    │  Mocks para dependencias externas     │

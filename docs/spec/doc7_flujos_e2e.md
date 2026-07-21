@@ -713,6 +713,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 | Booking marcado como no_show | 📩 Email al jugador: "Fuiste registrado como No-Show (ausente) para tu turno del {fecha} {hora}. La seña queda retenida; si es tu 2da ausencia en 90 días no vas a poder reservar online por 14 días." |
 | Seña retenida | La seña ya fue registrada como ingreso (`booking`). No genera un nuevo CashFlow (evita duplicación). |
 | Corrección de `completed` a `no_show` (dentro de 24hs) | 💰 CashFlow: adjustment (negativo), category='no_show_correction', description='Reversión de cobro por no-show de reserva autocompletada' |
+| Corrección de `no_show` a `completed` (dentro de 24hs, no-show marcado por error) | Limpia el strike: revierte/decrementa `noshow_count` + `last_no_show_at` y **levanta la fila de softban** en `tenant_player_bans` si fue auto-creada por ese strike. La seña ya capturada NO se auto-reembolsa (se resuelve entre jugador y complejo). Si además hay review publicada, se oculta/soft-borra (ver doc6 ENTIDAD 19). (Decisión de auditoría 2026-07-21; implementación de código pendiente) |
 
 
 #### Decisiones del negocio de la cancelación (todas las variantes)
@@ -722,7 +723,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 | `deposit_status = 'not_required'` y jugador cancela | Sin impacto financiero. Slot liberado. |
 | `deposit_status = 'paid'` y cancela en plazo | Refund vía API de MP |
 | `deposit_status = 'paid'` y cancela fuera de plazo | Sin refund. `deposit_status → 'captured'` |
-| Booking tiene `abonado_id` (turno fijo) | El admin decide: ¿el abonado pierde ese turno o se corre? (gestión manual) |
+| Booking tiene `abonado_id` (turno fijo) | El admin decide: el abonado pierde ese turno, o "se corre" = **cancelar esa instancia + crear manualmente una reserva nueva** (gestión manual; en v1 NO hay endpoint ni transición de reprogramación dedicada, consistente con el out-of-scope que prohíbe modificar el horario de una reserva). (Decisión de auditoría 2026-07-21) |
 | Jugador tiene ban activo | Bloqueado para reservar online en este complejo hasta que el ban expire o sea levantado |
 | Booking tipo 'block' | NO aplica lógica de penalidad ni reembolso (no hay jugador ni seña) |
 

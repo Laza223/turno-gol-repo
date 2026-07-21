@@ -14,7 +14,7 @@ import { previewAbonadoSlotsAction } from './nuevo/actions'
 const VALID_STATUSES: AbonadoStatus[] = ['active', 'paused', 'canceled']
 
 const STATUS_LABELS: Record<AbonadoStatus, string> = {
-  active: 'Activos',
+  active: 'Fijos activos',
   paused: 'Pausados',
   canceled: 'Cancelados',
 }
@@ -40,13 +40,13 @@ export default async function AbonadosPage(
   )
 
   const total = abonados.length
-  const totalWord = total === 1 ? '1 abonado' : `${total} abonados`
+  const totalWord = total === 1 ? '1 turno fijo' : `${total} turnos fijos`
   const headerSubtitle = statusFilter ? `${totalWord} · ${STATUS_LABELS[statusFilter].toLowerCase()}` : totalWord
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Abonados"
+        title="Turnos Fijos"
         subtitle={headerSubtitle}
         icon={<Users className="h-6 w-6" aria-hidden="true" />}
         actions={
@@ -55,7 +55,7 @@ export default async function AbonadosPage(
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
           >
             <UserPlus className="h-4 w-4" aria-hidden="true" />
-            Nuevo abonado
+            Nuevo turno fijo
           </Link>
         }
       />

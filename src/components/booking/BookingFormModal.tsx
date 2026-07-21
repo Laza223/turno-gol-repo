@@ -3,14 +3,32 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Sentry from '@sentry/nextjs'
-import { ChevronDown, Loader2 } from 'lucide-react'
+import {
+  AlertCircle,
+  Calendar,
+  ChevronDown,
+  Clock,
+  GraduationCap,
+  Info,
+  MapPin,
+  MoreHorizontal,
+  PhoneCall,
+  SlidersHorizontal,
+  UserCheck,
+  Wrench,
+  X,
+} from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { BookingActionResult } from '@/app/(admin)/reservas/actions'
 import { formatDateLong } from '@/lib/format'
 import { END_OF_DAY_MINS, endLabelFromMins } from '@/shared/time/operating-day'
+import { cn } from '@/lib/utils'
 
 type Slot = {
   courtId: string
@@ -65,19 +83,21 @@ type Reason = {
   kind: 'contact' | 'internal'
   /** Nombre autocompletado para bloqueos internos (se guarda en guest_name). */
   autoName?: string
+  icon: React.ComponentType<{ className?: string }>
 }
 
 const REASONS: Reason[] = [
-  { value: 'phone', label: 'Reserva Telefónica', kind: 'contact' },
-  { value: 'maintenance', label: 'Mantenimiento', kind: 'internal', autoName: 'Mantenimiento' },
+  { value: 'phone', label: 'Reserva Telefónica', kind: 'contact', icon: PhoneCall },
+  { value: 'maintenance', label: 'Mantenimiento', kind: 'internal', autoName: 'Mantenimiento', icon: Wrench },
   {
     value: 'school',
     label: 'Escuelita de Fútbol',
     kind: 'internal',
     autoName: 'Escuelita de Fútbol',
+    icon: GraduationCap,
   },
-  { value: 'teachers', label: 'Profesores', kind: 'internal', autoName: 'Profesores' },
-  { value: 'other', label: 'Otro', kind: 'contact' },
+  { value: 'teachers', label: 'Profesores', kind: 'internal', autoName: 'Profesores', icon: UserCheck },
+  { value: 'other', label: 'Otro', kind: 'contact', icon: MoreHorizontal },
 ]
 
 const DEFAULT_REASON: ReasonValue = 'phone'
@@ -99,11 +119,21 @@ export function BookingFormModal({
   action,
   checkAvailabilityAction,
 }: Props) {
-  const [duration, setDuration] = useState<60 | 120>(slot.durationMins)
+  const [duration, setDuration] = useState<number>(slot.durationMins)
   const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
+  const guestNameInputRef = useRef<HTMLInputElement>(null)
+
+  function handleReasonSelect(val: ReasonValue) {
+    setReason(val)
+    if (val === 'other' || val === 'phone') {
+      setTimeout(() => {
+        guestNameInputRef.current?.focus()
+      }, 50)
+    }
+  }
 
   // If the parent reuses this modal instance for a different slot, the duration
   // useState initializer won't re-run — resync it so the summary and payload
@@ -144,14 +174,13 @@ export function BookingFormModal({
 
   const selectedReason = reasonFor(reason)
   const isInternalBlock = selectedReason.kind === 'internal'
-  // Tarea #6: las reservas reales son de 60 min fijos. Solo los bloqueos internos
-  // (mantenimiento, escuelita) pueden abarcar varias horas, así que el selector de
-  // duración se muestra únicamente para ellos.
+  const allowsCustomDuration = isInternalBlock || reason === 'other'
+  // Bloqueos internos y "Otro" (torneos, eventos) pueden abarcar
+  // desde 1 hora hasta la jornada completa (varias horas).
   const startMins = timeToMins(slot.timeStart)
-  // Un bloqueo que cruza medianoche (23:00→01:00) es inrepresentable en el modelo
-  // de storage (chk_time_valid exige time_end > time_start): no ofrecer 120'.
-  const canBlockTwoHours = startMins + 120 <= END_OF_DAY_MINS
-  const effectiveDuration = isInternalBlock && canBlockTwoHours ? duration : 60
+  const maxHours = Math.max(1, Math.floor((END_OF_DAY_MINS - startMins) / 60))
+  const allDurations = Array.from({ length: maxHours }, (_, i) => (i + 1) * 60)
+  const effectiveDuration = allowsCustomDuration ? duration : 60
   const timeEnd = endLabelFromMins(startMins + effectiveDuration)
 
   // Invariante: createManualBookingSchema tiene un .refine() que exige playerId
@@ -227,28 +256,75 @@ export function BookingFormModal({
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 dark:bg-black/80 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         {/* w-[calc(100vw-2rem)]: gutter de 1rem por lado en mobile (misma receta
             que ui/dialog.tsx) — con w-full el card quedaba edge-to-edge <448px. */}
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border rounded-xl shadow-2xl dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] p-6 focus:outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
-          <Dialog.Title className="text-base font-semibold text-foreground mb-1">
-            Nueva reserva
-          </Dialog.Title>
-          <Dialog.Description className="text-sm text-muted-foreground mb-4">
-            {slot.courtName} · {formatDateLong(slot.date)} · {slot.timeStart}–{timeEnd}
-          </Dialog.Description>
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border/80 rounded-2xl shadow-2xl backdrop-blur-xl p-6 sm:p-7 focus:outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+          <Dialog.Close className="absolute right-4 top-4 rounded-lg opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Cerrar</span>
+          </Dialog.Close>
+
+          <div className="mb-5 space-y-2">
+            <Dialog.Title className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              Nueva reserva
+            </Dialog.Title>
+
+            <Dialog.Description asChild>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {slot.courtName}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-xs font-medium border border-border/60">
+                  <Calendar className="h-3 w-3 shrink-0" />
+                  {formatDateLong(slot.date)}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-xs font-medium border border-border/60">
+                  <Clock className="h-3 w-3 shrink-0" />
+                  {slot.timeStart}–{timeEnd}
+                </span>
+              </div>
+            </Dialog.Description>
+          </div>
 
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="reason" className="block text-sm font-medium text-foreground mb-1">
+            <div className="space-y-2">
+              <Label htmlFor="reason" className="block text-sm font-semibold text-foreground">
                 Motivo / Tipo de Bloqueo
-              </label>
+              </Label>
+
+              {/* Selector táctil en chips para UX rápida de 1 tap */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {REASONS.map((r) => {
+                  const Icon = r.icon
+                  const isSelected = reason === r.value
+                  return (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => handleReasonSelect(r.value)}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all duration-150 text-left cursor-pointer',
+                        isSelected
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-semibold shadow-2xs'
+                          : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')} />
+                      <span className="truncate">{r.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Native Select oculto visualmente pero activo en DOM para accesibilidad/tests */}
               <select
                 id="reason"
                 name="reason"
                 value={reason}
-                onChange={(e) => setReason(e.target.value as ReasonValue)}
-                className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                onChange={(e) => handleReasonSelect(e.target.value as ReasonValue)}
+                className="sr-only"
               >
                 {REASONS.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -256,59 +332,70 @@ export function BookingFormModal({
                   </option>
                 ))}
               </select>
+
               {isInternalBlock && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Bloqueo interno sin costo. Se agenda como “{selectedReason.autoName}”.
+                <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl font-medium mt-1.5">
+                  <Info className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                  <span>Bloqueo interno sin costo. Se agenda como <strong>“{selectedReason.autoName}”</strong>.</span>
                 </p>
               )}
             </div>
 
-            {isInternalBlock && (
-              <div>
-                <label
-                  id="duration-label"
-                  className="block text-sm font-medium text-foreground mb-1"
-                >
-                  Duración del bloqueo
-                </label>
-                <div role="group" aria-labelledby="duration-label" className="flex gap-2">
-                  {([60, 120] as const)
-                    .filter((d) => d === 60 || canBlockTwoHours)
-                    .map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      aria-pressed={duration === d}
-                      onClick={() => setDuration(d)}
-                      className={`flex-1 py-1.5 min-h-11 md:min-h-9 rounded border text-sm font-medium transition-colors duration-100 ${
-                        duration === d
-                          ? 'bg-primary text-white border-emerald-600'
-                          : 'bg-card text-foreground border-border hover:bg-accent'
-                      }`}
-                    >
-                      {d} min
-                    </button>
-                  ))}
+            {allowsCustomDuration && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label id="duration-label" className="block text-sm font-semibold text-foreground">
+                    Duración {reason === 'other' ? 'de la reserva' : 'del bloqueo / evento'}
+                  </Label>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                    Hasta las {timeEnd} ({effectiveDuration / 60} hs)
+                  </span>
+                </div>
+
+                <div role="group" aria-labelledby="duration-label" className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {allDurations.map((d) => {
+                    const isActive = duration === d
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => setDuration(d)}
+                        className={cn(
+                          'flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl border transition-all duration-200 cursor-pointer',
+                          isActive
+                            ? 'bg-primary text-primary-foreground border-emerald-600 shadow-md ring-1 ring-emerald-500/50'
+                            : 'bg-background hover:bg-accent border-border/80 text-foreground hover:border-border'
+                        )}
+                      >
+                        <span className={cn("text-sm font-semibold tracking-tight", isActive ? "text-primary-foreground" : "text-foreground")}>
+                          {d / 60} {d === 60 ? 'hora' : 'horas'}
+                        </span>
+                        <span className={cn('text-[11px] font-medium', isActive ? 'text-primary-foreground/90' : 'text-muted-foreground')}>
+                          hasta {endLabelFromMins(startMins + d)}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}
 
             {!isInternalBlock && (
-              <div>
-                <label
-                  htmlFor="guestName"
-                  className="block text-sm font-medium text-foreground mb-1"
-                >
-                  Nombre <span className="text-muted-foreground">(opcional)</span>
-                </label>
-                <input
+              <div className="space-y-1.5">
+                <Label htmlFor="guestName" className="flex items-center justify-between text-sm font-medium text-foreground">
+                  <span>{reason === 'other' ? 'Nombre / Motivo' : 'Nombre'}</span>
+                  <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Input
+                  ref={guestNameInputRef}
                   id="guestName"
                   name="guestName"
                   type="text"
                   maxLength={200}
                   autoComplete="name"
-                  className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 h-11 md:h-10 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Ej: Juan Pérez"
+                  placeholder={reason === 'other' ? 'Ej: Torneo nocturno, Cumpleaños, Juan...' : 'Ej: Juan Pérez'}
+                  className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus:border-emerald-500"
                 />
               </div>
             )}
@@ -320,14 +407,17 @@ export function BookingFormModal({
                 puntual) y vive FUERA de este Collapsible, siempre visible sea
                 cual sea su estado — no hace falta auto-expandirlo. */}
             <Collapsible>
-              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
-                Opciones avanzadas
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/20 px-3.5 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
+                <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground group-hover:text-foreground">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Opciones avanzadas
+                </span>
                 <ChevronDown
                   aria-hidden="true"
                   className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 pt-4">
+              <CollapsibleContent className="space-y-3.5 pt-3">
                 {!isInternalBlock && (
                   <PhoneInput
                     id="guestPhone"
@@ -337,19 +427,17 @@ export function BookingFormModal({
                   />
                 )}
 
-                <div>
-                  <label
-                    htmlFor="notesInternal"
-                    className="block text-sm font-medium text-foreground mb-1"
-                  >
-                    Notas internas <span className="text-muted-foreground">(opcional)</span>
-                  </label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="notesInternal" className="flex items-center justify-between text-sm font-medium text-foreground">
+                    <span>Notas internas</span>
+                    <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
                   <textarea
                     id="notesInternal"
                     name="notesInternal"
                     maxLength={1000}
                     rows={2}
-                    className="w-full rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2 min-h-11 md:min-h-9 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500 resize-none"
+                    className="w-full rounded-xl border border-input bg-background dark:bg-zinc-900/60 text-foreground placeholder:text-muted-foreground/60 px-3.5 py-2.5 min-h-16 text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary resize-none shadow-xs"
                     placeholder="Solo visible para el staff"
                   />
                 </div>
@@ -357,31 +445,33 @@ export function BookingFormModal({
             </Collapsible>
 
             {error && (
-              <p
+              <div
                 role="alert"
-                className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/25"
+                className="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-sm font-medium text-red-700 dark:text-red-400 shadow-xs animate-in fade-in-50"
               >
-                {error}
-              </p>
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                <span>{error}</span>
+              </div>
             )}
 
-            <div className="flex gap-2 justify-end pt-1">
+            <div className="flex gap-2.5 justify-end pt-2">
               <Dialog.Close asChild>
-                <button
+                <Button
                   type="button"
-                  className="px-4 py-2 h-11 md:h-10 text-sm font-medium text-foreground border border-border rounded-md hover:bg-accent transition-colors duration-100"
+                  variant="outline"
+                  className="rounded-xl px-4"
                 >
                   Cancelar
-                </button>
+                </Button>
               </Dialog.Close>
-              <button
+              <Button
                 type="submit"
                 disabled={isPending}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 h-11 md:h-10 text-sm font-medium text-white bg-primary rounded-md hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-[0.98] motion-reduce:active:scale-100"
+                isLoading={isPending}
+                className="rounded-xl px-5 font-semibold bg-primary hover:bg-emerald-600 text-primary-foreground shadow-md shadow-emerald-500/20"
               >
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 {isPending ? 'Guardando…' : 'Confirmar'}
-              </button>
+              </Button>
             </div>
           </form>
         </Dialog.Content>

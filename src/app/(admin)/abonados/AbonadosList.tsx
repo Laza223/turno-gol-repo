@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
-import { UserPlus, Users } from 'lucide-react'
+import { UserPlus, Users, Info } from 'lucide-react'
 import Link from 'next/link'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
 import type { AbonadoActionResult } from './actions'
@@ -37,7 +37,7 @@ function defaultCancelDate(): string {
   return d.toISOString().slice(0, 10)
 }
 
-type DialogKind = 'pause' | 'reactivate' | 'cancel' | null
+type DialogKind = 'pause' | 'reactivate' | 'cancel' | 'cancel-single' | null
 
 type RowState = {
   dialog: DialogKind
@@ -96,11 +96,11 @@ export function AbonadosList({
     return (
       <EmptyState
         icon={Users}
-        title={filterLabel ? `Sin abonados ${filterLabel}` : 'Sin abonados registrados'}
+        title={filterLabel ? `Sin turnos fijos ${filterLabel}` : 'Sin turnos fijos registrados'}
         description={
           filterLabel
-            ? 'No hay abonados con este estado. Probá otro filtro o cargá uno nuevo.'
-            : 'Creá el primer abonado para que aparezca acá.'
+            ? 'No hay turnos fijos con este estado. Probá otro filtro o cargá uno nuevo.'
+            : 'Creá el primer turno fijo para que aparezca acá.'
         }
         action={
           <Link
@@ -108,7 +108,7 @@ export function AbonadosList({
             className="inline-flex h-10 items-center gap-2 justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <UserPlus className="h-4 w-4" aria-hidden="true" />
-            Nuevo abonado
+            Nuevo turno fijo
           </Link>
         }
       />
@@ -116,8 +116,21 @@ export function AbonadosList({
   }
 
   return (
-    <ResponsiveList
-      table={
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-xs text-blue-900 dark:text-blue-200">
+        <div className="flex items-center gap-2">
+          <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+          <span>
+            <strong>¿El cliente avisa que no viene un día puntual?</strong> Cancelá únicamente el turno de ese día desde la <strong>Grilla</strong> o <strong>Reservas</strong> sin dar de baja el turno fijo permanente.
+          </span>
+        </div>
+        <Link href="/grilla" className="shrink-0 font-semibold underline text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100">
+          Ir a Grilla →
+        </Link>
+      </div>
+
+      <ResponsiveList
+        table={
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-border text-left">
@@ -157,6 +170,7 @@ export function AbonadosList({
         </ul>
       }
     />
+    </div>
   )
 }
 
@@ -323,6 +337,14 @@ function AbonadoTableRow({
               <button
                 type="button"
                 disabled={actions.isPending}
+                onClick={() => actions.openDialog('cancel-single')}
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancelar fecha...
+              </button>
+              <button
+                type="button"
+                disabled={actions.isPending}
                 onClick={() => actions.openDialog('pause')}
                 className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -394,16 +416,26 @@ function AbonadoCard({
         Turno {formatArs(a.pricePerSession)}
       </p>
       {(isActive || isPaused) && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {isActive && (
-            <button
-              type="button"
-              disabled={actions.isPending}
-              onClick={() => actions.openDialog('pause')}
-              className={`${actionButtonClass} text-amber-700 dark:text-amber-400`}
-            >
-              Pausar
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={actions.isPending}
+                onClick={() => actions.openDialog('cancel-single')}
+                className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
+              >
+                Cancelar fecha...
+              </button>
+              <button
+                type="button"
+                disabled={actions.isPending}
+                onClick={() => actions.openDialog('pause')}
+                className={`${actionButtonClass} text-amber-700 dark:text-amber-400`}
+              >
+                Pausar
+              </button>
+            </>
           )}
           {isPaused && (
             <button

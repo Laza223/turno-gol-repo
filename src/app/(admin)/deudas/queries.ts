@@ -49,7 +49,7 @@ export async function getDebts(tenantId: string, tx: DbTx): Promise<DebtRow[]> {
       b.deposit_status AS "depositStatus",
       b.notes_internal AS "notesInternal",
       b.completed_by_staff AS "completedByStaff",
-      su.name AS "completedByStaffName",
+      CASE WHEN su.id IS NULL THEN NULL ELSE (su.first_name || ' ' || su.last_name) END AS "completedByStaffName",
       COALESCE(
         SUM(cf.amount) FILTER (
           WHERE cf.type = 'income' 
@@ -64,7 +64,7 @@ export async function getDebts(tenantId: string, tx: DbTx): Promise<DebtRow[]> {
     LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
     WHERE b.tenant_id = ${tenantId}
       AND b.status = 'completed'
-    GROUP BY b.id, c.name, b.player_id, p.id, p.first_name, p.last_name, p.phone, su.name
+    GROUP BY b.id, c.name, b.player_id, p.id, p.first_name, p.last_name, p.phone, su.id, su.first_name, su.last_name
     HAVING (
       b.price_snapshot - (
         CASE WHEN b.deposit_status IN ('paid', 'captured') THEN b.deposit_amount ELSE 0 END

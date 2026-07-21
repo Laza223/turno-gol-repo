@@ -112,7 +112,7 @@ export const DesactivarConImpacto: Story = {
     // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
     // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
     await waitFor(() => expect(dialog.getByText(/4 reserva\(s\) futura\(s\)/i)).toBeVisible())
-    await expect(dialog.getByText(/2 abonado\(s\) activo\(s\)/i)).toBeVisible()
+    await expect(dialog.getByText(/2 turno\(s\) fijo\(s\) activo\(s\)/i)).toBeVisible()
   },
 }
 

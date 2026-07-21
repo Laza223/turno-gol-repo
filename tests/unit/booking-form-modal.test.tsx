@@ -215,21 +215,21 @@ describe('BookingFormModal — slot de medianoche (día operativo)', () => {
     )
   })
 
-  it('el bloqueo interno a las 23:00 no ofrece 120 min (cruzaría medianoche, rango inrepresentable)', async () => {
+  it('el bloqueo interno a las 23:00 no ofrece 2 horas (cruzaría medianoche, rango inrepresentable)', async () => {
     renderModal({ slot: midnightSlot })
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
 
-    await waitFor(() => expect(screen.getByRole('button', { name: '60 min' })).toBeTruthy())
-    expect(screen.queryByRole('button', { name: '120 min' })).toBeNull()
+    await waitFor(() => expect(screen.getByRole('button', { name: /1 hora/i })).toBeTruthy())
+    expect(screen.queryByRole('button', { name: /2 horas/i })).toBeNull()
   })
 
-  it('un slot común (18:00) sigue ofreciendo 120 min para bloqueos internos', async () => {
+  it('un slot común (18:00) sigue ofreciendo 2 horas para bloqueos internos', async () => {
     renderModal()
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
 
-    await waitFor(() => expect(screen.getByRole('button', { name: '120 min' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: /2 horas/i })).toBeTruthy())
   })
 })
 

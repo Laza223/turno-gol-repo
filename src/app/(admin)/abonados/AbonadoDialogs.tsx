@@ -3,7 +3,7 @@
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import DatePicker from '@/components/ui/date-picker'
 
-type DialogKind = 'pause' | 'reactivate' | 'cancel' | null
+type DialogKind = 'pause' | 'reactivate' | 'cancel' | 'cancel-single' | null
 
 type ConfirmResult = { success: boolean; error?: string }
 
@@ -29,7 +29,7 @@ export type AbonadoDialogsProps = {
 }
 
 /**
- * The abonado action dialogs (pause / reactivate / cancel) all pull in the
+ * The abonado action dialogs (pause / reactivate / cancel / cancel-single) all pull in the
  * Radix-backed ConfirmDialog. They are only needed once an admin clicks a row
  * action, so this whole subtree is lazy-loaded by AbonadosList and mounted only
  * while a dialog is active — keeping ConfirmDialog out of the initial chunk.
@@ -53,11 +53,11 @@ export function AbonadoDialogs({
       <ConfirmDialog
         open={dialog === 'pause'}
         onOpenChange={(open) => { if (!open) onClose() }}
-        title="Pausar abonado"
+        title="Pausar turno fijo"
         description={
           <div className="space-y-2">
             <p>
-              Eliminará todas las reservas futuras de este abonado. Podés reactivar después.
+              Eliminará todas las reservas futuras de este turno fijo. Podés reactivar después.
             </p>
           </div>
         }
@@ -70,7 +70,7 @@ export function AbonadoDialogs({
       <ConfirmDialog
         open={dialog === 'reactivate'}
         onOpenChange={(open) => { if (!open) onClose() }}
-        title="Reactivar abonado"
+        title="Reactivar turno fijo"
         description={
           <ReactivatePreview
             loading={reactivatePreviewLoading}
@@ -88,7 +88,7 @@ export function AbonadoDialogs({
       <ConfirmDialog
         open={dialog === 'cancel'}
         onOpenChange={(open) => { if (!open) onClose() }}
-        title="Cancelar abonado"
+        title="Cancelar turno fijo"
         description={
           <div className="space-y-2">
             <p>Esta acción es permanente. Se eliminarán todas las reservas futuras desde la fecha elegida.</p>
@@ -98,7 +98,7 @@ export function AbonadoDialogs({
           </div>
         }
         variant="destructive"
-        confirmLabel="Cancelar abonado"
+        confirmLabel="Cancelar turno fijo"
         cancelLabel="Volver"
         confirmationPhrase="CANCELAR"
         onConfirm={onConfirmCancel}
@@ -116,6 +116,34 @@ export function AbonadoDialogs({
           />
         </div>
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={dialog === 'cancel-single'}
+        onOpenChange={(open) => { if (!open) onClose() }}
+        title="Cancelar una fecha puntual"
+        description={
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Para cancelar únicamente el turno de una fecha específica (ej: este martes) sin dar de baja el turno fijo permanente:
+            </p>
+            <ol className="list-decimal list-inside space-y-1.5 text-xs text-foreground bg-muted/40 p-3 rounded-xl border border-border">
+              <li>Ingresá a la <strong>Grilla</strong> o a la lista de <strong>Reservas</strong>.</li>
+              <li>Buscá la fecha del día que avisaron que no asistirán.</li>
+              <li>Hacé clic en el turno de ese horario y seleccioná <strong>“Cancelar reserva”</strong>.</li>
+            </ol>
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+              ✓ La cancha quedará libre para esa fecha puntual y el turno fijo continuará activo para todas las demás semanas.
+            </p>
+          </div>
+        }
+        variant="default"
+        confirmLabel="Ir a la Grilla"
+        cancelLabel="Cerrar"
+        onConfirm={async () => {
+          window.location.href = '/grilla'
+          return { success: true }
+        }}
+      />
     </>
   )
 }

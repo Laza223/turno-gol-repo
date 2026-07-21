@@ -508,8 +508,8 @@ export default function AbonadoForm({
                 <textarea
                   name="notes"
                   rows={2}
-                  placeholder="Observaciones internas sobre este abonado..."
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring hover:border-accent-foreground/20"
+                  placeholder="Observaciones internas sobre este turno fijo..."
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus-visible:ring-ring hover:border-accent-foreground/20"
                 />
               </div>
             </div>

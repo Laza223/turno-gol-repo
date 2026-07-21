@@ -200,8 +200,8 @@ El "jugador" no es un perfil monolítico. Tiene dos modos de uso:
 > [!IMPORTANT]
 > **En v1, el pago del abonado es manual.** El complejo cobra al jugador cuando va a jugar (efectivo,
 > transferencia, o como arreglen). TurnoGol no interviene en el cobro del turno fijo — solo gestiona
-> la reserva recurrente. Esto es exactamente como funciona ATC Sports: el admin maneja los pagos
-> de abonados manualmente con sistema de "saldo a favor".
+> la reserva recurrente. El admin maneja los pagos de abonados 100% manualmente (efectivo,
+> transferencia o como arreglen), sin saldo a favor: el crédito estilo ATC fue descartado (cambio #4).
 
 ### Contexto
 - Trabaja horarios irregulares. El miércoles a las 17hs decide que quiere jugar el jueves a la noche.

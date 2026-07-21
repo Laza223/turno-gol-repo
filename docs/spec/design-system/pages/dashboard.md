@@ -27,9 +27,9 @@ eso vive en `/reportes` y `/metricas`. Inicio responde HOY.
 ├──────────────────────────────────────────────────────────────┤
 │ ⚙ Configuración · 5 de 7  ▓▓▓▓▓░░  · pendientes accionables  │  solo si falta setup (§4)
 ├──────────────┬──────────────┬──────────────┬─────────────────┤
-│ Caja de hoy  │ Turnos hoy   │ Esperando    │ Deudas por      │  4 KPIs (§2)
-│ $ 45.000     │ 8 de 24      │ seña: 2      │ cobrar: $ 12.000│  2×2 mobile / 4 cols lg
-│ Ingresos …   │ 33% ocupación│ $ 24.000 …   │ 3 jugadores     │
+│ Caja de hoy  │ Turnos hoy   │ Esperando    │ Jugadores       │  4 KPIs (§2)
+│ $ 45.000     │ 8 de 24      │ seña: 2      │ bloqueados: 2   │  2×2 mobile / 4 cols lg
+│ Ingresos …   │ 33% ocupación│ $ 24.000 …   │ con softban     │
 ├──────────────┴──────────────┴──────────────┴─────────────────┤
 │ Próximos turnos                                 Ver grilla → │  (§3)
 │ 18:00  Tomás García      · Cancha 1   [Señada]      $ 25.000 │
@@ -52,7 +52,7 @@ propio (el shell ya lo es).
 
 ## §2 KPIs — mapa canónico
 
-Cuatro cards, ni una más (Miller §9: plata / turnos / pendiente / deuda). Primitiva: `StatCard`
+Cuatro cards, ni una más (Miller §9: plata / turnos / pendiente / bloqueos). Primitiva: `StatCard`
 vía `MetricCard` (que ahora acepta `accent`, `sub`, `href`). **Cada card entera es un link**
 (Fitts): envuelta en `<Link>` con `aria-label` descriptivo; `card-premium-interactive` ya da el
 hover-lift.
@@ -64,7 +64,7 @@ Orden fijo (serial position §9: la plata primero):
 | 1 | **Caja de hoy** | saldo neto del día, `formatArs`. Negativo: `−$ 1.500` en `text-red-700 dark:text-red-400` (signo + color, nunca color solo) | `Ingresos $ X · Egresos $ Y` | `emerald` / `Banknote` | `/caja` | success = entra |
 | 2 | **Turnos hoy** | `8 de 24` (horas reservadas de horas disponibles). Día cerrado: `Cerrado` | `33% de ocupación` (+ ` · 2 bloqueados` si hay) | `slate` (neutro, NUEVO) / `CalendarCheck` | `/grilla` | neutro — no gasta un hue del semáforo |
 | 3 | **Esperando seña** | cantidad de reservas `pending_payment` de hoy | `$ X en señas por acreditar` · si 0: `Sin pendientes` | `amber` / `Clock` | `/reservas?status=pending_payment` | warning = pendiente |
-| 4 | **Deudas por cobrar** | Σ `player_tenant_relationships.balance > 0`, `formatArs` | `3 jugadores con deuda` · si 0: `Nadie debe nada` | `red` (NUEVO) / `UserX` | `/jugadores` | destructive = deuda |
+| 4 | **Jugadores bloqueados** | `COUNT` de bans vigentes en `tenant_player_bans` (softban por no-show + bans manuales) | `2 con bloqueo activo` · si 0: `Nadie bloqueado` | `red` (NUEVO) / `UserX` | `/jugadores` | destructive = bloqueo |
 
 Reglas:
 
@@ -74,7 +74,7 @@ Reglas:
   la caja dicen números distintos, el admin deja de confiar en los dos.
 - **"Abonados activos" sale del dashboard**: no cambia día a día ni exige acción hoy. Vive en
   `/abonados`. Un KPI que siempre dice lo mismo es ruido que compite con los que sí importan.
-- Deudas es **acumulado** (no "hoy") — el label no dice "hoy" a propósito.
+- Los bloqueos son **acumulados** (no "hoy") — el label no dice "hoy" a propósito.
 - Accents de `StatCard`: se agregan `red` y `slate` al mapa existente (mismo patrón alpha
   `bg-*-500/10 text-*-600 ring-*-500/20` + variantes dark). Los 4 hues del semáforo §2.5 solo se
   usan con su significado; por eso Turnos usa `slate` y no un verde decorativo.
@@ -170,8 +170,8 @@ queda bajo el toggle — el e2e del Aha Moment expande "N pasos completados" ant
 - Fuente única de "hoy": `todayART()` (`shared/time/art-date`). El día de caja y el de reservas
   usan la MISMA fecha (coherencia entre KPI 1 y `/caja`).
 - `getDashboardData(tenantId)` — un `withTenantContext`, en paralelo:
-  - `getDaySummary` + reservas de hoy (join court name + player) + `COUNT/SUM` de PTR
-    `balance > 0` + canchas (para nombre/online).
+  - `getDaySummary` + reservas de hoy (join court name + player) + `COUNT` de bans vigentes en
+    `tenant_player_bans` + canchas (para nombre/online).
   - Ocupación derivada con helpers puros (`dashboard-lib.ts`, unit-testeados):
     horas reservadas (no-block, estados activos) / (slots del día × canchas online − horas
     bloqueadas). Slots del día = `generateTimeSlots(open, close, closesNextDay)` del día ART

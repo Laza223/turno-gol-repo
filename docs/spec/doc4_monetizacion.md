@@ -27,13 +27,13 @@
 
 | Plan | Canchas | Precio mensual | Precio anual (por mes) | Ahorro anual |
 |---|---|---|---|---|
-| **Predio** | 1 – 3 canchas | $47.000 ARS | $37.600 ARS (20% off) | $112.800 ARS |
-| **Complejo** | 4 – 6 canchas | $74.000 ARS | $59.200 ARS (20% off) | $177.600 ARS |
-| **Estadio** | 7+ canchas | $101.000 ARS | $80.800 ARS (20% off) | $242.400 ARS |
+| **Predio** | 1 – 2 canchas | $55.000 ARS | $44.000 ARS (20% off) | $132.000 ARS |
+| **Complejo** | 3 – 5 canchas | $85.000 ARS | $68.000 ARS (20% off) | $204.000 ARS |
+| **Estadio** | 6+ canchas | $115.000 ARS | $92.000 ARS (20% off) | $276.000 ARS |
 
 > [!NOTE]
 > Precios establecidos ligeramente por debajo de ATC Sports como estrategia de captación inicial.
-> ATC cobra $60.500 / $95.000 / $125.000 ARS/mes (datos Q1 2025).
+> ATC cobra $66.000 / $104.000 / $136.000 ARS/mes (relevamiento 2026-07, ver doc2).
 > Revisar precios cada 3 meses dado el IPC argentino (ver sección 5: ARS volátil).
 > **Precios NO incluyen IVA** — se agrega 21% en el checkout.
 
@@ -48,7 +48,7 @@
 - Reservas online con pago de seña vía MercadoPago
 - Gestión de turnos fijos (abonados) desde la grilla del admin
 - Reportes completos (mismo nivel para todos los planes)
-- Sin límite de staff (una sola cuenta admin por complejo con privilegios completos, el resto managers permisivos sin necesidad de PIN)
+- Sin límite de staff: se permiten **múltiples cuentas admin** por complejo con privilegios completos (sin límite duro; única regla: debe quedar ≥1 admin activo), más managers permisivos sin necesidad de PIN (Decisión de auditoría 2026-07-21: corregido de "una sola cuenta admin por complejo" a multi-admin, alineado con US-ADM-003 y el código)
 
 ---
 
@@ -115,6 +115,18 @@
    ACTIVE ──[cancela]──→ CANCELED ──[fin período]──→ BLOCKED ──[60d]──→ CHURNED ──[7d]──→ DELETED
 ```
 
+> [!NOTE]
+> **BLOCKED → CHURNED (ruta dunning) = 90 días**, contados desde el primer cobro fallido
+> (`dunning_started_at`; `BLOCKED_TO_CHURNED_DAYS = 90` en
+> `src/modules/billing/lifecycle.service.ts:23`): BLOCKED cae el día 14, CHURNED el día 90,
+> DELETED el día 97. La ruta de cancelación voluntaria usa una constante distinta
+> (`CANCELED_BLOCKED_DELETION_DAYS = 67`, 60 días de retención + 7 días de espera de borrado,
+> contados desde el bloqueo) y no pasa por un estado `churned` explícito antes de eliminarse.
+>
+> Decisión de auditoría 2026-07-21: reducir la ruta de dunning a 60 días para simplificar los
+> crons de churn y alinear con la minimización de datos — **implementación de código PENDIENTE**
+> (`lifecycle.service.ts` sigue en 90; `BLOCKED_TO_CHURNED_DAYS` no fue tocado).
+
 ### Estados y comportamiento del sistema
 
 | Estado | Acceso admin | Acceso jugador | Cobro | Notificaciones | Color admin interno |
@@ -165,9 +177,11 @@
 
 > [!NOTE]
 > **Canal v1: solo email.** WhatsApp Business API se evalúa para v1.5 cuando haya escala para
-> negociar tarifas con un BSP argentino. Los costos de WA a escala (estimados en 30-300x más
-> de lo presupuestado originalmente) hacen inviable usarlo como canal primario en fase temprana.
-> Email es gratuito hasta ~100 envíos/día con Resend/SendGrid tiers free.
+> negociar tarifas con un BSP argentino. Su modelo de costos lo hace inviable como canal primario
+> en fase temprana: Meta tarifa **por conversación iniciada** (ventana de 24 h) más el markup del
+> BSP, y exige contrato con un BSP + aprobación de plantillas — frente al costo marginal casi nulo
+> del email. Sin volumen para negociar tarifa, el costo por notificación es sustancialmente mayor.
+> Email es gratuito hasta ~100 envíos/día con los tiers free de Resend/SendGrid. (Ver ADR-003.)
 
 ---
 
@@ -218,7 +232,7 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 > Este es un problema específico de Argentina que la mayoría de los SaaS internacionales ignoran.
 
 ### El problema
-- La inflación en Argentina obliga a actualizar precios frecuentemente (cada 3-6 meses estimado)
+- La inflación en Argentina obliga a actualizar precios frecuentemente (cada 3 meses, ver la nota de revisión de precios en §Planes)
 - MercadoPago Suscripciones permite actualizar el precio de una suscripción existente
 - Hay que notificar al cliente con anticipación (ética + legal)
 - Los clientes con plan anual pagaron por adelantado → precio fijo todo el año
@@ -247,6 +261,24 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 - Tabla `price_versions` con fecha de vigencia
 - Middleware que determina qué precio aplica a cada tenant según su `subscription_start_date`
 
+### Devaluación brusca (step-devaluation) — política v1
+
+La estrategia de arriba cubre la inflación *gradual*. Aparte queda el escenario, recurrente en
+Argentina, de una **devaluación brusca** del ARS que encarece de un día para el otro los costos
+dolarizados (Vercel, Supabase, Resend, dominio) mientras el ingreso en pesos queda congelado
+(anuales hasta 12 meses; mensuales con 30 días de preaviso).
+
+Política v1 (Decisión de auditoría 2026-07-21 — ARG-07):
+- **Sin hedging financiero** ni colchón en USD en v1: es complejidad operativa que un equipo de
+  1-3 personas no va a sostener.
+- **Gatillo de repricing extraordinario** para clientes MENSUALES: ante un salto de tipo de cambio
+  material (fuera del ciclo normal de revisión de precios), se puede subir el precio antes de los
+  3 meses, respetando **siempre** el preaviso de 30 días. Es la misma mecánica de la Estrategia de
+  arriba, disparada por FX en vez de por calendario.
+- **Clientes ANUALES**: el prepago los deja expuestos al costo dolarizado del período ya cobrado,
+  pero ese prepago **es en sí un hedge** — ya cobramos los pesos por adelantado y podemos
+  desplegarlos; la exposición se acota a ese período (riesgo ya aceptado en el WARNING de arriba).
+
 ---
 
 ## 6. Upgrades y Downgrades
@@ -258,9 +290,9 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 ```
 Admin intenta crear la cancha N+1 (supera el límite del plan)
       ↓
-Sistema muestra modal: "Tu plan Predio permite hasta 3 canchas.
+Sistema muestra modal: "Tu plan Predio permite hasta 2 canchas.
 Actualizá a Complejo para agregar más canchas."
-[CTA: Actualizar a Complejo - $74.000/mes + IVA]
+[CTA: Actualizar a Complejo - $85.000/mes + IVA]
       ↓
 Si confirma:
   - Calcula el prorrateo de días restantes del período actual
@@ -281,7 +313,7 @@ cargo_extra = (precio_día_nuevo - precio_día_viejo) * días_restantes
 
 **Regla**: No se puede hacer downgrade si tenés más canchas activas de las que permite el plan inferior.
 ```
-Admin intenta bajar de Complejo (4-6 canchas) a Predio (1-3) pero tiene 4 canchas configuradas
+Admin intenta bajar de Complejo (3-5 canchas) a Predio (1-2) pero tiene 4 canchas configuradas
       ↓
 Sistema: "Para cambiar al plan Predio necesitás tener máximo 3 canchas activas.
 Desactivá 1 cancha primero."
@@ -291,6 +323,13 @@ Si el dueño desactiva la cancha → puede hacer downgrade
 El downgrade aplica al inicio del próximo período (no inmediato)
 No se genera reembolso por días no usados del plan superior
 ```
+
+> [!NOTE]
+> **Downgrade con plan ANUAL vigente** (Decisión de auditoría 2026-07-21 — LOG-09/GAP-10):
+> el downgrade de un cliente anual **aplica recién en la renovación** (fin del término pagado),
+> nunca a mitad del año. NO se recalcula ni se reembolsa el prepago (consistente con la regla
+> general "sin reembolso"), y el precio congelado por `price_locked_until` rige hasta el
+> vencimiento. En la renovación se le ofrece el plan inferior al precio vigente de ese momento.
 
 ### Efectos cascada de cambio de plan
 
@@ -321,7 +360,7 @@ TurnoGol usa MercadoPago en **dos contextos completamente distintos**:
 ### Flujo de señas — Spec de referencia
 
 **Configuración del complejo (en el wizard de onboarding):**
-- `deposit_percentage`: porcentaje de seña (default 30%, configurable 0-100%)
+- `deposit_percentage`: porcentaje de seña (default 30%, configurable **10-100%** cuando `requires_deposit` está ON). "Sin seña" se expresa con el toggle `requires_deposit` en OFF, NUNCA con 0% (un 0% dispararía un checkout de MP por $0). (Decisión de auditoría 2026-07-21: rango unificado a 10-100%, consistente con doc8)
 - `cancellation_policy_hours`: horas antes para cancelar con reembolso (configurable, default 12hs)
 - `cancellation_refund_percentage`: % de reembolso si cancela dentro del plazo (configurable)
 - `requires_deposit`: boolean — si el complejo cobra seña online o no
@@ -344,6 +383,15 @@ Email al jugador: "Tu reserva está confirmada 🎉"
 Si el jugador no paga en 6 minutos → Booking.status = 'expired', slot se libera
 ```
 
+> [!IMPORTANT]
+> **La Preference de la seña excluye medios diferidos/offline.** Se restringe a medios instantáneos
+> (tarjeta de crédito/débito + dinero en cuenta de MP) excluyendo `ticket` (Rapipago, PagoFácil), `atm`
+> (cajero offline) y `bank_transfer` (transferencia/CBU) vía `excluded_payment_types`. Un medio offline
+> es incompatible con el timeout de 6 minutos: el jugador se llevaría un cupón para pagar horas después,
+> dejando el slot en un limbo (bloqueado o con confirmación tardía). Config concreta de la Preference en
+> doc11 ADR-004. Implementado: `DEPOSIT_EXCLUDED_PAYMENT_TYPES` en
+> `src/modules/payments/mp-gateway.implementation.ts` (`createPreference`).
+
 **Flujo de cancelación con seña:**
 ```
 Jugador cancela la reserva
@@ -357,8 +405,16 @@ Si la seña fue pagada en efectivo (reserva manual del admin):
   → Mensaje: "Contactá al complejo para el reembolso de tu seña."
 ```
 
-**Comisión MP:** la absorbe el complejo (~5-7%). El complejo recibe el monto neto.
+**Comisión MP:** la absorbe el complejo (~5% de Checkout Pro sobre la seña; distinta del 2.99% de MP Suscripciones sobre la cuota SaaS). El complejo recibe el monto neto.
 No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita en su cuenta.
+
+> [!NOTE]
+> **Retención de fondos / KYC de MP (cuentas nuevas).** MercadoPago puede retener temporalmente el dinero
+> de las señas ("dinero a liberar") en cuentas recién conectadas o de bajo volumen que aún están pendientes
+> de verificación (KYC / validación de CUIT). La disponibilidad efectiva del dinero depende exclusivamente
+> de MP, no de TurnoGol: TurnoGol no intermedia ni acelera esos fondos (ver §7, "TurnoGol NUNCA toca el
+> dinero de las señas"). (Decisión de auditoría 2026-07-21. La copy de onboarding que le explica esto al
+> dueño vive en doc10.)
 
 **Chargeback/disputa:** responsabilidad del complejo (es su cuenta MP). TurnoGol puede proveer audit trail (booking + timestamps + confirmaciones) como evidencia para la disputa.
 
@@ -440,7 +496,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | 8 estados del tenant | ENUM `tenant_status` con 8 valores. Middleware en todos los endpoints que verifica estado. |
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
 | Dunning: 3 reintentos en 5 días | MP lo maneja los reintentos. Nosotros procesamos webhooks de `payment.rejected`. |
-| Datos conservados post-churn | Cancelación voluntaria: 60d BLOCKED → CHURNED → 7d → DELETED (67d total). Dunning: 90d post-primer-fallo → CHURNED → 7d → DELETED (97d total). Campo `scheduled_deletion_at` en `tenants`. |
+| Datos conservados post-churn | Cancelación voluntaria: 60d BLOCKED → CHURNED → 7d → DELETED (67d total). Dunning: 90d post-primer-fallo → CHURNED → 7d → DELETED (97d total). Campo `scheduled_deletion_at` en `tenants`. (Decisión de auditoría 2026-07-21: evaluar reducir la ruta de dunning a 60 días — implementación de código PENDIENTE, ver nota en §2.) |
 | Notificaciones de trial por email | Scheduled jobs en pg-boss (tabla `pgboss.job`). Ver ADR-005. |
 | Upgrade con prorrateo | Cálculo al momento del upgrade. Cargo vía MP Checkout (no suscripción). |
 | Downgrade solo al inicio del próximo período | Campo `pending_plan_change` + cron job que lo aplica en la fecha de renovación. |
@@ -460,10 +516,10 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 | Plan | Clientes | Precio/mes (sin IVA) | MRR |
 |---|---|---|---|
-| Predio (mensual) | 50 | $47.000 | $2.350.000 |
-| Complejo (mensual) | 35 | $74.000 | $2.590.000 |
-| Estadio (mensual) | 15 | $101.000 | $1.515.000 |
-| **Total MRR** | **100** | | **$6.455.000 ARS** |
+| Predio (mensual) | 50 | $55.000 | $2.750.000 |
+| Complejo (mensual) | 35 | $85.000 | $2.975.000 |
+| Estadio (mensual) | 15 | $115.000 | $1.725.000 |
+| **Total MRR** | **100** | | **$7.450.000 ARS** |
 
 ### Costos fijos estimados (infraestructura, sin equipo)
 - Hosting/infra (Vercel + Supabase Pro): ~$150.000-300.000 ARS/mes
@@ -501,7 +557,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 ```
 TenantSubscription
   ├── plan_id ──────────────→ Plan (global)
-  ├── status: trialing | active | past_due | suspended | canceled | churned
+  ├── status: trialing | active | past_due | suspended | blocked | canceled | churned
   ├── billing_cycle: monthly | annual
   ├── mp_subscription_id ──→ MercadoPago Suscripción
   ├── current_period_start

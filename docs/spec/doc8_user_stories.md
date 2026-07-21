@@ -47,7 +47,7 @@ Módulos:
 | Notificaciones | NOT | US-NOT-001 a 003 | P0-P1 |
 | SaaS Lifecycle | SAS | US-SAS-001 a 005 | P0-P1 |
 
-**Total estimado: ~40 user stories para la v1.0**
+**Total estimado: ~41 user stories activas para la v1.0** (US-ABO-005 revertida no cuenta)
 
 > [!NOTE]
 > **Cambios respecto a la versión anterior**: Se eliminaron los epics de Partidos Abiertos (PAR)
@@ -117,7 +117,7 @@ para tener mi complejo operativo en menos de 20 minutos.
 ✅ Happy Path
 - [ ] Dado que estoy autenticado y no tengo un Tenant creado, cuando entro al panel, entonces soy redirigido automáticamente al wizard de onboarding (paso 1 de 4).
 - [ ] **Paso 1 (Datos del complejo)**: Dado que estoy en el paso 1, cuando ingreso nombre + dirección + ciudad + provincia, entonces se crea un Tenant con status=`trialing`, trial_ends_at=NOW()+30 días, y un slug auto-generado desde el nombre.
-- [ ] **Paso 2 (Canchas)**: Dado que estoy en el paso 2, cuando creo al menos 1 cancha con nombre + tipo de superficie + capacidad, entonces se crea un Court con status=`online` y pricing pre-cargado según franja horaria.
+- [ ] **Paso 2 (Canchas)**: Dado que estoy en el paso 2, cuando creo al menos 1 cancha con nombre + tipo de superficie + formato, entonces se crea un Court con status=`online` y pricing pre-cargado según franja horaria.
 - [ ] **Paso 2 (Canchas)**: Los precios default son: mañana $8.000, tarde $10.000, noche $12.000 (weekday), mañana $10.000, noche $15.000 (weekend). Editables por el usuario.
 - [ ] **Paso 3 (Horarios)**: Dado que estoy en el paso 3, cuando veo los horarios pre-cargados (Lun-Dom 08:00-00:00), entonces puedo editarlos por día o dejar los default.
 - [ ] **Paso 4 (Seña)**: Dado que estoy en el paso 4, cuando elijo "Sí, cobrar seña", entonces soy redirigido al OAuth de MercadoPago para conectar mi cuenta.
@@ -249,7 +249,7 @@ para decidir rápido si reservo ahí y en qué horario.
 
 🚫 Out of Scope
 - NO incluye mapa interactivo con ubicación del complejo (v2)
-- NO incluye reviews/calificaciones de jugadores
+- El display de reviews/calificaciones en ESTA página no entra en esta story (se especifica aparte). La **captura** de reviews SÍ es feature v1 (doc6 ENTIDAD 19; endpoints en doc15); su **moderación** (reportar / ocultar / responder) se **difiere a v1.5** (Decisión de auditoría 2026-07-21).
 - NO incluye comparación con otros complejos cercanos
 - NO incluye chat en vivo con el complejo
 
@@ -469,8 +469,8 @@ para que otro jugador pueda reservar y el complejo no pierda turnos.
 **Bloquea**: Ninguna
 
 **Notas de implementación**:
-- El job se ejecuta cada 1 minuto (cron job de la tabla de Doc 7)
-- Alternativa: delayed job programado al crear el booking (más preciso)
+- Mecanismo primario: **job diferido agendado por-booking** al crear la reserva (`scheduleBookingExpiry` → `boss.send('expire-pending-booking', …, { startAfter: 6 min })`). Se vuelve no-op si el pago llegó antes (la transición chequea que el booking siga en `pending_payment`).
+- Red de seguridad: un cron de barrido (`expire-pending-booking-sweep`, `*/5 * * * *`, cada 5 min) recoge jobs que nunca corrieron. **No hay cron "cada 1 minuto"** para expiración (el único `* * * * *` es el envío de emails).
 
 ---
 
@@ -498,7 +498,7 @@ para que la caja y las estadísticas se actualicen correctamente.
 ✅ Happy Path
 - [ ] Dado que una reserva confirmada tiene `time_end` en el pasado, cuando hago click en ella, entonces veo dos botones: "✅ Jugó" y "❌ No se presentó".
 - [ ] Dado que hago click en "✅ Jugó", entonces el booking pasa a status=`completed`. Estado final inmutable.
-- [ ] Dado que hago click en "❌ No se presentó", entonces el booking pasa a status=`no_show`, se incrementa el contador de ausencias del jugador y se genera la deuda correspondiente en `player_tenant_relationships.balance`.
+- [ ] Dado que hago click en "❌ No se presentó", entonces el booking pasa a status=`no_show`, se captura la seña y se registra la ausencia (`noshow_count` + `last_no_show_at`); la 2da ausencia en 90 días dispara un softban de 14 días (`tenant_player_bans`).
 
 ❌ Edge Cases
 - [ ] Si nadie marca asistencia en los 30 minutos posteriores a `time_end` → el sistema auto-completa como `completed` (benefit of the doubt). AuditLog: `booking.auto_completed` con actor=system.
@@ -623,7 +623,7 @@ para mantener trazabilidad y evitar decisiones financieras manuales.
 
 ---
 
-## US-CAN-004: Deuda por No-Show (cambio #5)
+## US-CAN-004: No-Show y softban por reincidencia (cambio #5)
 
 **Epic**: Cancelaciones
 **Persona**: Rodrigo (Recepcionista) + Sistema
@@ -633,23 +633,23 @@ para mantener trazabilidad y evitar decisiones financieras manuales.
 **Historia**:
 Como Rodrigo,
 cuando un jugador no se presentó a su turno,
-quiero marcarlo como "no se presentó" para que se registre la deuda correspondiente y se le bloquee reservar online hasta saldarla,
-para desincentivar los no-shows y recuperar el dinero perdido.
+quiero marcarlo como "no se presentó" para que quede registrada la ausencia y, si reincide, se le bloquee reservar online por un tiempo,
+para desincentivar los no-shows sin cobrarle plata que no se entregó.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
 - [ ] Dado que la hora de fin del turno ya pasó, cuando hago click en "No se presentó", entonces booking.status → `no_show`.
-- [ ] Dado que se marca como no_show, entonces se incrementa `noshow_count` en `player_tenant_relationships` y se suma `price_snapshot − deposit_amount` a `balance`.
-- [ ] Dado que `balance > 0`, cuando el jugador intenta reservar online en ESTE complejo, entonces ve error: "Tenés una deuda pendiente en este complejo. Contactá al complejo para regularizarla."
-- [ ] Dado que un admin cobra la deuda desde la ficha del jugador (Módulo Jugadores), entonces `balance` se reduce y si llega a 0 el jugador puede volver a reservar.
+- [ ] Dado que se marca como no_show, entonces se captura la seña (`deposit_status='captured'`) y se registra la ausencia en `player_tenant_relationships` (`noshow_count` + `last_no_show_at`) vía `applyNoShowStrike`.
+- [ ] Dado que es la 2da ausencia dentro de 90 días (`NO_SHOW_STRIKE_WINDOW_DAYS`), entonces se inserta una fila en `tenant_player_bans` que bloquea reservar online por 14 días (`NO_SHOW_SOFTBAN_DAYS`); la 1ra ausencia solo se registra.
+- [ ] Dado que el softban está vigente, cuando el jugador intenta reservar online en ESTE complejo, entonces ve el error de ban (`checkPlayerBanned`); el bloqueo se levanta solo al vencer los 14 días, sin cobro de por medio.
 
 ❌ Edge Cases
 - [ ] Si nadie marca en 30 minutos post-time_end → el sistema auto-completa como `completed` (NO como no_show). El admin tiene 24hs para corregir.
 - [ ] Si el jugador no tiene cuenta (reserva manual sin Player) → no se puede generar un ban en el sistema. Se marca como no_show sin bloqueo.
 
 🚫 Out of Scope
-- NO incluye cobro online de la deuda (se cobra en persona en el mostrador).
+- NO hay deuda de dinero por no-show (revertido 2026-07-11, migr. 044): el único costo es la seña ya retenida.
 - NO incluye bans globales automáticos (el ban es solo para este complejo).
 
 **Dependencias**: US-RES-007
@@ -873,7 +873,7 @@ para ver su historial, gestionar sus bans de no-show y cargar saldo de sus abono
 🚫 Out of Scope
 - NO crea perfiles automáticamente para invitados telefónicos (decisión #10 cancelada).
 
-**Dependencias**: US-ABO-005, cambio #5 (ban temporal por no-show)
+**Dependencias**: US-ABO-005, cambio #5 (softban por reincidencia de no-show)
 **Bloquea**: Ninguna
 
 ---
@@ -977,7 +977,7 @@ para tener un registro oficial inmutable de lo que pasó financieramente cada d�
 ❌ Edge Cases
 - [ ] Si el efectivo real difiere del calculado → warning: "Diferencia de ${diff}." + campo de nota obligatoria explicando la diferencia.
 - [ ] Si ya existe un cierre para ese día → error: "La caja del {fecha} ya fue cerrada por {staff}."
-- [ ] Si el admin quiere reabrir la caja → permitido solo para rol `admin`. Se registra AuditLog: `cashflow.reopen`.
+- [ ] El cierre es **inmutable**: NO existe "reabrir caja". Las migraciones 008/037/038 revocan `UPDATE`/`DELETE` sobre `daily_cash_closes` para los roles `turnogol_app` y `turnogol_worker`, así que ningún flujo puede modificarlo tras el INSERT. Un error se corrige con un CashFlow de ajuste al día siguiente, no reabriendo.
 - [ ] Si hay reservas completadas sin pago registrado → warning antes de cerrar.
 
 🚫 Out of Scope
@@ -1079,8 +1079,8 @@ para mantener mi complejo actualizado sin llamar a soporte.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Canchas, cuando hago click en "+ Nueva cancha", entonces veo formulario con: nombre, tipo de superficie (césped sintético, cemento, etc.), capacidad (5, 7, 8, 9, 11), y si es cubierta o no.
-- [ ] Dado que creo una cancha, cuando confirmo, entonces Court se crea con status=`online`, con pricing default (weekday/weekend × franja horaria) editable.
+- [ ] Dado que estoy en Settings → Canchas, cuando hago click en "+ Nueva cancha", entonces veo formulario con: nombre, tipo de superficie (césped sintético, cemento, etc.), formato de fútbol (5, 7, 8, 9, 11), y si es cubierta o no.
+- [ ] Dado que creo una cancha, cuando confirmo, entonces Court se crea con status=`online`, con pricing default (reglas `{rules}` por día/franja horaria) editable.
 - [ ] Dado que quiero editar una cancha existente, cuando hago click en ella, entonces puedo editar: nombre, superficie, precio por franja, estado (`online`/`offline`).
 - [ ] Dado que pongo una cancha en `offline`, entonces los slots futuros desaparecen de la grilla y las reservas existentes se mantienen hasta que el admin las gestione.
 - [ ] Dado que agrego una cancha y mi plan no la cubre (ej: plan Predio con 3 canchas y quiero la 4ta), entonces veo: "Tu plan soporta hasta {N} canchas. Upgrade para agregar más."
@@ -1118,7 +1118,7 @@ para que el sistema aplique mis reglas automáticamente sin intervención manual
 ✅ Happy Path
 - [ ] Dado que estoy en Settings → Políticas, cuando veo la sección "Reservas", entonces puedo configurar:
   - `requires_deposit` (sí/no)
-  - `deposit_percentage` (10%-100%, default 30%)
+  - `deposit_percentage` (10%-100%, default 30%) — **"sin seña" NO es 0%**: se expresa apagando el toggle `requires_deposit` (OFF); el porcentaje siempre está entre 10 y 100 (Decisión de auditoría 2026-07-21)
   - `allow_online_booking` (sí/no)
   - `cancellation_hours_before` (0-72h, default 12h)
 - [ ] Dado que cambio una configuración, cuando guardo, entonces todos los flujos futuros usan la nueva configuración (las reservas existentes NO se afectan retroactivamente).
@@ -1421,7 +1421,7 @@ para que las notificaciones lleguen de forma confiable.
   - Bienvenida al complejo (dueño)
   - Cierre de caja diario
   - Factura/recibo de suscripción
-  - Notificaciones de trial (día 7, 14, 21, 28, 30, 31)
+  - Notificaciones de trial (cronograma único de doc4 §3: días 0, 1, 7, 14, 21, 25, 28, 30, 31, 37)
   - Dunning (cobro fallido de suscripción — día 0, 2, 5, 7, 14)
   - Pre-eliminación de cuenta (día 30, 55 post-cancelación)
 
@@ -1537,7 +1537,7 @@ para tener acceso completo sin interrupciones después del trial.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Predio (1-3 canchas), Complejo (4-6 canchas), Estadio (7+ canchas), con el plan que corresponde pre-seleccionado.
+- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Predio (1-2 canchas), Complejo (3-5 canchas), Estadio (6+ canchas), con el plan que corresponde pre-seleccionado.
 - [ ] Dado que selecciono un plan y ciclo (mensual/anual), cuando hago click en "Continuar al pago", entonces soy redirigido al checkout de MercadoPago para registrar mi medio de pago.
 - [ ] Si selecciono anual → mostrar ahorro: "Ahorrás ${diferencia}/año (20% descuento)".
 - [ ] Dado que el pago se aprobó via webhook, cuando se actualiza el sistema, entonces: TenantSubscription.status → `active`, Tenant.status → `active`.
@@ -1716,13 +1716,15 @@ para irme sin sorpresas y poder volver si cambio de opinión.
 | Onboarding | ONB | 5 | P0 |
 | Reservas | RES | 6 | P0 |
 | Cancelaciones | CAN | 4 | P0-P1 |
-| Abonados | ABO | 5 | P1 |
+| Abonados | ABO | 4 | P1 |
 | Caja y Pagos | CAJ | 5 | P0-P2 |
 | Administración | ADM | 5 | P0-P2 |
 | App del Jugador | JUG | 4 | P0-P3 |
 | Notificaciones | NOT | 3 | P0-P1 |
 | SaaS Lifecycle | SAS | 5 | P0-P1 |
-| **TOTAL** | | **42** | |
+| **TOTAL** | | **41** | |
+
+> Nota: US-ABO-005 ("Saldo a favor del abonado") está ⛔ REVERTIDA (cambio #4) y no se cuenta en el total.
 
 ## Mapa de Prioridades para Sprint Planning
 

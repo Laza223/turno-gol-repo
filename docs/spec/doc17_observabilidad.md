@@ -41,7 +41,7 @@
 | Grafana Cloud | $0-50 | Más razonable, pero agrega complejidad operacional (configurar collectors, dashboards). |
 | **Sentry + Vercel + logs** | **$0-26** | **Suficiente para Year 1.** Sentry para errores y performance, Vercel para logs e infra, logs propios para negocio. |
 
-**La regla**: No agregamos infra de observabilidad que cueste más que la infra que observamos. Con hosting total de ~$120-220 USD/mes (Doc 14 §12), gastar $300 en monitoreo es desproporcionado.
+**La regla**: No agregamos infra de observabilidad que cueste más que la infra que observamos. Con hosting total de ~$126-151 USD/mes (Doc 14 §12), gastar $300 en monitoreo es desproporcionado.
 
 ---
 
@@ -162,7 +162,7 @@ Cada evento que cambia el estado del sistema genera un log `info`. Estos logs so
 
 | Evento | campos extra | Cuándo |
 |---|---|---|
-| `auth.login.success` | `user_id`, `user_type`, `method` (magic_link/oauth) | Login exitoso |
+| `auth.login.success` | `user_id`, `user_type`, `method` (magic_link/oauth/password) | Login exitoso |
 | `auth.login.failed` | `email`, `reason` | Login fallido |
 | `auth.magic_link.sent` | `email`, `user_type` | Magic link enviado |
 | `auth.magic_link.expired` | `email` | Magic link expirado sin uso |
@@ -530,11 +530,29 @@ async function collectBusinessMetrics() {
 
 | Severidad | Canal | Quién recibe | Tiempo de respuesta esperado |
 |---|---|---|---|
-| 🔴 **Crítica** | Email (equipo de emergencias) + Slack | Todo el equipo | < 15 minutos |
-| 🟡 **Alta** | Email + Sentry Slack integration | Equipo de desarrollo | < 2 horas |
+| 🔴 **Crítica** | WhatsApp (grupo de emergencias) + Email | Todo el equipo | < 15 minutos |
+| 🟡 **Alta** | Email + Sentry (notificación por email) | Equipo de desarrollo | < 2 horas |
 | 🟢 **Informativa** | Sentry dashboard (no notificación push) | Revisión diaria | Próximo día hábil |
 
+> [!NOTE]
+> **Canal único de alertas = WhatsApp** (Decisión de auditoría 2026-07-21 — TEC-07). Es la
+> herramienta de facto del equipo; se quita Slack del stack de alertas. Consistente con el
+> resumen de §11 y con §10 (grupo de WA con alertas en vez de on-call formal).
+
 ### 5.3 Catálogo de alertas
+
+> [!IMPORTANT]
+> **Estado de implementación en v1 (Decisión de auditoría 2026-07-21 — TEC-03).** El catálogo de
+> abajo es el **diseño objetivo**, no lo que hoy dispara. En v1 solo están activas las alertas que
+> Sentry y UptimeRobot disparan de forma **nativa**, sin instrumentación propia:
+> - **App/DB down y health check** (`CRIT-01`, `CRIT-02`, `CRIT-05`) → UptimeRobot + `/api/health` (§5.4).
+> - **Error rate** (`CRIT-03`) → alert rule de Sentry sobre tasa de errores.
+> - **Latencia p95** (`HIGH-04`) → Sentry Performance (tracing, §4.1).
+> - **Isolation test en CI** (`CRIT-04`) → lo bloquea el pipeline (Doc 16); es un gate de CI, no una alerta de runtime.
+>
+> El resto del catálogo (`HIGH-01/02/03/05/06/07` e `INFO-01..04`) requiere métricas/instrumentación
+> propia que **NO está implementada** — queda como **backlog** explícito. Se documenta como objetivo,
+> no como algo activo hoy. (Implementación de código pendiente.)
 
 #### 🔴 Alertas Críticas (despertar a alguien a las 3am)
 
@@ -882,7 +900,7 @@ Cuando un servicio está degradado, el panel admin muestra un banner NO intrusiv
 Con 50 complejos: **$0/mes** (Sentry free, UptimeRobot free).
 Con 200+ complejos: **~$33/mes** (Sentry Team + UptimeRobot Pro).
 
-Comparación: el hosting total es ~$120-350/mes. La observabilidad agrega 0-10% del costo de infra. **Acceptable.**
+Comparación: el hosting total es ~$126-151/mes. La observabilidad agrega 0-10% del costo de infra. **Acceptable.**
 
 ---
 

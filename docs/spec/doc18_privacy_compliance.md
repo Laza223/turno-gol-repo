@@ -209,6 +209,14 @@ REGISTRO DE COMPLEJO (DUEÑO):
 // versionado individual), evaluar crear tabla dedicada consent_records.
 ```
 
+> [!NOTE]
+> **Base legal de la declaración jurada +18** (ADR-012, reconciliado 2026-07-21 — ARG-03/CONS-09):
+> la restricción de edad se funda en la **capacidad para contratar** del Código Civil y Comercial
+> (mayoría de edad a los 18 años, Ley 26.579) y en el marco de **consentimiento de la Ley 25.326**
+> (esta tabla). NO se funda en la Ley 26.061 (protección institucional de la niñez, que no regula
+> la verificación de edad para la contratación de servicios digitales); doc11 (ADR-012) y doc13 se
+> corrigieron para eliminar esa cita. Validar con asesoría legal antes del launch.
+
 ---
 
 ## 5. Derechos de los Titulares (ARCO)

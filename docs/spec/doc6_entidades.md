@@ -289,7 +289,7 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | Desde | Hacia | Trigger | Efecto secundario |
 |---|---|---|---|
 | `pending_payment` | `confirmed` | Pago de seña procesado por MP | Email confirmación al jugador |
-| `pending_payment` | `confirmed` | No requiere seña (depósito 0% o reserva manual sin seña) | Email confirmación |
+| `pending_payment` | `confirmed` | Sin seña: `requires_deposit=false` o reserva manual sin seña (NO existe "depósito 0%": el porcentaje válido es 10-100; "sin seña" es el toggle OFF) | Email confirmación |
 | `pending_payment` | `expired` | Timeout 6 min sin pago | Slot liberado |
 | `pending_payment` | `expired` | Admin fuerza expiración manualmente | Slot liberado, email al jugador |
 | `confirmed` | `canceled_refunded` | Jugador cancela dentro del plazo de la política | Refund de seña vía MP, email confirmación. Si seña efectivo: "Contactá al complejo" |
@@ -297,23 +297,27 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | `confirmed` | `canceled_no_refund` | Admin cancela con cargo | Sin reembolso |
 | `confirmed` | `canceled_refunded` | Admin cancela sin cargo | Reembolso si había seña, email disculpa |
 | `confirmed` | `completed` | Auto-complete: 30 min después de `time_end` si nadie marcó (job cada 30 min) | Ninguno (caja no se mueve automáticamente) |
-| `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Deuda por no-show (cambio #5, modelo ATC): captura seña (`deposit_status='captured'`) y suma `price_snapshot − deposit_amount` a `player_tenant_relationships.balance`. Si `balance > 0`, el jugador queda bloqueado para reservar online en este complejo hasta saldar la deuda. Lógica en `handleNoShow` (`booking.cancellation.ts`). |
+| `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Softban por reincidencia (cambio #5, revisado 2026-07-11): captura la seña (`deposit_status='captured'`, único costo real) y registra la ausencia en `player_tenant_relationships.noshow_count` + `last_no_show_at`. La 2da ausencia dentro de `NO_SHOW_STRIKE_WINDOW_DAYS` (90 días) dispara un bloqueo de `NO_SHOW_SOFTBAN_DAYS` (14 días) para reservar online, vía una fila en `tenant_player_bans`. Lógica en `handleNoShow` (`booking.cancellation.ts`) → `applyNoShowStrike` (`ptr.service.ts`). |
 | `completed` | — | — | Estado final inmutable |
 | `expired` | — | — | Estado final |
-| `no_show` | — | — | Estado final inmutable |
+| `no_show` | `completed` | Admin corrige "No vino" marcado por error, dentro de la ventana de corrección de 24h | Limpia el strike: revierte/decrementa `noshow_count` + `last_no_show_at` y **levanta la fila de softban** en `tenant_player_bans` si fue auto-creada por ese strike. La seña ya capturada NO se auto-reembolsa (se resuelve entre jugador y complejo). (Decisión de auditoría 2026-07-21; implementación de código pendiente) |
+| `no_show` | — | — | Estado final pasadas las 24h (salvo la corrección de la fila anterior) |
 
 > [!NOTE]
 > **Estados terminales**: `completed`, `no_show` y `expired` son finales con una excepción:
-> la transición `completed → no_show` está **permitida dentro de las 24 horas** posteriores
-> al auto-complete (corrección de asistencia, habilitada por trigger `enforce_booking_invariants_fn`).
-> Pasadas las 24h, `completed` es inmutable. `no_show` y `expired` son siempre inmutables.
+> la **corrección de asistencia** entre `completed` y `no_show` está **permitida dentro de las 24 horas**
+> posteriores al auto-complete, en ambos sentidos (`completed → no_show` y `no_show → completed`,
+> habilitada por trigger `enforce_booking_invariants_fn`). La reversa `no_show → completed` (no-show
+> marcado por error) limpia el strike y levanta el softban auto-creado por ese strike; la seña ya
+> capturada NO se auto-reembolsa (Decisión de auditoría 2026-07-21; implementación de código pendiente).
+> Pasadas las 24h, `completed` y `no_show` son inmutables. `expired` es siempre inmutable.
 > Cualquier ajuste contable posterior al cierre de caja se registra como un `CashFlow` `adjustment` NUEVO.
 
 ### Invariantes de la Reserva
 
 1. **No pueden existir dos reservas en estado `confirmed` o `pending_payment` en la misma cancha con overlap de horario** (DB constraint de exclusión con `btree_gist`).
 2. **`price_snapshot` nunca se modifica después de la creación**.
-3. **Una reserva en estado `no_show` es completamente inmutable** (no se puede volver a `completed`).
+3. **Una reserva en estado `no_show` es inmutable pasadas las 24h** de la marca; dentro de esa ventana de corrección el admin puede revertirla a `completed` (no-show marcado por error), lo que limpia el strike y levanta el softban auto-creado (Decisión de auditoría 2026-07-21; ver la nota de estados terminales, implementación de código pendiente).
 4. **`time_end` debe ser mayor a `time_start`** (`chk_time_valid`, validación obligatoria). El slot que termina en la medianoche calendario se guarda con `time_end='24:00'` — un TIME válido y `> '23:00'`, por lo que satisface el constraint (no se usa `'00:00'`, que lo violaría). Día operativo: ver la nota de "Horarios que cruzan medianoche".
 5. **`date` debe ser mayor o igual a hoy** al crear (se admiten reservas retroactivas del mismo día operativo).
 
@@ -410,8 +414,9 @@ PAUSED ──── admin cancela ────── ┘
 
 > **Sin saldo a favor**: el abonado NO lleva `credit_balance` ni precio mensual — el sistema de
 > crédito estilo ATC (carga de saldo + "Mantener saldo") fue evaluado y **eliminado** (2026-07-10,
-> ver `docs/planning/cambios-reglas-negocio.md` cambio #4). Distinto del mecanismo de deuda por
-> no-show (`player_tenant_relationships.balance`, cambio #5), que sí se conserva.
+> ver `docs/planning/cambios-reglas-negocio.md` cambio #4). La deuda de dinero por no-show
+> (`player_tenant_relationships.balance`, cambio #5 original) **también fue revertida** (2026-07-11,
+> migr. 044): hoy el no-show es un softban por reincidencia, sin deuda (ver ENTIDAD 6).
 
 ---
 
@@ -469,19 +474,21 @@ tenant_id         UUID          FK → tenants
 status            enum          'active' | 'blocked'
 first_seen_at     timestamp     Primera reserva en este complejo
 bookings_count    integer       Total de reservas (actualizado por triggers)
-noshow_count      integer       Total de no-shows (actualizado por triggers)
+noshow_count      integer       No-shows dentro de la ventana de reincidencia (escrito por applyNoShowStrike; se reinicia tras 90 días sin faltar)
+last_no_show_at   timestamp?    Fecha del último no-show (para la ventana de reincidencia)
 last_booking_at   timestamp?    Última reserva en este complejo
-balance           integer       Saldo deudor en centavos ARS (no-show). Si > 0, jugador bloqueado para reservar online. CHECK >= 0
 data_consent_at   timestamp     Consent de datos Ley 25.326 (set en primera reserva)
 created_at        timestamp     UTC
 ```
 
 > [!NOTE]
-> Los contadores `bookings_count` y `noshow_count` se actualizan por triggers en INSERT/UPDATE
-> de bookings. `balance` se incrementa atómicamente al marcar un no-show (`addNoShowDebt`):
-> suma `price_snapshot − deposit_amount` del booking. Si `balance > 0`, el jugador queda
-> bloqueado para reservar online en este complejo hasta que un admin cobre la deuda
-> (desde la ficha del jugador, Módulo Jugadores `/jugadores`).
+> `bookings_count` se actualiza por triggers en INSERT/UPDATE de bookings. `noshow_count` y
+> `last_no_show_at` los escribe la app (`applyNoShowStrike`, `ptr.service.ts`) al marcar un no-show,
+> NO un trigger: `noshow_count` cuenta las ausencias dentro de la ventana de reincidencia
+> (`NO_SHOW_STRIKE_WINDOW_DAYS` = 90 días); la 1ra ausencia (o la 1ra tras 90 días sin faltar) solo
+> se registra, y la 2da dentro de la ventana dispara un softban de `NO_SHOW_SOFTBAN_DAYS` = 14 días
+> para reservar online, insertando una fila en `tenant_player_bans` (mismo gate que `checkPlayerBanned`
+> ya lee — no hay deuda de dinero). La columna `balance` fue eliminada (migr. 044).
 > `data_consent_at` es evidencia de consent por-complejo para Ley 25.326.
 
 ---
@@ -566,7 +573,6 @@ amount            integer       En centavos de ARS
 method            enum          'cash' | 'transfer' | 'mercadopago' | 'other'
 description       string        Descripción del movimiento
 booking_id        UUID?         FK → bookings (cobro de turno vinculado, cambio #8)
-product_id        UUID?         FK → products (si es venta de producto)
 registered_by     UUID          FK → staff_users
 occurred_at       timestamp     Cuándo ocurrió el movimiento
 created_at        timestamp     UTC
@@ -610,23 +616,9 @@ created_at        timestamp     UTC
 
 ---
 
-## ENTIDAD 11: Product (Producto de Cantina/Stock)
+## ENTIDAD 11: Product — ELIMINADA (cantina en JSONB)
 
-### Definición
-Producto vendido en la cantina del complejo (bebidas, comida, equipamiento). Registra stock y genera CashFlows de tipo `product_sale`.
-
-### Atributos propios
-```
-id                UUID          PK
-tenant_id         UUID          FK → tenants
-name              string        "Gaseosa", "Pancho", "Pelota"
-category          string?       "bebida" | "comida" | "equipamiento"
-price             integer       En centavos de ARS
-stock             integer       Cantidad actual
-low_stock_alert   integer       DEFAULT 5. Alerta cuando stock < este número
-is_active         boolean       DEFAULT true
-created_at        timestamp     UTC
-```
+La tabla `products` fue **eliminada** (migr. 046, 2026-07-17). La cantina vive en `tenants.settings.canteen_products` (JSONB: `name`, `price` en centavos, `stock` opcional); la venta se hace con `sellCanteenProductAction` (descuenta stock atómicamente si el producto lo define) → `CashFlow` categoría `product_sale`. Ver doc13 §3.6.
 
 ---
 
@@ -672,7 +664,7 @@ Definición global de un plan de suscripción (no por tenant). Los precios y fea
 id                    UUID          PK
 name                  string        'predio' | 'complejo' | 'estadio'
 display_name          string        'Predio' | 'Complejo' | 'Estadio'
-max_courts            integer       3 | 6 | 999 (ilimitado)
+max_courts            integer       2 | 5 | NULL (ilimitado)
 monthly_price         integer       Precio mensual en centavos (sin IVA)
 annual_monthly_price  integer       Precio mensual del plan anual en centavos (sin IVA)
 features              JSONB         Feature flags por plan
@@ -690,6 +682,13 @@ created_at            timestamp     UTC
   "priority_support": false
 }
 ```
+
+> [!NOTE]
+> **Enforcement de `history_months` (GAP-07, Decisión de auditoría 2026-07-21)**: es un **soft-limit a nivel
+> QUERY** — acota los reportes/historial visibles a la ventana del plan (Predio 6 / Complejo 12 / Estadio
+> ilimitado, es decir sin filtro). NUNCA es un borrado físico ni una purga de datos: el borrado físico
+> complicaría las obligaciones de la Ley 25.326 y la trazabilidad de auditoría. Los datos se conservan
+> siempre; solo se filtra lo que se muestra/consulta. (implementación de código pendiente)
 
 ---
 
@@ -824,6 +823,17 @@ comment           text?         Máx 500 caracteres
 created_at        timestamp     UTC
 ```
 
+> [!NOTE]
+> **Corrección `completed → no_show` oculta la review (LOG-10, Decisión de auditoría 2026-07-21)**: si un
+> booking con review publicada se corrige a `no_show` (dentro de la ventana de 24h; ver ENTIDAD 6), la
+> review asociada se **oculta / soft-borra** — un jugador que no se presentó no debería conservar una
+> reseña pública. Requiere un flag de visibilidad (p. ej. `hidden_at` / `is_hidden`) en `reviews`.
+> (implementación de código pendiente)
+>
+> **Moderación de reviews diferida a v1.5 (GAP-12, Decisión de auditoría 2026-07-21)**: reportar, ocultar
+> manualmente o responder reseñas queda **fuera de scope v1**; se evalúa en v1.5. En v1 solo existe el
+> INSERT del jugador dueño del booking `completed` y la lectura pública.
+
 ---
 
 ## ENTIDAD 20: PushSubscription (Suscripción Web Push del Staff)
@@ -870,6 +880,13 @@ UNIQUE (player_id, tenant_id)
 
 ### Definición
 Toggle operacional del sistema (Fase 6). **No** son los feature flags por plan (esos viven en `plans.features`, ADR-010). Fila con `tenant_id` NULL = default global; con `tenant_id` seteado = override por complejo (p. ej. kill switch de `suspended`).
+
+> [!NOTE]
+> **Dos sistemas de flags coexisten a propósito (TEC-11, Decisión de auditoría 2026-07-21)**, con propósitos
+> distintos y NO se unifican: `plans.features` (JSONB en ENTIDAD 13) = **entitlement / gating por plan**,
+> declarativo (qué capacidades incluye cada plan de suscripción); la tabla `feature_flags` = **kill-switch
+> operacional**, con override por tenant (encender/apagar funcionalidad en runtime, p. ej. ante incidentes
+> o para el estado `suspended`).
 
 ### Atributos propios
 ```
@@ -929,7 +946,6 @@ Este glosario se traduce directamente en las siguientes tablas:
 | Payment | `payments` |
 | CashFlow | `cash_flows` |
 | DailyCashClose | `daily_cash_closes` |
-| Product | `products` |
 | TenantSubscription | `tenant_subscriptions` |
 | Plan | `plans` |
 | Notification | `notifications` |
@@ -943,10 +959,10 @@ Este glosario se traduce directamente en las siguientes tablas:
 | FeatureFlag | `feature_flags` |
 | SystemAdmin | `system_admins` |
 
-**Total: 23 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
-(13 aisladas con RLS + 6 globales + 3 híbridas + 1 operacional + 1 sistema)
+**Total: 22 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
+(12 aisladas con RLS + 6 globales + 3 híbridas + 1 operacional + 1 sistema)
 
-> Aisladas (13): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, products,
+> Aisladas (12): courts, bookings, abonados, payments, cash_flows, daily_cash_closes,
 > tenant_staff_members, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, push_subscriptions.
 > Globales (6): tenants, players, staff_users, plans, price_versions, processed_webhooks.
 > Híbridas (3, RLS por jugador): player_tenant_relationships, reviews, player_favorites.

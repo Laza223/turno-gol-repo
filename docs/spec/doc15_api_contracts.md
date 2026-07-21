@@ -213,6 +213,8 @@ Response 200:
 |---|---|---|---|
 | `POST` | `/api/auth/magic-link` | Ninguna | Enviar magic link por email (solo jugadores) |
 | `POST` | `/api/auth/login` | Ninguna | Login con email + password (solo staff) |
+| `POST` | `/api/auth/forgot-password`¹ | Ninguna | Solicitar reset de contraseña (solo staff) — envía email con token |
+| `POST` | `/api/auth/reset-password`¹ | Ninguna | Establecer nueva contraseña con token del email (solo staff) |
 | `POST` | `/api/auth/verify` | Ninguna | Verificar token de magic link (jugadores) |
 | `GET` | `/api/auth/callback` | Ninguna | OAuth callback (Google) |
 | `POST` | `/api/auth/refresh` | Refresh token | Renovar access token |
@@ -271,6 +273,38 @@ Response 200 (jugador):
   }
 }
 ```
+
+#### `POST /api/auth/forgot-password` y `POST /api/auth/reset-password` (solo staff)
+
+Recuperación de contraseña para staff (el jugador usa Magic Link, no tiene password).
+
+¹ (Decisión de auditoría 2026-07-21 — GAP-04): **implementado** — no como Route Handlers
+`/api/auth/*` sino como **Next.js Server Actions** co-locadas (mismo patrón que doc15 §5):
+`forgotPasswordAction` en `src/app/(auth)/forgot-password/actions.ts` y `resetPasswordAction`
+en `src/app/(auth)/reset-password/actions.ts`. Las rutas de la tabla arriba son la abstracción
+de contrato (REST-style), no rutas reales.
+
+```
+POST /api/auth/forgot-password
+Request:  { "email": "marcelo@complejo.com" }
+Response 200 (siempre igual, no revela si el email existe):
+  { "data": { "message": "Si el email está registrado, te enviamos instrucciones." } }
+
+POST /api/auth/reset-password
+Request:  { "token": "reset-token-del-email", "password": "nuevaClave123" }
+Response 200:
+  { "data": { "message": "Contraseña actualizada. Ya podés iniciar sesión." } }
+Errors:
+  400 VALIDATION_ERROR → la contraseña no cumple requisitos
+  401 UNAUTHORIZED     → token inválido, ya usado o vencido
+```
+
+- **TTL del token**: 15-30 min, single-use.
+- **Rate limit**: aplica el límite del grupo Auth (§9); `forgotPasswordAction` reusa el bucket
+  `authMagicLink` (keyBy email, fail-closed).
+- **Implementación**: Server Actions (ver ¹ arriba). El email de reset lo envía Supabase Auth
+  (`supabase.auth.resetPasswordForEmail`) apuntando a `/api/auth/callback`, NO el worker de
+  notificaciones de TurnoGol/Resend.
 
 ---
 
@@ -359,7 +393,7 @@ Errors:
 Request:
 {
   "reason": "Lluvia",                    // requerido
-  "canceled_by": "complex" | "player"    // quién cancela; el servidor decide el reembolso según política
+  "cancellation_type": "complex" | "player"  // quién decide (distinto de la columna DB canceled_by, ENUM cancellation_actor player/admin/system)
 }
 
 Response 200:
@@ -446,7 +480,6 @@ Response 201:
   "data": {
     "id": "uuid",
     "status": "active",
-    "monthly_price": 4330000,        // ≈ price × 4.33
     "generated_bookings": 8,         // slots generados para 8 semanas
     "next_booking": {
       "date": "2026-04-24",
@@ -488,14 +521,9 @@ Response 200:
 }
 ```
 
-### 5.5 Productos
+### 5.5 Cantina (productos en JSONB, sin tabla)
 
-| Método | Ruta | Rol mínimo | Descripción |
-|---|---|---|---|
-| `GET` | `/api/products` | staff | Listar productos |
-| `POST` | `/api/products` | staff | Crear producto |
-| `PATCH` | `/api/products/:id` | staff | Editar producto |
-| `POST` | `/api/products/:id/sell` | staff | Registrar venta (→ cash_flow) |
+La tabla `products` fue eliminada (migr. 046): los productos viven en `tenants.settings.canteen_products` (JSONB). **No hay endpoints REST `/api/products`.** La venta se hace con el Server Action `sellCanteenProductAction` (descuenta el stock atómicamente si el producto lo define, se bloquea al llegar a 0) → `CashFlow` categoría `product_sale`; el alta/edición de productos es parte de la configuración del complejo (`settings.canteen_products`).
 
 ### 5.6 Configuración del Complejo
 
@@ -546,15 +574,15 @@ Errors:
 Response 200:
 {
   "data": {
-    "plan": { "name": "Complejo", "slug": "complejo", "max_courts": 6 },
+    "plan": { "name": "Complejo", "slug": "complejo", "max_courts": 5 },
     "billing_cycle": "monthly",
     "status": "active",
     "current_period_start": "2026-04-01T00:00:00Z",
     "current_period_end": "2026-05-01T00:00:00Z",
-    "price_monthly": 7400000,
+    "price_monthly": 8500000,
     "pending_plan_change": null,
     "usage": {
-      "courts": { "used": 4, "limit": 6 },
+      "courts": { "used": 4, "limit": 5 },
       "staff": { "used": 2, "limit": null }
     }
   }
@@ -620,6 +648,31 @@ Response 200:
 }
 ```
 
+> [!NOTE]
+> **Fórmula real (verificado contra código — la respuesta de arriba es un ejemplo ilustrativo).**
+> El endpoint JSON `GET /api/reports/occupancy` con esta forma exacta (por *slots*, ratio 0-1) **no
+> está implementado**; las métricas reales viven en dos superficies con criterios distintos:
+>
+> - **Ocupación** — `getRevenueReport` (`src/modules/reports/report.service.ts`), consumida por la
+>   página server-component `/reportes` (no un endpoint JSON). Se calcula **por minutos, no por
+>   slots**, y devuelve **porcentaje 0-100** (no ratio 0-1):
+>   `occupancyPct = round((minutos_reservados / minutos_disponibles) × 1000) / 10` (0 si el
+>   denominador es 0).
+>   - **Numerador** = minutos reservados por cancha, contando solo bookings en estados "activos":
+>     `confirmed`, `completed`, `no_show` (`ACTIVE_STATUSES`). Se cuenta desde `bookings`
+>     directamente (no desde `cash_flows`) para no doble-contar reservas con varios cobros.
+>   - **Denominador** = suma de las `opening_hours` del complejo por día en el rango × cantidad de
+>     canchas con `status = 'online'`, prorrateado por cancha.
+> - **Horas pico** (`peak_hours`) — `topSlots` (`src/modules/metrics/metrics.service.ts`, expuesto
+>   por `GET /api/admin/metrics`): **top-5 horarios de inicio por cantidad de reservas** (no por
+>   ingresos ni por % de ocupación), ventana de **30 días** (`METRICS_WINDOW_DAYS`), **global por
+>   complejo** (no per-court). El conteo usa `COUNTED_BOOKING_STATUSES`, que **incluye canceladas** —
+>   criterio distinto del de ocupación.
+> - **`weakest_hours` (horas valle): NO existe en el código.** Solo aparece en este ejemplo; si se
+>   necesita, hay que implementarlo (p. ej. el bottom-N de la misma distribución de `topSlots`).
+> - **`revenue`** — suma de `cash_flows.amount` con `type = 'income'` (métricas globales, agrupado
+>   por categoría; el income per-court del reporte financiero mapea a `byCourt[].income`).
+
 ### 5.10 Notificaciones y Audit Logs
 
 | Método | Ruta | Rol mínimo | Descripción |
@@ -627,32 +680,23 @@ Response 200:
 | `GET` | `/api/notifications` | staff | Historial de notificaciones |
 | `GET` | `/api/audit-logs` | staff | Historial de auditoría |
 
+> [!NOTE]
+> **`history_months` (límite de plan).** Los planes definen `features.history_months`
+> (doc6/doc13): la antigüedad máxima de datos que el complejo puede consultar en reportes
+> (§5.9) e historiales (§5.10) — Predio 6 meses, Complejo 12, Estadio sin límite (`null`).
+> Se aplica como **soft-limit de query** (un filtro sobre la fecha/rango, p. ej.
+> `WHERE created_at >= now() - history_months`); NO borra datos, solo acota la ventana visible.
+> Consistente con doc6/doc13. (Decisión de auditoría 2026-07-21 — GAP-07. Implementación de
+> código pendiente.)
+
 ### 5.11 Jugadores (Players)
 
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
 | `GET` | `/api/players` | staff | Listar y buscar jugadores vinculados al complejo |
 | `GET` | `/api/players/:id` | staff | Ver detalle, estadísticas y abonos de un jugador |
-| `POST` | `/api/players/:id/collect-debt` | staff | Registrar cobro de deuda de no-show (genera CashFlow) |
 | `POST` | `/api/players/:id/bans` | staff | Banear jugador para reservas online |
 | `DELETE` | `/api/players/:id/bans/:banId` | staff | Levantar ban a un jugador |
-
-#### `POST /api/players/:id/collect-debt`
-```
-Request:
-{
-  "amount": 800000,                  // Centavos de ARS
-  "payment_method": "cash" | "transfer"
-}
-Response 200:
-{
-  "data": {
-    "player_id": "uuid",
-    "new_balance": 0,
-    "cashflow_id": "uuid"
-  }
-}
-```
 
 #### `POST /api/players/:id/bans`
 ```
@@ -865,6 +909,8 @@ Request:
   "owner_email": "marcelo@gmail.com",
   "owner_first_name": "Marcelo",
   "owner_last_name": "García",
+  "phone": "+54 9 11 5555-5555",
+  "password": "••••••••",
   "complex_name": "Complejo San Martín"
 }
 
@@ -878,7 +924,7 @@ Response 201:
     "message": "Te enviamos un email para acceder a tu cuenta."
   }
 }
-// Se envía email de verificación. El staff crea su contraseña en el primer acceso.
+// Implementado como Server Action (register/actions.ts), no como Route Handler REST. El owner fija email/password/phone en el registro (ADR-013); se envía email para verificar la cuenta.
 ```
 
 ---
@@ -887,7 +933,7 @@ Response 201:
 
 | Endpoint group | Límite | Ventana | Por |
 |---|---|---|---|
-| Auth (magic link, login) | 5 requests | 1 minuto | email |
+| Auth (magic link, login, forgot/reset password) | 5 requests | 1 minuto | email |
 | Auth (verify, callback) | 10 requests | 1 minuto | IP |
 | Public (availability) | 30 requests | 1 minuto | IP |
 | Admin API (CRUD) | 100 requests | 1 minuto | tenant_id |

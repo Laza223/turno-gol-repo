@@ -18,19 +18,38 @@ function banVigenteCond() {
   return sql`(${tenantPlayerBans.bannedUntil} IS NULL OR ${tenantPlayerBans.bannedUntil} > NOW())`
 }
 
+/**
+ * ¿Está vigente el ban GLOBAL de un jugador? Vive en players.status='banned'
+ * + players.ban_until (NULL = permanente; con fecha = temporal). Puro para
+ * testear sin DB. LOG-11: antes checkPlayerBanned solo miraba `status`, así
+ * que un ban global "temporal" con ban_until ya vencido seguía bloqueando
+ * para siempre — nadie revierte `status` a 'active'. Ahora la vigencia se
+ * evalúa dinámicamente al leer, igual que banVigenteCond() hace con los bans
+ * por complejo.
+ */
+export function isGlobalBanActive(status: string, banUntil: Date | null, now: Date): boolean {
+  return status === 'banned' && (banUntil === null || banUntil > now)
+}
+
 export async function checkPlayerBanned(
   playerId: string,
   tenantId: string,
   tx: DbTx,
 ): Promise<BanCheckResult> {
   const playerRows = await tx
-    .select({ status: players.status })
+    .select({ status: players.status, banUntil: players.banUntil })
     .from(players)
     .where(eq(players.id, playerId))
     .limit(1)
 
-  if (playerRows[0]?.status === 'banned') {
-    return { banned: true, bannedGlobal: true, reason: 'Jugador suspendido globalmente.', until: null }
+  const player = playerRows[0]
+  if (player && isGlobalBanActive(player.status, player.banUntil, new Date())) {
+    return {
+      banned: true,
+      bannedGlobal: true,
+      reason: 'Jugador suspendido globalmente.',
+      until: player.banUntil,
+    }
   }
 
   const banRows = await tx

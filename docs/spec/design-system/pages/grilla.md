@@ -35,7 +35,7 @@
 Implementa MASTER §2.6 con una regla de lectura fija:
 **el COLOR comunica el estado de la plata; el ÍCONO + label comunican qué es.**
 Semáforo financiero (§2.5): amber = te deben la seña, azul (`info`) = cobrás al llegar,
-verde = plata asegurada/cobrada, rojo = deuda. El origen de la reserva ya no tiene hue propio
+verde = plata asegurada/cobrada, rojo = no-show/ausente. El origen de la reserva ya no tiene hue propio
 (el violeta "abonado" y el azul "reservado" de la v1 quedan **obsoletos**): el abonado se
 reconoce por `Repeat` + "Abonado", no por un color que competía con el semáforo.
 
@@ -58,7 +58,7 @@ el tinte de fondo es refuerzo. Siempre color + ícono + texto (§1.4). Tintes v�
 | Libre pasado / cancha pausada | — | transparente / `bg-muted/40`, no interactivo | — | — |
 
 Prioridad cuando compiten: `block` > `no_show` > `completed` > `pending_payment` > señada > abonado > confirmada.
-Un abonado ausente es "Ausente" (la deuda importa más que el origen).
+Un abonado ausente es "Ausente" (la ausencia importa más que el origen).
 
 **Desvío deliberado de §2.6:** el `Plus` del slot libre es **siempre visible** (40 % de opacidad),
 no solo en hover — en touch no existe hover y el admin de 55 años necesita ver la affordance,

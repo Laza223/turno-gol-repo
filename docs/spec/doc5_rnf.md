@@ -180,7 +180,7 @@ CREATE POLICY tenant_isolation ON bookings
 SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 ```
 
-### Tablas que tienen `tenant_id` (datos aislados — **13 tablas con RLS**)
+### Tablas que tienen `tenant_id` (datos aislados — **12 tablas con RLS**)
 
 > [!IMPORTANT]
 > Lista canónica. En caso de discrepancia, **CLAUDE.md y doc12 ganan**.
@@ -191,7 +191,6 @@ SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 - `payments` (cobros)
 - `cash_flows` (movimientos de caja)
 - `daily_cash_closes` (cierres de caja diarios)
-- `products` (stock de cantina)
 - `tenant_staff_members` (relación staff ↔ tenant)
 - `tenant_subscriptions` (suscripción SaaS del complejo)
 - `notifications` (notificaciones enviadas)

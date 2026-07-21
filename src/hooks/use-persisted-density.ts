@@ -18,15 +18,13 @@ export function usePersistedDensity(): { isCompact: boolean; toggleDensity: () =
     }
   }, [])
   const toggleDensity = useCallback(() => {
-    setIsCompact((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(DENSITY_STORAGE_KEY, next ? 'compact' : 'comfortable')
-      } catch {
-        /* no persiste, pero el toggle funciona en la sesión */
-      }
-      return next
-    })
-  }, [])
+    const next = !isCompact
+    setIsCompact(next)
+    try {
+      localStorage.setItem(DENSITY_STORAGE_KEY, next ? 'compact' : 'comfortable')
+    } catch {
+      /* no persiste, pero el toggle funciona en la sesión */
+    }
+  }, [isCompact])
   return { isCompact, toggleDensity }
 }

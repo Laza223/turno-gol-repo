@@ -36,8 +36,18 @@
 | **Hosting DB** | Supabase | Pro plan | ADR-009 |
 | **Error Tracking** | Sentry | Latest | — |
 | **Analytics** | Vercel Analytics | Included | — |
+| **Autocompletado de direcciones** | Google Places API | Latest | — |
 | **Testing** | Vitest + Playwright | Latest | — |
 | **Package Manager** | pnpm | 8.x+ | — |
+
+> [!NOTE]
+> **Google Places API** (Decisión de auditoría 2026-07-21 — ARG-10): se usa en el onboarding
+> para autocompletar la dirección del complejo (Places Autocomplete) y derivar lat/long.
+> Requiere API key de Google Cloud con billing habilitado; el costo es **por request**
+> (Autocomplete + Place Details) con un tier gratuito mensual — barato al volumen de v1
+> (alta de complejos), pero hay que monitorear que no se dispare. Si la API no está disponible
+> o el complejo prefiere no usarla, hay **fallback a carga manual de dirección** (ver Doc 10,
+> onboarding). (Implementación de código pendiente — hoy no está integrada.)
 
 ---
 
@@ -259,8 +269,6 @@ turnogol/
 │   │   │   ├── payments/
 │   │   │   │   └── route.ts
 │   │   │   ├── cash-flows/
-│   │   │   │   └── route.ts
-│   │   │   ├── products/
 │   │   │   │   └── route.ts
 │   │   │   ├── notifications/
 │   │   │   │   └── route.ts
@@ -852,6 +860,24 @@ Esto garantiza que durante el swap atómico, tanto el código viejo
 como el nuevo pueden funcionar con el schema actual.
 ```
 
+### 7.4 Migraciones: dos árboles con sync automatizado
+
+Hay dos árboles de migraciones SQL escritas a mano:
+
+- `src/shared/db/migrations/0*.sql` — **autoridad**. Orden numérico (`001…`), aplicadas por
+  psql en el job de integración de CI.
+- `supabase/migrations/*.sql` — **espejo** con formato timestamp para el Supabase CLI (local + prod).
+
+El espejo NO se mantiene a mano: se regenera desde el árbol autoritativo con
+`pnpm db:sync-supabase` (`scripts/sync-supabase-migrations.mjs`, copia `src/shared/db/migrations/`
+→ `supabase/migrations/` con prefijo timestamp).
+
+> [!NOTE]
+> **Decisión de auditoría 2026-07-21 (TEC-05):** cablear `db:sync-supabase` en CI —o un check
+> pre-PR— que regenere el espejo y **falle el pipeline si detecta drift** entre los dos árboles.
+> Así se elimina la duplicación manual (una sola fuente de verdad: `src/shared/db/migrations/`).
+> Implementación de código pendiente (hoy el sync se corre a mano).
+
 ---
 
 ## 8. Desarrollo Local
@@ -1025,10 +1051,14 @@ Vercel Edge Cache (CDN):
   • SSG pages: cached en edge, revalidated por deploy
   • ISR pages (complejo público): cached 60 segundos, stale-while-revalidate
 
-Application Cache:
-  • Plan del tenant: cached 5 minutos en memory (invalidar al cambiar plan)
-  • Horarios del complejo: cached 1 hora (raramente cambian)
-  • Feature flags del plan: cached junto con el plan (5 min)
+Application Cache (v1): NO se usa cache in-memory a nivel de aplicación.
+  • En las funciones serverless de Vercel (efímeras, un proceso por request) un cache
+    in-process es un MISS en cada request: no cachea nada. (Decisión de auditoría
+    2026-07-21: se quita del spec de v1.)
+  • Plan del tenant / horarios del complejo / feature flags del plan: se leen por-request
+    con una query barata (indexada). Es más simple y correcto que un cache que no funciona.
+  • Si a futuro se necesita cache compartido, requiere una capa EXTERNA (Upstash Redis o
+    Vercel Edge Config). Diferido — fuera de v1.
 
 NO cachear:
   • Disponibilidad de canchas (siempre real-time)
@@ -1140,8 +1170,8 @@ Con 10-20 clientes activos de TurnoGol ($160-320 USD/mes en MRR al precio más b
 | Worker para pg-boss (Railway/Fly) | Basic | $10-20 |
 | **Total** | | **$206-366/mes** |
 
-**Comparación con revenue**: Con 500 complejos al precio más bajo ($47.000 ARS/mes = ~$47 USD):
-MRR estimado = 500 × $47 = **$23.500 USD/mes**. Infra = 0.8-1.5% del MRR. **Margen excelente.**
+**Comparación con revenue**: Con 500 complejos al precio más bajo ($55.000 ARS/mes = ~$55 USD):
+MRR estimado = 500 × $55 = **$27.500 USD/mes**. Infra = 0.7-1.3% del MRR. **Margen excelente.**
 
 ---
 

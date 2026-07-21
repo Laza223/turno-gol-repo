@@ -68,11 +68,12 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     if (TERMINAL_STATUSES.has(status) || stalled) return
 
     let cancelled = false
+    let timerId: ReturnType<typeof setTimeout> | undefined
     const BASE_MS = 3000
     const MAX_MS = 30_000
 
     const scheduleNext = (delayMs: number) => {
-      const id = setTimeout(() => {
+      timerId = setTimeout(() => {
         if (cancelled) return
         void (async () => {
           try {
@@ -91,8 +92,9 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
             }
             failuresRef.current = 0
             const json = (await res.json()) as StatusResponse
+            if (cancelled) return
             setStatus(json.data.status)
-            if (!cancelled) scheduleNext(BASE_MS)
+            scheduleNext(BASE_MS)
           } catch {
             // error de red: backoff exponencial y corte tras 5 fallos (#46, #63)
             failuresRef.current += 1
@@ -104,12 +106,12 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
           }
         })()
       }, delayMs)
-      return id
     }
 
     scheduleNext(BASE_MS)
     return () => {
       cancelled = true
+      if (timerId !== undefined) clearTimeout(timerId)
     }
   }, [bookingId, status, stalled])
 

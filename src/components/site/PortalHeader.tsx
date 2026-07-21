@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 import { AccountMenu } from './AccountMenu'
 import { usePortalSession } from './PortalSessionProvider'
-import { Search, Building2, Calendar, LogIn } from 'lucide-react'
+import { Search, Building2, Calendar } from 'lucide-react'
 
 type Props = {
   variant?: 'overlay' | 'solid'

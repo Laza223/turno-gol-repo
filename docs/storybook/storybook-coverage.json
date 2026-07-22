@@ -220,8 +220,8 @@
       "isolationNotes": "Lee/escribe localStorage('tg-hint-caja-cierre') en useEffect; en Storybook conviene limpiar/setear localStorage para forzar cada estado."
     },
     {
-      "path": "src/app/(admin)/caja/components/CanteenQuickSale.tsx",
-      "name": "CanteenQuickSale",
+      "path": "src/app/(admin)/caja/cantina/TicketPanel.tsx",
+      "name": "TicketPanel",
       "domain": "payments-caja",
       "rendering": "client",
       "role": "modal-drawer",
@@ -230,12 +230,12 @@
       "exclusionReason": "",
       "relevantStates": [
         "products vacío (empty state)",
-        "products con lista",
-        "QuickSaleDialog abierto (qty, método cash/transfer/mercadopago)",
-        "ProductsEditorDialog abierto (filas vacías/con sugeridos/editando)",
-        "error de venta/guardado"
+        "grid con productos y ticket vacío",
+        "ticket con líneas (qty, +/−, borrar, total)",
+        "método cash/transfer/mercadopago",
+        "error de venta"
       ],
-      "proposedStoryTitle": "Admin/Caja/CanteenQuickSale",
+      "proposedStoryTitle": "Admin/Caja/TicketPanel",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": true,
@@ -243,7 +243,7 @@
       "providers": [
         "Toaster"
       ],
-      "isolationNotes": "useRouter (next/navigation) para router.refresh(); importa createCashFlowAction y saveCanteenProductsAction directamente de ../actions; Sentry.captureException en catch; crypto.randomUUID() para idempotencyKey."
+      "isolationNotes": "useRouter (next/navigation) para router.refresh()/push; sellTicketAction llega por prop (mock en stories); Sentry.captureException en catch; crypto.randomUUID() para idempotencyKey. Reemplaza a CanteenQuickSale (Fase 3 rediseño Caja y Cantina)."
     },
     {
       "path": "src/app/(admin)/caja/components/CierreCard.tsx",

@@ -201,13 +201,21 @@ test.describe('Admin mobile smoke', () => {
       await expect(product).toBeVisible()
       await measure(product, 'producto Agua')
 
-      // Controles del diálogo de venta también ≥44px.
+      // Rediseño Fase 3: sin diálogo — el tap agrega al ticket directo. Medir
+      // los controles reales del panel (+/−, chip de método, Cobrar).
       await product.click()
-      const sale = page.getByRole('dialog')
-      await expect(sale).toBeVisible()
-      for (const name of ['Sumar uno', 'Restar uno', 'Efectivo', /Registrar venta/] as const) {
-        await measure(sale.getByRole('button', { name }), String(name))
-      }
+      await expect(page.getByText('×1')).toBeVisible()
+
+      await measure(
+        page.getByRole('button', { name: 'Restar uno a Agua Mobile Smoke' }),
+        'Restar uno',
+      )
+      await measure(
+        page.getByRole('button', { name: 'Sumar uno a Agua Mobile Smoke' }),
+        'Sumar uno',
+      )
+      await measure(page.getByRole('button', { name: 'Efectivo' }), 'Efectivo')
+      await measure(page.getByRole('button', { name: /^Cobrar/ }), 'Cobrar')
     } finally {
       await ctx.close()
       await supabase.from('canteen_products').delete().eq('id', productId)

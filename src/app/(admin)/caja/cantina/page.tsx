@@ -10,7 +10,7 @@ import { getDailyClose } from '@/modules/cashflow/daily-close.service'
 import { listProducts } from '@/modules/canteen/canteen.service'
 import { artDateOf } from '@/shared/time/art-date'
 import { CajaTabs } from '../components/CajaTabs'
-import { CanteenQuickSale } from '../components/CanteenQuickSale'
+import { TicketPanel } from './TicketPanel'
 import { sellTicketAction } from './actions'
 
 export default async function CajaCantinaPage() {
@@ -50,7 +50,7 @@ export default async function CajaCantinaPage() {
         </div>
       ) : (
         <Suspense fallback={null}>
-          <CanteenQuickSale products={products} sellTicketAction={sellTicketAction} />
+          <TicketPanel products={products} sellTicketAction={sellTicketAction} />
         </Suspense>
       )}
     </div>

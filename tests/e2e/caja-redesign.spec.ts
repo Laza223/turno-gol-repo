@@ -1,10 +1,13 @@
 /**
  * E2E — Rediseño de Caja
  *
- * 1. Venta rápida de Cantina/Bar: cargar un producto en el catálogo
- *    (/caja/productos), vender con un toque y verla en la lista con la
- *    categoría "Cantina/Bar".
- * 2. "Agregar movimiento" registra un Gasto operativo y aparece en la lista
+ * 1. Ticket de Cantina/Bar (Fase 3, multi-ítem): cargar un producto en el
+ *    catálogo (/caja/productos), venderlo con dos taps (tap producto x2 +
+ *    Cobrar — sin diálogo intermedio, TicketPanel reemplazó a
+ *    CanteenQuickSale) y verlo en la lista con la categoría "Cantina/Bar".
+ * 2. Ticket con 2 productos distintos: un solo "Cobrar" genera UN solo
+ *    movimiento en /caja con la descripción de ambos y el monto sumado.
+ * 3. "Agregar movimiento" registra un Gasto operativo y aparece en la lista
  *    con su badge y el monto en negativo.
  *
  * Ningún test cierra la caja del día: el cierre es inmutable (REVOKE DELETE)
@@ -14,8 +17,19 @@
 
 import { test, expect } from './fixtures'
 
+/** Crea un producto de cantina vía /caja/productos (ProductsTable + ProductFormDialog). */
+async function createCanteenProduct(page: import('@playwright/test').Page, name: string, pesos: string) {
+  await page.getByRole('button', { name: 'Agregar producto' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel('Nombre').fill(name)
+  await dialog.getByLabel('Precio (pesos)').fill(pesos)
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByText('Producto creado').first()).toBeVisible()
+}
+
 test.describe('Caja redesign', () => {
-  test('venta rápida de cantina aparece en la lista como Cantina/Bar', async ({
+  test('venta rápida de cantina (tap x2 + Cobrar) aparece en la lista como Cantina/Bar', async ({
     page,
     adminStorageState,
   }) => {
@@ -25,21 +39,17 @@ test.describe('Caja redesign', () => {
     // en /caja/productos — ProductsTable + ProductFormDialog). Crear un
     // producto "Agua" vía la UI nueva; requiere admin (canEditCatalog).
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: 'Agregar producto' }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-    await dialog.getByLabel('Nombre').fill('Agua')
-    await dialog.getByLabel('Precio (pesos)').fill('500')
-    await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expect(page.getByText('Producto creado').first()).toBeVisible()
+    await createCanteenProduct(page, 'Agua', '500')
 
-    // Vender Agua x2 en efectivo desde la tab Cantina.
+    // Vender Agua x2 en efectivo desde la tab Cantina: tap producto, tap
+    // producto de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo
+    // intermedio (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
     await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: /Agua/ }).first().click()
-    const sale = page.getByRole('dialog')
-    await expect(sale).toBeVisible()
-    await sale.getByRole('button', { name: 'Sumar uno' }).click()
-    await sale.getByRole('button', { name: /Registrar venta/ }).click()
+    const aguaButton = page.getByRole('button', { name: /Agua/ }).first()
+    await aguaButton.click()
+    await aguaButton.click()
+    await expect(page.getByText('×2')).toBeVisible()
+    await page.getByRole('button', { name: /^Cobrar/ }).click()
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
 
@@ -51,6 +61,40 @@ test.describe('Caja redesign', () => {
     const saleRow = page.getByRole('row').filter({ hasText: 'Agua x2' }).first()
     await expect(saleRow).toBeVisible({ timeout: 10_000 })
     await expect(saleRow.getByText('Cantina/Bar', { exact: true })).toBeVisible()
+  })
+
+  test('ticket con 2 productos distintos genera UN solo movimiento con el monto sumado', async ({
+    page,
+    adminStorageState,
+  }) => {
+    await page.context().addCookies(JSON.parse(adminStorageState).cookies)
+
+    // Nombres únicos por corrida: evita choques con otros specs/tests que
+    // comparten el catálogo del tenant demo.
+    const suffix = Date.now()
+    const nameA = `Gaseosa e2e ${suffix}`
+    const nameB = `Alfajor e2e ${suffix}`
+
+    await page.goto('/caja/productos', { waitUntil: 'networkidle' })
+    await createCanteenProduct(page, nameA, '300')
+    await createCanteenProduct(page, nameB, '200')
+
+    // Un ticket con las dos líneas (1 tap cada una) y un solo Cobrar.
+    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: new RegExp(nameA) }).click()
+    await page.getByRole('button', { name: new RegExp(nameB) }).click()
+    await page.getByRole('button', { name: /^Cobrar/ }).click()
+
+    await expect(page.getByText('Venta registrada').first()).toBeVisible()
+
+    // ticketDescription() antepone "Cantina: " y junta las líneas con ", "
+    // (canteen-sale.service.ts) — qty 1 no lleva sufijo "xN".
+    await page.goto('/caja', { waitUntil: 'networkidle' })
+    const description = `Cantina: ${nameA}, ${nameB}`
+    const rows = page.getByRole('row').filter({ hasText: description })
+    await expect(rows).toHaveCount(1)
+    // $300 + $200 = $500, formato contable de la tabla ("500,00").
+    await expect(rows.getByText(/500,00/)).toBeVisible()
   })
 
   test('agregar movimiento registra un gasto operativo con monto en negativo', async ({

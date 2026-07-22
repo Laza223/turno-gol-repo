@@ -2,12 +2,12 @@
  * E2E — Abonados CRUD (audit T6, fase F5)
  *
  * Happy path + 3 edge cases for the admin abonados UI (T1+T2):
- *   #1  Happy — create with preview: /abonados/nuevo → fill form → "Ver fechas del turno"
- *              → 8 dates listed with "Libre" badges → "Crear abonado" → redirect to /abonados,
- *              row visible with "Activo" badge.
+ *   #1  Happy — create with preview: /abonados/nuevo → fill form → "Continuar"
+ *              → 8 dates listed with "Libre" badges → "Confirmar y Crear Abonado" → redirect
+ *              to /abonados, row visible with "Activo" badge.
  *   #2  Edge — preview with conflict: service-role pre-inserts an overlapping confirmed
  *              booking on one of the candidate dates → preview shows "Ocupado" badge for
- *              that date + summary "Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar."
+ *              that date + "7 turnos libres" + aviso de la fecha en conflicto.
  *   #3  Edge — cancel with future date: pre-create active abonado via service-role → in UI
  *              click "Cancelar" → type "CANCELAR" → pick today+14d as cancel-from date →
  *              confirm → assert bookings >= cancel-from are gone, earlier ones remain.
@@ -23,13 +23,73 @@
  */
 
 import { test, expect } from './fixtures'
+import type { Locator, Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { bookingInstants } from './_helpers/booking-instants'
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const COURT_ID = '00000000-0000-4000-8000-000000000010'
+// Nombre real del court sembrado (scripts/seed-e2e.ts) — el Combobox de
+// cancha selecciona por label visible, no por value/UUID.
+const COURT_NAME = 'Cancha E2E 1'
 const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
+
+const MONTH_NAMES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+  'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+/**
+ * Cancha / Día semanal / Hora inicio / Hora fin son un Combobox ARIA custom
+ * (patrón APG combobox+listbox, ver src/components/ui/combobox.tsx), no un
+ * <select> nativo: abrir con click, clickear la opción por su label visible.
+ * Mismo patrón que tests/unit/preview-abonado-slots.test.tsx.
+ *
+ * Se scopea el click de la opción al `#<fieldId>-listbox` (no un
+ * getByRole('option') global): Radix mantiene el popover previo montado
+ * durante su animación de salida, así que justo después de cerrar un
+ * combobox y abrir el siguiente pueden coexistir dos listbox con la misma
+ * opción visible (p. ej. "Hora inicio" y "Hora fin" comparten el mismo
+ * TIME_OPTIONS) — sin scope, el locator por nombre da strict-mode violation.
+ */
+async function selectCombobox(page: Page, fieldId: string, optionName: string): Promise<void> {
+  await page.locator(`#${fieldId}`).click()
+  await page.locator(`#${fieldId}-listbox`).getByRole('option', { name: optionName, exact: true }).click()
+}
+
+/**
+ * "Empieza el" / "Cancelar desde" son un DatePicker con calendario propio
+ * (botón trigger + popover Radix, ver src/components/ui/date-picker.tsx), no
+ * un <input type="date">: hay que navegar el calendario mes a mes hasta el
+ * mes/año buscado y clickear el día. El mes inicial visible depende del
+ * `value` con el que arranca el picker (vacío = mes actual, prefilled = su
+ * propio mes), así que se navega comparando el header en vez de asumir un
+ * punto de partida fijo.
+ *
+ * `trigger` es opcional porque el botón, sin fecha elegida, se identifica por
+ * su placeholder "Seleccionar fecha" — pero el picker de "Cancelar desde"
+ * arranca PREFILLED (defaultCancelDate() en AbonadosList.tsx), así que su
+ * botón ya muestra una fecha formateada y hay que ubicarlo por id.
+ */
+async function pickDate(
+  page: Page,
+  dateStr: string,
+  trigger: Locator = page.getByRole('button', { name: 'Seleccionar fecha' }),
+): Promise<void> {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const targetLabel = `${MONTH_NAMES[m - 1]} de ${y}`
+  await trigger.click()
+  const panel = page.getByRole('dialog', { name: 'Elegir fecha' })
+  await expect(panel).toBeVisible()
+  const nextMonthBtn = panel.getByRole('button', { name: 'Mes siguiente' })
+  // Loop acotado (10 años) para fallar rápido si algo no matchea, en vez de colgarse.
+  for (let i = 0; i < 120; i++) {
+    if (await panel.getByText(targetLabel, { exact: true }).isVisible()) break
+    await nextMonthBtn.click()
+  }
+  await panel.getByRole('button', { name: String(d), exact: true }).click()
+}
 
 function makeServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -146,28 +206,26 @@ test.describe('Abonados CRUD', () => {
       await page.goto('/abonados/nuevo')
       await page.waitForSelector('form')
 
-      await page.selectOption('select[name="courtId"]', COURT_ID)
-      await page.selectOption('select[name="dayOfWeek"]', '1') // Monday
-      await page.fill('input[name="timeStart"]', '14:00')
-      await page.fill('input[name="timeEnd"]', '15:00')
+      await selectCombobox(page, 'courtId', COURT_NAME)
+      await selectCombobox(page, 'dayOfWeek', 'Lunes')
+      await selectCombobox(page, 'timeStart', '14:00')
+      await selectCombobox(page, 'timeEnd', '15:00')
       await page.fill('input[name="contactName"]', 'E2E Happy Path')
       // #contactPhone = el input tel VISIBLE del PhoneInput; input[name=contactPhone]
       // es el hidden que arma el valor internacional (+54 …) y no es fillable.
       await page.fill('#contactPhone', contactPhone)
       await page.fill('input[name="pricePerSession"]', '5000')
-      await page.fill('input[name="startsOn"]', startsOn)
+      await pickDate(page, startsOn)
 
-      await page.getByRole('button', { name: /Ver fechas del turno/i }).click()
+      await page.getByRole('button', { name: 'Continuar' }).click()
 
       // Phase 2: preview heading + 8 OK badges + summary
-      await expect(page.getByRole('heading', { name: /Fechas del turno fijo/i })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Vista previa de fechas' })).toBeVisible()
       const okBadges = page.getByText('Libre', { exact: true })
       await expect(okBadges).toHaveCount(8)
-      await expect(
-        page.getByText('Se crearán 8 turnos.'),
-      ).toBeVisible()
+      await expect(page.getByText('8 turnos libres')).toBeVisible()
 
-      await page.getByRole('button', { name: 'Crear abonado' }).click()
+      await page.getByRole('button', { name: 'Confirmar y Crear Abonado' }).click()
       await page.waitForURL('**/abonados')
 
       // Row visible with Activo badge. La lista renderiza tabla (desktop) +
@@ -204,23 +262,24 @@ test.describe('Abonados CRUD', () => {
       await page.goto('/abonados/nuevo')
       await page.waitForSelector('form')
 
-      await page.selectOption('select[name="courtId"]', COURT_ID)
-      await page.selectOption('select[name="dayOfWeek"]', '1')
-      await page.fill('input[name="timeStart"]', '14:00')
-      await page.fill('input[name="timeEnd"]', '15:00')
+      await selectCombobox(page, 'courtId', COURT_NAME)
+      await selectCombobox(page, 'dayOfWeek', 'Lunes')
+      await selectCombobox(page, 'timeStart', '14:00')
+      await selectCombobox(page, 'timeEnd', '15:00')
       await page.fill('input[name="contactName"]', 'E2E Conflict')
       await page.fill('#contactPhone', contactPhone)
       await page.fill('input[name="pricePerSession"]', '5000')
-      await page.fill('input[name="startsOn"]', startsOn)
+      await pickDate(page, startsOn)
 
-      await page.getByRole('button', { name: /Ver fechas del turno/i }).click()
+      await page.getByRole('button', { name: 'Continuar' }).click()
 
-      await expect(page.getByRole('heading', { name: /Fechas del turno fijo/i })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Vista previa de fechas' })).toBeVisible()
       // 7 OK + 1 Conflicto + summary
       await expect(page.getByText('Libre', { exact: true })).toHaveCount(7)
       await expect(page.getByText('Ocupado', { exact: true })).toHaveCount(1)
+      await expect(page.getByText('7 turnos libres')).toBeVisible()
       await expect(
-        page.getByText('Se crearán 7 turnos. 1 fecha ya está ocupada y se va a saltar.'),
+        page.getByText(/Hay 1 fecha que ya está ocupada por otra reserva\./),
       ).toBeVisible()
     } finally {
       if (conflictBookingId) {
@@ -271,15 +330,27 @@ test.describe('Abonados CRUD', () => {
       const cancelFrom = dates[2]!
 
       await page.goto('/abonados')
-      const cancelBtn = page.getByRole('button', { name: 'Cancelar' }).first()
+      // exact:true: desde 777ee57 la fila también tiene "Cancelar fecha..."
+      // (cancelación puntual de un día) — sin exact, el match por substring
+      // agarra ese botón primero en vez de "Cancelar" (turno fijo completo).
+      const cancelBtn = page.getByRole('button', { name: 'Cancelar', exact: true }).first()
       await cancelBtn.click()
 
-      // Dialog opens; type CANCELAR + pick date
-      const dialog = page.getByRole('dialog')
+      // Dialog opens; pick date + type CANCELAR.
+      // Scopeado por name ("Cancelar turno fijo", el title del ConfirmDialog):
+      // el popover del DatePicker anidado también es role="dialog"
+      // (aria-label "Elegir fecha") y Radix lo deja montado con
+      // data-state="closed" tras seleccionar el día — un getByRole('dialog')
+      // sin nombre matchea los dos y rompe el toBeHidden() de más abajo.
+      const dialog = page.getByRole('dialog', { name: 'Cancelar turno fijo' })
       await expect(dialog).toBeVisible()
-      await dialog.locator('input[type="date"]').fill(cancelFrom)
+      // "Cancelar desde" arranca prefilled (defaultCancelDate() en
+      // AbonadosList.tsx), así que su trigger ya muestra una fecha formateada
+      // en vez del placeholder "Seleccionar fecha" — hay que ubicarlo por id
+      // (`cancel-date-${abonadoId}`, ver AbonadoDialogs.tsx).
+      await pickDate(page, cancelFrom, dialog.locator(`#cancel-date-${abonadoId}`))
       await dialog.locator('input#confirm-phrase').fill('CANCELAR')
-      await dialog.getByRole('button', { name: 'Cancelar abonado' }).click()
+      await dialog.getByRole('button', { name: 'Cancelar turno fijo' }).click()
 
       await expect(dialog).toBeHidden()
 

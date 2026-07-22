@@ -54,8 +54,9 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/caja')
-      await expect(page.getByRole('heading', { name: 'Caja' })).toBeVisible({ timeout: 15_000 })
+      // Rediseño: la venta rápida de cantina vive en /caja/cantina.
+      await page.goto('/caja/cantina')
+      await expect(page.getByRole('heading', { name: 'Caja y Cantina' })).toBeVisible({ timeout: 15_000 })
       await expect(page.getByText('Cantina/Bar')).toBeVisible()
 
       // Retry el click: primer hit a esta ruta con productos reales (214/216

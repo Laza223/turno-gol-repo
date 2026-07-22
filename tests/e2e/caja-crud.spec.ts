@@ -145,7 +145,7 @@ test.describe('caja — happy: register movement', () => {
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_MOVE}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // Open the movement modal.
         await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
@@ -207,7 +207,7 @@ test.describe('caja — edge: close day (type-to-confirm)', () => {
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_CLOSE}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // Open "Cerrar caja" dialog.
         await page.getByRole('button', { name: 'Cerrar caja' }).click()
@@ -268,7 +268,7 @@ test.describe('caja — edge: closed-day guard (no writes on a closed day)', () 
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_CLOSED}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // The "Caja cerrada" badge must appear — CajaActions is hidden (isClosed=true).
         await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible()
@@ -302,7 +302,7 @@ test.describe('caja — edge: close with difference requires note', () => {
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_DIFF}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // Open "Cerrar caja".
         await page.getByRole('button', { name: 'Cerrar caja' }).click()

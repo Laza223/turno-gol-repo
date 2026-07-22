@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
 import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
-import { saveCanteenProductsAction, sellCanteenProductAction } from '@/app/(admin)/caja/actions'
+import { sellCanteenProductAction } from '@/app/(admin)/caja/actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -83,7 +83,6 @@ export default async function DashboardPage() {
             date={data.date}
             products={tenant.settings.canteen_products ?? []}
             sellCanteenProductAction={sellCanteenProductAction}
-            saveCanteenProductsAction={saveCanteenProductsAction}
           />
         }
       />
@@ -150,7 +149,7 @@ export default async function DashboardPage() {
               : 'Sin ventas hoy'
           }
           accent="emerald"
-          href="/caja"
+          href="/caja/cantina"
           ariaLabel={`Cantina hoy: ${canteenSales.count} ventas — ver caja`}
         />
       </div>

@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { artDateString, tenantSettings } from '@/test/fixtures'
 import { CanteenQuickSale } from './CanteenQuickSale'
-import type { CanteenProductsActionResult, SellCanteenProductResult } from '../actions'
+import type { SellCanteenProductResult } from '../actions'
 
 const PRODUCTS = tenantSettings().canteen_products ?? []
 
@@ -32,7 +33,6 @@ const meta = {
         },
       }),
     ),
-    saveCanteenProductsAction: fn(async (): Promise<CanteenProductsActionResult> => ({ success: true })),
   },
 } satisfies Meta<typeof CanteenQuickSale>
 
@@ -90,64 +90,17 @@ export const VentaRapida: Story = {
   },
 }
 
-/** "Configurar" abre el editor: arranca con los productos actuales, se puede agregar/quitar/guardar. */
-export const EditorDeProductos: Story = {
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement)
-    const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Configurar' }))
-
-    // findByRole, no getByRole: el editor de productos entra por next/dynamic. Un
-    // getByRole es SÍNCRONO — no espera nada, y corre una carrera contra la carga del
-    // chunk que a veces gana y a veces pierde.
-    const dialogEl = await body.findByRole('dialog')
-    const dialog = within(dialogEl)
-    await expect(dialog.getAllByLabelText('Nombre del producto')).toHaveLength(PRODUCTS.length)
-
-    await userEvent.click(dialog.getByRole('button', { name: '+ Agregar producto' }))
-    const names = dialog.getAllByLabelText('Nombre del producto')
-    await userEvent.type(names[names.length - 1]!, 'Sanguchito')
-    const prices = dialog.getAllByLabelText('Precio en pesos')
-    await userEvent.type(prices[prices.length - 1]!, '3000')
-
-    await userEvent.click(dialog.getByRole('button', { name: 'Guardar' }))
-    await expect(args.saveCanteenProductsAction).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ name: 'Sanguchito', price: 300000 })]),
-    )
-    // Guardar cierra el diálogo (onClose): mientras Radix lo anima hacia
-    // afuera, el resto de la página (incluido el toast) queda aria-hidden por
-    // el focus trap — hay que esperar a que se remueva antes de poder
-    // interactuar con el botón "Cerrar" del toast.
-    await waitForElementToBeRemoved(dialogEl)
-    // El toast (variant success) sobrevive al cambio de story: cerrarlo acá
-    // evita que la siguiente story lo agarre a mitad de la animación de
-    // salida (color transitorio => falso positivo de axe).
-    const toastText = await body.findByText('Productos guardados')
-    const toastItem = toastText.closest('li')
-    if (!toastItem) throw new Error('No se encontró el toast')
-    await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
-    await waitForElementToBeRemoved(toastText)
-  },
-}
-
-/** Editor sin productos todavía: ofrece cargar la lista sugerida de un tirón. */
-export const EditorSinProductosCargaSugeridos: Story = {
-  args: { products: [] },
+/**
+ * "Configurar" (header, pencil) ya no abre un editor inline: el catálogo de
+ * productos se mudó a su propia tab (/caja/productos). Sin `onConfigureClick`
+ * (uso normal en /caja/cantina), el default navega ahí con el query param que
+ * auto-abre el editor del lado del destino (ProductsManager).
+ */
+export const ConfigurarNavegaAProductos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Configurar productos' }))
-
-    const dialog = within(await body.findByRole('dialog'))
-    await waitFor(() =>
-      expect(dialog.getByRole('button', { name: /cargar sugeridos/i })).toBeVisible(),
-    )
-    await userEvent.click(
-      dialog.getByRole('button', { name: /cargar sugeridos/i }),
-    )
-    await expect(dialog.getByDisplayValue('Agua')).toBeVisible()
-    await expect(dialog.getByDisplayValue('Gatorade')).toBeVisible()
-    await expect(dialog.getByDisplayValue('Cerveza')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Configurar' }))
+    await expect(getRouter().push).toHaveBeenCalledWith('/caja/productos?configureCanteen=true')
   },
 }
 

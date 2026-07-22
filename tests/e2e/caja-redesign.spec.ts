@@ -19,10 +19,12 @@ test.describe('Caja redesign', () => {
     adminStorageState,
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
-    await page.goto('/caja', { waitUntil: 'networkidle' })
 
-    // Configurar productos si el tenant demo todavía no los tiene.
+    // Configurar productos (rediseño: la Cantina vive en /caja/cantina, el
+    // catálogo en /caja/productos) si el tenant demo todavía no los tiene.
+    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Configurar', exact: true }).click()
+    await page.waitForURL(/\/caja\/productos/)
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     const suggested = dialog.getByRole('button', { name: /Cargar sugeridos/ })
@@ -32,7 +34,8 @@ test.describe('Caja redesign', () => {
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expect(page.getByText('Productos guardados').first()).toBeVisible()
 
-    // Vender Agua x2 en efectivo.
+    // Vender Agua x2 en efectivo desde la tab Cantina.
+    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: /Agua/ }).first().click()
     const sale = page.getByRole('dialog')
     await expect(sale).toBeVisible()
@@ -40,6 +43,10 @@ test.describe('Caja redesign', () => {
     await sale.getByRole('button', { name: /Registrar venta/ }).click()
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
+
+    // La venta aparece en "Movimientos del día", que sigue viviendo en /caja
+    // (Caja del día) — la cash_flow es la misma fuente de plata de siempre.
+    await page.goto('/caja', { waitUntil: 'networkidle' })
     // Anclar a la fila de la tabla desktop: getByText pelado puede resolver la
     // card mobile (oculta en viewport desktop) o el toast efímero.
     const saleRow = page.getByRole('row').filter({ hasText: 'Agua x2' }).first()

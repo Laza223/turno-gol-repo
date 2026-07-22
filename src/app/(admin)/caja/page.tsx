@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
@@ -21,15 +20,10 @@ import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArsContable } from '@/lib/format'
 import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
-import { CanteenQuickSale } from './components/CanteenQuickSale'
+import { CajaTabs } from './components/CajaTabs'
 import { CierreCard } from './components/CierreCard'
 import { EmptyMovementAction } from './components/EmptyMovementAction'
-import {
-  createCashFlowAction,
-  closeDayAction,
-  saveCanteenProductsAction,
-  sellCanteenProductAction,
-} from './actions'
+import { createCashFlowAction, closeDayAction } from './actions'
 import { artDateOf } from '@/shared/time/art-date'
 import {
   addDays,
@@ -78,8 +72,16 @@ const METHOD_ICON: Record<MethodKey, LucideIcon> = {
   other: Coins,
 }
 
-export default async function CajaPage(props: { searchParams: Promise<{ date?: string }> }) {
+export default async function CajaPage(props: {
+  searchParams: Promise<{ date?: string; configureCanteen?: string }>
+}) {
   const searchParams = await props.searchParams;
+  // Compat con deep links viejos: la configuración de productos vive ahora
+  // en su propia tab.
+  if (searchParams.configureCanteen === 'true') {
+    redirect('/caja/productos?configureCanteen=true')
+  }
+
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -106,7 +108,7 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Caja"
+        title="Caja y Cantina"
         subtitle={cajaDateLabel(date, today)}
         icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
         actions={
@@ -153,23 +155,12 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
         }
       />
 
+      <CajaTabs active="/caja" />
+
       {!summary.isClosed && <CajaCierreHint />}
 
       {/* Peak-end (§5): el cierre abre la vista — recibo verde e inmutable. */}
       {summary.isClosed && summary.close && <CierreCard close={summary.close} />}
-
-      {/* Cantina/Bar: venta rápida con un toque (oculta con caja cerrada) */}
-      {!summary.isClosed && (
-        <Suspense fallback={null}>
-          <CanteenQuickSale
-            date={date}
-            products={tenant.settings.canteen_products ?? []}
-            sellCanteenProductAction={sellCanteenProductAction}
-            saveCanteenProductsAction={saveCanteenProductsAction}
-          />
-        </Suspense>
-      )}
-
 
       {/* Movimientos del día */}
       {cashFlows.length === 0 ? (

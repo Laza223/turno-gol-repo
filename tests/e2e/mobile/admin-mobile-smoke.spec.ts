@@ -157,7 +157,7 @@ test.describe('Admin mobile smoke', () => {
     await hamburger.click()
     const drawer = page.getByRole('dialog')
     await expect(drawer).toBeVisible()
-    await expect(drawer.getByRole('link', { name: 'Caja' })).toBeVisible()
+    await expect(drawer.getByRole('link', { name: 'Caja y Cantina' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(drawer).toBeHidden()
 
@@ -167,10 +167,11 @@ test.describe('Admin mobile smoke', () => {
   test('cantina quick-sale buttons meet 44px touch targets', async ({ browser, adminStorageState }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
-    await page.goto('/caja', { waitUntil: 'networkidle' })
 
-    // Asegurar productos configurados (idempotente: carga sugeridos solo si está vacío).
-    await page.getByRole('button', { name: 'Configurar', exact: true }).click()
+    // Rediseño: el catálogo de productos vive en /caja/productos. Asegurar
+    // productos configurados ahí (idempotente: carga sugeridos solo si está vacío).
+    await page.goto('/caja/productos', { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Configurar productos' }).click()
     const editor = page.getByRole('dialog')
     await expect(editor).toBeVisible()
     const suggested = editor.getByRole('button', { name: /Cargar sugeridos/ })
@@ -181,6 +182,9 @@ test.describe('Admin mobile smoke', () => {
     } else {
       await editor.getByRole('button', { name: 'Cancelar' }).click()
     }
+
+    // La venta rápida vive en /caja/cantina.
+    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
 
     // boundingBox con poll: el router.refresh() tras guardar puede detachar el
     // nodo entre el toBeVisible y la medición (boundingBox → null transitorio).

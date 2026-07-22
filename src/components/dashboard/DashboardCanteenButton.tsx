@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import {
   CanteenQuickSale,
-  type SaveCanteenProductsAction,
   type SellCanteenProductAction,
 } from '@/app/(admin)/caja/components/CanteenQuickSale'
 import type { CanteenProduct } from '@/modules/tenants/tenant.types'
@@ -21,19 +20,17 @@ export function DashboardCanteenButton({
   date,
   products,
   sellCanteenProductAction,
-  saveCanteenProductsAction,
 }: {
   date: string
   products: CanteenProduct[]
   sellCanteenProductAction: SellCanteenProductAction
-  saveCanteenProductsAction: SaveCanteenProductsAction
 }) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
 
   const handleConfigureClick = () => {
     setOpen(false)
-    router.push('/caja?configureCanteen=true')
+    router.push('/caja/productos?configureCanteen=true')
   }
 
   return (
@@ -55,7 +52,6 @@ export function DashboardCanteenButton({
           date={date}
           products={products}
           sellCanteenProductAction={sellCanteenProductAction}
-          saveCanteenProductsAction={saveCanteenProductsAction}
           onConfigureClick={handleConfigureClick}
           isInDialog
         />

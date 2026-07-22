@@ -1,8 +1,9 @@
 /**
  * E2E — Rediseño de Caja
  *
- * 1. Venta rápida de Cantina/Bar: configurar productos (sugeridos), vender con
- *    un toque y verla en la lista con la categoría "Cantina/Bar".
+ * 1. Venta rápida de Cantina/Bar: cargar un producto en el catálogo
+ *    (/caja/productos), vender con un toque y verla en la lista con la
+ *    categoría "Cantina/Bar".
  * 2. "Agregar movimiento" registra un Gasto operativo y aparece en la lista
  *    con su badge y el monto en negativo.
  *
@@ -20,19 +21,17 @@ test.describe('Caja redesign', () => {
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
 
-    // Configurar productos (rediseño: la Cantina vive en /caja/cantina, el
-    // catálogo en /caja/productos) si el tenant demo todavía no los tiene.
-    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: 'Configurar', exact: true }).click()
-    await page.waitForURL(/\/caja\/productos/)
+    // Configurar productos (Fase 2: catálogo real en canteen_products, editor
+    // en /caja/productos — ProductsTable + ProductFormDialog). Crear un
+    // producto "Agua" vía la UI nueva; requiere admin (canEditCatalog).
+    await page.goto('/caja/productos', { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Agregar producto' }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    const suggested = dialog.getByRole('button', { name: /Cargar sugeridos/ })
-    if (await suggested.isVisible()) {
-      await suggested.click()
-    }
+    await dialog.getByLabel('Nombre').fill('Agua')
+    await dialog.getByLabel('Precio (pesos)').fill('500')
     await dialog.getByRole('button', { name: 'Guardar' }).click()
-    await expect(page.getByText('Productos guardados').first()).toBeVisible()
+    await expect(page.getByText('Producto creado').first()).toBeVisible()
 
     // Vender Agua x2 en efectivo desde la tab Cantina.
     await page.goto('/caja/cantina', { waitUntil: 'networkidle' })

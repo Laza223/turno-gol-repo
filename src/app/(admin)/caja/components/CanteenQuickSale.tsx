@@ -7,19 +7,22 @@ import { Minus, Pencil, Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { chipClass, canteenStockBadge, type StockBadge } from '../caja-lib'
 import { formatArs } from '@/lib/format'
-import type { SellCanteenProductResult } from '../actions'
-import { occurredAtForDate } from './occurred-at'
+import type { SellTicketActionResult } from '../cantina/actions'
 import { toast } from '@/hooks/use-toast'
-import type { CanteenProduct } from '@/modules/tenants/tenant.types'
+import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import { cn } from '@/lib/utils'
 
-export type SellCanteenProductAction = (input: {
-  productId: string
-  qty: number
+/**
+ * sellTicketAction llega por PROP: '../cantina/actions' es `'use server'` y
+ * arrastra drizzle/postgres al bundle de browser (mismo motivo que
+ * RegisterMovementModal). Ticket de 1 sola línea acá — el multi-ítem es
+ * Fase 3, esta UX sigue siendo la de siempre (grid + 2 taps).
+ */
+export type SellTicketAction = (input: {
+  lines: { productId: string; qty: number }[]
   method: 'cash' | 'transfer' | 'mercadopago'
-  occurredAt?: Date
   clientIdempotencyKey: string
-}) => Promise<SellCanteenProductResult>
+}) => Promise<SellTicketActionResult>
 
 const METHOD_OPTIONS = [
   { value: 'cash', label: 'Efectivo' },
@@ -32,20 +35,18 @@ type SaleMethod = (typeof METHOD_OPTIONS)[number]['value']
 // Venta rápida con un toque: el producto ya tiene precio cargado, solo se elige
 // cantidad y método. Touch targets ≥44px en todo el flujo (uso desde el celular).
 export function CanteenQuickSale({
-  date,
   products,
-  sellCanteenProductAction,
+  sellTicketAction,
   onConfigureClick,
   isInDialog,
 }: {
-  date: string
-  products: CanteenProduct[]
-  sellCanteenProductAction: SellCanteenProductAction
+  products: CanteenProductRow[]
+  sellTicketAction: SellTicketAction
   onConfigureClick?: () => void
   isInDialog?: boolean
 }) {
   const router = useRouter()
-  const [sale, setSale] = useState<CanteenProduct | null>(null)
+  const [sale, setSale] = useState<CanteenProductRow | null>(null)
 
   // Sin override (dashboard): "Configurar" navega al catálogo dedicado
   // (/caja/productos), que es donde vive ahora el editor de productos.
@@ -85,7 +86,7 @@ export function CanteenQuickSale({
       ) : (
         <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 lg:grid-cols-4">
           {products.map((p) => {
-            const badge = canteenStockBadge(p.stock)
+            const badge = canteenStockBadge(p.stock, p.minStock)
             const out = badge?.tone === 'out'
             return (
               <button
@@ -105,11 +106,10 @@ export function CanteenQuickSale({
       )}
 
       <QuickSaleDialog
-        date={date}
         product={sale}
         onClose={() => setSale(null)}
         onSold={() => router.refresh()}
-        sellCanteenProductAction={sellCanteenProductAction}
+        sellTicketAction={sellTicketAction}
       />
     </div>
   )
@@ -126,17 +126,15 @@ function StockChip({ badge }: { badge: StockBadge }) {
 }
 
 function QuickSaleDialog({
-  date,
   product,
   onClose,
   onSold,
-  sellCanteenProductAction,
+  sellTicketAction,
 }: {
-  date: string
-  product: CanteenProduct | null
+  product: CanteenProductRow | null
   onClose: () => void
   onSold: () => void
-  sellCanteenProductAction: SellCanteenProductAction
+  sellTicketAction: SellTicketAction
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -173,11 +171,9 @@ function QuickSaleDialog({
     setError(null)
     startTransition(async () => {
       try {
-        const res = await sellCanteenProductAction({
-          productId: product.id,
-          qty,
+        const res = await sellTicketAction({
+          lines: [{ productId: product.id, qty }],
           method,
-          occurredAt: occurredAtForDate(date),
           clientIdempotencyKey: idempotencyKey,
         })
         if (res.success) {

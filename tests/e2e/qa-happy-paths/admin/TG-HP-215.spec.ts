@@ -1,24 +1,25 @@
 /**
  * TG-HP-215 — Caja: vender producto (Cantina/Bar).
- * Rol: Admin/manager (requireOperatorStaff vía sellCanteenProductAction).
- * Prereq: caja del día abierta; tenants.settings.canteen_products con ≥1
- * producto — se siembra directo por SQL (JSONB, sin tabla propia).
+ * Rol: Admin/manager (requireOperatorStaff vía sellTicketAction).
+ * Prereq: caja del día abierta; ≥1 producto en la tabla `canteen_products`
+ * (Fase 2 del rediseño Caja/Cantina — migración 048, ya no vive en el JSONB
+ * tenants.settings.canteen_products) — se siembra directo por SQL.
  *
  * El producto se siembra CON stock (5 unidades) para poder verificar el
- * descuento atómico (sellCanteenProductAction, caja/actions.ts:166-265) — la
- * nota del manual (TG-HP-215 GAP) que dice "no existe descuento de stock" está
- * desactualizada: el código actual SÍ lo implementa cuando el producto define
- * `stock` (confirmado también en CLAUDE.md, sección Caja).
+ * descuento atómico (registerSale / stock.service.ts) — la nota del manual
+ * (TG-HP-215 GAP) que dice "no existe descuento de stock" está desactualizada:
+ * el código actual SÍ lo implementa cuando el producto define `stock`
+ * (confirmado también en CLAUDE.md, sección Caja).
  *
  * CASO DE PLATA — no se limpia el cash_flow al final.
- * Evidencia: src/app/(admin)/caja/actions.ts:166-265 (sellCanteenProductAction),
- * src/app/(admin)/caja/components/CanteenQuickSale.tsx:1-330.
+ * Evidencia: src/app/(admin)/caja/cantina/actions.ts (sellTicketAction),
+ * src/app/(admin)/caja/components/CanteenQuickSale.tsx.
  */
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '../../fixtures'
 import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
 import { todayART } from '../../../../src/shared/time/art-date'
-import { runSql, writeEvidence, jsonParam } from '../_qa/evidence'
+import { runSql, writeEvidence } from '../_qa/evidence'
 import { suppressPushPrompt } from '../_qa/session'
 
 test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
@@ -36,17 +37,13 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
       [E2E_TENANT_ID, today],
     )
 
-    // Reemplaza canteen_products por un único producto determinístico (no hay
-    // tabla propia — vive en tenants.settings JSONB, ver CLAUDE.md).
-    // jsonParam(), NO JSON.stringify()+::jsonb — ese patrón doble-codifica el
-    // array (postgres.js re-serializa el string, Postgres guarda un jsonb
-    // *string* en vez de un array real y products.map explota en el server,
-    // CanteenQuickSale.tsx:92 — confirmado con jsonb_typeof()).
-    const products = [{ id: productId, name: productName, price: pricePerUnit, stock: 5 }]
-    await runSql(`UPDATE tenants SET settings = jsonb_set(settings, '{canteen_products}', $1) WHERE id = $2`, [
-      jsonParam(products),
-      E2E_TENANT_ID,
-    ])
+    // Reemplaza el catálogo de canteen_products por un único producto
+    // determinístico (tabla real desde la migración 048, ya no JSONB).
+    await runSql(`DELETE FROM canteen_products WHERE tenant_id = $1`, [E2E_TENANT_ID])
+    await runSql(
+      `INSERT INTO canteen_products (id, tenant_id, name, price, stock) VALUES ($1, $2, $3, $4, $5)`,
+      [productId, E2E_TENANT_ID, productName, pricePerUnit, 5],
+    )
 
     const context = await browser.newContext()
     await suppressPushPrompt(context)
@@ -98,7 +95,8 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
         `SELECT id, type, category, amount, method, description FROM cash_flows
          WHERE tenant_id = $1 AND description = $2
          ORDER BY created_at DESC LIMIT 1`,
-        [E2E_TENANT_ID, `${productName} x2`],
+        // ticketDescription() (canteen-sale.service.ts) antepone "Cantina: ".
+        [E2E_TENANT_ID, `Cantina: ${productName} x2`],
       )
       expect(cfRows).toHaveLength(1)
       expect(cfRows[0]?.type).toBe('income')
@@ -108,9 +106,7 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
 
       // ── DB assertion: descuento atómico de stock (5 - 2 = 3) ─────────────
       const stockRows = await runSql<{ stock: number }>(
-        `SELECT (elem->>'stock')::int AS stock
-         FROM tenants, jsonb_array_elements(settings->'canteen_products') elem
-         WHERE tenants.id = $1 AND elem->>'id' = $2`,
+        `SELECT stock FROM canteen_products WHERE tenant_id = $1 AND id = $2`,
         [E2E_TENANT_ID, productId],
       )
       expect(stockRows).toHaveLength(1)
@@ -123,7 +119,7 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
         cashFlowRow: cfRows[0],
         stockAfter: stockRows[0]?.stock,
         notes:
-          'Caso de plata: cash_flow + canteen_products[stock] quedan vivos en DB. No se limpia en finally.',
+          'Caso de plata: cash_flow + canteen_products.stock quedan vivos en DB. No se limpia en finally.',
       })
     } finally {
       await context.close()

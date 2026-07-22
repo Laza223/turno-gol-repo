@@ -12,18 +12,16 @@ import {
 } from '@/components/ui/dialog'
 import {
   CanteenQuickSale,
-  type SellCanteenProductAction,
+  type SellTicketAction,
 } from '@/app/(admin)/caja/components/CanteenQuickSale'
-import type { CanteenProduct } from '@/modules/tenants/tenant.types'
+import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 
 export function DashboardCanteenButton({
-  date,
   products,
-  sellCanteenProductAction,
+  sellTicketAction,
 }: {
-  date: string
-  products: CanteenProduct[]
-  sellCanteenProductAction: SellCanteenProductAction
+  products: CanteenProductRow[]
+  sellTicketAction: SellTicketAction
 }) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
@@ -49,9 +47,8 @@ export function DashboardCanteenButton({
           <DialogTitle>Venta rápida de cantina</DialogTitle>
         </DialogHeader>
         <CanteenQuickSale
-          date={date}
           products={products}
-          sellCanteenProductAction={sellCanteenProductAction}
+          sellTicketAction={sellTicketAction}
           onConfigureClick={handleConfigureClick}
           isInDialog
         />

@@ -29,9 +29,16 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO turnogol_app;
   `)
   // Re-apply REVOKE because GRANT ALL above re-granted UPDATE/DELETE on inmutable tables.
+  // Migración 048 (rediseño Caja y Cantina) sumó 3 tablas al mismo patrón append-only/
+  // soft-delete: sin este re-apply, isolation.test.ts bloque N (REVOKE) da falso verde
+  // localmente — el rol turnogol_app recupera DELETE/UPDATE apenas corre CUALQUIER test
+  // de integración, porque el GRANT ALL de arriba corre en cada beforeAll.
   await s.unsafe(`
     REVOKE UPDATE, DELETE ON audit_logs FROM turnogol_app;
     REVOKE UPDATE, DELETE ON daily_cash_closes FROM turnogol_app;
+    REVOKE UPDATE, DELETE ON stock_movements FROM turnogol_app;
+    REVOKE DELETE ON canteen_products FROM turnogol_app;
+    REVOKE DELETE ON canteen_tabs FROM turnogol_app;
   `)
 }
 

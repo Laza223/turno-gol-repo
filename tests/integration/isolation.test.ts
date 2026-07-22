@@ -16,6 +16,7 @@
  *  J. Positive policies — cierre de gaps
  *  K. Positive relational reads
  *  L. Tablas RLS post-021 (push_subscriptions, player_favorites, feature_flags, reviews) (7)
+ *  N. Tablas RLS cantina, migración 048 (canteen_products, canteen_tabs, stock_movements)
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { faker } from '@faker-js/faker'
@@ -757,5 +758,156 @@ describe('M. schema invariant: FORCE ROW LEVEL SECURITY', () => {
     // toEqual([]) en vez de length===0 para que el mensaje de falla liste las
     // tablas ofensoras (ej. ['nueva_tabla']).
     expect(rows.map((r) => r.relname)).toEqual([])
+  })
+})
+
+// ─── N. Tablas RLS cantina (migración 048, rediseño Caja y Cantina) ──────
+// 3 tablas nuevas: canteen_products / canteen_tabs (RLS SELECT+INSERT+UPDATE,
+// sin DELETE — soft delete/anular por status) y stock_movements (ledger
+// append-only: solo SELECT+INSERT). Mismo patrón que el bloque L — SELECT
+// cross-tenant bloqueado + INSERT-spoof bloqueado + smoke positivo por tabla,
+// más el REVOKE (bloque G) extendido a las 3 tablas nuevas.
+// Seed propio (no toca A/B/seedIsolationData de arriba): usa el staff ya
+// sembrado (A.staffUserId/B.staffUserId) solo como FK, vía el pool
+// superusuario (bypassa RLS, mismo patrón que push_subscriptions/favorites).
+describe('N. tablas RLS cantina (migración 048)', () => {
+  let canteenProductA: string
+  let canteenTabA: string
+  let stockMovementA: string
+
+  beforeAll(async () => {
+    const sql = getSql()
+    const productRows = await sql<{ id: string }[]>`
+      INSERT INTO canteen_products (tenant_id, name, price, stock)
+      VALUES (${tenantA.id}, ${'Agua isolation test'}, ${150000}, ${10})
+      RETURNING id
+    `
+    canteenProductA = productRows[0]!.id
+
+    const tabRows = await sql<{ id: string }[]>`
+      INSERT INTO canteen_tabs (tenant_id, debtor_name, total_amount, created_by)
+      VALUES (${tenantA.id}, ${'Fiado isolation test'}, ${150000}, ${A.staffUserId})
+      RETURNING id
+    `
+    canteenTabA = tabRows[0]!.id
+
+    const movementRows = await sql<{ id: string }[]>`
+      INSERT INTO stock_movements (tenant_id, product_id, kind, qty, created_by)
+      VALUES (${tenantA.id}, ${canteenProductA}, 'purchase', ${5}, ${A.staffUserId})
+      RETURNING id
+    `
+    stockMovementA = movementRows[0]!.id
+  })
+
+  it('canteen_products: tenant B no ve el producto de A (cross-tenant SELECT)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantB.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM canteen_products WHERE id = ${canteenProductA}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('canteen_products: tenant A SÍ ve su producto (smoke positivo)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM canteen_products WHERE id = ${canteenProductA}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('canteen_products: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
+    await expect(
+      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
+        tx`INSERT INTO canteen_products (tenant_id, name, price) VALUES (${tenantA.id}, 'spoof', 100000)`,
+      ),
+    ).rejects.toThrow(/row-level security policy for table "canteen_products"/i)
+  })
+
+  it('canteen_products: turnogol_app NO puede DELETE (soft delete via is_active, sin policy de DELETE)', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'turnogol_app', tenantId: tenantA.id },
+        (tx) => tx.unsafe(`DELETE FROM canteen_products WHERE id = $1`, [canteenProductA]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+
+  it('canteen_tabs: tenant B no ve el fiado de A (cross-tenant SELECT)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantB.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM canteen_tabs WHERE id = ${canteenTabA}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('canteen_tabs: tenant A SÍ ve su fiado (smoke positivo)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM canteen_tabs WHERE id = ${canteenTabA}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('canteen_tabs: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
+    await expect(
+      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
+        tx`INSERT INTO canteen_tabs (tenant_id, debtor_name, total_amount, created_by)
+           VALUES (${tenantA.id}, 'spoof', 100000, ${B.staffUserId})`,
+      ),
+    ).rejects.toThrow(/row-level security policy for table "canteen_tabs"/i)
+  })
+
+  it('canteen_tabs: turnogol_app NO puede DELETE (anular = status canceled, sin policy de DELETE)', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'turnogol_app', tenantId: tenantA.id },
+        (tx) => tx.unsafe(`DELETE FROM canteen_tabs WHERE id = $1`, [canteenTabA]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+
+  it('stock_movements: tenant B no ve el movimiento de A (cross-tenant SELECT)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantB.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM stock_movements WHERE id = ${stockMovementA}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('stock_movements: tenant A SÍ ve su movimiento (smoke positivo)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM stock_movements WHERE id = ${stockMovementA}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('stock_movements: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
+    await expect(
+      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
+        tx`INSERT INTO stock_movements (tenant_id, product_id, kind, qty, created_by)
+           VALUES (${tenantA.id}, ${canteenProductA}, 'purchase', 5, ${B.staffUserId})`,
+      ),
+    ).rejects.toThrow(/row-level security policy for table "stock_movements"/i)
+  })
+
+  // REVOKE (bloque G extendido): ledger append-only — ni el propio tenant,
+  // como rol de aplicación, puede corregir o borrar una línea ya escrita.
+  it('stock_movements: turnogol_app NO puede UPDATE un movimiento propio (ledger append-only)', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'turnogol_app', tenantId: tenantA.id },
+        (tx) => tx.unsafe(`UPDATE stock_movements SET qty = 999 WHERE id = $1`, [stockMovementA]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+
+  it('stock_movements: turnogol_app NO puede DELETE un movimiento propio (ledger append-only)', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'turnogol_app', tenantId: tenantA.id },
+        (tx) => tx.unsafe(`DELETE FROM stock_movements WHERE id = $1`, [stockMovementA]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
   })
 })

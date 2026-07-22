@@ -22,22 +22,30 @@ import {
 const flat = (s: string) => s.replace(/ /g, ' ')
 
 describe('canteenStockBadge', () => {
-  it('devuelve null cuando el producto no controla stock (undefined)', () => {
+  it('devuelve null cuando el producto no controla stock (null/undefined)', () => {
     expect(canteenStockBadge(undefined)).toBeNull()
+    expect(canteenStockBadge(null)).toBeNull()
+    expect(canteenStockBadge(null, 5)).toBeNull()
   })
 
-  it('marca "Sin stock" (out) en 0 o negativo', () => {
-    expect(canteenStockBadge(0)).toEqual({ label: 'Sin stock', tone: 'out' })
-    expect(canteenStockBadge(-2)).toEqual({ label: 'Sin stock', tone: 'out' })
+  it('marca "Agotado" (out) en 0 o negativo, con o sin minStock cargado', () => {
+    expect(canteenStockBadge(0)).toEqual({ label: 'Agotado', tone: 'out' })
+    expect(canteenStockBadge(0, 5)).toEqual({ label: 'Agotado', tone: 'out' })
+    expect(canteenStockBadge(-2)).toEqual({ label: 'Agotado', tone: 'out' })
   })
 
-  it('marca stock bajo (low) en el umbral (3) y por debajo', () => {
-    expect(canteenStockBadge(1)).toEqual({ label: 'Quedan 1', tone: 'low' })
-    expect(canteenStockBadge(3)).toEqual({ label: 'Quedan 3', tone: 'low' })
+  it('sin minStock cargado (null) nunca hay alerta "low" — solo el corte en 0', () => {
+    expect(canteenStockBadge(1, null)).toEqual({ label: 'Stock 1', tone: 'ok' })
+    expect(canteenStockBadge(1)).toEqual({ label: 'Stock 1', tone: 'ok' })
   })
 
-  it('marca stock ok por encima del umbral', () => {
-    expect(canteenStockBadge(4)).toEqual({ label: 'Stock 4', tone: 'ok' })
+  it('con minStock explícito: stock <= minStock marca "Quedan N" (low)', () => {
+    expect(canteenStockBadge(1, 5)).toEqual({ label: 'Quedan 1', tone: 'low' })
+    expect(canteenStockBadge(5, 5)).toEqual({ label: 'Quedan 5', tone: 'low' })
+  })
+
+  it('stock por encima de minStock (o sin minStock) marca "Stock N" (ok)', () => {
+    expect(canteenStockBadge(6, 5)).toEqual({ label: 'Stock 6', tone: 'ok' })
     expect(canteenStockBadge(20)).toEqual({ label: 'Stock 20', tone: 'ok' })
   })
 })

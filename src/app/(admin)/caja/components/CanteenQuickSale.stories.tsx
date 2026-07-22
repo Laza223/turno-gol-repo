@@ -1,37 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
-import { artDateString, tenantSettings } from '@/test/fixtures'
+import { canteenProducts } from '@/test/fixtures'
 import { CanteenQuickSale } from './CanteenQuickSale'
-import type { SellCanteenProductResult } from '../actions'
+import type { SellTicketActionResult } from '../cantina/actions'
 
-const PRODUCTS = tenantSettings().canteen_products ?? []
+const PRODUCTS = canteenProducts()
 
-/** Vive suelto sobre `bg-background` en caja/page.tsx (define su propia superficie `bg-card`). */
+/** Vive suelto sobre `bg-background` en caja/cantina/page.tsx (define su propia superficie `bg-card`). */
 const meta = {
   title: 'Admin/Caja/CanteenQuickSale',
   component: CanteenQuickSale,
   parameters: { layout: 'padded' },
   args: {
-    date: artDateString(),
     products: PRODUCTS,
-    sellCanteenProductAction: fn(
-      async (): Promise<SellCanteenProductResult> => ({
-        success: true,
-        cashFlow: {
-          id: 'cf-1',
-          tenantId: 't-1',
-          type: 'income',
-          category: 'product_sale',
-          amount: 250000,
-          method: 'cash',
-          description: 'Gatorade 500ml',
-          bookingId: null,
-          registeredBy: 's-1',
-          occurredAt: new Date(),
-          createdAt: new Date(),
-        },
-      }),
+    sellTicketAction: fn(
+      async (): Promise<SellTicketActionResult> => ({ success: true, total: 250000 }),
     ),
   },
 } satisfies Meta<typeof CanteenQuickSale>
@@ -76,11 +60,10 @@ export const VentaRapida: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Transferencia' }))
     await userEvent.click(await dialog.findByRole('button', { name: /registrar venta/i }))
 
-    await expect(args.sellCanteenProductAction).toHaveBeenCalledWith(
+    await expect(args.sellTicketAction).toHaveBeenCalledWith(
       expect.objectContaining({
-        productId: PRODUCTS[0]!.id,
+        lines: [{ productId: PRODUCTS[0]!.id, qty: 2 }],
         method: 'transfer',
-        qty: 2,
       }),
     )
     // La venta OK cierra el diálogo (onClose): esperar a que termine su
@@ -92,9 +75,9 @@ export const VentaRapida: Story = {
 
 /**
  * "Configurar" (header, pencil) ya no abre un editor inline: el catálogo de
- * productos se mudó a su propia tab (/caja/productos). Sin `onConfigureClick`
+ * productos vive en su propia tab (/caja/productos). Sin `onConfigureClick`
  * (uso normal en /caja/cantina), el default navega ahí con el query param que
- * auto-abre el editor del lado del destino (ProductsManager).
+ * auto-abre el editor del lado del destino.
  */
 export const ConfigurarNavegaAProductos: Story = {
   play: async ({ canvasElement }) => {
@@ -107,8 +90,8 @@ export const ConfigurarNavegaAProductos: Story = {
 /** La venta falla del lado del servidor: error inline, el diálogo sigue abierto. */
 export const ErrorDeVenta: Story = {
   args: {
-    sellCanteenProductAction: fn(
-      async (): Promise<SellCanteenProductResult> => ({
+    sellTicketAction: fn(
+      async (): Promise<SellTicketActionResult> => ({
         success: false,
         error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
       }),

@@ -7,10 +7,11 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getDailyClose } from '@/modules/cashflow/daily-close.service'
+import { listProducts } from '@/modules/canteen/canteen.service'
 import { artDateOf } from '@/shared/time/art-date'
 import { CajaTabs } from '../components/CajaTabs'
 import { CanteenQuickSale } from '../components/CanteenQuickSale'
-import { sellCanteenProductAction } from '../actions'
+import { sellTicketAction } from './actions'
 
 export default async function CajaCantinaPage() {
   const user = await extractAuthUser()
@@ -22,7 +23,13 @@ export default async function CajaCantinaPage() {
   // La venta de cantina es siempre "ahora": a diferencia de /caja, esta tab
   // no navega por fecha (?date=).
   const today = artDateOf(new Date())
-  const close = await withTenantContext(tenant.id, (tx) => getDailyClose(tenant.id, today, tx))
+  const { close, products } = await withTenantContext(tenant.id, async (tx) => {
+    const [c, p] = await Promise.all([
+      getDailyClose(tenant.id, today, tx),
+      listProducts(tenant.id, tx),
+    ])
+    return { close: c, products: p }
+  })
 
   return (
     <div className="space-y-6">
@@ -43,11 +50,7 @@ export default async function CajaCantinaPage() {
         </div>
       ) : (
         <Suspense fallback={null}>
-          <CanteenQuickSale
-            date={today}
-            products={tenant.settings.canteen_products ?? []}
-            sellCanteenProductAction={sellCanteenProductAction}
-          />
+          <CanteenQuickSale products={products} sellTicketAction={sellTicketAction} />
         </Suspense>
       )}
     </div>

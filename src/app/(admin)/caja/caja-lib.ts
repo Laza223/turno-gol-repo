@@ -34,21 +34,24 @@ export function methodBreakdown(
   }))
 }
 
-// ── Stock de cantina (opcional) ───────────────────────────────────────────────
-
-/** Umbral de "stock bajo": el badge pasa a ámbar cuando quedan ≤ N unidades. */
-export const CANTEEN_LOW_STOCK_THRESHOLD = 3
+// ── Stock de cantina (canteen_products, migr. 048) ────────────────────────────
 
 export type StockBadge = { label: string; tone: 'ok' | 'low' | 'out' }
 
 /**
- * Badge de stock para un producto de cantina. `undefined` = sin control de
- * stock → null (no se muestra badge). 0 = sin stock. ≤ umbral = stock bajo.
+ * Badge de stock para un producto de cantina real (canteen_products). `stock`
+ * null/undefined = sin control de stock → sin badge. 0 (o negativo, defensivo)
+ * → "Agotado" SIEMPRE, aunque el producto no tenga `minStock` cargado.
+ * Con `minStock` definido y `stock <= minStock` → "Quedan N" (alerta). Sin
+ * `minStock` (null) nunca hay alerta "low" — solo el corte duro en 0.
  */
-export function canteenStockBadge(stock: number | undefined): StockBadge | null {
-  if (typeof stock !== 'number') return null
-  if (stock <= 0) return { label: 'Sin stock', tone: 'out' }
-  if (stock <= CANTEEN_LOW_STOCK_THRESHOLD) return { label: `Quedan ${stock}`, tone: 'low' }
+export function canteenStockBadge(
+  stock?: number | null,
+  minStock?: number | null,
+): StockBadge | null {
+  if (stock == null) return null
+  if (stock <= 0) return { label: 'Agotado', tone: 'out' }
+  if (minStock != null && stock <= minStock) return { label: `Quedan ${stock}`, tone: 'low' }
   return { label: `Stock ${stock}`, tone: 'ok' }
 }
 

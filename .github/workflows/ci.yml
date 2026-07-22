@@ -132,7 +132,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     needs: [lint-and-types, unit-tests, integration-and-isolation]
-    timeout-minutes: 20
+    # 40: el stack de Supabase + migraciones consumen ~8 min y la suite completa
+    # (3 projects) necesita más de los 12 restantes — con 20 el primer run real
+    # murió cancelled por timeout con los tests aún corriendo.
+    timeout-minutes: 40
 
     # NOTA: reemplaza el service container postgres:15-alpine (job anterior) por
     # el stack completo de Supabase CLI local. Los e2e usan Supabase Auth REAL

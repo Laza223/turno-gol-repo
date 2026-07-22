@@ -172,9 +172,14 @@ test.describe('caja — happy: register movement', () => {
         // The new row should appear in the movements table.
         await expect(page.getByRole('cell', { name: 'Pago E2E test movimiento' })).toBeVisible({ timeout: 10_000 })
 
-        // Balance summary cards should show a non-zero total income.
-        // We just verify the section rendered; exact amount depends on server formatting.
-        await expect(page.getByText('Ingresos', { exact: true })).toBeVisible()
+        // El rediseño movió el resumen "Ingresos/Egresos" adentro del modal de
+        // cierre (CloseDayButton) y del recibo post-cierre (CierreCard) — ya no
+        // vive en la página principal. El equivalente visible acá es la sección
+        // "Desglose por método" (solo se renderiza cuando hay al menos un método
+        // con movimientos), que recalcula con el que acabamos de crear. Solo
+        // verificamos que la sección apareció; el monto exacto depende del
+        // formatter del server.
+        await expect(page.getByRole('heading', { name: 'Desglose por método' })).toBeVisible()
       } finally {
         await context.close()
         // Clean up all cash_flows for this test date.

@@ -12,6 +12,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  // En CI el webServer es `pnpm dev` (compilación on-demand) sobre un runner
+  // de 2 cores compartido con el stack de Supabase: el default de 30s por test
+  // no alcanza para los flujos largos (checkout completo) la primera vez que
+  // compilan sus rutas. Local queda en el default.
+  timeout: process.env.CI ? 90_000 : 30_000,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   globalSetup: path.resolve('./tests/e2e/global-setup.ts'),
   globalTeardown: path.resolve('./tests/e2e/global-teardown.ts'),

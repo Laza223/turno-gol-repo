@@ -182,9 +182,19 @@ jobs:
       # src/shared/db/migrations/0*.sql a mano vía psql, igual que el job de
       # integración.
       - name: Start Supabase local stack
+        # Reintento: docker en el runner a veces falla el bind del puerto con
+        # "address already in use" por un contenedor a medio crear (visto en un
+        # run real). `supabase stop --no-backup` limpia los residuos y se
+        # intenta de nuevo una vez.
         run: |
           mv supabase/migrations supabase/migrations.disabled
-          supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+          start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector; }
+          if ! start_stack; then
+            echo "::warning::supabase start falló — limpiando residuos y reintentando"
+            supabase stop --no-backup || true
+            docker ps -aq --filter name=supabase | xargs -r docker rm -f || true
+            start_stack
+          fi
           mv supabase/migrations.disabled supabase/migrations
 
       - name: Create roles required by 008_revokes.sql

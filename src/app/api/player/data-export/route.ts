@@ -91,7 +91,9 @@ export const GET = withPlayer(async (_req, user, tx) => {
     retention_policy: {
       bookings: '12 months',
       payments: '5 years (legal AFIP retention)',
-      audit_logs: '12 months',
+      // 24 meses = decisión del dueño (D5, 2026-07-23), implementada en
+      // purgeOldAuditLogs — mantener en sync con ese worker y doc18 §12.2.
+      audit_logs: '24 months',
     },
     profile: {
       id: profile.id,

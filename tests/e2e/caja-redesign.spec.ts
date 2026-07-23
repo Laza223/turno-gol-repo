@@ -7,7 +7,8 @@
  *    CanteenQuickSale) y verlo en la lista con la categoría "Cantina/Bar".
  * 2. Ticket con 2 productos distintos: un solo "Cobrar" genera UN solo
  *    movimiento en /caja con la descripción de ambos y el monto sumado.
- * 3. "Agregar movimiento" registra un Gasto operativo y aparece en la lista
+ * 3. "Agregar movimiento" con tipo "Gasto" (migr. 050: categorías específicas,
+ *    auto-selecciona "Mercadería") registra el egreso y aparece en la lista
  *    con su badge y el monto en negativo.
  * 4. Fiado (Fase 4): anotar un ticket como fiado (en vez de cobrarlo), verlo
  *    en "Fiados pendientes", cobrarlo en efectivo y verlo desaparecer de la
@@ -39,16 +40,19 @@ test.describe('Caja redesign', () => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
 
     // Configurar productos (Fase 2: catálogo real en canteen_products, editor
-    // en /caja/productos — ProductsTable + ProductFormDialog). Crear un
-    // producto "Agua" vía la UI nueva; requiere admin (canEditCatalog).
+    // en /caja/productos — ProductsTable + ProductFormDialog). Nombre único
+    // por corrida (mismo patrón que el test vecino): canteen_products no tiene
+    // UNIQUE(tenant_id, name) y un retry de CI repetiría el alta, dejando dos
+    // filas "Agua" y rompiendo los asserts exact/strict de abajo.
+    const productName = `Agua e2e ${Date.now()}`
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
-    await createCanteenProduct(page, 'Agua', '500')
+    await createCanteenProduct(page, productName, '500')
 
-    // Vender Agua x2 en efectivo desde la tab Cantina: tap producto, tap
-    // producto de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo
-    // intermedio (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
+    // Vender x2 en efectivo desde la tab Cantina: tap producto, tap producto
+    // de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo intermedio
+    // (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
     await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
-    const aguaButton = page.getByRole('button', { name: /Agua/ }).first()
+    const aguaButton = page.getByRole('button', { name: new RegExp(`^${productName}`) }).first()
     await aguaButton.click()
     await aguaButton.click()
     await expect(page.getByText('×2')).toBeVisible()
@@ -61,9 +65,21 @@ test.describe('Caja redesign', () => {
     await page.goto('/caja', { waitUntil: 'networkidle' })
     // Anclar a la fila de la tabla desktop: getByText pelado puede resolver la
     // card mobile (oculta en viewport desktop) o el toast efímero.
-    const saleRow = page.getByRole('row').filter({ hasText: 'Agua x2' }).first()
+    const saleRow = page.getByRole('row').filter({ hasText: `${productName} x2` }).first()
     await expect(saleRow).toBeVisible({ timeout: 10_000 })
     await expect(saleRow.getByText('Cantina/Bar', { exact: true })).toBeVisible()
+
+    // Reporte de cantina (Fase 7): la venta recién hecha aparece en el ranking
+    // de /caja/productos. El `<section>` con aria-labelledby expone role
+    // "region" con el h2 como nombre accesible — lo usamos de ancla porque
+    // ProductsTable, más arriba en la misma página, también lista "Agua" y un
+    // getByText sin scope resolvería ambigüedad.
+    await page.goto('/caja/productos', { waitUntil: 'networkidle' })
+    const reportCard = page.getByRole('region', { name: /Ventas de cantina/ })
+    await expect(
+      reportCard.getByRole('heading', { name: /Ventas de cantina — últimos 7 días/ }),
+    ).toBeVisible()
+    await expect(reportCard.getByRole('cell', { name: productName, exact: true })).toBeVisible()
   })
 
   test('ticket con 2 productos distintos genera UN solo movimiento con el monto sumado', async ({
@@ -100,7 +116,7 @@ test.describe('Caja redesign', () => {
     await expect(rows.getByText(/500,00/)).toBeVisible()
   })
 
-  test('agregar movimiento registra un gasto operativo con monto en negativo', async ({
+  test('agregar movimiento con tipo "Gasto" auto-selecciona "Mercadería" y registra el egreso', async ({
     page,
     adminStorageState,
   }) => {
@@ -114,11 +130,15 @@ test.describe('Caja redesign', () => {
 
     // Chips (pages/caja.md §7): elegir tipo "Gasto" con un tap.
     await dialog.getByRole('button', { name: 'Gasto', exact: true }).click()
-    // La categoría se auto-selecciona en "Gasto operativo" (única válida).
-    await expect(dialog.getByRole('button', { name: 'Gasto operativo' })).toHaveAttribute(
+    // migr. 050: 'operating_expense' ya no es la única categoría de gasto —
+    // la UI ofrece 5 categorías específicas y auto-selecciona la primera
+    // (Mercadería). 'Gasto operativo' queda legacy, display-only en el
+    // historial, y esta UI no lo ofrece más.
+    await expect(dialog.getByRole('button', { name: 'Mercadería' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
+    await expect(dialog.getByRole('button', { name: 'Gasto operativo' })).toHaveCount(0)
     await dialog.getByLabel('Monto (pesos)').fill('1234')
     await dialog.getByLabel('Descripción').fill(description)
     await dialog.getByRole('button', { name: 'Guardar' }).click()
@@ -126,7 +146,7 @@ test.describe('Caja redesign', () => {
     await expect(page.getByText('Movimiento registrado').first()).toBeVisible()
     const row = page.getByRole('row').filter({ hasText: description })
     await expect(row).toBeVisible()
-    await expect(row.getByText('Gasto operativo')).toBeVisible()
+    await expect(row.getByText('Mercadería')).toBeVisible()
     // El monto del egreso se muestra en negativo (signo − U+2212).
     await expect(row.getByText(/−\s*\$/)).toBeVisible()
   })

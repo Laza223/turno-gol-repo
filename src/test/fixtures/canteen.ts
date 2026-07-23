@@ -1,5 +1,14 @@
 import type { CanteenProductRow, CanteenTabRow, StockLedgerEntry } from '@/modules/canteen/canteen.types'
-import { hoursFromNow } from './clock'
+// Tipos puros (DTOs) del reporte, colocados junto a las queries en
+// canteen-report.service.ts (server-only, NO se toca ese archivo). `import
+// type` se borra en compilación (isolatedModules) — mismo criterio que
+// canteen.types.ts: no arrastra nada server-only a Storybook.
+import type {
+  CanteenDailyTotal,
+  CanteenMethodTotal,
+  SalesRankingRow,
+} from '@/modules/canteen/canteen-report.service'
+import { artDateString, daysFromNow, hoursFromNow } from './clock'
 import { uid } from './ids'
 import { staffManager, staffMember } from './staff'
 import { tenant } from './tenant'
@@ -173,3 +182,73 @@ export const canteenTabConNota = (): CanteenTabRow =>
 
 /** Fiados abiertos típicos (venta rápida / FiadosList). */
 export const canteenTabs = (): CanteenTabRow[] => [canteenTab(), canteenTabConNota()]
+
+// ── Reporte de cantina (CanteenReport, tab Productos, Fase 7) ────────────────
+// `day` en fechas relativas al reloj congelado (artDateString/daysFromNow, ver
+// clock.ts) — nada de fechas calendario hardcodeadas que envejecen mal.
+
+export const salesRankingRow = (overrides: Partial<SalesRankingRow> = {}): SalesRankingRow => ({
+  productId: uid(801),
+  productName: 'Agua mineral 500ml',
+  units: 18,
+  revenue: 18 * 150000,
+  ...overrides,
+})
+
+/** Ranking típico — orden tal como lo entrega el service (revenue DESC). */
+export const salesRanking = (): SalesRankingRow[] => [
+  salesRankingRow(),
+  salesRankingRow({
+    productId: uid(803),
+    productName: 'Gatorade 500ml',
+    units: 10,
+    revenue: 10 * 250000,
+  }),
+  salesRankingRow({
+    productId: uid(802),
+    productName: 'Alfajor Havanna',
+    units: 6,
+    revenue: 6 * 180000,
+  }),
+]
+
+export const canteenMethodTotal = (
+  overrides: Partial<CanteenMethodTotal> = {},
+): CanteenMethodTotal => ({
+  method: 'cash',
+  total: 1250000,
+  ...overrides,
+})
+
+/** Desglose típico cobrado por método — solo lo COBRADO (fiados abiertos no entran). */
+export const canteenMethodTotals = (): CanteenMethodTotal[] => [
+  canteenMethodTotal(),
+  canteenMethodTotal({ method: 'transfer', total: 450000 }),
+  canteenMethodTotal({ method: 'mercadopago', total: 300000 }),
+]
+
+export const canteenDailyTotal = (overrides: Partial<CanteenDailyTotal> = {}): CanteenDailyTotal => ({
+  day: artDateString(),
+  total: 620000,
+  ...overrides,
+})
+
+/** Últimos 7 días típicos (rango default) — un día en $0 para ver el caso sin ventas. */
+export const canteenDailyTotals = (): CanteenDailyTotal[] => [
+  canteenDailyTotal({ day: artDateString(daysFromNow(-6)), total: 320000 }),
+  canteenDailyTotal({ day: artDateString(daysFromNow(-5)), total: 410000 }),
+  canteenDailyTotal({ day: artDateString(daysFromNow(-4)), total: 0 }),
+  canteenDailyTotal({ day: artDateString(daysFromNow(-3)), total: 580000 }),
+  canteenDailyTotal({ day: artDateString(daysFromNow(-2)), total: 250000 }),
+  canteenDailyTotal({ day: artDateString(daysFromNow(-1)), total: 190000 }),
+  canteenDailyTotal({ day: artDateString(), total: 620000 }),
+]
+
+/** 14 días (rango 30, aunque no completa los 30) — dispara el scroll vertical (>10 filas). */
+export const canteenDailyTotalsLargo = (): CanteenDailyTotal[] =>
+  Array.from({ length: 14 }, (_, i) =>
+    canteenDailyTotal({
+      day: artDateString(daysFromNow(-(13 - i))),
+      total: 100000 * (i + 1),
+    }),
+  )

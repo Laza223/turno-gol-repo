@@ -104,7 +104,7 @@ El inventario completo (recon B) confirmó que los 8 callers estilo expresión e
 | `pnpm typecheck` | ✅ limpio |
 | `pnpm lint` | ✅ 0 errors (34 warnings pre-existentes) |
 | `pnpm test` (unit) | ✅ 260 archivos / 2003 tests |
-| `pnpm test:integration` | ✅ 95 archivos / 677/677 |
+| `pnpm test:integration` | ✅ 95 archivos / 676/676 (677→676: se retiró el test de `getDayComparisons`, dead code borrado — ver observación 2) |
 | `pnpm test:isolation` (BLOQUEANTE) | ✅ 123/123 |
 | EXPLAIN post-fix bajo `turnogol_app`+RLS | ✅ Index Cond en las 3 clases (evidencia arriba) |
 
@@ -113,7 +113,7 @@ Gotcha operativo local: `psql -U postgres` no puede `SET ROLE turnogol_worker` (
 ## Observaciones del verificador (aceptadas)
 
 1. 🟡 **Sin canario de plan en CI**: si alguien revierte un caller a la expresión `AT TIME ZONE`, toda la suite queda verde y el Seq Scan bajo RLS vuelve en silencio — el harness `explain-d3-hotpaths.sql` no corre en CI. → Insumo directo de D5 (junto al drift test): un check que aserte Index Cond/ausencia de Seq Scan en 2-3 queries canario bajo `SET LOCAL ROLE turnogol_app`.
-2. **REQUIERE INPUT (coordinación de merges)**: la rama local `chore/drop-get-day-comparisons` (chip de dead code de D1) borra `getDayComparisons` — misma función que D3 migró en `cashflow.service.ts`. Secuenciar: si esa rama va después de `audit/data-d3`, resolver el conflicto borrando la función (el fix D3 sobre ella muere con ella, sin pérdida).
+2. **Coordinación de merges — RESUELTA**: la rama `chore/drop-get-day-comparisons` (PR #54, dead code de D1) borra `getDayComparisons` — misma función que D3 había migrado en `cashflow.service.ts`. Se aplicó el mismo diff de borrado (función + `DayComparisons`/`DayTotals` en `cashflow.types.ts` + fixtures + test de integración) directo en `audit/data-d3`, sin esperar el merge del otro PR: el fix de artDayRangeUtc sobre esa función quedó sin efecto (nunca tuvo caller), sin pérdida. `audit/data-d3` ya no colisiona con PR #54 — cualquiera de los dos que mergee primero, el otro entra sin conflicto en esos archivos.
 
 ## Para fases siguientes
 

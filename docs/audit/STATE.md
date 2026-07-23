@@ -1,12 +1,27 @@
 # TurnoGol Audit — Estado Actual
 
-**Última actualización:** 2026-05-30
+**Última actualización:** 2026-07-23
 **Branch principal:** main
-**Worktrees activos:** ninguno (F14 mergeado a main)
+**Worktrees activos:** `audit/data-d2a` (fase D2 en curso)
 
 ## Fase actual
 
-**🎯 AUDITORÍA COMPLETA (26/26)** — todas las fases backend (B0-B11) y frontend (F0-F14) cerradas. Próxima decisión humana: launch v1.0 prep (no más fases de auditoría). Ver §"Próximas decisiones para el humano" abajo.
+**Wave 1: 🎯 AUDITORÍA COMPLETA (26/26)** — todas las fases backend (B0-B11) y frontend (F0-F14) cerradas (2026-05-30). Próxima decisión humana wave 1: launch v1.0 prep. Ver §"Próximas decisiones para el humano" abajo.
+
+**Wave 2 — Auditoría de Datos: EN CURSO** (planificada 2026-07-22; fases, hallazgos pre-cargados y done-criteria en MASTER_PLAN §"Auditoría de Datos — Wave 2"). **D8 checkpoint ✅ 2026-07-23** (PR #50 mergeado). Fase actual: **D2 — RLS performance** (rama `audit/data-d2a`).
+
+### Wave 2 — fases
+
+| Fase | Estado | Notas |
+|------|--------|-------|
+| D8 — Checkpoint post-merge caja | ✅ 2026-07-23 | PR #50 MERGED 04:50Z. **4 tablas nuevas** (no 3: + `daily_cash_opens` migr. 049). Pack RLS completo YA en las 4 (`048:138-235`, `049:35-68`) → D2b eliminada. Isolation tests ✅ (`isolation.test.ts:765+` + checklist). Retention worker ✅ orden FK (`worker:238-243`). Policies nuevas con `current_setting` desnudo → scope D2. |
+| D2 — RLS performance (wrap current_setting + get_advisors) | ✅ 2026-07-23 (local + PROD) | Migr. 052: 73 policies wrapped a InitPlan. Gate verde: isolation 123/123, integration 677/677, EXPLAIN con InitPlan como `turnogol_app`. Advisors corridos (13 sec WARN + 176 perf, material pre-cargado a D1/D5). **🔴 D2-H2 (cazado y RESUELTO): prod estaba en migr. 047 con el código de caja deployado — caja rota en prod; 048–052 aplicadas a prod con aprobación del dueño, tracking de migraciones inaugurado. Causa sistémica (sin paso de migración a prod en pipeline) ABIERTA → D7.** Report: `reports/fase-d2-rls-performance-report.md` |
+| D1 — Schema físico e índices | ⬜ pendiente | Incluye las 4 tablas del rediseño de caja |
+| D3 — Queries reales bajo rol real (`turnogol_app` + SET LOCAL) | ⬜ pendiente | T0 genera seed sintético compartido con D6 |
+| D5 — Infra de datos (timeouts, pg_stat_statements, drift test) | ⬜ pendiente | PITR = REQUIERE INPUT (RPO/plata) |
+| D4 — Flujos de integridad dinámica | ⬜ pendiente | Desbloqueada por D8: carreras stock/fiados/cierre auditables |
+| D6 — Volumen y carga (k6, p95 doc5) | ⬜ pendiente | Usa seed de D3 |
+| D7 — Higiene migraciones prod vivo | ⬜ pendiente | CONCURRENTLY vs runner psql en tx |
 
 ## Fases completadas
 

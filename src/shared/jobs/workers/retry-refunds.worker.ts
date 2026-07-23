@@ -7,7 +7,7 @@ import {
   enqueueTenantOwnerNotification,
   dispatchEmail,
 } from '@/modules/notifications/notification.service'
-import { QUEUE_RETRY_PENDING_REFUNDS } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_RETRY_PENDING_REFUNDS } from '../definitions'
 import { track } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
 
@@ -192,7 +192,7 @@ async function alertRefundStillPending(row: PendingRefundRow): Promise<string[] 
 
 export async function registerRetryRefundsWorker(boss: PgBoss): Promise<void> {
   await boss.schedule(QUEUE_RETRY_PENDING_REFUNDS, '0 * * * *', {})
-  await boss.work(QUEUE_RETRY_PENDING_REFUNDS, async () => {
+  await boss.work(QUEUE_RETRY_PENDING_REFUNDS, CRON_WORK_OPTIONS, async () => {
     await retryPendingRefunds()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_RETRY_PENDING_REFUNDS })

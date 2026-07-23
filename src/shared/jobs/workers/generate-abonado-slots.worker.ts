@@ -5,6 +5,7 @@ import { generateSlotDates } from '@/modules/abonados/slot-generator'
 import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
 import { physicalRange } from '@/shared/time/physical-range'
 import { logger } from '@/shared/lib/logger'
+import { CRON_WORK_OPTIONS } from '../definitions'
 
 const JOB_NAME = 'generate-abonado-slots'
 
@@ -140,7 +141,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
 
 export async function registerGenerateAbonadoSlotsWorker(boss: PgBoss): Promise<void> {
   await boss.schedule(JOB_NAME, '0 6 * * *', {})
-  await boss.work(JOB_NAME, async () => {
+  await boss.work(JOB_NAME, CRON_WORK_OPTIONS, async () => {
     await runRollingSlotGeneration()
   })
   logger.info('registered queue', { module: 'workers', queue: JOB_NAME })

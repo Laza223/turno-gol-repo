@@ -1,7 +1,7 @@
 import type PgBoss from 'pg-boss'
 import { getWorkerDb } from '@/shared/db/client'
 import { autoCompleteOverdueBookings } from '@/modules/bookings/booking.service'
-import { QUEUE_AUTO_COMPLETE } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_AUTO_COMPLETE } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
 async function runAutoCompleteBookings(): Promise<void> {
@@ -19,7 +19,7 @@ async function runAutoCompleteBookings(): Promise<void> {
 
 export async function registerAutoCompleteBookingsWorker(boss: PgBoss): Promise<void> {
   await boss.schedule(QUEUE_AUTO_COMPLETE, '*/30 * * * *', {})
-  await boss.work(QUEUE_AUTO_COMPLETE, async () => {
+  await boss.work(QUEUE_AUTO_COMPLETE, CRON_WORK_OPTIONS, async () => {
     await runAutoCompleteBookings()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_AUTO_COMPLETE })

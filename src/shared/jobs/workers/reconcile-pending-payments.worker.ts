@@ -5,7 +5,7 @@ import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.ser
 import { reconcileApprovedPaymentForBooking } from '@/modules/payments/mp-reconcile.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
-import { QUEUE_RECONCILE_PENDING_PAYMENTS } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_RECONCILE_PENDING_PAYMENTS } from '../definitions'
 import { track } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
 
@@ -194,7 +194,7 @@ export async function registerReconcilePendingPaymentsWorker(
   boss: PgBoss,
 ): Promise<void> {
   await boss.schedule(QUEUE_RECONCILE_PENDING_PAYMENTS, '*/5 * * * *', {})
-  await boss.work(QUEUE_RECONCILE_PENDING_PAYMENTS, async () => {
+  await boss.work(QUEUE_RECONCILE_PENDING_PAYMENTS, CRON_WORK_OPTIONS, async () => {
     await reconcilePendingPayments()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_RECONCILE_PENDING_PAYMENTS })

@@ -1,5 +1,5 @@
 /**
- * Centralized pg-boss queue names + send options.
+ * Centralized pg-boss queue names + send options + work (poll) options.
  * Retry config lives on SendOptions (per enqueue), not on WorkOptions (pg-boss v9).
  */
 
@@ -69,4 +69,19 @@ export const PUSH_SEND_SEND_OPTIONS = {
   retryDelay: 30,
   retryBackoff: true,
   expireInHours: 1,
+} as const
+
+// ─── Poll tuning (WorkOptions) ─────────────────────────────────────────────────
+// D5 (auditoría de datos, 2026-07-23): en prod, el poller de pg-boss
+// (`WITH nextJob as (SELECT id FROM pgboss.job ...)`) resultó la TOP query
+// absoluta de la DB con la app sin tráfico — cada `boss.work()` sondea cada
+// `newJobCheckInterval` (default v9 = 2000ms, ver
+// node_modules/pg-boss/src/attorney.js `applyNewJobCheckInterval`). Las colas
+// que solo dispara `boss.schedule` (cron) no necesitan esa latencia: la
+// más frecuente corre cada 5 minutos, así que 30s de polling no le agrega
+// demora perceptible al primer job pero corta el volumen de sondeos ~15x.
+// Aplicar SOLO a colas cron — las latency-sensitive (webhooks de MP, push,
+// email, expiración directa de reservas por-booking) quedan en el default.
+export const CRON_WORK_OPTIONS = {
+  newJobCheckIntervalSeconds: 30,
 } as const

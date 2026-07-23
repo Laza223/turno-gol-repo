@@ -9,7 +9,7 @@ import {
   transitionSuspendedToBlocked,
 } from '@/modules/billing/lifecycle.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
-import { QUEUE_DUNNING_RETRY } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_DUNNING_RETRY } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
 /**
@@ -252,7 +252,7 @@ export async function runDunningSweep(): Promise<void> {
 export async function registerDunningRetryWorker(boss: PgBoss): Promise<void> {
   // 13:00 ART = 16:00 UTC.
   await boss.schedule(QUEUE_DUNNING_RETRY, '0 16 * * *', {})
-  await boss.work(QUEUE_DUNNING_RETRY, async () => {
+  await boss.work(QUEUE_DUNNING_RETRY, CRON_WORK_OPTIONS, async () => {
     await runDunningSweep()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_DUNNING_RETRY })

@@ -25,7 +25,25 @@ export async function getBoss(): Promise<PgBoss> {
     return _boss
   }
   const url = process.env.DATABASE_URL ?? DEFAULT_URL
-  const boss = new PgBoss({ connectionString: url, schema: 'pgboss' })
+  const boss = new PgBoss({
+    connectionString: url,
+    schema: 'pgboss',
+    // Pool interno de pg-boss (node-pg `Pool` bajo pg-boss/src/db.js). Sin
+    // `max`, node-pg usa su propio default (10). Prod comparte
+    // max_connections=60 entre turnogol_app / turnogol_worker / Supabase
+    // pooler — acotamos explícito para que este pool nunca compita por más
+    // de lo presupuestado (D5, auditoría 2026-07-23).
+    max: 5,
+    // Maintenance EXPLÍCITA (D5): la auditoría de prod encontró el poller de
+    // pg-boss (`WITH nextJob as (SELECT id FROM pgboss.job ...)`) como la TOP
+    // query absoluta de la DB con la app sin tráfico. Los valores de abajo
+    // COINCIDEN con los defaults reales de pg-boss v9.0.3 — verificados
+    // leyendo node_modules/pg-boss/src/attorney.js — y se dejan explícitos a
+    // propósito: la elección queda auditada en vez de heredada en silencio.
+    archiveCompletedAfterSeconds: 43200, // 12h — ARCHIVE_DEFAULT en attorney.js
+    deleteAfterDays: 7, // default real: applyDeleteConfig() → '7 days'
+    maintenanceIntervalSeconds: 120, // default real: applyMaintenanceConfig() → 120
+  })
   boss.on('error', (err) => {
     logger.error('pg-boss error', { module: 'pg-boss', error: err instanceof Error ? err.message : String(err) })
   })

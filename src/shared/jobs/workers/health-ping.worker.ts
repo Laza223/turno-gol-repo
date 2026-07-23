@@ -2,7 +2,7 @@ import type PgBoss from 'pg-boss'
 import * as Sentry from '@sentry/nextjs'
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
-import { QUEUE_HEALTH_PING } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_HEALTH_PING } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
 type PingStatus = 'ok' | 'down'
@@ -135,7 +135,7 @@ async function runHealthPing(): Promise<PingResult[]> {
 export async function registerHealthPingWorker(boss: PgBoss): Promise<void> {
   // Every 5 minutes.
   await boss.schedule(QUEUE_HEALTH_PING, '*/5 * * * *', {})
-  await boss.work(QUEUE_HEALTH_PING, async () => {
+  await boss.work(QUEUE_HEALTH_PING, CRON_WORK_OPTIONS, async () => {
     await runHealthPing()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_HEALTH_PING })

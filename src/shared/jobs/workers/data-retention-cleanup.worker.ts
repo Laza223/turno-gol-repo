@@ -232,6 +232,10 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM tenant_staff_members WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tenantId}`)
+    // Apertura de caja (migr. 049): FK a tenants sin CASCADE + tenant
+    // soft-anonimizado = limpieza manual obligatoria (gate de release lo cazó;
+    // misma trampa documentada del wipe de retención).
+    await tx.execute(drizzleSql`DELETE FROM daily_cash_opens WHERE tenant_id = ${tenantId}`)
     // Cantina (migr. 048): stock_movements referencia cash_flows, canteen_tabs
     // y canteen_products — borrar el ledger primero, después sus padres.
     await tx.execute(drizzleSql`DELETE FROM stock_movements WHERE tenant_id = ${tenantId}`)

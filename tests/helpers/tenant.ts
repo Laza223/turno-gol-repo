@@ -39,6 +39,7 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
     REVOKE UPDATE, DELETE ON stock_movements FROM turnogol_app;
     REVOKE DELETE ON canteen_products FROM turnogol_app;
     REVOKE DELETE ON canteen_tabs FROM turnogol_app;
+    REVOKE DELETE ON daily_cash_opens FROM turnogol_app;
   `)
 }
 

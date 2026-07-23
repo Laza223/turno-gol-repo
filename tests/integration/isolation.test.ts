@@ -911,3 +911,65 @@ describe('N. tablas RLS cantina (migración 048)', () => {
     ).rejects.toThrow(/permission denied/i)
   })
 })
+
+// ─── O. daily_cash_opens (migración 049, apertura de caja) ────────────────
+// Bloque agregado por el gate de release: la tabla quedó fuera del checklist
+// de tabla tenant-aislada nueva en su fase (mismo trap documentado del wipe
+// de retención — cada tabla nueva necesita su caso acá Y su DELETE manual en
+// data-retention-cleanup.worker.ts).
+describe('O. daily_cash_opens (migración 049)', () => {
+  let openA: string
+
+  beforeAll(async () => {
+    const sql = getSql()
+    const rows = await sql<{ id: string }[]>`
+      INSERT INTO daily_cash_opens (tenant_id, date, opening_cash, opened_by)
+      VALUES (${tenantA.id}, '2019-06-01', ${250000}, ${A.staffUserId})
+      RETURNING id
+    `
+    openA = rows[0]!.id
+  })
+
+  it('daily_cash_opens: tenant B no ve la apertura de A (cross-tenant SELECT)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantB.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM daily_cash_opens WHERE id = ${openA}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('daily_cash_opens: tenant A SÍ ve su apertura (smoke positivo)', async () => {
+    const rows = await withContext(
+      { role: 'authenticated', tenantId: tenantA.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM daily_cash_opens WHERE id = ${openA}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('daily_cash_opens: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
+    await expect(
+      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
+        tx`INSERT INTO daily_cash_opens (tenant_id, date, opening_cash, opened_by)
+           VALUES (${tenantA.id}, '2019-06-02', 100000, ${B.staffUserId})`,
+      ),
+    ).rejects.toThrow(/row-level security policy for table "daily_cash_opens"/i)
+  })
+
+  it('daily_cash_opens: tenant B no puede pisar el fondo de A (cross-tenant UPDATE = 0 filas)', async () => {
+    await withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, async (tx) => {
+      const updated = await tx<{ id: string }[]>`
+        UPDATE daily_cash_opens SET opening_cash = 999999 WHERE id = ${openA} RETURNING id
+      `
+      expect(updated.length).toBe(0)
+    })
+  })
+
+  it('daily_cash_opens: turnogol_app NO puede DELETE (la apertura no se borra, REVOKE 049)', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'turnogol_app', tenantId: tenantA.id },
+        (tx) => tx.unsafe(`DELETE FROM daily_cash_opens WHERE id = $1`, [openA]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+})

@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import { dailyCashCloses } from '@/shared/db/schema'
 import { insertAuditLog } from '@/shared/db/audit'
 import type { DbTx } from '@/shared/db/client'
-import { todayART } from '@/shared/time/art-date'
+import { todayART, artDayRangeUtc } from '@/shared/time/art-date'
 import { CloseDateInFutureError, DayAlreadyCloseExistsError } from './cashflow.errors'
 import type { DailyCashCloseRow, CashFlowType } from './cashflow.types'
 
@@ -29,11 +29,14 @@ async function aggregateTotals(
   // cashNet (ingresos+ajustes cash − gastos cash) alimenta el efectivo
   // esperado del arqueo (migr. 049). Mismo criterio con signo que el
   // byMethod de getDaySummary.
+  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
+  const day = artDayRangeUtc(date)
   const rows = await tx.execute(
     sql`SELECT type, method, SUM(amount)::int AS total
         FROM cash_flows
         WHERE tenant_id = ${tenantId}
-          AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date
+          AND occurred_at >= ${day.fromUtc.toISOString()}
+          AND occurred_at < ${day.toUtc.toISOString()}
         GROUP BY type, method`,
   )
 

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
+import { artDayRangeUtc } from '@/shared/time/art-date'
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 
 /**
@@ -45,6 +46,8 @@ export async function getSalesRanking(
   // fiado cargado por error inflaba el ranking para siempre (hallazgo ROJO
   // del panel de Fase 7, reproducido contra Postgres real). Ventas de ticket
   // directo tienen tab_id NULL y no se afectan.
+  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
+  const win = artDayRangeUtc(range.from, range.to)
   const rows = await tx.execute(sql`
     SELECT sm.product_id,
            cp.name AS product_name,
@@ -56,8 +59,8 @@ export async function getSalesRanking(
     WHERE sm.tenant_id = ${tenantId}
       AND sm.kind = 'sale'
       AND (sm.tab_id IS NULL OR ct.status <> 'canceled')
-      AND (sm.occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
-          BETWEEN ${range.from}::date AND ${range.to}::date
+      AND sm.occurred_at >= ${win.fromUtc.toISOString()}
+      AND sm.occurred_at < ${win.toUtc.toISOString()}
     GROUP BY sm.product_id, cp.name
     ORDER BY revenue DESC, units DESC
   `)
@@ -79,14 +82,16 @@ export async function getCanteenTotalsByMethod(
   tx: DbTx,
   range: { from: string; to: string },
 ): Promise<CanteenMethodTotal[]> {
+  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
+  const win = artDayRangeUtc(range.from, range.to)
   const rows = await tx.execute(sql`
     SELECT method, SUM(amount)::int AS total
     FROM cash_flows
     WHERE tenant_id = ${tenantId}
       AND category = 'product_sale'
       AND type = 'income'
-      AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
-          BETWEEN ${range.from}::date AND ${range.to}::date
+      AND occurred_at >= ${win.fromUtc.toISOString()}
+      AND occurred_at < ${win.toUtc.toISOString()}
     GROUP BY method
     ORDER BY total DESC
   `)
@@ -100,6 +105,9 @@ export async function getCanteenDailyTotals(
   tx: DbTx,
   range: { from: string; to: string },
 ): Promise<CanteenDailyTotal[]> {
+  // WHERE por rango UTC sargable; el GROUP BY sigue etiquetando el día con la
+  // expresión ART (post-filtro, no necesita índice). Ver artDayRangeUtc.
+  const win = artDayRangeUtc(range.from, range.to)
   const rows = await tx.execute(sql`
     SELECT (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS day,
            SUM(amount)::int AS total
@@ -107,8 +115,8 @@ export async function getCanteenDailyTotals(
     WHERE tenant_id = ${tenantId}
       AND category = 'product_sale'
       AND type = 'income'
-      AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
-          BETWEEN ${range.from}::date AND ${range.to}::date
+      AND occurred_at >= ${win.fromUtc.toISOString()}
+      AND occurred_at < ${win.toUtc.toISOString()}
     GROUP BY 1
     ORDER BY 1 ASC
   `)

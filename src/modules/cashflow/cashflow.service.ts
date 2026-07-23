@@ -277,6 +277,8 @@ export async function getDaySummary(
     balance: number
     declared_cash: number
     diff_amount: number
+    opening_cash: number | null
+    expected_cash: number | null
     note: string | null
     closed_by: string
     closed_at: Date
@@ -293,6 +295,8 @@ export async function getDaySummary(
         balance: closeRaw.balance,
         declaredCash: closeRaw.declared_cash,
         diffAmount: closeRaw.diff_amount,
+        openingCash: closeRaw.opening_cash,
+        expectedCash: closeRaw.expected_cash,
         note: closeRaw.note,
         closedBy: closeRaw.closed_by,
         closedAt: new Date(closeRaw.closed_at),

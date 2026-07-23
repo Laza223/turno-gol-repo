@@ -33,6 +33,12 @@ export const dailyCashCloses = pgTable(
     declaredCash: integer('declared_cash').notNull().default(0),
     diffAmount: integer('diff_amount').notNull().default(0),
 
+    // Migración 049 (apertura de caja). NULL = cierre legacy anterior a la
+    // apertura: la UI branchea por NULL y NUNCA reinterpreta diff_amount viejo
+    // (semántica vieja: balance − declared; nueva: declared − expected).
+    openingCash: integer('opening_cash'),
+    expectedCash: integer('expected_cash'),
+
     note: text('note'),
     closedBy: uuid('closed_by')
       .notNull()

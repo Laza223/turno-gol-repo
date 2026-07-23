@@ -8,6 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
+import { openDay } from '@/modules/cashflow/cash-open.service'
 import { cashFlowResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import { validateApiOutput } from '@/shared/api-output'
 import {
@@ -16,8 +17,13 @@ import {
   DayAlreadyCloseExistsError,
   InvalidCashFlowTypeError,
   InvalidCashFlowCategoryError,
+  OpenDateInFutureError,
 } from '@/modules/cashflow/cashflow.errors'
-import type { CashFlowRow, DailyCashCloseRow, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
+import type {
+  CashFlowRow,
+  DailyCashCloseRow,
+  CreateCashFlowInput,
+} from '@/modules/cashflow/cashflow.types'
 
 const createCashFlowSchema = z.object({
   type: z.enum(['income', 'adjustment', 'expense']),
@@ -52,12 +58,24 @@ const closeDaySchema = z.object({
   note: boundedText(500).optional(),
 })
 
+const openDaySchema = z.object({
+  date: dateStr,
+  openingCash: moneyCents,
+  note: boundedText(300).optional(),
+})
+
 export type CashFlowActionResult =
   | { success: true; cashFlow: CashFlowRow }
   | { success: false; error: string }
 
 export type CloseDayActionResult =
   | { success: true; close: DailyCashCloseRow }
+  | { success: false; error: string }
+
+export type OpenDayInput = { date: string; openingCash: number; note?: string }
+
+export type OpenDayActionResult =
+  | { success: true; openingCash: number }
   | { success: false; error: string }
 
 export async function createCashFlowAction(
@@ -126,6 +144,36 @@ export async function closeDayAction(
       }
       if (err instanceof DayAlreadyCloseExistsError) {
         return { success: false as const, error: `La caja del ${parsed.data.date} ya fue cerrada.` }
+      }
+      throw err
+    }
+  })
+
+  if (result.success) revalidatePath('/caja')
+  return result
+}
+
+export async function openDayAction(input: OpenDayInput): Promise<OpenDayActionResult> {
+  const parsed = openDaySchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+  // Abrir/corregir el fondo es operación de caja: mismo gate que el resto (admin+manager).
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    try {
+      const open = await openDay(tenant.id, user.staffUserId, parsed.data, tx)
+      return { success: true as const, openingCash: open.openingCash }
+    } catch (err) {
+      if (err instanceof OpenDateInFutureError) {
+        return { success: false as const, error: 'No se puede abrir una fecha futura.' }
+      }
+      if (err instanceof DayAlreadyClosedError) {
+        return { success: false as const, error: 'Ese día ya está cerrado.' }
       }
       throw err
     }

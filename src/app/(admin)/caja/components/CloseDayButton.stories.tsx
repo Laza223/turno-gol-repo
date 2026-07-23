@@ -15,6 +15,11 @@ const meta = {
     totalExpense: 800000,
     balance: 3700000,
     cashTotal: 2000000,
+    // Sin fondo declarado por default: expectedCash === cashTotal, openingCash null
+    // (mismo número que `balance` tenía antes de migr. 049 — no cambia el resto
+    // de las stories que comparan "37000"/"36500" contra este valor).
+    expectedCash: 3700000,
+    openingCash: null,
     closeDayAction: fn(
       async (): Promise<CloseDayActionResult> => ({
         success: true,
@@ -28,6 +33,8 @@ const meta = {
           balance: 3700000,
           declaredCash: 0,
           diffAmount: 3700000,
+          openingCash: null,
+          expectedCash: null,
           note: null,
           closedBy: 's-1',
           closedAt: new Date(),
@@ -78,7 +85,8 @@ export const DiffRequiereNota: Story = {
     await waitFor(() => expect(dialog.getByLabelText(/efectivo contado/i)).toBeVisible())
     await userEvent.type(dialog.getByLabelText(/efectivo contado/i), '36500')
 
-    await expect(dialog.getByText(/diferencia de.*de menos/i)).toBeVisible()
+    // Pinneado a la dirección (falta/sobra): un refactor que la pierda debe fallar acá.
+    await expect(dialog.getByText(/diferencia de.*efectivo esperado.*(falta|sobra) plata/i)).toBeVisible()
     await expect(dialog.getByText(/nota \(obligatoria\)/i)).toBeVisible()
 
     // El type-to-confirm (fase "CERRAR") solo depende de la frase, no de la
@@ -88,6 +96,27 @@ export const DiffRequiereNota: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Cerrar caja' }))
     await expect(await dialog.findByRole('alert')).toHaveTextContent(/nota es obligatoria/i)
     await expect(args.closeDayAction).not.toHaveBeenCalled()
+  },
+}
+
+/** Con apertura de caja: el resumen agrega "Fondo inicial" y "Efectivo esperado" (migr. 049). */
+export const ConFondoInicial: Story = {
+  args: {
+    openingCash: 500000,
+    // Fondo 5.000 + neto cash 20.000 (cashTotal del meta) = esperado 25.000.
+    expectedCash: 2500000,
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(body.getByRole('button', { name: 'Cerrar caja' }))
+
+    const dialog = within(await body.findByRole('dialog'))
+    // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
+    // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
+    await waitFor(() => expect(dialog.getByText('Fondo inicial')).toBeVisible())
+    await expect(dialog.getByText('$ 5.000,00')).toBeVisible()
+    await expect(dialog.getByText('Efectivo esperado')).toBeVisible()
+    await expect(dialog.getByText('$ 25.000,00')).toBeVisible()
   },
 }
 

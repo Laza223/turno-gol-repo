@@ -19,24 +19,36 @@ async function aggregateTotals(
   tenantId: string,
   date: string,
   tx: DbTx,
-): Promise<{ totalIncome: number; totalAdjustments: number; totalExpense: number }> {
+): Promise<{
+  totalIncome: number
+  totalAdjustments: number
+  totalExpense: number
+  cashNet: number
+}> {
+  // GROUP BY type, method: los totales por tipo salen sumando métodos, y
+  // cashNet (ingresos+ajustes cash − gastos cash) alimenta el efectivo
+  // esperado del arqueo (migr. 049). Mismo criterio con signo que el
+  // byMethod de getDaySummary.
   const rows = await tx.execute(
-    sql`SELECT type, SUM(amount)::int AS total
+    sql`SELECT type, method, SUM(amount)::int AS total
         FROM cash_flows
         WHERE tenant_id = ${tenantId}
           AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date
-        GROUP BY type`,
+        GROUP BY type, method`,
   )
 
   let totalIncome = 0
   let totalAdjustments = 0
   let totalExpense = 0
-  for (const row of (rows as unknown as Array<{ type: string; total: number }>)) {
-    if (row.type === ('income' as CashFlowType)) totalIncome = row.total ?? 0
-    if (row.type === ('adjustment' as CashFlowType)) totalAdjustments = row.total ?? 0
-    if (row.type === ('expense' as CashFlowType)) totalExpense = row.total ?? 0
+  let cashNet = 0
+  for (const row of (rows as unknown as Array<{ type: string; method: string; total: number }>)) {
+    const total = row.total ?? 0
+    if (row.type === ('income' as CashFlowType)) totalIncome += total
+    if (row.type === ('adjustment' as CashFlowType)) totalAdjustments += total
+    if (row.type === ('expense' as CashFlowType)) totalExpense += total
+    if (row.method === 'cash') cashNet += row.type === 'expense' ? -total : total
   }
-  return { totalIncome, totalAdjustments, totalExpense }
+  return { totalIncome, totalAdjustments, totalExpense, cashNet }
 }
 
 export async function closeDailyRegister(
@@ -65,10 +77,22 @@ export async function closeDailyRegister(
     throw new DayAlreadyCloseExistsError(date)
   }
 
-  const { totalIncome, totalAdjustments, totalExpense } = await aggregateTotals(tenantId, date, tx)
+  const { totalIncome, totalAdjustments, totalExpense, cashNet } = await aggregateTotals(tenantId, date, tx)
   const balance = totalIncome + totalAdjustments - totalExpense
+
+  // Apertura de caja (migr. 049): snapshot del fondo inicial al cerrar, así
+  // el recibo queda autocontenido e inmutable. Sin apertura, fondo 0.
+  const openRows = await tx.execute(
+    sql`SELECT opening_cash FROM daily_cash_opens WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
+  )
+  const openingCash = (openRows as unknown as Array<{ opening_cash: number }>)[0]?.opening_cash ?? 0
+
+  const expectedCash = openingCash + cashNet
   const declaredCash = opts.declaredCash ?? 0
-  const diffAmount = balance - declaredCash
+  // Semántica NUEVA (solo cierres con expected_cash NOT NULL): lo contado
+  // menos lo esperado. Positivo = sobra plata; negativo = falta. Los cierres
+  // legacy (expected_cash NULL) guardaron balance − declared — la UI branchea.
+  const diffAmount = declaredCash - expectedCash
 
   let closeRow: typeof dailyCashCloses.$inferSelect
   try {
@@ -83,6 +107,8 @@ export async function closeDailyRegister(
         balance,
         declaredCash,
         diffAmount,
+        openingCash,
+        expectedCash,
         note: opts.note ?? null,
         closedBy: staffUserId,
       })
@@ -100,7 +126,7 @@ export async function closeDailyRegister(
     action: 'cashflow.daily_close',
     resourceType: 'daily_cash_close',
     resourceId: closeRow.id,
-    metadata: { date, balance, declaredCash, diffAmount },
+    metadata: { date, balance, declaredCash, diffAmount, openingCash, expectedCash },
   })
 
   return {
@@ -113,6 +139,8 @@ export async function closeDailyRegister(
     balance: closeRow.balance,
     declaredCash: closeRow.declaredCash,
     diffAmount: closeRow.diffAmount,
+    openingCash: closeRow.openingCash ?? null,
+    expectedCash: closeRow.expectedCash ?? null,
     note: closeRow.note ?? null,
     closedBy: closeRow.closedBy,
     closedAt: closeRow.closedAt,
@@ -137,6 +165,8 @@ export async function getDailyClose(
     balance: number
     declared_cash: number
     diff_amount: number
+    opening_cash: number | null
+    expected_cash: number | null
     note: string | null
     closed_by: string
     closed_at: Date
@@ -152,6 +182,8 @@ export async function getDailyClose(
     balance: r.balance,
     declaredCash: r.declared_cash,
     diffAmount: r.diff_amount,
+    openingCash: r.opening_cash,
+    expectedCash: r.expected_cash,
     note: r.note,
     closedBy: r.closed_by,
     closedAt: new Date(r.closed_at),

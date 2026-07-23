@@ -61,7 +61,10 @@ test.describe('TG-HP-216 — caja: cerrar caja diaria', () => {
       await expect(dialog).not.toBeVisible({ timeout: 10_000 })
 
       // UI-sin-reload: CierreCard reemplaza CajaActions/CanteenQuickSale sin navegar.
-      await expect(page.getByRole('heading', { name: 'Caja cerrada', exact: true })).toBeVisible({
+      // Fase 5 (migr. 049): declared_cash=0 (campo vacío a propósito) ahora cae en la
+      // rama v2 de closeView ("sin arqueo declarado") en vez del legacy "Caja cerrada"
+      // a secas — match parcial en vez de exact para no acoplarse a esa redacción.
+      await expect(page.getByRole('heading', { name: /Caja cerrada/ })).toBeVisible({
         timeout: 10_000,
       })
       await expect(page.getByRole('button', { name: '+ Agregar movimiento' })).not.toBeVisible()

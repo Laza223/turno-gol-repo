@@ -282,7 +282,12 @@ describe('cashflow service', () => {
     expect(close.totalAdjustments).toBe(100000)
     expect(close.balance).toBe(1400000)
     expect(close.declaredCash).toBe(500000)
-    expect(close.diffAmount).toBe(900000)
+    // Semántica migr. 049: el arqueo es SOLO efectivo. Sin apertura, expected =
+    // 0 + neto cash (500000, el turno transfer y el ajuste 'other' no cuentan);
+    // declared 500000 → diff 0 (el efectivo cuadra aunque balance sea 1400000).
+    expect(close.openingCash).toBe(0)
+    expect(close.expectedCash).toBe(500000)
+    expect(close.diffAmount).toBe(0)
 
     const dbRow = await getDailyCashClose(tenant.id, TODAY)
     expect(dbRow).not.toBeNull()

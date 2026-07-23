@@ -90,6 +90,9 @@ export const dailyCashClose = (overrides: Partial<DailyCashCloseRow> = {}): Dail
   balance: 3700000,
   declaredCash: 3650000,
   diffAmount: -50000,
+  // Fixture legacy (pre-049) a propósito: cubre el branch de cierre viejo.
+  openingCash: null,
+  expectedCash: null,
   note: 'Faltaron $500, seguramente vuelto de más.',
   closedBy: staffMember().id,
   closedAt: hoursFromNow(-2),

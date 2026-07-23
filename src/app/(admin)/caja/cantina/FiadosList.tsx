@@ -214,7 +214,7 @@ function SettleTabDialog({
             </p>
           )}
           {error && (
-            <p role="alert" className="text-xs text-red-600">
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
             </p>
           )}
@@ -310,7 +310,7 @@ function CancelTabDialog({
             />
           </div>
           {error && (
-            <p role="alert" className="text-xs text-red-600">
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
             </p>
           )}

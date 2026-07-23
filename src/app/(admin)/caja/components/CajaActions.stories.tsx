@@ -13,6 +13,8 @@ const meta = {
     totalExpense: 800000,
     balance: 3700000,
     cashTotal: 2000000,
+    expectedCash: 3700000,
+    openingCash: null,
     isClosed: false,
     createCashFlowAction: fn(async () => ({
       success: false as const,

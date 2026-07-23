@@ -21,6 +21,8 @@ function renderButton() {
       totalExpense={2000}
       balance={10000}
       cashTotal={10000}
+      expectedCash={10000}
+      openingCash={null}
       closeDayAction={closeDayAction}
     />,
   )

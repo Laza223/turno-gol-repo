@@ -32,3 +32,10 @@ export class CloseDateInFutureError extends Error {
     this.name = 'CloseDateInFutureError'
   }
 }
+
+export class OpenDateInFutureError extends Error {
+  constructor(date: string) {
+    super(`Cannot open the register for a future date: ${date}.`)
+    this.name = 'OpenDateInFutureError'
+  }
+}

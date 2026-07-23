@@ -199,7 +199,7 @@ export function RegisterMovementModal({
             <textarea id="cf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
               className="w-full rounded-md border border-border px-3 py-2 min-h-[44px] md:min-h-0 text-sm" />
           </div>
-          {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
               className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>

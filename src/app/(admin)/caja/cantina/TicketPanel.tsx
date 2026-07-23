@@ -311,7 +311,7 @@ export function TicketPanel({
             </div>
           </fieldset>
           {error && (
-            <p role="alert" className="text-xs text-red-600">
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
             </p>
           )}
@@ -373,7 +373,7 @@ export function TicketPanel({
                 />
               </div>
               {tabError && (
-                <p role="alert" className="text-xs text-red-600">
+                <p role="alert" className="text-xs text-red-700 dark:text-red-400">
                   {tabError}
                 </p>
               )}

@@ -87,6 +87,8 @@ function makeClose(overrides: Partial<DailyCashCloseRow> = {}): DailyCashCloseRo
     balance: 4000000,
     declaredCash: 4000000,
     diffAmount: 0,
+    openingCash: null,
+    expectedCash: null,
     note: null,
     closedBy: 'staff-1',
     closedAt: new Date('2026-06-11T02:40:00Z'), // 23:40 ART
@@ -122,5 +124,83 @@ describe('CierreCard — variantes del peak-end', () => {
     expect(screen.getByText(/Diferencia de/)).toBeTruthy()
     expect(screen.getByText(/1\.000,00/)).toBeTruthy()
     expect(screen.getByText(/Faltó un vuelto/)).toBeTruthy()
+  })
+
+  // ── v2 (migr. 049): expectedCash/openingCash no-null ──────────────────────
+  it('v2 — arqueo que cuadra: agrega Fondo inicial/Efectivo esperado al <dl>', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 4300000,
+          diffAmount: 0,
+        })}
+      />,
+    )
+    expect(screen.getByText('Caja cerrada — el efectivo cuadró')).toBeTruthy()
+    expect(screen.getByText('Fondo inicial')).toBeTruthy()
+    // "43.000,00" (Efectivo esperado/contado) contiene "3.000,00" como substring
+    // — DOM-traversal en vez de regex para no pescar la fila equivocada.
+    const fondoDd = screen.getByText('Fondo inicial').closest('div')!.querySelector('dd')!
+    expect(fondoDd.textContent).toContain('3.000,00')
+    expect(screen.getByText('Efectivo esperado')).toBeTruthy()
+    expect(screen.getByText('Efectivo contado')).toBeTruthy()
+    expect(screen.getByText('Diferencia')).toBeTruthy()
+    // Sin el párrafo ámbar legacy — la diferencia vive en el <dl> ahora.
+    expect(screen.queryByText(/respecto del saldo/)).toBeNull()
+  })
+
+  it('v2 — sin arqueo declarado (declaredCash=0): oculta Efectivo contado/Diferencia', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 0,
+          diffAmount: -4300000,
+        })}
+      />,
+    )
+    expect(screen.getByText('Caja cerrada — sin arqueo declarado')).toBeTruthy()
+    expect(screen.getByText('Fondo inicial')).toBeTruthy()
+    expect(screen.getByText('Efectivo esperado')).toBeTruthy()
+    expect(screen.queryByText('Efectivo contado')).toBeNull()
+    expect(screen.queryByText('Diferencia')).toBeNull()
+  })
+
+  it('v2 — sobraron plata: título "sobraron $X" y Diferencia con signo +', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 4400000,
+          diffAmount: 100000,
+        })}
+      />,
+    )
+    expect(screen.getByText(/Caja cerrada — sobraron/)).toBeTruthy()
+    // DOM-traversal en vez de regex sobre "$"/espacio (NBSP del Intl formatter).
+    const dd = screen.getByText('Diferencia').closest('div')!.querySelector('dd')!
+    expect(dd.textContent).toContain('+')
+    expect(dd.textContent).toContain('1.000,00')
+  })
+
+  it('v2 — faltaron plata: título "faltaron $X" y Diferencia con signo −', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 4200000,
+          diffAmount: -100000,
+        })}
+      />,
+    )
+    expect(screen.getByText(/Caja cerrada — faltaron/)).toBeTruthy()
+    const dd = screen.getByText('Diferencia').closest('div')!.querySelector('dd')!
+    expect(dd.textContent).toContain('−')
+    expect(dd.textContent).toContain('1.000,00')
   })
 })

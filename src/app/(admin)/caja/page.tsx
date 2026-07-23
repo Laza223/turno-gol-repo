@@ -14,6 +14,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
+import { getDayOpen } from '@/modules/cashflow/cash-open.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
@@ -23,7 +24,8 @@ import { CajaCierreHint } from './components/CajaCierreHint'
 import { CajaTabs } from './components/CajaTabs'
 import { CierreCard } from './components/CierreCard'
 import { EmptyMovementAction } from './components/EmptyMovementAction'
-import { createCashFlowAction, closeDayAction } from './actions'
+import { OpenDayCard } from './components/OpenDayCard'
+import { createCashFlowAction, closeDayAction, openDayAction } from './actions'
 import { artDateOf } from '@/shared/time/art-date'
 import {
   addDays,
@@ -93,17 +95,22 @@ export default async function CajaPage(props: {
   // reventaba el cast SQL ::date y addDays(); degradar a hoy (ART) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
-  const { summary, cashFlows } = await withTenantContext(tenant.id, async (tx) => {
-    const [s, cf] = await Promise.all([
+  const { summary, cashFlows, open } = await withTenantContext(tenant.id, async (tx) => {
+    const [s, cf, o] = await Promise.all([
       getDaySummary(tenant.id, date, tx),
       getCashFlows(tenant.id, date, tx),
+      getDayOpen(tenant.id, date, tx),
     ])
-    return { summary: s, cashFlows: cf }
+    return { summary: s, cashFlows: cf, open: o }
   })
 
   const ingresos = summary.totalIncome + summary.totalAdjustments
   const methods = methodBreakdown(summary.byMethod)
   const isToday = date === today
+  // Fondo inicial (si se abrió la caja) + neto efectivo del día: la referencia
+  // real para el arqueo (migr. 049) — reemplaza el saldo neto de toda la caja
+  // (que mezcla métodos de pago) como comparación del cierre.
+  const expectedCash = (open?.openingCash ?? 0) + (summary.byMethod.cash ?? 0)
 
   return (
     <div className="space-y-6">
@@ -147,6 +154,8 @@ export default async function CajaPage(props: {
               totalExpense={summary.totalExpense}
               balance={summary.balance}
               cashTotal={summary.byMethod.cash ?? 0}
+              expectedCash={expectedCash}
+              openingCash={open?.openingCash ?? null}
               isClosed={summary.isClosed}
               createCashFlowAction={createCashFlowAction}
               closeDayAction={closeDayAction}
@@ -156,6 +165,10 @@ export default async function CajaPage(props: {
       />
 
       <CajaTabs active="/caja" />
+
+      {!summary.isClosed && (
+        <OpenDayCard date={date} open={open} openDayAction={openDayAction} isToday={isToday} />
+      )}
 
       {!summary.isClosed && <CajaCierreHint />}
 

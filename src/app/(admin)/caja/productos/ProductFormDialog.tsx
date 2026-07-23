@@ -247,7 +247,7 @@ export function ProductFormDialog({
               </div>
             </div>
           )}
-          {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"

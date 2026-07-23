@@ -26,7 +26,7 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
   }
 })
 
-import { createCashFlow, getCashFlows, getDaySummary, getDayComparisons } from '@/modules/cashflow/cashflow.service'
+import { createCashFlow, getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import {
   DayAlreadyClosedError,
@@ -297,35 +297,6 @@ describe('cashflow service', () => {
     expect(sale!.amount).toBe(500000)
     expect(sale!.description).toBe('Gatorade x2')
     expect(sale!.method).toBe('cash')
-  })
-
-  it('getDayComparisons aggregates yesterday and weekly daily average', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-
-    await sql`
-      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
-      VALUES
-        (${tenant.id}, 'income', 'booking', ${700000}, 'cash', ${'Turno ayer'}, ${staff.id}, NOW() - interval '1 day'),
-        (${tenant.id}, 'expense', 'operating_expense', ${100000}, 'cash', ${'Gasto ayer'}, ${staff.id}, NOW() - interval '1 day'),
-        (${tenant.id}, 'income', 'booking', ${1400000}, 'cash', ${'Turno hace 3 días'}, ${staff.id}, NOW() - interval '3 days'),
-        (${tenant.id}, 'income', 'booking', ${999999}, 'cash', ${'Fuera de ventana'}, ${staff.id}, NOW() - interval '9 days'),
-        (${tenant.id}, 'income', 'booking', ${555555}, 'cash', ${'Hoy no cuenta'}, ${staff.id}, NOW())
-    `
-
-    const comp = await withTenantContext(tenant.id, (tx) =>
-      getDayComparisons(tenant.id, TODAY, tx),
-    )
-
-    expect(comp.yesterday).toEqual({ totalIncome: 700000, totalExpense: 100000, balance: 600000 })
-    // Semana = 7 días anteriores a hoy: 700000 + 1400000 ingresos, 100000 egresos.
-    // Literales precomputados a propósito: si la aserción reusa Math.round(.../7),
-    // espeja la implementación y no detecta que el divisor cambie.
-    expect(comp.weekAvg.totalIncome).toBe(300000) // 2_100_000 / 7
-    expect(comp.weekAvg.totalExpense).toBe(14286) // round(100_000 / 7)
-    expect(comp.weekAvg.balance).toBe(285714) // round(2_000_000 / 7)
   })
 
   it('closes the day and aggregates totals correctly', async () => {

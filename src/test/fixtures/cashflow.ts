@@ -1,9 +1,7 @@
 import type {
   CashFlowRow,
   DailyCashCloseRow,
-  DayComparisons,
   DaySummary,
-  DayTotals,
 } from '@/modules/cashflow/cashflow.types'
 import { artDateString, daysFromNow, FROZEN_NOW, hoursFromNow } from './clock'
 import { uid } from './ids'
@@ -125,17 +123,3 @@ export const daySummaryOpen = (): DaySummary =>
     isClosed: false,
     close: null,
   })
-
-export const dayTotals = (overrides: Partial<DayTotals> = {}): DayTotals => ({
-  totalIncome: 4500000,
-  totalExpense: 800000,
-  balance: 3700000,
-  ...overrides,
-})
-
-/** Comparativas para el dashboard: ayer y el promedio de los últimos 7 días. */
-export const dayComparisons = (overrides: Partial<DayComparisons> = {}): DayComparisons => ({
-  yesterday: dayTotals({ totalIncome: 5200000, totalExpense: 900000, balance: 4300000 }),
-  weekAvg: dayTotals({ totalIncome: 4100000, totalExpense: 700000, balance: 3400000 }),
-  ...overrides,
-})

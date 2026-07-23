@@ -27,5 +27,6 @@ ENV NODE_ENV=production
 
 # Entrypoint: arranca pg-boss + registra los 14 workers.
 # Recordatorio: en este servicio, DATABASE_URL debe ser la conexión DIRECTA
-# a Postgres (:5432), no el pooler (:6543). Ver docs/infraestructura.md §4.
+# a Postgres (:5432), no el pooler (:6543), y debe llevar ?sslmode=require
+# (DSN remoto de Supabase — no es localhost). Ver docs/infraestructura.md §4.
 CMD ["pnpm", "jobs:start"]

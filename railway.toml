@@ -15,7 +15,9 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 # Variables de entorno (setear en el dashboard de Railway, NO acá):
-#   DATABASE_URL  -> conexión DIRECTA a Supabase Postgres (:5432), no el pooler
+#   DATABASE_URL  -> conexión DIRECTA a Supabase Postgres (:5432), no el pooler,
+#                    con ?sslmode=require (DSN remoto — la conexión sin SSL no
+#                    aplica acá, no es localhost)
 #   NODE_ENV=production
 #   RESEND_API_KEY, claves de MercadoPago, encryption key de tokens MP,
 #   SUPABASE_*, VAPID keys (push), SENTRY_DSN

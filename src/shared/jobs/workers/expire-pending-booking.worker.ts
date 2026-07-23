@@ -1,5 +1,6 @@
 import type PgBoss from 'pg-boss'
 import {
+  CRON_WORK_OPTIONS,
   QUEUE_EXPIRE_PENDING_BOOKING,
   QUEUE_EXPIRE_PENDING_BOOKING_SWEEP,
   type ExpirePendingBookingJobData,
@@ -30,7 +31,7 @@ export async function registerExpirePendingBookingWorker(
   )
 
   await boss.schedule(QUEUE_EXPIRE_PENDING_BOOKING_SWEEP, '*/5 * * * *', {})
-  await boss.work(QUEUE_EXPIRE_PENDING_BOOKING_SWEEP, async () => {
+  await boss.work(QUEUE_EXPIRE_PENDING_BOOKING_SWEEP, CRON_WORK_OPTIONS, async () => {
     await sweepExpiredPendingBookings()
   })
 

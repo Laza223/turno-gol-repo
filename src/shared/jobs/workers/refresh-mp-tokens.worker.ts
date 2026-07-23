@@ -5,7 +5,7 @@ import { getSql, getDb } from '@/shared/db/client'
 import { refreshMpAccessToken } from '@/modules/payments/mp-oauth'
 import { encrypt } from '@/lib/crypto/encrypt'
 import { TenantMpNotConnectedError } from '@/modules/payments/payment.errors'
-import { QUEUE_REFRESH_MP_TOKENS } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_REFRESH_MP_TOKENS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
 type RefreshOutcome = 'refreshed' | 'skipped'
@@ -91,7 +91,7 @@ export async function runRefreshMpTokens(): Promise<void> {
 export async function registerRefreshMpTokensWorker(boss: PgBoss): Promise<void> {
   // Every 4 hours.
   await boss.schedule(QUEUE_REFRESH_MP_TOKENS, '0 */4 * * *', {})
-  await boss.work(QUEUE_REFRESH_MP_TOKENS, async () => {
+  await boss.work(QUEUE_REFRESH_MP_TOKENS, CRON_WORK_OPTIONS, async () => {
     await runRefreshMpTokens()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_REFRESH_MP_TOKENS })

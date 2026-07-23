@@ -2,7 +2,7 @@ import type PgBoss from 'pg-boss'
 import { sql } from 'drizzle-orm'
 import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
-import { QUEUE_EXPIRE_TRIALS } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
 /**
@@ -68,7 +68,7 @@ export async function runExpireTrials(): Promise<void> {
 export async function registerExpireTrialsWorker(boss: PgBoss): Promise<void> {
   // 08:00 ART = 11:00 UTC (ART is UTC-3)
   await boss.schedule(QUEUE_EXPIRE_TRIALS, '0 11 * * *', {})
-  await boss.work(QUEUE_EXPIRE_TRIALS, async () => {
+  await boss.work(QUEUE_EXPIRE_TRIALS, CRON_WORK_OPTIONS, async () => {
     await runExpireTrials()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_EXPIRE_TRIALS })

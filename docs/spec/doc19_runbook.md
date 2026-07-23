@@ -171,7 +171,13 @@ DIAGNÓSTICO Y ACCIÓN:
   3. Verificar disk space
      → Supabase Dashboard → Database → Disk Usage
      → ¿Cerca del límite?
-        → Purgar datos temporales: TRUNCATE processed_webhooks
+        → La purga de `processed_webhooks` > 30 días está AUTOMATIZADA
+          (worker semanal `data-retention-cleanup`, paso global D5,
+          `purgeProcessedWebhooks` en
+          src/shared/jobs/workers/data-retention-cleanup.worker.ts) — no
+          debería acumularse. Si igual hace falta purgar manualmente
+          (fallback / corrida fuera de horario):
+          DELETE FROM processed_webhooks
           WHERE processed_at < NOW() - INTERVAL '30 days'
         → Escalar plan de Supabase si es necesario (temporal: el upgrade
           tarda ~15 minutos)

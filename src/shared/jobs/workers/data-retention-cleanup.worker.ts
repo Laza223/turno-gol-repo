@@ -1,7 +1,7 @@
 import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
-import { QUEUE_DATA_RETENTION } from '../definitions'
+import { CRON_WORK_OPTIONS, QUEUE_DATA_RETENTION } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { isMpAlreadyCancelledPreapprovalError } from '@/modules/payments/mp-token-refresh'
@@ -41,6 +41,11 @@ const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
  * RLS by design). Every statement below still carries its own explicit
  * `WHERE tenant_id = ...` (or narrower) filter as defense in depth — RLS is
  * not the barrier here, the WHERE clause is.
+ *
+ * D5 (2026-07-23): also runs a GLOBAL step (`purgeProcessedWebhooks`,
+ * outside the per-tenant loop — that table has no `tenant_id`) that
+ * automates the manual purge doc19's runbook documented for
+ * `processed_webhooks`.
  */
 
 /**
@@ -121,6 +126,29 @@ async function recordOrphanedMpPreapproval(
       error: message,
     })
   }
+}
+
+/**
+ * D5 (auditoría de datos, 2026-07-23): purga GLOBAL (no per-tenant) de
+ * `processed_webhooks` — automatiza el paso manual que doc19 (runbook §3.3)
+ * documentaba como comando de emergencia ante disk space
+ * (`processed_at < NOW() - INTERVAL '30 days'`; ese comando queda como
+ * fallback en el runbook). La tabla no tiene `tenant_id` (registro global de
+ * idempotencia de webhooks MP, ver `processed-webhooks.ts`), así que corre
+ * UNA sola vez por corrida del job, fuera del loop por-tenant de
+ * `runDataRetentionCleanup` — un solo DELETE ya es atómico, no hace falta
+ * envolverlo en una transacción propia.
+ */
+export async function purgeProcessedWebhooks(): Promise<void> {
+  const sql = getWorkerSql()
+  const result = await sql`
+    DELETE FROM processed_webhooks
+    WHERE processed_at < NOW() - INTERVAL '30 days'
+  `
+  logger.info('purged processed_webhooks', {
+    module: 'data-retention',
+    count: result.count,
+  })
 }
 
 async function cancelPendingMpSubscription(
@@ -297,6 +325,20 @@ export async function runDataRetentionCleanup(): Promise<void> {
   const sql = getWorkerSql()
   const gateway = getBillingGateway()
 
+  // Paso global, independiente de si hay tenants elegibles para wipe —
+  // corre siempre, antes del early-return de abajo. Best-effort: un fallo acá
+  // (contención, blip) NO debe abortar el wipe de tenants que sigue — ese es
+  // la obligación legal (Ley 25.326); esto es housekeeping que reintenta en
+  // la corrida semanal siguiente.
+  try {
+    await purgeProcessedWebhooks()
+  } catch (err) {
+    logger.error('purge processed_webhooks failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
   const targets = await sql<{ id: string }[]>`
     SELECT id FROM tenants
     WHERE scheduled_deletion_at IS NOT NULL
@@ -343,7 +385,7 @@ export async function runDataRetentionCleanup(): Promise<void> {
 export async function registerDataRetentionCleanupWorker(boss: PgBoss): Promise<void> {
   // 07:00 ART Sun = 10:00 UTC Sun.
   await boss.schedule(QUEUE_DATA_RETENTION, '0 10 * * 0', {})
-  await boss.work(QUEUE_DATA_RETENTION, async () => {
+  await boss.work(QUEUE_DATA_RETENTION, CRON_WORK_OPTIONS, async () => {
     await runDataRetentionCleanup()
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_DATA_RETENTION })

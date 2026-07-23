@@ -7,6 +7,7 @@ import { withCircuitBreaker } from './mp-breaker.gateway'
 import { MpGatewayError, TenantMpNotConnectedError } from './payment.errors'
 import type { PaymentGateway } from './mp-gateway'
 import { MP_MOCK_ENABLED, LocalMockGateway } from './mock-mp'
+import { MP_GET_TIMEOUT_MS } from './mp-gateway.implementation'
 
 const MP_OAUTH_TOKEN_URL = 'https://api.mercadopago.com/oauth/token'
 
@@ -41,9 +42,15 @@ export async function refreshMpAccessToken(
 
   const refreshToken = decrypt(encryptedRefreshToken)
 
+  // Sin señal de aborto este fetch era el único punto ILIMITADO de la cadena
+  // de pagos: ni el SDK (MP_GET_TIMEOUT_MS) ni el circuit breaker lo acotan,
+  // y el refresh-on-401 puede dispararse dentro de una tx abierta
+  // (mp-webhook.handler) — con idle_in_transaction_session_timeout finito
+  // (migr. 055) un OAuth lento mataría la tx entera.
   const res = await fetch(MP_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(MP_GET_TIMEOUT_MS),
     body: JSON.stringify({
       client_id: clientId,
       client_secret: clientSecret,

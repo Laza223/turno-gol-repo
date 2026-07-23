@@ -126,6 +126,138 @@ async function workerBypassRlsCheck(): Promise<boolean> {
 }
 
 /**
+ * Fails if a DSN's login role isn't the expected app-specific role.
+ *
+ * D5 prod finding: pg-boss's WORKER_DATABASE_URL on Railway pointed at
+ * `postgres` (the Supabase superuser/table owner), not `turnogol_worker`.
+ * `bypassRlsCheck`/`workerBypassRlsCheck` above only check the
+ * `rolbypassrls` attribute, which is FALSE for `postgres` — that check
+ * alone doesn't catch this class: `postgres` bypasses RLS anyway because it
+ * OWNS every table, and RLS only restricts non-owners on tables without
+ * FORCE ROW LEVEL SECURITY (doc12). A DSN silently pointing at the owner
+ * would pass `bypassRlsCheck` (rolbypassrls=false) while still bypassing
+ * RLS in practice. This check asserts the actual login identity instead.
+ */
+async function roleIdentityCheck(): Promise<boolean> {
+  const postgres = (await import('postgres')).default
+  let ok = true
+
+  const appUrl = process.env.DATABASE_URL
+  if (!appUrl) {
+    console.error('DATABASE_URL not set; cannot probe role identity')
+    return false
+  }
+  const appSql = postgres(appUrl, { max: 1 })
+  try {
+    const rows = await appSql<{ role_name: string }[]>`SELECT current_user AS role_name`
+    if (rows[0]?.role_name !== 'turnogol_app') {
+      console.error(
+        `DATABASE_URL logs in as '${rows[0]?.role_name}', expected 'turnogol_app' — ` +
+          'a DSN pointing at the table owner (e.g. `postgres`) silently bypasses RLS ' +
+          'even with rolbypassrls=false, because RLS only restricts non-owners without FORCE.',
+      )
+      ok = false
+    }
+  } finally {
+    await appSql.end()
+  }
+
+  const workerUrl = process.env.WORKER_DATABASE_URL
+  if (!workerUrl) {
+    console.error('WORKER_DATABASE_URL not set; cannot probe worker role identity')
+    return false
+  }
+  const workerSql = postgres(workerUrl, { max: 1 })
+  try {
+    const rows = await workerSql<{ role_name: string }[]>`SELECT current_user AS role_name`
+    if (rows[0]?.role_name !== 'turnogol_worker') {
+      console.error(
+        `WORKER_DATABASE_URL logs in as '${rows[0]?.role_name}', expected 'turnogol_worker' — ` +
+          'a DSN pointing at the table owner (e.g. `postgres`) silently bypasses RLS.',
+      )
+      ok = false
+    }
+  } finally {
+    await workerSql.end()
+  }
+
+  return ok
+}
+
+/**
+ * Fails if the session's statement_timeout isn't the value migración
+ * 055_role_timeouts.sql sets for `turnogol_app` (15s). Reads the actual
+ * runtime GUC via `SHOW` rather than the catalog (`pg_roles.rolconfig`, as
+ * tests/integration/role-timeouts.test.ts does) on purpose: `ALTER ROLE ...
+ * SET` only takes effect for sessions that LOG IN as that role (055's
+ * header gotcha) — this check runs in the exact context that matters
+ * (launch-check connecting with the real production DATABASE_URL), so a
+ * failure here means either the DSN doesn't log in as turnogol_app (see
+ * `roleIdentityCheck` above) or migración 055 hasn't reached this DB.
+ */
+async function roleSessionTimeoutCheck(): Promise<boolean> {
+  const url = process.env.DATABASE_URL
+  if (!url) {
+    console.error('DATABASE_URL not set; cannot probe statement_timeout')
+    return false
+  }
+  const postgres = (await import('postgres')).default
+  const sql = postgres(url, { max: 1 })
+  try {
+    const rows = await sql<{ statement_timeout: string }[]>`SHOW statement_timeout`
+    if (rows[0]?.statement_timeout !== '15s') {
+      console.error(
+        `statement_timeout is '${rows[0]?.statement_timeout}', expected '15s' — ` +
+          'either DATABASE_URL does not log in as turnogol_app, or migración 055 ' +
+          '(ALTER ROLE turnogol_app SET statement_timeout) has not reached this DB.',
+      )
+      return false
+    }
+    return true
+  } finally {
+    await sql.end()
+  }
+}
+
+/**
+ * Fails if a DSN connection isn't using SSL (`pg_stat_ssl.ssl`). Meant for
+ * prod/staging DSNs only (Supabase pooler/direct connections over the
+ * internet) — localhost never negotiates SSL, so this check would always
+ * fail against the local dev default
+ * (postgres://postgres:postgres@127.0.0.1:54322/postgres). launch-check is
+ * a pre-launch/pre-prod gate — same assumption `bypassRlsCheck`/
+ * `workerBypassRlsCheck` already make: it expects to run against the real
+ * deploy DSNs, not local Supabase.
+ */
+async function sslInUseCheck(): Promise<boolean> {
+  const postgres = (await import('postgres')).default
+  let ok = true
+
+  for (const envVar of ['DATABASE_URL', 'WORKER_DATABASE_URL'] as const) {
+    const url = process.env[envVar]
+    if (!url) {
+      console.error(`${envVar} not set; cannot probe SSL usage`)
+      ok = false
+      continue
+    }
+    const sql = postgres(url, { max: 1 })
+    try {
+      const rows = await sql<{ ssl: boolean }[]>`
+        SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()
+      `
+      if (rows[0]?.ssl !== true) {
+        console.error(`${envVar}: connection is not using SSL (pg_stat_ssl.ssl=false)`)
+        ok = false
+      }
+    } finally {
+      await sql.end()
+    }
+  }
+
+  return ok
+}
+
+/**
  * Probes MP OAuth with a deliberately-invalid refresh token. MP responds:
  *   - 400 → client_id + client_secret authenticated successfully, grant rejected
  *           (this is what we want: credentials are valid)
@@ -184,6 +316,9 @@ const steps: Step[] = [
   },
   { name: 'bypassrls role check',      check: bypassRlsCheck,                                                                       fatal: true  },
   { name: 'worker bypassrls role check', check: workerBypassRlsCheck,                                                               fatal: true  },
+  { name: 'role identity check',       check: roleIdentityCheck,                                                                    fatal: true  },
+  { name: 'role session timeouts',     check: roleSessionTimeoutCheck,                                                              fatal: true  },
+  { name: 'ssl in use',                check: sslInUseCheck,                                                                        fatal: true  },
   {
     name: 'mp mock mode disabled',
     check: async () => {

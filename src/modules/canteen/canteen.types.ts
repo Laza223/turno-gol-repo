@@ -113,6 +113,12 @@ export type RegisterPurchaseInput = {
   unitCost?: number | null
   /** Si true y hay unitCost, pisa canteen_products.cost (costo actual, sin historial). */
   updateProductCost?: boolean
+  /**
+   * "Pagalo de la caja" (migr. 050): crea un cash_flow expense/merchandise
+   * por units × unitCost en la MISMA tx. Requiere unitCost (Zod lo valida).
+   * Con la caja del día cerrada, TODA la reposición se rechaza (atómico).
+   */
+  expense?: { method: CanteenSaleMethod } | null
   note?: string | null
   clientIdempotencyKey: string
 }

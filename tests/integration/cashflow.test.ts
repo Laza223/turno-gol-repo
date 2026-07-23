@@ -166,6 +166,75 @@ describe('cashflow service', () => {
     expect(cf.tenantId).toBe(tenant.id)
   })
 
+  // migr. 050 — gastos categorizados. El unit cashflow-service.test.ts cubre
+  // validateCashFlowCombo aislado; acá se verifica el flujo real de
+  // createCashFlow con las categorías nuevas y el legacy conviviendo.
+  describe('migr. 050 — categorías de gasto nuevas', () => {
+    it.each(['merchandise', 'salaries'] as const)(
+      'creates an expense cashflow with the new category %s',
+      async (category) => {
+        const sql = getSql()
+        const tenant = await createTestTenant(sql)
+        const staff = await createTestStaffUser(sql)
+        await linkStaffToTenant(sql, tenant.id, staff.id)
+
+        const cf = await withTenantContext(tenant.id, (tx) =>
+          createCashFlow(tenant.id, staff.id, {
+            type: 'expense',
+            category,
+            amount: 150000,
+            method: 'cash',
+            description: `Gasto ${category}`,
+          }, tx),
+        )
+
+        expect(cf.type).toBe('expense')
+        expect(cf.category).toBe(category)
+        expect(cf.amount).toBe(150000)
+      },
+    )
+
+    it('rejects income + merchandise (categoría de gasto en un ingreso)', async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+      const staff = await createTestStaffUser(sql)
+      await linkStaffToTenant(sql, tenant.id, staff.id)
+
+      await expect(
+        withTenantContext(tenant.id, (tx) =>
+          createCashFlow(tenant.id, staff.id, {
+            type: 'income',
+            category: 'merchandise',
+            amount: 100000,
+            method: 'cash',
+            description: 'Combo inválido (income + merchandise)',
+          }, tx),
+        ),
+      ).rejects.toBeInstanceOf(InvalidCashFlowCategoryError)
+
+      expect(await countCashFlows(tenant.id)).toBe(0)
+    })
+
+    it('operating_expense (legacy) sigue siendo aceptado por createCashFlow', async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+      const staff = await createTestStaffUser(sql)
+      await linkStaffToTenant(sql, tenant.id, staff.id)
+
+      const cf = await withTenantContext(tenant.id, (tx) =>
+        createCashFlow(tenant.id, staff.id, {
+          type: 'expense',
+          category: 'operating_expense',
+          amount: 90000,
+          method: 'cash',
+          description: 'Gasto legacy',
+        }, tx),
+      )
+
+      expect(cf.category).toBe('operating_expense')
+    })
+  })
+
   it('day summary and close compute ingresos - egresos = saldo', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)

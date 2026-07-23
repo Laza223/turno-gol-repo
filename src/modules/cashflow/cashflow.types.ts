@@ -4,7 +4,14 @@ export type CashFlowCategory =
   | 'product_sale'
   | 'other'
   | 'no_show_correction'
+  // Gastos (migr. 050). 'operating_expense' queda como legacy válido (filas
+  // históricas); la UI nueva solo ofrece las 5 categorías específicas.
   | 'operating_expense'
+  | 'merchandise'
+  | 'salaries'
+  | 'utilities'
+  | 'maintenance'
+  | 'other_expense'
 export type CashPaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
 
 export type CashFlowRow = {

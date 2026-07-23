@@ -6,9 +6,11 @@ import {
 } from '@/modules/cashflow/cashflow.errors'
 
 describe('validateCashFlowCombo', () => {
-  // 'expense' es válido desde la migración 025 (rediseño de Caja), pero solo
-  // con la categoría operating_expense.
-  it('rejects expense with non-operating category', () => {
+  // 'expense' es válido desde la migración 025; la 050 amplió sus categorías
+  // a 6 (operating_expense legacy + merchandise/salaries/utilities/
+  // maintenance/other_expense — ver el describe de migr. 050 más abajo).
+  // Este caso cubre categorías que NUNCA fueron válidas para 'expense'.
+  it('rejects expense with income/adjustment-only categories', () => {
     expect(() => validateCashFlowCombo('expense', 'other')).toThrow(InvalidCashFlowCategoryError)
     expect(() => validateCashFlowCombo('expense', 'booking')).toThrow(InvalidCashFlowCategoryError)
   })
@@ -63,5 +65,37 @@ describe('validateCashFlowCombo', () => {
 
   it('accepts adjustment + no_show_correction', () => {
     expect(() => validateCashFlowCombo('adjustment', 'no_show_correction')).not.toThrow()
+  })
+
+  // migr. 050 — gastos categorizados: 5 categorías nuevas, todas válidas SOLO
+  // con type 'expense'. 'operating_expense' (legacy) sigue vigente (la UI ya
+  // no la ofrece, pero el service/DB la siguen aceptando para no romper filas
+  // históricas).
+  describe('migr. 050 — categorías de gasto nuevas', () => {
+    it.each(['merchandise', 'salaries', 'utilities', 'maintenance', 'other_expense'])(
+      'accepts expense + %s',
+      (category) => {
+        expect(() => validateCashFlowCombo('expense', category)).not.toThrow()
+      },
+    )
+
+    it('operating_expense (legacy) sigue siendo válido con expense', () => {
+      expect(() => validateCashFlowCombo('expense', 'operating_expense')).not.toThrow()
+    })
+
+    it('rejects income + merchandise (categoría de gasto en un ingreso)', () => {
+      expect(() => validateCashFlowCombo('income', 'merchandise')).toThrow(
+        InvalidCashFlowCategoryError,
+      )
+    })
+
+    it.each(['salaries', 'utilities', 'maintenance', 'other_expense'])(
+      'rejects adjustment + %s',
+      (category) => {
+        expect(() => validateCashFlowCombo('adjustment', category)).toThrow(
+          InvalidCashFlowCategoryError,
+        )
+      },
+    )
   })
 })

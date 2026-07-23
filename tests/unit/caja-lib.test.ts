@@ -99,6 +99,16 @@ describe('categoryLabel', () => {
     expect(categoryLabel('income', 'other')).toBe('Otro ingreso')
     expect(categoryLabel('adjustment', 'other')).toBe('Ajuste')
   })
+
+  // migr. 050 — las 5 categorías de gasto nuevas que la UI SÍ ofrece
+  // (operating_expense queda arriba como legacy display-only).
+  it('traduce las 5 categorías de gasto nuevas (migr. 050)', () => {
+    expect(categoryLabel('expense', 'merchandise')).toBe('Mercadería')
+    expect(categoryLabel('expense', 'salaries')).toBe('Sueldos')
+    expect(categoryLabel('expense', 'utilities')).toBe('Servicios')
+    expect(categoryLabel('expense', 'maintenance')).toBe('Mantenimiento')
+    expect(categoryLabel('expense', 'other_expense')).toBe('Otro gasto')
+  })
 })
 
 describe('signedArs / buildDelta', () => {

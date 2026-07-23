@@ -20,7 +20,16 @@ import type {
 const VALID_COMBOS: Record<CashFlowType, CashFlowCategory[]> = {
   income: ['booking', 'product_sale', 'other'],
   adjustment: ['other', 'no_show_correction'],
-  expense: ['operating_expense'],
+  // migr. 050: 'operating_expense' queda como legacy válido (el CHECK de DB
+  // también lo conserva); la UI nueva solo ofrece las 5 específicas.
+  expense: [
+    'operating_expense',
+    'merchandise',
+    'salaries',
+    'utilities',
+    'maintenance',
+    'other_expense',
+  ],
 }
 
 export function validateCashFlowCombo(type: string, category: string): void {

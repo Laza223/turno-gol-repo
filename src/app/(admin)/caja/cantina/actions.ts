@@ -45,11 +45,30 @@ function revalidateCaja(): void {
 }
 
 /**
+ * REGLA DE LA CLASE (hallazgo ROJO del panel de Fase 6): el mapeo de errores
+ * de dominio va SIEMPRE FUERA de withTenantContext. Atrapar la excepción
+ * DENTRO del callback transaccional y devolver un objeto normal hace que
+ * drizzle COMMITEE lo escrito antes del throw (commit parcial). La excepción
+ * escapa → Postgres rollbackea → recién ahí se traduce al mensaje amigable.
+ */
+function mapCanteenError(err: unknown): string | null {
+  if (err instanceof InsufficientStockError) {
+    return err.available <= 0
+      ? `No queda stock de ${err.productName}.`
+      : `Solo quedan ${err.available} de ${err.productName}.`
+  }
+  if (err instanceof ProductNotFoundError) return 'Ese producto ya no existe.'
+  if (err instanceof ProductInactiveError) return 'Ese producto está pausado.'
+  if (err instanceof EmptyTicketError) return 'El ticket está vacío.'
+  if (err instanceof TabNotFoundError) return 'Ese fiado ya no existe.'
+  if (err instanceof TabNotOpenError) return 'Ese fiado ya fue cobrado o anulado.'
+  return null
+}
+
+/**
  * Venta de cantina contra las tablas reales (migr. 048): `sellTicket` hace el
  * dup-check de idempotencia + `FOR UPDATE` de productos + descuento de stock +
- * cash_flow, todo en una sola transacción (ver canteen-sale.service.ts). La UX
- * de venta sigue siendo la de hoy (grid + QuickSaleDialog, 2 taps) — acá el
- * ticket siempre llega con 1 línea; el multi-ítem es Fase 3.
+ * cash_flow, todo en una sola transacción (ver canteen-sale.service.ts).
  * Mapeo de errores es-AR: mismo copy que usaba el viejo sellCanteenProductAction
  * (caja/actions.ts, eliminada — JSONB tenants.settings.canteen_products).
  */
@@ -64,41 +83,26 @@ export async function sellTicketAction(input: unknown): Promise<SellTicketAction
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const sale = await sellTicket(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const, total: sale.total }
-    } catch (err) {
-      if (err instanceof InsufficientStockError) {
-        return {
-          success: false as const,
-          error:
-            err.available <= 0
-              ? `No queda stock de ${err.productName}.`
-              : `Solo quedan ${err.available} de ${err.productName}.`,
-        }
+  let total: number
+  try {
+    const sale = await withTenantContext(tenant.id, (tx) =>
+      sellTicket(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+    total = sale.total
+  } catch (err) {
+    if (err instanceof DayAlreadyClosedError) {
+      return {
+        success: false,
+        error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
       }
-      if (err instanceof ProductNotFoundError) {
-        return { success: false as const, error: 'Ese producto ya no existe.' }
-      }
-      if (err instanceof ProductInactiveError) {
-        return { success: false as const, error: 'Ese producto está pausado.' }
-      }
-      if (err instanceof EmptyTicketError) {
-        return { success: false as const, error: 'El ticket está vacío.' }
-      }
-      if (err instanceof DayAlreadyClosedError) {
-        return {
-          success: false as const,
-          error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
-        }
-      }
-      throw err
     }
-  })
+    const mapped = mapCanteenError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true, total }
 }
 
 /**
@@ -119,35 +123,22 @@ export async function createTabAction(input: unknown): Promise<CreateTabActionRe
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const { tab } = await createTab(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const, debtorName: tab.debtorName, total: tab.totalAmount }
-    } catch (err) {
-      if (err instanceof InsufficientStockError) {
-        return {
-          success: false as const,
-          error:
-            err.available <= 0
-              ? `No queda stock de ${err.productName}.`
-              : `Solo quedan ${err.available} de ${err.productName}.`,
-        }
-      }
-      if (err instanceof ProductNotFoundError) {
-        return { success: false as const, error: 'Ese producto ya no existe.' }
-      }
-      if (err instanceof ProductInactiveError) {
-        return { success: false as const, error: 'Ese producto está pausado.' }
-      }
-      if (err instanceof EmptyTicketError) {
-        return { success: false as const, error: 'El ticket está vacío.' }
-      }
-      throw err
-    }
-  })
+  let debtorName: string
+  let total: number
+  try {
+    const { tab } = await withTenantContext(tenant.id, (tx) =>
+      createTab(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+    debtorName = tab.debtorName
+    total = tab.totalAmount
+  } catch (err) {
+    const mapped = mapCanteenError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true, debtorName, total }
 }
 
 /**
@@ -166,29 +157,26 @@ export async function settleTabAction(input: unknown): Promise<SettleTabActionRe
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const { tab } = await settleTab(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const, total: tab.totalAmount }
-    } catch (err) {
-      if (err instanceof DayAlreadyClosedError) {
-        return {
-          success: false as const,
-          error: 'La caja de hoy ya está cerrada. Cobrá el fiado cuando la caja esté abierta.',
-        }
+  let total: number
+  try {
+    const { tab } = await withTenantContext(tenant.id, (tx) =>
+      settleTab(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+    total = tab.totalAmount
+  } catch (err) {
+    if (err instanceof DayAlreadyClosedError) {
+      return {
+        success: false,
+        error: 'La caja de hoy ya está cerrada. Cobrá el fiado cuando la caja esté abierta.',
       }
-      if (err instanceof TabNotFoundError) {
-        return { success: false as const, error: 'Ese fiado ya no existe.' }
-      }
-      if (err instanceof TabNotOpenError) {
-        return { success: false as const, error: 'Ese fiado ya fue cobrado o anulado.' }
-      }
-      throw err
     }
-  })
+    const mapped = mapCanteenError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true, total }
 }
 
 /** Anula un fiado abierto: devuelve el stock entregado (ledger 'adjustment'); nunca tocó la caja. */
@@ -203,21 +191,16 @@ export async function cancelTabAction(input: unknown): Promise<CancelTabActionRe
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      await cancelTab(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const }
-    } catch (err) {
-      if (err instanceof TabNotFoundError) {
-        return { success: false as const, error: 'Ese fiado ya no existe.' }
-      }
-      if (err instanceof TabNotOpenError) {
-        return { success: false as const, error: 'Ese fiado ya fue cobrado o anulado.' }
-      }
-      throw err
-    }
-  })
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      cancelTab(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+  } catch (err) {
+    const mapped = mapCanteenError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true }
 }

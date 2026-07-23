@@ -6,8 +6,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
+import { formatArs } from '@/lib/format'
+import { chipClass } from '../caja-lib'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import type { StockActionResult } from './actions'
+
+/** Subconjunto de CashPaymentMethod que acepta registerPurchaseSchema.expense
+ * (sin 'other': "pagalo de la caja" es un gasto de mercadería concreto, no
+ * un método ambiguo). */
+type ExpenseMethod = 'cash' | 'transfer' | 'mercadopago'
+
+const EXPENSE_METHODS: { value: ExpenseMethod; label: string }[] = [
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'transfer', label: 'Transferencia' },
+  { value: 'mercadopago', label: 'MercadoPago' },
+]
 
 /** registerPurchaseAction llega por PROP: '../actions' es `'use server'`. */
 export type RegisterPurchaseAction = (input: {
@@ -15,6 +28,9 @@ export type RegisterPurchaseAction = (input: {
   units: number
   unitCost?: number | null
   updateProductCost?: boolean
+  /** "Pagalo de la caja" (migr. 050): crea el gasto expense/merchandise en la
+   * MISMA tx que la reposición. Requiere unitCost > 0. */
+  expense?: { method: ExpenseMethod } | null
   note?: string | null
   clientIdempotencyKey: string
 }) => Promise<StockActionResult>
@@ -41,6 +57,8 @@ export function StockEntryDialog({
   const [unitsPerPack, setUnitsPerPack] = useState('1')
   const [unitCostPesos, setUnitCostPesos] = useState('')
   const [updateCost, setUpdateCost] = useState(false)
+  const [payFromCash, setPayFromCash] = useState(false)
+  const [expenseMethod, setExpenseMethod] = useState<ExpenseMethod>('cash')
   const [note, setNote] = useState('')
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
@@ -51,6 +69,8 @@ export function StockEntryDialog({
     setUnitsPerPack('1')
     setUnitCostPesos('')
     setUpdateCost(false)
+    setPayFromCash(false)
+    setExpenseMethod('cash')
     setNote('')
     setError(null)
     setIdempotencyKey(crypto.randomUUID())
@@ -62,6 +82,15 @@ export function StockEntryDialog({
     Number.isFinite(packsNum) && Number.isFinite(unitsPerPackNum)
       ? Math.max(0, Math.round(packsNum * unitsPerPackNum))
       : 0
+
+  // "Pagalo de la caja" solo puede ofrecerse con un costo > 0 cargado. Si el
+  // costo se borra (o queda en 0) mientras el checkbox estaba tildado, se
+  // destilda automáticamente en vez de someter un expense fantasma.
+  const unitCostNum = Number(unitCostPesos)
+  const hasValidCost = unitCostPesos.trim() !== '' && Number.isFinite(unitCostNum) && unitCostNum > 0
+  if (!hasValidCost && payFromCash) {
+    setPayFromCash(false)
+  }
 
   function handleClose(next: boolean) {
     if (isPending) return
@@ -100,6 +129,7 @@ export function StockEntryDialog({
           units: totalUnits,
           unitCost,
           updateProductCost: unitCost != null && updateCost,
+          expense: payFromCash && unitCost != null && unitCost > 0 ? { method: expenseMethod } : undefined,
           note: note.trim() === '' ? null : note.trim(),
           clientIdempotencyKey: idempotencyKey,
         })
@@ -183,6 +213,42 @@ export function StockEntryDialog({
               />
               Actualizar costo del producto
             </label>
+          )}
+          {hasValidCost && (
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={payFromCash}
+                  onChange={(e) => setPayFromCash(e.target.checked)}
+                  disabled={isPending}
+                  className="h-4 w-4 rounded border-border"
+                />
+                Pagalo de la caja (queda como gasto de mercadería)
+              </label>
+              {payFromCash && (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    {EXPENSE_METHODS.map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        disabled={isPending}
+                        aria-pressed={expenseMethod === m.value}
+                        onClick={() => setExpenseMethod(m.value)}
+                        className={chipClass(expenseMethod === m.value)}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Registra el gasto de {formatArs(totalUnits * Math.round(unitCostNum * 100))} en la
+                    caja de hoy.
+                  </p>
+                </>
+              )}
+            </div>
           )}
           <div className="space-y-1">
             <Label htmlFor="se-note">Nota (opcional)</Label>

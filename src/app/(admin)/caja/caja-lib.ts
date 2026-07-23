@@ -76,7 +76,12 @@ export function stockBadgeToneClass(tone: StockBadge['tone']): string {
 export function categoryLabel(type: string, category: string): string {
   if (category === 'booking') return 'Reserva'
   if (category === 'product_sale') return 'Cantina/Bar'
-  if (category === 'operating_expense') return 'Gasto operativo'
+  if (category === 'operating_expense') return 'Gasto operativo' // legacy pre-050
+  if (category === 'merchandise') return 'Mercadería'
+  if (category === 'salaries') return 'Sueldos'
+  if (category === 'utilities') return 'Servicios'
+  if (category === 'maintenance') return 'Mantenimiento'
+  if (category === 'other_expense') return 'Otro gasto'
   if (category === 'no_show_correction') return 'Corrección por ausencia'
   if (category === 'other') return type === 'adjustment' ? 'Ajuste' : 'Otro ingreso'
   return category
@@ -87,7 +92,19 @@ export const CATEGORY_BADGE: Record<CashFlowCategory | 'fallback', string> = {
     'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20 dark:ring-emerald-500/30',
   product_sale:
     'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-600/20 dark:ring-sky-500/30',
+  // Todos los gastos comparten la familia roja: el color codifica el SIGNO
+  // (egreso), no la categoría — el texto del chip diferencia (migr. 050).
   operating_expense:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  merchandise:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  salaries:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  utilities:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  maintenance:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  other_expense:
     'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
   no_show_correction:
     'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',

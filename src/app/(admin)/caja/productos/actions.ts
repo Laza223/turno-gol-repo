@@ -18,6 +18,7 @@ import {
   ProductNotFoundError,
   StockNotTrackedError,
 } from '@/modules/canteen/canteen.errors'
+import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
 export type ProductActionResult =
   | { success: true }
@@ -31,6 +32,30 @@ function revalidateCaja(): void {
   revalidatePath('/caja')
   revalidatePath('/caja/cantina')
   revalidatePath('/caja/productos')
+}
+
+/**
+ * REGLA DE LA CLASE (hallazgo ROJO del panel de Fase 6, reproducido contra
+ * Postgres real): el mapeo de errores de dominio va SIEMPRE FUERA de
+ * withTenantContext. Atrapar la excepción DENTRO del callback transaccional y
+ * devolver un objeto normal hace que drizzle COMMITEE la transacción — los
+ * writes previos al throw (ej. la reposición de stock antes de que
+ * createCashFlow rechace por caja cerrada) quedaban persistidos a medias.
+ * La excepción tiene que escapar del callback para que Postgres ROLLBACKEE;
+ * recién después se traduce al mensaje amigable.
+ */
+function mapStockError(err: unknown): string | null {
+  if (err instanceof ProductNotFoundError) return 'Ese producto ya no existe.'
+  if (err instanceof StockNotTrackedError) return 'Este producto no controla stock.'
+  if (err instanceof InsufficientStockError) {
+    return err.available <= 0
+      ? `No queda stock de ${err.productName}.`
+      : `Solo quedan ${err.available} de ${err.productName}.`
+  }
+  if (err instanceof DayAlreadyClosedError) {
+    return 'La caja de hoy ya está cerrada. Destildá "Pagalo de la caja" para reponer igual, o registrá el gasto mañana.'
+  }
+  return null
 }
 
 // ── Catálogo (solo admin — Configuración, mismo criterio que la vieja
@@ -67,20 +92,18 @@ export async function updateProductAction(input: unknown): Promise<ProductAction
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      await updateProduct(tenant.id, parsed.data.productId, parsed.data.patch, tx)
-      return { success: true as const }
-    } catch (err) {
-      if (err instanceof ProductNotFoundError) {
-        return { success: false as const, error: 'Ese producto ya no existe.' }
-      }
-      throw err
-    }
-  })
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      updateProduct(tenant.id, parsed.data.productId, parsed.data.patch, tx),
+    )
+  } catch (err) {
+    const mapped = mapStockError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true }
 }
 
 /** Soft delete (pausar). Reactivar es un updateProductAction con isActive: true. */
@@ -92,20 +115,16 @@ export async function deactivateProductAction(productId: string): Promise<Produc
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      await deactivateProduct(tenant.id, productId, tx)
-      return { success: true as const }
-    } catch (err) {
-      if (err instanceof ProductNotFoundError) {
-        return { success: false as const, error: 'Ese producto ya no existe.' }
-      }
-      throw err
-    }
-  })
+  try {
+    await withTenantContext(tenant.id, (tx) => deactivateProduct(tenant.id, productId, tx))
+  } catch (err) {
+    const mapped = mapStockError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true }
 }
 
 // ── Stock (admin + manager — operativo día a día) ────────────────────────────
@@ -123,20 +142,21 @@ export async function registerPurchaseAction(input: unknown): Promise<StockActio
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      await registerPurchase(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const }
-    } catch (err) {
-      if (err instanceof ProductNotFoundError) {
-        return { success: false as const, error: 'Ese producto ya no existe.' }
-      }
-      throw err
-    }
-  })
+  // El catch va FUERA del contexto transaccional (ver mapStockError): con
+  // "Pagalo de la caja" y la caja cerrada, createCashFlow tira DESPUÉS de que
+  // la reposición ya escribió — la excepción debe rollbackear TODO.
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      registerPurchase(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+  } catch (err) {
+    const mapped = mapStockError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true }
 }
 
 export async function registerStockExitAction(input: unknown): Promise<StockActionResult> {
@@ -152,29 +172,18 @@ export async function registerStockExitAction(input: unknown): Promise<StockActi
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      await registerExit(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const }
-    } catch (err) {
-      if (err instanceof ProductNotFoundError) {
-        return { success: false as const, error: 'Ese producto ya no existe.' }
-      }
-      if (err instanceof InsufficientStockError) {
-        return {
-          success: false as const,
-          error:
-            err.available <= 0
-              ? `No queda stock de ${err.productName}.`
-              : `Solo quedan ${err.available} de ${err.productName}.`,
-        }
-      }
-      throw err
-    }
-  })
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      registerExit(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+  } catch (err) {
+    const mapped = mapStockError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true }
 }
 
 /**
@@ -195,21 +204,16 @@ export async function adjustStockAction(input: unknown): Promise<StockActionResu
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      await adjustStock(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const }
-    } catch (err) {
-      if (err instanceof ProductNotFoundError) {
-        return { success: false as const, error: 'Ese producto ya no existe.' }
-      }
-      if (err instanceof StockNotTrackedError) {
-        return { success: false as const, error: 'Este producto no controla stock.' }
-      }
-      throw err
-    }
-  })
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      adjustStock(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+  } catch (err) {
+    const mapped = mapStockError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
 
-  if (result.success) revalidateCaja()
-  return result
+  revalidateCaja()
+  return { success: true }
 }

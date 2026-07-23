@@ -59,9 +59,10 @@ export const cashFlows = pgTable(
     ),
     typeCategoryValid: check(
       'chk_cashflow_type_category',
+      // Espejo del CHECK real (migr. 050 recrea el de 025 comparando ::text).
       sql`(${table.type} = 'income' AND ${table.category} IN ('booking', 'product_sale', 'other'))
         OR (${table.type} = 'adjustment' AND ${table.category} IN ('other', 'no_show_correction'))
-        OR (${table.type} = 'expense' AND ${table.category} = 'operating_expense')`,
+        OR (${table.type} = 'expense' AND ${table.category} IN ('operating_expense', 'merchandise', 'salaries', 'utilities', 'maintenance', 'other_expense'))`,
     ),
     tenantIdx: index('idx_cash_flows_tenant').on(table.tenantId),
     tenantDateIdx: index('idx_cash_flows_tenant_date').on(

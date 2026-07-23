@@ -79,15 +79,26 @@ export const Default: Story = {
   },
 }
 
-/** Cambiar a "Gasto" re-selecciona la única categoría válida: Gasto operativo. */
+/**
+ * Cambiar a "Gasto" auto-selecciona la primera de las 5 categorías nuevas
+ * (migr. 050): Mercadería. 'Gasto operativo' queda legacy, display-only en
+ * el historial — esta UI ya no la ofrece.
+ */
 export const TipoGasto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: 'Gasto' }))
-    await expect(canvas.getByRole('button', { name: 'Gasto operativo' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+    // waitFor (mismo motivo que TipoAjuste, arriba): el click re-renderiza el
+    // grupo de categorías y estas assertions pueden caer en el frame donde la
+    // transición de Radix todavía tiene opacity:0 — el nodo existe pero
+    // toBeVisible()/toHaveAttribute() lo leen como oculto/no listo.
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Mercadería' })).toHaveAttribute('aria-pressed', 'true'),
     )
+    for (const label of ['Sueldos', 'Servicios', 'Mantenimiento', 'Otro gasto']) {
+      await waitFor(() => expect(canvas.getByRole('button', { name: label })).toBeVisible())
+    }
+    await expect(canvas.queryByRole('button', { name: 'Gasto operativo' })).toBeNull()
   },
 }
 

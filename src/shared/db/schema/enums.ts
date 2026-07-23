@@ -128,6 +128,12 @@ export const cashflowCategoryEnum = pgEnum('cashflow_category', [
   'other',
   'no_show_correction',
   'operating_expense',
+  // Gastos categorizados (migr. 050); operating_expense queda como legacy.
+  'merchandise',
+  'salaries',
+  'utilities',
+  'maintenance',
+  'other_expense',
 ])
 
 // ─── Canteen (migración 048, rediseño Caja y Cantina) ───────────

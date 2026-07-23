@@ -61,14 +61,22 @@ export const cancelTabSchema = z.object({
 })
 
 // Stock: la UI manda unidades TOTALES (packs × unidades por pack ya multiplicado).
-export const registerPurchaseSchema = z.object({
-  productId: uuid,
-  units: z.number().int().min(1).max(100_000),
-  unitCost: moneyCents.nullish(),
-  updateProductCost: z.boolean().optional(),
-  note: boundedText(300).nullish(),
-  clientIdempotencyKey: uuid,
-})
+export const registerPurchaseSchema = z
+  .object({
+    productId: uuid,
+    units: z.number().int().min(1).max(100_000),
+    unitCost: moneyCents.nullish(),
+    updateProductCost: z.boolean().optional(),
+    // "Pagalo de la caja" (migr. 050): crea el gasto expense/merchandise por
+    // units × unitCost en la MISMA transacción que la reposición.
+    expense: z.object({ method: z.enum(['cash', 'transfer', 'mercadopago']) }).optional(),
+    note: boundedText(300).nullish(),
+    clientIdempotencyKey: uuid,
+  })
+  .refine((v) => !v.expense || (v.unitCost != null && v.unitCost > 0), {
+    message: 'Para pagar de la caja hace falta el costo por unidad.',
+    path: ['unitCost'],
+  })
 
 export const registerStockExitSchema = z.object({
   productId: uuid,

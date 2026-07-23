@@ -27,7 +27,20 @@ import type {
 
 const createCashFlowSchema = z.object({
   type: z.enum(['income', 'adjustment', 'expense']),
-  category: z.enum(['booking', 'product_sale', 'other', 'no_show_correction', 'operating_expense']),
+  category: z.enum([
+    'booking',
+    'product_sale',
+    'other',
+    'no_show_correction',
+    // 'operating_expense' se acepta por compat pero la UI ya no lo ofrece
+    // (migr. 050: gastos con categoría específica).
+    'operating_expense',
+    'merchandise',
+    'salaries',
+    'utilities',
+    'maintenance',
+    'other_expense',
+  ]),
   amount: moneyCents,
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
   description: boundedText(500),
@@ -91,26 +104,28 @@ export async function createCashFlowAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const cashFlow = await createCashFlow(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const, cashFlow }
-    } catch (err) {
-      if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
-        return { success: false as const, error: (err as Error).message }
-      }
-      if (err instanceof DayAlreadyClosedError) {
-        return { success: false as const, error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.' }
-      }
-      throw err
+  // Regla de la clase (panel Fase 6): el catch va FUERA del contexto
+  // transaccional — atrapar adentro y devolver un objeto commitea lo escrito
+  // antes del throw. Acá los services tiran antes de escribir, pero el patrón
+  // uniforme evita que un refactor futuro herede la mina.
+  let cashFlow: CashFlowRow
+  try {
+    cashFlow = await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+  } catch (err) {
+    if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
+      return { success: false, error: (err as Error).message }
     }
-  })
-
-  if (result.success) {
-    validateApiOutput(cashFlowResponseSchema, { data: result.cashFlow }, 'createCashFlowAction')
-    revalidatePath('/caja')
+    if (err instanceof DayAlreadyClosedError) {
+      return { success: false, error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.' }
+    }
+    throw err
   }
-  return result
+
+  validateApiOutput(cashFlowResponseSchema, { data: cashFlow }, 'createCashFlowAction')
+  revalidatePath('/caja')
+  return { success: true, cashFlow }
 }
 
 export async function closeDayAction(
@@ -128,29 +143,29 @@ export async function closeDayAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const close = await closeDailyRegister(
+  let close: DailyCashCloseRow
+  try {
+    close = await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(
         tenant.id,
         parsed.data.date,
         user.staffUserId,
         { declaredCash: parsed.data.declaredCash, note: parsed.data.note },
         tx,
-      )
-      return { success: true as const, close }
-    } catch (err) {
-      if (err instanceof CloseDateInFutureError) {
-        return { success: false as const, error: 'No se puede cerrar una fecha futura.' }
-      }
-      if (err instanceof DayAlreadyCloseExistsError) {
-        return { success: false as const, error: `La caja del ${parsed.data.date} ya fue cerrada.` }
-      }
-      throw err
+      ),
+    )
+  } catch (err) {
+    if (err instanceof CloseDateInFutureError) {
+      return { success: false, error: 'No se puede cerrar una fecha futura.' }
     }
-  })
+    if (err instanceof DayAlreadyCloseExistsError) {
+      return { success: false, error: `La caja del ${parsed.data.date} ya fue cerrada.` }
+    }
+    throw err
+  }
 
-  if (result.success) revalidatePath('/caja')
-  return result
+  revalidatePath('/caja')
+  return { success: true, close }
 }
 
 export async function openDayAction(input: OpenDayInput): Promise<OpenDayActionResult> {
@@ -164,21 +179,22 @@ export async function openDayAction(input: OpenDayInput): Promise<OpenDayActionR
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const open = await openDay(tenant.id, user.staffUserId, parsed.data, tx)
-      return { success: true as const, openingCash: open.openingCash }
-    } catch (err) {
-      if (err instanceof OpenDateInFutureError) {
-        return { success: false as const, error: 'No se puede abrir una fecha futura.' }
-      }
-      if (err instanceof DayAlreadyClosedError) {
-        return { success: false as const, error: 'Ese día ya está cerrado.' }
-      }
-      throw err
+  let openingCash: number
+  try {
+    const open = await withTenantContext(tenant.id, (tx) =>
+      openDay(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+    openingCash = open.openingCash
+  } catch (err) {
+    if (err instanceof OpenDateInFutureError) {
+      return { success: false, error: 'No se puede abrir una fecha futura.' }
     }
-  })
+    if (err instanceof DayAlreadyClosedError) {
+      return { success: false, error: 'Ese día ya está cerrado.' }
+    }
+    throw err
+  }
 
-  if (result.success) revalidatePath('/caja')
-  return result
+  revalidatePath('/caja')
+  return { success: true, openingCash }
 }

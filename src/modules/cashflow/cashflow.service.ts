@@ -6,7 +6,7 @@ import {
   InvalidCashFlowCategoryError,
   DayAlreadyClosedError,
 } from './cashflow.errors'
-import { artDateOf } from '@/shared/time/art-date'
+import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
 import type {
   CashFlowType,
   CashFlowCategory,
@@ -150,10 +150,14 @@ export async function getCashFlows(
   date: string,
   tx: DbTx,
 ): Promise<CashFlowRow[]> {
+  // Rango UTC sargable en vez de expresión AT TIME ZONE: ver artDayRangeUtc
+  // (bajo RLS la expresión no entra al índice — hallazgo D3).
+  const day = artDayRangeUtc(date)
   const rows = await tx.execute(
     sql`SELECT * FROM cash_flows
         WHERE tenant_id = ${tenantId}
-          AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date
+          AND occurred_at >= ${day.fromUtc.toISOString()}
+          AND occurred_at < ${day.toUtc.toISOString()}
         ORDER BY occurred_at DESC`,
   )
   return (rows as unknown as Array<{
@@ -188,11 +192,14 @@ export async function getDaySummary(
   date: string,
   tx: DbTx,
 ): Promise<DaySummary> {
+  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
+  const day = artDayRangeUtc(date)
   const aggRows = await tx.execute(
     sql`SELECT type, category, method, SUM(amount)::int AS total
         FROM cash_flows
         WHERE tenant_id = ${tenantId}
-          AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date
+          AND occurred_at >= ${day.fromUtc.toISOString()}
+          AND occurred_at < ${day.toUtc.toISOString()}
         GROUP BY type, category, method`,
   )
 

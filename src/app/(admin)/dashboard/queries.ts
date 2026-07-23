@@ -7,7 +7,7 @@ import {
   cashFlows,
 } from '@/shared/db/schema'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
-import { todayART } from '@/shared/time/art-date'
+import { todayART, artDayRangeUtc } from '@/shared/time/art-date'
 import { DAY_KEYS } from '@/lib/booking/grid-cells'
 import type { OpeningHours, TenantSettings } from '@/modules/tenants/tenant.types'
 import type {
@@ -122,7 +122,9 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
         .where(
           and(
             eq(cashFlows.tenantId, tenant.id),
-            sql`(${cashFlows.occurredAt} AT TIME ZONE 'America/Argentina/Buenos_Aires')::date = ${date}::date`,
+            // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
+            sql`${cashFlows.occurredAt} >= ${artDayRangeUtc(date).fromUtc.toISOString()}`,
+            sql`${cashFlows.occurredAt} < ${artDayRangeUtc(date).toUtc.toISOString()}`,
             eq(cashFlows.category, 'product_sale'),
           ),
         )

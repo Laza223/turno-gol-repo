@@ -13,7 +13,7 @@ import type {
   TicketLineInput,
 } from './canteen.types'
 
-type LockedProduct = {
+export type LockedProduct = {
   id: string
   name: string
   price: number
@@ -47,7 +47,7 @@ export function ticketDescription(
  * los locks en el mismo orden y no pueden deadlockearse.
  * Filtro explícito por tenant_id además de RLS (defensa en profundidad).
  */
-async function lockProducts(
+export async function lockProducts(
   tenantId: string,
   productIds: string[],
   tx: DbTx,

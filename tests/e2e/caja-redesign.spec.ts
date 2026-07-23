@@ -9,6 +9,9 @@
  *    movimiento en /caja con la descripción de ambos y el monto sumado.
  * 3. "Agregar movimiento" registra un Gasto operativo y aparece en la lista
  *    con su badge y el monto en negativo.
+ * 4. Fiado (Fase 4): anotar un ticket como fiado (en vez de cobrarlo), verlo
+ *    en "Fiados pendientes", cobrarlo en efectivo y verlo desaparecer de la
+ *    lista + aparecer como movimiento "Fiado cobrado — …" en /caja.
  *
  * Ningún test cierra la caja del día: el cierre es inmutable (REVOKE DELETE)
  * y dejaría el tenant demo bloqueado para los demás specs; ese cálculo se
@@ -126,5 +129,51 @@ test.describe('Caja redesign', () => {
     await expect(row.getByText('Gasto operativo')).toBeVisible()
     // El monto del egreso se muestra en negativo (signo − U+2212).
     await expect(row.getByText(/−\s*\$/)).toBeVisible()
+  })
+
+  test('fiado: anotar, cobrar y verlo como movimiento en /caja (Fase 4)', async ({
+    page,
+    adminStorageState,
+  }) => {
+    await page.context().addCookies(JSON.parse(adminStorageState).cookies)
+
+    // Nombres únicos por corrida: el tenant demo se comparte con otros specs.
+    const suffix = Date.now()
+    const productName = `Gaseosa fiado e2e ${suffix}`
+    const debtorName = `Equipo Jueves ${suffix}`
+
+    await page.goto('/caja/productos', { waitUntil: 'networkidle' })
+    await createCanteenProduct(page, productName, '400')
+
+    // Cargar el ticket y anotarlo como fiado en vez de cobrarlo.
+    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: new RegExp(productName) }).click()
+    await page.getByRole('button', { name: 'Anotar como fiado' }).click()
+
+    const tabDialog = page.getByRole('dialog')
+    await expect(tabDialog).toBeVisible()
+    await tabDialog.getByLabel('Nombre').fill(debtorName)
+    await tabDialog.getByRole('button', { name: /^Anotar fiado/ }).click()
+
+    await expect(page.getByText(`Fiado anotado — ${debtorName}`).first()).toBeVisible()
+
+    // Aparece en "Fiados pendientes" (mismo tab, tras el refresh del server component).
+    const fiadoRow = page.locator('li').filter({ hasText: debtorName })
+    await expect(fiadoRow).toBeVisible()
+
+    // Cobrarlo en efectivo (método default del diálogo).
+    await fiadoRow.getByRole('button', { name: 'Cobrar' }).click()
+    const settleDialog = page.getByRole('dialog')
+    await expect(settleDialog).toBeVisible()
+    await settleDialog.getByRole('button', { name: /^Cobrar/ }).click()
+
+    await expect(page.getByText(`Fiado cobrado — ${debtorName}`).first()).toBeVisible()
+    // Desaparece de "Fiados pendientes": ya está 'paid', listOpenTabs no lo trae más.
+    await expect(fiadoRow).toHaveCount(0)
+
+    // El cobro generó el movimiento en /caja (misma cash_flow de siempre).
+    await page.goto('/caja', { waitUntil: 'networkidle' })
+    const movementRow = page.getByRole('row').filter({ hasText: `Fiado cobrado — ${debtorName}` })
+    await expect(movementRow).toBeVisible({ timeout: 10_000 })
   })
 })

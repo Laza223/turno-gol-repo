@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArs } from '@/lib/format'
 import { toast } from '@/hooks/use-toast'
-import { canteenStockBadge, type StockBadge } from '../caja-lib'
+import { canteenStockBadge, stockBadgeToneClass, type StockBadge } from '../caja-lib'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import {
   ProductFormDialog,
@@ -48,13 +48,9 @@ function marginLabel(price: number, cost: number | null): string | null {
 
 function StockCell({ badge }: { badge: StockBadge | null }) {
   if (!badge) return <span className="text-xs text-muted-foreground">Sin control</span>
-  const tone =
-    badge.tone === 'out'
-      ? 'text-red-600 dark:text-red-400'
-      : badge.tone === 'low'
-        ? 'text-amber-600 dark:text-amber-400'
-        : 'text-muted-foreground'
-  return <span className={`text-xs font-medium ${tone}`}>{badge.label}</span>
+  return (
+    <span className={`text-xs font-medium ${stockBadgeToneClass(badge.tone)}`}>{badge.label}</span>
+  )
 }
 
 function StatusBadge({ isActive }: { isActive: boolean }) {

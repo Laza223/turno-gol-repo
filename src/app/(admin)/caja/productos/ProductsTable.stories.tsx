@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { canteenProductsWithInactive } from '@/test/fixtures'
 import { ProductsTable } from './ProductsTable'
 import type { ProductActionResult, StockActionResult } from './actions'
@@ -46,7 +46,12 @@ export const ComoManager: Story = {
 
     const menuButtons = canvas.getAllByRole('button', { name: /Opciones para/i })
     await userEvent.click(menuButtons[0]!)
-    await expect(await body.findByRole('menuitem', { name: 'Reponer' })).toBeVisible()
+    // waitFor: el menuitem de Radix existe en el DOM un frame antes de ser
+    // visible (animación del portal) — findByRole solo espera existencia y
+    // toBeVisible pelado flakea (gotcha dropdown Radix headless del repo).
+    await waitFor(async () => {
+      await expect(await body.findByRole('menuitem', { name: 'Reponer' })).toBeVisible()
+    })
     await expect(body.queryByRole('menuitem', { name: 'Editar' })).toBeNull()
     await expect(body.queryByRole('menuitem', { name: /pausar|reactivar/i })).toBeNull()
   },

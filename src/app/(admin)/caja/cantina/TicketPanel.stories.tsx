@@ -3,7 +3,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { canteenProducts } from '@/test/fixtures'
 import { TicketPanel } from './TicketPanel'
-import type { SellTicketActionResult } from './actions'
+import type { CreateTabActionResult, SellTicketActionResult } from './actions'
 
 const PRODUCTS = canteenProducts()
 
@@ -15,6 +15,13 @@ const meta = {
     products: PRODUCTS,
     sellTicketAction: fn(
       async (): Promise<SellTicketActionResult> => ({ success: true, total: 300000 }),
+    ),
+    createTabAction: fn(
+      async (): Promise<CreateTabActionResult> => ({
+        success: true,
+        debtorName: 'Capitán equipo 22hs',
+        total: 300000,
+      }),
     ),
   },
 } satisfies Meta<typeof TicketPanel>
@@ -77,9 +84,13 @@ export const VentaMultiItem: Story = {
     const canvas = within(canvasElement)
     const [productA, productB] = PRODUCTS
 
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(productA!.name) }))
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(productA!.name) }))
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(productB!.name) }))
+    // Anclado a ^: con una línea ya en el ticket, "Restar/Sumar uno a {nombre}"
+    // y "Quitar {nombre} del ticket" también matchean el nombre suelto y
+    // getByRole se vuelve ambiguo. El botón del grid es el único cuyo nombre
+    // accesible EMPIEZA con el nombre del producto.
+    await userEvent.click(canvas.getByRole('button', { name: new RegExp(`^${productA!.name}`) }))
+    await userEvent.click(canvas.getByRole('button', { name: new RegExp(`^${productA!.name}`) }))
+    await userEvent.click(canvas.getByRole('button', { name: new RegExp(`^${productB!.name}`) }))
     await expect(canvas.getByText('×2')).toBeVisible()
     await expect(canvas.getByText('×1')).toBeVisible()
 
@@ -134,5 +145,71 @@ export const ErrorDeVenta: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent(/ya fue cerrada/i)
     // El ticket sigue con la línea cargada (no se pierde el trabajo del cajero).
     await expect(canvas.getByText('×1')).toBeVisible()
+  },
+}
+
+/**
+ * Fase 4: el mismo ticket se anota como fiado en vez de cobrarlo — key de
+ * idempotencia propia, distinta de la del ticket cobrado.
+ */
+export const AnotarComoFiado: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const product = PRODUCTS[0]!
+
+    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Anotar como fiado' }))
+
+    const dialog = within(await body.findByRole('dialog'))
+    await userEvent.type(dialog.getByLabelText('Nombre'), 'Capitán equipo 22hs')
+    await userEvent.click(dialog.getByRole('button', { name: /^Anotar fiado/ }))
+
+    await waitFor(() =>
+      expect(args.createTabAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          debtorName: 'Capitán equipo 22hs',
+          lines: [{ productId: product.id, qty: 1 }],
+        }),
+      ),
+    )
+    // Éxito: el ticket se vacía, igual que tras cobrar.
+    await waitFor(() => expect(canvas.getByText('Tocá un producto para empezar')).toBeVisible())
+  },
+}
+
+/** Nombre vacío: el fiado no se manda, se muestra el error inline. */
+export const AnotarFiadoSinNombre: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const product = PRODUCTS[0]!
+
+    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Anotar como fiado' }))
+
+    const dialog = within(await body.findByRole('dialog'))
+    await userEvent.click(dialog.getByRole('button', { name: /^Anotar fiado/ }))
+
+    await expect(await dialog.findByRole('alert')).toHaveTextContent(/nombre/i)
+    await expect(args.createTabAction).not.toHaveBeenCalled()
+  },
+}
+
+/**
+ * Caja de hoy cerrada: cobrar queda deshabilitado con hint visible; anotar
+ * como fiado sigue activo (createTab no toca caja).
+ */
+export const CajaCerrada: Story = {
+  args: { saleDisabled: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const product = PRODUCTS[0]!
+
+    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
+
+    await expect(canvas.getByRole('button', { name: /^Cobrar/ })).toBeDisabled()
+    await expect(canvas.getByText(/caja cerrada/i)).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Anotar como fiado' })).toBeEnabled()
   },
 }

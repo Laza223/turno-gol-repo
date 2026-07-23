@@ -1,15 +1,16 @@
-import type { CanteenProductRow, StockLedgerEntry } from '@/modules/canteen/canteen.types'
+import type { CanteenProductRow, CanteenTabRow, StockLedgerEntry } from '@/modules/canteen/canteen.types'
 import { hoursFromNow } from './clock'
 import { uid } from './ids'
 import { staffManager, staffMember } from './staff'
 import { tenant } from './tenant'
 
 /**
- * `canteen.service.ts`/`stock.service.ts`/`canteen-sale.service.ts`
- * (server-only, `.service.ts`) no son importables acá ni en stories — los
- * TIPOS sí (`canteen.types.ts`, sin imports), mismo patrón que el resto de
- * `src/test/fixtures/`. Rango de ids: 801-849 canteen_products, 851-899
- * stock_movements (ver convención de rangos en `ids.ts`).
+ * `canteen.service.ts`/`stock.service.ts`/`canteen-sale.service.ts`/
+ * `canteen-tab.service.ts` (server-only, `.service.ts`) no son importables
+ * acá ni en stories — los TIPOS sí (`canteen.types.ts`, sin imports), mismo
+ * patrón que el resto de `src/test/fixtures/`. Rango de ids: 801-849
+ * canteen_products, 851-899 stock_movements, 901-949 canteen_tabs (ver
+ * convención de rangos en `ids.ts`).
  */
 
 export const canteenProduct = (overrides: Partial<CanteenProductRow> = {}): CanteenProductRow => ({
@@ -140,3 +141,35 @@ export const stockLedger = (): StockLedgerEntry[] => [
   stockLedgerEntry(),
   stockLedgerEntryPurchase(),
 ]
+
+/** Fiado abierto (canteen_tabs) — FiadosList, tab Cantina. */
+export const canteenTab = (overrides: Partial<CanteenTabRow> = {}): CanteenTabRow => ({
+  id: uid(901),
+  tenantId: tenant().id,
+  debtorName: 'Capitán equipo 22hs',
+  status: 'open',
+  totalAmount: 450000,
+  note: null,
+  createdBy: staffMember().id,
+  createdAt: hoursFromNow(-3),
+  settledAt: null,
+  settledBy: null,
+  settledCashFlowId: null,
+  canceledAt: null,
+  canceledBy: null,
+  canceledReason: null,
+  ...overrides,
+})
+
+/** Fiado con nota — muestra la línea de nota extra en la lista. */
+export const canteenTabConNota = (): CanteenTabRow =>
+  canteenTab({
+    id: uid(902),
+    debtorName: 'Equipo Jueves',
+    totalAmount: 720000,
+    note: 'Paga el sábado que viene',
+    createdAt: hoursFromNow(-30),
+  })
+
+/** Fiados abiertos típicos (venta rápida / FiadosList). */
+export const canteenTabs = (): CanteenTabRow[] => [canteenTab(), canteenTabConNota()]

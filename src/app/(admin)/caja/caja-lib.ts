@@ -55,6 +55,18 @@ export function canteenStockBadge(
   return { label: `Stock ${stock}`, tone: 'ok' }
 }
 
+/**
+ * Clases de color por tono del badge de stock — UN solo lugar (vivía duplicado
+ * en TicketPanel y ProductsTable, y las dos copias usaban amber-600, que no
+ * llega a AA 4.5:1 sobre la card clara con Tailwind 4/OKLCH; axe lo cazó).
+ * amber-800 = mismo criterio que status-banner; red-700 = mismo que SignedAmount.
+ */
+export function stockBadgeToneClass(tone: StockBadge['tone']): string {
+  if (tone === 'out') return 'text-red-700 dark:text-red-400'
+  if (tone === 'low') return 'text-amber-800 dark:text-amber-300'
+  return 'text-muted-foreground'
+}
+
 // ── Categorías ───────────────────────────────────────────────────────────────
 
 /**

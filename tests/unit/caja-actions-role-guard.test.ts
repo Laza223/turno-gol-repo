@@ -24,6 +24,12 @@ vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() 
 vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
 vi.mock('@/modules/cashflow/daily-close.service', () => ({ closeDailyRegister: vi.fn() }))
 vi.mock('@/modules/canteen/canteen-sale.service', () => ({ sellTicket: vi.fn() }))
+vi.mock('@/modules/canteen/canteen-tab.service', () => ({
+  createTab: vi.fn(),
+  settleTab: vi.fn(),
+  cancelTab: vi.fn(),
+  listOpenTabs: vi.fn(),
+}))
 vi.mock('@/modules/canteen/canteen.service', () => ({
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
@@ -36,7 +42,12 @@ vi.mock('@/modules/canteen/stock.service', () => ({
 }))
 
 import { closeDayAction, createCashFlowAction } from '@/app/(admin)/caja/actions'
-import { sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
+import {
+  sellTicketAction,
+  createTabAction,
+  settleTabAction,
+  cancelTabAction,
+} from '@/app/(admin)/caja/cantina/actions'
 import {
   createProductAction,
   updateProductAction,
@@ -50,6 +61,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
+import { createTab, settleTab, cancelTab } from '@/modules/canteen/canteen-tab.service'
 import { createProduct, updateProduct } from '@/modules/canteen/canteen.service'
 import { registerPurchase } from '@/modules/canteen/stock.service'
 import type { CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
@@ -72,6 +84,26 @@ const TICKET = {
   lines: [{ productId: PRODUCT_ID, qty: 1 }],
   method: 'cash' as const,
   clientIdempotencyKey: KEY,
+}
+
+const TAB_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+const KEY_2 = 'aaaaaaaa-bbbb-4ccc-8ddd-ffffffffffff'
+
+const CREATE_TAB = {
+  debtorName: 'Capitán equipo 22hs',
+  lines: [{ productId: PRODUCT_ID, qty: 1 }],
+  clientIdempotencyKey: KEY,
+}
+
+const SETTLE_TAB = {
+  tabId: TAB_ID,
+  method: 'cash' as const,
+  clientIdempotencyKey: KEY_2,
+}
+
+const CANCEL_TAB = {
+  tabId: TAB_ID,
+  reason: 'Se pagó en el momento',
 }
 
 const PURCHASE = {
@@ -116,6 +148,24 @@ describe('caja/cantina/productos — staff sin membresía activa (rol null) es r
     expect(vi.mocked(sellTicket)).not.toHaveBeenCalled()
   })
 
+  it('createTabAction no anota fiado sin rol', async () => {
+    const res = await createTabAction(CREATE_TAB)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createTab)).not.toHaveBeenCalled()
+  })
+
+  it('settleTabAction no cobra fiado sin rol', async () => {
+    const res = await settleTabAction(SETTLE_TAB)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(settleTab)).not.toHaveBeenCalled()
+  })
+
+  it('cancelTabAction no anula fiado sin rol', async () => {
+    const res = await cancelTabAction(CANCEL_TAB)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(cancelTab)).not.toHaveBeenCalled()
+  })
+
   it('registerPurchaseAction no repone stock sin rol', async () => {
     const res = await registerPurchaseAction(PURCHASE)
     expect(res.success).toBe(false)
@@ -157,6 +207,27 @@ describe('caja/cantina — manager (Encargado) opera la caja y la cantina (cruce
     vi.mocked(sellTicket).mockResolvedValue({ cashFlowId: 'cf-2', total: 125000, duplicate: false })
     const res = await sellTicketAction(TICKET)
     expect(res).toEqual({ success: true, total: 125000 })
+  })
+
+  it('createTabAction funciona para manager (anotar fiado es operativo)', async () => {
+    vi.mocked(createTab).mockResolvedValue({
+      tab: { debtorName: 'Capitán equipo 22hs', totalAmount: 125000 } as never,
+      duplicate: false,
+    })
+    const res = await createTabAction(CREATE_TAB)
+    expect(res).toEqual({ success: true, debtorName: 'Capitán equipo 22hs', total: 125000 })
+  })
+
+  it('settleTabAction funciona para manager (cobrar fiado es operativo)', async () => {
+    vi.mocked(settleTab).mockResolvedValue({ tab: { totalAmount: 125000 } as never, duplicate: false })
+    const res = await settleTabAction(SETTLE_TAB)
+    expect(res).toEqual({ success: true, total: 125000 })
+  })
+
+  it('cancelTabAction funciona para manager (anular fiado es operativo)', async () => {
+    vi.mocked(cancelTab).mockResolvedValue({} as never)
+    const res = await cancelTabAction(CANCEL_TAB)
+    expect(res.success).toBe(true)
   })
 
   it('registerPurchaseAction funciona para manager (reponer stock es operativo)', async () => {

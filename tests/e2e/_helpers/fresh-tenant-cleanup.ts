@@ -42,6 +42,11 @@ export async function deleteFreshAdminTenants(
   for (const { tenant_id: tid } of rows) {
     await sql`DELETE FROM audit_logs WHERE tenant_id = ${tid}`
     await sql`DELETE FROM notifications WHERE tenant_id = ${tid}`
+    // Cantina (migr. 048/049): el ledger referencia cash_flows — va primero.
+    await sql`DELETE FROM stock_movements WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM canteen_tabs WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM canteen_products WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${tid}`
     await sql`DELETE FROM cash_flows WHERE tenant_id = ${tid}`
     await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tid}`
     // payments.booking_id -> bookings.id es la pata inversa del FK circular que bookings

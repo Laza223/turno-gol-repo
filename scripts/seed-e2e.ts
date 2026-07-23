@@ -66,6 +66,13 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await deleteFreshAdminTenants(sql, E2E.freshStaffUserId)
   await sql`DELETE FROM audit_logs WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.tenantId}`
+  // Cantina (migr. 048/049): el ledger referencia cash_flows/canteen_tabs/
+  // canteen_products — va PRIMERO o el DELETE de cash_flows viola la FK con
+  // residuos de la corrida e2e anterior (misma clase que el wipe de retención).
+  await sql`DELETE FROM stock_movements WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM canteen_tabs WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM canteen_products WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.tenantId}`
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.tenantId}`
@@ -80,6 +87,10 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM tenants WHERE id = ${E2E.tenantId}`
   await sql`DELETE FROM audit_logs WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM stock_movements WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM canteen_tabs WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM canteen_products WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.depositTenantId}`

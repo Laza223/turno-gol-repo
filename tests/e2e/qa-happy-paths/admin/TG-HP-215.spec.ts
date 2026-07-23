@@ -43,6 +43,11 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
 
     // Reemplaza el catálogo de canteen_products por un único producto
     // determinístico (tabla real desde la migración 048, ya no JSONB).
+    // Orden FK: el ledger (stock_movements) y los fiados referencian al
+    // producto — sin borrarlos primero, el DELETE de canteen_products viola
+    // stock_movements_product_id_fkey con residuos de corridas anteriores.
+    await runSql(`DELETE FROM stock_movements WHERE tenant_id = $1`, [E2E_TENANT_ID])
+    await runSql(`DELETE FROM canteen_tabs WHERE tenant_id = $1`, [E2E_TENANT_ID])
     await runSql(`DELETE FROM canteen_products WHERE tenant_id = $1`, [E2E_TENANT_ID])
     await runSql(
       `INSERT INTO canteen_products (id, tenant_id, name, price, stock) VALUES ($1, $2, $3, $4, $5)`,
@@ -66,7 +71,11 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
       // veces se pierde (recompile/HMR de Turbopack en curso, confirmado por
       // [Fast Refresh] en la consola de la página); reintentar el click hasta
       // que el ticket registre la línea, sin tocar la aserción final.
-      const productButton = page.getByRole('button', { name: new RegExp(productName) })
+      // Anclado a ^: con una línea en el ticket, "Restar/Sumar uno a {nombre}"
+      // y "Quitar {nombre} del ticket" también matchean — solo el botón del
+      // grid EMPIEZA con el nombre del producto (misma clase que la story
+      // VentaMultiItem de TicketPanel).
+      const productButton = page.getByRole('button', { name: new RegExp(`^${productName}`) })
       await expect(productButton).toBeVisible()
       await expect(async () => {
         await productButton.click()

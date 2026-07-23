@@ -376,7 +376,10 @@ test.describe('caja — happy: apertura + cierre v2 (efectivo esperado)', () => 
         await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // ── 1. Abrir caja con fondo $1000 ────────────────────────────────────
-        await page.getByRole('button', { name: 'Abrir caja' }).click()
+        // TEST_DATE_OPEN es un día PASADO: la card muestra "Declarar fondo"
+        // (copy de días no-hoy, hallazgo UX del panel de Fase 5); el submit
+        // dentro del diálogo sigue siendo "Abrir caja".
+        await page.getByRole('button', { name: 'Declarar fondo' }).click()
         const openDialog = page.getByRole('dialog')
         await expect(openDialog).toBeVisible()
         await page.locator('#opening-cash').fill('1000')

@@ -20,7 +20,16 @@ import type {
 const VALID_COMBOS: Record<CashFlowType, CashFlowCategory[]> = {
   income: ['booking', 'product_sale', 'other'],
   adjustment: ['other', 'no_show_correction'],
-  expense: ['operating_expense'],
+  // migr. 050: 'operating_expense' queda como legacy válido (el CHECK de DB
+  // también lo conserva); la UI nueva solo ofrece las 5 específicas.
+  expense: [
+    'operating_expense',
+    'merchandise',
+    'salaries',
+    'utilities',
+    'maintenance',
+    'other_expense',
+  ],
 }
 
 export function validateCashFlowCombo(type: string, category: string): void {
@@ -277,6 +286,8 @@ export async function getDaySummary(
     balance: number
     declared_cash: number
     diff_amount: number
+    opening_cash: number | null
+    expected_cash: number | null
     note: string | null
     closed_by: string
     closed_at: Date
@@ -293,6 +304,8 @@ export async function getDaySummary(
         balance: closeRaw.balance,
         declaredCash: closeRaw.declared_cash,
         diffAmount: closeRaw.diff_amount,
+        openingCash: closeRaw.opening_cash,
+        expectedCash: closeRaw.expected_cash,
         note: closeRaw.note,
         closedBy: closeRaw.closed_by,
         closedAt: new Date(closeRaw.closed_at),

@@ -27,6 +27,8 @@ export function CloseDayButton({
   totalExpense,
   balance,
   cashTotal,
+  expectedCash,
+  openingCash,
   closeDayAction,
 }: {
   date: string
@@ -35,6 +37,11 @@ export function CloseDayButton({
   balance: number
   /** Neto en efectivo del día (byMethod.cash): la referencia para contar el cajón. */
   cashTotal: number
+  /** Fondo inicial + neto efectivo del día (migr. 049): SIEMPRE es un número
+   * — sin apertura, openingCash es 0 y expectedCash === cashTotal. */
+  expectedCash: number
+  /** Fondo declarado en la apertura; null si el día no se abrió (sin fila en daily_cash_opens). */
+  openingCash: number | null
   closeDayAction: CloseDayAction
 }) {
   const router = useRouter()
@@ -43,7 +50,10 @@ export function CloseDayButton({
   const [note, setNote] = useState('')
 
   const declaredCents = declaredPesos.trim() === '' ? undefined : Math.round(Number(declaredPesos) * 100)
-  const diff = declaredCents === undefined || !Number.isFinite(declaredCents) ? null : declaredCents - balance
+  // Migr. 049: la comparación del arqueo pasa de "saldo neto de la caja" a
+  // "efectivo esperado" (fondo inicial + neto cash) — el saldo mezcla métodos
+  // de pago que no están en el cajón físico.
+  const diff = declaredCents === undefined || !Number.isFinite(declaredCents) ? null : declaredCents - expectedCash
   const noteRequired = diff !== null && diff !== 0
 
   async function onConfirm(): Promise<{ success: boolean; error?: string }> {
@@ -109,6 +119,20 @@ export function CloseDayButton({
                 {cashTotal < 0 ? `−${formatArsContable(-cashTotal)}` : formatArsContable(cashTotal)}
               </span>
             </div>
+            {openingCash != null && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Fondo inicial</span>
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatArsContable(openingCash)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between border-t border-border pt-1">
+              <span className="text-muted-foreground">Efectivo esperado</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {expectedCash < 0 ? `−${formatArsContable(-expectedCash)}` : formatArsContable(expectedCash)}
+              </span>
+            </div>
           </div>
           <div className="space-y-1">
             <label htmlFor="declared" className="text-xs font-medium text-foreground">Efectivo contado (opcional, pesos)</label>
@@ -120,7 +144,11 @@ export function CloseDayButton({
           </div>
           {diff !== null && diff !== 0 && (
             <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
-              Diferencia de {formatArsContable(Math.abs(diff))}{diff < 0 ? ' de menos' : ' de más'}. La nota es obligatoria.
+              {/* La dirección (falta/sobra) es lo que el que cierra necesita saber
+                  ANTES de confirmar un cierre inmutable — mismo criterio que el
+                  recibo ("sobraron"/"faltaron" de closeView). */}
+              Diferencia de {formatArsContable(Math.abs(diff))} con el efectivo esperado:{' '}
+              {diff < 0 ? 'falta' : 'sobra'} plata. La nota es obligatoria.
             </div>
           )}
           <div className="space-y-1">

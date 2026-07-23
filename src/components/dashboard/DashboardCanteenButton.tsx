@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ShoppingBag } from 'lucide-react'
 import {
   Dialog,
@@ -10,31 +9,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  CanteenQuickSale,
-  type SaveCanteenProductsAction,
-  type SellCanteenProductAction,
-} from '@/app/(admin)/caja/components/CanteenQuickSale'
-import type { CanteenProduct } from '@/modules/tenants/tenant.types'
+import { TicketPanel, type SellTicketAction } from '@/app/(admin)/caja/cantina/TicketPanel'
+import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 
 export function DashboardCanteenButton({
-  date,
   products,
-  sellCanteenProductAction,
-  saveCanteenProductsAction,
+  sellTicketAction,
 }: {
-  date: string
-  products: CanteenProduct[]
-  sellCanteenProductAction: SellCanteenProductAction
-  saveCanteenProductsAction: SaveCanteenProductsAction
+  products: CanteenProductRow[]
+  sellTicketAction: SellTicketAction
 }) {
   const [open, setOpen] = useState(false)
-  const router = useRouter()
-
-  const handleConfigureClick = () => {
-    setOpen(false)
-    router.push('/caja?configureCanteen=true')
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -51,14 +36,7 @@ export function DashboardCanteenButton({
         <DialogHeader className="sr-only">
           <DialogTitle>Venta rápida de cantina</DialogTitle>
         </DialogHeader>
-        <CanteenQuickSale
-          date={date}
-          products={products}
-          sellCanteenProductAction={sellCanteenProductAction}
-          saveCanteenProductsAction={saveCanteenProductsAction}
-          onConfigureClick={handleConfigureClick}
-          isInDialog
-        />
+        <TicketPanel products={products} sellTicketAction={sellTicketAction} isInDialog />
       </DialogContent>
     </Dialog>
   )

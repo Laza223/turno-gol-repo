@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
@@ -15,21 +14,18 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
+import { getDayOpen } from '@/modules/cashflow/cash-open.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArsContable } from '@/lib/format'
 import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
-import { CanteenQuickSale } from './components/CanteenQuickSale'
+import { CajaTabs } from './components/CajaTabs'
 import { CierreCard } from './components/CierreCard'
 import { EmptyMovementAction } from './components/EmptyMovementAction'
-import {
-  createCashFlowAction,
-  closeDayAction,
-  saveCanteenProductsAction,
-  sellCanteenProductAction,
-} from './actions'
+import { OpenDayCard } from './components/OpenDayCard'
+import { createCashFlowAction, closeDayAction, openDayAction } from './actions'
 import { artDateOf } from '@/shared/time/art-date'
 import {
   addDays,
@@ -78,8 +74,16 @@ const METHOD_ICON: Record<MethodKey, LucideIcon> = {
   other: Coins,
 }
 
-export default async function CajaPage(props: { searchParams: Promise<{ date?: string }> }) {
+export default async function CajaPage(props: {
+  searchParams: Promise<{ date?: string; configureCanteen?: string }>
+}) {
   const searchParams = await props.searchParams;
+  // Compat con deep links viejos: la configuración de productos vive ahora
+  // en su propia tab.
+  if (searchParams.configureCanteen === 'true') {
+    redirect('/caja/productos?configureCanteen=true')
+  }
+
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -91,22 +95,27 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
   // reventaba el cast SQL ::date y addDays(); degradar a hoy (ART) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
-  const { summary, cashFlows } = await withTenantContext(tenant.id, async (tx) => {
-    const [s, cf] = await Promise.all([
+  const { summary, cashFlows, open } = await withTenantContext(tenant.id, async (tx) => {
+    const [s, cf, o] = await Promise.all([
       getDaySummary(tenant.id, date, tx),
       getCashFlows(tenant.id, date, tx),
+      getDayOpen(tenant.id, date, tx),
     ])
-    return { summary: s, cashFlows: cf }
+    return { summary: s, cashFlows: cf, open: o }
   })
 
   const ingresos = summary.totalIncome + summary.totalAdjustments
   const methods = methodBreakdown(summary.byMethod)
   const isToday = date === today
+  // Fondo inicial (si se abrió la caja) + neto efectivo del día: la referencia
+  // real para el arqueo (migr. 049) — reemplaza el saldo neto de toda la caja
+  // (que mezcla métodos de pago) como comparación del cierre.
+  const expectedCash = (open?.openingCash ?? 0) + (summary.byMethod.cash ?? 0)
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Caja"
+        title="Caja y Cantina"
         subtitle={cajaDateLabel(date, today)}
         icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
         actions={
@@ -145,6 +154,8 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
               totalExpense={summary.totalExpense}
               balance={summary.balance}
               cashTotal={summary.byMethod.cash ?? 0}
+              expectedCash={expectedCash}
+              openingCash={open?.openingCash ?? null}
               isClosed={summary.isClosed}
               createCashFlowAction={createCashFlowAction}
               closeDayAction={closeDayAction}
@@ -153,23 +164,16 @@ export default async function CajaPage(props: { searchParams: Promise<{ date?: s
         }
       />
 
+      <CajaTabs active="/caja" />
+
+      {!summary.isClosed && (
+        <OpenDayCard date={date} open={open} openDayAction={openDayAction} isToday={isToday} />
+      )}
+
       {!summary.isClosed && <CajaCierreHint />}
 
       {/* Peak-end (§5): el cierre abre la vista — recibo verde e inmutable. */}
       {summary.isClosed && summary.close && <CierreCard close={summary.close} />}
-
-      {/* Cantina/Bar: venta rápida con un toque (oculta con caja cerrada) */}
-      {!summary.isClosed && (
-        <Suspense fallback={null}>
-          <CanteenQuickSale
-            date={date}
-            products={tenant.settings.canteen_products ?? []}
-            sellCanteenProductAction={sellCanteenProductAction}
-            saveCanteenProductsAction={saveCanteenProductsAction}
-          />
-        </Suspense>
-      )}
-
 
       {/* Movimientos del día */}
       {cashFlows.length === 0 ? (

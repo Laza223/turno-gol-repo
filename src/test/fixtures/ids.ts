@@ -11,6 +11,9 @@
  *   301-399   staff (staff_users / tenant_staff_members)
  *   501-599   abonados
  *   601-699   cash_flows / daily_cash_closes
+ *   801-849   canteen_products
+ *   851-899   stock_movements
+ *   901-949   canteen_tabs
  *   1001-1999 bookings
  *   7001-7099 super-admin (planes, trials/signups/webhooks del dashboard global)
  *   7101-7199 super-admin (audit_logs / bookings del tenant activity tab)

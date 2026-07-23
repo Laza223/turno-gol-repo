@@ -19,6 +19,8 @@ export function CajaActions({
   totalExpense,
   balance,
   cashTotal,
+  expectedCash,
+  openingCash,
   isClosed,
   createCashFlowAction,
   closeDayAction,
@@ -28,6 +30,10 @@ export function CajaActions({
   totalExpense: number
   balance: number
   cashTotal: number
+  /** Fondo inicial + neto efectivo del día (migr. 049): referencia del cierre. */
+  expectedCash: number
+  /** Fondo declarado en la apertura; null si el día no se abrió. */
+  openingCash: number | null
   isClosed: boolean
   createCashFlowAction: CreateCashFlowAction
   closeDayAction: CloseDayAction
@@ -49,6 +55,8 @@ export function CajaActions({
         totalExpense={totalExpense}
         balance={balance}
         cashTotal={cashTotal}
+        expectedCash={expectedCash}
+        openingCash={openingCash}
         closeDayAction={closeDayAction}
       />
       <RegisterMovementModal

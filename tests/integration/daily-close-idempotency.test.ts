@@ -46,6 +46,9 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
     expect(result.totalIncome).toBe(1000000)
     expect(result.balance).toBe(1000000)
     expect(result.declaredCash).toBe(1000000)
+    // Migr. 049: ambos flows son cash → expected = 0 + 1000000; declared igual → diff 0.
+    expect(result.openingCash).toBe(0)
+    expect(result.expectedCash).toBe(1000000)
     expect(result.diffAmount).toBe(0)
     expect(Number.isInteger(result.totalIncome)).toBe(true)
     expect(Number.isInteger(result.balance)).toBe(true)
@@ -89,7 +92,7 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
     expect(count.c).toBe(1)
   })
 
-  it('balance diff matches expected: balance - declaredCash', async () => {
+  it('diff = declared − expected (migr. 049: falta plata → negativo)', async () => {
     const { tenantId, staffId } = await seedTenantWithCashflows()
 
     const result = await getDb().transaction(async (tx) => {
@@ -98,7 +101,8 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
 
     expect(result.balance).toBe(1000000)
     expect(result.declaredCash).toBe(999999)
-    expect(result.diffAmount).toBe(1) // 1 centavo missing
+    expect(result.expectedCash).toBe(1000000)
+    expect(result.diffAmount).toBe(-1) // falta 1 centavo
   })
 
   it('getDailyClose returns the row after close', async () => {

@@ -34,22 +34,37 @@ export function methodBreakdown(
   }))
 }
 
-// ── Stock de cantina (opcional) ───────────────────────────────────────────────
-
-/** Umbral de "stock bajo": el badge pasa a ámbar cuando quedan ≤ N unidades. */
-export const CANTEEN_LOW_STOCK_THRESHOLD = 3
+// ── Stock de cantina (canteen_products, migr. 048) ────────────────────────────
 
 export type StockBadge = { label: string; tone: 'ok' | 'low' | 'out' }
 
 /**
- * Badge de stock para un producto de cantina. `undefined` = sin control de
- * stock → null (no se muestra badge). 0 = sin stock. ≤ umbral = stock bajo.
+ * Badge de stock para un producto de cantina real (canteen_products). `stock`
+ * null/undefined = sin control de stock → sin badge. 0 (o negativo, defensivo)
+ * → "Agotado" SIEMPRE, aunque el producto no tenga `minStock` cargado.
+ * Con `minStock` definido y `stock <= minStock` → "Quedan N" (alerta). Sin
+ * `minStock` (null) nunca hay alerta "low" — solo el corte duro en 0.
  */
-export function canteenStockBadge(stock: number | undefined): StockBadge | null {
-  if (typeof stock !== 'number') return null
-  if (stock <= 0) return { label: 'Sin stock', tone: 'out' }
-  if (stock <= CANTEEN_LOW_STOCK_THRESHOLD) return { label: `Quedan ${stock}`, tone: 'low' }
+export function canteenStockBadge(
+  stock?: number | null,
+  minStock?: number | null,
+): StockBadge | null {
+  if (stock == null) return null
+  if (stock <= 0) return { label: 'Agotado', tone: 'out' }
+  if (minStock != null && stock <= minStock) return { label: `Quedan ${stock}`, tone: 'low' }
   return { label: `Stock ${stock}`, tone: 'ok' }
+}
+
+/**
+ * Clases de color por tono del badge de stock — UN solo lugar (vivía duplicado
+ * en TicketPanel y ProductsTable, y las dos copias usaban amber-600, que no
+ * llega a AA 4.5:1 sobre la card clara con Tailwind 4/OKLCH; axe lo cazó).
+ * amber-800 = mismo criterio que status-banner; red-700 = mismo que SignedAmount.
+ */
+export function stockBadgeToneClass(tone: StockBadge['tone']): string {
+  if (tone === 'out') return 'text-red-700 dark:text-red-400'
+  if (tone === 'low') return 'text-amber-800 dark:text-amber-300'
+  return 'text-muted-foreground'
 }
 
 // ── Categorías ───────────────────────────────────────────────────────────────
@@ -61,7 +76,12 @@ export function canteenStockBadge(stock: number | undefined): StockBadge | null 
 export function categoryLabel(type: string, category: string): string {
   if (category === 'booking') return 'Reserva'
   if (category === 'product_sale') return 'Cantina/Bar'
-  if (category === 'operating_expense') return 'Gasto operativo'
+  if (category === 'operating_expense') return 'Gasto operativo' // legacy pre-050
+  if (category === 'merchandise') return 'Mercadería'
+  if (category === 'salaries') return 'Sueldos'
+  if (category === 'utilities') return 'Servicios'
+  if (category === 'maintenance') return 'Mantenimiento'
+  if (category === 'other_expense') return 'Otro gasto'
   if (category === 'no_show_correction') return 'Corrección por ausencia'
   if (category === 'other') return type === 'adjustment' ? 'Ajuste' : 'Otro ingreso'
   return category
@@ -72,7 +92,19 @@ export const CATEGORY_BADGE: Record<CashFlowCategory | 'fallback', string> = {
     'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20 dark:ring-emerald-500/30',
   product_sale:
     'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-600/20 dark:ring-sky-500/30',
+  // Todos los gastos comparten la familia roja: el color codifica el SIGNO
+  // (egreso), no la categoría — el texto del chip diferencia (migr. 050).
   operating_expense:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  merchandise:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  salaries:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  utilities:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  maintenance:
+    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
+  other_expense:
     'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
   no_show_correction:
     'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',
@@ -169,15 +201,61 @@ export function chipClass(active: boolean): string {
 
 // ── Cierre ───────────────────────────────────────────────────────────────────
 
-export type CloseView = {
-  /** false = el server guardó declaredCash=0 con diff=balance: no hubo arqueo
-   * declarado (indistinguible de "declaró $0"); ocultar Efectivo/Diferencia
-   * para no mostrar una alarma falsa. */
-  hasCashCount: boolean
-  hasDiff: boolean
-}
+export type CloseView =
+  | {
+      variant: 'legacy'
+      /** false = el server guardó declaredCash=0 con diff=balance: no hubo arqueo
+       * declarado (indistinguible de "declaró $0"); ocultar Efectivo/Diferencia
+       * para no mostrar una alarma falsa. */
+      hasCashCount: boolean
+      hasDiff: boolean
+    }
+  | {
+      variant: 'v2'
+      hasCashCount: boolean
+      hasDiff: boolean
+      tone: 'success' | 'neutral' | 'surplus' | 'shortfall'
+      /** Fragmento de título en minúsculas (ej. "el efectivo cuadró"); el
+       * caller antepone "Caja cerrada — ". */
+      message: string
+    }
 
-export function closeView(close: Pick<DailyCashCloseRow, 'declaredCash' | 'diffAmount' | 'balance'>): CloseView {
-  const hasCashCount = !(close.declaredCash === 0 && close.diffAmount === close.balance)
-  return { hasCashCount, hasDiff: hasCashCount && close.diffAmount !== 0 }
+/**
+ * Migr. 049: bifurca por `expectedCash`. NULL = cierre LEGACY (pre-049) —
+ * comportamiento EXACTO al histórico (balance − declared): nunca reinterpretar
+ * closes viejos con la fórmula nueva. No-NULL = cierre NUEVO — diffAmount ya
+ * viene con la semántica declared − expected (closeDailyRegister); acá solo
+ * se deriva el tono/mensaje del título para CierreCard.
+ */
+export function closeView(
+  close: Pick<DailyCashCloseRow, 'declaredCash' | 'diffAmount' | 'balance' | 'expectedCash'>,
+): CloseView {
+  if (close.expectedCash == null) {
+    const hasCashCount = !(close.declaredCash === 0 && close.diffAmount === close.balance)
+    return { variant: 'legacy', hasCashCount, hasDiff: hasCashCount && close.diffAmount !== 0 }
+  }
+
+  const diff = close.diffAmount
+  if (diff === 0 && close.declaredCash > 0) {
+    return { variant: 'v2', hasCashCount: true, hasDiff: false, tone: 'success', message: 'el efectivo cuadró' }
+  }
+  if (close.declaredCash === 0) {
+    return { variant: 'v2', hasCashCount: false, hasDiff: false, tone: 'neutral', message: 'sin arqueo declarado' }
+  }
+  if (diff > 0) {
+    return {
+      variant: 'v2',
+      hasCashCount: true,
+      hasDiff: true,
+      tone: 'surplus',
+      message: `sobraron ${formatArs(diff)}`,
+    }
+  }
+  return {
+    variant: 'v2',
+    hasCashCount: true,
+    hasDiff: true,
+    tone: 'shortfall',
+    message: `faltaron ${formatArs(-diff)}`,
+  }
 }

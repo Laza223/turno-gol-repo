@@ -29,7 +29,32 @@ const pressed = (name: string) =>
   screen.getByRole('button', { name }).getAttribute('aria-pressed')
 
 describe('RegisterMovementModal — chips', () => {
-  it('elegir "Gasto" auto-selecciona su única categoría y el payload sale válido', async () => {
+  // migr. 050: 'operating_expense' ya no es la única categoría de gasto — la
+  // UI ofrece 5 categorías específicas (Mercadería/Sueldos/Servicios/
+  // Mantenimiento/Otro gasto); operating_expense queda legacy, display-only.
+  it('elegir "Gasto" muestra las 5 categorías nuevas y auto-selecciona "Mercadería"', () => {
+    render(
+      <RegisterMovementModal
+        open
+        onClose={vi.fn()}
+        date="2026-06-10"
+        createCashFlowAction={createCashFlowAction}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gasto' }))
+    expect(pressed('Mercadería')).toBe('true')
+
+    // Las 5 categorías nuevas están visibles como chips; 'Gasto operativo'
+    // (legacy) NUNCA se ofrece desde esta UI (categoryLabel lo sigue traduciendo
+    // para el historial, pero el modal no lo incluye en CATEGORIES.expense).
+    for (const label of ['Mercadería', 'Sueldos', 'Servicios', 'Mantenimiento', 'Otro gasto']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    }
+    expect(screen.queryByRole('button', { name: 'Gasto operativo' })).toBeNull()
+  })
+
+  it('el payload de "Gasto" sin re-elegir categoría sale con category: merchandise', async () => {
     createCashFlowAction.mockResolvedValueOnce({ success: true, cashFlow: {} })
     render(
       <RegisterMovementModal
@@ -41,8 +66,6 @@ describe('RegisterMovementModal — chips', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Gasto' }))
-    expect(pressed('Gasto operativo')).toBe('true')
-
     fireEvent.click(screen.getByRole('button', { name: 'Transferencia' }))
     fireEvent.change(screen.getByLabelText('Monto (pesos)'), { target: { value: '1234' } })
     fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Hielo' } })
@@ -51,10 +74,35 @@ describe('RegisterMovementModal — chips', () => {
     await waitFor(() => expect(createCashFlowAction).toHaveBeenCalledOnce())
     expect(createCashFlowAction.mock.calls[0]![0]).toMatchObject({
       type: 'expense',
-      category: 'operating_expense',
+      category: 'merchandise',
       method: 'transfer',
       amount: 123400,
       description: 'Hielo',
+    })
+  })
+
+  it('dentro de "Gasto" se puede elegir otra categoría (ej. Sueldos) y el payload la refleja', async () => {
+    createCashFlowAction.mockResolvedValueOnce({ success: true, cashFlow: {} })
+    render(
+      <RegisterMovementModal
+        open
+        onClose={vi.fn()}
+        date="2026-06-10"
+        createCashFlowAction={createCashFlowAction}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gasto' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sueldos' }))
+    expect(pressed('Sueldos')).toBe('true')
+    fireEvent.change(screen.getByLabelText('Monto (pesos)'), { target: { value: '500' } })
+    fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Sueldo cadete' } })
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar' }).closest('form')!)
+
+    await waitFor(() => expect(createCashFlowAction).toHaveBeenCalledOnce())
+    expect(createCashFlowAction.mock.calls[0]![0]).toMatchObject({
+      type: 'expense',
+      category: 'salaries',
     })
   })
 
@@ -87,6 +135,8 @@ function makeClose(overrides: Partial<DailyCashCloseRow> = {}): DailyCashCloseRo
     balance: 4000000,
     declaredCash: 4000000,
     diffAmount: 0,
+    openingCash: null,
+    expectedCash: null,
     note: null,
     closedBy: 'staff-1',
     closedAt: new Date('2026-06-11T02:40:00Z'), // 23:40 ART
@@ -122,5 +172,83 @@ describe('CierreCard — variantes del peak-end', () => {
     expect(screen.getByText(/Diferencia de/)).toBeTruthy()
     expect(screen.getByText(/1\.000,00/)).toBeTruthy()
     expect(screen.getByText(/Faltó un vuelto/)).toBeTruthy()
+  })
+
+  // ── v2 (migr. 049): expectedCash/openingCash no-null ──────────────────────
+  it('v2 — arqueo que cuadra: agrega Fondo inicial/Efectivo esperado al <dl>', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 4300000,
+          diffAmount: 0,
+        })}
+      />,
+    )
+    expect(screen.getByText('Caja cerrada — el efectivo cuadró')).toBeTruthy()
+    expect(screen.getByText('Fondo inicial')).toBeTruthy()
+    // "43.000,00" (Efectivo esperado/contado) contiene "3.000,00" como substring
+    // — DOM-traversal en vez de regex para no pescar la fila equivocada.
+    const fondoDd = screen.getByText('Fondo inicial').closest('div')!.querySelector('dd')!
+    expect(fondoDd.textContent).toContain('3.000,00')
+    expect(screen.getByText('Efectivo esperado')).toBeTruthy()
+    expect(screen.getByText('Efectivo contado')).toBeTruthy()
+    expect(screen.getByText('Diferencia')).toBeTruthy()
+    // Sin el párrafo ámbar legacy — la diferencia vive en el <dl> ahora.
+    expect(screen.queryByText(/respecto del saldo/)).toBeNull()
+  })
+
+  it('v2 — sin arqueo declarado (declaredCash=0): oculta Efectivo contado/Diferencia', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 0,
+          diffAmount: -4300000,
+        })}
+      />,
+    )
+    expect(screen.getByText('Caja cerrada — sin arqueo declarado')).toBeTruthy()
+    expect(screen.getByText('Fondo inicial')).toBeTruthy()
+    expect(screen.getByText('Efectivo esperado')).toBeTruthy()
+    expect(screen.queryByText('Efectivo contado')).toBeNull()
+    expect(screen.queryByText('Diferencia')).toBeNull()
+  })
+
+  it('v2 — sobraron plata: título "sobraron $X" y Diferencia con signo +', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 4400000,
+          diffAmount: 100000,
+        })}
+      />,
+    )
+    expect(screen.getByText(/Caja cerrada — sobraron/)).toBeTruthy()
+    // DOM-traversal en vez de regex sobre "$"/espacio (NBSP del Intl formatter).
+    const dd = screen.getByText('Diferencia').closest('div')!.querySelector('dd')!
+    expect(dd.textContent).toContain('+')
+    expect(dd.textContent).toContain('1.000,00')
+  })
+
+  it('v2 — faltaron plata: título "faltaron $X" y Diferencia con signo −', () => {
+    render(
+      <CierreCard
+        close={makeClose({
+          openingCash: 300000,
+          expectedCash: 4300000,
+          declaredCash: 4200000,
+          diffAmount: -100000,
+        })}
+      />,
+    )
+    expect(screen.getByText(/Caja cerrada — faltaron/)).toBeTruthy()
+    const dd = screen.getByText('Diferencia').closest('div')!.querySelector('dd')!
+    expect(dd.textContent).toContain('−')
+    expect(dd.textContent).toContain('1.000,00')
   })
 })

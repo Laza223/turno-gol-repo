@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Cruces #2 y #3 (auditoría cruzada junio): ROLES × CANTINA/CAJA.
-// - admin y manager (Encargado) operan la caja; sin membresía activa (rol
-//   null) se rechaza createCashFlowAction y closeDayAction.
-// - La configuración de productos de cantina (saveCanteenProductsAction,
-//   tenants.settings.canteen_products) es SOLO admin: manager es "Sin acceso
-//   a configuración" según roles.ts.
+// Cruces #2 y #3 (auditoría cruzada junio) — vigentes tras el rediseño
+// Caja/Cantina Fase 2 (JSONB → tablas reales, migr. 048):
+// - admin y manager (Encargado) operan la caja Y la cantina (vender ticket,
+//   reponer stock, dar salidas no comerciales): requireOperatorStaff.
+// - El catálogo de cantina (alta/edición/pausa de producto) sigue siendo
+//   SOLO admin: manager es "Sin acceso a configuración" según roles.ts —
+//   ahora vía requireAdminStaffAction en caja/productos/actions.ts, mismo
+//   criterio que antes tenía saveCanteenProductsAction (JSONB, eliminada).
 // El rol se lee de la DB — el claim del JWT está hardcodeado a 'admin'.
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
@@ -21,12 +23,36 @@ vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn(
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
 vi.mock('@/modules/cashflow/daily-close.service', () => ({ closeDailyRegister: vi.fn() }))
+vi.mock('@/modules/canteen/canteen-sale.service', () => ({ sellTicket: vi.fn() }))
+vi.mock('@/modules/canteen/canteen-tab.service', () => ({
+  createTab: vi.fn(),
+  settleTab: vi.fn(),
+  cancelTab: vi.fn(),
+  listOpenTabs: vi.fn(),
+}))
+vi.mock('@/modules/canteen/canteen.service', () => ({
+  createProduct: vi.fn(),
+  updateProduct: vi.fn(),
+  deactivateProduct: vi.fn(),
+}))
+vi.mock('@/modules/canteen/stock.service', () => ({
+  registerPurchase: vi.fn(),
+  registerExit: vi.fn(),
+  adjustStock: vi.fn(),
+}))
 
+import { closeDayAction, createCashFlowAction } from '@/app/(admin)/caja/actions'
 import {
-  closeDayAction,
-  createCashFlowAction,
-  saveCanteenProductsAction,
-} from '@/app/(admin)/caja/actions'
+  sellTicketAction,
+  createTabAction,
+  settleTabAction,
+  cancelTabAction,
+} from '@/app/(admin)/caja/cantina/actions'
+import {
+  createProductAction,
+  updateProductAction,
+  registerPurchaseAction,
+} from '@/app/(admin)/caja/productos/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
@@ -34,11 +60,17 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
+import { sellTicket } from '@/modules/canteen/canteen-sale.service'
+import { createTab, settleTab, cancelTab } from '@/modules/canteen/canteen-tab.service'
+import { createProduct, updateProduct } from '@/modules/canteen/canteen.service'
+import { registerPurchase } from '@/modules/canteen/stock.service'
 import type { CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
 const STAFF_USER = { type: 'staff', staffUserId: 'staff-1', role: 'admin' }
 const TENANT = { id: 'tenant-1', settings: {} }
 const FAKE_TX = {} as never
+const PRODUCT_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 
 const VALID_SALE: CreateCashFlowInput = {
   type: 'income',
@@ -47,6 +79,40 @@ const VALID_SALE: CreateCashFlowInput = {
   method: 'cash',
   description: 'Gaseosa x2',
 }
+
+const TICKET = {
+  lines: [{ productId: PRODUCT_ID, qty: 1 }],
+  method: 'cash' as const,
+  clientIdempotencyKey: KEY,
+}
+
+const TAB_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+const KEY_2 = 'aaaaaaaa-bbbb-4ccc-8ddd-ffffffffffff'
+
+const CREATE_TAB = {
+  debtorName: 'Capitán equipo 22hs',
+  lines: [{ productId: PRODUCT_ID, qty: 1 }],
+  clientIdempotencyKey: KEY,
+}
+
+const SETTLE_TAB = {
+  tabId: TAB_ID,
+  method: 'cash' as const,
+  clientIdempotencyKey: KEY_2,
+}
+
+const CANCEL_TAB = {
+  tabId: TAB_ID,
+  reason: 'Se pagó en el momento',
+}
+
+const PURCHASE = {
+  productId: PRODUCT_ID,
+  units: 24,
+  clientIdempotencyKey: KEY,
+}
+
+const NEW_PRODUCT = { name: 'Gaseosa', price: 125000 }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -58,7 +124,7 @@ beforeEach(() => {
   )
 })
 
-describe('caja actions — staff sin membresía activa (rol null) es rechazado (cruce #2)', () => {
+describe('caja/cantina/productos — staff sin membresía activa (rol null) es rechazado (cruce #2)', () => {
   beforeEach(() => {
     vi.mocked(getStaffRole).mockResolvedValue(null)
   })
@@ -75,9 +141,45 @@ describe('caja actions — staff sin membresía activa (rol null) es rechazado (
     expect(res.success).toBe(false)
     expect(vi.mocked(closeDailyRegister)).not.toHaveBeenCalled()
   })
+
+  it('sellTicketAction no vende cantina sin rol', async () => {
+    const res = await sellTicketAction(TICKET)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(sellTicket)).not.toHaveBeenCalled()
+  })
+
+  it('createTabAction no anota fiado sin rol', async () => {
+    const res = await createTabAction(CREATE_TAB)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createTab)).not.toHaveBeenCalled()
+  })
+
+  it('settleTabAction no cobra fiado sin rol', async () => {
+    const res = await settleTabAction(SETTLE_TAB)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(settleTab)).not.toHaveBeenCalled()
+  })
+
+  it('cancelTabAction no anula fiado sin rol', async () => {
+    const res = await cancelTabAction(CANCEL_TAB)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(cancelTab)).not.toHaveBeenCalled()
+  })
+
+  it('registerPurchaseAction no repone stock sin rol', async () => {
+    const res = await registerPurchaseAction(PURCHASE)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(registerPurchase)).not.toHaveBeenCalled()
+  })
+
+  it('createProductAction no crea catálogo sin rol', async () => {
+    const res = await createProductAction(NEW_PRODUCT)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createProduct)).not.toHaveBeenCalled()
+  })
 })
 
-describe('caja actions — manager (Encargado) opera la caja (cruce #2)', () => {
+describe('caja/cantina — manager (Encargado) opera la caja y la cantina (cruce #2)', () => {
   beforeEach(() => {
     vi.mocked(getStaffRole).mockResolvedValue('manager')
   })
@@ -100,30 +202,81 @@ describe('caja actions — manager (Encargado) opera la caja (cruce #2)', () => 
     expect(res.success).toBe(true)
     expect(vi.mocked(closeDailyRegister)).toHaveBeenCalled()
   })
-})
 
-describe('saveCanteenProductsAction — configuración solo admin (cruce #3)', () => {
-  const VALID_PRODUCTS = [{ id: 'p1', name: 'Gaseosa', price: 125000 }]
-
-  it('manager NO puede reescribir los productos de cantina (Sin acceso a configuración)', async () => {
-    vi.mocked(getStaffRole).mockResolvedValue('manager')
-    const res = await saveCanteenProductsAction(VALID_PRODUCTS)
-    expect(res.success).toBe(false)
-    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
+  it('sellTicketAction funciona para manager (vender cantina es operativo)', async () => {
+    vi.mocked(sellTicket).mockResolvedValue({ cashFlowId: 'cf-2', total: 125000, duplicate: false })
+    const res = await sellTicketAction(TICKET)
+    expect(res).toEqual({ success: true, total: 125000 })
   })
 
-  it('admin sí puede configurar productos', async () => {
-    vi.mocked(getStaffRole).mockResolvedValue('admin')
-    const update = vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+  it('createTabAction funciona para manager (anotar fiado es operativo)', async () => {
+    vi.mocked(createTab).mockResolvedValue({
+      tab: { debtorName: 'Capitán equipo 22hs', totalAmount: 125000 } as never,
+      duplicate: false,
     })
-    vi.mocked(withTenantContext).mockImplementation(
-      (async (_id: string, cb: (tx: never) => Promise<unknown>) =>
-        cb({ update } as never)) as never,
-    )
-    const res = await saveCanteenProductsAction(VALID_PRODUCTS)
-    expect(res).toEqual({ success: true })
-    expect(update).toHaveBeenCalled()
+    const res = await createTabAction(CREATE_TAB)
+    expect(res).toEqual({ success: true, debtorName: 'Capitán equipo 22hs', total: 125000 })
+  })
+
+  it('settleTabAction funciona para manager (cobrar fiado es operativo)', async () => {
+    vi.mocked(settleTab).mockResolvedValue({ tab: { totalAmount: 125000 } as never, duplicate: false })
+    const res = await settleTabAction(SETTLE_TAB)
+    expect(res).toEqual({ success: true, total: 125000 })
+  })
+
+  it('cancelTabAction funciona para manager (anular fiado es operativo)', async () => {
+    vi.mocked(cancelTab).mockResolvedValue({} as never)
+    const res = await cancelTabAction(CANCEL_TAB)
+    expect(res.success).toBe(true)
+  })
+
+  it('registerPurchaseAction funciona para manager (reponer stock es operativo)', async () => {
+    vi.mocked(registerPurchase).mockResolvedValue({ duplicate: false })
+    const res = await registerPurchaseAction(PURCHASE)
+    expect(res.success).toBe(true)
+  })
+
+  it('manager NO puede crear productos de catálogo (Sin acceso a configuración, cruce #3)', async () => {
+    const res = await createProductAction(NEW_PRODUCT)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createProduct)).not.toHaveBeenCalled()
+  })
+
+  it('manager NO puede editar productos de catálogo', async () => {
+    const res = await updateProductAction({ productId: PRODUCT_ID, patch: { price: 200000 } })
+    expect(res.success).toBe(false)
+    expect(vi.mocked(updateProduct)).not.toHaveBeenCalled()
   })
 })
 
+describe('caja/productos — catálogo es solo admin (cruce #3, ex saveCanteenProductsAction)', () => {
+  beforeEach(() => {
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+  })
+
+  it('admin sí puede crear productos', async () => {
+    vi.mocked(createProduct).mockResolvedValue({
+      id: 'p-1',
+      tenantId: 'tenant-1',
+      name: 'Gaseosa',
+      price: 125000,
+      cost: null,
+      stock: null,
+      minStock: null,
+      isActive: true,
+      sortOrder: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never)
+    const res = await createProductAction(NEW_PRODUCT)
+    expect(res.success).toBe(true)
+    expect(vi.mocked(createProduct)).toHaveBeenCalled()
+  })
+
+  it('admin sí puede editar productos', async () => {
+    vi.mocked(updateProduct).mockResolvedValue({} as never)
+    const res = await updateProductAction({ productId: PRODUCT_ID, patch: { price: 200000 } })
+    expect(res.success).toBe(true)
+    expect(vi.mocked(updateProduct)).toHaveBeenCalled()
+  })
+})

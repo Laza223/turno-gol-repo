@@ -9,7 +9,7 @@ import type { CashFlowActionResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { isValidMovement } from './is-valid-movement'
 import { toast } from '@/hooks/use-toast'
-import type { CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
+import type { CashFlowCategory, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
 /**
  * createCashFlowAction llega por PROP, no por import: '../actions' es
@@ -33,7 +33,16 @@ const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
     { value: 'product_sale', label: 'Cantina/Bar' },
     { value: 'other', label: 'Otro ingreso' },
   ],
-  expense: [{ value: 'operating_expense', label: 'Gasto operativo' }],
+  // La UI nunca ofrece 'operating_expense' (legacy, solo display en historial —
+  // ver categoryLabel en caja-lib.ts). Elegir "Gasto" auto-selecciona la
+  // primera de esta lista (merchandise, cambio #7 migr. 050).
+  expense: [
+    { value: 'merchandise', label: 'Mercadería' },
+    { value: 'salaries', label: 'Sueldos' },
+    { value: 'utilities', label: 'Servicios' },
+    { value: 'maintenance', label: 'Mantenimiento' },
+    { value: 'other_expense', label: 'Otro gasto' },
+  ],
   adjustment: [
     { value: 'no_show_correction', label: 'Corrección por ausencia' },
     { value: 'other', label: 'Otro' },
@@ -98,12 +107,7 @@ export function RegisterMovementModal({
       try {
         const res = await createCashFlowAction({
           type,
-          category: category as
-            | 'booking'
-            | 'product_sale'
-            | 'other'
-            | 'no_show_correction'
-            | 'operating_expense',
+          category: category as CashFlowCategory,
           method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
           amount,
           description: description.trim(),
@@ -154,7 +158,10 @@ export function RegisterMovementModal({
           </fieldset>
           <fieldset>
             <legend className="mb-1.5 text-xs font-medium text-foreground">Categoría</legend>
-            <div className="flex flex-wrap gap-2">
+            {/* grid-cols-2 (no flex-wrap): con las 5 categorías de gasto (migr. 050)
+                un flex-wrap deja líneas de ancho dispar; 2 columnas fijas caben en
+                375px sin desborde y cada chip mantiene el h-11 (44px) de chipClass. */}
+            <div className="grid grid-cols-2 gap-2">
               {CATEGORIES[type].map((c) => (
                 <button
                   key={c.value}
@@ -199,7 +206,7 @@ export function RegisterMovementModal({
             <textarea id="cf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
               className="w-full rounded-md border border-border px-3 py-2 min-h-[44px] md:min-h-0 text-sm" />
           </div>
-          {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
               className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>

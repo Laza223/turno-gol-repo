@@ -17,27 +17,36 @@ import {
   methodBreakdown,
   signedArs,
 } from '@/app/(admin)/caja/caja-lib'
+import { formatArs } from '@/lib/format'
 
 // Intl es-AR usa espacio no separable tras "$"; normalizar para comparar.
 const flat = (s: string) => s.replace(/ /g, ' ')
 
 describe('canteenStockBadge', () => {
-  it('devuelve null cuando el producto no controla stock (undefined)', () => {
+  it('devuelve null cuando el producto no controla stock (null/undefined)', () => {
     expect(canteenStockBadge(undefined)).toBeNull()
+    expect(canteenStockBadge(null)).toBeNull()
+    expect(canteenStockBadge(null, 5)).toBeNull()
   })
 
-  it('marca "Sin stock" (out) en 0 o negativo', () => {
-    expect(canteenStockBadge(0)).toEqual({ label: 'Sin stock', tone: 'out' })
-    expect(canteenStockBadge(-2)).toEqual({ label: 'Sin stock', tone: 'out' })
+  it('marca "Agotado" (out) en 0 o negativo, con o sin minStock cargado', () => {
+    expect(canteenStockBadge(0)).toEqual({ label: 'Agotado', tone: 'out' })
+    expect(canteenStockBadge(0, 5)).toEqual({ label: 'Agotado', tone: 'out' })
+    expect(canteenStockBadge(-2)).toEqual({ label: 'Agotado', tone: 'out' })
   })
 
-  it('marca stock bajo (low) en el umbral (3) y por debajo', () => {
-    expect(canteenStockBadge(1)).toEqual({ label: 'Quedan 1', tone: 'low' })
-    expect(canteenStockBadge(3)).toEqual({ label: 'Quedan 3', tone: 'low' })
+  it('sin minStock cargado (null) nunca hay alerta "low" — solo el corte en 0', () => {
+    expect(canteenStockBadge(1, null)).toEqual({ label: 'Stock 1', tone: 'ok' })
+    expect(canteenStockBadge(1)).toEqual({ label: 'Stock 1', tone: 'ok' })
   })
 
-  it('marca stock ok por encima del umbral', () => {
-    expect(canteenStockBadge(4)).toEqual({ label: 'Stock 4', tone: 'ok' })
+  it('con minStock explícito: stock <= minStock marca "Quedan N" (low)', () => {
+    expect(canteenStockBadge(1, 5)).toEqual({ label: 'Quedan 1', tone: 'low' })
+    expect(canteenStockBadge(5, 5)).toEqual({ label: 'Quedan 5', tone: 'low' })
+  })
+
+  it('stock por encima de minStock (o sin minStock) marca "Stock N" (ok)', () => {
+    expect(canteenStockBadge(6, 5)).toEqual({ label: 'Stock 6', tone: 'ok' })
     expect(canteenStockBadge(20)).toEqual({ label: 'Stock 20', tone: 'ok' })
   })
 })
@@ -90,6 +99,16 @@ describe('categoryLabel', () => {
     expect(categoryLabel('income', 'other')).toBe('Otro ingreso')
     expect(categoryLabel('adjustment', 'other')).toBe('Ajuste')
   })
+
+  // migr. 050 — las 5 categorías de gasto nuevas que la UI SÍ ofrece
+  // (operating_expense queda arriba como legacy display-only).
+  it('traduce las 5 categorías de gasto nuevas (migr. 050)', () => {
+    expect(categoryLabel('expense', 'merchandise')).toBe('Mercadería')
+    expect(categoryLabel('expense', 'salaries')).toBe('Sueldos')
+    expect(categoryLabel('expense', 'utilities')).toBe('Servicios')
+    expect(categoryLabel('expense', 'maintenance')).toBe('Mantenimiento')
+    expect(categoryLabel('expense', 'other_expense')).toBe('Otro gasto')
+  })
 })
 
 describe('signedArs / buildDelta', () => {
@@ -118,21 +137,85 @@ describe('signedArs / buildDelta', () => {
 })
 
 describe('closeView', () => {
-  it('declaredCash=0 con diff=balance → sin arqueo declarado (no alarmar con dif falsa)', () => {
-    expect(closeView({ declaredCash: 0, diffAmount: 400000, balance: 400000 })).toEqual({
-      hasCashCount: false,
-      hasDiff: false,
+  describe('LEGACY (expectedCash null) — comportamiento histórico intacto', () => {
+    it('declaredCash=0 con diff=balance → sin arqueo declarado (no alarmar con dif falsa)', () => {
+      expect(
+        closeView({ declaredCash: 0, diffAmount: 400000, balance: 400000, expectedCash: null }),
+      ).toEqual({
+        variant: 'legacy',
+        hasCashCount: false,
+        hasDiff: false,
+      })
+    })
+
+    it('arqueo que cuadra y arqueo con diferencia', () => {
+      expect(
+        closeView({ declaredCash: 400000, diffAmount: 0, balance: 400000, expectedCash: null }),
+      ).toEqual({
+        variant: 'legacy',
+        hasCashCount: true,
+        hasDiff: false,
+      })
+      expect(
+        closeView({ declaredCash: 300000, diffAmount: 100000, balance: 400000, expectedCash: null }),
+      ).toEqual({
+        variant: 'legacy',
+        hasCashCount: true,
+        hasDiff: true,
+      })
     })
   })
 
-  it('arqueo que cuadra y arqueo con diferencia', () => {
-    expect(closeView({ declaredCash: 400000, diffAmount: 0, balance: 400000 })).toEqual({
-      hasCashCount: true,
-      hasDiff: false,
+  describe('v2 (expectedCash != null) — semántica declared − expected (migr. 049)', () => {
+    it('diff=0 y declaredCash>0 → éxito "el efectivo cuadró"', () => {
+      expect(
+        closeView({ declaredCash: 500000, diffAmount: 0, balance: 500000, expectedCash: 500000 }),
+      ).toEqual({
+        variant: 'v2',
+        hasCashCount: true,
+        hasDiff: false,
+        tone: 'success',
+        message: 'el efectivo cuadró',
+      })
     })
-    expect(closeView({ declaredCash: 300000, diffAmount: 100000, balance: 400000 })).toEqual({
-      hasCashCount: true,
-      hasDiff: true,
+
+    it('declaredCash=0 → neutro "sin arqueo declarado" (aunque diff resultante no sea 0)', () => {
+      expect(
+        closeView({ declaredCash: 0, diffAmount: -500000, balance: 500000, expectedCash: 500000 }),
+      ).toEqual({
+        variant: 'v2',
+        hasCashCount: false,
+        hasDiff: false,
+        tone: 'neutral',
+        message: 'sin arqueo declarado',
+      })
+    })
+
+    it('diff > 0 → "sobraron $X"', () => {
+      const result = closeView({
+        declaredCash: 600000,
+        diffAmount: 100000,
+        balance: 500000,
+        expectedCash: 500000,
+      })
+      expect(result).toMatchObject({ variant: 'v2', hasCashCount: true, hasDiff: true, tone: 'surplus' })
+      expect(flat((result as { message: string }).message)).toBe(`sobraron ${flat(formatArs(100000))}`)
+    })
+
+    it('diff < 0 → "faltaron $X"', () => {
+      const result = closeView({
+        declaredCash: 400000,
+        diffAmount: -100000,
+        balance: 500000,
+        expectedCash: 500000,
+      })
+      expect(result).toMatchObject({
+        variant: 'v2',
+        hasCashCount: true,
+        hasDiff: true,
+        tone: 'shortfall',
+      })
+      expect(flat((result as { message: string }).message)).toBe(`faltaron ${flat(formatArs(100000))}`)
     })
   })
 })

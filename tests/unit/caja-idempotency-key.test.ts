@@ -20,18 +20,22 @@ vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn(
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
 vi.mock('@/modules/cashflow/daily-close.service', () => ({ closeDailyRegister: vi.fn() }))
+vi.mock('@/modules/canteen/canteen-sale.service', () => ({ sellTicket: vi.fn() }))
 
 import { createCashFlowAction } from '@/app/(admin)/caja/actions'
+import { sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { sellTicket } from '@/modules/canteen/canteen-sale.service'
 import type { CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
 const FAKE_TX = {} as never
 const IDEMPOTENCY_KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+const PRODUCT_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
 
 const SALE_WITH_KEY: CreateCashFlowInput = {
   type: 'income',
@@ -85,5 +89,43 @@ describe('createCashFlowAction — clientIdempotencyKey sobrevive al schema (cru
     expect(res.success).toBe(true)
     const input = vi.mocked(createCashFlow).mock.calls[0]![2]
     expect(input.clientIdempotencyKey).toBeUndefined()
+  })
+})
+
+// sellTicketSchema (canteen.schema.ts, migr. 048) es más estricto que
+// createCashFlowSchema: clientIdempotencyKey es OBLIGATORIO (nunca .optional()),
+// mismo criterio que ya tenía la vieja sellCanteenProductSchema — un doble-tap
+// sin key no tiene forma de deduplicarse contra cash_flows.client_idempotency_key.
+describe('sellTicketAction — clientIdempotencyKey obligatoria y UUID (schema nuevo, migr. 048)', () => {
+  const TICKET = {
+    lines: [{ productId: PRODUCT_ID, qty: 1 }],
+    method: 'cash' as const,
+  }
+
+  beforeEach(() => {
+    vi.mocked(sellTicket).mockResolvedValue({ cashFlowId: 'cf-1', total: 150000, duplicate: false })
+  })
+
+  it('una key UUID válida llega intacta a sellTicket', async () => {
+    const res = await sellTicketAction({ ...TICKET, clientIdempotencyKey: IDEMPOTENCY_KEY })
+    expect(res.success).toBe(true)
+    expect(vi.mocked(sellTicket)).toHaveBeenCalledWith(
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ clientIdempotencyKey: IDEMPOTENCY_KEY }),
+      FAKE_TX,
+    )
+  })
+
+  it('sin key se rechaza (a diferencia de createCashFlowAction, acá es obligatoria)', async () => {
+    const res = await sellTicketAction(TICKET)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(sellTicket)).not.toHaveBeenCalled()
+  })
+
+  it('una key no-UUID se rechaza', async () => {
+    const res = await sellTicketAction({ ...TICKET, clientIdempotencyKey: 'doble-tap' })
+    expect(res.success).toBe(false)
+    expect(vi.mocked(sellTicket)).not.toHaveBeenCalled()
   })
 })

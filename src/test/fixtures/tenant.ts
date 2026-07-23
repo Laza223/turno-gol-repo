@@ -68,11 +68,8 @@ export const tenantSettings = (overrides: Partial<TenantSettings> = {}): TenantS
   onboarding_step: 4,
   onboarding_completed: true,
   public_link_shared: true,
-  canteen_products: [
-    { id: uid(701), name: 'Agua mineral 500ml', price: 150000 },
-    { id: uid(702), name: 'Gatorade 500ml', price: 250000 },
-    { id: uid(703), name: 'Alfajor Havanna', price: 180000 },
-  ],
+  // canteen_products (JSONB) eliminado: la cantina vive en canteen_products
+  // (tabla, migr. 048) — fixtures en src/test/fixtures/canteen.ts.
   ...overrides,
 })
 
@@ -111,7 +108,6 @@ export const tenantTrialing = (): TenantRow =>
       onboarding_step: 2,
       onboarding_completed: false,
       public_link_shared: false,
-      canteen_products: [],
     }),
   })
 

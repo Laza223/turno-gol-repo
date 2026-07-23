@@ -6,16 +6,23 @@ import type { DailyCashCloseRow } from '@/modules/cashflow/cashflow.types'
 /**
  * El artefacto del peak-end (pages/caja.md §5): resumen verde e inmutable del
  * cierre. Presentacional puro — recibe la fila de daily_cash_closes ya leída.
+ * Bifurca legacy/v2 vía closeView (migr. 049): legacy mantiene el layout
+ * histórico intacto; v2 agrega Fondo inicial/Efectivo esperado/Diferencia
+ * como filas del <dl> (en vez del párrafo ámbar suelto, que solo persiste
+ * en legacy).
  */
 export function CierreCard({ close }: { close: DailyCashCloseRow }) {
   const view = closeView(close)
   const closedTime = formatTimeArt(close.closedAt)
 
-  const title = view.hasDiff
-    ? 'Caja cerrada — con diferencia anotada'
-    : view.hasCashCount
-      ? 'Caja cerrada — el efectivo cuadró'
-      : 'Caja cerrada'
+  const title =
+    view.variant === 'v2'
+      ? `Caja cerrada — ${view.message}`
+      : view.hasDiff
+        ? 'Caja cerrada — con diferencia anotada'
+        : view.hasCashCount
+          ? 'Caja cerrada — el efectivo cuadró'
+          : 'Caja cerrada'
 
   return (
     <section
@@ -60,6 +67,22 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
                   : formatArsContable(close.balance)}
               </dd>
             </div>
+            {view.variant === 'v2' && (
+              <>
+                <div>
+                  <dt className="text-muted-foreground">Fondo inicial</dt>
+                  <dd className="font-medium tabular-nums text-foreground">
+                    {formatArsContable(close.openingCash ?? 0)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Efectivo esperado</dt>
+                  <dd className="font-display font-bold tabular-nums text-foreground">
+                    {formatArsContable(close.expectedCash ?? 0)}
+                  </dd>
+                </div>
+              </>
+            )}
             {view.hasCashCount && (
               <div>
                 <dt className="text-muted-foreground">Efectivo contado</dt>
@@ -68,8 +91,24 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
                 </dd>
               </div>
             )}
+            {view.variant === 'v2' && view.hasCashCount && (
+              <div>
+                <dt className="text-muted-foreground">Diferencia</dt>
+                <dd
+                  className={`font-medium tabular-nums ${
+                    view.hasDiff
+                      ? 'text-amber-800 dark:text-amber-300'
+                      : 'text-emerald-800 dark:text-emerald-400'
+                  }`}
+                >
+                  {close.diffAmount < 0
+                    ? `−${formatArsContable(-close.diffAmount)}`
+                    : `+${formatArsContable(close.diffAmount)}`}
+                </dd>
+              </div>
+            )}
           </dl>
-          {view.hasDiff && (
+          {view.variant === 'legacy' && view.hasDiff && (
             <p className="mt-2 inline-flex rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">
               Diferencia de{' '}
               {close.diffAmount < 0

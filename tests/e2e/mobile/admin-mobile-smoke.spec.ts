@@ -157,7 +157,7 @@ test.describe('Admin mobile smoke', () => {
     await hamburger.click()
     const drawer = page.getByRole('dialog')
     await expect(drawer).toBeVisible()
-    await expect(drawer.getByRole('link', { name: 'Caja' })).toBeVisible()
+    await expect(drawer.getByRole('link', { name: 'Caja y Cantina' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(drawer).toBeHidden()
 
@@ -165,48 +165,61 @@ test.describe('Admin mobile smoke', () => {
   })
 
   test('cantina quick-sale buttons meet 44px touch targets', async ({ browser, adminStorageState }) => {
+    // Rediseño Fase 2: el catálogo vive en la tabla `canteen_products`
+    // (migr. 048), no en un editor con "Cargar sugeridos". Sembrar un producto
+    // determinístico por SQL (mismo criterio que el seed de abonados de este
+    // archivo) en vez de pasar por /caja/productos.
+    const supabase = makeServiceClient()
+    const productId = randomUUID()
+    const { error } = await supabase.from('canteen_products').insert({
+      id: productId,
+      tenant_id: TENANT_ID,
+      name: 'Agua Mobile Smoke',
+      price: 50000,
+    })
+    if (error) throw new Error(`insertCanteenProduct failed: ${error.message}`)
+
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    try {
+      // La venta rápida vive en /caja/cantina.
+      await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
 
-    // Asegurar productos configurados (idempotente: carga sugeridos solo si está vacío).
-    await page.getByRole('button', { name: 'Configurar', exact: true }).click()
-    const editor = page.getByRole('dialog')
-    await expect(editor).toBeVisible()
-    const suggested = editor.getByRole('button', { name: /Cargar sugeridos/ })
-    if (await suggested.isVisible()) {
-      await suggested.click()
-      await editor.getByRole('button', { name: 'Guardar' }).click()
-      await expect(page.getByText('Productos guardados').first()).toBeVisible()
-    } else {
-      await editor.getByRole('button', { name: 'Cancelar' }).click()
+      // boundingBox con poll: el router.refresh() tras guardar puede detachar el
+      // nodo entre el toBeVisible y la medición (boundingBox → null transitorio).
+      const measure = async (locator: import('@playwright/test').Locator, label: string) => {
+        await expect
+          .poll(async () => (await locator.boundingBox())?.height ?? 0, { message: `alto de ${label}` })
+          .toBeGreaterThanOrEqual(44)
+        await expect
+          .poll(async () => (await locator.boundingBox())?.width ?? 0, { message: `ancho de ${label}` })
+          .toBeGreaterThanOrEqual(44)
+      }
+
+      // Botón de producto ≥44x44 (el admin vende parado en la barra, desde el celular).
+      const product = page.getByRole('button', { name: /^Agua/ }).first()
+      await expect(product).toBeVisible()
+      await measure(product, 'producto Agua')
+
+      // Rediseño Fase 3: sin diálogo — el tap agrega al ticket directo. Medir
+      // los controles reales del panel (+/−, chip de método, Cobrar).
+      await product.click()
+      await expect(page.getByText('×1')).toBeVisible()
+
+      await measure(
+        page.getByRole('button', { name: 'Restar uno a Agua Mobile Smoke' }),
+        'Restar uno',
+      )
+      await measure(
+        page.getByRole('button', { name: 'Sumar uno a Agua Mobile Smoke' }),
+        'Sumar uno',
+      )
+      await measure(page.getByRole('button', { name: 'Efectivo' }), 'Efectivo')
+      await measure(page.getByRole('button', { name: /^Cobrar/ }), 'Cobrar')
+    } finally {
+      await ctx.close()
+      await supabase.from('canteen_products').delete().eq('id', productId)
     }
-
-    // boundingBox con poll: el router.refresh() tras guardar puede detachar el
-    // nodo entre el toBeVisible y la medición (boundingBox → null transitorio).
-    const measure = async (locator: import('@playwright/test').Locator, label: string) => {
-      await expect
-        .poll(async () => (await locator.boundingBox())?.height ?? 0, { message: `alto de ${label}` })
-        .toBeGreaterThanOrEqual(44)
-      await expect
-        .poll(async () => (await locator.boundingBox())?.width ?? 0, { message: `ancho de ${label}` })
-        .toBeGreaterThanOrEqual(44)
-    }
-
-    // Botón de producto ≥44x44 (el admin vende parado en la barra, desde el celular).
-    const product = page.getByRole('button', { name: /^Agua/ }).first()
-    await expect(product).toBeVisible()
-    await measure(product, 'producto Agua')
-
-    // Controles del diálogo de venta también ≥44px.
-    await product.click()
-    const sale = page.getByRole('dialog')
-    await expect(sale).toBeVisible()
-    for (const name of ['Sumar uno', 'Restar uno', 'Efectivo', /Registrar venta/] as const) {
-      await measure(sale.getByRole('button', { name }), String(name))
-    }
-
-    await ctx.close()
   })
 
   test('RegisterMovementModal fits inside mobile viewport', async ({ browser, adminStorageState }) => {

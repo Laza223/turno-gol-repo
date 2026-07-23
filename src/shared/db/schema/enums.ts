@@ -128,6 +128,31 @@ export const cashflowCategoryEnum = pgEnum('cashflow_category', [
   'other',
   'no_show_correction',
   'operating_expense',
+  // Gastos categorizados (migr. 050); operating_expense queda como legacy.
+  'merchandise',
+  'salaries',
+  'utilities',
+  'maintenance',
+  'other_expense',
+])
+
+// ─── Canteen (migración 048, rediseño Caja y Cantina) ───────────
+// Ledger de stock: entradas +, salidas −; 'adjustment' es la única
+// corrección permitida (la tabla es append-only para turnogol_app).
+export const stockMovementKindEnum = pgEnum('stock_movement_kind', [
+  'purchase',
+  'sale',
+  'waste',
+  'courtesy',
+  'internal_use',
+  'adjustment',
+])
+
+// 'canceled' con una L (convención del repo).
+export const canteenTabStatusEnum = pgEnum('canteen_tab_status', [
+  'open',
+  'paid',
+  'canceled',
 ])
 
 // ─── Notification ───────────────────────────────────────────────

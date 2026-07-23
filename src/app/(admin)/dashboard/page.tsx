@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { withTenantContext } from '@/shared/db/client'
+import { listProducts } from '@/modules/canteen/canteen.service'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
@@ -17,7 +19,7 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
 import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
-import { saveCanteenProductsAction, sellCanteenProductAction } from '@/app/(admin)/caja/actions'
+import { sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -38,7 +40,7 @@ export default async function DashboardPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const [data, checklistState] = await Promise.all([
+  const [data, checklistState, products] = await Promise.all([
     getDashboardData({
       id: tenant.id,
       openingHours: tenant.openingHours,
@@ -46,6 +48,7 @@ export default async function DashboardPage() {
       closesNextDay: tenant.closesNextDay,
     }),
     getChecklistState(tenant.id, tenant.settings, !!tenant.mpConnectedAt),
+    withTenantContext(tenant.id, (tx) => listProducts(tenant.id, tx)),
   ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
@@ -79,12 +82,7 @@ export default async function DashboardPage() {
         subtitle={todayMediumArt()}
         icon={<LayoutDashboard className="h-6 w-6" aria-hidden="true" />}
         actions={
-          <DashboardCanteenButton
-            date={data.date}
-            products={tenant.settings.canteen_products ?? []}
-            sellCanteenProductAction={sellCanteenProductAction}
-            saveCanteenProductsAction={saveCanteenProductsAction}
-          />
+          <DashboardCanteenButton products={products} sellTicketAction={sellTicketAction} />
         }
       />
 
@@ -150,7 +148,7 @@ export default async function DashboardPage() {
               : 'Sin ventas hoy'
           }
           accent="emerald"
-          href="/caja"
+          href="/caja/cantina"
           ariaLabel={`Cantina hoy: ${canteenSales.count} ventas — ver caja`}
         />
       </div>

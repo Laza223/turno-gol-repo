@@ -36,7 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
   { href: '/abonados', icon: Users, label: 'Turnos fijos' },
   { href: '/jugadores', icon: Contact, label: 'Jugadores' },
-  { href: '/caja', icon: Banknote, label: 'Caja' },
+  { href: '/caja', icon: Banknote, label: 'Caja y Cantina' },
   { href: '/analiticas', icon: ChartLine, label: 'Analíticas' },
   { href: '/settings', icon: Settings, label: 'Configuración' },
 ]

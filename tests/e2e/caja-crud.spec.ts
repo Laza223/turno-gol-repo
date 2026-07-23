@@ -13,11 +13,15 @@
  *   #4  Edge — close with difference requires note: balance > 0, declared cash differs → note required →
  *              assert error without note, then fill note → success.
  *
- * ISOLATION STRATEGY: Each test uses its OWN dedicated past date (2019-03-10..13), far from today,
+ * ISOLATION STRATEGY: Each test uses its OWN dedicated past date (2019-03-10..14), far from today,
  * so they never collide with real data, with each other (fullyParallel), or with the pre-existing
  * daily-close-idempotency integration test (which uses today). Note: cash_flows has no `date`
  * column — the ART-local date of `occurred_at` defines the day; cleanup deletes by that UTC range.
- * Cleanup removes cash_flows + daily_cash_closes for the test date in `finally`.
+ * Cleanup removes cash_flows + daily_cash_closes + daily_cash_opens for the test date in `finally`.
+ *
+ * #5 (Fase 5, migr. 049) — apertura de caja: "Abrir caja" (fondo 1000) → ingreso en efectivo →
+ *              cerrar declarando el efectivo esperado exacto → CierreCard v2 ("el efectivo
+ *              cuadró" + fila "Fondo inicial" en el <dl>).
  *
  * NOTE: Live E2E execution requires a running Next.js dev/prod server + Supabase DB
  *       + `pnpm e2e:seed`. Delegated to CI; these specs typecheck locally.
@@ -41,6 +45,8 @@ const TEST_DATE_CLOSE = '2019-03-11'
 const TEST_DATE_DIFF = '2019-03-12'
 // TEST_DATE_CLOSED: pre-closed-day guard test.
 const TEST_DATE_CLOSED = '2019-03-13'
+// TEST_DATE_OPEN: open-day (fondo inicial) → close-matches-expected test.
+const TEST_DATE_OPEN = '2019-03-14'
 
 // ── Service-role client factory ──────────────────────────────────────────────
 function makeServiceClient() {
@@ -85,6 +91,14 @@ async function cleanupCajaDate(
     .eq('tenant_id', TENANT_ID)
     .eq('date', date)
   if (dcErr) throw new Error(`Cleanup daily_cash_closes failed: ${dcErr.message}`)
+
+  // daily_cash_opens (migr. 049): harmless no-op for dates that never opened.
+  const { error: doErr } = await supabase
+    .from('daily_cash_opens')
+    .delete()
+    .eq('tenant_id', TENANT_ID)
+    .eq('date', date)
+  if (doErr) throw new Error(`Cleanup daily_cash_opens failed: ${doErr.message}`)
 }
 
 // Seed a cash_flow row directly so the balance is non-zero before close.
@@ -145,7 +159,7 @@ test.describe('caja — happy: register movement', () => {
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_MOVE}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // Open the movement modal.
         await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
@@ -207,7 +221,7 @@ test.describe('caja — edge: close day (type-to-confirm)', () => {
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_CLOSE}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // Open "Cerrar caja" dialog.
         await page.getByRole('button', { name: 'Cerrar caja' }).click()
@@ -268,7 +282,7 @@ test.describe('caja — edge: closed-day guard (no writes on a closed day)', () 
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_CLOSED}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // The "Caja cerrada" badge must appear — CajaActions is hidden (isClosed=true).
         await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible()
@@ -302,7 +316,7 @@ test.describe('caja — edge: close with difference requires note', () => {
         const page = await context.newPage()
 
         await page.goto(`/caja?date=${TEST_DATE_DIFF}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
 
         // Open "Cerrar caja".
         await page.getByRole('button', { name: 'Cerrar caja' }).click()
@@ -340,6 +354,73 @@ test.describe('caja — edge: close with difference requires note', () => {
       } finally {
         await context.close()
         await cleanupCajaDate(supabase, TEST_DATE_DIFF)
+      }
+    },
+  )
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// TEST 5 — Happy: open day (fondo inicial) → close matches expected cash (v2)
+// ════════════════════════════════════════════════════════════════════════════
+test.describe('caja — happy: apertura + cierre v2 (efectivo esperado)', () => {
+  test(
+    'abrir caja con fondo 1000 → ingreso en efectivo → cerrar declarando el esperado exacto → "el efectivo cuadró" + Fondo inicial',
+    async ({ browser, adminStorageState }) => {
+      const supabase = makeServiceClient()
+      const context = await browser.newContext()
+      try {
+        await context.addCookies(JSON.parse(adminStorageState).cookies)
+        const page = await context.newPage()
+
+        await page.goto(`/caja?date=${TEST_DATE_OPEN}`)
+        await expect(page.getByRole('heading', { name: 'Caja y Cantina', exact: true })).toBeVisible({ timeout: 15_000 })
+
+        // ── 1. Abrir caja con fondo $1000 ────────────────────────────────────
+        // TEST_DATE_OPEN es un día PASADO: la card muestra "Declarar fondo"
+        // (copy de días no-hoy, hallazgo UX del panel de Fase 5); el submit
+        // dentro del diálogo sigue siendo "Abrir caja".
+        await page.getByRole('button', { name: 'Declarar fondo' }).click()
+        const openDialog = page.getByRole('dialog')
+        await expect(openDialog).toBeVisible()
+        await page.locator('#opening-cash').fill('1000')
+        await openDialog.getByRole('button', { name: 'Abrir caja' }).click()
+        await expect(openDialog).not.toBeVisible({ timeout: 10_000 })
+
+        // La card ahora muestra el fondo guardado y el botón pasa a "Corregir".
+        await expect(page.getByText(/Fondo inicial:/)).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByRole('button', { name: 'Corregir' })).toBeVisible()
+
+        // ── 2. Registrar un ingreso en efectivo de $1000 ─────────────────────
+        await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
+        const movDialog = page.getByRole('dialog')
+        await expect(movDialog).toBeVisible()
+        await movDialog.getByRole('button', { name: 'Otro ingreso' }).click()
+        await page.locator('#cf-amount').fill('1000')
+        await page.locator('#cf-desc').fill('Ingreso E2E apertura')
+        await page.getByRole('button', { name: 'Guardar' }).click()
+        await expect(movDialog).not.toBeVisible({ timeout: 10_000 })
+        await expect(page.getByRole('cell', { name: 'Ingreso E2E apertura' })).toBeVisible({ timeout: 10_000 })
+
+        // ── 3. Cerrar declarando el efectivo esperado exacto: fondo 1000 + ────
+        //      ingreso cash 1000 = esperado 2000.
+        await page.getByRole('button', { name: 'Cerrar caja' }).click()
+        const closeDialog = page.getByRole('dialog')
+        await expect(closeDialog).toBeVisible()
+        await page.locator('#declared').fill('2000')
+        // Sin diferencia: la nota sigue opcional (no aparece el aviso ámbar).
+        await expect(page.getByText(/Diferencia de.*efectivo esperado/i)).not.toBeVisible()
+        await page.locator('#confirm-phrase').fill('CERRAR')
+        await closeDialog.getByRole('button', { name: 'Cerrar caja' }).click()
+        await expect(closeDialog).not.toBeVisible({ timeout: 10_000 })
+
+        // ── 4. CierreCard v2: "el efectivo cuadró" + fila "Fondo inicial" ────
+        await expect(page.getByRole('heading', { name: 'Caja cerrada — el efectivo cuadró' })).toBeVisible({
+          timeout: 10_000,
+        })
+        await expect(page.getByText('Fondo inicial')).toBeVisible()
+      } finally {
+        await context.close()
+        await cleanupCajaDate(supabase, TEST_DATE_OPEN)
       }
     },
   )

@@ -14,19 +14,6 @@ export type OpeningHours = {
   sun: OpeningHoursDay
 }
 
-/** Producto pre-cargado de cantina para ventas rápidas en /caja. Precio en centavos ARS. */
-export type CanteenProduct = {
-  id: string
-  name: string
-  price: number
-  /**
-   * Stock disponible (unidades). Ausente/undefined = sin control de stock: la
-   * venta no descuenta ni se bloquea (comportamiento por defecto). Un número
-   * activa el control: la venta descuenta y se bloquea al llegar a 0.
-   */
-  stock?: number
-}
-
 export type TenantSettings = {
   requires_deposit: boolean
   deposit_percentage: number
@@ -47,7 +34,8 @@ export type TenantSettings = {
   onboarding_step?: number
   onboarding_completed?: boolean
   public_link_shared?: boolean
-  canteen_products?: CanteenProduct[]
+  // canteen_products (JSONB) ELIMINADO: la cantina vive en la tabla
+  // canteen_products desde la migr. 048; la key se borró en la 051.
   /** ISO timestamp: cuándo el admin vio/cerró el tour de coachmarks del dashboard (una sola vez). */
   admin_tour_seen_at?: string
   /** ISO timestamp: cuándo el admin descartó manualmente la checklist de onboarding. */

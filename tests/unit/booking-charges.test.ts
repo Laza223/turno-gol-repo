@@ -79,7 +79,7 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
   })
 })
 
-describe('depositCashFlowDescription — ENS-21: marcador del cash_flow automático de la seña', () => {
+describe('depositCashFlowDescription — ENS-21: marcador del cash_flow de la seña (MP o manual)', () => {
   it('es determinístico para el mismo bookingId', () => {
     const id = '11111111-1111-4111-8111-111111111111'
     expect(depositCashFlowDescription(id)).toBe(depositCashFlowDescription(id))
@@ -94,5 +94,14 @@ describe('depositCashFlowDescription — ENS-21: marcador del cash_flow automát
   it('nunca coincide con la description por defecto de un cobro de mostrador', () => {
     const id = '11111111-1111-4111-8111-111111111111'
     expect(depositCashFlowDescription(id)).not.toBe('Cobro de turno')
+  })
+
+  // El string es método-agnóstico: lo usan tanto la seña confirmada por MP
+  // como la confirmada a mano (cash/transfer/other) — asumir "MercadoPago" en
+  // el texto sería confuso en /caja para una seña que en realidad fue efectivo.
+  it('no asume MercadoPago: el texto es método-agnóstico', () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    expect(depositCashFlowDescription(id)).not.toContain('MercadoPago')
+    expect(depositCashFlowDescription(id)).toBe(`Seña — turno ${id}`)
   })
 })

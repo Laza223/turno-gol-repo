@@ -124,6 +124,34 @@ async function insertApprovedPayment(opts: {
   return rows[0]!.id
 }
 
+// Simula un checkout de MP arrancado y abandonado/rechazado: la fila queda
+// 'pending', nunca llega a 'approved'. Blindaje C (booking.cancellation.ts):
+// si bookings.payment_id termina apuntando a un pago así (dato legacy/corrupto
+// — con el fix de confirmManualDepositPayment esto ya no debería pasar),
+// cancelar debe tratarlo como "no refundeable", no reventar con
+// RefundInvalidStateError sin catch.
+async function insertPendingPayment(opts: {
+  tenantId: string
+  bookingId: string
+  playerId: string
+  amount: number
+  mpPaymentId: string
+}): Promise<string> {
+  const sql = getSql()
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO payments (
+      tenant_id, booking_id, player_id, amount, currency,
+      type, method, status, mp_payment_id
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.bookingId}, ${opts.playerId}, ${opts.amount}, 'ARS',
+      'deposit', 'mercadopago', 'pending', ${opts.mpPaymentId}
+    )
+    RETURNING id
+  `
+  return rows[0]!.id
+}
+
 async function linkPaymentToBooking(bookingId: string, paymentId: string): Promise<void> {
   const sql = getSql()
   await sql`
@@ -1352,6 +1380,84 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
     expect(await countCashFlows(bookingId)).toBe(0)
+  })
+
+  // Blindaje C (booking.cancellation.ts, ver confirmManualDepositPayment en
+  // payment.service.ts): payment_id apunta a un pago que NUNCA se aprobó
+  // (status='pending' — ej. un checkout de MP arrancado y abandonado). Con el
+  // gateway disponible, el código viejo intentaba prepareRefund y reventaba
+  // con RefundInvalidStateError sin catch en los callers. Ahora debe tratarse
+  // igual que "gateway no disponible": RefundUnavailableError, sin tocar MP.
+  it('payment_id apunta a un pago MP nunca aprobado (status=pending) → RefundUnavailableError, no RefundInvalidStateError', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999) // in-policy
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id, courtId, playerId: player.id,
+      date: FUTURE_DATE, timeStart: '05:00', timeEnd: '06:00',
+      depositStatus: 'paid', depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-pay-pending-${bookingId.slice(0, 8)}`
+    const paymentId = await insertPendingPayment({
+      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+    })
+    await linkPaymentToBooking(bookingId, paymentId)
+
+    // mockGateway es una instancia COMPARTIDA a nivel de archivo — refundCalls
+    // acumula entre tests (mismo patrón que el resto del archivo, ver 4A: usa
+    // toContainEqual/deltas, nunca toHaveLength(0) absoluto). Capturamos el
+    // largo ANTES para verificar que ESTA cancelación no agregó nada.
+    const refundCallsBefore = mockGateway.refundCalls.length
+
+    // Gateway SÍ disponible (a diferencia del test de arriba) — el guard
+    // nuevo debe cortar por el status del payment, no por falta de gateway.
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        cancelByPlayer(bookingId, player.id, undefined, mockGateway, tx),
+      ),
+    ).rejects.toBeInstanceOf(RefundUnavailableError)
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+    expect(mockGateway.refundCalls).toHaveLength(refundCallsBefore)
+  })
+
+  it('cancelByAdmin: mismo blindaje contra un payment_id no aprobado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999) // in-policy
+
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id, courtId, playerId: player.id,
+      date: FUTURE_DATE, timeStart: '06:00', timeEnd: '07:00',
+      depositStatus: 'paid', depositAmount: 240_000,
+    })
+    const mpPaymentId = `mp-pay-pending-admin-${bookingId.slice(0, 8)}`
+    const paymentId = await insertPendingPayment({
+      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+    })
+    await linkPaymentToBooking(bookingId, paymentId)
+
+    const refundCallsBefore = mockGateway.refundCalls.length
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', mockGateway, tx),
+      ),
+    ).rejects.toBeInstanceOf(RefundUnavailableError)
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+    expect(mockGateway.refundCalls).toHaveLength(refundCallsBefore)
   })
 })
 

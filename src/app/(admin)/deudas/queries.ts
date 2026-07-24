@@ -52,9 +52,9 @@ export async function getDebts(tenantId: string, tx: DbTx): Promise<DebtRow[]> {
       CASE WHEN su.id IS NULL THEN NULL ELSE (su.first_name || ' ' || su.last_name) END AS "completedByStaffName",
       COALESCE(
         SUM(cf.amount) FILTER (
-          WHERE cf.type = 'income' 
-            AND cf.category = 'booking' 
-            AND cf.description <> ('Seña MercadoPago — turno ' || b.id::text)
+          WHERE cf.type = 'income'
+            AND cf.category = 'booking'
+            AND cf.description <> ('Seña — turno ' || b.id::text)
         ), 0
       )::int AS "chargesTotal"
     FROM bookings b
@@ -70,9 +70,9 @@ export async function getDebts(tenantId: string, tx: DbTx): Promise<DebtRow[]> {
         CASE WHEN b.deposit_status IN ('paid', 'captured') THEN b.deposit_amount ELSE 0 END
       ) - COALESCE(
         SUM(cf.amount) FILTER (
-          WHERE cf.type = 'income' 
-            AND cf.category = 'booking' 
-            AND cf.description <> ('Seña MercadoPago — turno ' || b.id::text)
+          WHERE cf.type = 'income'
+            AND cf.category = 'booking'
+            AND cf.description <> ('Seña — turno ' || b.id::text)
         ), 0
       )
     ) > 0

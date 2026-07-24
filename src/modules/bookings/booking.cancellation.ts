@@ -91,6 +91,25 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
   return (result as unknown as LockedBooking[])[0]
 }
 
+/**
+ * Blindaje defensivo (ver `confirmManualDepositPayment`, payment.service.ts):
+ * lee el `status` real del payment vinculado, DENTRO de la misma tx que ya
+ * lockeó el booking (mismo tipo de query que `lockBooking`, sin FOR UPDATE
+ * porque acá solo se lee, nunca se muta esta fila). Distingue "seña MP
+ * realmente aprobada, refundeable" de "payment_id apunta a un pago que nunca
+ * se aprobó" — con el fix de `confirmManualDepositPayment`, `payment_id`
+ * nunca queda seteado en un booking con seña confirmada a mano, así que este
+ * caso es cinturón-y-tirantes (datos legacy/corruptos), no el camino
+ * principal esperado.
+ */
+async function isPaymentApproved(paymentId: string, tx: DbTx): Promise<boolean> {
+  const rows = await tx.execute(sql`
+    SELECT status FROM payments WHERE id = ${paymentId} LIMIT 1
+  `)
+  const row = (rows as unknown as Array<{ status: string }>)[0]
+  return row?.status === 'approved'
+}
+
 async function loadSettings(tenantId: string, tx: DbTx): Promise<TenantSettings> {
   const rows = await tx
     .select({ settings: tenants.settings })
@@ -180,7 +199,7 @@ export async function cancelByPlayer(
 
   if (b.deposit_status === 'paid') {
     if (inPolicy) {
-      if (b.payment_id && gateway) {
+      if (b.payment_id && gateway && (await isPaymentApproved(b.payment_id, tx))) {
         // Seña MP: refund real vía gateway — solo se PREPARA acá (fila
         // 'pending' durable); la llamada a MP la hace el caller después de
         // que esta tx commitee (settleRefund).
@@ -188,6 +207,10 @@ export async function cancelByPlayer(
         newDepositStatus = 'refunded'
       } else if (b.payment_id) {
         // Hallazgo 2: seña MP pero gateway no disponible → no se puede refundar.
+        // Blindaje (payment.service.ts confirmManualDepositPayment): también
+        // cubre payment_id apuntando a un pago que nunca se aprobó (dato
+        // legacy/corrupto) — mismo camino que "gateway no disponible", nunca
+        // una excepción cruda sin catch (RefundInvalidStateError).
         // No marcamos canceled_refunded con deposit 'paid' (estado mentiroso).
         throw new RefundUnavailableError(bookingId)
       } else {
@@ -319,11 +342,14 @@ export async function cancelByAdmin(
 
   if (b.deposit_status === 'paid') {
     if (shouldRefund) {
-      if (b.payment_id && gateway) {
+      if (b.payment_id && gateway && (await isPaymentApproved(b.payment_id, tx))) {
         pendingRefund = await prepareRefund(b.payment_id, b.deposit_amount, tx)
         newDepositStatus = 'refunded'
       } else if (b.payment_id) {
         // Hallazgo 2: refund MP pedido pero gateway no disponible → no fingir.
+        // Blindaje (payment.service.ts confirmManualDepositPayment): también
+        // cubre payment_id apuntando a un pago que nunca se aprobó (dato
+        // legacy/corrupto) — mismo camino, nunca una excepción cruda sin catch.
         throw new RefundUnavailableError(bookingId)
       } else {
         // Seña en efectivo/transferencia: reembolso offline, marcamos obligación.

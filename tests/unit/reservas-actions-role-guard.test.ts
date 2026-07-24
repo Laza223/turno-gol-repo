@@ -21,15 +21,16 @@ vi.mock('@/modules/bookings/booking.service', () => ({
   createManualBooking: vi.fn(),
   completeBooking: vi.fn(),
 }))
-vi.mock('@/modules/bookings/booking.concurrency', () => ({
-  transitionFromPendingPayment: vi.fn(),
-}))
 vi.mock('@/modules/bookings/booking.cancellation', () => ({
   cancelByAdmin: vi.fn(),
   handleNoShow: vi.fn(),
   handleNoShowRevert: vi.fn(),
 }))
 vi.mock('@/modules/payments/mp-oauth', () => ({ resolveTenantGateway: vi.fn() }))
+vi.mock('@/modules/payments/payment.service', () => ({
+  settleRefund: vi.fn(),
+  confirmManualDepositPayment: vi.fn(),
+}))
 
 import {
   cancelBookingAction,
@@ -48,13 +49,13 @@ import {
   createManualBooking,
   completeBooking,
 } from '@/modules/bookings/booking.service'
-import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import {
   cancelByAdmin,
   handleNoShow,
   handleNoShowRevert,
 } from '@/modules/bookings/booking.cancellation'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
+import { confirmManualDepositPayment } from '@/modules/payments/payment.service'
 
 const STAFF_USER = { type: 'staff', staffUserId: 'staff-1', role: 'admin' }
 const TENANT = { id: 'tenant-1', settings: {} }
@@ -83,9 +84,9 @@ describe('reservas actions — staff sin membresía activa (rol null) es rechaza
   })
 
   it('confirmDepositPaymentAction no confirma señas sin rol', async () => {
-    const res = await confirmDepositPaymentAction('b-1')
+    const res = await confirmDepositPaymentAction('b-1', 'cash')
     expect(res.success).toBe(false)
-    expect(vi.mocked(transitionFromPendingPayment)).not.toHaveBeenCalled()
+    expect(vi.mocked(confirmManualDepositPayment)).not.toHaveBeenCalled()
   })
 
   it('completeBookingAction no completa reservas sin rol', async () => {
@@ -121,13 +122,20 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
   })
 
   it('confirmDepositPaymentAction funciona para manager', async () => {
-    vi.mocked(transitionFromPendingPayment).mockResolvedValue({
+    vi.mocked(confirmManualDepositPayment).mockResolvedValue({
       won: true,
-      row: { id: 'b-1' },
+      booking: { id: 'b-1' },
+      notificationIds: [],
     } as never)
-    const res = await confirmDepositPaymentAction('b-1')
+    const res = await confirmDepositPaymentAction('b-1', 'cash')
     expect(res.success).toBe(true)
-    expect(vi.mocked(transitionFromPendingPayment)).toHaveBeenCalledWith('b-1', 'confirmed', FAKE_TX)
+    expect(vi.mocked(confirmManualDepositPayment)).toHaveBeenCalledWith(
+      'b-1',
+      'cash',
+      'staff-1',
+      'tenant-1',
+      FAKE_TX,
+    )
   })
 
   it('cancelBookingAction (motivo jugador) funciona para manager y pasa el tipo a cancelByAdmin', async () => {

@@ -149,8 +149,12 @@ export const ConfirmarPagoLlamaLaAction: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Confirmar pago' }))
+    const body = within(document.body)
+    await body.findByRole('heading', { name: 'Confirmar pago' })
+    // Efectivo preseleccionado por default — confirmar sin tocar los radios.
+    await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     await waitFor(() =>
-      expect(args.confirmDepositPaymentAction).toHaveBeenCalledWith(PENDIENTE_PAGO.id)
+      expect(args.confirmDepositPaymentAction).toHaveBeenCalledWith(PENDIENTE_PAGO.id, 'cash')
     )
     await closeToast('Pago confirmado')
     await waitFor(() => expect(getRouter().refresh).toHaveBeenCalled())
@@ -187,7 +191,7 @@ export const AusenteRequiereDobleClick: Story = {
   },
 }
 
-/** Si la Server Action devuelve error, el toast es destructivo y NO se refresca el router. */
+/** Si la Server Action devuelve error, el mensaje aparece inline en el diálogo (mismo lenguaje visual que "Cancelar") y NO se refresca el router. */
 export const AccionFallidaMuestraError: Story = {
   args: {
     booking: PENDIENTE_PAGO,
@@ -201,7 +205,12 @@ export const AccionFallidaMuestraError: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Confirmar pago' }))
-    await closeToast('La reserva ya no está pendiente de pago (pudo confirmarse o expirar).')
+    const body = within(document.body)
+    await body.findByRole('heading', { name: 'Confirmar pago' })
+    await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
+    await expect(await body.findByRole('alert')).toHaveTextContent(
+      'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).'
+    )
     await expect(getRouter().refresh).not.toHaveBeenCalled()
   },
 }

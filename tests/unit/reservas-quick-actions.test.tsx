@@ -69,8 +69,8 @@ describe('hasQuickActions', () => {
   })
 })
 
-describe('QuickActions — confirmar pago inline', () => {
-  it('pending_payment: click en Confirmar pago dispara la action y refresca sin reload', async () => {
+describe('QuickActions — confirmar pago con picker de método', () => {
+  it('pending_payment: click en Confirmar pago abre el picker con Efectivo preseleccionado y confirma', async () => {
     render(
       <QuickActions
         booking={booking({ status: 'pending_payment', depositStatus: 'pending', depositAmount: 500000 })}
@@ -80,15 +80,36 @@ describe('QuickActions — confirmar pago inline', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar pago' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('radio', { name: 'Efectivo' })).toBeChecked()
 
-    await waitFor(() => expect(confirmDepositMock).toHaveBeenCalledWith('b1'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(confirmDepositMock).toHaveBeenCalledWith('b1', 'cash'))
     await waitFor(() => expect(refreshMock).toHaveBeenCalled())
     expect(toastMock).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Pago confirmado', variant: 'success' }),
     )
   })
 
-  it('si la action falla, muestra toast destructive y NO refresca', async () => {
+  it('permite elegir Transferencia u Otro antes de confirmar', async () => {
+    render(
+      <QuickActions
+        booking={booking({ status: 'pending_payment', depositStatus: 'pending', depositAmount: 500000 })}
+        label="Juan Pérez · 14:00–15:00"
+        {...quickActions}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pago' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Transferencia' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() => expect(confirmDepositMock).toHaveBeenCalledWith('b1', 'transfer'))
+  })
+
+  it('si la action falla, el error aparece inline en el diálogo y NO refresca', async () => {
     confirmDepositMock.mockResolvedValueOnce({
       success: false,
       error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
@@ -98,9 +119,11 @@ describe('QuickActions — confirmar pago inline', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar pago' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
 
-    await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive' })),
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
     )
     expect(refreshMock).not.toHaveBeenCalled()
   })

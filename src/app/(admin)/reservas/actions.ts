@@ -14,7 +14,6 @@ import {
   completeBooking,
   getAvailableSlots,
 } from '@/modules/bookings/booking.service'
-import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import {
   cancelByAdmin,
   handleNoShow,
@@ -26,7 +25,7 @@ import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
-import { settleRefund } from '@/modules/payments/payment.service'
+import { settleRefund, confirmManualDepositPayment, type ManualDepositMethod } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { captureMessage, captureException } from '@/lib/sentry'
 import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
@@ -180,40 +179,74 @@ function revalidateBooking(bookingId: string): void {
   revalidatePath('/grilla')
 }
 
+const confirmDepositPaymentSchema = z.object({
+  method: z.enum(['cash', 'transfer', 'other']),
+})
+
 /**
- * Confirmación manual del pago de la seña (el jugador pagó en efectivo o por
- * transferencia fuera de MP). Usa la primitiva race-safe compartida con el
- * webhook de MP: si este perdió la carrera contra el webhook o el cron de
- * expiración, won=false y no se pisa nada.
+ * Confirmación manual del pago de la seña (el jugador pagó en efectivo,
+ * transferencia u otro medio fuera de MP; el staff elige cuál). Usa
+ * `confirmManualDepositPayment` (payment.service.ts), que comparte con el
+ * webhook de MP la primitiva race-safe `transitionFromPendingPayment`: si
+ * este perdió la carrera contra el webhook o el cron de expiración, won=false
+ * y no se pisa nada. Además corrige `payment_method`/`payment_id` (el jugador
+ * puede haber arrancado y abandonado un checkout de MP antes de que el staff
+ * confirmara el cobro en efectivo — sin esta corrección, `payment_id` sigue
+ * apuntando a un pago MP nunca aprobado y una cancelación posterior revienta
+ * con `RefundInvalidStateError`) y registra el cash_flow de la seña.
  */
-export async function confirmDepositPaymentAction(bookingId: string): Promise<BookingActionResult> {
+export async function confirmDepositPaymentAction(
+  bookingId: string,
+  method: ManualDepositMethod,
+): Promise<BookingActionResult> {
+  const parsed = confirmDepositPaymentSchema.safeParse({ method })
+  if (!parsed.success) {
+    return { success: false, error: 'Indicá cómo se cobró la seña.' }
+  }
+
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
-  const { tenant } = auth
+  const { user, tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    const r = await transitionFromPendingPayment(bookingId, 'confirmed', tx)
-    if (!r.won) {
-      return {
-        success: false as const,
-        error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
-      }
-    }
-    return { success: true as const, booking: r.row }
-  })
+  const outcome = await withTenantContext(tenant.id, (tx) =>
+    confirmManualDepositPayment(bookingId, parsed.data.method, user.staffUserId, tenant.id, tx)
+  )
 
-  if (result.success) {
-    validateApiOutput(
-      bookingResponseSchema,
-      { data: result.booking },
-      'confirmDepositPaymentAction'
-    )
-    revalidateBooking(bookingId)
+  if (!outcome.won) {
+    return {
+      success: false,
+      error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
+    }
   }
-  return result
+
+  validateApiOutput(bookingResponseSchema, { data: outcome.booking }, 'confirmDepositPaymentAction')
+  revalidateBooking(bookingId)
+
+  // Mismo patrón que otros dispatches post-commit en este archivo (ej.
+  // dispatchEmail en cancelBookingAction): si la caja del día ya estaba
+  // cerrada, confirmManualDepositPayment encoló la notificación
+  // admin_deposit_after_close DENTRO de la tx — se despacha recién ahora que
+  // commiteó. La confirmación del booking ya es válida sin importar si esto falla.
+  if (outcome.notificationIds.length > 0) {
+    try {
+      await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
+    } catch (err) {
+      captureMessage('email dispatch failed after manual deposit confirmation', {
+        level: 'warning',
+        extra: {
+          bookingId,
+          tenantId: tenant.id,
+          notificationIds: outcome.notificationIds,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      })
+    }
+  }
+
+  return { success: true, booking: outcome.booking }
 }
 
 export async function completeBookingAction(bookingId: string): Promise<BookingActionResult> {

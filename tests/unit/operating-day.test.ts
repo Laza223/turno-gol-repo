@@ -4,7 +4,21 @@ import {
   effectiveCloseMins,
   endLabelFromMins,
   normalizeRangeToOpenDay,
+  nightCutoffMins,
+  operatingDateOf,
+  operatingDayRangeUtc,
 } from '@/shared/time/operating-day'
+import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
+
+const sameDayAllWeek = {
+  mon: { open: '08:00', close: '23:00' },
+  tue: { open: '08:00', close: '23:00' },
+  wed: { open: '08:00', close: '23:00' },
+  thu: { open: '08:00', close: '23:00' },
+  fri: { open: '08:00', close: '23:00' },
+  sat: { open: '08:00', close: '23:00' },
+  sun: { open: '08:00', close: '23:00' },
+}
 
 describe('effectiveCloseMins', () => {
   it('close 00:00 = medianoche (fin del día) sin importar el flag', () => {
@@ -66,5 +80,109 @@ describe('normalizeRangeToOpenDay', () => {
       startMins: 0,
       endMins: 60,
     })
+  })
+})
+
+describe('nightCutoffMins', () => {
+  it('closesNextDay apagado: cutoff siempre 0, sin importar los horarios', () => {
+    expect(nightCutoffMins(sameDayAllWeek, false)).toBe(0)
+    expect(
+      nightCutoffMins({ ...sameDayAllWeek, fri: { open: '20:00', close: '04:00' } }, false),
+    ).toBe(0)
+  })
+
+  it('closesNextDay prendido pero ningún día cruza medianoche: cutoff 0', () => {
+    expect(nightCutoffMins(sameDayAllWeek, true)).toBe(0)
+  })
+
+  it('cierre 00:00 (medianoche) no cuenta como post-medianoche', () => {
+    expect(
+      nightCutoffMins({ ...sameDayAllWeek, sat: { open: '08:00', close: '00:00' } }, true),
+    ).toBe(0)
+  })
+
+  it('un solo día post-medianoche: cutoff = cuánto se extiende ese día', () => {
+    // Viernes cierra 02:00 → se extiende 120 min más allá de medianoche.
+    expect(
+      nightCutoffMins({ ...sameDayAllWeek, fri: { open: '20:00', close: '02:00' } }, true),
+    ).toBe(120)
+  })
+
+  it('varios días post-medianoche: cutoff = el máximo entre todos', () => {
+    expect(
+      nightCutoffMins(
+        {
+          ...sameDayAllWeek,
+          fri: { open: '20:00', close: '02:00' }, // +120
+          sat: { open: '20:00', close: '04:00' }, // +240
+        },
+        true,
+      ),
+    ).toBe(240)
+  })
+
+  it('un día marcado closed no infla el cutoff con su horario viejo', () => {
+    // sun quedó "cerrado" pero conserva un close de madrugada (04:00) de cuando
+    // operaba — opening-hours.schema.ts:110 documenta que ese horario no se
+    // valida ni debe usarse mientras closed=true.
+    expect(
+      nightCutoffMins(
+        {
+          ...sameDayAllWeek,
+          fri: { open: '20:00', close: '02:00' }, // +120, día activo
+          sun: { open: '20:00', close: '04:00', closed: true }, // +240, pero cerrado
+        },
+        true,
+      ),
+    ).toBe(120)
+  })
+})
+
+describe('operatingDateOf', () => {
+  it('cutoff 0: idéntico a artDateOf (fast path, tenants normales)', () => {
+    const instant = new Date('2026-07-23T04:30:00.000Z') // 01:30 ART
+    expect(operatingDateOf(instant, 0)).toBe(artDateOf(instant))
+  })
+
+  it('madrugada dentro del cutoff pertenece al día operativo anterior', () => {
+    // 2026-07-23T04:30:00Z = 01:30 ART del 23 (minutos=90 < cutoff=120) → día 22.
+    const sale = new Date('2026-07-23T04:30:00.000Z')
+    expect(operatingDateOf(sale, 120)).toBe('2026-07-22')
+  })
+
+  it('hora fuera del cutoff pertenece al día calendario normal', () => {
+    // 2026-07-23T06:00:00Z = 03:00 ART del 23 (minutos=180 >= cutoff=120) → día 23.
+    const sale = new Date('2026-07-23T06:00:00.000Z')
+    expect(operatingDateOf(sale, 120)).toBe('2026-07-23')
+  })
+
+  it('frontera exacta del cutoff cae del lado del día actual', () => {
+    // 2026-07-23T05:00:00Z = 02:00 ART exacto, cutoff=120 → ya es día 23.
+    const sale = new Date('2026-07-23T05:00:00.000Z')
+    expect(operatingDateOf(sale, 120)).toBe('2026-07-23')
+  })
+})
+
+describe('operatingDayRangeUtc', () => {
+  it('cutoff 0: idéntico a artDayRangeUtc (0 regresión tenants normales)', () => {
+    const plain = artDayRangeUtc('2026-07-22')
+    const shifted = operatingDayRangeUtc('2026-07-22', 0)
+    expect(shifted.fromUtc.toISOString()).toBe(plain.fromUtc.toISOString())
+    expect(shifted.toUtc.toISOString()).toBe(plain.toUtc.toISOString())
+  })
+
+  it('cutoff > 0: el rango se corre uniformemente hacia adelante', () => {
+    const { fromUtc, toUtc } = operatingDayRangeUtc('2026-07-22', 120)
+    expect(fromUtc.toISOString()).toBe('2026-07-22T05:00:00.000Z')
+    expect(toUtc.toISOString()).toBe('2026-07-23T05:00:00.000Z')
+  })
+
+  it('una venta de madrugada cae en el día operativo anterior, no en el calendario', () => {
+    // 01:30 ART del 23 → con cutoff 120 pertenece al día operativo 22.
+    const sale = new Date('2026-07-23T04:30:00.000Z')
+    const opDay22 = operatingDayRangeUtc('2026-07-22', 120)
+    const opDay23 = operatingDayRangeUtc('2026-07-23', 120)
+    expect(sale >= opDay22.fromUtc && sale < opDay22.toUtc).toBe(true)
+    expect(sale >= opDay23.fromUtc && sale < opDay23.toUtc).toBe(false)
   })
 })

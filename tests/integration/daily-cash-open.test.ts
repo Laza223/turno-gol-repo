@@ -39,7 +39,7 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
     const { tenantId, staffId } = await seedTenant()
 
     const open = await withTenantContext(tenantId, (tx) =>
-      openDay(tenantId, staffId, { date: TODAY, openingCash: 250000, note: 'cambio chico' }, tx),
+      openDay(tenantId, staffId, { date: TODAY, openingCash: 250000, note: 'cambio chico' }, 0, tx),
     )
     expect(open.openingCash).toBe(250000)
     expect(open.note).toBe('cambio chico')
@@ -53,10 +53,10 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
     const { tenantId, staffId } = await seedTenant()
 
     const first = await withTenantContext(tenantId, (tx) =>
-      openDay(tenantId, staffId, { date: TODAY, openingCash: 100000 }, tx),
+      openDay(tenantId, staffId, { date: TODAY, openingCash: 100000 }, 0, tx),
     )
     const second = await withTenantContext(tenantId, (tx) =>
-      openDay(tenantId, staffId, { date: TODAY, openingCash: 180000 }, tx),
+      openDay(tenantId, staffId, { date: TODAY, openingCash: 180000 }, 0, tx),
     )
     // Misma fila (unique tenant+date), fondo pisado.
     expect(second.id).toBe(first.id)
@@ -87,7 +87,7 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
 
     await expect(
       withTenantContext(tenantId, (tx) =>
-        openDay(tenantId, staffId, { date: future, openingCash: 0 }, tx),
+        openDay(tenantId, staffId, { date: future, openingCash: 0 }, 0, tx),
       ),
     ).rejects.toBeInstanceOf(OpenDateInFutureError)
   })
@@ -96,12 +96,12 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
     const { tenantId, staffId } = await seedTenant()
 
     await withTenantContext(tenantId, (tx) =>
-      closeDailyRegister(tenantId, TODAY, staffId, {}, tx),
+      closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx),
     )
 
     await expect(
       withTenantContext(tenantId, (tx) =>
-        openDay(tenantId, staffId, { date: TODAY, openingCash: 50000 }, tx),
+        openDay(tenantId, staffId, { date: TODAY, openingCash: 50000 }, 0, tx),
       ),
     ).rejects.toBeInstanceOf(DayAlreadyClosedError)
   })
@@ -110,7 +110,7 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
     const { tenantId, staffId } = await seedTenant()
 
     await withTenantContext(tenantId, (tx) =>
-      openDay(tenantId, staffId, { date: TODAY, openingCash: 200000 }, tx),
+      openDay(tenantId, staffId, { date: TODAY, openingCash: 200000 }, 0, tx),
     )
     // 2 ingresos cash de 500000 (factories) + 1 gasto cash de 100000.
     await insertCashFlow(getSql(), { tenantId, registeredBy: staffId })
@@ -121,7 +121,7 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
     `
 
     const close = await withTenantContext(tenantId, (tx) =>
-      closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 1100000 }, tx),
+      closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 1100000 }, 0, tx),
     )
 
     // expected = 200000 + (1000000 − 100000) = 1100000; declared igual → diff 0.
@@ -137,10 +137,10 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
 
     const results = await Promise.allSettled([
       withTenantContext(tenantId, (tx) =>
-        openDay(tenantId, staffId, { date: TODAY, openingCash: 70000 }, tx),
+        openDay(tenantId, staffId, { date: TODAY, openingCash: 70000 }, 0, tx),
       ),
       withTenantContext(tenantId, (tx) =>
-        closeDailyRegister(tenantId, TODAY, staffId, {}, tx),
+        closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx),
       ),
     ])
 

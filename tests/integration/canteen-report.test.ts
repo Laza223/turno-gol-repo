@@ -1,12 +1,16 @@
 /**
  * Integration — canteen-report.service.ts (Fase 7, reporte de cantina).
- * NO se toca ese archivo: son tests de VERIFICACIÓN del servicio ya escrito.
  *
  * Dos fuentes deliberadamente asimétricas (ver comentario del service):
  *  - getSalesRanking: ledger stock_movements kind='sale' — cuenta por día de
  *    ENTREGA e incluye fiados aún no cobrados ("qué se vendió").
  *  - getCanteenTotalsByMethod / getCanteenDailyTotals: cash_flows
  *    category='product_sale' — solo lo COBRADO ("qué entró a la caja").
+ *
+ * cutoffMins=0 en todos los calls: ningún tenant de este archivo tiene
+ * closes_next_day=true, así que el bucketing sigue siendo el calendario ART
+ * de siempre (docs/decisions/2026-07-24-caja-cantina-dia-operativo.md); el
+ * caso closes_next_day=true vive en canteen-report-operating-day.test.ts.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
@@ -94,7 +98,7 @@ describe('canteen report — getSalesRanking', () => {
       ),
     )
 
-    const ranking = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7()))
+    const ranking = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
 
     expect(ranking).toHaveLength(2)
     // productX suma AMBOS orígenes (venta + fiado): 2 + 3 = 5 unidades.
@@ -134,10 +138,10 @@ describe('canteen report — getSalesRanking', () => {
     const tenDaysAgo = new Date(Date.now() - 10 * 24 * 3600_000).toISOString()
     await sql`UPDATE stock_movements SET occurred_at = ${tenDaysAgo} WHERE tab_id = ${tab.id}`
 
-    const ranking7 = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7()))
+    const ranking7 = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
     expect(ranking7.find((r) => r.productId === product.id)).toBeUndefined()
 
-    const ranking30 = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last30()))
+    const ranking30 = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last30(), 0))
     const row30 = ranking30.find((r) => r.productId === product.id)
     expect(row30).toBeDefined()
     expect(row30!.units).toBe(4)
@@ -166,7 +170,7 @@ describe('canteen report — getSalesRanking', () => {
       ),
     )
     // Antes de anular, el fiado abierto SÍ cuenta (es lo entregado).
-    const before = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7()))
+    const before = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
     expect(before.find((r) => r.productId === product.id)?.units).toBe(5)
 
     await withTenantContext(tenant.id, (tx) =>
@@ -175,7 +179,7 @@ describe('canteen report — getSalesRanking', () => {
 
     // Anulado: el stock volvió (adjustment) y las líneas 'sale' quedan en el
     // ledger, pero el ranking NO debe contarlas — no hubo venta.
-    const after = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7()))
+    const after = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
     expect(after.find((r) => r.productId === product.id)).toBeUndefined()
 
     // Una venta directa (tab_id NULL) del mismo producto sigue contando normal.
@@ -191,7 +195,7 @@ describe('canteen report — getSalesRanking', () => {
         tx,
       ),
     )
-    const withSale = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7()))
+    const withSale = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
     expect(withSale.find((r) => r.productId === product.id)?.units).toBe(2)
   })
 })
@@ -231,7 +235,7 @@ describe('canteen report — getCanteenTotalsByMethod', () => {
       ),
     )
 
-    const beforeSettle = await withTenantContext(tenant.id, (tx) => getCanteenTotalsByMethod(tenant.id, tx, last7()))
+    const beforeSettle = await withTenantContext(tenant.id, (tx) => getCanteenTotalsByMethod(tenant.id, tx, last7(), 0))
     expect(beforeSettle).toHaveLength(2)
     const cashBefore = beforeSettle.find((m) => m.method === 'cash')
     const transferBefore = beforeSettle.find((m) => m.method === 'transfer')
@@ -244,7 +248,7 @@ describe('canteen report — getCanteenTotalsByMethod', () => {
       settleTab(tenant.id, staff.id, { tabId: tab.id, method: 'mercadopago', clientIdempotencyKey: crypto.randomUUID() }, tx),
     )
 
-    const afterSettle = await withTenantContext(tenant.id, (tx) => getCanteenTotalsByMethod(tenant.id, tx, last7()))
+    const afterSettle = await withTenantContext(tenant.id, (tx) => getCanteenTotalsByMethod(tenant.id, tx, last7(), 0))
     expect(afterSettle).toHaveLength(3)
     const mp = afterSettle.find((m) => m.method === 'mercadopago')
     expect(mp?.total).toBe(3 * 150000)
@@ -292,7 +296,7 @@ describe('canteen report — getCanteenDailyTotals', () => {
       settleTab(tenant.id, staff.id, { tabId: tab.id, method: 'cash', clientIdempotencyKey: crypto.randomUUID() }, tx),
     )
 
-    const daily = await withTenantContext(tenant.id, (tx) => getCanteenDailyTotals(tenant.id, tx, last7()))
+    const daily = await withTenantContext(tenant.id, (tx) => getCanteenDailyTotals(tenant.id, tx, last7(), 0))
 
     const today = todayART()
     const fiveDaysAgoArt = addDays(today, -5)
@@ -328,16 +332,16 @@ describe('canteen report — aislamiento cross-tenant', () => {
     )
 
     const rangeAll = { from: '2000-01-01', to: '2100-01-01' }
-    const rankingB = await withTenantContext(tenantB.id, (tx) => getSalesRanking(tenantB.id, tx, rangeAll))
-    const byMethodB = await withTenantContext(tenantB.id, (tx) => getCanteenTotalsByMethod(tenantB.id, tx, rangeAll))
-    const dailyB = await withTenantContext(tenantB.id, (tx) => getCanteenDailyTotals(tenantB.id, tx, rangeAll))
+    const rankingB = await withTenantContext(tenantB.id, (tx) => getSalesRanking(tenantB.id, tx, rangeAll, 0))
+    const byMethodB = await withTenantContext(tenantB.id, (tx) => getCanteenTotalsByMethod(tenantB.id, tx, rangeAll, 0))
+    const dailyB = await withTenantContext(tenantB.id, (tx) => getCanteenDailyTotals(tenantB.id, tx, rangeAll, 0))
 
     expect(rankingB).toEqual([])
     expect(byMethodB).toEqual([])
     expect(dailyB).toEqual([])
 
     // Control positivo: tenantA sí ve su propia venta en el mismo rango.
-    const rankingA = await withTenantContext(tenantA.id, (tx) => getSalesRanking(tenantA.id, tx, rangeAll))
+    const rankingA = await withTenantContext(tenantA.id, (tx) => getSalesRanking(tenantA.id, tx, rangeAll, 0))
     expect(rankingA).toHaveLength(1)
   })
 })

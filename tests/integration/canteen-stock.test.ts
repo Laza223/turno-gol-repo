@@ -253,7 +253,7 @@ describe('stock service — registerPurchase con expense (migr. 050)', () => {
     const product = await withTenantContext(tenant.id, (tx) =>
       createProduct(tenant.id, { name: 'Caja cerrada', price: 300000, stock: 5 }, tx),
     )
-    await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, TODAY, staff.id, {}, tx))
+    await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx))
     const key = crypto.randomUUID()
 
     await expect(
@@ -286,7 +286,7 @@ describe('stock service — registerPurchase con expense (migr. 050)', () => {
     const product = await withTenantContext(tenant.id, (tx) =>
       createProduct(tenant.id, { name: 'Reposición sin gasto', price: 300000, stock: 5 }, tx),
     )
-    await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, TODAY, staff.id, {}, tx))
+    await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx))
 
     const result = await withTenantContext(tenant.id, (tx) =>
       registerPurchase(

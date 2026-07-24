@@ -18,6 +18,7 @@ function ControlledModal({
   open: boolean
   onClose: () => void
   date: string
+  cutoffMins: number
   createCashFlowAction: CreateCashFlowAction
 }) {
   const [open, setOpen] = useState(openProp)
@@ -45,6 +46,7 @@ const meta = {
   args: {
     open: true,
     date: artDateString(),
+    cutoffMins: 0,
     onClose: fn(),
     createCashFlowAction: fn(
       async (): Promise<CashFlowActionResult> => ({

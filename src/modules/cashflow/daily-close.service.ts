@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import { dailyCashCloses } from '@/shared/db/schema'
 import { insertAuditLog } from '@/shared/db/audit'
 import type { DbTx } from '@/shared/db/client'
-import { todayART, artDayRangeUtc } from '@/shared/time/art-date'
+import { operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { CloseDateInFutureError, DayAlreadyCloseExistsError } from './cashflow.errors'
 import type { DailyCashCloseRow, CashFlowType } from './cashflow.types'
 
@@ -18,6 +18,7 @@ function isUniqueViolation(err: unknown): boolean {
 async function aggregateTotals(
   tenantId: string,
   date: string,
+  cutoffMins: number,
   tx: DbTx,
 ): Promise<{
   totalIncome: number
@@ -29,8 +30,8 @@ async function aggregateTotals(
   // cashNet (ingresos+ajustes cash − gastos cash) alimenta el efectivo
   // esperado del arqueo (migr. 049). Mismo criterio con signo que el
   // byMethod de getDaySummary.
-  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
-  const day = artDayRangeUtc(date)
+  // Rango UTC sargable (ver operatingDayRangeUtc / hallazgo D3).
+  const day = operatingDayRangeUtc(date, cutoffMins)
   const rows = await tx.execute(
     sql`SELECT type, method, SUM(amount)::int AS total
         FROM cash_flows
@@ -59,9 +60,10 @@ export async function closeDailyRegister(
   date: string,
   staffUserId: string,
   opts: { declaredCash?: number; note?: string },
+  cutoffMins: number,
   tx: DbTx,
 ): Promise<DailyCashCloseRow> {
-  if (date > todayART()) {
+  if (date > operatingDateOf(new Date(), cutoffMins)) {
     throw new CloseDateInFutureError(date)
   }
 
@@ -80,7 +82,7 @@ export async function closeDailyRegister(
     throw new DayAlreadyCloseExistsError(date)
   }
 
-  const { totalIncome, totalAdjustments, totalExpense, cashNet } = await aggregateTotals(tenantId, date, tx)
+  const { totalIncome, totalAdjustments, totalExpense, cashNet } = await aggregateTotals(tenantId, date, cutoffMins, tx)
   const balance = totalIncome + totalAdjustments - totalExpense
 
   // Apertura de caja (migr. 049): snapshot del fondo inicial al cerrar, así

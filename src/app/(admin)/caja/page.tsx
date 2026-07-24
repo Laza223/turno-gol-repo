@@ -26,7 +26,7 @@ import { CierreCard } from './components/CierreCard'
 import { EmptyMovementAction } from './components/EmptyMovementAction'
 import { OpenDayCard } from './components/OpenDayCard'
 import { createCashFlowAction, closeDayAction, openDayAction } from './actions'
-import { artDateOf } from '@/shared/time/art-date'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import {
   addDays,
   cajaDateLabel,
@@ -90,15 +90,16 @@ export default async function CajaPage(props: {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const today = artDateOf(new Date())
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const today = operatingDateOf(new Date(), cutoffMins)
   // #16: validar el ?date del deep-link. Un valor basura/imposible (2026-13-45)
-  // reventaba el cast SQL ::date y addDays(); degradar a hoy (ART) en su lugar.
+  // reventaba el cast SQL ::date y addDays(); degradar a hoy (día operativo) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
   const { summary, cashFlows, open } = await withTenantContext(tenant.id, async (tx) => {
     const [s, cf, o] = await Promise.all([
-      getDaySummary(tenant.id, date, tx),
-      getCashFlows(tenant.id, date, tx),
+      getDaySummary(tenant.id, date, cutoffMins, tx),
+      getCashFlows(tenant.id, date, cutoffMins, tx),
       getDayOpen(tenant.id, date, tx),
     ])
     return { summary: s, cashFlows: cf, open: o }
@@ -150,6 +151,7 @@ export default async function CajaPage(props: {
             </nav>
             <CajaActions
               date={date}
+              cutoffMins={cutoffMins}
               totalIncome={ingresos}
               totalExpense={summary.totalExpense}
               balance={summary.balance}
@@ -167,7 +169,12 @@ export default async function CajaPage(props: {
       <CajaTabs active="/caja" />
 
       {!summary.isClosed && (
-        <OpenDayCard date={date} open={open} openDayAction={openDayAction} isToday={isToday} />
+        <OpenDayCard
+          date={date}
+          open={open}
+          openDayAction={openDayAction}
+          isToday={isToday}
+        />
       )}
 
       {!summary.isClosed && <CajaCierreHint />}
@@ -190,7 +197,11 @@ export default async function CajaPage(props: {
               title="Sin movimientos por ahora"
               description="Los cobros de reservas se registran solos. Las ventas de cantina y los gastos se cargan desde los botones de arriba."
               action={
-                <EmptyMovementAction date={date} createCashFlowAction={createCashFlowAction} />
+                <EmptyMovementAction
+                  date={date}
+                  cutoffMins={cutoffMins}
+                  createCashFlowAction={createCashFlowAction}
+                />
               }
             />
           )}

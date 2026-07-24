@@ -1,6 +1,8 @@
-import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { bookings, cashFlows } from '@/shared/db/schema'
+import { bookings, cashFlows, tenants } from '@/shared/db/schema'
+import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import { nightCutoffMins, operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 
 export const METRICS_WINDOW_DAYS = 30
 
@@ -112,12 +114,23 @@ export function rankTopSlots(
     .map((r) => ({ time: r.time.slice(0, 5), count: r.count }))
 }
 
-/** Today in ART (Argentina = UTC-3, no DST), as YYYY-MM-DD. */
-function artTodayStr(): string {
-  return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
-}
-
 // ─── DB-backed aggregate ─────────────────────────────────────────────
+
+/**
+ * cutoffMins del tenant para el bucketing de cash_flows (ver operating-day.ts
+ * / ADR día operativo). `tenants` es global y sin RLS: un SELECT por PK de
+ * solo 2 columnas alcanza, reusando la misma tx tenant-scoped ya abierta en
+ * vez de abrir otra conexión.
+ */
+async function resolveCutoffMins(tenantId: string, tx: DbTx): Promise<number> {
+  const [row] = await tx
+    .select({ openingHours: tenants.openingHours, closesNextDay: tenants.closesNextDay })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1)
+  if (!row) return 0
+  return nightCutoffMins(row.openingHours as OpeningHours, row.closesNextDay)
+}
 
 /** Breakdown de estados terminales en [from, to] → NoShowMetric. */
 async function noShowForWindow(
@@ -156,11 +169,18 @@ async function noShowForWindow(
  * Business metrics for the current tenant over the last METRICS_WINDOW_DAYS.
  * `tx` is already tenant-scoped (RLS via app.current_tenant_id); the explicit
  * tenant_id filter additionally engages idx_bookings_date_status /
- * idx_cash_flows_tenant_date. Date windows use the booking slot `date`; revenue
- * uses cash_flows.occurredAt.
+ * idx_cash_flows_tenant_date. Date windows use the booking slot `date` (ya
+ * día operativo, ver bookings.date); revenue usa cash_flows.occurredAt,
+ * agrupado por el día operativo del tenant (cutoffMins, ver operating-day.ts
+ * / ADR día operativo).
  */
-export async function getTenantMetrics(tenantId: string, tx: DbTx): Promise<TenantMetrics> {
-  const { from, to } = metricsWindow(artTodayStr(), METRICS_WINDOW_DAYS)
+export async function getTenantMetrics(
+  tenantId: string,
+  tx: DbTx,
+  now: Date = new Date(),
+): Promise<TenantMetrics> {
+  const cutoffMins = await resolveCutoffMins(tenantId, tx)
+  const { from, to } = metricsWindow(operatingDateOf(now, cutoffMins), METRICS_WINDOW_DAYS)
   const prev = previousWindow({ from, to }, METRICS_WINDOW_DAYS)
 
   // 1) Reservations per slot-day (committed statuses only).
@@ -185,11 +205,14 @@ export async function getTenantMetrics(tenantId: string, tx: DbTx): Promise<Tena
   const noShowMetric = await noShowForWindow(tenantId, tx, from, to)
   const noShowPrev = await noShowForWindow(tenantId, tx, prev.from, prev.to)
 
+  // Rango sargable de ingresos en día operativo — cutoffMins=0 (la inmensa
+  // mayoría de tenants) da el mismo corrimiento ART fijo (medianoche = 03:00
+  // UTC) que usaban ambas queries de abajo hasta ahora.
+  const { fromUtc } = operatingDayRangeUtc(from, cutoffMins)
+  const { toUtc } = operatingDayRangeUtc(to, cutoffMins)
+
   // 3) Income by category. amount is centavos (>0); sum as bigint to dodge int
   //    overflow on high-volume tenants, then parse to a JS number.
-  //    Los bordes usan el mismo corrimiento ART (medianoche ART = 03:00 UTC)
-  //    que revenueDailyRows para que el total y la serie diaria compartan
-  //    exactamente la misma ventana.
   const revenueRows = await tx
     .select({
       category: cashFlows.category,
@@ -200,8 +223,8 @@ export async function getTenantMetrics(tenantId: string, tx: DbTx): Promise<Tena
       and(
         eq(cashFlows.tenantId, tenantId),
         eq(cashFlows.type, 'income'),
-        gte(cashFlows.occurredAt, sql`(${from}::date + interval '3 hours') at time zone 'UTC'`),
-        sql`${cashFlows.occurredAt} < ((${to}::date + interval '1 day 3 hours') at time zone 'UTC')`,
+        gte(cashFlows.occurredAt, fromUtc),
+        lt(cashFlows.occurredAt, toUtc),
       ),
     )
     .groupBy(cashFlows.category)
@@ -220,29 +243,35 @@ export async function getTenantMetrics(tenantId: string, tx: DbTx): Promise<Tena
     totalCents += cents
   }
 
-  // 4) Ingresos por día. El día se agrupa en ART consistente con artTodayStr()
-  //    (shift fijo UTC-3): occurred_at se pasa a naive-UTC, se resta 3h y se
-  //    castea a date. Los bordes usan los timestamps UTC equivalentes
-  //    (medianoche ART = 03:00 UTC) para mantener el filtro sargable.
-  const revenueDailyRows = await tx
+  // 4) Ingresos por día. Ventana acotada a METRICS_WINDOW_DAYS (30 días) de UN
+  //    tenant — a lo sumo cientos de filas, no miles ni histórico completo —
+  //    así que el bucketing por día operativo se agrega en JS post-fetch
+  //    (mismo patrón que getCanteenDailyTotals) en vez de una expresión SQL
+  //    de GROUP BY que no puede parametrizarse por el cutoffMins dinámico del
+  //    tenant.
+  const revenueRawRows = await tx
     .select({
-      date: sql<string>`((${cashFlows.occurredAt} at time zone 'UTC') - interval '3 hours')::date::text`,
-      total: sql<string>`coalesce(sum(${cashFlows.amount}), 0)::bigint`,
+      occurredAt: cashFlows.occurredAt,
+      amount: cashFlows.amount,
     })
     .from(cashFlows)
     .where(
       and(
         eq(cashFlows.tenantId, tenantId),
         eq(cashFlows.type, 'income'),
-        gte(cashFlows.occurredAt, sql`(${from}::date + interval '3 hours') at time zone 'UTC'`),
-        sql`${cashFlows.occurredAt} < ((${to}::date + interval '1 day 3 hours') at time zone 'UTC')`,
+        gte(cashFlows.occurredAt, fromUtc),
+        lt(cashFlows.occurredAt, toUtc),
       ),
     )
-    .groupBy(sql`((${cashFlows.occurredAt} at time zone 'UTC') - interval '3 hours')::date`)
+
+  const dailyTotals = new Map<string, number>()
+  for (const r of revenueRawRows) {
+    const day = operatingDateOf(r.occurredAt, cutoffMins)
+    dailyTotals.set(day, (dailyTotals.get(day) ?? 0) + r.amount)
+  }
 
   const revenuePerDay: DailyAmount[] = fillDailySeries(
-    // sum(amount) llega como string (bigint); Number() es seguro (ver arriba).
-    revenueDailyRows.map((r) => ({ date: r.date, count: Number(r.total) })),
+    [...dailyTotals.entries()].map(([date, count]) => ({ date, count })),
     from,
     to,
   ).map((d) => ({ date: d.date, amountCents: d.count }))

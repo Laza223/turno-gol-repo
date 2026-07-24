@@ -40,10 +40,10 @@ describe('daily_cash_opens — carrera open-vs-open (Promise.all, mismo tenant+f
     // test fallaría acá mismo — eso ES la prueba de "ninguna promesa rechaza".
     const [first, second] = await Promise.all([
       withTenantContext(tenant.id, (tx) =>
-        openDay(tenant.id, staff.id, { date: hoy, openingCash: 70000, note: 'apertura A' }, tx),
+        openDay(tenant.id, staff.id, { date: hoy, openingCash: 70000, note: 'apertura A' }, 0, tx),
       ),
       withTenantContext(tenant.id, (tx) =>
-        openDay(tenant.id, staff.id, { date: hoy, openingCash: 90000, note: 'apertura B' }, tx),
+        openDay(tenant.id, staff.id, { date: hoy, openingCash: 90000, note: 'apertura B' }, 0, tx),
       ),
     ])
 

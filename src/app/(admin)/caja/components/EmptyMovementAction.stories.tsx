@@ -9,6 +9,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     date: artDateString(),
+    cutoffMins: 0,
     createCashFlowAction: fn(async () => ({
       success: false as const,
       error: 'no usado en esta story',

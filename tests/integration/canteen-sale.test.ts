@@ -309,7 +309,7 @@ describe('canteen sale — estados terminales y transiciones inválidas', () => 
     )
 
     await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, todayART(), staff.id, {}, tx),
+      closeDailyRegister(tenant.id, todayART(), staff.id, {}, 0, tx),
     )
 
     await expect(

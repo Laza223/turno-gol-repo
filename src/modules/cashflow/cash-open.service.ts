@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { DayAlreadyClosedError, OpenDateInFutureError } from './cashflow.errors'
-import { todayART } from '@/shared/time/art-date'
+import { operatingDateOf } from '@/shared/time/operating-day'
 import type { DailyCashOpenRow } from './cashflow.types'
 
 /**
@@ -57,9 +57,10 @@ export async function openDay(
   tenantId: string,
   staffUserId: string,
   input: { date: string; openingCash: number; note?: string | null },
+  cutoffMins: number,
   tx: DbTx,
 ): Promise<DailyCashOpenRow> {
-  if (input.date > todayART()) throw new OpenDateInFutureError(input.date)
+  if (input.date > operatingDateOf(new Date(), cutoffMins)) throw new OpenDateInFutureError(input.date)
 
   const lockKey = `daily_close:${tenantId}`
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`)

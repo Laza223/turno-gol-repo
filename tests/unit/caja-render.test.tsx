@@ -38,6 +38,7 @@ describe('RegisterMovementModal — chips', () => {
         open
         onClose={vi.fn()}
         date="2026-06-10"
+        cutoffMins={0}
         createCashFlowAction={createCashFlowAction}
       />,
     )
@@ -61,6 +62,7 @@ describe('RegisterMovementModal — chips', () => {
         open
         onClose={vi.fn()}
         date="2026-06-10"
+        cutoffMins={0}
         createCashFlowAction={createCashFlowAction}
       />,
     )
@@ -88,6 +90,7 @@ describe('RegisterMovementModal — chips', () => {
         open
         onClose={vi.fn()}
         date="2026-06-10"
+        cutoffMins={0}
         createCashFlowAction={createCashFlowAction}
       />,
     )
@@ -112,6 +115,7 @@ describe('RegisterMovementModal — chips', () => {
         open
         onClose={vi.fn()}
         date="2026-06-10"
+        cutoffMins={0}
         createCashFlowAction={createCashFlowAction}
       />,
     )

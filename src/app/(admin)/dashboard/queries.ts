@@ -7,7 +7,7 @@ import {
   cashFlows,
 } from '@/shared/db/schema'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
-import { todayART, artDayRangeUtc } from '@/shared/time/art-date'
+import { nightCutoffMins, operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { DAY_KEYS } from '@/lib/booking/grid-cells'
 import type { OpeningHours, TenantSettings } from '@/modules/tenants/tenant.types'
 import type {
@@ -66,7 +66,8 @@ function nowArtHhmm(): string {
 }
 
 export async function getDashboardData(tenant: DashboardTenant): Promise<DashboardData> {
-  const date = todayART()
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const date = operatingDateOf(new Date(), cutoffMins)
   const nowHhmm = nowArtHhmm()
 
   const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!
@@ -80,7 +81,7 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
 
   return withTenantContext(tenant.id, async (tx) => {
     const [summary, bookingRows, courtRows, canteenRow] = await Promise.all([
-      getDaySummary(tenant.id, date, tx),
+      getDaySummary(tenant.id, date, cutoffMins, tx),
 
       tx
         .select({
@@ -122,9 +123,9 @@ export async function getDashboardData(tenant: DashboardTenant): Promise<Dashboa
         .where(
           and(
             eq(cashFlows.tenantId, tenant.id),
-            // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
-            sql`${cashFlows.occurredAt} >= ${artDayRangeUtc(date).fromUtc.toISOString()}`,
-            sql`${cashFlows.occurredAt} < ${artDayRangeUtc(date).toUtc.toISOString()}`,
+            // Rango UTC sargable (ver operatingDayRangeUtc / hallazgo D3).
+            sql`${cashFlows.occurredAt} >= ${operatingDayRangeUtc(date, cutoffMins).fromUtc.toISOString()}`,
+            sql`${cashFlows.occurredAt} < ${operatingDayRangeUtc(date, cutoffMins).toUtc.toISOString()}`,
             eq(cashFlows.category, 'product_sale'),
           ),
         )

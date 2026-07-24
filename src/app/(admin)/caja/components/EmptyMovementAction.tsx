@@ -18,9 +18,12 @@ const RegisterMovementModal = dynamic(
  */
 export function EmptyMovementAction({
   date,
+  cutoffMins,
   createCashFlowAction,
 }: {
   date: string
+  /** Día operativo (ver operating-day.ts): lo reenvía a RegisterMovementModal. */
+  cutoffMins: number
   createCashFlowAction: CreateCashFlowAction
 }) {
   const [open, setOpen] = useState(false)
@@ -37,6 +40,7 @@ export function EmptyMovementAction({
         open={open}
         onClose={() => setOpen(false)}
         date={date}
+        cutoffMins={cutoffMins}
         createCashFlowAction={createCashFlowAction}
       />
     </>

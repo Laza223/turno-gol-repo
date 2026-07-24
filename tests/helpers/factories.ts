@@ -59,6 +59,56 @@ export async function insertAbonado(
   return rows[0].id
 }
 
+// ─── Torneos (migr. 062) ──────────────────────────────────────────────
+
+export async function insertTournament(
+  sql: Sql,
+  tenantId: string,
+  overrides: { name?: string; slug?: string; format?: string } = {},
+): Promise<string> {
+  // El slug es único por complejo: randomizarlo evita choques entre tests.
+  const slug = overrides.slug ?? `torneo-${faker.string.alphanumeric(8).toLowerCase()}`
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournaments (tenant_id, name, slug, format, starts_on)
+    VALUES (
+      ${tenantId},
+      ${overrides.name ?? `Torneo ${faker.word.noun()}`},
+      ${slug},
+      ${overrides.format ?? 'league'}::tournament_format,
+      ${new Date().toISOString().slice(0, 10)}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentTeam(
+  sql: Sql,
+  args: { tenantId: string; tournamentId: string; name?: string },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_teams (tenant_id, tournament_id, name)
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId},
+      ${args.name ?? `${faker.word.adjective()} ${faker.string.alphanumeric(6)}`}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentTeamPlayer(
+  sql: Sql,
+  args: { tenantId: string; teamId: string; fullName?: string },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_team_players (tenant_id, team_id, full_name)
+    VALUES (${args.tenantId}, ${args.teamId}, ${args.fullName ?? faker.person.fullName()})
+    RETURNING id
+  `
+  return rows[0].id
+}
+
 export async function insertBooking(
   sql: Sql,
   opts: {

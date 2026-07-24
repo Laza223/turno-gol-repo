@@ -354,7 +354,13 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM push_subscriptions WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM player_favorites WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM feature_flags WHERE tenant_id = ${tenantId}`)
+    // Torneos (migr. 062): el plantel referencia al equipo, el equipo al torneo.
+    // Hijos primero; `tournaments` va DESPUÉS de bookings porque
+    // bookings.tournament_id lo referencia (FK sin CASCADE, a propósito).
+    await tx.execute(drizzleSql`DELETE FROM tournament_team_players WHERE tenant_id = ${tenantId}`)
+    await tx.execute(drizzleSql`DELETE FROM tournament_teams WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM bookings WHERE tenant_id = ${tenantId}`)
+    await tx.execute(drizzleSql`DELETE FROM tournaments WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM abonados WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM courts WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${tenantId}`)

@@ -12,6 +12,9 @@ import {
   insertNotification,
   insertPayment,
   insertSubscription,
+  insertTournament,
+  insertTournamentTeam,
+  insertTournamentTeamPlayer,
 } from './factories'
 
 export type IsolationSeed = {
@@ -30,6 +33,9 @@ export type IsolationSeed = {
   banId: string
   notificationId: string
   auditLogId: string
+  tournamentId: string
+  tournamentTeamId: string
+  tournamentTeamPlayerId: string
 }
 
 /**
@@ -67,6 +73,12 @@ export async function seedIsolationData(
     actorType: 'staff',
     resourceId: bookingId,
   })
+  const tournamentId = await insertTournament(sql, tenantId)
+  const tournamentTeamId = await insertTournamentTeam(sql, { tenantId, tournamentId })
+  const tournamentTeamPlayerId = await insertTournamentTeamPlayer(sql, {
+    tenantId,
+    teamId: tournamentTeamId,
+  })
 
   return {
     tenantId,
@@ -84,5 +96,8 @@ export async function seedIsolationData(
     banId,
     notificationId,
     auditLogId,
+    tournamentId,
+    tournamentTeamId,
+    tournamentTeamPlayerId,
   }
 }

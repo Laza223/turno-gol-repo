@@ -14,6 +14,7 @@ import { tenants } from './tenants'
 import { courts } from './courts'
 import { players } from './players'
 import { abonados } from './abonados'
+import { tournaments } from './tournaments'
 import { staffUsers } from './staff-users'
 import {
   bookingStatusEnum,
@@ -38,6 +39,11 @@ export const bookings = pgTable(
       .references(() => courts.id),
     playerId: uuid('player_id').references(() => players.id),
     abonadoId: uuid('abonado_id').references(() => abonados.id),
+    // Migr. 062: espejo exacto de abonado_id. La reserva sabe de qué torneo es,
+    // y por eso el torneo se libera con DELETE ... WHERE tournament_id = X AND
+    // date >= fecha (mismo camino que cancelAbonado). FK sin ON DELETE a
+    // propósito: borrar un torneo con horas tomadas tiene que fallar.
+    tournamentId: uuid('tournament_id').references(() => tournaments.id),
     createdByStaff: uuid('created_by_staff').references(() => staffUsers.id),
 
     date: date('date', { mode: 'date' }).notNull(),
@@ -113,6 +119,9 @@ export const bookings = pgTable(
     abonadoIdx: index('idx_bookings_abonado')
       .on(table.abonadoId)
       .where(sql`abonado_id IS NOT NULL`),
+    tournamentIdx: index('idx_bookings_tournament')
+      .on(table.tournamentId)
+      .where(sql`tournament_id IS NOT NULL`),
     statusIdx: index('idx_bookings_status').on(table.tenantId, table.status),
     dateStatusIdx: index('idx_bookings_date_status').on(
       table.tenantId,

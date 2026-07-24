@@ -105,6 +105,18 @@ const tablesAll: TableDef[] = [
   { name: 'tenant_player_bans', ownId: () => A.banId, otherId: () => B.banId },
   { name: 'bookings', ownId: () => A.bookingId, otherId: () => B.bookingId },
   { name: 'player_tenant_relationships', ownId: () => A.ptrId, otherId: () => B.ptrId },
+  // Torneos (migr. 062): CRUD completo, aislamiento clásico por tenant_id.
+  { name: 'tournaments', ownId: () => A.tournamentId, otherId: () => B.tournamentId },
+  {
+    name: 'tournament_teams',
+    ownId: () => A.tournamentTeamId,
+    otherId: () => B.tournamentTeamId,
+  },
+  {
+    name: 'tournament_team_players',
+    ownId: () => A.tournamentTeamPlayerId,
+    otherId: () => B.tournamentTeamPlayerId,
+  },
 ]
 
 // Tables with UPDATE policy (RLS allows UPDATE if context matches).
@@ -216,6 +228,18 @@ const insertOps: Record<string, InsertFn> = {
   // "player_tenant_relationships". La policy de INSERT de PTR nunca se probaba.
   player_tenant_relationships: async (tx, tid) =>
     tx`INSERT INTO player_tenant_relationships (tenant_id, player_id) VALUES (${tid}, ${A.playerId})`,
+  // Torneos (migr. 062). Los padres son los de B, que existen: así el INSERT
+  // llega a la WITH CHECK de la tabla en vez de morir antes en un 23503.
+  // (Los chequeos de FK corren con privilegios del owner y no pasan por RLS.)
+  tournaments: async (tx, tid) =>
+    tx`INSERT INTO tournaments (tenant_id, name, slug, format, starts_on)
+      VALUES (${tid}, 'spoof', ${`spoof-${faker.string.alphanumeric(8).toLowerCase()}`}, 'league', ${new Date().toISOString().slice(0, 10)})`,
+  tournament_teams: async (tx, tid) =>
+    tx`INSERT INTO tournament_teams (tenant_id, tournament_id, name)
+      VALUES (${tid}, ${B.tournamentId}, ${`spoof-${faker.string.alphanumeric(8)}`})`,
+  tournament_team_players: async (tx, tid) =>
+    tx`INSERT INTO tournament_team_players (tenant_id, team_id, full_name)
+      VALUES (${tid}, ${B.tournamentTeamId}, 'spoof')`,
 }
 
 describe('C. cross-tenant INSERT bloqueado', () => {

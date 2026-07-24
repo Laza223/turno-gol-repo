@@ -7,7 +7,10 @@ export type BookingStatus =
   | 'completed'
   | 'no_show'
 
-export type BookingType = 'spontaneous' | 'fixed' | 'block'
+// 'tournament' (migr. 062): hora que posee un torneo. No la crea
+// createManualBooking — la materializa reserveTournamentSlots, igual que
+// 'fixed' lo hace el flujo de abonados y no el alta manual.
+export type BookingType = 'spontaneous' | 'fixed' | 'block' | 'tournament'
 
 export type DepositStatus =
   | 'not_required'
@@ -26,6 +29,7 @@ export type BookingRow = {
   courtId: string
   playerId: string | null
   abonadoId: string | null
+  tournamentId: string | null
   createdByStaff: string | null
   date: Date
   timeStart: string

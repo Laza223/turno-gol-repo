@@ -6,6 +6,8 @@ import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.se
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { redirectIfTenantSuspended } from '@/shared/kill-switch'
+import { isFeatureEnabled } from '@/shared/feature-flags'
+import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { tenantSubscriptions } from '@/shared/db/schema'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
@@ -79,14 +81,20 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   if (tenant.settings.onboarding_completed !== true) redirect('/onboarding')
 
-  const sub = await withTenantContext(tenant.id, async (tx) => {
-    return tx
-      .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
-      .from(tenantSubscriptions)
-      .where(eq(tenantSubscriptions.tenantId, tenant.id))
-      .limit(1)
-      .then((r) => r[0] ?? null)
-  })
+  // Independientes entre sí: van en paralelo. El flag de torneos nace global en
+  // false (migr. 062) y se prende por complejo con una fila de override, así el
+  // módulo se pilotea sin redeploy. Cachea 60s in-process (feature-flags.ts).
+  const [sub, tournamentsEnabled] = await Promise.all([
+    withTenantContext(tenant.id, async (tx) =>
+      tx
+        .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
+        .from(tenantSubscriptions)
+        .where(eq(tenantSubscriptions.tenantId, tenant.id))
+        .limit(1)
+        .then((r) => r[0] ?? null),
+    ),
+    isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id),
+  ])
 
   return (
     <AdminLayoutShell
@@ -96,6 +104,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       periodEnd={sub?.currentPeriodEnd?.toISOString() ?? null}
       userEmail={user.email}
       signOut={signOutAction}
+      tournamentsEnabled={tournamentsEnabled}
     >
       {children}
       <PushNotificationManagerLoader />

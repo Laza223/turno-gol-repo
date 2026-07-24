@@ -17,6 +17,7 @@ export function rowToBookingRow(row: BookingDbRow): BookingRow {
     courtId: row.courtId,
     playerId: row.playerId ?? null,
     abonadoId: row.abonadoId ?? null,
+    tournamentId: row.tournamentId ?? null,
     createdByStaff: row.createdByStaff ?? null,
     date: row.date as Date,
     timeStart: row.timeStart,

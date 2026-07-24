@@ -90,10 +90,14 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     // SET CONSTRAINTS fk_bookings_payment DEFERRED (migr. 058 — reemplazó al
     // session_replication_role que moría bajo turnogol_worker en prod) +
     // FOR UPDATE ts + chequeo de elegibilidad +
-    // 20 DELETEs + 1 UPDATE tenants = 24 statements. (16 DELETEs = 20 hasta la
+    // 23 DELETEs + 1 UPDATE tenants = 27 statements. (16 DELETEs = 20 hasta la
     // migr. 046; la 048 sumó stock_movements/canteen_tabs/canteen_products y
-    // la 049 daily_cash_opens — rediseño Caja y Cantina, spec 2026-07-22.)
-    expect(txExecute.mock.calls.length).toBe(24)
+    // la 049 daily_cash_opens — rediseño Caja y Cantina, spec 2026-07-22; la
+    // 062 sumó tournaments/tournament_teams/tournament_team_players — módulo
+    // Torneos, docs/decisions/2026-07-24-torneos.md.)
+    // Este número es el gate: si agregás una tabla tenant-aislada y no la
+    // purgás acá, este test va rojo. Actualizalo SOLO junto con el DELETE nuevo.
+    expect(txExecute.mock.calls.length).toBe(27)
     expect(h.getSql).not.toHaveBeenCalled()
     expect(h.getDb).not.toHaveBeenCalled()
     expect(h.withTenantContext).not.toHaveBeenCalled()

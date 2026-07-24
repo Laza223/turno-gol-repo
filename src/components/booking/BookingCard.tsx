@@ -9,6 +9,7 @@ import {
   HandCoins,
   Plus,
   Repeat,
+  Trophy,
   UserX,
   type LucideIcon,
 } from 'lucide-react'
@@ -59,10 +60,23 @@ type SlotVisual = {
  * Mapa canónico de estados (pages/grilla.md §2, MASTER §2.6):
  * el COLOR comunica el estado de la plata (semáforo §2.5), el ÍCONO + label
  * comunican qué es. El origen (abonado) ya no tiene hue propio: se reconoce
- * por Repeat + "Abonado". Prioridad: block > no_show > completed >
+ * por Repeat + "Abonado". Prioridad: torneo > block > no_show > completed >
  * pending_payment > señada > abonado > confirmada.
  */
 function slotVisual(booking: GridBooking): SlotVisual {
+  // Migr. 062. Va PRIMERO: una hora de torneo no está esperando plata ni tiene
+  // seña, así que ninguna de las ramas de abajo la describe bien. Comparte el
+  // rayado con 'block' (señal de "esto no es una reserva de un jugador") y se
+  // separa por el hue ámbar + Trophy + label, nunca solo por color (MASTER §1.4).
+  if (booking.type === 'tournament') {
+    return {
+      cell: 'slot-blocked-stripes bg-warning/10 dark:bg-warning/15',
+      borderL: 'border-l-warning',
+      labelText: 'text-amber-800 dark:text-amber-300',
+      icon: Trophy,
+      label: 'Torneo',
+    }
+  }
   if (booking.type === 'block') {
     return {
       cell: 'slot-blocked-stripes',

@@ -57,7 +57,7 @@ export type PublicCourtCard = {
 // 'occupied' = reserva espontánea, 'fixed' = turno fijo/abonado, 'blocked' = bloqueado por el admin
 export type SlotStatus = 'free' | 'occupied' | 'fixed' | 'blocked' | 'past'
 
-type PublicBookingType = 'spontaneous' | 'fixed' | 'block'
+type PublicBookingType = 'spontaneous' | 'fixed' | 'block' | 'tournament'
 
 export type Slot = {
   time: string
@@ -188,7 +188,10 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
           slotEnd > b.timeStartMins,
       )
       if (!overlapping) status = 'free'
-      else if (overlapping.type === 'block') status = 'blocked'
+      // El torneo posee la hora: para el jugador no es reservable, igual que un
+      // bloqueo del admin. Explícito y no por el else, que daría 'occupied'.
+      else if (overlapping.type === 'block' || overlapping.type === 'tournament')
+        status = 'blocked'
       else if (overlapping.type === 'fixed') status = 'fixed'
       else status = 'occupied'
     }

@@ -18,6 +18,8 @@ interface AdminLayoutShellProps {
   signOut: () => Promise<never>
   /** Banner rojo de impersonación (solo en sesiones del super admin). */
   impersonationBanner?: ReactNode
+  /** Feature flag 'tournaments' resuelto server-side para este complejo. */
+  tournamentsEnabled?: boolean
 }
 
 export function AdminLayoutShell({
@@ -29,6 +31,7 @@ export function AdminLayoutShell({
   userEmail,
   signOut,
   impersonationBanner,
+  tournamentsEnabled,
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -48,6 +51,7 @@ export function AdminLayoutShell({
         tenantName={tenantName}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        tournamentsEnabled={tournamentsEnabled}
       />
 
       {/* Header */}

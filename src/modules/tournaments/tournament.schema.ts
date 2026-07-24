@@ -1,0 +1,177 @@
+import { z } from 'zod'
+import {
+  boundedText,
+  dateStr,
+  hhmm,
+  hhmmEnd,
+  moneyCents,
+  uuid,
+} from '@/shared/validation/primitives'
+import { TIEBREAKERS } from './tournament.types'
+
+// Mensajes en es-AR. `uuid` sale de primitives: NO usar z.uuid() (Zod 4 valida
+// RFC 9562 y rechaza cosas que el repo acepta).
+
+const tournamentName = z
+  .string()
+  .trim()
+  .min(1, 'El nombre del torneo no puede estar vacío.')
+  .max(120, 'El nombre no puede superar los 120 caracteres.')
+
+const teamName = z
+  .string()
+  .trim()
+  .min(1, 'El nombre del equipo no puede estar vacío.')
+  .max(80, 'El nombre no puede superar los 80 caracteres.')
+
+const tiebreakerSchema = z.enum(TIEBREAKERS)
+
+export const createTournamentSchema = z
+  .object({
+    name: tournamentName,
+    format: z.enum(['league', 'knockout', 'groups_playoff'], {
+      message: 'Formato de torneo inválido.',
+    }),
+    startsOn: dateStr,
+    endsOn: dateStr.nullish(),
+    registrationDeadline: dateStr.nullish(),
+    maxTeams: z
+      .number()
+      .int()
+      .min(2, 'Un torneo necesita al menos 2 equipos.')
+      .max(256, 'El máximo es 256 equipos.')
+      .nullish(),
+    // Duración del PARTIDO, no del turno de la grilla (que es fijo de 60 min).
+    matchDurationMinutes: z
+      .number()
+      .int()
+      .min(10, 'Un partido no puede durar menos de 10 minutos.')
+      .max(120, 'Un partido no puede durar más de 120 minutos.')
+      .default(60),
+    restBetweenMatchesMinutes: z
+      .number()
+      .int()
+      .min(0)
+      .max(240, 'El descanso no puede superar las 4 horas.')
+      .default(0),
+    inscriptionFee: moneyCents.default(0),
+    pointsWin: z.number().int().min(0).max(10).default(3),
+    pointsDraw: z.number().int().min(0).max(10).default(1),
+    pointsLoss: z.number().int().min(0).max(10).default(0),
+    tiebreakers: z
+      .array(tiebreakerSchema)
+      .min(1, 'Hace falta al menos un criterio de desempate.')
+      .max(TIEBREAKERS.length)
+      .default(['goal_diff', 'goals_for', 'head_to_head', 'fair_play', 'drawn_lots']),
+    yellowCardsForSuspension: z.number().int().min(1).max(20).default(3),
+    redCardSuspensionMatches: z.number().int().min(0).max(20).default(1),
+    walkoverGoalsFor: z.number().int().min(0).max(20).default(3),
+    notes: boundedText(1000).nullish(),
+  })
+  .refine((v) => !v.endsOn || v.endsOn >= v.startsOn, {
+    message: 'La fecha de fin no puede ser anterior a la de inicio.',
+    path: ['endsOn'],
+  })
+  .refine((v) => !v.registrationDeadline || v.registrationDeadline <= v.startsOn, {
+    message: 'El cierre de inscripción no puede ser posterior al inicio.',
+    path: ['registrationDeadline'],
+  })
+  // Espeja chk_tournament_points: sin esto el INSERT explota con un 23514 crudo.
+  .refine((v) => v.pointsWin >= v.pointsDraw && v.pointsDraw >= v.pointsLoss, {
+    message: 'Los puntos por ganar no pueden ser menos que por empatar o perder.',
+    path: ['pointsWin'],
+  })
+  // Criterios repetidos son siempre un error de carga y romperían el orden.
+  .refine((v) => new Set(v.tiebreakers).size === v.tiebreakers.length, {
+    message: 'No se puede repetir un criterio de desempate.',
+    path: ['tiebreakers'],
+  })
+
+export const updateTournamentSchema = z.object({
+  id: uuid,
+  name: tournamentName.optional(),
+  endsOn: dateStr.nullish(),
+  registrationDeadline: dateStr.nullish(),
+  maxTeams: z.number().int().min(2).max(256).nullish(),
+  matchDurationMinutes: z.number().int().min(10).max(120).optional(),
+  restBetweenMatchesMinutes: z.number().int().min(0).max(240).optional(),
+  inscriptionFee: moneyCents.optional(),
+  pointsWin: z.number().int().min(0).max(10).optional(),
+  pointsDraw: z.number().int().min(0).max(10).optional(),
+  pointsLoss: z.number().int().min(0).max(10).optional(),
+  tiebreakers: z.array(tiebreakerSchema).min(1).max(TIEBREAKERS.length).optional(),
+  yellowCardsForSuspension: z.number().int().min(1).max(20).optional(),
+  redCardSuspensionMatches: z.number().int().min(0).max(20).optional(),
+  walkoverGoalsFor: z.number().int().min(0).max(20).optional(),
+  status: z
+    .enum(['draft', 'registration', 'in_progress', 'finished', 'canceled'])
+    .optional(),
+  isPublic: z.boolean().optional(),
+  notes: boundedText(1000).nullish(),
+})
+
+export const tournamentIdSchema = z.object({ id: uuid })
+
+export const createTeamSchema = z.object({
+  tournamentId: uuid,
+  name: teamName,
+  contactPlayerId: uuid.nullish(),
+  contactName: boundedText(120).nullish(),
+  contactPhone: boundedText(30).nullish(),
+  notes: boundedText(500).nullish(),
+})
+
+export const updateTeamSchema = z.object({
+  id: uuid,
+  name: teamName.optional(),
+  contactPlayerId: uuid.nullish(),
+  contactName: boundedText(120).nullish(),
+  contactPhone: boundedText(30).nullish(),
+  status: z
+    .enum(['registered', 'confirmed', 'withdrawn', 'disqualified'])
+    .optional(),
+  groupLabel: z.string().trim().min(1).max(10).nullish(),
+  seed: z.number().int().positive().nullish(),
+  notes: boundedText(500).nullish(),
+})
+
+export const teamIdSchema = z.object({ id: uuid })
+
+export const createTeamPlayerSchema = z.object({
+  teamId: uuid,
+  fullName: z
+    .string()
+    .trim()
+    .min(1, 'El nombre del jugador no puede estar vacío.')
+    .max(120, 'El nombre no puede superar los 120 caracteres.'),
+  playerId: uuid.nullish(),
+  dni: z
+    .string()
+    .trim()
+    .regex(/^\d{7,9}$/, 'El DNI tiene que tener entre 7 y 9 dígitos.')
+    .nullish(),
+  shirtNumber: z.number().int().min(0).max(999).nullish(),
+})
+
+export const teamPlayerIdSchema = z.object({ id: uuid })
+
+export const reserveSlotsSchema = z.object({
+  tournamentId: uuid,
+  courtIds: z
+    .array(uuid)
+    .min(1, 'Elegí al menos una cancha.')
+    .max(20, 'No se pueden tomar más de 20 canchas de una.'),
+  dates: z
+    .array(dateStr)
+    .min(1, 'Elegí al menos una fecha.')
+    // 90 fechas × 20 canchas × 24 horas es el techo razonable de una operación.
+    .max(90, 'No se pueden tomar más de 90 fechas de una.'),
+  timeStart: hhmm,
+  timeEnd: hhmmEnd,
+})
+
+export const releaseSlotsSchema = z.object({
+  tournamentId: uuid,
+  /** Libera desde esta fecha en adelante; lo anterior queda como histórico. */
+  fromDate: dateStr,
+})

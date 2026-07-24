@@ -973,3 +973,33 @@ describe('O. daily_cash_opens (migración 049)', () => {
     ).rejects.toThrow(/permission denied/i)
   })
 })
+
+// ─── P. push_send_log (migración 059, idempotencia F3 push — hallazgo D4) ──
+// Tabla deny-all: sin tenant_id, SIN policies para turnogol_app (RLS
+// ENABLE+FORCE, cero CREATE POLICY) + REVOKE ALL explícito (migr. 059) —
+// solo turnogol_worker (BYPASSRLS, migr. 038) la toca. Clasificación
+// distinta a L/N/O (aislamiento clásico por tenant_id) y a feature_flags/
+// reviews (lectura global, solo el WRITE está bloqueado): acá NI SIQUIERA el
+// SELECT está permitido para turnogol_app, así que el fail-safe no es
+// "0 filas" (bloque H, que asume SELECT permitido) sino "permission denied"
+// — mismo idioma que el bloque G (audit_logs/daily_cash_closes), extendido a
+// SELECT/INSERT porque acá TODO está denegado, no solo UPDATE/DELETE.
+describe('P. push_send_log (migración 059)', () => {
+  it('turnogol_app: SELECT denegado (permission denied — sin GRANT, migr. 059)', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app' }, (tx) =>
+        tx.unsafe(`SELECT dedupe_key FROM push_send_log LIMIT 1`),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+
+  it('turnogol_app: INSERT denegado (permission denied — sin GRANT, migr. 059)', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app' }, (tx) =>
+        tx.unsafe(
+          `INSERT INTO push_send_log (dedupe_key) VALUES ('spoof-key-isolation-test')`,
+        ),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+})

@@ -6,7 +6,16 @@
  *   pg-boss QUEUE_PUSH_SEND job per subscription.
  * - Skips silently if no subscriptions found (admin has not opted in).
  * - MUST be called AFTER the parent transaction commits (same pattern as
- *   dispatchEmail). pg-boss send is at-least-once; the worker is idempotent.
+ *   dispatchEmail). pg-boss send is at-least-once — retryLimit=3 puede
+ *   re-entregar un job tras un crash/error POST-envío. F3 (hallazgo D4 🔴):
+ *   el push de booking confirmado (`booking.confirmed_online`, el único
+ *   caller de producción hoy) incluye una dedupeKey determinística
+ *   (`push:booking-confirmed:<bookingId>:<subscriptionId>`) que el worker
+ *   reclama vía INSERT ... ON CONFLICT DO NOTHING en push_send_log ANTES de
+ *   enviar (push.worker.ts) — así un retry no duplica el push visible al
+ *   admin. Otros payloads (ej. el push de test de /api/admin/push/test, vía
+ *   notifyStaffPush) NO llevan dedupeKey y siguen siendo at-least-once sin
+ *   guard.
  */
 
 import { sql as drizzleSql } from 'drizzle-orm'
@@ -47,7 +56,19 @@ export async function notifyAdminPush(
   const boss = await getBoss()
   await Promise.all(
     subs.map((sub) => {
-      const data: PushSendJobData = { subscription_id: sub.id, payload }
+      // F3 (hallazgo D4): dedupeKey determinística SOLO para booking
+      // confirmado (el único caller de producción de notifyAdminPush hoy —
+      // ver notifyAdminBookingConfirmed más abajo). Otros tipos de payload
+      // quedan sin dedupeKey: comportamiento viejo, at-least-once sin guard.
+      const dedupeKey =
+        payload.type === 'booking.confirmed_online' && payload.bookingId
+          ? `push:booking-confirmed:${payload.bookingId}:${sub.id}`
+          : undefined
+      const data: PushSendJobData = {
+        subscription_id: sub.id,
+        payload,
+        ...(dedupeKey ? { dedupeKey } : {}),
+      }
       return boss.send(QUEUE_PUSH_SEND, data, options)
     }),
   )

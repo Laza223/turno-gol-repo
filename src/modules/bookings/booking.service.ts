@@ -506,7 +506,7 @@ async function createOnlineBookingImpl(
     })
 
     if (booking.status === 'pending_payment') {
-      // Hallazgo 1: arm the 15-min expiry timer. Routed through an injectable
+      // Hallazgo 1: arm the 6-min expiry timer. Routed through an injectable
       // seam so the test suite never starts a real pg-boss. This send happens
       // inside the still-open tx; a rollback leaves an orphan job that no-ops
       // (race-safe transition) and is also covered by the 5-min sweep.

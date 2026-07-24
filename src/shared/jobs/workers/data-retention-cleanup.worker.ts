@@ -154,6 +154,28 @@ export async function purgeProcessedWebhooks(): Promise<void> {
 }
 
 /**
+ * F3 (hallazgo D4, 2026-07-24): purga GLOBAL de `push_send_log` — misma
+ * mecánica y mismo horizonte que `purgeProcessedWebhooks` (su gemela
+ * semántica: idempotencia por INSERT ... ON CONFLICT DO NOTHING). La tabla
+ * no tiene `tenant_id` (dedupeKey de push, ver `push.service.ts` /
+ * `push.worker.ts`), así que corre UNA sola vez por corrida del job, fuera
+ * del loop por-tenant — un solo DELETE ya es atómico. Deny-all para
+ * turnogol_app (migr. 059): corre en el pool worker (BYPASSRLS), único rol
+ * con GRANT sobre esta tabla.
+ */
+export async function purgePushSendLog(): Promise<void> {
+  const sql = getWorkerSql()
+  const result = await sql`
+    DELETE FROM push_send_log
+    WHERE sent_at < NOW() - INTERVAL '30 days'
+  `
+  logger.info('purged push_send_log', {
+    module: 'data-retention',
+    count: result.count,
+  })
+}
+
+/**
  * D5 (retención por antigüedad, aprobada por el dueño 2026-07-23): purga
  * GLOBAL de `audit_logs` con más de 24 meses. OJO: la tabla ES per-tenant
  * (tiene `tenant_id`) pero la retención es por antigüedad, cross-tenant — el
@@ -388,6 +410,15 @@ export async function runDataRetentionCleanup(): Promise<void> {
     await purgeProcessedWebhooks()
   } catch (err) {
     logger.error('purge processed_webhooks failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgePushSendLog()
+  } catch (err) {
+    logger.error('purge push_send_log failed (non-fatal, retried next run)', {
       module: 'data-retention',
       error: err instanceof Error ? err.message : String(err),
     })

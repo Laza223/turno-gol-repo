@@ -7,7 +7,7 @@ import { track } from '@/shared/observability'
 import { QUEUE_PUSH_SEND, type PushSendJobData } from '../definitions'
 
 export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void> {
-  const { subscription_id, payload } = job.data
+  const { subscription_id, payload, dedupeKey } = job.data
   // Only subscription_id is known here (no tenant in the job payload) — the
   // lookup can't set app.current_tenant_id before it knows which tenant this
   // row belongs to, so it needs the service-role pool (Fable 5 P0).
@@ -31,6 +31,28 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
     })
     return
   }
+
+  if (dedupeKey) {
+    // F3 (hallazgo D4 🔴): claim atómico ANTES de enviar — mismo idioma que
+    // processed_webhooks/lockMpEvent (payment.service.ts:193). pg-boss
+    // (retryLimit=3) puede re-entregar este job tras un crash/error POST-envío;
+    // sin este guard, el retry vuelve a llamar sendPushNotification y duplica
+    // el push visible al admin. At-most-once por dedupeKey: un crash entre el
+    // claim y el envío pierde ese push (aceptado — molestia menor vs. duplicar).
+    const claim = await sql<{ dedupe_key: string }[]>`
+      INSERT INTO push_send_log (dedupe_key) VALUES (${dedupeKey})
+      ON CONFLICT (dedupe_key) DO NOTHING
+      RETURNING dedupe_key
+    `
+    if (claim.length === 0) {
+      logger.debug('push.worker: dedupeKey already claimed, skipping resend', {
+        module: 'push.worker',
+        dedupeKey,
+      })
+      return
+    }
+  }
+
   const result = await sendPushNotification(
     { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
     payload,

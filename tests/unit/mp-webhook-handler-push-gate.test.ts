@@ -61,13 +61,16 @@ const mockNotifyPush = notifyAdminBookingConfirmed as ReturnType<typeof vi.fn>
 const TENANT_ID = 'tenant-1'
 const BOOKING_ID = 'booking-1'
 
-/** Chain mínima para `getDb().select({...}).from(tenants).where(...).limit(1)`. */
+/** Chain mínima para `getDb().select({...}).from(tenants).where(...).limit(1)`.
+ * `execute` cubre el pre-check de duplicados (F2): `[]` = evento no visto,
+ * el handler sigue por el camino normal que estos tests ejercitan. */
 function makeDbChain(rows: unknown[]) {
   const chain = {
     select: () => chain,
     from: () => chain,
     where: () => chain,
     limit: () => Promise.resolve(rows),
+    execute: () => Promise.resolve([]),
   }
   return chain
 }

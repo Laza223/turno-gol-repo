@@ -59,6 +59,8 @@ function makeDbChain(rows: unknown[]) {
     from: () => chain,
     where: () => chain,
     limit: () => Promise.resolve(rows),
+    // Pre-check de duplicados (F2): `[]` = evento no visto, camino normal.
+    execute: () => Promise.resolve([]),
   }
   return chain
 }

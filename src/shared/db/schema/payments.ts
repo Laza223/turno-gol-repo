@@ -69,5 +69,10 @@ export const payments = pgTable(
       table.tenantId,
       table.createdAt,
     ),
+    // Migr. 061 (reconciliación contable D4 §7): sweep cross-tenant
+    // (turnogol_worker, sin tenant_id en el WHERE) — ver reconciliation.service.ts.
+    approvedCreatedIdx: index('idx_payments_approved_created')
+      .on(table.createdAt)
+      .where(sql`status = 'approved'`),
   }),
 )

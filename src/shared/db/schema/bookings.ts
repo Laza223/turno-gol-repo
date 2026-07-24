@@ -119,5 +119,12 @@ export const bookings = pgTable(
       table.date,
       table.status,
     ),
+    // Migr. 061 (reconciliación contable D4 §7): sweep cross-tenant
+    // (turnogol_worker, sin tenant_id en el WHERE) — ver reconciliation.service.ts.
+    // INV4 filtra y ordena por updated_at (no created_at): el índice tiene que
+    // ir sobre esa columna o el planner hace Filter + Sort en vez de Index Cond.
+    depositMpIdx: index('idx_bookings_deposit_mp')
+      .on(table.updatedAt)
+      .where(sql`payment_method = 'mercadopago' AND deposit_status IN ('paid', 'captured')`),
   }),
 )

@@ -17,6 +17,7 @@ export const QUEUE_REFRESH_MP_TOKENS = 'refresh-mp-tokens'
 export const QUEUE_RECONCILE_PENDING_PAYMENTS = 'reconcile-pending-payments'
 export const QUEUE_RETRY_PENDING_REFUNDS = 'retry-pending-refunds'
 export const QUEUE_HEALTH_PING = 'health-ping'
+export const QUEUE_RECONCILE_ACCOUNTING_DRIFT = 'reconcile-accounting-drift'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 

@@ -39,6 +39,7 @@ function renderActions(overrides: Partial<Parameters<typeof BookingActions>[0]> 
       guestPhone={null}
       completeAndChargeBookingAction={noop}
       markNoShowAction={noop}
+      revertNoShowAction={noop}
       cancelBookingAction={noop}
       {...overrides}
     />,

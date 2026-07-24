@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
-import { artDateString, daysFromNow } from '@/test/fixtures/clock'
+import { artDateString, daysFromNow, hoursFromNow } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
 import type { BookingActionResult, CompleteAndChargeResult } from '../actions'
 import BookingActions from './BookingActions'
@@ -36,6 +36,7 @@ const meta = {
     guestPhone: null,
     completeAndChargeBookingAction: fn(async (): Promise<CompleteAndChargeResult> => okResult),
     markNoShowAction: fn(async (): Promise<BookingActionResult> => okResult),
+    revertNoShowAction: fn(async (): Promise<BookingActionResult> => okResult),
     cancelBookingAction: fn(async (): Promise<BookingActionResult> => okResult),
   },
   decorators: [
@@ -65,12 +66,54 @@ export const Confirmada: Story = {
 }
 
 /**
- * Regla de negocio: el componente entero es `null` fuera de `status === 'confirmed'`.
- * Una reserva ya cancelada, completada o ausente no ofrece NINGUNA acción — no hay
- * forma de cancelarla de nuevo ni de re-marcarla.
+ * Regla de negocio: el componente entero es `null` fuera de `status === 'confirmed'`,
+ * con UNA excepción (abajo): un `no_show` dentro de la ventana de corrección de 24h.
+ * Una reserva ya cancelada o completada no ofrece NINGUNA acción.
  */
 export const SinAccionesSiNoEstaConfirmada: Story = {
   args: { status: 'canceled_refunded' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('button')).toBeNull()
+  },
+}
+
+/**
+ * RI #1 — corrección inversa: turno marcado ausente hace 2hs. Se ofrece
+ * "Deshacer ausente" y el diálogo avisa que la seña capturada NO vuelve sola.
+ */
+export const AusenteDentroDeLa24hSePuedeDeshacer: Story = {
+  args: {
+    status: 'no_show',
+    depositStatus: 'captured',
+    // Relativo al reloj congelado del preview (NO `Date.now()` en el módulo:
+    // los args se evalúan fuera del render y quedarían desfasados).
+    updatedAt: hoursFromNow(-2).toISOString(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Deshacer ausente' }))
+
+    const dialogEl = await body.findByRole('dialog')
+    const dialog = within(dialogEl)
+    // Radix puede seguir animando la entrada (mismo gotcha que MarcarAusenteConfirmado).
+    await waitFor(() => expect(dialog.getByText(/no se devuelve sola/i)).toBeVisible())
+    await userEvent.click(dialog.getByRole('button', { name: 'Deshacer ausente' }))
+
+    await waitFor(() => expect(args.revertNoShowAction).toHaveBeenCalledWith(BOOKING_ID))
+    await waitForElementToBeRemoved(dialogEl)
+    await expect(await body.findByText('Ausencia deshecha')).toBeVisible()
+    await expect(getRouter().refresh).toHaveBeenCalled()
+  },
+}
+
+/** Pasadas las 24h el turno es inmutable: ni siquiera se ofrece deshacer. */
+export const AusentePasadasLas24hNoOfreceNada: Story = {
+  args: {
+    status: 'no_show',
+    updatedAt: hoursFromNow(-25).toISOString(),
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('button')).toBeNull()

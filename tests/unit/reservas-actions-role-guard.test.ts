@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Cruce #1 (auditoría cruzada junio): ROLES × ACCIONES RÁPIDAS.
-// Las 5 Server Actions de reservas deben rechazar a un staff SIN membresía
+// Las 6 Server Actions de reservas deben rechazar a un staff SIN membresía
 // activa (rol null) ANTES de tocar la DB o el gateway de MP. admin y manager
 // (Encargado) operan con normalidad. El rol se lee de la DB vía getStaffRole —
 // el claim del JWT está hardcodeado a 'admin' en extractAuthUser y NO protege.
@@ -27,6 +27,7 @@ vi.mock('@/modules/bookings/booking.concurrency', () => ({
 vi.mock('@/modules/bookings/booking.cancellation', () => ({
   cancelByAdmin: vi.fn(),
   handleNoShow: vi.fn(),
+  handleNoShowRevert: vi.fn(),
 }))
 vi.mock('@/modules/payments/mp-oauth', () => ({ resolveTenantGateway: vi.fn() }))
 
@@ -36,6 +37,7 @@ import {
   confirmDepositPaymentAction,
   createBookingAction,
   markNoShowAction,
+  revertNoShowAction,
 } from '@/app/(admin)/reservas/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -50,6 +52,7 @@ import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurr
 import {
   cancelByAdmin,
   handleNoShow,
+  handleNoShowRevert,
 } from '@/modules/bookings/booking.cancellation'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 
@@ -95,6 +98,12 @@ describe('reservas actions — staff sin membresía activa (rol null) es rechaza
     const res = await markNoShowAction('b-1')
     expect(res.success).toBe(false)
     expect(vi.mocked(handleNoShow)).not.toHaveBeenCalled()
+  })
+
+  it('revertNoShowAction no deshace ausencias (strike/softban) sin rol', async () => {
+    const res = await revertNoShowAction('b-1')
+    expect(res.success).toBe(false)
+    expect(vi.mocked(handleNoShowRevert)).not.toHaveBeenCalled()
   })
 
   it('cancelBookingAction NO resuelve el gateway MP ni cancela sin rol', async () => {

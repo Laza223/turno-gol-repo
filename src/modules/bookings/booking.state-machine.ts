@@ -21,11 +21,15 @@ export const TRANSITIONS: Record<BookingStatus, ReadonlySet<BookingStatus>> = {
   // pura): la imponen markNoShow (capa app) y el trigger enforce_booking_-
   // invariants_fn (DB). Acá sólo se gobierna el par estado+actor.
   completed: new Set<BookingStatus>(['no_show']),
+  // doc6 §3 (RI #1): corrección INVERSA de 24h. Un admin puede revertir un
+  // turno mal marcado como ausente. Misma división de responsabilidades que
+  // completed→no_show: acá sólo el par estado+actor; la ventana la imponen
+  // revertNoShow (capa app) y el trigger enforce_booking_invariants_fn (DB).
+  no_show: new Set<BookingStatus>(['completed']),
   // Estados terminales reales (DB trigger rechaza cualquier UPDATE).
   expired: new Set<BookingStatus>(),
   canceled_refunded: new Set<BookingStatus>(),
   canceled_no_refund: new Set<BookingStatus>(),
-  no_show: new Set<BookingStatus>(),
 }
 
 // Actor authorization per transition. Missing key = any actor allowed.
@@ -45,6 +49,9 @@ const ACTOR_RULES: Record<string, ReadonlySet<CancellationActor>> = {
   'confirmed->no_show': new Set<CancellationActor>(['admin']),
   // Corrección de 24h: sólo el admin del complejo, nunca system ni player.
   'completed->no_show': new Set<CancellationActor>(['admin']),
+  // Corrección inversa (RI #1): ídem, sólo el admin. El jugador no puede
+  // auto-limpiarse un no-show y ningún job la ejecuta.
+  'no_show->completed': new Set<CancellationActor>(['admin']),
 }
 
 export function canTransition(

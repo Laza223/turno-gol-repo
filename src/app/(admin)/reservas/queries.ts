@@ -149,6 +149,14 @@ export type ReservaDetail = ReservaListRow & {
    * sin este campo).
    */
   startsAt?: string | null
+  /**
+   * Última modificación del turno (TIMESTAMPTZ). Para un turno en `no_show` es
+   * el instante en que se marcó la ausencia: BookingActions lo usa para saber
+   * si la ventana de corrección de 24h (RI #1) sigue abierta y mostrar u
+   * ocultar "Deshacer ausente". Opcional por el mismo motivo que `startsAt`:
+   * consumidores/stories que arman un `ReservaDetail` a mano no lo tienen.
+   */
+  updatedAt?: string | null
 }
 
 export async function getBookingDetail(
@@ -165,7 +173,7 @@ export async function getBookingDetail(
            b.canceled_reason AS "canceledReason",
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS "cancellationPolicyHours",
            b.abonado_id AS "abonadoId",
-           b.starts_at AS "startsAt", b.ends_at AS "endsAt",
+           b.starts_at AS "startsAt", b.ends_at AS "endsAt", b.updated_at AS "updatedAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            p.phone AS "playerPhone"

@@ -136,3 +136,89 @@ export async function applyNoShowStrike(
   const bannedUntil = await extendSoftban(tenantId, playerId, now, tx)
   return { noshowCount, softbanned: bannedUntil !== null, bannedUntil }
 }
+
+export type NoShowStrikeRevertResult = {
+  /** Ausencias contadas DESPUÉS de revertir esta. */
+  noshowCount: number
+  /** true si esta reversión levantó el softban automático que seguía vigente. */
+  softbanLifted: boolean
+}
+
+/**
+ * Inverso exacto de `applyNoShowStrike` (RI #1, doc6 §3): el admin marcó "No
+ * vino" por error y lo corrige dentro de las 24h. Debe correr dentro del MISMO
+ * tx que la transición no_show → completed (`revertNoShow`).
+ *
+ *  1. Decrementa `noshow_count` (piso 0 — nunca negativo aunque el contador
+ *     esté desincronizado por datos viejos).
+ *  2. Recalcula `last_no_show_at` desde la fuente de verdad: el `updated_at`
+ *     más reciente de los bookings que SIGUEN en `no_show` de ese jugador en
+ *     ese complejo, excluyendo el que se está corrigiendo (se excluye por id
+ *     para no depender del orden en que corran las sentencias dentro del tx).
+ *     Sin ausencias restantes queda NULL — el jugador vuelve a foja cero y la
+ *     ventana de reincidencia arranca limpia.
+ *  3. Levanta el softban SÓLO si el contador ya no alcanza el umbral de
+ *     reincidencia (< 2) y SÓLO si el ban vigente es el auto-creado por
+ *     `extendSoftban` (`banned_by IS NULL` + `reason` exacto). Un ban manual
+ *     del complejo — o un ban manual que `extendSoftban` sólo extendió, que
+ *     conserva su propio reason/banned_by — NUNCA se toca acá: levantarlo es
+ *     decisión del complejo vía `liftPlayerBan`.
+ *
+ * Modelo de "levantar": `banned_until = NOW()`, idéntico a `liftPlayerBan`
+ * (ban.service.ts) — preserva el historial de la fila y reusa el predicado de
+ * vigencia que ya lee `checkPlayerBanned`, sin introducir un flag nuevo.
+ *
+ * NO toca la seña: si se capturó al marcar la ausencia (`deposit_status =
+ * 'captured'`), sigue capturada. La devolución, si corresponde, se resuelve
+ * entre jugador y complejo (decisión de auditoría 2026-07-21).
+ */
+export async function revertNoShowStrike(
+  tenantId: string,
+  playerId: string,
+  bookingId: string,
+  tx: DbTx,
+): Promise<NoShowStrikeRevertResult> {
+  const rows = (await tx.execute(sql`
+    SELECT noshow_count FROM player_tenant_relationships
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+    LIMIT 1
+    FOR UPDATE
+  `)) as unknown as Array<{ noshow_count: number }>
+
+  // Sin fila PTR no hay strike que revertir (reserva manual de un jugador que
+  // nunca se vinculó, o PTR ya borrada).
+  const current = rows[0]
+  if (!current) return { noshowCount: 0, softbanLifted: false }
+
+  const noshowCount = Math.max(Number(current.noshow_count) - 1, 0)
+
+  await tx.execute(sql`
+    UPDATE player_tenant_relationships
+    SET noshow_count = ${noshowCount},
+        last_no_show_at = (
+          SELECT MAX(b.updated_at) FROM bookings b
+          WHERE b.tenant_id = ${tenantId}
+            AND b.player_id = ${playerId}
+            AND b.status = 'no_show'
+            AND b.id <> ${bookingId}
+        )
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+  `)
+
+  if (noshowCount >= 2) return { noshowCount, softbanLifted: false }
+
+  // `banned_until > NOW()` ya excluye los bans permanentes (NULL), que además
+  // nunca los crea extendSoftban.
+  const lifted = (await tx.execute(sql`
+    UPDATE tenant_player_bans
+    SET banned_until = NOW()
+    WHERE tenant_id = ${tenantId}
+      AND player_id = ${playerId}
+      AND banned_by IS NULL
+      AND reason = ${NO_SHOW_SOFTBAN_REASON}
+      AND banned_until > NOW()
+    RETURNING id
+  `)) as unknown as Array<{ id: string }>
+
+  return { noshowCount, softbanLifted: lifted.length > 0 }
+}

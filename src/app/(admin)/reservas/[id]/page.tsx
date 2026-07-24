@@ -10,6 +10,7 @@ import {
   cancelBookingAction,
   completeAndChargeBookingAction,
   markNoShowAction,
+  revertNoShowAction,
 } from '../actions'
 import { BookingDetailCard } from './BookingDetailCard'
 import BookingActions from './BookingActions'
@@ -67,6 +68,7 @@ export default async function ReservaDetailPage(props: Props) {
         timeStart={booking.timeStart}
         startsAt={booking.startsAt}
         endsAt={booking.endsAt}
+        updatedAt={booking.updatedAt}
         cancellationPolicyHours={booking.cancellationPolicyHours}
         guestName={booking.guestName}
         guestPhone={booking.guestPhone}
@@ -76,6 +78,7 @@ export default async function ReservaDetailPage(props: Props) {
         chargesTotal={charges?.chargesTotal ?? 0}
         completeAndChargeBookingAction={completeAndChargeBookingAction}
         markNoShowAction={markNoShowAction}
+        revertNoShowAction={revertNoShowAction}
         cancelBookingAction={cancelBookingAction}
       />
     </div>

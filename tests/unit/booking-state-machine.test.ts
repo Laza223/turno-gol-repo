@@ -33,17 +33,20 @@ const VALID_PAIRS: Array<[BookingStatus, BookingStatus]> = [
   // no_show. La ventana de 24h NO vive acá (la state machine es pura): la
   // chequean markNoShow (capa app) y el trigger enforce_booking_invariants_fn.
   ['completed', 'no_show'],
+  // RI #1: corrección INVERSA de 24h (doc6 §3). Mismo reparto: acá sólo el par
+  // estado+actor; la ventana la imponen revertNoShow y el trigger (migr. 060).
+  ['no_show', 'completed'],
 ]
 
 const validSet = new Set(VALID_PAIRS.map(([a, b]) => `${a}->${b}`))
 
 describe('TRANSITIONS matrix (doc6 §3 — full coverage)', () => {
-  it('contains exactly 7 valid (from, to) pairs', () => {
+  it('contains exactly 8 valid (from, to) pairs', () => {
     let total = 0
     for (const from of ALL_STATUSES) {
       total += TRANSITIONS[from].size
     }
-    expect(total).toBe(7)
+    expect(total).toBe(8)
   })
 
   for (const from of ALL_STATUSES) {
@@ -63,10 +66,17 @@ describe('TRANSITIONS matrix (doc6 §3 — full coverage)', () => {
   })
 
   it('terminal states have empty outgoing set', () => {
-    // 'completed' ya NO es terminal puro: admite la corrección completed→no_show.
-    for (const s of ['expired', 'canceled_refunded', 'canceled_no_refund', 'no_show'] as const) {
+    // Ni 'completed' ni 'no_show' son terminales puros: admiten la corrección
+    // de asistencia de 24h en AMBOS sentidos (P5 + RI #1). Los 3 que quedan sí
+    // son inmutables para siempre.
+    for (const s of ['expired', 'canceled_refunded', 'canceled_no_refund'] as const) {
       expect(TRANSITIONS[s].size).toBe(0)
     }
+  })
+
+  it('la corrección de asistencia es simétrica: completed↔no_show y nada más', () => {
+    expect([...TRANSITIONS.completed]).toEqual(['no_show'])
+    expect([...TRANSITIONS.no_show]).toEqual(['completed'])
   })
 })
 
@@ -228,6 +238,36 @@ describe('completed → no_show (corrección de 24h, P5)', () => {
     ).toThrow(InvalidTransitionError)
     expect(() =>
       assertTransition('completed', 'no_show', { actor: 'system' }),
+    ).toThrow(InvalidTransitionError)
+  })
+})
+
+describe('no_show → completed (corrección inversa de 24h, RI #1)', () => {
+  // doc6 §3: el admin marcó "No vino" por error y lo deshace dentro de las 24h.
+  // Como en la dirección opuesta, la state machine sólo gobierna estado+actor:
+  // la ventana la imponen revertNoShow (capa app) y el trigger de la migr. 060.
+  it('es transición válida en la matriz (sin ctx)', () => {
+    expect(canTransition('no_show', 'completed')).toBe(true)
+  })
+
+  it('sólo el admin puede ejecutarla', () => {
+    expect(canTransition('no_show', 'completed', { actor: 'admin' })).toBe(true)
+    // El jugador NO puede auto-limpiarse una ausencia…
+    expect(canTransition('no_show', 'completed', { actor: 'player' })).toBe(false)
+    // …y ningún job la ejecuta (a diferencia de confirmed→completed, que sí
+    // tiene actor 'system' por el auto-complete).
+    expect(canTransition('no_show', 'completed', { actor: 'system' })).toBe(false)
+  })
+
+  it('assertTransition no lanza para admin y lanza para player/system', () => {
+    expect(() =>
+      assertTransition('no_show', 'completed', { actor: 'admin' }),
+    ).not.toThrow()
+    expect(() =>
+      assertTransition('no_show', 'completed', { actor: 'player' }),
+    ).toThrow(InvalidTransitionError)
+    expect(() =>
+      assertTransition('no_show', 'completed', { actor: 'system' }),
     ).toThrow(InvalidTransitionError)
   })
 })

@@ -22,11 +22,13 @@ import {
 import {
   BookingDateOutOfRangeError,
   BookingNotInConfirmedError,
+  BookingNotInNoShowError,
   BookingNotYetEndedError,
   BookingNotYetStartedError,
   BookingValidationError,
   CourtOfflineError,
   NoShowCorrectionWindowExpiredError,
+  NoShowRevertWindowExpiredError,
   PlayerBannedError,
   PriceUnavailableError,
   SlotTakenError,
@@ -672,6 +674,66 @@ async function applyNoShow(
   const noShow = rowToBookingRow(rows[0]!)
   await invalidateCourtDateSlots(noShow.courtId, noShow.date)
   return noShow
+}
+
+// ─── revertNoShow ───────────────────────────────────────────────────
+/**
+ * Corrección INVERSA de 24h (RI #1, doc6 §3): el admin marcó "No vino" por
+ * error y devuelve el turno a `completed` dentro de las 24h de la marca
+ * (`bookings.updated_at`). Espejo de la rama completed → no_show de
+ * `markNoShow`: la state machine gobierna el actor (sólo admin), la ventana se
+ * chequea acá y el trigger `enforce_booking_invariants_fn` (migración 060) la
+ * respalda a nivel DB.
+ *
+ * Sólo hace la TRANSICIÓN. Los efectos de negocio (revertir el strike de
+ * `player_tenant_relationships`, levantar el softban auto-creado, audit_logs)
+ * los orquesta `handleNoShowRevert` (booking.cancellation.ts), igual que
+ * `handleNoShow` envuelve a `markNoShow`.
+ *
+ * La seña capturada al marcar la ausencia (`deposit_status = 'captured'`) NO se
+ * revierte ni se reembolsa automáticamente: no hay forma de saber si el
+ * complejo ya la cobró/aplicó al turno, y un refund automático movería plata
+ * sin decisión humana. Queda manual entre jugador y complejo (la UI lo avisa).
+ */
+export async function revertNoShow(
+  bookingId: string,
+  staffUserId: string,
+  tx: DbTx,
+): Promise<BookingRow> {
+  assertTransition('no_show', 'completed', { actor: 'admin' })
+
+  const check = await tx.execute(sql`
+    SELECT
+      b.status,
+      (NOW() - b.updated_at) < INTERVAL '24 hours' AS within_correction_window
+    FROM bookings b
+    WHERE b.id = ${bookingId}
+  `)
+  const row = (
+    check as unknown as Array<{
+      status: BookingStatus
+      within_correction_window: boolean
+    }>
+  )[0]
+  if (!row || row.status !== 'no_show') throw new BookingNotInNoShowError(bookingId)
+  if (!row.within_correction_window) throw new NoShowRevertWindowExpiredError(bookingId)
+
+  const rows = await tx
+    .update(bookings)
+    .set({
+      status: 'completed',
+      // Migración 047: queda registrado qué staff dejó el turno en 'completed'
+      // — acá, quien corrigió la ausencia.
+      completedByStaff: staffUserId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(bookings.id, bookingId), eq(bookings.status, 'no_show')))
+    .returning()
+
+  if (rows.length === 0) throw new BookingNotInNoShowError(bookingId)
+  const completed = rowToBookingRow(rows[0]!)
+  await invalidateCourtDateSlots(completed.courtId, completed.date)
+  return completed
 }
 
 // ─── expirePendingBooking ───────────────────────────────────────────

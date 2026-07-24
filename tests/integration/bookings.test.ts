@@ -138,6 +138,46 @@ async function insertCompletedBooking(opts: {
   return rows[0]!.id
 }
 
+/**
+ * Turno ya en `no_show` con la marca envejecida `agedHours` horas. Se siembra
+ * en el INSERT porque `enforce_booking_invariants_fn` (BEFORE UPDATE) bloquea
+ * cualquier UPDATE posterior sobre un booking terminal — mismo motivo por el
+ * que `insertCompletedBooking` hace lo propio con 'completed'.
+ */
+async function insertNoShowBooking(opts: {
+  tenantId: string
+  courtId: string
+  playerId: string
+  date: string
+  timeStart: string
+  timeEnd: string
+  agedHours: number
+}): Promise<string> {
+  const sql = getSql()
+  const { startsAt, endsAt } = physicalRange({
+    date: opts.date,
+    timeStart: opts.timeStart,
+    timeEnd: opts.timeEnd,
+    physicallyNextDay: false,
+  })
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO bookings (
+      tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
+      price_snapshot, deposit_amount, deposit_status, payment_method, status, updated_at
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+      ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
+      ${startsAt.toISOString()}, ${endsAt.toISOString()},
+      ${800000}, ${0}, 'not_required', NULL, 'no_show',
+      NOW() - (${opts.agedHours} || ' hours')::interval
+    )
+    RETURNING id
+  `
+  return rows[0]!.id
+}
+
 const FUTURE_DATE = '2027-04-26' // Monday, far in the future
 const PAST_DATE = '2020-04-27' // Monday, far in the past (used by completeBooking/markNoShow tests)
 
@@ -662,6 +702,70 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
     })
     await expect(
       sql`UPDATE bookings SET status = 'no_show' WHERE id = ${stale}`,
+    ).rejects.toThrow(/terminal/i)
+  })
+
+  // RI #1 (migración 060): la corrección INVERSA no_show → completed, con el
+  // mismo backstop de 24h. Espejo del test de arriba, con UPDATE crudo contra
+  // Postgres real — la state machine y revertNoShow pueden cambiar sin que este
+  // test se entere: acá se prueba el trigger, no la app.
+  it('el trigger DB permite el raw UPDATE inverso dentro de 24h y lo bloquea pasadas', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    // Dentro de la ventana: el trigger lo permite.
+    const fresh = await insertNoShowBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '12:00',
+      timeEnd: '13:00',
+      agedHours: 1,
+    })
+    await sql`UPDATE bookings SET status = 'completed' WHERE id = ${fresh}`
+    const a = await sql<{ status: string }[]>`
+      SELECT status FROM bookings WHERE id = ${fresh}
+    `
+    expect(a[0]!.status).toBe('completed')
+
+    // Pasada la ventana: el trigger lo bloquea.
+    const stale = await insertNoShowBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '14:00',
+      timeEnd: '15:00',
+      agedHours: 25,
+    })
+    await expect(
+      sql`UPDATE bookings SET status = 'completed' WHERE id = ${stale}`,
+    ).rejects.toThrow(/terminal/i)
+  })
+
+  // Control de que la excepción nueva es QUIRÚRGICA: dentro de la ventana sólo
+  // se admite el destino 'completed'. Cualquier otro estado sigue bloqueado.
+  it('dentro de la ventana, no_show → canceled_refunded sigue bloqueado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+
+    const fresh = await insertNoShowBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '16:00',
+      timeEnd: '17:00',
+      agedHours: 1,
+    })
+
+    await expect(
+      sql`UPDATE bookings SET status = 'canceled_refunded' WHERE id = ${fresh}`,
     ).rejects.toThrow(/terminal/i)
   })
 })

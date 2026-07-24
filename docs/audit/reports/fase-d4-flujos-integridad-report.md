@@ -134,7 +134,7 @@ Trigger vigente = migr. 045 (redefine `enforce_booking_invariants_fn` de 030; la
 
 ## 9. REQUIERE INPUT (consolidado, decisiones del dueño)
 
-1. **`no_show→completed` (corrección inversa):** doc6 §3 la especifica (revertir strike + levantar softban) y está pendiente de código. ¿Implementar o descartar del spec? Toca softban/seña — negocio.
+1. ~~**`no_show→completed` (corrección inversa):** doc6 §3 la especifica (revertir strike + levantar softban) y está pendiente de código. ¿Implementar o descartar del spec? Toca softban/seña — negocio.~~ → **RESUELTO 2026-07-24: implementar.** Hecho: migr. 060 (excepción simétrica de 24h en `enforce_booking_invariants_fn`), `no_show→completed` en la state machine con actor `admin`, `revertNoShow` (booking.service) + `revertNoShowStrike` (ptr.service) + `handleNoShowRevert` (booking.cancellation), `revertNoShowAction` y botón "Deshacer ausente" en la ficha. La seña capturada NO se auto-reembolsa (queda manual, avisado en la UI). 14 tests de integración + 8 unit.
 2. **Día operativo en caja/cantina:** ¿alinear `cash_flows` al día operativo de bookings (cambia cierres/reportes/históricos) o aceptar calendario ART documentándolo? Hoy la venta de madrugada cae en el día siguiente al del partido.
 3. **Reconciliación:** ¿prioridad de implementación fase 1 (DB-local)? ¿Canal de alerta: email al dueño del complejo vs panel super-admin? (Diseño listo en §7.)
 4. **`updateProduct` stock (BK7):** (a) separar edición de catálogo del ajuste de stock — el form de edición deja de tocar stock, correcciones solo por `adjustStock` con ledger (recomendada; cambia UX menor) vs (b) lock + registrar delta en ledger conservando el campo en el form.

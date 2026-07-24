@@ -5,7 +5,7 @@ import { resolveTenantGateway } from './mp-oauth'
 import type { PaymentGateway } from './mp-gateway'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
-import { parseSaasUpgradeRef } from './payment.types'
+import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
 import {
   onPaymentApproved,
   onPaymentRejected,
@@ -32,7 +32,11 @@ export type MpWebhookJob = {
  * Unit of work for the pg-boss `process-mp-webhook` queue.
  *
  *   1. Resolve tenant + decrypt MP access token (per-tenant OAuth, ADR-004).
- *   2. Open a tenant-scoped tx and dispatch by event type:
+ *   2. Fase SEARCH: `gateway.getPaymentStatus` (F2, hallazgo D4-A1 — clase
+ *      Saga) se resuelve ACÁ, fuera de cualquier tx — mismo patrón que
+ *      `mp-reconcile.service.ts`. `subscription_preapproval` no la necesita.
+ *   3. Fase PROCESS: abre un tx tenant-scoped, solo DB, y dispatch por
+ *      event type:
  *      - `subscription_authorized_payment` → dunning.onPaymentApproved/Rejected
  *      - `subscription_preapproval`        → no-op (we cancel/update via API, MP echoes)
  *      - `payment`                          → SaaS-upgrade dispatch OR booking deposit
@@ -52,6 +56,25 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     .limit(1)
 
   const tenant = rows[0]
+
+  // Pre-check read-only, FUERA de tx: una entrega repetida (re-post de MP o
+  // retry de pg-boss tras un fallo post-commit) corta acá sin repagar el GET
+  // a MP de la fase SEARCH. Best-effort con TOCTOU benigno: si dice "no
+  // existe" y otro worker gana la carrera, el lock transaccional de la fase
+  // PROCESS (lockMpEvent/lockWebhook) sigue siendo la idempotencia real; si
+  // dice "existe" es definitivo (processed_webhooks solo purga >30d).
+  const seen = await db.execute(sql`
+    SELECT 1 FROM processed_webhooks WHERE mp_event_id = ${job.mpEventId} LIMIT 1
+  `)
+  if ((seen as unknown as unknown[]).length > 0) {
+    track.webhook('mp.webhook.processed', {
+      mpEventId: job.mpEventId,
+      tenantId: job.tenantId,
+      eventType: job.eventType,
+      mpPaymentId: job.mpPaymentId,
+    })
+    return
+  }
 
   // Subscription events (recurring charge, preapproval echo) are billed
   // through TurnoGol's MASTER MP account (billing.gateway), never the
@@ -75,15 +98,38 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     gateway = resolveTenantGateway(job.tenantId, tenant.mpAccessToken)
   }
 
+  // Fase SEARCH (F2, hallazgo D4-A1 — clase Saga): el fetch a MP se resuelve
+  // ACÁ, fuera de cualquier tx — mismo patrón que `mp-reconcile.service.ts`.
+  // Antes vivía DENTRO de `withTenantContext` y dejaba la conexión del pool
+  // `turnogol_app` idle-in-transaction durante el round trip HTTP (timeout
+  // 8s; hasta ~24s si dispara refresh de token OAuth vía `onUnauthorized`,
+  // ver mp-oauth.ts). `subscription_preapproval` es el único evento que no
+  // necesita el pago (eco de MP que se registra idempotentemente sin llamar
+  // a MP). Las entregas repetidas ya cortaron en el pre-check de arriba sin
+  // llegar acá; una carrera exacta puede pagar el fetch doble, y el lock
+  // transaccional de la fase PROCESS decide.
+  const info: GatewayPaymentInfo | null =
+    job.eventType === 'subscription_preapproval'
+      ? null
+      : await gateway.getPaymentStatus(job.mpPaymentId)
+
   // Capture the booking id when a deposit is confirmed, so we can enqueue a
   // push notification AFTER the transaction commits. This avoids threading
   // bookingId through WebhookOutcome's type (minimal change, same pattern
   // as how dispatchEmail fires post-commit).
   let confirmedBookingId: string | null = null
 
+  // Fase PROCESS: tx tenant-scoped, solo DB — usa el `info` ya resuelto
+  // arriba, nunca vuelve a llamar a MP.
   const outcome = await withTenantContext(job.tenantId, async (tx) => {
     if (job.eventType === 'subscription_authorized_payment') {
-      const info = await gateway.getPaymentStatus(job.mpPaymentId)
+      // `info` siempre está resuelto acá: el mismo `job.eventType` decidió
+      // el fetch de la fase SEARCH de arriba.
+      if (!info) {
+        throw new Error(
+          'mp-webhook: missing prefetched payment info for subscription_authorized_payment',
+        )
+      }
       // Cross-check: `createPreapproval` sets external_reference = tenantId
       // (payment.types.ts). A holder of MP_WEBHOOK_SECRET must not be able
       // to apply another tenant's recurring-charge outcome by claiming a
@@ -131,7 +177,11 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     }
 
     // type === 'payment' — booking deposit OR SaaS upgrade proration.
-    // Lock first so duplicate webhook deliveries don't pay for getPaymentStatus.
+    // El lock sigue yendo primero: ya no evita pagar `getPaymentStatus` (la
+    // fase SEARCH de arriba ya lo hizo, sin importar si esto termina siendo
+    // una entrega duplicada) — sigue siendo la idempotencia real, atómica
+    // con el resto de esta tx: una entrega repetida corta acá, antes de
+    // tocar una sola fila.
     const event = {
       mpEventId: job.mpEventId,
       eventType: job.eventType,
@@ -141,7 +191,10 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     const fresh = await lockMpEvent(event, tx)
     if (!fresh) return
 
-    const info = await gateway.getPaymentStatus(job.mpPaymentId)
+    // `info` siempre está resuelto acá (ver fase SEARCH de arriba).
+    if (!info) {
+      throw new Error('mp-webhook: missing prefetched payment info for payment event')
+    }
     const upgrade = parseSaasUpgradeRef(info.externalReference)
     if (upgrade) {
       // Cross-check: the webhook's claimed tenant (?tenant= query) MUST match the

@@ -87,7 +87,9 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     expect(h.getWorkerSql).toHaveBeenCalled()
     expect(h.getWorkerDb).toHaveBeenCalled()
     expect(transaction).toHaveBeenCalledTimes(1)
-    // session_replication_role + FOR UPDATE ts + chequeo de elegibilidad +
+    // SET CONSTRAINTS fk_bookings_payment DEFERRED (migr. 058 — reemplazó al
+    // session_replication_role que moría bajo turnogol_worker en prod) +
+    // FOR UPDATE ts + chequeo de elegibilidad +
     // 20 DELETEs + 1 UPDATE tenants = 24 statements. (16 DELETEs = 20 hasta la
     // migr. 046; la 048 sumó stock_movements/canteen_tabs/canteen_products y
     // la 049 daily_cash_opens — rediseño Caja y Cantina, spec 2026-07-22.)

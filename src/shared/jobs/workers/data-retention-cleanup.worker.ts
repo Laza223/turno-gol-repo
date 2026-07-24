@@ -59,9 +59,9 @@ const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
  * propia (código viejo) corría el riesgo de cancelar el preapproval de un
  * tenant que resultó reactivado/inelegible entre el snapshot de `targets` y
  * esta iteración (ver el guard de elegibilidad en `wipeTenant`). Corre FUERA
- * de la tx de wipe (no sostener la tx, que setea
- * `session_replication_role='replica'`, abierta durante un round-trip HTTP)
- * contra el gateway de PLATAFORMA (`getBillingGateway()`, la cuenta MP de
+ * de la tx de wipe (no sostener una tx con ~20 DELETEs y el lock de
+ * `tenant_subscriptions` abierta durante un round-trip HTTP) contra el
+ * gateway de PLATAFORMA (`getBillingGateway()`, la cuenta MP de
  * TurnoGol que cobra la suscripción SaaS — NO `resolveTenantGateway`, que es
  * el OAuth propio del tenant para cobrar señas a sus jugadores).
  *
@@ -210,12 +210,23 @@ export async function wipeTenant(
   let wiped = false
 
   await db.transaction(async (tx) => {
-    // Disable user-level triggers + FK enforcement for this tx so we can
-    // wipe rows that are otherwise immutable (terminal bookings, daily
-    // cash closes) and break the bookings ↔ payments circular FK.
-    // `session_replication_role = replica` is the standard Postgres knob
-    // for whole-tenant wipes and only affects this transaction.
-    await tx.execute(drizzleSql`SET LOCAL session_replication_role = 'replica'`)
+    // FK circular bookings.payment_id ↔ payments.booking_id: el orden de
+    // DELETEs de abajo borra payments antes que bookings, así que el chequeo
+    // de fk_bookings_payment se difiere al COMMIT (migr. 058 la hizo
+    // DEFERRABLE), cuando ambos lados ya no existen. Es la ÚNICA arista de
+    // FK que el orden viola (censo en docs/decisions/2026-07-23-wipe-
+    // retencion-sin-replica-role.md) y SET CONSTRAINTS no requiere
+    // privilegios — a diferencia del session_replication_role='replica'
+    // que se usaba antes, un GUC SUSET que bajo el rol real de prod
+    // (turnogol_worker) moría con "permission denied" y dejaba TODO el wipe
+    // legal roto (local enmascaraba: pool worker cae a superusuario).
+    // Ningún trigger bloquea DELETE (la inmutabilidad de bookings terminales
+    // es BEFORE UPDATE; daily_cash_closes es append-only por REVOKE, con
+    // DELETE otorgado al worker en 057/058). El resto de las FKs queda
+    // ACTIVO a propósito: una tabla nueva que referencie filas wipeadas y
+    // falte en esta lista hace fallar la tx (loud) en vez de dejar
+    // huérfanos silenciosos como hacía el replica role.
+    await tx.execute(drizzleSql`SET CONSTRAINTS fk_bookings_payment DEFERRED`)
 
     // Orden A: lockear tenant_subscriptions ANTES de leer/tocar tenants.
     // Bloquea a cualquier activador concurrente (todos lockean esta misma
@@ -273,8 +284,8 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM payments WHERE tenant_id = ${tenantId}`)
     // Tenant-scoped rows whose FK to tenants is ON DELETE CASCADE never
     // fires here (we soft-anonymize the tenants row instead of deleting it)
-    // plus `reviews`, whose booking_id is a RESTRICT FK that the replica
-    // role would otherwise leave dangling. Delete reviews before bookings.
+    // plus `reviews`, whose booking_id is a RESTRICT FK: reviews must go
+    // before bookings or the bookings DELETE fails the FK check.
     await tx.execute(drizzleSql`DELETE FROM reviews WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM push_subscriptions WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM player_favorites WHERE tenant_id = ${tenantId}`)

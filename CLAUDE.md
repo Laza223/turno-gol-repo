@@ -91,7 +91,7 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - `middleware.ts` raíz (edge): Fetch-Metadata anti-CSRF + rate-limit + request-id en rutas públicas/de dinero.
 
 ### Background jobs
-- Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 13 workers registrados en `src/shared/jobs/workers/index.ts` (14 colas: expire-pending-booking suma una `-sweep`); colas y retry-config en `definitions.ts` / `queue-names.ts`. OJO: los crons registrados sin `SendOptions` corren con retryLimit=0 real — el "retry" es el próximo tick del cron, no pg-boss.
+- Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 14 workers registrados en `src/shared/jobs/workers/index.ts` (15 colas: expire-pending-booking suma una `-sweep`); colas y retry-config en `definitions.ts` / `queue-names.ts`. OJO: los crons registrados sin `SendOptions` corren con retryLimit=0 real — el "retry" es el próximo tick del cron, no pg-boss.
 - Webhook MP: `api/webhooks/mercadopago/route.ts` verifica firma → `boss.send(QUEUE_PROCESS_MP_WEBHOOK, …)`; con `MP_MOCK_ENABLED` (E2E) procesa inline.
 
 ### Tests y CI

@@ -42,10 +42,12 @@ const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
  * `WHERE tenant_id = ...` (or narrower) filter as defense in depth — RLS is
  * not the barrier here, the WHERE clause is.
  *
- * D5 (2026-07-23): also runs a GLOBAL step (`purgeProcessedWebhooks`,
- * outside the per-tenant loop — that table has no `tenant_id`) that
- * automates the manual purge doc19's runbook documented for
- * `processed_webhooks`.
+ * D5 (2026-07-23): also runs GLOBAL steps outside the per-tenant loop:
+ * `purgeProcessedWebhooks` (no `tenant_id` on that table) automates the
+ * manual purge doc19's runbook documented, and `purgeOldAuditLogs` /
+ * `purgeOldNotifications` apply the age-based retention the owner approved
+ * in the D5 review (audit_logs 24 months, notifications 6 months — see
+ * docs/audit/reports/fase-d5-infra-datos-report.md §REQUIERE INPUT).
  */
 
 /**
@@ -146,6 +148,46 @@ export async function purgeProcessedWebhooks(): Promise<void> {
     WHERE processed_at < NOW() - INTERVAL '30 days'
   `
   logger.info('purged processed_webhooks', {
+    module: 'data-retention',
+    count: result.count,
+  })
+}
+
+/**
+ * D5 (retención por antigüedad, aprobada por el dueño 2026-07-23): purga
+ * GLOBAL de `audit_logs` con más de 24 meses. OJO: la tabla ES per-tenant
+ * (tiene `tenant_id`) pero la retención es por antigüedad, cross-tenant — el
+ * DELETE no filtra tenant a propósito. Incluye también las filas system-level
+ * (`tenant_id IS NULL`, ej. `billing.mp_preapproval_orphaned`): los 24 meses
+ * aplican igual. Corre en el pool worker (`turnogol_worker`, BYPASSRLS) —
+ * `turnogol_app` tiene DELETE revocado sobre esta tabla (008/037), igual que
+ * en `wipeTenant`.
+ */
+export async function purgeOldAuditLogs(): Promise<void> {
+  const sql = getWorkerSql()
+  const result = await sql`
+    DELETE FROM audit_logs
+    WHERE created_at < NOW() - INTERVAL '24 months'
+  `
+  logger.info('purged audit_logs', {
+    module: 'data-retention',
+    count: result.count,
+  })
+}
+
+/**
+ * D5 (retención por antigüedad, aprobada por el dueño 2026-07-23): purga
+ * GLOBAL de `notifications` con más de 6 meses. Misma nota que
+ * `purgeOldAuditLogs`: tabla per-tenant, retención por antigüedad sin filtro
+ * de tenant, pool worker BYPASSRLS.
+ */
+export async function purgeOldNotifications(): Promise<void> {
+  const sql = getWorkerSql()
+  const result = await sql`
+    DELETE FROM notifications
+    WHERE created_at < NOW() - INTERVAL '6 months'
+  `
+  logger.info('purged notifications', {
     module: 'data-retention',
     count: result.count,
   })
@@ -325,15 +367,34 @@ export async function runDataRetentionCleanup(): Promise<void> {
   const sql = getWorkerSql()
   const gateway = getBillingGateway()
 
-  // Paso global, independiente de si hay tenants elegibles para wipe —
-  // corre siempre, antes del early-return de abajo. Best-effort: un fallo acá
-  // (contención, blip) NO debe abortar el wipe de tenants que sigue — ese es
-  // la obligación legal (Ley 25.326); esto es housekeeping que reintenta en
-  // la corrida semanal siguiente.
+  // Pasos globales, independientes de si hay tenants elegibles para wipe —
+  // corren siempre, antes del early-return de abajo. Best-effort cada uno con
+  // su propio try/catch: un fallo acá (contención, blip) NO debe abortar ni a
+  // los otros pasos globales ni al wipe de tenants que sigue — ese es la
+  // obligación legal (Ley 25.326); esto es housekeeping que reintenta en la
+  // corrida semanal siguiente.
   try {
     await purgeProcessedWebhooks()
   } catch (err) {
     logger.error('purge processed_webhooks failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgeOldAuditLogs()
+  } catch (err) {
+    logger.error('purge audit_logs failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgeOldNotifications()
+  } catch (err) {
+    logger.error('purge notifications failed (non-fatal, retried next run)', {
       module: 'data-retention',
       error: err instanceof Error ? err.message : String(err),
     })

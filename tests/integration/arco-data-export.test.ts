@@ -79,7 +79,9 @@ describe('ARCO data export endpoint (B9.2 — Ley 25.326 Art. 14)', () => {
     expect(json.data.retention_policy).toEqual({
       bookings: '12 months',
       payments: '5 years (legal AFIP retention)',
-      audit_logs: '12 months',
+      // 24 meses = decisión del dueño (D5 2026-07-23), sync con
+      // purgeOldAuditLogs y doc18 §7.1.
+      audit_logs: '24 months',
     })
   })
 

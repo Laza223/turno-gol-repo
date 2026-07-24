@@ -355,7 +355,7 @@ Según la Disposición 11/2006 de la DNPDP, los datos se clasifican en niveles d
 |---|---|---|
 | **Control de acceso** | RLS con 6 capas de protección. Gating por rol (`admin` y `manager`); sin sistema de PIN. | Doc 12 |
 | **Identificación y autenticación** | JWT con refresh token rotativo. Magic link + OAuth (jugadores), password (staff). | Doc 11, ADR-013 |
-| **Registro de accesos** | Tabla `audit_logs` INSERT-only con actor, acción, recurso, timestamp. Retención 12 meses. | Doc 5 §6, Doc 13 |
+| **Registro de accesos** | Tabla `audit_logs` INSERT-only con actor, acción, recurso, timestamp. Retención 24 meses (D5 2026-07-23). | Doc 5 §6, Doc 13 |
 | **Cifrado en tránsito** | HTTPS obligatorio en toda la aplicación (Vercel SSL automático). | Doc 14 §9 |
 | **Cifrado at rest** | Supabase cifra la DB at rest con AES-256 (feature del plan Pro). | Supabase infra |
 | **Backups** | Backup automático diario con retención de 30 días. Point-in-time recovery en plan Pro. | Doc 5 §7 |
@@ -408,7 +408,8 @@ SOLUCIÓN:
 | **Datos del tenant churned** | 90 días post-churn | Período de reactivación (Doc 4 §2/§9) | Anonimización o eliminación completa. Comunicación previa al dueño (día 60 y 85). |
 | **Historial de reservas** | 12 meses con datos personales, luego anonimizado | Reportes y uso razonable | Se elimina player_id, se mantiene estadística para el complejo. |
 | **Datos financieros** (pagos, facturas) | 5 años | Obligación contable argentina (Código de Comercio, Art. 67) | Destrucción segura. |
-| **Audit logs** | 12 meses | Razonabilidad operativa | Eliminación automática vía cron (data-retention-cleanup). |
+| **Audit logs** | 24 meses (decisión del dueño, auditoría D5 2026-07-23; antes decía 12) | Razonabilidad operativa | Eliminación automática vía cron (data-retention-cleanup, `purgeOldAuditLogs`). |
+| **Notificaciones** (tabla `notifications`) | 6 meses (decisión del dueño, auditoría D5 2026-07-23) | Razonabilidad operativa | Eliminación automática vía cron (data-retention-cleanup, `purgeOldNotifications`). |
 | **Logs de sistema** | 30 días (Vercel) | Debugging | Eliminación automática por Vercel. |
 | **Consentimientos otorgados** | Indefinida | Evidencia legal de consentimiento | Nunca se elimina (es la prueba de que el consentimiento existió). |
 
@@ -450,10 +451,11 @@ async function dataRetentionCleanup() {
     logger.info('data_retention.tenant_deleted', { tenant_id: tenant.id });
   }
 
-  // 3. Purgar audit logs > 12 meses
+  // 3. Purgar audit logs > 24 meses (decisión D5 2026-07-23; implementado
+  //    como purgeOldAuditLogs — notifications análogo a 6 meses)
   const purged = await db.query(`
     DELETE FROM audit_logs
-    WHERE created_at < NOW() - INTERVAL '12 months'
+    WHERE created_at < NOW() - INTERVAL '24 months'
     RETURNING id
   `);
   logger.info('data_retention.audit_purged', { count: purged.rowCount });

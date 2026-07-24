@@ -43,12 +43,15 @@ pnpm test:isolation             # BLOQUEANTE
 
 | # | Agente | Finalidad | Resultado |
 |---|--------|-----------|-----------|
-| R1 | sonnet-recon | Clase Saga MP-en-tx | pendiente |
-| R2 | sonnet-recon | Idempotencia 12 workers | pendiente |
-| R3 | sonnet-recon | Multi-tabla sin tx + tx-catch main HOY | pendiente |
-| R4 | sonnet-recon | Carreras canteen/caja + día operativo | pendiente |
-| R5 | sonnet-recon | Matriz state machine booking/abonado | pendiente |
-| R6 | sonnet-recon | Reconciliación MP↔payments↔cash_flows | pendiente |
+| R1 | sonnet-recon (~174k tok) | Clase Saga MP-en-tx | 7 instancias: 2 pre-cargadas confirmadas + 4 en billing.service (B1-B4) + refresh-mp-tokens (C1). Bonus: re-confirma TG-P1-MP-02 |
+| R2 | sonnet-recon (~219k tok) | Idempotencia workers | Son 13 (no 12). 🔴 push-send sin guard; 🟡 send-email gap P1; 11/13 crons con retryLimit=0 real; huérfanas 'sending' sin sweep |
+| R3 | sonnet-recon (~245k tok) | Multi-tabla sin tx + tx-catch main HOY | Multi-tabla toda atómica (11 flujos); tx-catch: 4 rotos confirmados (1 con daño), caja limpia, 0 nuevas |
+| R4 | sonnet-recon (~211k tok) | Carreras canteen/caja + día operativo | 5/5 carreras ya protegidas (2 gaps de test); 🟡 updateProduct pisa stock; día operativo caja≠bookings CONFIRMADO |
+| R5 | sonnet-recon (~177k tok) | Matriz state machine | completed→no_show 24h SÍ implementado (MASTER_PLAN:289 falso); gap real = no_show→completed inverso; condición time_start vs time_end |
+| R6 | sonnet-recon (~196k tok) | Reconciliación MP↔payments↔cash_flows | Job actual = rescate de varados, no contable; 🔴 refund externo silencioso; 🔴 amount_discrepancy sin lector; diseño invariantes 1-9 |
+| I2 | sonnet-implementer (~209k tok) | F2 Saga webhook | Verde 29/29 integration + 2003 unit; orquestador agregó pre-check duplicados + fix mocks |
+| I3 | sonnet-implementer (~332k tok) | F3 push idempotencia (migr. 059) | Verde: unit 2009, integration 754, isolation 125, drift 57. Espejo byte-idéntico |
+| I4 | sonnet-implementer (~264k tok) | F4 race tests + observabilidad refund | Verde 3+1 tests nuevos con control positivo verificado (lock comentado → falla) |
 
 ## Pre-cargas (no re-derivar)
 

@@ -62,6 +62,11 @@ export type PushSendJobData = {
     url?: string
     [k: string]: unknown
   }
+  // F3 (hallazgo D4): clave determinística de idempotencia. Si viene, el
+  // worker reclama la fila en push_send_log (INSERT ... ON CONFLICT DO
+  // NOTHING) ANTES de enviar — sin ella el job se comporta como antes
+  // (at-least-once, sin guard). Ver push.service.ts / push.worker.ts.
+  dedupeKey?: string
 }
 
 export const PUSH_SEND_SEND_OPTIONS = {

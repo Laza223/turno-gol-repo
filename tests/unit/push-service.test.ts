@@ -61,12 +61,56 @@ describe('notifyAdminPush', () => {
     expect(result).toEqual({ enqueued: 3 })
     expect(boss.send).toHaveBeenCalledTimes(3)
     for (const sub of subs) {
+      // F3 (hallazgo D4): booking confirmado incluye una dedupeKey
+      // determinística por (bookingId, subscriptionId) — el worker la
+      // reclama en push_send_log ANTES de reenviar tras un retry de pg-boss.
       expect(boss.send).toHaveBeenCalledWith(
         QUEUE_PUSH_SEND,
-        { subscription_id: sub.id, payload },
+        {
+          subscription_id: sub.id,
+          payload,
+          dedupeKey: `push:booking-confirmed:b-1:${sub.id}`,
+        },
         expect.objectContaining({ retryLimit: 3 }),
       )
     }
+  })
+
+  it('sin bookingId en el payload (type booking.confirmed_online igual): NO agrega dedupeKey', async () => {
+    // Caso límite defensivo: el único caller de producción (notifyAdminBookingConfirmed)
+    // siempre manda bookingId, pero si algún día no lo hiciera, no debe crashear
+    // ni mandar una dedupeKey rota (ej. "push:booking-confirmed:undefined:sub-1").
+    const subs = [{ id: 'sub-1' }]
+    const sql = makeSqlStub(subs)
+    mockSql.mockReturnValue(sql)
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    const payload = { type: 'booking.confirmed_online' }
+    await notifyAdminPush('tenant-1', payload)
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      { subscription_id: 'sub-1', payload },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
+
+  it('payload de otro type: NO agrega dedupeKey (solo booking.confirmed_online la lleva)', async () => {
+    const subs = [{ id: 'sub-1' }]
+    const sql = makeSqlStub(subs)
+    mockSql.mockReturnValue(sql)
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    const payload = { type: 'other.type', bookingId: 'b-1' }
+    await notifyAdminPush('tenant-1', payload)
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      { subscription_id: 'sub-1', payload },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
   })
 })
 

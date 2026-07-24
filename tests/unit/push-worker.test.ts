@@ -15,7 +15,7 @@ vi.mock('@/shared/observability', () => ({
 }))
 
 vi.mock('@/shared/lib/logger', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
 import { getWorkerSql } from '@/shared/db/client'
@@ -57,6 +57,35 @@ function makeSqlStub(selectRows: unknown[]) {
     return []
   })
   return fn as unknown as ReturnType<typeof getWorkerSql>
+}
+
+/** Build a sql stub that returns `results[i]` for the i-th call (0-indexed),
+ * or [] once `results` is exhausted. Used for the F3 dedupeKey tests, where
+ * the SELECT (subscription lookup) and the claim (push_send_log INSERT ...
+ * ON CONFLICT DO NOTHING) need independently controlled return rows. */
+function makeSqlSequence(results: unknown[][]) {
+  let callCount = 0
+  const fn = vi.fn(async (..._args: unknown[]) => {
+    const result = results[callCount] ?? []
+    callCount++
+    return result
+  })
+  return fn as unknown as ReturnType<typeof getWorkerSql>
+}
+
+function makeJobWithDedupe(
+  dedupeKey: string,
+  subscriptionId = 'sub-uuid-1',
+): Job<PushSendJobData> {
+  return {
+    id: 'job-dedupe-1',
+    name: 'push-send',
+    data: {
+      subscription_id: subscriptionId,
+      payload: { type: 'booking.confirmed_online', bookingId: 'b-1' },
+      dedupeKey,
+    },
+  } as Job<PushSendJobData>
 }
 
 beforeEach(() => {
@@ -114,5 +143,52 @@ describe('handlePushSendJob', () => {
     await expect(handlePushSendJob(makeJob())).rejects.toThrow(
       /push send failed: statusCode=500/,
     )
+  })
+
+  // ─── F3 (hallazgo D4): idempotencia por dedupeKey ────────────────────
+  describe('con dedupeKey (F3)', () => {
+    it('claim ya reclamado (ON CONFLICT DO NOTHING sin RETURNING): no reenvía, no throws', async () => {
+      // Llamada 1 = SELECT subscription (encontrada); llamada 2 = claim en
+      // push_send_log, vacío = otro job ya lo reclamó primero.
+      const sql = makeSqlSequence([[SUB_ROW], []])
+      mockGetSql.mockReturnValue(sql)
+
+      await expect(
+        handlePushSendJob(makeJobWithDedupe('push:booking-confirmed:b-1:sub-uuid-1')),
+      ).resolves.toBeUndefined()
+
+      expect(mockSendPush).not.toHaveBeenCalled()
+      // Solo SELECT + claim — sin UPDATE/DELETE posterior (nunca llegó a enviar).
+      expect(sql).toHaveBeenCalledTimes(2)
+    })
+
+    it('claim libre (INSERT ... ON CONFLICT DO NOTHING RETURNING con fila): reclama y SÍ envía', async () => {
+      const sql = makeSqlSequence([
+        [SUB_ROW],
+        [{ dedupe_key: 'push:booking-confirmed:b-1:sub-uuid-1' }],
+      ])
+      mockGetSql.mockReturnValue(sql)
+      mockSendPush.mockResolvedValue({ success: true, statusCode: 201 })
+
+      await handlePushSendJob(makeJobWithDedupe('push:booking-confirmed:b-1:sub-uuid-1'))
+
+      expect(mockSendPush).toHaveBeenCalledTimes(1)
+      // SELECT + claim + UPDATE last_used_at.
+      expect(sql).toHaveBeenCalledTimes(3)
+    })
+  })
+
+  describe('sin dedupeKey (comportamiento viejo, sin guard)', () => {
+    it('no consulta push_send_log: SELECT + envío directo, igual que antes de F3', async () => {
+      const sql = makeSqlStub([SUB_ROW])
+      mockGetSql.mockReturnValue(sql)
+      mockSendPush.mockResolvedValue({ success: true, statusCode: 201 })
+
+      await handlePushSendJob(makeJob())
+
+      expect(mockSendPush).toHaveBeenCalledTimes(1)
+      // SELECT + UPDATE last_used_at — sin el paso de claim de en medio.
+      expect(sql).toHaveBeenCalledTimes(2)
+    })
   })
 })

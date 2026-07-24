@@ -41,6 +41,14 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
     REVOKE DELETE ON canteen_tabs FROM turnogol_app;
     REVOKE DELETE ON daily_cash_opens FROM turnogol_app;
   `)
+  // push_send_log (migr. 059, F3): deny-all para turnogol_app — el GRANT ALL
+  // de arriba también le re-otorga SELECT/INSERT/UPDATE/DELETE (a diferencia
+  // de las tablas de arriba, acá NO queda ningún permiso, ni siquiera
+  // SELECT/INSERT). Sin este re-apply, isolation.test.ts bloque P da falso
+  // verde localmente por el mismo motivo que el comentario de arriba.
+  await s.unsafe(`
+    REVOKE ALL ON push_send_log FROM turnogol_app;
+  `)
 }
 
 export type TestTenant = { id: string; slug: string; name: string }
@@ -176,6 +184,7 @@ export async function cleanupAll(sql?: Sql): Promise<void> {
       tenant_staff_members,
       courts,
       processed_webhooks,
+      push_send_log,
       tenants,
       system_admins,
       staff_users,

@@ -111,11 +111,13 @@ export function normalizeRangeToOpenDay(
  */
 export function nightCutoffMins(openingHours: OpeningHoursLike, closesNextDay: boolean): number {
   if (!closesNextDay) return 0
-  const extensions = Object.values(openingHours)
-    .filter((day) => !day.closed)
-    .map((day) => effectiveCloseMins(day.open, day.close, true) - END_OF_DAY_MINS)
-    .filter((mins) => mins > 0)
-  return extensions.length > 0 ? Math.max(...extensions) : 0
+  let maxExtension = 0
+  for (const day of Object.values(openingHours)) {
+    if (day.closed) continue
+    const extension = effectiveCloseMins(day.open, day.close, true) - END_OF_DAY_MINS
+    if (extension > maxExtension) maxExtension = extension
+  }
+  return maxExtension
 }
 
 /**

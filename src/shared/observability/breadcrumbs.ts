@@ -18,6 +18,7 @@ type PaymentEvent =
   | 'payment.saas.upgrade.approved'
   | 'payment.reconcile.confirmed'
   | 'payment.refund.retry_succeeded'
+  | 'payment.reconcile.drift_detected'
 
 type WebhookEvent =
   | 'mp.webhook.received'

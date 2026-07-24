@@ -16,7 +16,9 @@ import type { OpenDayActionResult, OpenDayInput } from '../actions'
  * y arrastra drizzle/postgres → `node:async_hooks`, que rompe Storybook si se
  * importa como valor (mismo patrón que CloseDayButton/RegisterMovementModal).
  */
-export type OpenDayAction = (input: OpenDayInput) => Promise<OpenDayActionResult>
+export type OpenDayAction = (
+  input: OpenDayInput,
+) => Promise<OpenDayActionResult>
 
 /**
  * Apertura de caja (migr. 049, Fase 5). openDayAction es UPSERT a propósito:

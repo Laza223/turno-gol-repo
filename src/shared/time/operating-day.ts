@@ -14,7 +14,13 @@
  * past-detection correct without per-slot day math.
  */
 
+import { artDateOf, artDayRangeUtc } from './art-date'
+
 export const END_OF_DAY_MINS = 24 * 60
+
+/** Shape-only mirror of `OpeningHours` (src/modules/tenants/tenant.types.ts) — kept
+ * local so shared/time never imports from modules/. */
+type OpeningHoursLike = Record<string, { open: string; close: string; closed?: boolean }>
 
 function hhmmToMins(hhmm: string): number {
   const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
@@ -87,4 +93,58 @@ export function normalizeRangeToOpenDay(
     }
   }
   return { startMins, endMins }
+}
+
+/**
+ * Cash/canteen operating-day cutoff, in minutes past ART midnight.
+ *
+ * Unlike bookings (which peg each slot to its own weekday hours), a cash_flow
+ * has no weekday of its own — a late-night expense or tab settlement isn't
+ * "attached" to a specific day's schedule. So this collapses the whole week to
+ * ONE cutoff per tenant: the latest post-midnight extension among the days that
+ * actually operate. Days marked `closed` are excluded — their `open`/`close`
+ * are stale leftovers (opening-hours.schema.ts), not real hours, and must not
+ * inflate the cutoff. Trade-off accepted: a tenant with very uneven hours
+ * across weekdays (e.g. open till 4am Sat, till 11pm the rest) may bucket an
+ * early-morning movement on a day that actually closed earlier with the
+ * previous day — the amount is never lost, only its grouping.
+ */
+export function nightCutoffMins(openingHours: OpeningHoursLike, closesNextDay: boolean): number {
+  if (!closesNextDay) return 0
+  let maxExtension = 0
+  for (const day of Object.values(openingHours)) {
+    if (day.closed) continue
+    const extension = effectiveCloseMins(day.open, day.close, true) - END_OF_DAY_MINS
+    if (extension > maxExtension) maxExtension = extension
+  }
+  return maxExtension
+}
+
+/**
+ * Operating date ('YYYY-MM-DD') a given instant belongs to, for cash/canteen
+ * bucketing. `cutoffMins` (see `nightCutoffMins`) is 0 for the vast majority of
+ * tenants (`closesNextDay=false`), where this is byte-identical to `artDateOf`.
+ */
+export function operatingDateOf(instant: Date, cutoffMins: number): string {
+  if (cutoffMins === 0) return artDateOf(instant)
+  return artDateOf(new Date(instant.getTime() - cutoffMins * 60_000))
+}
+
+/**
+ * `artDayRangeUtc` shifted forward by `cutoffMins` — same sargable-range shape
+ * (plain comparison on the raw column, no `timezone()` expression, see
+ * art-date.ts), just with the operating-day boundary instead of ART midnight.
+ * `cutoffMins=0` returns the exact same range as `artDayRangeUtc`.
+ */
+export function operatingDayRangeUtc(
+  date: string,
+  cutoffMins: number,
+): { fromUtc: Date; toUtc: Date } {
+  const base = artDayRangeUtc(date)
+  if (cutoffMins === 0) return base
+  const shiftMs = cutoffMins * 60_000
+  return {
+    fromUtc: new Date(base.fromUtc.getTime() + shiftMs),
+    toUtc: new Date(base.toUtc.getTime() + shiftMs),
+  }
 }

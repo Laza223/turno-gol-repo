@@ -9,6 +9,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     date: artDateString(),
+    cutoffMins: 0,
     totalIncome: 4500000,
     totalExpense: 800000,
     balance: 3700000,

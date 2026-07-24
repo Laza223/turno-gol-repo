@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { artDayRangeUtc } from '@/shared/time/art-date'
+import { operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 
 /**
@@ -10,8 +10,29 @@ import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
  *  - PLATA (por método / por día): cash_flows category='product_sale' —
  *    solo lo COBRADO (tickets + fiados saldados; es "qué entró a la caja").
  * La asimetría es la del modelo de fiados (ver spec 2026-07-22).
- * Fechas: días operativos ART, mismo bucketing que cashflow.service.
+ * Fechas: días operativos ART, mismo bucketing que cashflow.service. Las tres
+ * funciones reciben `cutoffMins` (ver operating-day.ts) — 0 para tenants
+ * normales (closes_next_day=false), donde equivale byte-a-byte al calendario
+ * ART de siempre (docs/decisions/2026-07-24-caja-cantina-dia-operativo.md).
  */
+
+/**
+ * `operatingDayRangeUtc` da el límite de UN día operativo; un reporte cubre un
+ * RANGO (7/30 días, ver caja/productos/page.tsx), así que se arma con el
+ * arranque del primer día operativo y el cierre del último — misma idea que
+ * `artDayRangeUtc(from, to)` en un solo llamado, pero el helper de día
+ * operativo no tiene noción de rango propia (opera de a un día, como lo usan
+ * los guards de caja).
+ */
+function operatingRangeUtc(
+  range: { from: string; to: string },
+  cutoffMins: number,
+): { fromUtc: Date; toUtc: Date } {
+  return {
+    fromUtc: operatingDayRangeUtc(range.from, cutoffMins).fromUtc,
+    toUtc: operatingDayRangeUtc(range.to, cutoffMins).toUtc,
+  }
+}
 
 export type SalesRankingRow = {
   productId: string
@@ -29,7 +50,7 @@ export type CanteenMethodTotal = {
 }
 
 export type CanteenDailyTotal = {
-  /** Día ART (YYYY-MM-DD). */
+  /** Día operativo (YYYY-MM-DD) — ver cutoffMins en getCanteenDailyTotals. */
   day: string
   /** Centavos ARS cobrados por product_sale. */
   total: number
@@ -39,6 +60,7 @@ export async function getSalesRanking(
   tenantId: string,
   tx: DbTx,
   range: { from: string; to: string },
+  cutoffMins: number,
 ): Promise<SalesRankingRow[]> {
   // LEFT JOIN a canteen_tabs: un fiado ANULADO no es una venta — sus líneas
   // 'sale' quedan en el ledger (append-only; la anulación compensa stock con
@@ -46,8 +68,8 @@ export async function getSalesRanking(
   // fiado cargado por error inflaba el ranking para siempre (hallazgo ROJO
   // del panel de Fase 7, reproducido contra Postgres real). Ventas de ticket
   // directo tienen tab_id NULL y no se afectan.
-  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
-  const win = artDayRangeUtc(range.from, range.to)
+  // Rango UTC sargable (ver operatingDayRangeUtc / hallazgo D3).
+  const win = operatingRangeUtc(range, cutoffMins)
   const rows = await tx.execute(sql`
     SELECT sm.product_id,
            cp.name AS product_name,
@@ -81,9 +103,10 @@ export async function getCanteenTotalsByMethod(
   tenantId: string,
   tx: DbTx,
   range: { from: string; to: string },
+  cutoffMins: number,
 ): Promise<CanteenMethodTotal[]> {
-  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
-  const win = artDayRangeUtc(range.from, range.to)
+  // Rango UTC sargable (ver operatingDayRangeUtc / hallazgo D3).
+  const win = operatingRangeUtc(range, cutoffMins)
   const rows = await tx.execute(sql`
     SELECT method, SUM(amount)::int AS total
     FROM cash_flows
@@ -104,24 +127,31 @@ export async function getCanteenDailyTotals(
   tenantId: string,
   tx: DbTx,
   range: { from: string; to: string },
+  cutoffMins: number,
 ): Promise<CanteenDailyTotal[]> {
-  // WHERE por rango UTC sargable; el GROUP BY sigue etiquetando el día con la
-  // expresión ART (post-filtro, no necesita índice). Ver artDayRangeUtc.
-  const win = artDayRangeUtc(range.from, range.to)
+  // WHERE por rango UTC sargable; el día de cada fila se calcula en JS
+  // (operatingDateOf) en vez de un GROUP BY en SQL — cutoffMins varía por
+  // tenant, así que no hay una expresión SQL fija posible, y evita repetir el
+  // riesgo de una expresión AT TIME ZONE no-leakproof bajo RLS (hallazgo D3,
+  // migr. 054). Volumen acotado (7/30 días de un solo tenant): agregar en JS
+  // es seguro en costo.
+  const win = operatingRangeUtc(range, cutoffMins)
   const rows = await tx.execute(sql`
-    SELECT (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS day,
-           SUM(amount)::int AS total
+    SELECT occurred_at, amount::int AS amount
     FROM cash_flows
     WHERE tenant_id = ${tenantId}
       AND category = 'product_sale'
       AND type = 'income'
       AND occurred_at >= ${win.fromUtc.toISOString()}
       AND occurred_at < ${win.toUtc.toISOString()}
-    GROUP BY 1
-    ORDER BY 1 ASC
   `)
-  return (rows as unknown as Array<{ day: string; total: number }>).map((r) => ({
-    day: r.day,
-    total: r.total,
-  }))
+  const totals = new Map<string, number>()
+  for (const r of rows as unknown as Array<{ occurred_at: Date | string; amount: number }>) {
+    // tx.execute crudo puede devolver Date como string (gotcha del repo).
+    const day = operatingDateOf(new Date(r.occurred_at), cutoffMins)
+    totals.set(day, (totals.get(day) ?? 0) + r.amount)
+  }
+  return [...totals.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, total]) => ({ day, total }))
 }

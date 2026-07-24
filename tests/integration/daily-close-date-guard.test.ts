@@ -32,7 +32,7 @@ describe('daily close — date guard BK-05', () => {
 
     await expect(
       getDb().transaction(async (tx) =>
-        closeDailyRegister(tenant.id, tomorrowART, staff.id, {}, tx),
+        closeDailyRegister(tenant.id, tomorrowART, staff.id, {}, 0, tx),
       ),
     ).rejects.toBeInstanceOf(CloseDateInFutureError)
   })
@@ -45,7 +45,7 @@ describe('daily close — date guard BK-05', () => {
     const todayART = artDateOf(new Date())
 
     const result = await getDb().transaction(async (tx) =>
-      closeDailyRegister(tenant.id, todayART, staff.id, {}, tx),
+      closeDailyRegister(tenant.id, todayART, staff.id, {}, 0, tx),
     )
     expect(result.date).toBeDefined()
   })
@@ -57,7 +57,7 @@ describe('daily close — date guard BK-05', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
     const result = await getDb().transaction(async (tx) =>
-      closeDailyRegister(tenant.id, '2026-01-14', staff.id, {}, tx),
+      closeDailyRegister(tenant.id, '2026-01-14', staff.id, {}, 0, tx),
     )
     expect(result.date).toBeDefined()
   })
@@ -82,13 +82,13 @@ describe('daily close — date guard BK-05', () => {
 
     // Closing 2026-03-09 (ART day that owns the flow) → should aggregate it
     const closeArtDay = await getDb().transaction(async (tx) =>
-      closeDailyRegister(tenant.id, '2026-03-09', staff.id, {}, tx),
+      closeDailyRegister(tenant.id, '2026-03-09', staff.id, {}, 0, tx),
     )
     expect(closeArtDay.totalIncome).toBe(500000)
 
     // Closing 2026-03-10 (the UTC day it was inserted, but NOT its ART day) → 0 income
     const closeUtcDay = await getDb().transaction(async (tx) =>
-      closeDailyRegister(tenant.id, '2026-03-10', staff.id, {}, tx),
+      closeDailyRegister(tenant.id, '2026-03-10', staff.id, {}, 0, tx),
     )
     expect(closeUtcDay.totalIncome).toBe(0)
   })

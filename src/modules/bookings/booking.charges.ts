@@ -24,18 +24,21 @@ export function summarizeBookingCharges(opts: {
 }
 
 /**
- * ENS-21: marcador determinístico y único por booking para el cash_flow
- * automático que `handleApproved` (payment.service.ts) inserta cuando MP
- * confirma la seña. `getBookingCharges` (reservas/queries.ts) lo usa para
- * EXCLUIR esa fila de "cobros de mostrador": la seña ya se cuenta vía
- * `deposit_status`/`deposit_amount` en `summarizeBookingCharges` de arriba,
- * así que dejarla entrar en `chargesTotal` la duplicaría (contrato exige
- * category='booking' para esa fila, igual que un cobro manual — no hay una
- * columna/categoría propia para diferenciarla sin migración de schema, así
- * que el match exacto de `description`, con el bookingId completo embebido,
- * es la vía de exclusión: mismo idiom que `prepareRefund`'s
- * `description = 'Refund of ' + original.id`, Fix #53).
+ * ENS-21: marcador determinístico y único por booking para el cash_flow que
+ * se inserta al confirmarse un depósito (seña), sea por MP (`handleApproved`,
+ * payment.service.ts) o confirmado a mano por el staff en efectivo/transferencia/
+ * otro (`confirmManualDepositPayment`, mismo archivo). `getBookingCharges`
+ * (reservas/queries.ts) lo usa para EXCLUIR esa fila de "cobros de mostrador":
+ * la seña ya se cuenta vía `deposit_status`/`deposit_amount` en
+ * `summarizeBookingCharges` de arriba, así que dejarla entrar en `chargesTotal`
+ * la duplicaría (contrato exige category='booking' para esa fila, igual que un
+ * cobro manual — no hay una columna/categoría propia para diferenciarla sin
+ * migración de schema, así que el match exacto de `description`, con el
+ * bookingId completo embebido, es la vía de exclusión: mismo idiom que
+ * `prepareRefund`'s `description = 'Refund of ' + original.id`, Fix #53).
+ * Método-agnóstico a propósito: el `method` real de la fila ya se muestra
+ * aparte en la UI (/caja), así que el texto no debe asumir MercadoPago.
  */
 export function depositCashFlowDescription(bookingId: string): string {
-  return `Seña MercadoPago — turno ${bookingId}`
+  return `Seña — turno ${bookingId}`
 }

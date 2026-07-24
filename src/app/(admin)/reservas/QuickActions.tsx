@@ -45,6 +45,14 @@ type CancelBookingFn = (
   reason: string,
   cancellationType: 'complejo' | 'jugador',
 ) => Promise<BookingActionResult>
+type DepositMethod = 'cash' | 'transfer' | 'other'
+type ConfirmDepositFn = (bookingId: string, method: DepositMethod) => Promise<BookingActionResult>
+
+const DEPOSIT_METHOD_LABELS: Record<DepositMethod, string> = {
+  cash: 'Efectivo',
+  transfer: 'Transferencia',
+  other: 'Otro',
+}
 
 /**
  * Firma de las Server Actions que consume QuickActions. Se agrupan en un
@@ -61,7 +69,7 @@ type CancelBookingFn = (
  */
 export type BookingQuickActions = {
   cancelBookingAction: CancelBookingFn
-  confirmDepositPaymentAction: SimpleBookingFn
+  confirmDepositPaymentAction: ConfirmDepositFn
   markNoShowAction: SimpleBookingFn
   completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
   /**
@@ -111,6 +119,8 @@ export function QuickActions({
   const [reason, setReason] = useState('')
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
   const [chargesTotal, setChargesTotal] = useState(0)
+  const [confirmDepositOpen, setConfirmDepositOpen] = useState(false)
+  const [depositMethod, setDepositMethod] = useState<DepositMethod>('cash')
   const disarmRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -150,6 +160,27 @@ export function QuickActions({
     if (disarmRef.current) clearTimeout(disarmRef.current)
     setNoShowArmed(false)
     run(() => markNoShowAction(booking.id), 'Marcada como ausente')
+  }
+
+  /**
+   * El staff elige el medio de cobro (Efectivo/Transferencia/Otro, default
+   * Efectivo) antes de confirmar la seña — no se asume siempre efectivo.
+   * Mismo lenguaje visual que "Cancelar" (ConfirmDialog + onConfirm que
+   * devuelve {success,error}: el error se muestra inline y el diálogo se
+   * mantiene abierto para reintentar).
+   */
+  function openConfirmDeposit() {
+    setDepositMethod('cash')
+    setConfirmDepositOpen(true)
+  }
+
+  async function onConfirmDeposit(): Promise<{ success: boolean; error?: string }> {
+    const res = await confirmDepositPaymentAction(booking.id, depositMethod)
+    if (res.success) {
+      toast({ title: 'Pago confirmado', description: label, variant: 'success' })
+      router.refresh()
+    }
+    return res
   }
 
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
@@ -226,7 +257,7 @@ export function QuickActions({
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => confirmDepositPaymentAction(booking.id), 'Pago confirmado')}
+            onClick={openConfirmDeposit}
             className={cn(inlineBtn, 'bg-primary text-primary-foreground hover:bg-primary/90')}
           >
             Confirmar pago
@@ -289,9 +320,7 @@ export function QuickActions({
           </Tooltip>
           <DropdownMenuContent align="end">
             {isPendingPayment ? (
-              <DropdownMenuItem
-                onSelect={() => run(() => confirmDepositPaymentAction(booking.id), 'Pago confirmado')}
-              >
+              <DropdownMenuItem onSelect={openConfirmDeposit}>
                 Confirmar pago
               </DropdownMenuItem>
             ) : (
@@ -314,6 +343,31 @@ export function QuickActions({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ConfirmDialog
+        open={confirmDepositOpen}
+        onOpenChange={setConfirmDepositOpen}
+        title="Confirmar pago"
+        description={`${label}. Indicá cómo se cobró la seña.`}
+        confirmLabel="Confirmar"
+        cancelLabel="Volver"
+        onConfirm={onConfirmDeposit}
+      >
+        <fieldset className="space-y-1">
+          <legend className="text-xs font-medium text-foreground">¿Cómo se cobró la seña?</legend>
+          {(['cash', 'transfer', 'other'] as const).map((m) => (
+            <label key={m} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name={`deposit-method-${booking.id}`}
+                checked={depositMethod === m}
+                onChange={() => setDepositMethod(m)}
+              />
+              {DEPOSIT_METHOD_LABELS[m]}
+            </label>
+          ))}
+        </fieldset>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={cancelOpen}

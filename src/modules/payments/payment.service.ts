@@ -3,6 +3,7 @@ import { bookings, payments } from '@/shared/db/schema'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
+import { rowToBookingRow } from '@/modules/bookings/booking.mappers'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
@@ -492,6 +493,129 @@ async function handleApproved(
     notificationIds.push(...ids)
   }
   return { won: false, notificationIds }
+}
+
+/** Métodos que el staff puede elegir al confirmar una seña a mano (nunca 'mercadopago': esa la confirma el webhook). */
+export type ManualDepositMethod = 'cash' | 'transfer' | 'other'
+
+export type ConfirmManualDepositOutcome =
+  | { won: false }
+  | { won: true; booking: BookingRow; notificationIds: string[] }
+
+/**
+ * Confirmación MANUAL de una seña (efectivo/transferencia/otro), disparada por
+ * `confirmDepositPaymentAction` (reservas/actions.ts) cuando el staff cobra en
+ * el mostrador — hermana de `handleApproved` (mismo trabajo para MP). Usa la
+ * misma primitiva race-safe que el webhook (`transitionFromPendingPayment`):
+ * si el booking ya salió de `pending_payment` (otro worker/webhook/cron ganó
+ * la carrera), `won=false` y no se toca nada más — mismo contrato de siempre.
+ *
+ * Bug real que esto corrige: si el jugador había arrancado (y abandonado o
+ * rechazado) un checkout de MP antes de que el staff confirmara el cobro en
+ * efectivo, `createDepositPayment` ya había pisado
+ * `bookings.payment_method='mercadopago'` + `payment_id=<fila payments
+ * 'pending', nunca 'approved'>`. Sin corregir eso, el booking queda con un
+ * método de pago mentiroso y, peor, con un `payment_id` que una cancelación
+ * posterior intenta refundar vía MP — `prepareRefund` tira
+ * `RefundInvalidStateError` porque ese pago nunca fue aprobado.
+ *
+ * `payment_id=NULL` es OBLIGATORIO en el UPDATE:
+ * `chk_booking_payment_consistency` (schema/bookings.ts) exige
+ * `payment_id IS NULL` para `payment_method IN ('cash', 'transfer', 'other')`
+ * — sin esto el UPDATE viola el CHECK constraint. No hace falta un `FOR
+ * UPDATE` propio acá: el UPDATE de `transitionFromPendingPayment` ya tomó el
+ * row lock del booking hasta el commit de esta tx (mismo razonamiento que
+ * `completeAndChargeBookingAction`, reservas/actions.ts).
+ */
+export async function confirmManualDepositPayment(
+  bookingId: string,
+  method: ManualDepositMethod,
+  staffUserId: string,
+  tenantId: string,
+  tx: DbTx,
+): Promise<ConfirmManualDepositOutcome> {
+  const result = await transitionFromPendingPayment(bookingId, 'confirmed', tx)
+  if (!result.won) return { won: false }
+
+  const updatedRows = await tx
+    .update(bookings)
+    .set({ paymentMethod: method, paymentId: null, updatedAt: new Date() })
+    .where(eq(bookings.id, bookingId))
+    .returning()
+  const booking = rowToBookingRow(updatedRows[0]!)
+
+  const notificationIds = await recordManualDepositCashFlow(booking, method, staffUserId, tenantId, tx)
+
+  return { won: true, booking, notificationIds }
+}
+
+/**
+ * Inserta el cash_flow de ingreso por la seña confirmada A MANO por el staff
+ * (efectivo/transferencia/otro) — hermana de `recordDepositCashFlow` de acá
+ * abajo (seña MP, actor proxy). Acá SÍ hay un staff autenticado real en
+ * contexto, no hace falta el proxy `getFirstActiveAdminStaffUserId`. Mismo
+ * patrón defensivo que `recordDepositCashFlow`: si la caja del día ya cerró,
+ * no deja que `DayAlreadyClosedError` escape — la plata YA la cobró el staff
+ * en la realidad, jamás vale la pena perder la confirmación del booking por
+ * un problema de atribución contable secundaria. Se duplica el patrón en vez
+ * de compartir código con `recordDepositCashFlow` para no arriesgar el
+ * comportamiento observable del flujo automático de MP.
+ */
+async function recordManualDepositCashFlow(
+  booking: BookingRow,
+  method: ManualDepositMethod,
+  staffUserId: string,
+  tenantId: string,
+  tx: DbTx,
+): Promise<string[]> {
+  try {
+    await createCashFlow(
+      tenantId,
+      staffUserId,
+      {
+        type: 'income',
+        category: 'booking',
+        amount: booking.depositAmount,
+        method,
+        description: depositCashFlowDescription(booking.id),
+        bookingId: booking.id,
+      },
+      tx,
+    )
+  } catch (err) {
+    if (err instanceof DayAlreadyClosedError) {
+      captureMessage('deposit cash_flow skipped: cash register already closed for the day', {
+        level: 'warning',
+        extra: { bookingId: booking.id, tenantId, method },
+      })
+      // Mismo contrato que el caso MP: el email se despacha DESPUÉS del commit
+      // de la tx (los ids viajan en el outcome, el caller los despacha).
+      return enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_deposit_after_close',
+          content: {
+            bookingId: booking.id,
+            amountArs: formatArs(booking.depositAmount),
+          },
+          triggerEvent: 'payment.deposit_after_close',
+        },
+        tx,
+      )
+    }
+    // Mismo motivo que R1-A (más abajo, caso MP): una seña YA cobrada por el
+    // staff nunca puede perderse por un problema de contabilidad secundaria.
+    captureMessage('deposit cash_flow skipped: unexpected error recording it', {
+      level: 'warning',
+      extra: {
+        bookingId: booking.id,
+        tenantId,
+        method,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+  }
+  return []
 }
 
 /**

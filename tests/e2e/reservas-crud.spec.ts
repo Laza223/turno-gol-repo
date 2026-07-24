@@ -374,6 +374,12 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
 
         await article.getByRole('button', { name: 'Confirmar pago' }).click()
 
+        // El staff elige el medio de cobro (picker de método, Efectivo
+        // preseleccionado) antes de confirmar — ya no es un click directo.
+        const dialog = page.getByRole('dialog')
+        await expect(dialog.getByRole('heading', { name: 'Confirmar pago' })).toBeVisible()
+        await dialog.getByRole('button', { name: 'Confirmar' }).click()
+
         // After the server action + router.refresh() the same article re-renders
         // with the new status — no navigation, no reload.
         await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })

@@ -38,7 +38,7 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
     const { tenantId, staffId } = await seedTenantWithCashflows()
 
     const result = await getDb().transaction(async (tx) => {
-      return closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 1000000 }, tx)
+      return closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 1000000 }, 0, tx)
     })
 
     expect(result.tenantId).toBe(tenantId)
@@ -58,12 +58,12 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
     const { tenantId, staffId } = await seedTenantWithCashflows()
 
     await getDb().transaction(async (tx) => {
-      await closeDailyRegister(tenantId, TODAY, staffId, {}, tx)
+      await closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx)
     })
 
     await expect(
       getDb().transaction(async (tx) => {
-        await closeDailyRegister(tenantId, TODAY, staffId, {}, tx)
+        await closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx)
       }),
     ).rejects.toBeInstanceOf(DayAlreadyCloseExistsError)
   })
@@ -73,7 +73,7 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
 
     const attempts = Array.from({ length: 5 }, () =>
       getDb().transaction(async (tx) => {
-        return closeDailyRegister(tenantId, TODAY, staffId, {}, tx)
+        return closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx)
       }),
     )
 
@@ -96,7 +96,7 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
     const { tenantId, staffId } = await seedTenantWithCashflows()
 
     const result = await getDb().transaction(async (tx) => {
-      return closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 999999 }, tx)
+      return closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 999999 }, 0, tx)
     })
 
     expect(result.balance).toBe(1000000)
@@ -109,7 +109,7 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
     const { tenantId, staffId } = await seedTenantWithCashflows()
 
     const created = await getDb().transaction(async (tx) => {
-      return closeDailyRegister(tenantId, TODAY, staffId, {}, tx)
+      return closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx)
     })
 
     const fetched = await getDb().transaction(async (tx) =>

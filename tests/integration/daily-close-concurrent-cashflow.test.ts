@@ -81,7 +81,7 @@ describe('closeDailyRegister vs createCashFlow — serialización por advisory l
           ),
         ),
         withTenantContext(tenant.id, (tx) =>
-          closeDailyRegister(tenant.id, date, staffId, {}, tx),
+          closeDailyRegister(tenant.id, date, staffId, {}, 0, tx),
         ),
       ])
 

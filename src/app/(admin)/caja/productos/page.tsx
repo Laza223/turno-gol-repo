@@ -12,7 +12,7 @@ import {
   getCanteenTotalsByMethod,
   getSalesRanking,
 } from '@/modules/canteen/canteen-report.service'
-import { todayART } from '@/shared/time/art-date'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { CajaTabs } from '../components/CajaTabs'
 import { addDays } from '../caja-lib'
 import { CanteenReport } from './CanteenReport'
@@ -40,7 +40,8 @@ export default async function CajaProductosPage(props: {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const today = todayART()
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const today = operatingDateOf(new Date(), cutoffMins)
   const reportRange = { from: addDays(today, -(range - 1)), to: today }
 
   const [role, { products, ledger, ranking, byMethod, daily }] = await Promise.all([
@@ -49,9 +50,9 @@ export default async function CajaProductosPage(props: {
       const [p, l, rk, bm, dl] = await Promise.all([
         listProducts(tenant.id, tx, { includeInactive: true }),
         getLedger(tenant.id, tx, { limit: 20 }),
-        getSalesRanking(tenant.id, tx, reportRange),
-        getCanteenTotalsByMethod(tenant.id, tx, reportRange),
-        getCanteenDailyTotals(tenant.id, tx, reportRange),
+        getSalesRanking(tenant.id, tx, reportRange, cutoffMins),
+        getCanteenTotalsByMethod(tenant.id, tx, reportRange, cutoffMins),
+        getCanteenDailyTotals(tenant.id, tx, reportRange, cutoffMins),
       ])
       return { products: p, ledger: l, ranking: rk, byMethod: bm, daily: dl }
     }),

@@ -9,6 +9,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import { openDay } from '@/modules/cashflow/cash-open.service'
+import { nightCutoffMins } from '@/shared/time/operating-day'
 import { cashFlowResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import { validateApiOutput } from '@/shared/api-output'
 import {
@@ -143,6 +144,13 @@ export async function closeDayAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
+  // cutoffMins se recalcula ACÁ, nunca se acepta del caller: determina qué
+  // cash_flows entran al totalIncome/cashNet de un cierre que después queda
+  // congelado (política de no-re-bucketing histórico, ver ADR día operativo)
+  // — un valor manipulado del lado cliente podría excluir plata real del
+  // arqueo sin que nada lo detecte.
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+
   let close: DailyCashCloseRow
   try {
     close = await withTenantContext(tenant.id, (tx) =>
@@ -151,6 +159,7 @@ export async function closeDayAction(
         parsed.data.date,
         user.staffUserId,
         { declaredCash: parsed.data.declaredCash, note: parsed.data.note },
+        cutoffMins,
         tx,
       ),
     )
@@ -168,7 +177,9 @@ export async function closeDayAction(
   return { success: true, close }
 }
 
-export async function openDayAction(input: OpenDayInput): Promise<OpenDayActionResult> {
+export async function openDayAction(
+  input: OpenDayInput,
+): Promise<OpenDayActionResult> {
   const parsed = openDaySchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   // Abrir/corregir el fondo es operación de caja: mismo gate que el resto (admin+manager).
@@ -179,10 +190,13 @@ export async function openDayAction(input: OpenDayInput): Promise<OpenDayActionR
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
+  // cutoffMins recalculado server-side, mismo motivo que closeDayAction.
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+
   let openingCash: number
   try {
     const open = await withTenantContext(tenant.id, (tx) =>
-      openDay(tenant.id, user.staffUserId, parsed.data, tx),
+      openDay(tenant.id, user.staffUserId, parsed.data, cutoffMins, tx),
     )
     openingCash = open.openingCash
   } catch (err) {

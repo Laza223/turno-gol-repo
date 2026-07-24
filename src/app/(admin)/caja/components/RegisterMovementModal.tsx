@@ -60,11 +60,14 @@ export function RegisterMovementModal({
   open,
   onClose,
   date,
+  cutoffMins,
   createCashFlowAction,
 }: {
   open: boolean
   onClose: () => void
   date: string
+  /** Día operativo (ver operating-day.ts): occurredAtForDate lo necesita para "hoy". */
+  cutoffMins: number
   createCashFlowAction: CreateCashFlowAction
 }) {
   const router = useRouter()
@@ -111,7 +114,7 @@ export function RegisterMovementModal({
           method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
           amount,
           description: description.trim(),
-          occurredAt: occurredAtForDate(date),
+          occurredAt: occurredAtForDate(date, cutoffMins),
           clientIdempotencyKey: idempotencyKey,
         })
         if (res.success) {

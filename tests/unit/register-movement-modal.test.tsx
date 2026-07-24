@@ -29,6 +29,7 @@ function renderModal() {
       open
       onClose={onClose}
       date="2026-06-10"
+      cutoffMins={0}
       createCashFlowAction={createCashFlowAction}
     />,
   )

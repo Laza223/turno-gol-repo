@@ -250,7 +250,7 @@ describe('cashflow service', () => {
     `
 
     const summary = await withTenantContext(tenant.id, (tx) =>
-      getDaySummary(tenant.id, TODAY, tx),
+      getDaySummary(tenant.id, TODAY, 0, tx),
     )
     expect(summary.totalIncome).toBe(650000)
     expect(summary.totalExpense).toBe(200000)
@@ -259,7 +259,7 @@ describe('cashflow service', () => {
     expect(summary.byMethod.cash).toBe(450000)
 
     const close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, tx),
+      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
     )
     expect(close.totalIncome).toBe(650000)
     expect(close.totalExpense).toBe(200000)
@@ -288,7 +288,7 @@ describe('cashflow service', () => {
     )
 
     const list = await withTenantContext(tenant.id, (tx) =>
-      getCashFlows(tenant.id, TODAY, tx),
+      getCashFlows(tenant.id, TODAY, 0, tx),
     )
     const sale = list.find((cf) => cf.id === created.id)
     expect(sale).toBeDefined()
@@ -315,7 +315,7 @@ describe('cashflow service', () => {
     `
 
     const close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 500000 }, tx),
+      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 500000 }, 0, tx),
     )
 
     expect(close.totalIncome).toBe(1300000)
@@ -342,12 +342,12 @@ describe('cashflow service', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
     await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, tx),
+      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
     )
 
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        closeDailyRegister(tenant.id, TODAY, staff.id, {}, tx),
+        closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
       ),
     ).rejects.toBeInstanceOf(DayAlreadyCloseExistsError)
   })
@@ -360,7 +360,7 @@ describe('cashflow service', () => {
 
     // Close today first
     await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, tx),
+      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
     )
 
     // Try insert cashflow for the same day
@@ -500,14 +500,14 @@ describe('cashflow service', () => {
     `
 
     const summary = await withTenantContext(tenantA.id, (tx) =>
-      getDaySummary(tenantA.id, TODAY, tx),
+      getDaySummary(tenantA.id, TODAY, 0, tx),
     )
     // A solo ve lo suyo: los 999000 de B no contaminan el saldo.
     expect(summary.totalIncome).toBe(100000)
     expect(summary.balance).toBe(100000)
 
     const list = await withTenantContext(tenantA.id, (tx) =>
-      getCashFlows(tenantA.id, TODAY, tx),
+      getCashFlows(tenantA.id, TODAY, 0, tx),
     )
     expect(list).toHaveLength(1)
     expect(list[0]!.description).toBe('Mi turno')
@@ -531,17 +531,17 @@ describe('cashflow service', () => {
     `
 
     const artDay = await withTenantContext(tenant.id, (tx) =>
-      getCashFlows(tenant.id, '2026-01-14', tx),
+      getCashFlows(tenant.id, '2026-01-14', 0, tx),
     )
     expect(artDay.map((cf) => cf.description)).toContain('Cierre tarde')
 
     const utcDay = await withTenantContext(tenant.id, (tx) =>
-      getCashFlows(tenant.id, '2026-01-15', tx),
+      getCashFlows(tenant.id, '2026-01-15', 0, tx),
     )
     expect(utcDay.some((cf) => cf.description === 'Cierre tarde')).toBe(false)
 
     const summary = await withTenantContext(tenant.id, (tx) =>
-      getDaySummary(tenant.id, '2026-01-14', tx),
+      getDaySummary(tenant.id, '2026-01-14', 0, tx),
     )
     expect(summary.totalIncome).toBe(300000)
   })
@@ -555,7 +555,7 @@ describe('cashflow service', () => {
 
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        closeDailyRegister(tenant.id, '2099-01-01', staff.id, {}, tx),
+        closeDailyRegister(tenant.id, '2099-01-01', staff.id, {}, 0, tx),
       ),
     ).rejects.toBeInstanceOf(CloseDateInFutureError)
   })
@@ -592,7 +592,7 @@ describe('cashflow service', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
     const summary = await withTenantContext(tenant.id, (tx) =>
-      getDaySummary(tenant.id, TODAY, tx),
+      getDaySummary(tenant.id, TODAY, 0, tx),
     )
     expect(summary.totalIncome).toBe(0)
     expect(summary.totalExpense).toBe(0)
@@ -618,7 +618,7 @@ describe('cashflow service', () => {
     `
 
     const close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 400000 }, tx),
+      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 400000 }, 0, tx),
     )
 
     const audit = await sql<{

@@ -6,7 +6,7 @@ import {
   InvalidCashFlowCategoryError,
   DayAlreadyClosedError,
 } from './cashflow.errors'
-import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
+import { nightCutoffMins, operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import type {
   CashFlowType,
   CashFlowCategory,
@@ -77,12 +77,29 @@ export async function assertDayOpen(
   const lockKey = `daily_close:${tenantId}`
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`)
 
-  const artDate = artDateOf(occurredAt)
+  // cutoffMins se resuelve ACÁ, no como parámetro: createCashFlow (y por lo
+  // tanto assertDayOpen) no cambia su firma pública en este esfuerzo — tiene
+  // 7+ callers fuera de alcance. El SELECT es liviano (tenants es global, sin
+  // RLS, PK lookup) y deja el guard de escritura con el MISMO criterio de día
+  // operativo que las lecturas migradas (getCashFlows/getDaySummary).
+  const tenantRows = await tx.execute(
+    sql`SELECT opening_hours AS "openingHours", closes_next_day AS "closesNextDay"
+        FROM tenants WHERE id = ${tenantId} LIMIT 1`,
+  )
+  const tenantRow = (tenantRows as unknown as Array<{
+    openingHours: Record<string, { open: string; close: string; closed?: boolean }>
+    closesNextDay: boolean
+  }>)[0]
+  const cutoffMins = tenantRow
+    ? nightCutoffMins(tenantRow.openingHours, tenantRow.closesNextDay)
+    : 0
+  const operatingDate = operatingDateOf(occurredAt, cutoffMins)
+
   const closeCheck = await tx.execute(
-    sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${artDate}::date LIMIT 1`,
+    sql`SELECT id FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${operatingDate}::date LIMIT 1`,
   )
   if ((closeCheck as unknown[]).length > 0) {
-    throw new DayAlreadyClosedError(artDate)
+    throw new DayAlreadyClosedError(operatingDate)
   }
 }
 
@@ -148,11 +165,12 @@ export async function createCashFlow(
 export async function getCashFlows(
   tenantId: string,
   date: string,
+  cutoffMins: number,
   tx: DbTx,
 ): Promise<CashFlowRow[]> {
-  // Rango UTC sargable en vez de expresión AT TIME ZONE: ver artDayRangeUtc
+  // Rango UTC sargable en vez de expresión AT TIME ZONE: ver operatingDayRangeUtc
   // (bajo RLS la expresión no entra al índice — hallazgo D3).
-  const day = artDayRangeUtc(date)
+  const day = operatingDayRangeUtc(date, cutoffMins)
   const rows = await tx.execute(
     sql`SELECT * FROM cash_flows
         WHERE tenant_id = ${tenantId}
@@ -190,10 +208,11 @@ export async function getCashFlows(
 export async function getDaySummary(
   tenantId: string,
   date: string,
+  cutoffMins: number,
   tx: DbTx,
 ): Promise<DaySummary> {
-  // Rango UTC sargable (ver artDayRangeUtc / hallazgo D3).
-  const day = artDayRangeUtc(date)
+  // Rango UTC sargable (ver operatingDayRangeUtc / hallazgo D3).
+  const day = operatingDayRangeUtc(date, cutoffMins)
   const aggRows = await tx.execute(
     sql`SELECT type, category, method, SUM(amount)::int AS total
         FROM cash_flows

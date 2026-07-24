@@ -254,7 +254,7 @@ describe('canteen tabs — crear con caja cerrada (asimetría deliberada del mod
     )
 
     await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, todayART(), staff.id, {}, tx),
+      closeDailyRegister(tenant.id, todayART(), staff.id, {}, 0, tx),
     )
 
     const { tab, duplicate } = await withTenantContext(tenant.id, (tx) =>
@@ -462,7 +462,7 @@ describe('canteen tabs — settleTab con caja cerrada (asimetría: crear no toca
     )
 
     await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, todayART(), staff.id, {}, tx),
+      closeDailyRegister(tenant.id, todayART(), staff.id, {}, 0, tx),
     )
 
     await expect(

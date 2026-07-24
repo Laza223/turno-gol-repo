@@ -9,7 +9,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { getDailyClose } from '@/modules/cashflow/daily-close.service'
 import { listProducts } from '@/modules/canteen/canteen.service'
 import { listOpenTabs } from '@/modules/canteen/canteen-tab.service'
-import { artDateOf } from '@/shared/time/art-date'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { CajaTabs } from '../components/CajaTabs'
 import { TicketPanel } from './TicketPanel'
 import { FiadosList } from './FiadosList'
@@ -24,7 +24,8 @@ export default async function CajaCantinaPage() {
 
   // La venta de cantina es siempre "ahora": a diferencia de /caja, esta tab
   // no navega por fecha (?date=).
-  const today = artDateOf(new Date())
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const today = operatingDateOf(new Date(), cutoffMins)
   const { close, products, tabs } = await withTenantContext(tenant.id, async (tx) => {
     const [c, p, t] = await Promise.all([
       getDailyClose(tenant.id, today, tx),

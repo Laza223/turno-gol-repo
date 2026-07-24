@@ -273,28 +273,53 @@ export async function dispatchPaymentInfo(
     `)
     const refundedPaymentId = (refundedRows as unknown as Array<{ id: string }>)[0]?.id ?? null
 
-    await insertSystemAuditLog(tx, {
-      tenantId,
-      action: 'payment.external_refund_detected',
-      resourceType: 'booking',
-      resourceId: info.externalReference,
-      metadata: {
-        paymentId: refundedPaymentId,
-        mpPaymentId: info.mpPaymentId,
-        bookingId: info.externalReference,
-        amount: info.amount,
-      },
-    })
-    captureMessage('external refund detected: MP status=refunded without a local prepareRefund/settleRefund flow', {
-      level: 'warning',
-      extra: {
-        paymentId: refundedPaymentId,
-        mpPaymentId: info.mpPaymentId,
-        bookingId: info.externalReference,
-        amount: info.amount,
+    // Fix H1 (D4): el propio flujo LOCAL de cancelación (cancelByAdmin/
+    // cancelByPlayer → prepareRefund → settleRefund) hace que MP mande este
+    // mismo webhook eco status='refunded' del pago ORIGINAL cuando confirma un
+    // refund que TurnoGol mismo inició — sin este check, la alerta de "refund
+    // externo" disparaba en CADA cancelación-con-reembolso rutinaria (falso
+    // positivo sistemático). `prepareRefund` deja el vínculo local en una fila
+    // `payments` con type='refund' y `description = 'Refund of ' + <id del pago
+    // original>` (mismo patrón que usa el guard de sobre-refund ahí mismo,
+    // payment.service.ts arriba). Si esa fila existe, es un refund local
+    // conocido: cancelByAdmin/cancelByPlayer ya dejan su propio audit trail,
+    // así que no se duplica alerta acá. Si no existe, sigue siendo un refund
+    // externo genuino y se alerta como antes.
+    let hasKnownLocalRefund = false
+    if (refundedPaymentId) {
+      const localRefundRows = await tx.execute(sql`
+        SELECT id FROM payments
+        WHERE type = 'refund'
+          AND description = ${'Refund of ' + refundedPaymentId}
+        LIMIT 1
+      `)
+      hasKnownLocalRefund = (localRefundRows as unknown as Array<{ id: string }>).length > 0
+    }
+
+    if (!hasKnownLocalRefund) {
+      await insertSystemAuditLog(tx, {
         tenantId,
-      },
-    })
+        action: 'payment.external_refund_detected',
+        resourceType: 'booking',
+        resourceId: info.externalReference,
+        metadata: {
+          paymentId: refundedPaymentId,
+          mpPaymentId: info.mpPaymentId,
+          bookingId: info.externalReference,
+          amount: info.amount,
+        },
+      })
+      captureMessage('external refund detected: MP status=refunded without a local prepareRefund/settleRefund flow', {
+        level: 'warning',
+        extra: {
+          paymentId: refundedPaymentId,
+          mpPaymentId: info.mpPaymentId,
+          bookingId: info.externalReference,
+          amount: info.amount,
+          tenantId,
+        },
+      })
+    }
 
     return { alreadyProcessed: false, result: 'refunded' }
   }

@@ -48,13 +48,18 @@ const info: GatewayPaymentInfo = {
 }
 
 /**
- * tx fake: 2 llamadas a tx.execute — la del upsert (relink OK, corta antes
- * del branch de INSERT) y la del lookup de paymentId que agrega el hallazgo.
+ * tx fake: 3 llamadas a tx.execute — la del upsert (relink OK, corta antes
+ * del branch de INSERT), la del lookup de paymentId que agrega el hallazgo, y
+ * (fix H1) la del lookup de refund local vinculado (`type='refund'` +
+ * `description = 'Refund of ' + paymentId`, mismo vínculo que prepareRefund).
  */
-function mockTx() {
+function mockTx(options?: { hasLocalRefund?: boolean }) {
   const execute = vi.fn()
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // upsertPaymentRow: relink OK
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // lookup del paymentId para el audit
+  execute.mockResolvedValueOnce(
+    options?.hasLocalRefund ? [{ id: 'refund-pay-1' }] : [],
+  ) // lookup de refund local conocido (fix H1)
   return { execute } as never
 }
 
@@ -98,5 +103,20 @@ describe('dispatchPaymentInfo — refund externo (fuera de prepareRefund/settleR
         }),
       }),
     )
+  })
+
+  it('un webhook status=refunded con un refund LOCAL conocido (prepareRefund/settleRefund) no alerta', async () => {
+    const tx = mockTx({ hasLocalRefund: true })
+    const outcome = await dispatchPaymentInfo(info, TENANT_ID, tx)
+
+    expect(outcome.alreadyProcessed).toBe(false)
+    if (!outcome.alreadyProcessed) expect(outcome.result).toBe('refunded')
+
+    // El upsert de la fila payments corre igual en ambos casos (no es lo que
+    // se está testeando acá, pero confirma que el fix no lo tocó): lo prueba
+    // implícitamente el hecho de que dispatchPaymentInfo no explota — el
+    // upsert usa el mismo mock de execute que el caso externo.
+    expect(vi.mocked(insertSystemAuditLog)).not.toHaveBeenCalled()
+    expect(vi.mocked(captureMessage)).not.toHaveBeenCalled()
   })
 })

@@ -5,8 +5,8 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { prepareRefund, type PreparedRefund } from '@/modules/payments/payment.service'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
-import { applyNoShowStrike } from '@/modules/relationships/ptr.service'
-import { markNoShow } from './booking.service'
+import { applyNoShowStrike, revertNoShowStrike } from '@/modules/relationships/ptr.service'
+import { markNoShow, revertNoShow } from './booking.service'
 import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
@@ -471,6 +471,62 @@ export async function handleNoShow(
       bookingId,
       noshowCount: strike.noshowCount,
       bannedUntil: strike.bannedUntil?.toISOString() ?? null,
+    },
+  })
+
+  return booking
+}
+
+/**
+ * Corrección inversa (RI #1, doc6 §3): el admin marcó "No vino" por error y lo
+ * deshace dentro de las 24h. Espejo exacto de `handleNoShow`:
+ *
+ *  1. revertNoShow devuelve el booking a `completed` (valida actor + ventana de
+ *     24h; el trigger de la migración 060 lo respalda a nivel DB).
+ *  2. Si había jugador vinculado, revertNoShowStrike decrementa el contador de
+ *     ausencias, recalcula la ventana de reincidencia y levanta el softban
+ *     SOLO si lo había creado ese strike.
+ *
+ * La seña capturada NO se devuelve automáticamente (ver revertNoShow): el
+ * reembolso, si corresponde, se resuelve entre jugador y complejo. Queda
+ * asentado en el audit_log para que el rastro exista si después se reclama.
+ */
+export async function handleNoShowRevert(
+  bookingId: string,
+  staffUserId: string,
+  tx: DbTx,
+): Promise<BookingRow> {
+  const booking = await revertNoShow(bookingId, staffUserId, tx)
+
+  await insertAuditLog(tx, {
+    tenantId: booking.tenantId,
+    actorId: staffUserId,
+    actorType: 'staff',
+    action: 'booking.no_show_reverted',
+    resourceType: 'booking',
+    resourceId: bookingId,
+    metadata: {
+      // 'captured' acá = la seña quedó capturada y NO se auto-reembolsa.
+      depositStatus: booking.depositStatus,
+      depositAmount: booking.depositAmount,
+    },
+  })
+
+  if (!booking.playerId) return booking
+
+  const revert = await revertNoShowStrike(booking.tenantId, booking.playerId, bookingId, tx)
+
+  await insertAuditLog(tx, {
+    tenantId: booking.tenantId,
+    actorId: staffUserId,
+    actorType: 'staff',
+    action: 'player.no_show_strike_reverted',
+    resourceType: 'player',
+    resourceId: booking.playerId,
+    metadata: {
+      bookingId,
+      noshowCount: revert.noshowCount,
+      softbanLifted: revert.softbanLifted,
     },
   })
 

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
+import { sql as drizzleSql } from 'drizzle-orm'
+import { closeSql, getDb, getSql, withTenantContext } from '@/shared/db/client'
 import { physicalRange } from '@/shared/time/physical-range'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
@@ -31,11 +32,14 @@ import {
   cancelByAdmin,
   cancelByPlayer,
   handleNoShow,
+  handleNoShowRevert,
 } from '@/modules/bookings/booking.cancellation'
 import { settleRefund } from '@/modules/payments/payment.service'
 import {
   BookingNotInConfirmedError,
+  BookingNotInNoShowError,
   BookingNotOwnedByPlayerError,
+  NoShowRevertWindowExpiredError,
   RefundUnavailableError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
@@ -770,6 +774,363 @@ describe('handleNoShow — softban por ausencias reiteradas', () => {
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
 
     // El strike no se duplicó.
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
+  })
+})
+
+// ─── Corrección inversa no_show → completed (RI #1, doc6 §3) ───────────────
+describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () => {
+  async function insertPastConfirmed(opts: {
+    tenantId: string
+    courtId: string
+    playerId: string | null
+    timeStart?: string
+    timeEnd?: string
+    depositStatus?: string
+    depositAmount?: number
+  }): Promise<string> {
+    const sql = getSql()
+    const timeStart = opts.timeStart ?? '20:00'
+    const timeEnd = opts.timeEnd ?? '21:00'
+    const rows = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, status
+      ) VALUES (
+        ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+        CURRENT_DATE - INTERVAL '1 day', ${timeStart}::time, ${timeEnd}::time,
+        (CURRENT_DATE - INTERVAL '1 day' + ${timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (CURRENT_DATE - INTERVAL '1 day' + ${timeEnd}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ${800_000}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, 'confirmed'
+      )
+      RETURNING id
+    `
+    return rows[0]!.id
+  }
+
+  /**
+   * Turno YA en `no_show` con la marca envejecida. No se puede envejecer con un
+   * UPDATE posterior: `enforce_booking_invariants_fn` bloquea todo UPDATE sobre
+   * un booking terminal (tocar sólo updated_at no cae en ninguna excepción). El
+   * trigger es BEFORE UPDATE, así que sembrar el valor en el INSERT sí funciona
+   * — mismo camino que `insertCompletedBooking` en bookings.test.ts.
+   */
+  async function insertAgedNoShow(opts: {
+    tenantId: string
+    courtId: string
+    playerId: string | null
+    agedHours: number
+  }): Promise<string> {
+    const sql = getSql()
+    const rows = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, status, updated_at
+      ) VALUES (
+        ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+        CURRENT_DATE - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        (CURRENT_DATE - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (CURRENT_DATE - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ${800_000}, ${0}, 'not_required', 'no_show',
+        NOW() - (${opts.agedHours} || ' hours')::interval
+      )
+      RETURNING id
+    `
+    return rows[0]!.id
+  }
+
+  /** Siembra el strike que habría dejado `applyNoShowStrike`. */
+  async function seedStrike(tenantId: string, playerId: string, agedHours: number): Promise<void> {
+    const sql = getSql()
+    await sql`
+      INSERT INTO player_tenant_relationships (tenant_id, player_id, noshow_count, last_no_show_at)
+      VALUES (${tenantId}, ${playerId}, 1, NOW() - (${agedHours} || ' hours')::interval)
+      ON CONFLICT (player_id, tenant_id) DO UPDATE
+        SET noshow_count = 1, last_no_show_at = EXCLUDED.last_no_show_at
+    `
+  }
+
+  async function getLastNoShowAt(tenantId: string, playerId: string): Promise<Date | null> {
+    const sql = getSql()
+    const rows = await sql<{ last_no_show_at: string | null }[]>`
+      SELECT last_no_show_at FROM player_tenant_relationships
+      WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+      LIMIT 1
+    `
+    return rows[0]?.last_no_show_at ? new Date(rows[0].last_no_show_at) : null
+  }
+
+  it('1ra ausencia deshecha: turno vuelve a completed y el strike desaparece', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
+    expect(await getLastNoShowAt(tenant.id, player.id)).not.toBeNull()
+
+    await withTenantContext(tenant.id, (tx) => handleNoShowRevert(bookingId, staff.id, tx))
+
+    expect(await getBookingStatus(bookingId)).toBe('completed')
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(0)
+    // Sin ausencias restantes la ventana de reincidencia arranca limpia.
+    expect(await getLastNoShowAt(tenant.id, player.id)).toBeNull()
+
+    const audits = await getAuditLogs(bookingId)
+    expect(audits.some((a) => a.action === 'booking.no_show_reverted')).toBe(true)
+    const playerAudits = await getAuditLogs(player.id)
+    expect(playerAudits.some((a) => a.action === 'player.no_show_strike_reverted')).toBe(true)
+  })
+
+  it('2da ausencia deshecha: baja el contador y LEVANTA el softban auto-creado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const first = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(first, staff.id, tx))
+    const second = await insertPastConfirmed({
+      tenantId: tenant.id, courtId, playerId: player.id, timeStart: '21:00', timeEnd: '22:00',
+    })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(second, staff.id, tx))
+
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(2)
+    expect(await getActiveBanUntil(tenant.id, player.id)).not.toBeNull()
+
+    await withTenantContext(tenant.id, (tx) => handleNoShowRevert(second, staff.id, tx))
+
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
+    // El ban ya no está VIGENTE, pero la fila sigue existiendo (historial):
+    // liftPlayerBan y esta reversión comparten el modelo banned_until = NOW().
+    expect(await getActiveBanUntil(tenant.id, player.id)).toBeNull()
+    expect(await countAllBans(tenant.id, player.id)).toBe(1)
+
+    // last_no_show_at se recalcula desde la ausencia que SIGUE vigente, no queda
+    // apuntando a la que se deshizo ni en NULL.
+    expect(await getLastNoShowAt(tenant.id, player.id)).not.toBeNull()
+  })
+
+  it('3ra ausencia deshecha: sigue siendo reincidente (2 restantes) → el softban NO se levanta', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const times = [['18:00', '19:00'], ['20:00', '21:00'], ['21:00', '22:00']] as const
+    const ids: string[] = []
+    for (const [timeStart, timeEnd] of times) {
+      const id = await insertPastConfirmed({
+        tenantId: tenant.id, courtId, playerId: player.id, timeStart, timeEnd,
+      })
+      await withTenantContext(tenant.id, (tx) => handleNoShow(id, staff.id, tx))
+      ids.push(id)
+    }
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(3)
+
+    await withTenantContext(tenant.id, (tx) => handleNoShowRevert(ids[2]!, staff.id, tx))
+
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(2)
+    expect(await getActiveBanUntil(tenant.id, player.id)).not.toBeNull()
+  })
+
+  it('un ban MANUAL del complejo no se levanta al deshacer la ausencia', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+
+    // Ban de mostrador, con motivo y autor propios (banned_by seteado).
+    await sql`
+      INSERT INTO tenant_player_bans (tenant_id, player_id, reason, banned_until, banned_by)
+      VALUES (${tenant.id}, ${player.id}, 'Rompió el alambrado', NOW() + INTERVAL '30 days', ${staff.id})
+    `
+
+    await withTenantContext(tenant.id, (tx) => handleNoShowRevert(bookingId, staff.id, tx))
+
+    // El strike se revirtió pero el ban manual sigue vigente: levantarlo es
+    // decisión del complejo, no efecto colateral de una corrección de asistencia.
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(0)
+    expect(await getActiveBanUntil(tenant.id, player.id)).not.toBeNull()
+  })
+
+  it('la seña capturada NO se devuelve automáticamente', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPastConfirmed({
+      tenantId: tenant.id, courtId, playerId: player.id,
+      depositStatus: 'paid', depositAmount: 240_000,
+    })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+    expect(await getBookingDepositStatus(bookingId)).toBe('captured')
+
+    await withTenantContext(tenant.id, (tx) => handleNoShowRevert(bookingId, staff.id, tx))
+
+    expect(await getBookingStatus(bookingId)).toBe('completed')
+    // Decisión de auditoría 2026-07-21: el reintegro se resuelve entre jugador
+    // y complejo. Ni refund automático ni deposit_status revertido a 'paid'.
+    expect(await getBookingDepositStatus(bookingId)).toBe('captured')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+  })
+
+  it('sin jugador vinculado: revierte la transición sin tocar PTR', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: null })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+
+    const booking = await withTenantContext(tenant.id, (tx) =>
+      handleNoShowRevert(bookingId, staff.id, tx),
+    )
+
+    expect(booking.status).toBe('completed')
+    expect(await getBookingStatus(bookingId)).toBe('completed')
+  })
+
+  it('pasadas 24h de la marca: rechaza y no toca el strike', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertAgedNoShow({
+      tenantId: tenant.id, courtId, playerId: player.id, agedHours: 25,
+    })
+    await seedStrike(tenant.id, player.id, 25)
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => handleNoShowRevert(bookingId, staff.id, tx)),
+    ).rejects.toBeInstanceOf(NoShowRevertWindowExpiredError)
+
+    expect(await getBookingStatus(bookingId)).toBe('no_show')
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
+  })
+
+  it('justo dentro de la ventana (23h): la corrección todavía se aplica', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertAgedNoShow({
+      tenantId: tenant.id, courtId, playerId: player.id, agedHours: 23,
+    })
+    await seedStrike(tenant.id, player.id, 23)
+
+    await withTenantContext(tenant.id, (tx) => handleNoShowRevert(bookingId, staff.id, tx))
+
+    expect(await getBookingStatus(bookingId)).toBe('completed')
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(0)
+  })
+
+  it('reserva que no está en no_show: rechaza con BookingNotInNoShowError', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => handleNoShowRevert(bookingId, staff.id, tx)),
+    ).rejects.toBeInstanceOf(BookingNotInNoShowError)
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+  })
+
+  /**
+   * El DSN de los tests es superusuario: `withTenantContext` corre con RLS
+   * BYPASSEADA y los GRANT no se evalúan — el clásico "local enmascara" (PR
+   * #30). Acá se repite la corrección bajo el rol REAL de la app
+   * (`turnogol_app`), replicando lo que hace withTenantContext + SET LOCAL
+   * ROLE, para que un GRANT o una policy faltante en las 3 tablas que toca la
+   * reversión (bookings, player_tenant_relationships, tenant_player_bans)
+   * falle acá y no en producción.
+   */
+  it('bajo el rol real turnogol_app (RLS + GRANTs vigentes) la corrección funciona igual', async () => {
+    const sqlClient = getSql()
+    const tenant = await createTestTenant(sqlClient)
+    const player = await createTestPlayer(sqlClient)
+    const staff = await createTestStaffUser(sqlClient)
+    await linkStaffToTenant(sqlClient, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    // Dos ausencias → softban auto-creado, el caso que más tablas toca.
+    const first = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(first, staff.id, tx))
+    const second = await insertPastConfirmed({
+      tenantId: tenant.id, courtId, playerId: player.id, timeStart: '21:00', timeEnd: '22:00',
+    })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(second, staff.id, tx))
+    expect(await getActiveBanUntil(tenant.id, player.id)).not.toBeNull()
+
+    await getDb().transaction(async (tx) => {
+      await tx.execute(drizzleSql`SET LOCAL ROLE turnogol_app`)
+      await tx.execute(
+        drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
+      )
+      await handleNoShowRevert(second, staff.id, tx)
+    })
+
+    expect(await getBookingStatus(second)).toBe('completed')
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
+    expect(await getActiveBanUntil(tenant.id, player.id)).toBeNull()
+  })
+
+  it('doble reversión: la segunda rechaza y el contador no baja de nuevo', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const first = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(first, staff.id, tx))
+    const second = await insertPastConfirmed({
+      tenantId: tenant.id, courtId, playerId: player.id, timeStart: '21:00', timeEnd: '22:00',
+    })
+    await withTenantContext(tenant.id, (tx) => handleNoShow(second, staff.id, tx))
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(2)
+
+    await withTenantContext(tenant.id, (tx) => handleNoShowRevert(second, staff.id, tx))
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => handleNoShowRevert(second, staff.id, tx)),
+    ).rejects.toBeInstanceOf(BookingNotInNoShowError)
+
+    // El contador NO bajó una segunda vez.
     expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
   })
 })

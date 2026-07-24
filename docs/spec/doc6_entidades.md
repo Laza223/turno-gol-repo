@@ -300,16 +300,17 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | `confirmed` | `no_show` | Admin marca "No vino" (ya pasó `time_end`) | Softban por reincidencia (cambio #5, revisado 2026-07-11): captura la seña (`deposit_status='captured'`, único costo real) y registra la ausencia en `player_tenant_relationships.noshow_count` + `last_no_show_at`. La 2da ausencia dentro de `NO_SHOW_STRIKE_WINDOW_DAYS` (90 días) dispara un bloqueo de `NO_SHOW_SOFTBAN_DAYS` (14 días) para reservar online, vía una fila en `tenant_player_bans`. Lógica en `handleNoShow` (`booking.cancellation.ts`) → `applyNoShowStrike` (`ptr.service.ts`). |
 | `completed` | — | — | Estado final inmutable |
 | `expired` | — | — | Estado final |
-| `no_show` | `completed` | Admin corrige "No vino" marcado por error, dentro de la ventana de corrección de 24h | Limpia el strike: revierte/decrementa `noshow_count` + `last_no_show_at` y **levanta la fila de softban** en `tenant_player_bans` si fue auto-creada por ese strike. La seña ya capturada NO se auto-reembolsa (se resuelve entre jugador y complejo). (Decisión de auditoría 2026-07-21; implementación de código pendiente) |
+| `no_show` | `completed` | Admin corrige "No vino" marcado por error, dentro de la ventana de corrección de 24h | Limpia el strike: decrementa `noshow_count`, recalcula `last_no_show_at` desde las ausencias que sigan vigentes y **levanta la fila de softban** en `tenant_player_bans` si fue auto-creada por ese strike (un ban manual del complejo nunca se toca). La seña ya capturada NO se auto-reembolsa (se resuelve entre jugador y complejo). Lógica en `handleNoShowRevert` (`booking.cancellation.ts`) → `revertNoShow` (`booking.service.ts`) + `revertNoShowStrike` (`ptr.service.ts`); trigger de la migración 060. (Decisión de auditoría 2026-07-21, implementada 2026-07-24) |
 | `no_show` | — | — | Estado final pasadas las 24h (salvo la corrección de la fila anterior) |
 
 > [!NOTE]
 > **Estados terminales**: `completed`, `no_show` y `expired` son finales con una excepción:
 > la **corrección de asistencia** entre `completed` y `no_show` está **permitida dentro de las 24 horas**
 > posteriores al auto-complete, en ambos sentidos (`completed → no_show` y `no_show → completed`,
-> habilitada por trigger `enforce_booking_invariants_fn`). La reversa `no_show → completed` (no-show
-> marcado por error) limpia el strike y levanta el softban auto-creado por ese strike; la seña ya
-> capturada NO se auto-reembolsa (Decisión de auditoría 2026-07-21; implementación de código pendiente).
+> habilitada por trigger `enforce_booking_invariants_fn` — migración 030 en un sentido, 060 en el
+> otro). La reversa `no_show → completed` (no-show marcado por error) limpia el strike y levanta el
+> softban auto-creado por ese strike; la seña ya capturada NO se auto-reembolsa (Decisión de
+> auditoría 2026-07-21, implementada 2026-07-24).
 > Pasadas las 24h, `completed` y `no_show` son inmutables. `expired` es siempre inmutable.
 > Cualquier ajuste contable posterior al cierre de caja se registra como un `CashFlow` `adjustment` NUEVO.
 
@@ -317,7 +318,7 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 
 1. **No pueden existir dos reservas en estado `confirmed` o `pending_payment` en la misma cancha con overlap de horario** (DB constraint de exclusión con `btree_gist`).
 2. **`price_snapshot` nunca se modifica después de la creación**.
-3. **Una reserva en estado `no_show` es inmutable pasadas las 24h** de la marca; dentro de esa ventana de corrección el admin puede revertirla a `completed` (no-show marcado por error), lo que limpia el strike y levanta el softban auto-creado (Decisión de auditoría 2026-07-21; ver la nota de estados terminales, implementación de código pendiente).
+3. **Una reserva en estado `no_show` es inmutable pasadas las 24h** de la marca; dentro de esa ventana de corrección el admin puede revertirla a `completed` (no-show marcado por error), lo que limpia el strike y levanta el softban auto-creado (Decisión de auditoría 2026-07-21, implementada 2026-07-24; ver la nota de estados terminales).
 4. **`time_end` debe ser mayor a `time_start`** (`chk_time_valid`, validación obligatoria). El slot que termina en la medianoche calendario se guarda con `time_end='24:00'` — un TIME válido y `> '23:00'`, por lo que satisface el constraint (no se usa `'00:00'`, que lo violaría). Día operativo: ver la nota de "Horarios que cruzan medianoche".
 5. **`date` debe ser mayor o igual a hoy** al crear (se admiten reservas retroactivas del mismo día operativo).
 

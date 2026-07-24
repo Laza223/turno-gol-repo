@@ -18,6 +18,7 @@ import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurr
 import {
   cancelByAdmin,
   handleNoShow,
+  handleNoShowRevert,
   type AdminCancellationType,
   type CancellationOutcome,
 } from '@/modules/bookings/booking.cancellation'
@@ -39,8 +40,10 @@ import {
   PriceUnavailableError,
   BookingValidationError,
   BookingNotInConfirmedError,
+  BookingNotInNoShowError,
   BookingNotYetEndedError,
   BookingNotYetStartedError,
+  NoShowRevertWindowExpiredError,
   RefundUnavailableError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
@@ -273,6 +276,51 @@ export async function markNoShowAction(bookingId: string): Promise<BookingAction
   }
 
   validateApiOutput(bookingResponseSchema, { data: booking }, 'markNoShowAction')
+  revalidateBooking(bookingId)
+  return { success: true, booking }
+}
+
+/**
+ * Corrección inversa (RI #1, doc6 §3): deshacer un "No vino" marcado por error,
+ * dentro de las 24h. Devuelve el turno a `completed`, revierte el strike de
+ * ausencias y levanta el softban si lo había disparado ese strike.
+ *
+ * La seña capturada NO se reembolsa automáticamente — la UI lo avisa antes de
+ * confirmar y queda en el audit_log.
+ */
+export async function revertNoShowAction(bookingId: string): Promise<BookingActionResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const staffUserId = user.staffUserId
+
+  // Regla de la clase (caja/actions.ts:107): el catch va FUERA del contexto
+  // transaccional. Atrapar adentro y devolver un objeto commitea lo escrito
+  // antes del throw — acá eso dejaría el booking en 'completed' con el strike
+  // sin revertir.
+  let booking: BookingRow
+  try {
+    booking = await withTenantContext(tenant.id, (tx) =>
+      handleNoShowRevert(bookingId, staffUserId, tx),
+    )
+  } catch (err) {
+    if (err instanceof BookingNotInNoShowError) {
+      return { success: false, error: 'La reserva no está marcada como ausente.' }
+    }
+    if (err instanceof NoShowRevertWindowExpiredError) {
+      return {
+        success: false,
+        error: 'Pasaron más de 24hs desde que se marcó la ausencia: ya no se puede deshacer.',
+      }
+    }
+    throw err
+  }
+
+  validateApiOutput(bookingResponseSchema, { data: booking }, 'revertNoShowAction')
   revalidateBooking(bookingId)
   return { success: true, booking }
 }

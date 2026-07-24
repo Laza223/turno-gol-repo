@@ -51,12 +51,24 @@ type Props = {
    * fijos).
    */
   endsAt?: string | null
+  /**
+   * Última modificación del turno (TIMESTAMPTZ ISO). En un turno `no_show` es
+   * el instante de la marca de ausencia: decide si la ventana de corrección de
+   * 24h (RI #1) sigue abierta. Si falta, el botón "Deshacer ausente" no se
+   * muestra — el server igual rechazaría fuera de ventana, pero preferimos no
+   * ofrecer una acción que no sabemos si es válida.
+   */
+  updatedAt?: string | null
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
   completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
   markNoShowAction: SimpleBookingFn
+  revertNoShowAction: SimpleBookingFn
   cancelBookingAction: CancelBookingFn
 }
+
+/** Ventana de corrección de asistencia (doc6 §3, trigger de la migración 060). */
+const CORRECTION_WINDOW_MS = 24 * 60 * 60 * 1000
 
 // ART = UTC-3. Fallback cuando no llega `starts_at` — mismo cálculo que usaba
 // el server antes de los instantes físicos (artDateAt). No contempla
@@ -85,6 +97,7 @@ export default function BookingActions({
   timeStart,
   startsAt,
   endsAt,
+  updatedAt,
   cancellationPolicyHours,
   priceSnapshot,
   chargesTotal,
@@ -94,14 +107,64 @@ export default function BookingActions({
   playerPhone,
   completeAndChargeBookingAction,
   markNoShowAction,
+  revertNoShowAction,
   cancelBookingAction,
 }: Props) {
   const router = useRouter()
   const [cancelOpen, setCancelOpen] = useState(false)
   const [noShowOpen, setNoShowOpen] = useState(false)
+  const [revertNoShowOpen, setRevertNoShowOpen] = useState(false)
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
   const [cancelType, setCancelType] = useState<CancellationType | null>(null)
   const [reason, setReason] = useState('')
+
+  async function onConfirmRevertNoShow(): Promise<{ success: boolean; error?: string }> {
+    const res = await revertNoShowAction(bookingId)
+    if (res.success) {
+      toast({ title: 'Ausencia deshecha', variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
+  // RI #1 — corrección inversa: un turno marcado ausente por error vuelve a
+  // 'completed' dentro de las 24h. Única acción disponible fuera de
+  // 'confirmed'; pasada la ventana el turno es inmutable y no se ofrece nada.
+  if (status === 'no_show') {
+    const markedAtMs = updatedAt ? new Date(updatedAt).getTime() : null
+    const withinWindow =
+      markedAtMs !== null &&
+      Number.isFinite(markedAtMs) &&
+      Date.now() - markedAtMs < CORRECTION_WINDOW_MS
+    if (!withinWindow) return null
+
+    const depositWarning =
+      depositStatus === 'captured' && depositAmount > 0
+        ? ` La seña de ${formatArs(depositAmount)} ya quedó cobrada y NO se devuelve sola: si corresponde reintegrarla, coordinala con el jugador.`
+        : ''
+
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setRevertNoShowOpen(true)}
+          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+        >
+          Deshacer ausente
+        </button>
+
+        <ConfirmDialog
+          open={revertNoShowOpen}
+          onOpenChange={setRevertNoShowOpen}
+          title="Deshacer la ausencia"
+          description={`El turno vuelve a quedar como completado y se borra la ausencia del historial del jugador (si el bloqueo por reincidencia lo había disparado esta marca, se levanta).${depositWarning}`}
+          confirmLabel="Deshacer ausente"
+          cancelLabel="Volver"
+          onConfirm={onConfirmRevertNoShow}
+        />
+      </div>
+    )
+  }
 
   if (status !== 'confirmed') return null
 

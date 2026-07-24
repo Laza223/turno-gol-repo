@@ -109,6 +109,27 @@ export class NoShowCorrectionWindowExpiredError extends Error {
   }
 }
 
+// RI #1: la reserva que se intenta devolver a 'completed' no está en 'no_show'
+// (ya se corrigió, nunca se marcó ausente, o el id no existe).
+export class BookingNotInNoShowError extends Error {
+  constructor(public readonly bookingId: string) {
+    super(`Booking ${bookingId} is not in 'no_show' status`)
+    this.name = 'BookingNotInNoShowError'
+  }
+}
+
+// RI #1: la corrección inversa no_show → completed sólo se admite dentro de las
+// 24h posteriores a la marca de ausencia (bookings.updated_at). Pasada la
+// ventana el turno queda inmutable (espejo de NoShowCorrectionWindowExpiredError).
+export class NoShowRevertWindowExpiredError extends Error {
+  constructor(public readonly bookingId: string) {
+    super(
+      `Booking ${bookingId} cannot be reverted to completed: the 24h window since the no-show has passed`,
+    )
+    this.name = 'NoShowRevertWindowExpiredError'
+  }
+}
+
 export class BookingDateOutOfRangeError extends Error {
   constructor(public readonly reason: 'past_date' | 'past_slot' | 'advance_exceeded') {
     super(`Booking date is out of range: ${reason}`)

@@ -258,6 +258,44 @@ export async function dispatchPaymentInfo(
   }
   if (info.status === 'refunded') {
     await upsertPaymentRow(info, tenantId, 'refunded', tx)
+
+    // Hallazgo recon 🔴 (D4): un refund hecho directo desde el dashboard de MP
+    // (fuera de prepareRefund/settleRefund) llega acá igual, como webhook
+    // status='refunded' — el upsert de arriba pisa la fila `payments` sin
+    // dejar rastro de que fue EXTERNO ni avisar a nadie, y `bookings.deposit_status`
+    // queda 'paid' divergiendo en silencio del estado real en MP. Esto SOLO
+    // agrega visibilidad (audit log + alerta Sentry): NO cambia transiciones
+    // de estado ni reconcilia deposit_status. Qué hacer con el refund externo
+    // (¿reconciliar el booking? ¿avisar al jugador?) es una decisión de
+    // negocio pendiente — REQUIERE INPUT del dueño, no se resuelve acá.
+    const refundedRows = await tx.execute(sql`
+      SELECT id FROM payments WHERE mp_payment_id = ${info.mpPaymentId} LIMIT 1
+    `)
+    const refundedPaymentId = (refundedRows as unknown as Array<{ id: string }>)[0]?.id ?? null
+
+    await insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'payment.external_refund_detected',
+      resourceType: 'booking',
+      resourceId: info.externalReference,
+      metadata: {
+        paymentId: refundedPaymentId,
+        mpPaymentId: info.mpPaymentId,
+        bookingId: info.externalReference,
+        amount: info.amount,
+      },
+    })
+    captureMessage('external refund detected: MP status=refunded without a local prepareRefund/settleRefund flow', {
+      level: 'warning',
+      extra: {
+        paymentId: refundedPaymentId,
+        mpPaymentId: info.mpPaymentId,
+        bookingId: info.externalReference,
+        amount: info.amount,
+        tenantId,
+      },
+    })
+
     return { alreadyProcessed: false, result: 'refunded' }
   }
   await upsertPaymentRow(info, tenantId, 'pending', tx)

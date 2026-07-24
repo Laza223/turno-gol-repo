@@ -1,0 +1,37 @@
+-- ============================================================
+-- 057 — DELETE para el worker de retención sobre las tablas append-only
+-- (D5 continuación, 2026-07-23; cazado por verificación adversarial)
+--
+-- data-retention-cleanup.worker.ts corre TODO en el pool worker
+-- (`turnogol_worker`, BYPASSRLS — TG-P0-RETENTION-02) y ejecuta:
+--   * DELETE global por antigüedad sobre audit_logs (24 meses, aprobado
+--     por el dueño en D5) — purgeOldAuditLogs
+--   * el wipe legal Ley 25.326 §16 per-tenant (wipeTenant), que borra
+--     audit_logs y daily_cash_closes del tenant
+--
+-- Pero 038 le REVOCÓ UPDATE/DELETE sobre audit_logs y daily_cash_closes
+-- (líneas 68-69, heredando el espíritu append-only de 008). Verificado
+-- empíricamente bajo SET ROLE turnogol_worker:
+--   ERROR: permission denied for table audit_logs
+--   ERROR: permission denied for table daily_cash_closes
+-- → la purga nueva Y esos DELETEs del wipe legal fallaban en prod
+-- (local/CI enmascaran: getWorkerSql cae a DATABASE_URL superusuario —
+-- misma clase que PR #30 "local enmascara").
+--
+-- Alcance deliberado (mínimo): solo DELETE — el UPDATE sigue revocado
+-- (el trail no se reescribe, se purga) y turnogol_app conserva su
+-- INSERT-only de 008/037 intacto.
+--
+-- RESIDUO CONOCIDO (fuera de esta migración): wipeTenant también abre su
+-- tx con SET LOCAL session_replication_role = 'replica', y ese GUC es
+-- SUSET — turnogol_worker no puede setearlo, y `GRANT SET ON PARAMETER
+-- session_replication_role TO turnogol_worker` NO es aplicable en
+-- Supabase (probado local: "permission denied for parameter" — el rol
+-- `postgres` de Supabase no es superusuario real y no puede otorgarlo).
+-- El wipe legal completo sigue roto en prod hasta rediseñar ese paso
+-- (SECURITY DEFINER u orden explícito sin replica role) — registrado en
+-- docs/audit como pendiente con su propia entrada.
+-- ============================================================
+
+GRANT DELETE ON audit_logs TO turnogol_worker;
+GRANT DELETE ON daily_cash_closes TO turnogol_worker;

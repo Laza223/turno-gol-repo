@@ -19,6 +19,7 @@ import {
   cancelByAdmin,
   handleNoShow,
   type AdminCancellationType,
+  type CancellationOutcome,
 } from '@/modules/bookings/booking.cancellation'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
@@ -46,16 +47,12 @@ import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 export type BookingActionResult =
-  | { success: true; booking: BookingRow }
-  | { success: false; error: string }
+  { success: true; booking: BookingRow } | { success: false; error: string }
 
 export type BookingChargeActionResult =
-  | { success: true; cashFlow: CashFlowRow }
-  | { success: false; error: string }
+  { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
 
-export async function createBookingAction(
-  data: unknown,
-): Promise<BookingActionResult> {
+export async function createBookingAction(data: unknown): Promise<BookingActionResult> {
   // Cruce #1: rol leído de DB — solo admin/manager operan reservas.
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
@@ -79,42 +76,40 @@ export async function createBookingAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const booking = await createManualBooking(
-        tenant.id,
-        { ...parsed.data, staffUserId },
-        tx,
-      )
-      return { success: true as const, booking }
-    } catch (err) {
-      if (err instanceof SlotTakenError) {
-        return { success: false as const, error: 'Este turno acaba de ser tomado.' }
-      }
-      if (err instanceof CourtOfflineError) {
-        return { success: false as const, error: 'La cancha no está disponible.' }
-      }
-      if (err instanceof PriceUnavailableError) {
-        return { success: false as const, error: 'No hay precio configurado para este horario.' }
-      }
-      if (err instanceof BookingValidationError) {
-        // Tarea #6: turnos de 60 min (los bloques sí pueden durar varias horas).
-        return { success: false as const, error: err.message }
-      }
-      throw err
+  // Regla de la clase (rediseño Caja/Cantina): el catch va FUERA del contexto
+  // transaccional — atrapar adentro y devolver un objeto commitea lo escrito
+  // antes del throw. Acá los services tiran antes de escribir, pero el patrón
+  // uniforme evita que un refactor futuro herede la mina.
+  let booking: BookingRow
+  try {
+    booking = await withTenantContext(tenant.id, (tx) =>
+      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx)
+    )
+  } catch (err) {
+    if (err instanceof SlotTakenError) {
+      return { success: false, error: 'Este turno acaba de ser tomado.' }
     }
-  })
-
-  if (result.success) {
-    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'createBookingAction')
-    // Revalidate both the reservas list and the grilla — the grilla is the
-    // surface most likely to be open when the admin creates a booking
-    // (BookingFormModal is launched from there), so its cached server data
-    // would otherwise still show the slot as free even after success.
-    revalidatePath('/reservas')
-    revalidatePath('/grilla')
+    if (err instanceof CourtOfflineError) {
+      return { success: false, error: 'La cancha no está disponible.' }
+    }
+    if (err instanceof PriceUnavailableError) {
+      return { success: false, error: 'No hay precio configurado para este horario.' }
+    }
+    if (err instanceof BookingValidationError) {
+      // Tarea #6: turnos de 60 min (los bloques sí pueden durar varias horas).
+      return { success: false, error: err.message }
+    }
+    throw err
   }
-  return result
+
+  validateApiOutput(bookingResponseSchema, { data: booking }, 'createBookingAction')
+  // Revalidate both the reservas list and the grilla — the grilla is the
+  // surface most likely to be open when the admin creates a booking
+  // (BookingFormModal is launched from there), so its cached server data
+  // would otherwise still show the slot as free even after success.
+  revalidatePath('/reservas')
+  revalidatePath('/grilla')
+  return { success: true, booking }
 }
 
 const checkSlotAvailabilitySchema = z.object({
@@ -138,7 +133,7 @@ export type CheckSlotAvailabilityResult = { available: boolean }
  * fallo propio.
  */
 export async function checkSlotAvailabilityAction(
-  input: CheckSlotAvailabilityInput,
+  input: CheckSlotAvailabilityInput
 ): Promise<CheckSlotAvailabilityResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { available: true }
@@ -188,9 +183,7 @@ function revalidateBooking(bookingId: string): void {
  * webhook de MP: si este perdió la carrera contra el webhook o el cron de
  * expiración, won=false y no se pisa nada.
  */
-export async function confirmDepositPaymentAction(
-  bookingId: string,
-): Promise<BookingActionResult> {
+export async function confirmDepositPaymentAction(bookingId: string): Promise<BookingActionResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
@@ -210,15 +203,17 @@ export async function confirmDepositPaymentAction(
   })
 
   if (result.success) {
-    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'confirmDepositPaymentAction')
+    validateApiOutput(
+      bookingResponseSchema,
+      { data: result.booking },
+      'confirmDepositPaymentAction'
+    )
     revalidateBooking(bookingId)
   }
   return result
 }
 
-export async function completeBookingAction(
-  bookingId: string,
-): Promise<BookingActionResult> {
+export async function completeBookingAction(bookingId: string): Promise<BookingActionResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
@@ -226,34 +221,31 @@ export async function completeBookingAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const booking = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
-      return { success: true as const, booking }
-    } catch (err) {
-      if (err instanceof BookingNotInConfirmedError) {
-        return { success: false as const, error: 'La reserva no está en estado confirmado.' }
-      }
-      if (err instanceof BookingNotYetEndedError) {
-        return {
-          success: false as const,
-          error: 'El turno todavía no terminó. Podés marcarla completada recién después del horario de fin.',
-        }
-      }
-      throw err
+  let booking: BookingRow
+  try {
+    booking = await withTenantContext(tenant.id, (tx) =>
+      completeBooking(bookingId, 'admin', tx, user.staffUserId)
+    )
+  } catch (err) {
+    if (err instanceof BookingNotInConfirmedError) {
+      return { success: false, error: 'La reserva no está en estado confirmado.' }
     }
-  })
-
-  if (result.success) {
-    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'completeBookingAction')
-    revalidateBooking(bookingId)
+    if (err instanceof BookingNotYetEndedError) {
+      return {
+        success: false,
+        error:
+          'El turno todavía no terminó. Podés marcarla completada recién después del horario de fin.',
+      }
+    }
+    throw err
   }
-  return result
+
+  validateApiOutput(bookingResponseSchema, { data: booking }, 'completeBookingAction')
+  revalidateBooking(bookingId)
+  return { success: true, booking }
 }
 
-export async function markNoShowAction(
-  bookingId: string,
-): Promise<BookingActionResult> {
+export async function markNoShowAction(bookingId: string): Promise<BookingActionResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
@@ -263,35 +255,32 @@ export async function markNoShowAction(
 
   const staffUserId = user.staffUserId
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const booking = await handleNoShow(bookingId, staffUserId, tx)
-      return { success: true as const, booking }
-    } catch (err) {
-      if (err instanceof BookingNotInConfirmedError) {
-        return { success: false as const, error: 'La reserva no está en estado confirmado.' }
-      }
-      if (err instanceof BookingNotYetStartedError) {
-        return {
-          success: false as const,
-          error: 'El turno todavía no empezó. Podés marcar ausente recién después del horario de inicio.',
-        }
-      }
-      throw err
+  let booking: BookingRow
+  try {
+    booking = await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staffUserId, tx))
+  } catch (err) {
+    if (err instanceof BookingNotInConfirmedError) {
+      return { success: false, error: 'La reserva no está en estado confirmado.' }
     }
-  })
-
-  if (result.success) {
-    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'markNoShowAction')
-    revalidateBooking(bookingId)
+    if (err instanceof BookingNotYetStartedError) {
+      return {
+        success: false,
+        error:
+          'El turno todavía no empezó. Podés marcar ausente recién después del horario de inicio.',
+      }
+    }
+    throw err
   }
-  return result
+
+  validateApiOutput(bookingResponseSchema, { data: booking }, 'markNoShowAction')
+  revalidateBooking(bookingId)
+  return { success: true, booking }
 }
 
 export async function cancelBookingAction(
   bookingId: string,
   reason: string,
-  cancellationType: AdminCancellationType,
+  cancellationType: AdminCancellationType
 ): Promise<BookingActionResult> {
   if (!reason || reason.trim().length < 3) {
     return { success: false, error: 'El motivo debe tener al menos 3 caracteres.' }
@@ -325,33 +314,26 @@ export async function cancelBookingAction(
     gateway = resolveTenantGateway(tenant.id, mpAccessToken)
   }
 
-  const txResult = await withTenantContext(tenant.id, async (tx) => {
-    try {
-      const outcome = await cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx)
-      return {
-        success: true as const,
-        booking: outcome.booking,
-        pendingRefund: outcome.pendingRefund,
-        notificationIds: outcome.notificationIds,
-      }
-    } catch (err) {
-      if (err instanceof BookingNotInConfirmedError) {
-        return { success: false as const, error: 'La reserva no está en estado confirmado.' }
-      }
-      // Hallazgo 2: corresponde refund pero MP no está disponible para este complejo.
-      if (err instanceof RefundUnavailableError) {
-        return {
-          success: false as const,
-          error: 'No se pudo procesar el reembolso por MercadoPago. Gestionalo manualmente.',
-        }
-      }
-      throw err
+  let outcome: CancellationOutcome
+  try {
+    outcome = await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx)
+    )
+  } catch (err) {
+    if (err instanceof BookingNotInConfirmedError) {
+      return { success: false, error: 'La reserva no está en estado confirmado.' }
     }
-  })
+    // Hallazgo 2: corresponde refund pero MP no está disponible para este complejo.
+    if (err instanceof RefundUnavailableError) {
+      return {
+        success: false,
+        error: 'No se pudo procesar el reembolso por MercadoPago. Gestionalo manualmente.',
+      }
+    }
+    throw err
+  }
 
-  if (!txResult.success) return txResult
-
-  validateApiOutput(bookingResponseSchema, { data: txResult.booking }, 'cancelBookingAction')
+  validateApiOutput(bookingResponseSchema, { data: outcome.booking }, 'cancelBookingAction')
   revalidateBooking(bookingId)
 
   // doc7 Flujo 4: booking_canceled / booking_canceled_by_complex encolados
@@ -360,14 +342,14 @@ export async function cancelBookingAction(
   // por cron de send-email levanta la notificación 'queued' igual; nunca
   // convertir esto en error para el usuario.
   try {
-    await Promise.all(txResult.notificationIds.map((id) => dispatchEmail(id)))
+    await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
   } catch (err) {
     captureMessage('email dispatch failed after admin cancellation', {
       level: 'warning',
       extra: {
         bookingId,
         tenantId: tenant.id,
-        notificationIds: txResult.notificationIds,
+        notificationIds: outcome.notificationIds,
         error: err instanceof Error ? err.message : String(err),
       },
     })
@@ -377,23 +359,23 @@ export async function cancelBookingAction(
   // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
   // tx). Si esta llamada falla, la cancelación ya es válida —no hay
   // rollback— pero el refund queda pendiente de resolución manual/retry.
-  if (txResult.pendingRefund && gateway) {
+  if (outcome.pendingRefund && gateway) {
     try {
-      await settleRefund(txResult.pendingRefund, gateway, tenant.id)
+      await settleRefund(outcome.pendingRefund, gateway, tenant.id)
     } catch (err) {
       captureMessage('mp refund settlement failed after admin cancellation', {
         level: 'error',
         extra: {
           bookingId,
           tenantId: tenant.id,
-          refundPaymentId: txResult.pendingRefund.refundPaymentId,
+          refundPaymentId: outcome.pendingRefund.refundPaymentId,
           error: err instanceof Error ? err.message : String(err),
         },
       })
     }
   }
 
-  return { success: true, booking: txResult.booking }
+  return { success: true, booking: outcome.booking }
 }
 
 const CHARGEABLE_STATUSES = ['confirmed', 'completed', 'no_show'] as const
@@ -416,7 +398,7 @@ export type AddBookingChargeInput = z.input<typeof addBookingChargeSchema>
  * withTenantContext, así el cobro queda aislado por tenant y sin duplicados.
  */
 export async function addBookingChargeAction(
-  input: AddBookingChargeInput,
+  input: AddBookingChargeInput
 ): Promise<BookingChargeActionResult> {
   const parsed = addBookingChargeSchema.safeParse(input)
   if (!parsed.success) {
@@ -431,82 +413,89 @@ export async function addBookingChargeAction(
 
   const { bookingId, amount, method, clientIdempotencyKey, note } = parsed.data
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    // El booking tiene que existir en este tenant (RLS) y estar en un estado
-    // cobrable: no tiene sentido cobrar un turno cancelado/expirado o pendiente
-    // de pago (todavía no hay turno confirmado).
-    const bookingRows = await tx.execute(sql`
+  // Los returns {success:false} de adentro son validaciones de solo lectura
+  // (nada escrito antes) — el único throw con potencial de write previo
+  // (DayAlreadyClosedError de createCashFlow) se mapea AFUERA para que la tx
+  // rollbackee en vez de commitear.
+  let result: BookingChargeActionResult
+  try {
+    result = await withTenantContext(tenant.id, async (tx) => {
+      // El booking tiene que existir en este tenant (RLS) y estar en un estado
+      // cobrable: no tiene sentido cobrar un turno cancelado/expirado o pendiente
+      // de pago (todavía no hay turno confirmado).
+      const bookingRows = await tx.execute(sql`
       SELECT status, price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
              deposit_status AS "depositStatus"
       FROM bookings WHERE id = ${bookingId} LIMIT 1
     `)
-    const booking = (bookingRows as unknown as Array<{
-      status: string
-      priceSnapshot: number
-      depositAmount: number
-      depositStatus: string
-    }>)[0]
-    if (!booking) {
-      return { success: false as const, error: 'La reserva no existe.' }
-    }
-    if (!CHARGEABLE_STATUSES.includes(booking.status as (typeof CHARGEABLE_STATUSES)[number])) {
-      return { success: false as const, error: 'No se puede cobrar una reserva en este estado.' }
-    }
+      const booking = (
+        bookingRows as unknown as Array<{
+          status: string
+          priceSnapshot: number
+          depositAmount: number
+          depositStatus: string
+        }>
+      )[0]
+      if (!booking) {
+        return { success: false as const, error: 'La reserva no existe.' }
+      }
+      if (!CHARGEABLE_STATUSES.includes(booking.status as (typeof CHARGEABLE_STATUSES)[number])) {
+        return { success: false as const, error: 'No se puede cobrar una reserva en este estado.' }
+      }
 
-    // ENS-3 (ensayo real): el endpoint aceptaba cobros sin límite contra el
-    // saldo pendiente (turno de $100 aceptó $570 y la UI decía "Pagado
-    // completo"). La fuente de verdad es la DB, recalculada acá server-side,
-    // nunca lo que mande el cliente.
-    //
-    // Excepción: un reintento con la MISMA clientIdempotencyKey ya insertada
-    // (Fix #55, doble-submit/reintento de red) es el MISMO cobro ya aceptado
-    // — no hay que re-validar contra un pendiente que ya bajó por ese cobro,
-    // o un reintento legítimo se rechazaría por error.
-    let alreadyRegistered = false
-    if (clientIdempotencyKey) {
-      const dup = await tx.execute(sql`
+      // ENS-3 (ensayo real): el endpoint aceptaba cobros sin límite contra el
+      // saldo pendiente (turno de $100 aceptó $570 y la UI decía "Pagado
+      // completo"). La fuente de verdad es la DB, recalculada acá server-side,
+      // nunca lo que mande el cliente.
+      //
+      // Excepción: un reintento con la MISMA clientIdempotencyKey ya insertada
+      // (Fix #55, doble-submit/reintento de red) es el MISMO cobro ya aceptado
+      // — no hay que re-validar contra un pendiente que ya bajó por ese cobro,
+      // o un reintento legítimo se rechazaría por error.
+      let alreadyRegistered = false
+      if (clientIdempotencyKey) {
+        const dup = await tx.execute(sql`
         SELECT 1 FROM cash_flows WHERE client_idempotency_key = ${clientIdempotencyKey} LIMIT 1
       `)
-      alreadyRegistered = (dup as unknown[]).length > 0
-    }
-
-    if (!alreadyRegistered) {
-      // Hallazgo C (TOCTOU, ENS-3 real): dos cobros concurrentes del mismo
-      // booking leían el mismo `pending` sin lock y ambos pasaban la
-      // validación (turno de $10.000 aceptaba 2×$8.000). Lockear la fila del
-      // booking ANTES de leer los charges serializa los cobros: el segundo
-      // espera a que el primero commitee su cash_flow y relee el pendiente ya
-      // actualizado. Mismo patrón que createDepositPayment
-      // (payment.service.ts). Solo en este camino (valida+inserta) — el
-      // reintento idempotente (alreadyRegistered) no re-valida el pendiente,
-      // así que no necesita el lock.
-      //
-      // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
-      // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
-      // createCashFlow → assertDayOpen). Ningún otro caller de createCashFlow
-      // invierte ese orden (grep de pg_advisory_xact_lock + FOR UPDATE en
-      // cashflow/bookings/payments) — evita deadlock.
-      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
-
-      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
-      const { pending } = summarizeBookingCharges({
-        priceSnapshot: booking.priceSnapshot,
-        depositAmount: booking.depositAmount,
-        depositStatus: booking.depositStatus,
-        chargesTotal,
-      })
-      if (pending <= 0) {
-        return { success: false as const, error: 'Este turno ya está pagado por completo.' }
+        alreadyRegistered = (dup as unknown[]).length > 0
       }
-      if (amount > pending) {
-        return {
-          success: false as const,
-          error: `El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pending)}).`,
+
+      if (!alreadyRegistered) {
+        // Hallazgo C (TOCTOU, ENS-3 real): dos cobros concurrentes del mismo
+        // booking leían el mismo `pending` sin lock y ambos pasaban la
+        // validación (turno de $10.000 aceptaba 2×$8.000). Lockear la fila del
+        // booking ANTES de leer los charges serializa los cobros: el segundo
+        // espera a que el primero commitee su cash_flow y relee el pendiente ya
+        // actualizado. Mismo patrón que createDepositPayment
+        // (payment.service.ts). Solo en este camino (valida+inserta) — el
+        // reintento idempotente (alreadyRegistered) no re-valida el pendiente,
+        // así que no necesita el lock.
+        //
+        // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
+        // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
+        // createCashFlow → assertDayOpen). Ningún otro caller de createCashFlow
+        // invierte ese orden (grep de pg_advisory_xact_lock + FOR UPDATE en
+        // cashflow/bookings/payments) — evita deadlock.
+        await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
+        const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+        const { pending } = summarizeBookingCharges({
+          priceSnapshot: booking.priceSnapshot,
+          depositAmount: booking.depositAmount,
+          depositStatus: booking.depositStatus,
+          chargesTotal,
+        })
+        if (pending <= 0) {
+          return { success: false as const, error: 'Este turno ya está pagado por completo.' }
+        }
+        if (amount > pending) {
+          return {
+            success: false as const,
+            error: `El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pending)}).`,
+          }
         }
       }
-    }
 
-    try {
       const cashFlow = await createCashFlow(
         tenant.id,
         user.staffUserId,
@@ -519,19 +508,19 @@ export async function addBookingChargeAction(
           bookingId,
           clientIdempotencyKey,
         },
-        tx,
+        tx
       )
       return { success: true as const, cashFlow }
-    } catch (err) {
-      if (err instanceof DayAlreadyClosedError) {
-        return {
-          success: false as const,
-          error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
-        }
+    })
+  } catch (err) {
+    if (err instanceof DayAlreadyClosedError) {
+      return {
+        success: false,
+        error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
       }
-      throw err
     }
-  })
+    throw err
+  }
 
   if (result.success) {
     revalidateBooking(bookingId)
@@ -559,11 +548,10 @@ const completeAndChargeSchema = z.object({
 export type CompleteAndChargeInput = z.input<typeof completeAndChargeSchema>
 
 export type CompleteAndChargeResult =
-  | { success: true; booking: BookingRow }
-  | { success: false; error: string }
+  { success: true; booking: BookingRow } | { success: false; error: string }
 
 export async function completeAndChargeBookingAction(
-  input: CompleteAndChargeInput,
+  input: CompleteAndChargeInput
 ): Promise<CompleteAndChargeResult> {
   const parsed = completeAndChargeSchema.safeParse(input)
   if (!parsed.success) {
@@ -578,66 +566,58 @@ export async function completeAndChargeBookingAction(
 
   const { bookingId, charges, debtNote, clientIdempotencyKey } = parsed.data
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    // 1. Complete the booking (validates ends_at, status)
-    let booking: BookingRow
-    try {
-      booking = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
-    } catch (err) {
-      if (err instanceof BookingNotInConfirmedError) {
-        return { success: false as const, error: 'La reserva no está en estado confirmado.' }
-      }
-      if (err instanceof BookingNotYetEndedError) {
-        return {
-          success: false as const,
-          error: 'El turno todavía no terminó. Podés marcarla completada recién después del horario de fin.',
+  // Bug de la clase (rediseño Caja/Cantina, verificado contra Postgres):
+  // atrapar una excepción de dominio ADENTRO del callback y devolver
+  // {success:false} hace que drizzle COMMITEE la tx — acá completeBooking ya
+  // escribió status='completed' (y el loop pudo insertar cobros parciales),
+  // así que el admin veía un error mientras la completación quedaba persistida
+  // a medias. Todo error de dominio ahora ESCAPA de withTenantContext (rollback
+  // real) y se mapea a mensaje amigable afuera. La validación de "supera lo
+  // pendiente" tira BookingValidationError por el mismo motivo: un return
+  // commiteaba el complete sin los cobros.
+  let booking: BookingRow
+  try {
+    booking = await withTenantContext(tenant.id, async (tx) => {
+      // 1. Complete the booking (validates ends_at, status)
+      const completed = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
+
+      // 2. Validate total charges don't exceed pending amount
+      if (charges.length > 0) {
+        // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
+        // más arriba en este archivo): la lectura de charges tiene que ocurrir
+        // DESPUÉS de lockear la fila. completeBooking() de arriba ya lo hace
+        // implícitamente (su UPDATE ... WHERE status='confirmed' toma el row
+        // lock y lo mantiene hasta el commit de esta tx) — el FOR UPDATE acá es
+        // explícito y redundante a propósito: documenta la dependencia y blinda
+        // el código si completeBooking() dejara de hacer ese UPDATE. Mismo
+        // orden de locks que addBookingChargeAction: booking FOR UPDATE antes
+        // que el advisory lock diario de createCashFlow → assertDayOpen.
+        await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
+        const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+        const { pending } = summarizeBookingCharges({
+          priceSnapshot: completed.priceSnapshot,
+          depositAmount: completed.depositAmount,
+          depositStatus: completed.depositStatus,
+          chargesTotal,
+        })
+
+        const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
+        if (totalCharging > pending) {
+          throw new BookingValidationError(
+            `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`
+          )
         }
-      }
-      throw err
-    }
 
-    // 2. Validate total charges don't exceed pending amount
-    if (charges.length > 0) {
-      // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
-      // más arriba en este archivo): la lectura de charges tiene que ocurrir
-      // DESPUÉS de lockear la fila. completeBooking() de arriba ya lo hace
-      // implícitamente (su UPDATE ... WHERE status='confirmed' toma el row
-      // lock y lo mantiene hasta el commit de esta tx) — el FOR UPDATE acá es
-      // explícito y redundante a propósito: documenta la dependencia y blinda
-      // el código si completeBooking() dejara de hacer ese UPDATE. Mismo
-      // orden de locks que addBookingChargeAction: booking FOR UPDATE antes
-      // que el advisory lock diario de createCashFlow → assertDayOpen.
-      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+        // 3. Register each charge as a cash_flow
+        for (let i = 0; i < charges.length; i++) {
+          const charge = charges[i]!
+          const description =
+            charges.length === 1 ? 'Cobro de turno' : `Cobro de turno (${i + 1}/${charges.length})`
 
-      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
-      const { pending } = summarizeBookingCharges({
-        priceSnapshot: booking.priceSnapshot,
-        depositAmount: booking.depositAmount,
-        depositStatus: booking.depositStatus,
-        chargesTotal,
-      })
+          // Unique idempotency key per charge line (derived from the base key)
+          const lineKey = clientIdempotencyKey ? `${clientIdempotencyKey}-${i}` : undefined
 
-      const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
-      if (totalCharging > pending) {
-        return {
-          success: false as const,
-          error: `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`,
-        }
-      }
-
-      // 3. Register each charge as a cash_flow
-      for (let i = 0; i < charges.length; i++) {
-        const charge = charges[i]!
-        const description = charges.length === 1
-          ? 'Cobro de turno'
-          : `Cobro de turno (${i + 1}/${charges.length})`
-
-        // Unique idempotency key per charge line (derived from the base key)
-        const lineKey = clientIdempotencyKey
-          ? `${clientIdempotencyKey}-${i}`
-          : undefined
-
-        try {
           await createCashFlow(
             tenant.id,
             user.staffUserId,
@@ -650,38 +630,49 @@ export async function completeAndChargeBookingAction(
               bookingId,
               clientIdempotencyKey: lineKey,
             },
-            tx,
+            tx
           )
-        } catch (err) {
-          if (err instanceof DayAlreadyClosedError) {
-            return {
-              success: false as const,
-              error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
-            }
-          }
-          throw err
         }
       }
+
+      // 4. If there's a debt note, save it in notes_internal
+      if (debtNote?.trim()) {
+        const existingNotes = completed.notesInternal ?? ''
+        const newNote = existingNotes
+          ? `${existingNotes}\n[Deuda] ${debtNote.trim()}`
+          : `[Deuda] ${debtNote.trim()}`
+        await tx.execute(
+          sql`UPDATE bookings SET notes_internal = ${newNote} WHERE id = ${bookingId}`
+        )
+      }
+
+      return completed
+    })
+  } catch (err) {
+    if (err instanceof BookingNotInConfirmedError) {
+      return { success: false, error: 'La reserva no está en estado confirmado.' }
     }
-
-    // 4. If there's a debt note, save it in notes_internal
-    if (debtNote?.trim()) {
-      const existingNotes = booking.notesInternal ?? ''
-      const newNote = existingNotes
-        ? `${existingNotes}\n[Deuda] ${debtNote.trim()}`
-        : `[Deuda] ${debtNote.trim()}`
-      await tx.execute(
-        sql`UPDATE bookings SET notes_internal = ${newNote} WHERE id = ${bookingId}`,
-      )
+    if (err instanceof BookingNotYetEndedError) {
+      return {
+        success: false,
+        error:
+          'El turno todavía no terminó. Podés marcarla completada recién después del horario de fin.',
+      }
     }
-
-    return { success: true as const, booking }
-  })
-
-  if (result.success) {
-    validateApiOutput(bookingResponseSchema, { data: result.booking }, 'completeAndChargeBookingAction')
-    revalidateBooking(bookingId)
-    revalidatePath('/caja')
+    if (err instanceof BookingValidationError) {
+      return { success: false, error: err.message }
+    }
+    if (err instanceof DayAlreadyClosedError) {
+      return {
+        success: false,
+        error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
+      }
+    }
+    throw err
   }
-  return result
+
+  validateApiOutput(bookingResponseSchema, { data: booking }, 'completeAndChargeBookingAction')
+  revalidateBooking(bookingId)
+  revalidatePath('/caja')
+  return { success: true, booking }
 }

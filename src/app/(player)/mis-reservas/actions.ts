@@ -12,7 +12,7 @@ import { tenants } from '@/shared/db/schema'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { settleRefund } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
-import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
+import { cancelByPlayer, type CancellationOutcome } from '@/modules/bookings/booking.cancellation'
 import {
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
@@ -29,8 +29,7 @@ const cancelSchema = z.object({
 })
 
 export type PlayerBookingActionResult =
-  | { success: true; booking: BookingRow }
-  | { success: false; error: string }
+  { success: true; booking: BookingRow } | { success: false; error: string }
 
 async function requirePlayer() {
   const user = await extractAuthUser()
@@ -40,7 +39,7 @@ async function requirePlayer() {
 
 export async function cancelMyBookingAction(
   bookingId: string,
-  reason?: string,
+  reason?: string
 ): Promise<PlayerBookingActionResult> {
   const parsed = cancelSchema.safeParse({ bookingId, reason })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
@@ -77,41 +76,38 @@ export async function cancelMyBookingAction(
     }
   }
 
-  const txResult = await withTenantContext(pre.tenant_id, async (tx) => {
-    try {
-      const outcome = await cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx)
-      return {
-        success: true as const,
-        booking: outcome.booking,
-        pendingRefund: outcome.pendingRefund,
-        notificationIds: outcome.notificationIds,
-      }
-    } catch (err) {
-      if (err instanceof BookingNotOwnedByPlayerError) {
-        return { success: false as const, error: 'No tenés permiso para cancelar esta reserva.' }
-      }
-      if (err instanceof BookingNotInConfirmedError) {
-        return { success: false as const, error: 'La reserva no está en estado confirmado.' }
-      }
-      // #31: el complejo en estado blocked/deleted hace que cancelByPlayer lance
-      // TenantInactiveError. Sin este catch se propagaba como error no controlado
-      // de la Server Action, dejando el dialog colgado sin feedback inline.
-      if (err instanceof TenantInactiveError) {
-        return { success: false as const, error: 'El complejo no está disponible para cancelar online.' }
-      }
-      // Hallazgo 2: seña MP pero gateway no disponible (token delinkeado). No se
-      // puede procesar el reembolso automático; el jugador debe gestionarlo con el complejo.
-      if (err instanceof RefundUnavailableError) {
-        return {
-          success: false as const,
-          error: 'No se pudo procesar el reembolso automático. Contactá al complejo.',
-        }
-      }
-      throw err
+  // Regla de la clase (rediseño Caja/Cantina): el catch va FUERA del contexto
+  // transaccional — atrapar adentro y devolver un objeto commitea lo escrito
+  // antes del throw. Acá cancelByPlayer tira antes de escribir, pero el patrón
+  // uniforme evita que un refactor futuro herede la mina.
+  let outcome: CancellationOutcome
+  try {
+    outcome = await withTenantContext(pre.tenant_id, (tx) =>
+      cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx)
+    )
+  } catch (err) {
+    if (err instanceof BookingNotOwnedByPlayerError) {
+      return { success: false, error: 'No tenés permiso para cancelar esta reserva.' }
     }
-  })
-
-  if (!txResult.success) return txResult
+    if (err instanceof BookingNotInConfirmedError) {
+      return { success: false, error: 'La reserva no está en estado confirmado.' }
+    }
+    // #31: el complejo en estado blocked/deleted hace que cancelByPlayer lance
+    // TenantInactiveError. Sin este catch se propagaba como error no controlado
+    // de la Server Action, dejando el dialog colgado sin feedback inline.
+    if (err instanceof TenantInactiveError) {
+      return { success: false, error: 'El complejo no está disponible para cancelar online.' }
+    }
+    // Hallazgo 2: seña MP pero gateway no disponible (token delinkeado). No se
+    // puede procesar el reembolso automático; el jugador debe gestionarlo con el complejo.
+    if (err instanceof RefundUnavailableError) {
+      return {
+        success: false,
+        error: 'No se pudo procesar el reembolso automático. Contactá al complejo.',
+      }
+    }
+    throw err
+  }
 
   revalidatePath('/mis-reservas')
 
@@ -120,14 +116,14 @@ export async function cancelMyBookingAction(
   // ya es válida —no hay rollback— y el sweep por cron de send-email levanta la
   // notificación 'queued' igual; nunca convertir esto en error para el usuario.
   try {
-    await Promise.all(txResult.notificationIds.map((id) => dispatchEmail(id)))
+    await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
   } catch (err) {
     captureMessage('email dispatch failed after player cancellation', {
       level: 'warning',
       extra: {
         bookingId: parsed.data.bookingId,
         tenantId: pre.tenant_id,
-        notificationIds: txResult.notificationIds,
+        notificationIds: outcome.notificationIds,
         error: err instanceof Error ? err.message : String(err),
       },
     })
@@ -137,21 +133,21 @@ export async function cancelMyBookingAction(
   // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
   // tx). Si esta llamada falla, la cancelación del jugador ya es válida —no
   // hay rollback— pero el refund queda pendiente de resolución manual/retry.
-  if (txResult.pendingRefund && gateway) {
+  if (outcome.pendingRefund && gateway) {
     try {
-      await settleRefund(txResult.pendingRefund, gateway, pre.tenant_id)
+      await settleRefund(outcome.pendingRefund, gateway, pre.tenant_id)
     } catch (err) {
       captureMessage('mp refund settlement failed after player cancellation', {
         level: 'error',
         extra: {
           bookingId: parsed.data.bookingId,
           tenantId: pre.tenant_id,
-          refundPaymentId: txResult.pendingRefund.refundPaymentId,
+          refundPaymentId: outcome.pendingRefund.refundPaymentId,
           error: err instanceof Error ? err.message : String(err),
         },
       })
     }
   }
 
-  return { success: true, booking: txResult.booking }
+  return { success: true, booking: outcome.booking }
 }

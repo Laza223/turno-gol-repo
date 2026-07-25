@@ -117,6 +117,17 @@ const tablesAll: TableDef[] = [
     ownId: () => A.tournamentTeamPlayerId,
     otherId: () => B.tournamentTeamPlayerId,
   },
+  // Fixture (migr. 064).
+  {
+    name: 'tournament_stages',
+    ownId: () => A.tournamentStageId,
+    otherId: () => B.tournamentStageId,
+  },
+  {
+    name: 'tournament_matches',
+    ownId: () => A.tournamentMatchId,
+    otherId: () => B.tournamentMatchId,
+  },
 ]
 
 // Tables with UPDATE policy (RLS allows UPDATE if context matches).
@@ -240,6 +251,14 @@ const insertOps: Record<string, InsertFn> = {
   tournament_team_players: async (tx, tid) =>
     tx`INSERT INTO tournament_team_players (tenant_id, team_id, full_name)
       VALUES (${tid}, ${B.tournamentTeamId}, 'spoof')`,
+  tournament_stages: async (tx, tid) =>
+    // order_index alto: uq_tournament_stages_order es por torneo y el seed ya
+    // ocupó el 0. Si chocara, el error sería 23505 y no la policy de RLS.
+    tx`INSERT INTO tournament_stages (tenant_id, tournament_id, name, kind, order_index)
+      VALUES (${tid}, ${B.tournamentId}, 'spoof', 'league', 99)`,
+  tournament_matches: async (tx, tid) =>
+    tx`INSERT INTO tournament_matches (tenant_id, tournament_id, stage_id, round)
+      VALUES (${tid}, ${B.tournamentId}, ${B.tournamentStageId}, 1)`,
 }
 
 describe('C. cross-tenant INSERT bloqueado', () => {

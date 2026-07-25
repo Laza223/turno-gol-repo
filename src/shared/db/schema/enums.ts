@@ -184,6 +184,22 @@ export const tournamentTeamStatusEnum = pgEnum('tournament_team_status', [
   'disqualified',
 ])
 
+// ─── Tournament fixture (migración 064, fase 2) ─────────────────
+export const tournamentStageKindEnum = pgEnum('tournament_stage_kind', [
+  'league',
+  'group_stage',
+  'knockout',
+])
+
+// 'canceled' con una L (convención del repo).
+export const tournamentMatchStatusEnum = pgEnum('tournament_match_status', [
+  'scheduled',
+  'played',
+  'walkover',
+  'postponed',
+  'canceled',
+])
+
 // ─── Notification ───────────────────────────────────────────────
 export const recipientTypeEnum = pgEnum('recipient_type', [
   'player',

@@ -164,6 +164,83 @@ export type ReserveSlotsResult = {
   conflicts: SlotConflict[]
 }
 
+// ─── Fixture (migr. 064) ────────────────────────────────────────────
+
+export type TournamentStageKind = 'league' | 'group_stage' | 'knockout'
+
+export type TournamentMatchStatus =
+  | 'scheduled'
+  | 'played'
+  | 'walkover'
+  | 'postponed'
+  | 'canceled'
+
+export type TournamentStageRow = {
+  id: string
+  tenantId: string
+  tournamentId: string
+  name: string
+  kind: TournamentStageKind
+  orderIndex: number
+  legs: number
+  groupsCount: number | null
+  teamsAdvancePerGroup: number | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type TournamentMatchRow = {
+  id: string
+  tenantId: string
+  tournamentId: string
+  stageId: string
+  round: number
+  groupLabel: string | null
+  bracketSlot: number | null
+  homeTeamId: string | null
+  awayTeamId: string | null
+  homeSourceMatchId: string | null
+  awaySourceMatchId: string | null
+  isThirdPlace: boolean
+  courtId: string | null
+  bookingId: string | null
+  startsAt: Date | null
+  endsAt: Date | null
+  status: TournamentMatchStatus
+  homeScore: number | null
+  awayScore: number | null
+  playedAt: Date | null
+  notes: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+/** Partido con los nombres ya resueltos, para la UI. */
+export type TournamentMatchView = TournamentMatchRow & {
+  homeTeamName: string | null
+  awayTeamName: string | null
+  courtName: string | null
+}
+
+export type GenerateFixtureInput = {
+  /** 1 = solo ida, 2 = ida y vuelta. Ignorado en knockout. */
+  legs?: 1 | 2
+  /** Solo para groups_playoff. */
+  groupsCount?: number
+  teamsAdvancePerGroup?: number
+  /** Solo para knockout: agrega el partido por el 3er puesto. */
+  thirdPlace?: boolean
+  /** Si es false, el fixture se genera sin día ni hora (se agenda a mano). */
+  autoSchedule?: boolean
+}
+
+export type GenerateFixtureResult = {
+  stages: number
+  matches: number
+  /** Partidos que no entraron en las horas que el torneo posee. */
+  unscheduled: number
+}
+
 /** Una hora que el torneo posee, tal como se ve en la grilla. */
 export type TournamentSlotRow = {
   bookingId: string

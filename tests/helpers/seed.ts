@@ -13,6 +13,8 @@ import {
   insertPayment,
   insertSubscription,
   insertTournament,
+  insertTournamentMatch,
+  insertTournamentStage,
   insertTournamentTeam,
   insertTournamentTeamPlayer,
 } from './factories'
@@ -36,6 +38,8 @@ export type IsolationSeed = {
   tournamentId: string
   tournamentTeamId: string
   tournamentTeamPlayerId: string
+  tournamentStageId: string
+  tournamentMatchId: string
 }
 
 /**
@@ -79,6 +83,13 @@ export async function seedIsolationData(
     tenantId,
     teamId: tournamentTeamId,
   })
+  const tournamentStageId = await insertTournamentStage(sql, { tenantId, tournamentId })
+  const tournamentMatchId = await insertTournamentMatch(sql, {
+    tenantId,
+    tournamentId,
+    stageId: tournamentStageId,
+    homeTeamId: tournamentTeamId,
+  })
 
   return {
     tenantId,
@@ -99,5 +110,7 @@ export async function seedIsolationData(
     tournamentId,
     tournamentTeamId,
     tournamentTeamPlayerId,
+    tournamentStageId,
+    tournamentMatchId,
   }
 }

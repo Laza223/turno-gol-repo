@@ -1,5 +1,6 @@
 import type {
   TournamentFormat,
+  TournamentMatchStatus,
   TournamentStatus,
   TournamentTeamStatus,
 } from '@/modules/tournaments/tournament.types'
@@ -82,6 +83,68 @@ export function formatDateRange(startsOn: string, endsOn: string | null): string
   if (!endsOn) return `Desde el ${formatDate(startsOn)}`
   if (endsOn === startsOn) return formatDate(startsOn)
   return `${formatDate(startsOn)} — ${formatDate(endsOn)}`
+}
+
+export const MATCH_STATUS_LABELS: Record<TournamentMatchStatus, string> = {
+  scheduled: 'Programado',
+  played: 'Jugado',
+  walkover: 'No se presentó',
+  postponed: 'Postergado',
+  canceled: 'Cancelado',
+}
+
+export function matchStatusBadgeClass(status: TournamentMatchStatus): string {
+  switch (status) {
+    case 'scheduled':
+      return 'bg-muted text-muted-foreground'
+    case 'played':
+      return 'bg-success/15 text-emerald-800 dark:text-emerald-300'
+    case 'walkover':
+      return 'bg-warning/15 text-amber-800 dark:text-amber-300'
+    case 'postponed':
+      return 'bg-info/15 text-blue-800 dark:text-blue-300'
+    case 'canceled':
+      return 'bg-destructive/10 text-red-700 dark:text-red-300'
+  }
+}
+
+/** 'Fecha 3' en liga, 'Semifinal' en llaves. */
+export function roundLabel(
+  round: number,
+  kind: 'league' | 'group_stage' | 'knockout',
+  totalRounds: number,
+): string {
+  if (kind !== 'knockout') return `Fecha ${round}`
+  const fromFinal = totalRounds - round
+  switch (fromFinal) {
+    case 0:
+      return 'Final'
+    case 1:
+      return 'Semifinal'
+    case 2:
+      return 'Cuartos de final'
+    case 3:
+      return 'Octavos de final'
+    default:
+      return `Ronda ${round}`
+  }
+}
+
+/** Día y hora del partido en ART. Sin librería: UTC-3 fijo, como el resto. */
+export function formatMatchWhen(startsAt: Date | null): string {
+  if (!startsAt) return 'Sin agendar'
+  const art = new Date(startsAt.getTime() - 3 * 3600_000)
+  const d = String(art.getUTCDate()).padStart(2, '0')
+  const m = String(art.getUTCMonth() + 1).padStart(2, '0')
+  const hh = String(art.getUTCHours()).padStart(2, '0')
+  const mm = String(art.getUTCMinutes()).padStart(2, '0')
+  return `${d}/${m} · ${hh}:${mm}`
+}
+
+/** Marcador '3 - 1', o '—' si todavía no se jugó. */
+export function formatScore(home: number | null, away: number | null): string {
+  if (home === null || away === null) return '—'
+  return `${home} - ${away}`
 }
 
 /**

@@ -109,6 +109,46 @@ export async function insertTournamentTeamPlayer(
   return rows[0].id
 }
 
+export async function insertTournamentStage(
+  sql: Sql,
+  args: { tenantId: string; tournamentId: string; kind?: string; orderIndex?: number },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_stages (tenant_id, tournament_id, name, kind, order_index)
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId}, 'Liga',
+      ${args.kind ?? 'league'}::tournament_stage_kind,
+      ${args.orderIndex ?? 0}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentMatch(
+  sql: Sql,
+  args: {
+    tenantId: string
+    tournamentId: string
+    stageId: string
+    homeTeamId?: string | null
+    awayTeamId?: string | null
+    round?: number
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_matches (
+      tenant_id, tournament_id, stage_id, round, home_team_id, away_team_id
+    )
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId}, ${args.stageId}, ${args.round ?? 1},
+      ${args.homeTeamId ?? null}, ${args.awayTeamId ?? null}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
 export async function insertBooking(
   sql: Sql,
   opts: {

@@ -175,3 +175,48 @@ export const releaseSlotsSchema = z.object({
   /** Libera desde esta fecha en adelante; lo anterior queda como histórico. */
   fromDate: dateStr,
 })
+
+// ─── Fixture (migr. 064) ────────────────────────────────────────────
+
+export const generateFixtureSchema = z
+  .object({
+    tournamentId: uuid,
+    legs: z.union([z.literal(1), z.literal(2)]).default(1),
+    groupsCount: z
+      .number()
+      .int()
+      .min(1, 'Hace falta al menos una zona.')
+      .max(16, 'El máximo es 16 zonas.')
+      .optional(),
+    teamsAdvancePerGroup: z
+      .number()
+      .int()
+      .min(1, 'Tiene que clasificar al menos 1 equipo por zona.')
+      .max(16)
+      .optional(),
+    thirdPlace: z.boolean().default(false),
+    /** false = generar sin día ni hora, para agendar a mano. */
+    autoSchedule: z.boolean().default(true),
+  })
+  // Si clasifican más equipos de los que hay por zona, el cuadro sale mal.
+  .refine(
+    (v) =>
+      v.groupsCount === undefined ||
+      v.teamsAdvancePerGroup === undefined ||
+      v.groupsCount * v.teamsAdvancePerGroup >= 2,
+    {
+      message: 'Tienen que clasificar al menos 2 equipos en total.',
+      path: ['teamsAdvancePerGroup'],
+    },
+  )
+
+export const clearFixtureSchema = z.object({ tournamentId: uuid })
+
+export const rescheduleMatchSchema = z.object({
+  matchId: uuid,
+  courtId: uuid,
+  /** Instante del partido en ISO. Lo arma la UI a partir de fecha + hora. */
+  startsAt: z
+    .string()
+    .refine((s) => !Number.isNaN(Date.parse(s)), 'Fecha y hora inválidas.'),
+})

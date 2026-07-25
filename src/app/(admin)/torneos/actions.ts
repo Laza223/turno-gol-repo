@@ -35,9 +35,24 @@ import {
   updateTournamentSchema,
 } from '@/modules/tournaments/tournament.schema'
 import {
+  clearFixture,
+  generateFixture,
+  rescheduleMatch,
+} from '@/modules/tournaments/tournament-fixture.service'
+import {
+  clearFixtureSchema,
+  generateFixtureSchema,
+  rescheduleMatchSchema,
+} from '@/modules/tournaments/tournament.schema'
+import {
   DuplicateShirtNumberError,
   DuplicateTeamNameError,
+  FixtureAlreadyExistsError,
+  FixtureGenerationError,
+  MatchNotFoundError,
+  MatchOutsideOwnedTimeError,
   NoSlotsReservedError,
+  TeamDoubleBookedError,
   TournamentCourtUnavailableError,
   TournamentFullError,
   TournamentHasBookingsError,
@@ -56,9 +71,16 @@ export type ReserveSlotsActionResult =
   | { success: true; reserved: number; conflicts: SlotConflict[] }
   | { success: false; error: string }
 
+export type GenerateFixtureActionResult =
+  | { success: true; matches: number; unscheduled: number }
+  | { success: false; error: string }
+
 function revalidateTorneos(id?: string): void {
   revalidatePath('/torneos')
-  if (id) revalidatePath(`/torneos/${id}`)
+  if (id) {
+    revalidatePath(`/torneos/${id}`)
+    revalidatePath(`/torneos/${id}/fixture`)
+  }
   // Las horas del torneo son reservas: la grilla las muestra.
   revalidatePath('/grilla')
 }
@@ -93,6 +115,18 @@ function mapTournamentError(err: unknown): string | null {
   if (err instanceof TournamentSlotRangeError) return err.message
   if (err instanceof NoSlotsReservedError) {
     return 'Ninguna de esas horas estaba libre: no se tomó nada.'
+  }
+  // El motor de fixture arma su mensaje ya en es-AR con el detalle del caso.
+  if (err instanceof FixtureGenerationError) return err.message
+  if (err instanceof FixtureAlreadyExistsError) {
+    return `Este torneo ya tiene un fixture de ${err.matchCount} partidos. Borralo antes de generar uno nuevo.`
+  }
+  if (err instanceof MatchNotFoundError) return 'Ese partido ya no existe.'
+  if (err instanceof MatchOutsideOwnedTimeError) {
+    return 'El partido no entra en ninguna hora que el torneo tenga tomada en esa cancha.'
+  }
+  if (err instanceof TeamDoubleBookedError) {
+    return `${err.teamName} ya tiene otro partido a esa hora.`
   }
   return null
 }
@@ -406,6 +440,117 @@ export async function reserveSlotsAction(
   // `conflicts` viaja aunque haya éxito: las horas salteadas se le muestran al
   // admin para que decida qué hacer con ellas.
   return { success: true, reserved: result.reserved, conflicts: result.conflicts }
+}
+
+// ── Fixture (operación: admin + encargado) ─────────────────────────
+
+export async function generateFixtureAction(
+  input: unknown,
+): Promise<GenerateFixtureActionResult> {
+  const parsed = generateFixtureSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { tournamentId, ...opts } = parsed.data
+  let result: { matches: number; unscheduled: number }
+  try {
+    result = await withTenantContext(tenant.id, (tx) =>
+      generateFixture(tenant.id, user.staffUserId, tournamentId, opts, tx),
+    )
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  // `unscheduled` viaja aunque haya éxito: si no entraron todos, el admin tiene
+  // que enterarse en vez de creer que quedó completo.
+  return { success: true, matches: result.matches, unscheduled: result.unscheduled }
+}
+
+export async function clearFixtureAction(
+  input: unknown,
+): Promise<TournamentActionResult> {
+  const parsed = clearFixtureSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      clearFixture(tenant.id, user.staffUserId, parsed.data.tournamentId, tx),
+    )
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(parsed.data.tournamentId)
+  return { success: true }
+}
+
+export async function rescheduleMatchAction(
+  input: unknown,
+): Promise<TournamentActionResult> {
+  const parsed = rescheduleMatchSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  let tournamentId: string
+  try {
+    const row = await withTenantContext(tenant.id, (tx) =>
+      rescheduleMatch(
+        tenant.id,
+        user.staffUserId,
+        parsed.data.matchId,
+        new Date(parsed.data.startsAt),
+        parsed.data.courtId,
+        tx,
+      ),
+    )
+    tournamentId = row.tournamentId
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  return { success: true }
 }
 
 export async function releaseSlotsAction(

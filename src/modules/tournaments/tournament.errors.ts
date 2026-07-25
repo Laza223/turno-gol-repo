@@ -76,3 +76,44 @@ export class NoSlotsReservedError extends Error {
     this.name = 'NoSlotsReservedError'
   }
 }
+
+// ─── Fixture (migr. 064) ────────────────────────────────────────────
+
+/** Mensaje YA en es-AR: lo arma el motor puro, que conoce el detalle. */
+export class FixtureGenerationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FixtureGenerationError'
+  }
+}
+
+/** El torneo ya tiene fixture: hay que borrarlo antes de regenerar. */
+export class FixtureAlreadyExistsError extends Error {
+  constructor(public readonly matchCount: number) {
+    super(`Tournament already has a fixture with ${matchCount} match(es).`)
+    this.name = 'FixtureAlreadyExistsError'
+  }
+}
+
+export class MatchNotFoundError extends Error {
+  constructor(public readonly matchId: string) {
+    super(`Match '${matchId}' not found.`)
+    this.name = 'MatchNotFoundError'
+  }
+}
+
+/** Se quiso mover un partido fuera de las horas que el torneo posee. */
+export class MatchOutsideOwnedTimeError extends Error {
+  constructor() {
+    super('The match does not fit inside an hour owned by the tournament.')
+    this.name = 'MatchOutsideOwnedTimeError'
+  }
+}
+
+/** Un equipo quedaría con dos partidos al mismo tiempo. */
+export class TeamDoubleBookedError extends Error {
+  constructor(public readonly teamName: string) {
+    super(`Team '${teamName}' would play two matches at the same time.`)
+    this.name = 'TeamDoubleBookedError'
+  }
+}

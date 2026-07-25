@@ -27,6 +27,7 @@ import {
 } from '../torneos-lib'
 import { SlotsPanel } from './SlotsPanel'
 import { TeamsPanel } from './TeamsPanel'
+import { TorneoTabs } from './TorneoTabs'
 
 export default async function TorneoDetailPage(props: {
   params: Promise<{ id: string }>
@@ -90,6 +91,8 @@ export default async function TorneoDetailPage(props: {
           </div>
         }
       />
+
+      <TorneoTabs tournamentId={tournament.id} active={`/torneos/${tournament.id}`} />
 
       <TeamsPanel
         tournamentId={tournament.id}

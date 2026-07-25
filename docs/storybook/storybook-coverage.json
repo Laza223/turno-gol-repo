@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO",
-  "total": 308,
+  "total": 311,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -6772,6 +6772,67 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "Cubierto por TorneoForm.stories."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/fixture/FixturePanel.tsx",
+      "name": "FixturePanel",
+      "domain": "torneos",
+      "rendering": "client",
+      "role": "table",
+      "isolationDifficulty": "medium",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "con fixture (jugado / programado / sin agendar)",
+        "sin fixture — liga",
+        "sin fixture — eliminación (3er puesto)",
+        "sin fixture — grupos (zonas y clasificados)",
+        "generado con partidos sin agendar",
+        "error: ya tiene fixture"
+      ],
+      "proposedStoryTitle": "Admin/Torneos/FixturePanel",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": true,
+      "providers": [],
+      "isolationNotes": "generateAction/clearAction por prop. El form de generación cambia según el formato del torneo. El aviso de partidos sin agendar se renderiza FUERA de las dos ramas a propósito: se emite generando desde la rama vacía."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/TorneoTabs.tsx",
+      "name": "TorneoTabs",
+      "domain": "torneos",
+      "rendering": "server",
+      "role": "nav",
+      "isolationDifficulty": "trivial",
+      "classification": "EXCLUDED",
+      "exclusionReason": "Wrapper de 15 líneas sobre ScrollTabs (que ya tiene su propia story), sin estado ni lógica. Mismo criterio que CajaTabs y SettingsTabs.",
+      "relevantStates": [],
+      "proposedStoryTitle": "",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Cubierto por scroll-tabs.stories.tsx."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/fixture/page.tsx",
+      "name": "TorneoFixturePage",
+      "domain": "torneos",
+      "rendering": "server",
+      "role": "page",
+      "isolationDifficulty": "hard",
+      "classification": "EXCLUDED",
+      "exclusionReason": "Server Component de página: resuelve auth, tenant y feature flag contra la DB.",
+      "relevantStates": [],
+      "proposedStoryTitle": "",
+      "usesNetwork": true,
+      "usesSession": true,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Cubierto por FixturePanel.stories."
     }
   ]
 }

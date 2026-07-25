@@ -1,6 +1,8 @@
 import type {
+  TournamentMatchView,
   TournamentRow,
   TournamentSlotRow,
+  TournamentStageRow,
   TournamentTeamPlayerRow,
   TournamentTeamRow,
 } from '@/modules/tournaments/tournament.types'
@@ -179,6 +181,91 @@ export const tournamentSlot = (
   endsAt: hoursFromNow(24 * 7 + 1),
   ...overrides,
 })
+
+// ─── Fixture (migr. 064) ────────────────────────────────────────────
+// Rango de ids: 2301-2399 stages, 2401-2499 matches.
+
+export const tournamentStage = (
+  overrides: Partial<TournamentStageRow> = {},
+): TournamentStageRow => ({
+  id: uid(2301),
+  tenantId: tenant().id,
+  tournamentId: tournament().id,
+  name: 'Liga',
+  kind: 'league',
+  orderIndex: 0,
+  legs: 1,
+  groupsCount: null,
+  teamsAdvancePerGroup: null,
+  createdAt: hoursFromNow(-72),
+  updatedAt: hoursFromNow(-72),
+  ...overrides,
+})
+
+export const tournamentMatch = (
+  overrides: Partial<TournamentMatchView> = {},
+): TournamentMatchView => ({
+  id: uid(2401),
+  tenantId: tenant().id,
+  tournamentId: tournament().id,
+  stageId: tournamentStage().id,
+  round: 1,
+  groupLabel: null,
+  bracketSlot: null,
+  homeTeamId: tournamentTeam().id,
+  awayTeamId: uid(2105),
+  homeSourceMatchId: null,
+  awaySourceMatchId: null,
+  isThirdPlace: false,
+  courtId: courtFutbol5().id,
+  bookingId: uid(1801),
+  startsAt: hoursFromNow(24),
+  endsAt: hoursFromNow(25),
+  status: 'scheduled',
+  homeScore: null,
+  awayScore: null,
+  playedAt: null,
+  notes: null,
+  createdAt: hoursFromNow(-72),
+  updatedAt: hoursFromNow(-72),
+  homeTeamName: 'Los Pibes',
+  awayTeamName: 'Atlético Fondo',
+  courtName: courtFutbol5().name,
+  ...overrides,
+})
+
+/** Fecha 1 completa: uno jugado, uno programado y uno sin agendar. */
+export const tournamentFixture = (): TournamentMatchView[] => [
+  tournamentMatch({
+    id: uid(2401),
+    status: 'played',
+    homeScore: 3,
+    awayScore: 1,
+    playedAt: hoursFromNow(-2),
+  }),
+  tournamentMatch({
+    id: uid(2402),
+    homeTeamName: 'Real Sociedad de Fútbol',
+    awayTeamName: 'FC Cerveza',
+    homeTeamId: uid(2102),
+    awayTeamId: uid(2106),
+    startsAt: hoursFromNow(25),
+    endsAt: hoursFromNow(26),
+  }),
+  tournamentMatch({
+    id: uid(2403),
+    round: 2,
+    homeTeamName: 'Los Pibes',
+    awayTeamName: 'FC Cerveza',
+    awayTeamId: uid(2106),
+    // Sin agendar: no entró en las horas tomadas.
+    startsAt: null,
+    endsAt: null,
+    bookingId: null,
+    courtId: null,
+    courtName: null,
+  }),
+]
 
 /** Un sábado de 14 a 18 en una cancha: 4 horas seguidas. */
 export const tournamentSlots = (): TournamentSlotRow[] =>

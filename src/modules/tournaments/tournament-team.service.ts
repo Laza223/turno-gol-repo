@@ -19,16 +19,34 @@ import type {
 
 const PG_UNIQUE_VIOLATION = '23505'
 
-function isUniqueViolation(err: unknown, constraint: string): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === PG_UNIQUE_VIOLATION &&
-    String((err as { constraint_name?: string; constraint?: string }).constraint_name ??
-      (err as { constraint?: string }).constraint ??
-      '').includes(constraint)
-  )
+type PgErrorLike = { code?: string; constraint_name?: string; constraint?: string }
+
+/**
+ * Desenvuelve el error de Postgres.
+ *
+ * Drizzle 0.45 envuelve lo que tira postgres-js en un `DrizzleQueryError`: el
+ * `code` y el `constraint_name` viajan en `cause`, NO en el error de arriba.
+ * Mirar solo el nivel superior hace que un 23505 se escape crudo hacia la UI
+ * en vez de convertirse en un error de dominio con mensaje útil.
+ */
+function asPgError(err: unknown): PgErrorLike | null {
+  let current: unknown = err
+  // Tope de saltos: la cadena de `cause` es corta y no queremos un ciclo.
+  for (let depth = 0; depth < 5 && current != null; depth++) {
+    if (typeof current === 'object' && 'code' in current) {
+      const code = (current as { code?: unknown }).code
+      if (typeof code === 'string') return current as PgErrorLike
+    }
+    current = (current as { cause?: unknown }).cause
+  }
+  return null
+}
+
+/** Exportada para test unitario: sin esto solo se cubre con DB real. */
+export function isUniqueViolation(err: unknown, constraint: string): boolean {
+  const pg = asPgError(err)
+  if (!pg || pg.code !== PG_UNIQUE_VIOLATION) return false
+  return String(pg.constraint_name ?? pg.constraint ?? '').includes(constraint)
 }
 
 function rowToTeam(r: typeof tournamentTeams.$inferSelect): TournamentTeamRow {

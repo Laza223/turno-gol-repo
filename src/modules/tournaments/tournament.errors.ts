@@ -117,3 +117,15 @@ export class TeamDoubleBookedError extends Error {
     this.name = 'TeamDoubleBookedError'
   }
 }
+
+/**
+ * La cancha ya tiene otro partido a esa hora. El generador nunca produce esto
+ * (un hueco recibe un solo partido), así que solo puede llegar por una
+ * reprogramación manual.
+ */
+export class CourtSlotTakenError extends Error {
+  constructor() {
+    super('Another match already occupies that court at that time.')
+    this.name = 'CourtSlotTakenError'
+  }
+}

@@ -21,6 +21,7 @@ import {
   reserveTournamentSlots,
 } from '@/modules/tournaments/tournament-slots.service'
 import {
+  CourtSlotTakenError,
   FixtureAlreadyExistsError,
   FixtureGenerationError,
   MatchOutsideOwnedTimeError,
@@ -454,7 +455,14 @@ describe('clearFixture', () => {
 
 describe('rescheduleMatch', () => {
   it('mueve un partido a otra hora del torneo', async () => {
-    const { tenant, staff, courtIds, tournamentId } = await setupTournament({ teams: 4 })
+    // DOS canchas a propósito. Con una sola, las 4 horas tomadas quedan las 4
+    // ocupadas (6 partidos, 4 huecos) y no existe destino válido: mover a
+    // cualquier hora choca con la cancha o con un equipo. Con dos canchas las
+    // 3 fechas entran en 14/15/16 y las 17 quedan libres en ambas.
+    const { tenant, staff, courtIds, tournamentId } = await setupTournament({
+      teams: 4,
+      courts: 2,
+    })
     await takeSlots(tenant.id, tournamentId, staff.id, courtIds, ['2027-07-03'])
     await withTenantContext(tenant.id, (tx) =>
       generateFixture(tenant.id, staff.id, tournamentId, {}, tx),
@@ -466,6 +474,7 @@ describe('rescheduleMatch', () => {
     const target = before.find((m) => m.startsAt !== null)!
     // 17:00 ART del 2027-07-03 = 20:00 UTC. La franja tomada va de 14 a 18.
     const nuevo = new Date('2027-07-03T20:00:00Z')
+    expect(before.some((m) => m.startsAt?.getTime() === nuevo.getTime())).toBe(false)
 
     const moved = await withTenantContext(tenant.id, (tx) =>
       rescheduleMatch(tenant.id, staff.id, target.id, nuevo, courtIds[0]!, tx),
@@ -473,6 +482,37 @@ describe('rescheduleMatch', () => {
 
     expect(moved.startsAt!.toISOString()).toBe(nuevo.toISOString())
     expect(moved.bookingId).not.toBeNull()
+  })
+
+  it('rechaza apilar dos partidos en la misma cancha a la misma hora', async () => {
+    // El generador nunca produce esto (un hueco recibe un solo partido), así
+    // que sin este guard el estado imposible entra solo por el arrastre manual.
+    // Los equipos son distintos a propósito: si no, saltaría el otro guard.
+    const { tenant, staff, courtIds, tournamentId } = await setupTournament({
+      teams: 4,
+      courts: 2,
+    })
+    await takeSlots(tenant.id, tournamentId, staff.id, courtIds, ['2027-10-02'])
+    await withTenantContext(tenant.id, (tx) =>
+      generateFixture(tenant.id, staff.id, tournamentId, {}, tx),
+    )
+
+    const matches = await withTenantContext(tenant.id, (tx) =>
+      listFixture(tenant.id, tournamentId, tx),
+    )
+    // Los dos partidos de la fecha 1: misma hora, canchas distintas, y entre
+    // los cuatro equipos no se repite ninguno.
+    const first = matches.find((m) => m.startsAt !== null)!
+    const twin = matches.find(
+      (m) =>
+        m.id !== first.id && m.startsAt?.getTime() === first.startsAt!.getTime(),
+    )!
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        rescheduleMatch(tenant.id, staff.id, twin.id, first.startsAt!, first.courtId!, tx),
+      ),
+    ).rejects.toThrow(CourtSlotTakenError)
   })
 
   it('rechaza moverlo fuera de las horas que el torneo posee', async () => {

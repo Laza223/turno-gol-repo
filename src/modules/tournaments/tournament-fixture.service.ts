@@ -13,6 +13,7 @@ import {
   type SchedulableMatch,
 } from './fixture/scheduler'
 import {
+  CourtSlotTakenError,
   FixtureAlreadyExistsError,
   FixtureGenerationError,
   MatchNotFoundError,
@@ -485,9 +486,10 @@ export async function listFixture(
  * Mueve un partido a otra hora/cancha.
  *
  * El fixture generado es una propuesta: esto es lo que la vuelve editable.
- * Valida las dos reglas que el scheduler ya respeta, porque acá el admin puede
+ * Valida las tres reglas que el scheduler ya respeta, porque acá el admin puede
  * pedir cualquier cosa: que el partido caiga dentro de una hora que el torneo
- * posee, y que ningún equipo quede con dos partidos pisados.
+ * posee, que ningún equipo quede con dos partidos pisados, y que la cancha no
+ * termine con dos partidos encima.
  */
 export async function rescheduleMatch(
   tenantId: string,
@@ -547,6 +549,24 @@ export async function rescheduleMatch(
     `)) as unknown as Array<{ name: string }>
     if (clash[0]) throw new TeamDoubleBookedError(clash[0].name)
   }
+
+  // 3) La cancha tampoco puede quedar con dos partidos encima. El generador
+  // reparte un partido por hueco, pero acá el admin elige a mano: sin esto,
+  // arrastrar un partido produce un estado que el fixture nunca produciría.
+  // La hora es del torneo (chequeado arriba), así que alcanza con mirar los
+  // partidos: el exclusion constraint de bookings ya evita que dos torneos
+  // posean la misma cancha a la misma hora.
+  const courtBusy = (await tx.execute(sql`
+    SELECT 1 AS taken
+    FROM tournament_matches m
+    WHERE m.tenant_id = ${tenantId}
+      AND m.id <> ${matchId}
+      AND m.court_id = ${courtId}
+      AND m.starts_at IS NOT NULL
+      AND tstzrange(m.starts_at, m.ends_at) && tstzrange(${startsAt.toISOString()}, ${endsAt.toISOString()})
+    LIMIT 1
+  `)) as unknown as Array<{ taken: number }>
+  if (courtBusy[0]) throw new CourtSlotTakenError()
 
   const updated = await tx
     .update(tournamentMatches)

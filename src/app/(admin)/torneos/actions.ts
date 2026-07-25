@@ -45,6 +45,7 @@ import {
   rescheduleMatchSchema,
 } from '@/modules/tournaments/tournament.schema'
 import {
+  CourtSlotTakenError,
   DuplicateShirtNumberError,
   DuplicateTeamNameError,
   FixtureAlreadyExistsError,
@@ -127,6 +128,9 @@ function mapTournamentError(err: unknown): string | null {
   }
   if (err instanceof TeamDoubleBookedError) {
     return `${err.teamName} ya tiene otro partido a esa hora.`
+  }
+  if (err instanceof CourtSlotTakenError) {
+    return 'Esa cancha ya tiene otro partido a esa hora.'
   }
   return null
 }

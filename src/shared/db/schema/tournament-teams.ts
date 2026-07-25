@@ -35,8 +35,21 @@ export const tournamentTeams = pgTable(
     contactName: text('contact_name'),
     contactPhone: text('contact_phone'),
 
+    /**
+     * Migr. 063. Columna GENERADA (`lower(trim(name))`), nunca se escribe a
+     * mano: Postgres la calcula y rechaza cualquier INSERT/UPDATE que la toque.
+     *
+     * Existe para que `uq_tournament_teams_name` sea un índice sobre columnas
+     * PLANAS. La versión anterior indexaba la expresión y violaba el invariante
+     * D3-H1 (un índice de expresión con una función no-leakproof es inusable
+     * bajo RLS → Seq Scan silencioso; ver 054 y schema-drift.test.ts §4).
+     */
+    nameNormalized: text('name_normalized')
+      .notNull()
+      .generatedAlwaysAs(sql`lower(trim(name))`),
+
     status: tournamentTeamStatusEnum('status').notNull().default('registered'),
-    /** Zona: 'A', 'B', … Se puebla al sortear los grupos (migr. 063). */
+    /** Zona: 'A', 'B', … Se puebla al sortear los grupos (migr. 064). */
     groupLabel: text('group_label'),
     /** Siembra para el sorteo. */
     seed: integer('seed'),
@@ -63,10 +76,11 @@ export const tournamentTeams = pgTable(
       sql`${table.groupLabel} IS NULL OR length(trim(${table.groupLabel})) > 0`,
     ),
 
-    // Case-insensitive: "Los Pibes" y "los pibes" son el mismo equipo.
+    // Case-insensitive vía la columna generada: "Los Pibes" y "los pibes" son
+    // el mismo equipo. Sobre columnas planas a propósito (D3-H1, migr. 063).
     nameIdx: uniqueIndex('uq_tournament_teams_name').on(
       table.tournamentId,
-      sql`lower(trim(${table.name}))`,
+      table.nameNormalized,
     ),
     tournamentIdx: index('idx_tournament_teams_tournament').on(
       table.tournamentId,

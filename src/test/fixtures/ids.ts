@@ -15,6 +15,9 @@
  *   851-899   stock_movements
  *   901-949   canteen_tabs
  *   1001-1999 bookings
+ *   2001-2099 tournaments
+ *   2101-2199 tournament_teams
+ *   2201-2299 tournament_team_players
  *   7001-7099 super-admin (planes, trials/signups/webhooks del dashboard global)
  *   7101-7199 super-admin (audit_logs / bookings del tenant activity tab)
  *   9001-9999 payments (mercadopago payment id / preference id)

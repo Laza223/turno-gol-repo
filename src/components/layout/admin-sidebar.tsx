@@ -12,6 +12,7 @@ import {
   Banknote,
   ChartLine,
   Settings,
+  Trophy,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -22,12 +23,16 @@ interface SidebarProps {
   tenantName: string
   mobileOpen: boolean
   onClose: () => void
+  /** Feature flag 'tournaments' resuelto server-side para este complejo. */
+  tournamentsEnabled?: boolean
 }
 
 interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   label: string
+  /** Solo se muestra si la feature está prendida para el complejo. */
+  requiresTournaments?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -35,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/grilla', icon: CalendarDays, label: 'Grilla' },
   { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
   { href: '/abonados', icon: Users, label: 'Turnos fijos' },
+  { href: '/torneos', icon: Trophy, label: 'Torneos', requiresTournaments: true },
   { href: '/jugadores', icon: Contact, label: 'Jugadores' },
   { href: '/caja', icon: Banknote, label: 'Caja y Cantina' },
   { href: '/analiticas', icon: ChartLine, label: 'Analíticas' },
@@ -46,12 +52,17 @@ function SidebarContent({
   pathname,
   onClose,
   isMobile,
+  tournamentsEnabled,
 }: {
   tenantName: string
   pathname: string
   onClose?: () => void
   isMobile?: boolean
+  tournamentsEnabled?: boolean
 }) {
+  const navItems = NAV_ITEMS.filter(
+    (item) => !item.requiresTournaments || tournamentsEnabled,
+  )
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -94,7 +105,7 @@ function SidebarContent({
 
       {/* Nav */}
       <nav aria-label="Navegación del panel" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+        {navItems.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href ||
             (href !== '/dashboard' && pathname.startsWith(href + '/'))
@@ -132,14 +143,23 @@ function SidebarContent({
   )
 }
 
-export function AdminSidebar({ tenantName, mobileOpen, onClose }: SidebarProps) {
+export function AdminSidebar({
+  tenantName,
+  mobileOpen,
+  onClose,
+  tournamentsEnabled,
+}: SidebarProps) {
   const pathname = usePathname()
 
   return (
     <>
       {/* Desktop sidebar — rail theme-adaptive (light surface / dark glass) */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/4 dark:bg-card/80 dark:shadow-black/30">
-        <SidebarContent tenantName={tenantName} pathname={pathname} />
+        <SidebarContent
+          tenantName={tenantName}
+          pathname={pathname}
+          tournamentsEnabled={tournamentsEnabled}
+        />
       </aside>
 
       {/* Mobile sidebar — Sheet Radix (focus-trap + scroll-lock + Esc; MASTER §6.8).
@@ -157,6 +177,7 @@ export function AdminSidebar({ tenantName, mobileOpen, onClose }: SidebarProps) 
             pathname={pathname}
             onClose={onClose}
             isMobile
+            tournamentsEnabled={tournamentsEnabled}
           />
         </SheetContent>
       </Sheet>

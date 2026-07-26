@@ -59,6 +59,96 @@ export async function insertAbonado(
   return rows[0].id
 }
 
+// ─── Torneos (migr. 062) ──────────────────────────────────────────────
+
+export async function insertTournament(
+  sql: Sql,
+  tenantId: string,
+  overrides: { name?: string; slug?: string; format?: string } = {},
+): Promise<string> {
+  // El slug es único por complejo: randomizarlo evita choques entre tests.
+  const slug = overrides.slug ?? `torneo-${faker.string.alphanumeric(8).toLowerCase()}`
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournaments (tenant_id, name, slug, format, starts_on)
+    VALUES (
+      ${tenantId},
+      ${overrides.name ?? `Torneo ${faker.word.noun()}`},
+      ${slug},
+      ${overrides.format ?? 'league'}::tournament_format,
+      ${new Date().toISOString().slice(0, 10)}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentTeam(
+  sql: Sql,
+  args: { tenantId: string; tournamentId: string; name?: string },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_teams (tenant_id, tournament_id, name)
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId},
+      ${args.name ?? `${faker.word.adjective()} ${faker.string.alphanumeric(6)}`}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentTeamPlayer(
+  sql: Sql,
+  args: { tenantId: string; teamId: string; fullName?: string },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_team_players (tenant_id, team_id, full_name)
+    VALUES (${args.tenantId}, ${args.teamId}, ${args.fullName ?? faker.person.fullName()})
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentStage(
+  sql: Sql,
+  args: { tenantId: string; tournamentId: string; kind?: string; orderIndex?: number },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_stages (tenant_id, tournament_id, name, kind, order_index)
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId}, 'Liga',
+      ${args.kind ?? 'league'}::tournament_stage_kind,
+      ${args.orderIndex ?? 0}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentMatch(
+  sql: Sql,
+  args: {
+    tenantId: string
+    tournamentId: string
+    stageId: string
+    homeTeamId?: string | null
+    awayTeamId?: string | null
+    round?: number
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_matches (
+      tenant_id, tournament_id, stage_id, round, home_team_id, away_team_id
+    )
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId}, ${args.stageId}, ${args.round ?? 1},
+      ${args.homeTeamId ?? null}, ${args.awayTeamId ?? null}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
 export async function insertBooking(
   sql: Sql,
   opts: {
@@ -117,16 +207,25 @@ export async function insertPayment(
 
 export async function insertCashFlow(
   sql: Sql,
-  opts: { tenantId: string; registeredBy: string; bookingId?: string | null },
+  opts: {
+    tenantId: string
+    registeredBy: string
+    bookingId?: string | null
+    /** Migr. 066: con equipo la categoría pasa a 'tournament' — el CHECK
+     * chk_cashflow_tournament_team las ata en las dos direcciones. */
+    tournamentTeamId?: string | null
+  },
 ): Promise<string> {
+  const teamId = opts.tournamentTeamId ?? null
   const rows = await sql<{ id: string }[]>`
     INSERT INTO cash_flows (
       tenant_id, type, category, amount, method, description,
-      booking_id, registered_by, occurred_at
+      booking_id, tournament_team_id, registered_by, occurred_at
     )
     VALUES (
-      ${opts.tenantId}, 'income', 'booking', ${500000}, 'cash',
-      ${'Cobro turno'}, ${opts.bookingId ?? null}, ${opts.registeredBy}, NOW()
+      ${opts.tenantId}, 'income', ${teamId ? 'tournament' : 'booking'}, ${500000}, 'cash',
+      ${teamId ? 'Inscripción' : 'Cobro turno'},
+      ${opts.bookingId ?? null}, ${teamId}, ${opts.registeredBy}, NOW()
     )
     RETURNING id
   `
@@ -221,6 +320,30 @@ export async function insertAuditLog(
     VALUES (
       ${opts.tenantId}, ${opts.actorId}, ${opts.actorType},
       ${'booking.create'}, ${'booking'}, ${opts.resourceId}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function insertTournamentMatchEvent(
+  sql: Sql,
+  args: {
+    tenantId: string
+    tournamentId: string
+    matchId: string
+    teamId: string
+    teamPlayerId?: string | null
+    type?: string
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_match_events (
+      tenant_id, tournament_id, match_id, team_id, team_player_id, type
+    )
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId}, ${args.matchId}, ${args.teamId},
+      ${args.teamPlayerId ?? null}, ${args.type ?? 'goal'}::tournament_event_type
     )
     RETURNING id
   `

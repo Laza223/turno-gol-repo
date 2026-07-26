@@ -20,6 +20,7 @@ export const cashFlow = (overrides: Partial<CashFlowRow> = {}): CashFlowRow => (
   method: 'mercadopago',
   description: 'Seña turno 16:00 — Cancha 1',
   bookingId: uid(1001),
+  tournamentTeamId: null,
   registeredBy: staffMember().id,
   occurredAt: hoursFromNow(-26),
   createdAt: hoursFromNow(-26),

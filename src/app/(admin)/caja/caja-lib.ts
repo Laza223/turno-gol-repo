@@ -83,6 +83,7 @@ export function categoryLabel(type: string, category: string): string {
   if (category === 'maintenance') return 'Mantenimiento'
   if (category === 'other_expense') return 'Otro gasto'
   if (category === 'no_show_correction') return 'Corrección por ausencia'
+  if (category === 'tournament') return 'Inscripción a torneo' // migr. 066
   if (category === 'other') return type === 'adjustment' ? 'Ajuste' : 'Otro ingreso'
   return category
 }
@@ -108,6 +109,10 @@ export const CATEGORY_BADGE: Record<CashFlowCategory | 'fallback', string> = {
     'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
   no_show_correction:
     'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',
+  // Ingreso (migr. 066), pero con familia propia: el violeta lo separa de la
+  // reserva y de la cantina en el listado del día sin depender del texto.
+  tournament:
+    'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-violet-600/20 dark:ring-violet-500/30',
   other: 'bg-muted text-foreground ring-slate-500/20',
   fallback: 'bg-muted text-foreground ring-slate-500/20',
 }

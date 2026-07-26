@@ -11,6 +11,7 @@
  *  E. Cross-tenant DELETE bloqueado (10)
  *  F. PTR cross-tenant UPDATE bloqueado (1)
  *  G. REVOKE: UPDATE/DELETE en audit_logs+daily_cash_closes propios falla (4)
+ *     + UPDATE en tournament_match_events (acta append-only, migr. 065)
  *  H. Fail-safe: sin contexto, 0 filas (17)
  *  I. Casos especiales (5)
  *  J. Positive policies — cierre de gaps
@@ -105,6 +106,37 @@ const tablesAll: TableDef[] = [
   { name: 'tenant_player_bans', ownId: () => A.banId, otherId: () => B.banId },
   { name: 'bookings', ownId: () => A.bookingId, otherId: () => B.bookingId },
   { name: 'player_tenant_relationships', ownId: () => A.ptrId, otherId: () => B.ptrId },
+  // Torneos (migr. 062): CRUD completo, aislamiento clásico por tenant_id.
+  { name: 'tournaments', ownId: () => A.tournamentId, otherId: () => B.tournamentId },
+  {
+    name: 'tournament_teams',
+    ownId: () => A.tournamentTeamId,
+    otherId: () => B.tournamentTeamId,
+  },
+  {
+    name: 'tournament_team_players',
+    ownId: () => A.tournamentTeamPlayerId,
+    otherId: () => B.tournamentTeamPlayerId,
+  },
+  // Fixture (migr. 064).
+  {
+    name: 'tournament_stages',
+    ownId: () => A.tournamentStageId,
+    otherId: () => B.tournamentStageId,
+  },
+  {
+    name: 'tournament_matches',
+    ownId: () => A.tournamentMatchId,
+    otherId: () => B.tournamentMatchId,
+  },
+  // El acta (migr. 065). No se excluye de tablesUpdDel: como no tiene policy de
+  // UPDATE, el bloque D afirma "0 filas afectadas", que es lo correcto, y el
+  // bloque E ejercita la policy de DELETE, que es la que este diseño usa.
+  {
+    name: 'tournament_match_events',
+    ownId: () => A.tournamentMatchEventId,
+    otherId: () => B.tournamentMatchEventId,
+  },
 ]
 
 // Tables with UPDATE policy (RLS allows UPDATE if context matches).
@@ -216,6 +248,33 @@ const insertOps: Record<string, InsertFn> = {
   // "player_tenant_relationships". La policy de INSERT de PTR nunca se probaba.
   player_tenant_relationships: async (tx, tid) =>
     tx`INSERT INTO player_tenant_relationships (tenant_id, player_id) VALUES (${tid}, ${A.playerId})`,
+  // Torneos (migr. 062). Los padres son los de B, que existen: así el INSERT
+  // llega a la WITH CHECK de la tabla en vez de morir antes en un 23503.
+  // (Los chequeos de FK corren con privilegios del owner y no pasan por RLS.)
+  tournaments: async (tx, tid) =>
+    tx`INSERT INTO tournaments (tenant_id, name, slug, format, starts_on)
+      VALUES (${tid}, 'spoof', ${`spoof-${faker.string.alphanumeric(8).toLowerCase()}`}, 'league', ${new Date().toISOString().slice(0, 10)})`,
+  tournament_teams: async (tx, tid) =>
+    tx`INSERT INTO tournament_teams (tenant_id, tournament_id, name)
+      VALUES (${tid}, ${B.tournamentId}, ${`spoof-${faker.string.alphanumeric(8)}`})`,
+  tournament_team_players: async (tx, tid) =>
+    tx`INSERT INTO tournament_team_players (tenant_id, team_id, full_name)
+      VALUES (${tid}, ${B.tournamentTeamId}, 'spoof')`,
+  tournament_stages: async (tx, tid) =>
+    // order_index alto: uq_tournament_stages_order es por torneo y el seed ya
+    // ocupó el 0. Si chocara, el error sería 23505 y no la policy de RLS.
+    tx`INSERT INTO tournament_stages (tenant_id, tournament_id, name, kind, order_index)
+      VALUES (${tid}, ${B.tournamentId}, 'spoof', 'league', 99)`,
+  tournament_matches: async (tx, tid) =>
+    tx`INSERT INTO tournament_matches (tenant_id, tournament_id, stage_id, round)
+      VALUES (${tid}, ${B.tournamentId}, ${B.tournamentStageId}, 1)`,
+  // Todos los padres son de B: si no, moriría con 23503 (FK compuesta) antes de
+  // llegar a la WITH CHECK, y el test pasaría por la razón equivocada.
+  tournament_match_events: async (tx, tid) =>
+    tx`INSERT INTO tournament_match_events
+        (tenant_id, tournament_id, match_id, team_id, team_player_id, type)
+      VALUES (${tid}, ${B.tournamentId}, ${B.tournamentMatchId},
+              ${B.tournamentTeamId}, ${B.tournamentTeamPlayerId}, 'goal')`,
 }
 
 describe('C. cross-tenant INSERT bloqueado', () => {
@@ -288,6 +347,20 @@ describe('F. PTR cross-tenant UPDATE bloqueado', () => {
 
 // ─── G. REVOKE: UPDATE/DELETE en append-only falla ─────────────
 describe('G. REVOKE en append-only', () => {
+  // El acta del partido (migr. 065) es append-only/delete-only: se corrige un
+  // gol borrándolo y cargándolo de nuevo, no editándolo, para que queden las
+  // dos entradas en audit_logs. No tiene policy de UPDATE y además se le revoca
+  // el privilegio a turnogol_app.
+  it('tournament_match_events: UPDATE propio falla con permission denied', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`UPDATE tournament_match_events SET minute = 99 WHERE id = $1`, [
+          A.tournamentMatchEventId,
+        ]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+
   it('audit_logs: UPDATE propio falla con permission denied', async () => {
     await expect(
       withContextRollback(

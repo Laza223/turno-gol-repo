@@ -6,6 +6,7 @@ import {
   HandCoins,
   Plus,
   Repeat,
+  Trophy,
   UserX,
   type LucideIcon,
 } from 'lucide-react'
@@ -66,6 +67,12 @@ const GRID_LEGEND: ReadonlyArray<{
     icon: Ban,
     swatch: 'slot-blocked-stripes',
     iconClass: 'text-muted-foreground',
+  },
+  {
+    label: 'Torneo',
+    icon: Trophy,
+    swatch: 'slot-blocked-stripes bg-warning/15 border-l-2 border-l-warning',
+    iconClass: 'text-amber-800 dark:text-amber-300',
   },
 ]
 

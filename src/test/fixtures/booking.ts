@@ -20,6 +20,7 @@ export const booking = (overrides: Partial<BookingRow> = {}): BookingRow => ({
   courtId: courtFutbol5().id,
   playerId: player().id,
   abonadoId: null,
+  tournamentId: null,
   createdByStaff: null,
   completedByStaff: null,
   date: dateAt(0),

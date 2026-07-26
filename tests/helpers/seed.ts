@@ -12,6 +12,12 @@ import {
   insertNotification,
   insertPayment,
   insertSubscription,
+  insertTournament,
+  insertTournamentMatch,
+  insertTournamentMatchEvent,
+  insertTournamentStage,
+  insertTournamentTeam,
+  insertTournamentTeamPlayer,
 } from './factories'
 
 export type IsolationSeed = {
@@ -30,6 +36,12 @@ export type IsolationSeed = {
   banId: string
   notificationId: string
   auditLogId: string
+  tournamentId: string
+  tournamentTeamId: string
+  tournamentTeamPlayerId: string
+  tournamentStageId: string
+  tournamentMatchId: string
+  tournamentMatchEventId: string
 }
 
 /**
@@ -67,6 +79,28 @@ export async function seedIsolationData(
     actorType: 'staff',
     resourceId: bookingId,
   })
+  const tournamentId = await insertTournament(sql, tenantId)
+  const tournamentTeamId = await insertTournamentTeam(sql, { tenantId, tournamentId })
+  const tournamentTeamPlayerId = await insertTournamentTeamPlayer(sql, {
+    tenantId,
+    teamId: tournamentTeamId,
+  })
+  const tournamentStageId = await insertTournamentStage(sql, { tenantId, tournamentId })
+  const tournamentMatchId = await insertTournamentMatch(sql, {
+    tenantId,
+    tournamentId,
+    stageId: tournamentStageId,
+    homeTeamId: tournamentTeamId,
+  })
+  // El acta cuelga del MISMO torneo que el partido y del MISMO equipo que el
+  // jugador: las FKs de la 065 son compuestas y lo exigen.
+  const tournamentMatchEventId = await insertTournamentMatchEvent(sql, {
+    tenantId,
+    tournamentId,
+    matchId: tournamentMatchId,
+    teamId: tournamentTeamId,
+    teamPlayerId: tournamentTeamPlayerId,
+  })
 
   return {
     tenantId,
@@ -84,5 +118,11 @@ export async function seedIsolationData(
     banId,
     notificationId,
     auditLogId,
+    tournamentId,
+    tournamentTeamId,
+    tournamentTeamPlayerId,
+    tournamentStageId,
+    tournamentMatchId,
+    tournamentMatchEventId,
   }
 }

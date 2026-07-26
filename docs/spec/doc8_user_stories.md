@@ -29,6 +29,7 @@ Módulos:
   JUG = App del Jugador
   NOT = Notificaciones
   SAS = SaaS Lifecycle (billing, dunning)
+  TOR = Torneos (detrás del feature flag `tournaments`)
 ```
 
 ---
@@ -43,6 +44,7 @@ Módulos:
 | Abonados | ABO | US-ABO-001 a 005 + US-JUG-ADM-001 | P1 |
 | Caja y Pagos | CAJ | US-CAJ-001 a 005 | P0-P1 |
 | Administración | ADM | US-ADM-001 a 005 | P0-P1 |
+| Torneos | TOR | US-TOR-001 a 006 | P2 (detrás del flag `tournaments`) |
 | App del Jugador | JUG | US-JUG-001 a 004 | P0-P3 |
 | Notificaciones | NOT | US-NOT-001 a 003 | P0-P1 |
 | SaaS Lifecycle | SAS | US-SAS-001 a 005 | P0-P1 |
@@ -1707,6 +1709,234 @@ para irme sin sorpresas y poder volver si cambio de opinión.
 
 ---
 
+# EPIC: TORNEOS (TOR)
+
+> Reabierto el 2026-07-24 tras el pedido de demanda del dueño. Estaba fuera de scope
+> (doc1 §6, DECISIONES_SISTEMA P14.3, icebox §5h). Decisión y fases:
+> `docs/decisions/2026-07-24-torneos.md`. Todo el epic vive detrás del feature flag
+> `tournaments`, apagado por defecto.
+
+## US-TOR-001: Crear un Torneo
+
+**Epic**: Torneos
+**Persona**: Marcelo (Dueño)
+**Prioridad**: P2 — Fase 1
+**Flujo relacionado**: nuevo
+
+**Historia**:
+Como Marcelo, dueño del complejo,
+cuando armo el torneo de la temporada,
+quiero cargarlo en el sistema con su formato y sus fechas,
+para dejar de manejarlo en un cuaderno y que la grilla refleje la realidad.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado que entro a Torneos → Nuevo, cuando cargo nombre, formato y fecha de inicio, entonces se crea el torneo en estado `draft` con un slug único dentro del complejo.
+- [ ] Dado que elijo el formato, cuando abro el selector, entonces veo Liga (todos contra todos), Eliminación directa y Grupos + playoffs, cada uno con una explicación en criollo.
+- [ ] Dado que el torneo es un relámpago, cuando elijo una duración de partido de 30 minutos o menos, entonces el sistema me avisa que entran dos partidos por hora.
+- [ ] Dado que cargo una inscripción por equipo, cuando la escribo en pesos, entonces se guarda en centavos.
+- [ ] Al crear, quedo en la ficha del torneo, listo para tomar horarios y anotar equipos.
+
+❌ Edge Cases
+- [ ] Si la fecha de fin es anterior a la de inicio → error antes de tocar la DB.
+- [ ] Si el cierre de inscripción es posterior al arranque → error.
+- [ ] Si ya existe un torneo con el mismo nombre → el slug se desambigua con sufijo numérico, no falla.
+- [ ] Si el puntaje cargado es incoherente (ganar vale menos que empatar) → error de validación, nunca un 23514 crudo de Postgres.
+- [ ] Si el flag `tournaments` está apagado para el complejo → la ruta devuelve 404 y la action rechaza, aunque alguien entre por URL.
+
+🚫 Out of Scope
+- NO incluye fixture (US-TOR-004, fase 2)
+- NO incluye cobro de la inscripción (fase 4)
+- NO incluye organizador tercero: el torneo lo crea el staff del complejo
+
+**Dependencias**: Ninguna
+**Bloquea**: US-TOR-002, US-TOR-003
+
+**Notas de implementación**:
+- Crear/configurar es `requireAdminStaffAction` (es configuración, como Canchas o Equipo)
+- El nombre NO regenera el slug al editar: la URL pública ya puede estar compartida
+
+---
+
+## US-TOR-002: Tomarle Horarios al Torneo en la Grilla
+
+**Epic**: Torneos
+**Persona**: Rodrigo (Encargado)
+**Prioridad**: P2 — Fase 1 · **es el dolor que originó el módulo**
+**Flujo relacionado**: Doc 7, Flujo 3 (comparte el exclusion constraint)
+
+**Historia**:
+Como Rodrigo, encargado,
+cuando el torneo se juega todos los sábados de 14 a 18 en dos canchas,
+quiero bloquear esas horas de una sola vez,
+para que nadie las reserve online y la grilla diga la verdad.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado que elijo canchas, primera fecha, cantidad de semanas y franja horaria, cuando confirmo, entonces se crea una reserva POR HORA y POR CANCHA con `type='tournament'`, `status='confirmed'` y `price_snapshot = 0`.
+- [ ] Dado que las horas quedaron tomadas, cuando abro la grilla, entonces las veo con el rayado, el ícono de trofeo y el label "Torneo" — nunca distinguidas solo por color.
+- [ ] Dado que un jugador entra al portal público, cuando mira esa franja, entonces el turno figura como no disponible.
+- [ ] Dado que el complejo cierra después de medianoche, cuando tomo de 22:00 a 02:00, entonces las 4 horas quedan bajo el MISMO día operativo y el slot que cierra a medianoche se guarda con `time_end='24:00'`.
+
+❌ Edge Cases
+- [ ] Si una de las horas ya estaba reservada → se saltea, se toman las demás, y se me listan las salteadas con fecha, hora y cancha.
+- [ ] Si TODAS las horas pedidas estaban ocupadas → error explícito ("no se tomó nada"), no un éxito vacío.
+- [ ] Si una reserva de esa hora está cancelada → la hora se toma igual (una cancelada no ocupa el turno).
+- [ ] Si elijo una cancha de otro complejo o una cancha offline → error, no se toma nada.
+- [ ] Si la franja no es múltiplo de 60 minutos → error: el turno es de 60 minutos fijos.
+- [ ] Si el complejo NO cierra después de medianoche y pido una franja que cruza las 00:00 → error.
+- [ ] Si dos operaciones toman la misma hora a la vez → el exclusion constraint deja pasar una sola.
+
+🚫 Out of Scope
+- NO incluye asignar partidos a esas horas (US-TOR-004, fase 2)
+- NO incluye cobrar la hora: el torneo se cobra por inscripción, no por cancha
+
+**Dependencias**: US-TOR-001
+**Bloquea**: US-TOR-004
+
+**Notas de implementación**:
+- Una reserva por hora (no una larga) es lo que permite el skip-on-conflict y la liberación parcial
+- Es operación, no configuración: `requireOperatorStaff` — el encargado lo hace el sábado a la mañana
+- Calcado de `insertBookingsForSlots` (abonados): mismo skip-on-conflict, mismo reporte de conflictos
+
+---
+
+## US-TOR-003: Anotar Equipos y Cargar el Plantel
+
+**Epic**: Torneos
+**Persona**: Rodrigo (Encargado)
+**Prioridad**: P2 — Fase 1
+
+**Historia**:
+Como Rodrigo, encargado,
+cuando los equipos se van anotando durante la semana,
+quiero cargarlos con el nombre y el contacto del capitán,
+para tener la lista en un lugar y saber a quién llamar si falta uno.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado que escribo el nombre del equipo, cuando confirmo, entonces queda inscripto en estado `registered` sin exigir ningún otro dato.
+- [ ] Dado que cargo capitán y teléfono, cuando guardo, entonces quedan en la ficha del equipo.
+- [ ] Dado que el capitán ya es jugador del complejo, cuando lo vinculo, entonces el equipo queda enganchado a su cuenta real.
+- [ ] Dado que cargo el plantel, cuando escribo solo el nombre de cada jugador, entonces se guarda sin exigirle cuenta a nadie.
+- [ ] Veo cuántos lugares quedan cuando el torneo tiene cupo.
+
+❌ Edge Cases
+- [ ] Si ya hay un equipo con ese nombre (sin importar mayúsculas) → error claro, no un 23505 crudo.
+- [ ] Si el torneo llegó al cupo → el botón se deshabilita y la action rechaza igual.
+- [ ] Si un equipo se baja → cambia a `withdrawn` y libera su lugar en el cupo; borrarlo es otra acción.
+- [ ] Si repito un número de camiseta dentro del mismo equipo → error claro.
+- [ ] Si borro un equipo → se borra primero su plantel (no hay ON DELETE CASCADE).
+
+🚫 Out of Scope
+- NO exige que los jugadores tengan cuenta de TurnoGol
+- NO incluye la ficha del jugador dentro del torneo (fase 3)
+
+**Dependencias**: US-TOR-001
+**Bloquea**: US-TOR-004
+
+---
+
+## US-TOR-004: Generar el Fixture (fase 2)
+
+**Epic**: Torneos
+**Persona**: Marcelo (Dueño)
+**Prioridad**: P2 — Fase 2
+
+**Historia**:
+Como Marcelo,
+cuando ya tengo los equipos anotados y las horas tomadas,
+quiero que el sistema arme el calendario de partidos,
+para no perder una tarde cruzando equipos y horarios en un papel.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado un torneo de liga con N equipos, cuando genero el fixture, entonces cada par se enfrenta exactamente una vez por rueda y ningún equipo juega dos veces en la misma fecha.
+- [ ] Dado que la cantidad de equipos es impar, cuando genero el fixture, entonces hay un equipo libre por fecha.
+- [ ] Dado un torneo de eliminación, cuando cargo un resultado, entonces el ganador avanza solo a la llave siguiente.
+- [ ] Dado que el fixture está generado, cuando lo miro, entonces cada partido tiene día, hora y cancha dentro de las horas que el torneo posee.
+- [ ] Puedo mover un partido de día, hora o cancha a mano: el fixture es una propuesta editable.
+
+❌ Edge Cases
+- [ ] Si no hay horas suficientes para todos los partidos → se avisa cuántos quedaron sin agendar, no se agendan a medias en silencio.
+- [ ] Si mover un partido lo dejaría fuera del tiempo que el torneo posee → error.
+- [ ] Si un equipo quedaría con dos partidos a la misma hora → el scheduler no lo permite.
+
+🚫 Out of Scope
+- NO incluye reprogramación por lluvia
+- NO incluye resultados ni tabla (US-TOR-005)
+
+**Dependencias**: US-TOR-002, US-TOR-003
+
+---
+
+## US-TOR-005: Cargar Resultados y Ver la Tabla (fase 3)
+
+**Epic**: Torneos
+**Persona**: Rodrigo (Encargado)
+**Prioridad**: P2 — Fase 3
+
+**Historia**:
+Como Rodrigo,
+cuando termina cada partido,
+quiero cargar el resultado, los goles y las tarjetas,
+para que la tabla de posiciones se actualice sola y los equipos dejen de preguntarme cómo van.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado que cargo un resultado, cuando guardo, entonces la tabla se recalcula con los puntos configurados del torneo.
+- [ ] Dado que dos equipos empatan en puntos, cuando miro la tabla, entonces se desempatan por los criterios configurados, en orden.
+- [ ] Dado que cargo goleadores, cuando miro estadísticas, entonces veo la tabla de goleadores del torneo.
+- [ ] Dado que un jugador llega al límite de amarillas, cuando guardo el acta, entonces queda suspendido automáticamente por la cantidad de fechas configurada.
+- [ ] Dado que un equipo no se presenta, cuando marco walkover, entonces el rival gana con el resultado configurado.
+
+❌ Edge Cases
+- [ ] Si me equivoqué al cargar un gol → lo puedo borrar; queda registro en `audit_logs`.
+- [ ] Si cargo un resultado de un partido con equipos sin definir (llave pendiente) → error.
+
+🚫 Out of Scope
+- NO incluye que el capitán cargue resultados desde su celular (decisión del dueño: solo staff)
+- NO incluye video ni fotos del partido
+
+**Dependencias**: US-TOR-004
+
+---
+
+## US-TOR-006: Portal Público y Cobro de la Inscripción (fase 4)
+
+**Epic**: Torneos
+**Persona**: Tomás (Jugador) / Marcelo (Dueño)
+**Prioridad**: P2 — Fase 4
+
+**Historia**:
+Como Tomás, que juego el torneo,
+quiero ver el fixture y la tabla desde el celular sin instalar nada,
+para saber cuándo juego y cómo vamos, sin depender del grupo de WhatsApp.
+
+**Criterios de Aceptación**:
+
+✅ Happy Path
+- [ ] Dado que el complejo publica el torneo, cuando abro el link, entonces veo fixture, tabla y goleadores sin loguearme.
+- [ ] Dado que el torneo NO está publicado, cuando entro por URL, entonces no lo veo.
+- [ ] Dado que un equipo paga la inscripción, cuando el staff la registra, entonces entra en Caja como ingreso con categoría `tournament`.
+
+❌ Edge Cases
+- [ ] Si la caja del día ya cerró → error claro con la salida (registrarlo mañana).
+- [ ] Si un complejo publica dos torneos con el mismo nombre → los slugs se desambiguan.
+
+🚫 Out of Scope
+- NO incluye pago online por MercadoPago (decisión del dueño: v1 se cobra manual en Caja)
+- NO incluye cuota por fecha: solo inscripción
+
+**Dependencias**: US-TOR-005
+
+---
+
 # RESUMEN — MATRIZ COMPLETA DE USER STORIES
 
 ## Conteo Final por Epic
@@ -1722,7 +1952,8 @@ para irme sin sorpresas y poder volver si cambio de opinión.
 | App del Jugador | JUG | 4 | P0-P3 |
 | Notificaciones | NOT | 3 | P0-P1 |
 | SaaS Lifecycle | SAS | 5 | P0-P1 |
-| **TOTAL** | | **41** | |
+| Torneos | TOR | 6 | P2 |
+| **TOTAL** | | **47** | |
 
 > Nota: US-ABO-005 ("Saldo a favor del abonado") está ⛔ REVERTIDA (cambio #4) y no se cuenta en el total.
 
@@ -1784,7 +2015,7 @@ JUG-004  Complejo favorito
 ---
 
 > [!IMPORTANT]
-> **Fin del Doc 8.** 42 user stories organizadas en 9 epics, con prioridades,
+> **Fin del Doc 8.** 48 user stories organizadas en 10 epics, con prioridades,
 > criterios de aceptación Given/When/Then, edge cases explícitos, out of scope,
 > dependencias, y cross-references a personas y flujos del Doc 7.
 > Este documento es la entrada directa para crear tickets en el backlog del proyecto.

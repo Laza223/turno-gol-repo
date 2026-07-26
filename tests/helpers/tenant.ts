@@ -40,6 +40,7 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
     REVOKE DELETE ON canteen_products FROM turnogol_app;
     REVOKE DELETE ON canteen_tabs FROM turnogol_app;
     REVOKE DELETE ON daily_cash_opens FROM turnogol_app;
+    REVOKE UPDATE ON tournament_match_events FROM turnogol_app;
   `)
   // push_send_log (migr. 059, F3): deny-all para turnogol_app — el GRANT ALL
   // de arriba también le re-otorga SELECT/INSERT/UPDATE/DELETE (a diferencia

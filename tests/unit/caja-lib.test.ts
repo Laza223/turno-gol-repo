@@ -9,6 +9,7 @@ import {
   buildDelta,
   cajaDateLabel,
   canteenStockBadge,
+  CATEGORY_BADGE,
   categoryLabel,
   chipClass,
   closeView,
@@ -224,5 +225,18 @@ describe('chipClass', () => {
   it('activo = emerald AA; inactivo = tokens neutros', () => {
     expect(chipClass(true)).toContain('border-emerald-600')
     expect(chipClass(false)).toContain('border-border')
+  })
+})
+
+describe('categoría tournament (migr. 066)', () => {
+  it('tiene su propio label y no cae al fallback', () => {
+    expect(categoryLabel('income', 'tournament')).toBe('Inscripción a torneo')
+  })
+
+  it('tiene chip propio: no comparte el de reserva ni el de cantina', () => {
+    expect(CATEGORY_BADGE.tournament).toBeDefined()
+    expect(CATEGORY_BADGE.tournament).not.toBe(CATEGORY_BADGE.booking)
+    expect(CATEGORY_BADGE.tournament).not.toBe(CATEGORY_BADGE.product_sale)
+    expect(CATEGORY_BADGE.tournament).not.toBe(CATEGORY_BADGE.fallback)
   })
 })

@@ -296,7 +296,7 @@ El rival real es WhatsApp+cuaderno (GTM doc3). La diferencia conceptual: **Whats
 | Feature | Por qué seduce | Por qué no ahora |
 |---|---|---|
 | **"Falta Uno" / matchmaking de desconocidos** | Todos la piden en las encuestas | Ya se eliminó del scope v1 (migr. 028) con razón: cold start brutal (sin densidad de jugadores, la feature muestra vacío = producto muerto), y la sociología del fútbol 5 es tribal — grupos cerrados de amigos, no 4 intercambiables por nivel como el pádel de Playtomic. Reconsiderar solo con densidad real de jugadores por zona. |
-| **Torneos (módulo completo)** | Los complejos viven de torneos; parece obvio | Es un producto entero disfrazado de feature (fixtures, tablas, fechas, cobros, reprogramaciones por lluvia). Operacionalmente pesado para el dueño y para el roadmap. Validar demanda primero; si 8/10 dueños lo piden espontáneamente, planificarlo como v2 mayor. |
+| ~~**Torneos (módulo completo)**~~ → **REABIERTA 2026-07-24** | Los complejos viven de torneos; parece obvio | Era: "un producto entero disfrazado de feature (fixtures, tablas, fechas, cobros, reprogramaciones por lluvia)… validar demanda primero; si 8/10 dueños lo piden espontáneamente, planificarlo como v2 mayor". **La condición se cumplió**: llegó demanda espontánea, y el dolor concreto reportado fue el de ocupación de horarios (la grilla miente), no el fixture. Se reabre con las dos mitigaciones que este mismo doc pedía: feature flag apagado por defecto (piloto por complejo) y 4 fases cortables. El diagnóstico de tamaño sigue siendo válido: son 8 tablas. Ver `docs/decisions/2026-07-24-torneos.md`. |
 | **Ranking global / por zona de goles** | "Gamificación" fácil | Datos auto-reportados + desconocidos = tabla no creíble → cinismo → mancha todo el sistema de stats (§4). |
 | **Score de confiabilidad cross-tenant del jugador** | Los dueños lo amarían | Veraz deportivo: riesgo Ley 25.326, tóxico para el jugador, mata la adquisición B2C. Per-tenant (deuda, historial propio) ya existe y alcanza. |
 | **Split payment real (mover plata entre jugadores)** | Dolor real del organizador | Marketplace de pagos MP = comisiones, disputas, regulación. Primero el tracking sin plata (C1 v2); mover plata solo si el tracking demuestra uso intenso. |
@@ -354,7 +354,7 @@ Escala 1-10. En **Facilidad**: 10 = fácil. En **Riesgo op.** y **Abuso**: 10 = 
 **Futuras (condicionadas a señales)**
 - Capa 2 social del grupo (resultado, tabla interna, MVP votado) — si C1 prende.
 - Cantina pre-order — si los dueños con cantina activa lo piden.
-- Torneos — solo si la demanda espontánea es abrumadora, y como proyecto mayor.
+- ~~Torneos — solo si la demanda espontánea es abrumadora, y como proyecto mayor.~~ → **en curso desde 2026-07-24**: la señal llegó. Se hace como proyecto mayor en 4 fases, detrás del flag `tournaments`, empezando por la ocupación de la grilla (que es el dolor reportado). `docs/decisions/2026-07-24-torneos.md`.
 - Comisión por demanda de red — solo con red real; años, no meses.
 
 **Evitar (ver §5h)**: Falta Uno ahora, ranking global, score cross-tenant, split payment real, dynamic pricing automático, red social/feed, app nativa, video.

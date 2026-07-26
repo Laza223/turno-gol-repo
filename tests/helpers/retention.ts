@@ -18,6 +18,12 @@ import {
   insertDailyCashClose,
   insertSubscription,
   getOrCreatePlanId,
+  insertTournament,
+  insertTournamentTeam,
+  insertTournamentTeamPlayer,
+  insertTournamentStage,
+  insertTournamentMatch,
+  insertTournamentMatchEvent,
 } from './factories'
 
 /**
@@ -111,6 +117,44 @@ export async function setupTenant(
     `
   }
 
+  // Torneos (migr. 062/064/065). La cadena entera, para que el wipe se ejercite
+  // de verdad: sin estas filas las 6 tablas contaban 0 antes y 0 después, así
+  // que su DELETE nunca se verificaba.
+  const tournamentId = await insertTournament(sql, tenant.id)
+  const tournamentTeamId = await insertTournamentTeam(sql, {
+    tenantId: tenant.id,
+    tournamentId,
+  })
+  const tournamentTeamPlayerId = await insertTournamentTeamPlayer(sql, {
+    tenantId: tenant.id,
+    teamId: tournamentTeamId,
+  })
+  const tournamentStageId = await insertTournamentStage(sql, {
+    tenantId: tenant.id,
+    tournamentId,
+  })
+  const tournamentMatchId = await insertTournamentMatch(sql, {
+    tenantId: tenant.id,
+    tournamentId,
+    stageId: tournamentStageId,
+    homeTeamId: tournamentTeamId,
+  })
+  await insertTournamentMatchEvent(sql, {
+    tenantId: tenant.id,
+    tournamentId,
+    matchId: tournamentMatchId,
+    teamId: tournamentTeamId,
+    teamPlayerId: tournamentTeamPlayerId,
+  })
+  // Migr. 066: un cobro de inscripción, que es cash_flows → tournament_teams.
+  // Es lo que obliga al wipe a borrar cash_flows ANTES que los equipos; sin
+  // esta fila el orden nunca se ejercita y una inversión pasaría en verde.
+  await insertCashFlow(sql, {
+    tenantId: tenant.id,
+    registeredBy: staff.id,
+    tournamentTeamId,
+  })
+
   // Hybrid / operational tenant-scoped rows the wipe must also clear.
   // reviews.booking_id is a RESTRICT FK to bookings: the wipe deletes reviews
   // before bookings or the bookings DELETE fails the FK check.
@@ -182,6 +226,14 @@ export type ChildCounts = {
   pushSubs: number
   favorites: number
   flags: number
+  // Torneos (migr. 062/064/065). Faltaban desde la fase 1: como el test compara
+  // objetos completos, las tablas ausentes simplemente no se verificaban.
+  tournaments: number
+  tournamentTeams: number
+  tournamentTeamPlayers: number
+  tournamentStages: number
+  tournamentMatches: number
+  tournamentMatchEvents: number
 }
 
 export async function countChildren(
@@ -207,7 +259,13 @@ export async function countChildren(
       (SELECT COUNT(*) FROM reviews WHERE tenant_id = ${tenantId})::text AS reviews,
       (SELECT COUNT(*) FROM push_subscriptions WHERE tenant_id = ${tenantId})::text AS "pushSubs",
       (SELECT COUNT(*) FROM player_favorites WHERE tenant_id = ${tenantId})::text AS favorites,
-      (SELECT COUNT(*) FROM feature_flags WHERE tenant_id = ${tenantId})::text AS flags
+      (SELECT COUNT(*) FROM feature_flags WHERE tenant_id = ${tenantId})::text AS flags,
+      (SELECT COUNT(*) FROM tournaments WHERE tenant_id = ${tenantId})::text AS tournaments,
+      (SELECT COUNT(*) FROM tournament_teams WHERE tenant_id = ${tenantId})::text AS "tournamentTeams",
+      (SELECT COUNT(*) FROM tournament_team_players WHERE tenant_id = ${tenantId})::text AS "tournamentTeamPlayers",
+      (SELECT COUNT(*) FROM tournament_stages WHERE tenant_id = ${tenantId})::text AS "tournamentStages",
+      (SELECT COUNT(*) FROM tournament_matches WHERE tenant_id = ${tenantId})::text AS "tournamentMatches",
+      (SELECT COUNT(*) FROM tournament_match_events WHERE tenant_id = ${tenantId})::text AS "tournamentMatchEvents"
   `
   return {
     bookings: Number(r.bookings),
@@ -226,6 +284,12 @@ export async function countChildren(
     pushSubs: Number(r.pushSubs),
     favorites: Number(r.favorites),
     flags: Number(r.flags),
+    tournaments: Number(r.tournaments),
+    tournamentTeams: Number(r.tournamentTeams),
+    tournamentTeamPlayers: Number(r.tournamentTeamPlayers),
+    tournamentStages: Number(r.tournamentStages),
+    tournamentMatches: Number(r.tournamentMatches),
+    tournamentMatchEvents: Number(r.tournamentMatchEvents),
   }
 }
 
@@ -246,12 +310,19 @@ export const ZERO: ChildCounts = {
   pushSubs: 0,
   favorites: 0,
   flags: 0,
+  tournaments: 0,
+  tournamentTeams: 0,
+  tournamentTeamPlayers: 0,
+  tournamentStages: 0,
+  tournamentMatches: 0,
+  tournamentMatchEvents: 0,
 }
 
 export const FULL: ChildCounts = {
   bookings: 1,
   payments: 1,
-  cashFlows: 1,
+  // Dos: el cobro del turno y el de la inscripción del torneo (migr. 066).
+  cashFlows: 2,
   notifications: 1,
   auditLogs: 1,
   abonados: 1,
@@ -265,4 +336,10 @@ export const FULL: ChildCounts = {
   pushSubs: 1,
   favorites: 1,
   flags: 1,
+  tournaments: 1,
+  tournamentTeams: 1,
+  tournamentTeamPlayers: 1,
+  tournamentStages: 1,
+  tournamentMatches: 1,
+  tournamentMatchEvents: 1,
 }

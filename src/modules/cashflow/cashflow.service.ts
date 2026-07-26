@@ -16,7 +16,10 @@ import type {
 } from './cashflow.types'
 
 const VALID_COMBOS: Record<CashFlowType, CashFlowCategory[]> = {
-  income: ['booking', 'product_sale', 'other'],
+  // migr. 066: 'tournament' es un ingreso, y el CHECK de DB lo obliga a venir
+  // con tournamentTeamId. La Server Action genérica de Caja NO lo ofrece: el
+  // único camino es registerInscriptionPayment.
+  income: ['booking', 'product_sale', 'other', 'tournament'],
   adjustment: ['other', 'no_show_correction'],
   // migr. 050: 'operating_expense' queda como legacy válido (el CHECK de DB
   // también lo conserva); la UI nueva solo ofrece las 5 específicas.
@@ -50,6 +53,7 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
     method: r.method,
     description: r.description,
     bookingId: r.bookingId ?? null,
+    tournamentTeamId: r.tournamentTeamId ?? null,
     registeredBy: r.registeredBy,
     occurredAt: r.occurredAt,
     createdAt: r.createdAt,
@@ -121,11 +125,11 @@ export async function createCashFlow(
     const result = await tx.execute(sql`
       INSERT INTO cash_flows (
         tenant_id, type, category, amount, method, description,
-        booking_id, registered_by, occurred_at, client_idempotency_key
+        booking_id, tournament_team_id, registered_by, occurred_at, client_idempotency_key
       ) VALUES (
         ${tenantId}, ${input.type}::cashflow_type, ${input.category}::cashflow_category,
         ${input.amount}, ${input.method}::payment_method, ${input.description},
-        ${input.bookingId ?? null},
+        ${input.bookingId ?? null}, ${input.tournamentTeamId ?? null},
         ${staffUserId}, ${occurredAt.toISOString()},
         ${input.clientIdempotencyKey}
       )
@@ -154,6 +158,7 @@ export async function createCashFlow(
       method: input.method,
       description: input.description,
       bookingId: input.bookingId ?? null,
+      tournamentTeamId: input.tournamentTeamId ?? null,
       registeredBy: staffUserId,
       occurredAt,
     })
@@ -187,6 +192,7 @@ export async function getCashFlows(
     method: 'cash' | 'transfer' | 'mercadopago' | 'other'
     description: string
     booking_id: string | null
+    tournament_team_id: string | null
     registered_by: string
     occurred_at: Date
     created_at: Date
@@ -199,6 +205,7 @@ export async function getCashFlows(
     method: r.method,
     description: r.description,
     bookingId: r.booking_id,
+    tournamentTeamId: r.tournament_team_id,
     registeredBy: r.registered_by,
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),

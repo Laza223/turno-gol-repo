@@ -12,6 +12,7 @@ import {
 import { tenants } from './tenants'
 import { bookings } from './bookings'
 import { staffUsers } from './staff-users'
+import { tournamentTeams } from './tournament-teams'
 import {
   cashflowCategoryEnum,
   cashflowTypeEnum,
@@ -36,6 +37,16 @@ export const cashFlows = pgTable(
 
     bookingId: uuid('booking_id').references(() => bookings.id),
 
+    /**
+     * Migr. 066. Equipo al que corresponde el cobro de inscripción. Sin
+     * ON DELETE: borrar un equipo que ya pagó tiene que fallar (el service lo
+     * frena antes con un error propio). Va SIEMPRE junto con category
+     * 'tournament' — el CHECK lo hace bidireccional.
+     */
+    tournamentTeamId: uuid('tournament_team_id').references(
+      () => tournamentTeams.id,
+    ),
+
     registeredBy: uuid('registered_by')
       .notNull()
       .references(() => staffUsers.id),
@@ -59,10 +70,18 @@ export const cashFlows = pgTable(
     ),
     typeCategoryValid: check(
       'chk_cashflow_type_category',
-      // Espejo del CHECK real (migr. 050 recrea el de 025 comparando ::text).
-      sql`(${table.type} = 'income' AND ${table.category} IN ('booking', 'product_sale', 'other'))
+      // Espejo del CHECK real (migr. 066 recrea el de 050 comparando ::text).
+      sql`(${table.type} = 'income' AND ${table.category} IN ('booking', 'product_sale', 'other', 'tournament'))
         OR (${table.type} = 'adjustment' AND ${table.category} IN ('other', 'no_show_correction'))
         OR (${table.type} = 'expense' AND ${table.category} IN ('operating_expense', 'merchandise', 'salaries', 'utilities', 'maintenance', 'other_expense'))`,
+    ),
+    // Migr. 066. Categoría 'tournament' ⟺ hay equipo. Ver la migración: sin la
+    // ida el total de la categoría deja de cuadrar con lo cobrado por equipo;
+    // sin la vuelta el formulario genérico de Caja podría colgar un equipo a
+    // cualquier movimiento.
+    tournamentTeamValid: check(
+      'chk_cashflow_tournament_team',
+      sql`(${table.category} = 'tournament') = (${table.tournamentTeamId} IS NOT NULL)`,
     ),
     tenantIdx: index('idx_cash_flows_tenant').on(table.tenantId),
     tenantDateIdx: index('idx_cash_flows_tenant_date').on(
@@ -77,6 +96,10 @@ export const cashFlows = pgTable(
       table.tenantId,
       table.category,
     ),
+    // Migr. 066. Parcial: solo las filas de torneo, que son minoría.
+    tournamentTeamIdx: index('idx_cash_flows_tournament_team')
+      .on(table.tournamentTeamId)
+      .where(sql`tournament_team_id IS NOT NULL`),
     // Fix #55: índice UNIQUE parcial que respalda el ON CONFLICT (client_idempotency_key)
     // en createCashFlow(). Debe coincidir con la migración 023_cashflow_idempotency_key.sql.
     idempotencyKeyIdx: uniqueIndex('idx_cash_flows_idempotency_key')

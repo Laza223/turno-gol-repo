@@ -71,6 +71,18 @@ export function endLabelFromMins(mins: number): string {
 }
 
 /**
+ * Time label for a slot START expressed in continuous minutes — the mirror of
+ * `endLabelFromMins`. Post-midnight starts wrap to wall clock (1440 → `'00:00'`,
+ * 1500 → `'01:00'`), which is what `bookings.time_start` stores for those rows.
+ *
+ * Deliberately NOT the same function as `endLabelFromMins`: 1440 as a START is
+ * midnight (`'00:00'`), as an END it is `'24:00'`.
+ */
+export function startLabelFromMins(mins: number): string {
+  return minsToHhmm(mins)
+}
+
+/**
  * Normalises a stored booking range onto the open-day continuous axis so a
  * post-midnight booking (stored with small wall-clock times like 00:00–01:00)
  * overlap-matches the post-midnight slots (start ≥ 1440). Pre-midnight ranges

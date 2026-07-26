@@ -38,10 +38,14 @@ export const surfaceTypeEnum = pgEnum('surface_type', [
 ])
 
 // ─── Booking ────────────────────────────────────────────────────
+// 'tournament' (migr. 062): horas que posee un torneo. Como 'block' se saltea
+// assertSlotDuration y va con price_snapshot 0, pero a diferencia de un bloqueo
+// tiene dueño (bookings.tournament_id) y se libera por fecha, no una por una.
 export const bookingTypeEnum = pgEnum('booking_type', [
   'spontaneous',
   'fixed',
   'block',
+  'tournament',
 ])
 
 export const bookingStatusEnum = pgEnum('booking_status', [
@@ -134,6 +138,8 @@ export const cashflowCategoryEnum = pgEnum('cashflow_category', [
   'utilities',
   'maintenance',
   'other_expense',
+  // Inscripción a un torneo (migr. 066). Va siempre con tournament_team_id.
+  'tournament',
 ])
 
 // ─── Canteen (migración 048, rediseño Caja y Cantina) ───────────
@@ -153,6 +159,57 @@ export const canteenTabStatusEnum = pgEnum('canteen_tab_status', [
   'open',
   'paid',
   'canceled',
+])
+
+// ─── Tournament (migración 062, módulo Torneos) ─────────────────
+// 'relámpago' NO está acá: es un preset de la UI sobre estos tres formatos
+// (partido corto + varias canchas en paralelo en un solo día), no un formato.
+export const tournamentFormatEnum = pgEnum('tournament_format', [
+  'league',
+  'knockout',
+  'groups_playoff',
+])
+
+// 'canceled' con una L (convención del repo).
+export const tournamentStatusEnum = pgEnum('tournament_status', [
+  'draft',
+  'registration',
+  'in_progress',
+  'finished',
+  'canceled',
+])
+
+export const tournamentTeamStatusEnum = pgEnum('tournament_team_status', [
+  'registered',
+  'confirmed',
+  'withdrawn',
+  'disqualified',
+])
+
+// ─── Tournament fixture (migración 064, fase 2) ─────────────────
+export const tournamentStageKindEnum = pgEnum('tournament_stage_kind', [
+  'league',
+  'group_stage',
+  'knockout',
+])
+
+// 'canceled' con una L (convención del repo).
+export const tournamentMatchStatusEnum = pgEnum('tournament_match_status', [
+  'scheduled',
+  'played',
+  'walkover',
+  'postponed',
+  'canceled',
+])
+
+// ─── Tournament results (migración 065, fase 3) ─────────────────
+// El MISMO orden que el CREATE TYPE: schema-drift.test.ts §3 compara los labels
+// por enumsortorder.
+export const tournamentEventTypeEnum = pgEnum('tournament_event_type', [
+  'goal',
+  'own_goal',
+  'yellow_card',
+  'red_card',
 ])
 
 // ─── Notification ───────────────────────────────────────────────

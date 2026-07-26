@@ -14,8 +14,9 @@ export type PlayerLoginAction = (
   formData: FormData,
 ) => Promise<PlayerLoginState>
 
-const inputClass =
-  'h-11 w-full rounded-lg border border-white/10 bg-white/4 px-3.5 text-sm text-white placeholder:text-slate-500 transition-colors focus-visible:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 aria-invalid:border-red-500'
+// text-base en mobile: < 16px dispara el zoom de iOS al enfocar (MASTER §3.x).
+export const inputClass =
+  'h-11 w-full rounded-lg border border-white/10 bg-white/4 px-3.5 text-base md:text-sm text-white placeholder:text-slate-500 transition-colors focus-visible:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 aria-invalid:border-red-500'
 
 /** Glass dark premium (espeja LoginGate / retorno de reserva). */
 const cardStyle = {

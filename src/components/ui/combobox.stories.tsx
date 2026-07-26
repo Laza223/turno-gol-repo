@@ -11,8 +11,9 @@ import Combobox, { type ComboboxOption } from './combobox'
  * `fieldClass` que usan los demás inputs del buscador público; se reproduce
  * ese mismo recipe acá para no mostrar un combobox "roto" sin borde.
  */
+// text-base en mobile: < 16px dispara el zoom de iOS al enfocar (MASTER §3.x).
 const FIELD_CLASS =
-  'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+  'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-base md:text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
 const CITY_OPTIONS: ComboboxOption[] = [
   { value: 'caba', label: 'Ciudad Autónoma de Buenos Aires', hint: '48' },

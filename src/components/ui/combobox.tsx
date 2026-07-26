@@ -10,8 +10,16 @@ import {
   type ReactNode,
 } from 'react'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 export type ComboboxOption = { value: string; label: string; hint?: string }
+
+/**
+ * Base mínima del input: garantiza ≥16px en mobile aunque el caller no pase nada
+ * (o pase una clase con `text-sm`). Abajo de 16px iOS zoomea al enfocar, y este
+ * componente vive en el buscador público — el campo que más se toca de la app.
+ */
+const COMBOBOX_INPUT_BASE = 'text-base md:text-sm'
 
 type Props = {
   id: string
@@ -216,7 +224,7 @@ export default function Combobox({
             aria-describedby={ariaDescribedBy}
             value={inputText}
             placeholder={placeholder}
-            className={inputClassName}
+            className={cn(COMBOBOX_INPUT_BASE, inputClassName)}
             onClick={() => {
               if (!open) openList(selectedIndex())
             }}

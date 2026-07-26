@@ -199,12 +199,12 @@ export function RegisterMovementModal({
               onChange={(e) => setAmountPesos(e.target.value)}
               inputMode="decimal"
               autoComplete="off"
-              className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-sm tabular-nums" />
+              className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-base md:text-sm tabular-nums" />
           </div>
           <div className="space-y-1">
             <label htmlFor="cf-desc" className="text-xs font-medium text-foreground">Descripción</label>
             <textarea id="cf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-              className="w-full rounded-md border border-border px-3 py-2 min-h-[44px] md:min-h-0 text-sm" />
+              className="w-full rounded-md border border-border px-3 py-2 min-h-[44px] md:min-h-0 text-base md:text-sm" />
           </div>
           {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">

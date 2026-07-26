@@ -326,6 +326,50 @@
   }
 }
 
+/* iOS WebKit hace zoom automático al enfocar cualquier campo con font-size < 16px,
+   y en iPhone TODOS los navegadores son WebKit (Chrome iOS incluido). El zoom
+   achica el visual viewport y arrastra scroll horizontal. `maximum-scale` NO lo
+   previene (y subirlo a 1 rompería WCAG 1.4.4).
+
+   Red de seguridad: esta regla vive FUERA de todo `@layer`, así que gana a las
+   utilities de Tailwind v4 por cascada de capas — atrapa también los campos que
+   se escriban mañana. Los primitives igual declaran `text-base md:text-sm`
+   explícito (ver ui/input.tsx) para que el código no mienta sobre su tamaño.
+   Guard de regresión: tests/unit/mobile-font-size-guard.test.tsx.
+
+   `width < 48rem` y no `max-width: 767px`: es el complemento EXACTO del
+   `@media (width >= 48rem)` que Tailwind v4 genera para `md:`, así que no queda
+   hueco fraccional en pantallas con device-pixel-ratio no entero.
+
+   Excluidos: los type que no muestran texto tipeable ni disparan el zoom. */
+@media (width < 48rem) {
+  input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='range'],
+      [type='color'],
+      [type='file'],
+      [type='submit'],
+      [type='button'],
+      [type='reset']
+    ),
+  textarea,
+  select,
+  [contenteditable]:not([contenteditable='false']) {
+    font-size: 16px;
+  }
+
+  /* Escape hatch documentado, hacia ARRIBA únicamente. No existe uno hacia abajo. */
+  .field-lg {
+    font-size: 18px;
+  }
+}
+
+/* iOS infla el texto al rotar a landscape si no se fija. */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 /* Field texture shell — layout wrapper del panel admin. Theme-adaptive:
    light = campo slate claro + glow emerald tenue; dark = campo slate-900. */
 .shell-bg {

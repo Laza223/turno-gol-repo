@@ -224,7 +224,8 @@ export function PhoneInput({
           value={nationalNumber}
           onChange={handleNumberChange}
           className={cn(
-            'flex h-11 md:h-10 w-full rounded-r-lg border border-border bg-card px-3.5 py-2 text-sm text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground hover:border-border/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50',
+            // text-base en mobile: < 16px dispara el zoom de iOS al enfocar.
+            'flex h-11 md:h-10 w-full rounded-r-lg border border-border bg-card px-3.5 py-2 text-base md:text-sm text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground hover:border-border/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50',
             error && 'border-red-500 dark:border-red-400 focus-visible:ring-red-500 dark:focus-visible:ring-red-400',
             inputClassName,
           )}
@@ -257,7 +258,9 @@ export function PhoneInput({
                   placeholder="Buscar país o código..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-11 md:h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-1 focus:ring-ring"
+                  // text-base en mobile: este buscador estaba en text-xs (12px) —
+                  // el zoom de iOS acá era el más agresivo, y encima dentro de un popover.
+                  className="h-11 md:h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-base md:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>

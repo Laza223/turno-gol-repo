@@ -10,8 +10,10 @@ const initial: GateState = { status: 'idle' }
 /** Firma de la Server Action que consume el form (ver ../actions#sendPlayerMagicLink). */
 export type SendPlayerMagicLink = typeof sendPlayerMagicLink
 
-const inputClass =
-  'h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus-visible:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-white/4'
+// text-base en mobile: < 16px hace que iOS zoomee al enfocar. Está en el flujo
+// de reserva, así que el zoom pega justo antes del pago.
+export const inputClass =
+  'h-11 w-full rounded-lg border border-border bg-background px-3 text-base md:text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus-visible:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-white/4'
 
 function Submit() {
   const { pending } = useFormStatus()

@@ -189,16 +189,31 @@ Tres caras, tres trabajos. No hay cuarta.
 | Título de página (h1) | 24px / 600 | `text-2xl font-semibold` (admin en `font-display`) | |
 | Título de sección (h2) | 20px / 600 | `text-xl font-semibold` | |
 | Título de card (h3) | 16px / 600 | `text-base font-semibold` | |
-| Body | 14px / 400 | `text-sm` | Mínimo admin |
+| Body | 14px / 400 | `text-sm` | Mínimo admin. **No aplica a campos de entrada** — ver §3.1 |
 | Label | 14px / 500 | `text-sm font-medium` | |
 | Caption / helper | 12px / 400 | `text-xs text-muted-foreground` | |
 | Badge | 12px / 500 | `text-xs font-medium` | |
+| **Campo de entrada** | **16px mobile / 14px ≥768px** | **`text-base md:text-sm`** | **Regla dura, ver §3.1** |
 
 **Reglas:**
 - `tabular-nums` en **todo** dato numérico (precios, horas, contadores, columnas). Sin excepción: los números que "bailan" al actualizar rompen el escaneo de la grilla.
 - Disciplina display: `font-display` no aparece en párrafos, tablas ni forms. Si todo es display, nada es display.
 - Body mínimo 14px; en al lado del jugador el body puede ser 16px (`text-base`) en flujos de lectura (detalle de complejo, confirmación).
 - Nada de monospace en UI.
+
+### 3.1 Campos de entrada — piso de 16px en mobile (regla dura)
+
+La escala de arriba —incluido "Body mínimo 14px"— describe **texto de lectura**: párrafos, celdas, labels, helpers, badges. **No aplica a controles donde el usuario tipea.**
+
+Todo `input`, `textarea`, `select`, `[contenteditable]`, y el input interno de `Combobox` / `PhoneInput`, renderiza **≥16px hasta el breakpoint `md` (768px)**. Receta canónica: **`text-base md:text-sm`**. Prohibido `text-sm`, `text-xs`, `text-[15px]` o menor en un campo sin cascada `md:` que lo suba.
+
+**Motivo:** iOS WebKit —el motor de *todos* los navegadores del iPhone, Chrome iOS incluido— hace zoom automático al enfocar un campo con font-size computado < 16px. Ese zoom achica el visual viewport y arrastra scroll horizontal y vertical. **`maximumScale` en el viewport no lo previene** (y bajarlo a 1 rompería WCAG 1.4.4).
+
+**Escape hatch:** `.field-lg` (18px, declarada en `globals.css`) para campos deliberadamente más grandes en mobile. **No existe escape hatch hacia abajo.**
+
+**Red de seguridad:** una regla sin `@layer` en `globals.css` fuerza el piso aunque alguien olvide la clase — vive fuera de capa a propósito, porque CSS sin capa le gana a las utilities de Tailwind v4 sin importar la especificidad. **No es sustituto de escribir la clase:** un campo cuyo tamaño real difiere del que declara su clase es una bomba de tiempo visual, y el guard rail falla igual.
+
+**Corolario de altura:** la cascada `h-11 md:h-10` de §10 es independiente y sigue vigente. Un campo cumple mobile cuando cumple **las dos**.
 
 ---
 

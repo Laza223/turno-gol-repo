@@ -1,24 +1,16 @@
-import { ImageResponse } from 'next/og'
+import { NextResponse } from 'next/server'
+import fs from 'fs'
+import path from 'path'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function GET() {
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          background: '#059669',
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 102,
-        }}
-      >
-        <span style={{ color: "white", fontWeight: 900, fontSize: "60%", fontStyle: "italic" }}>TG</span>
-      </div>
-    ),
-    { width: 512, height: 512 },
-  )
+  const filePath = path.join(process.cwd(), 'public/icon-512.png')
+  const fileBuffer = fs.readFileSync(filePath)
+  return new NextResponse(fileBuffer, {
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  })
 }

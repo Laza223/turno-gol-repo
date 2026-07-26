@@ -16,6 +16,7 @@ import {
 import {
   InsufficientStockError,
   ProductNotFoundError,
+  StockNotEditableFromCatalogError,
   StockNotTrackedError,
 } from '@/modules/canteen/canteen.errors'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
@@ -47,6 +48,9 @@ function revalidateCaja(): void {
 function mapStockError(err: unknown): string | null {
   if (err instanceof ProductNotFoundError) return 'Ese producto ya no existe.'
   if (err instanceof StockNotTrackedError) return 'Este producto no controla stock.'
+  if (err instanceof StockNotEditableFromCatalogError) {
+    return 'El stock se ajusta desde Reposición o Merma, no desde el catálogo.'
+  }
   if (err instanceof InsufficientStockError) {
     return err.available <= 0
       ? `No queda stock de ${err.productName}.`

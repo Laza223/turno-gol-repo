@@ -14,14 +14,18 @@ import type {
   StockMovementKind,
 } from './canteen.types'
 
-type LockedProduct = {
+export type LockedProduct = {
   id: string
   name: string
   stock: number | null
 }
 
-/** Lock de UNA fila de producto (los flujos de este service son mono-producto). */
-async function lockProduct(
+/**
+ * Lock de UNA fila de producto (los flujos de este service son mono-producto).
+ * Exportado: canteen.service.ts lo reusa en updateProduct para comparar el
+ * stock VIGENTE contra el patch antes de decidir si el catálogo puede tocarlo.
+ */
+export async function lockProduct(
   tenantId: string,
   productId: string,
   tx: DbTx,

@@ -69,6 +69,14 @@ export function ProductFormDialog({
     setError(null)
   }
 
+  // Un producto en EDICIÓN que YA controla stock: el número real vive en el
+  // ledger (Reposición/Merma/Ajuste); el form de catálogo no puede pisarlo
+  // con un snapshot stale del diálogo — eso perdía ventas concurrentes
+  // (RI #4 D4). Se calcula sobre `product` (estable mientras el diálogo está
+  // abierto para este `key`), no sobre el toggle en vivo.
+  const originallyControlled = product ? product.stock != null : false
+  const stockLockedFromCatalog = originallyControlled && trackStock
+
   function handleClose(next: boolean) {
     if (isPending) return
     if (!next) {
@@ -101,23 +109,49 @@ export function ProductFormDialog({
       cost = Math.round(costNum * 100)
     }
 
-    let stockValue: number | null = null
     let minStockValue: number | null = null
-    if (trackStock) {
+    if (trackStock && minStock.trim() !== '') {
+      const minStockNum = Number(minStock)
+      if (!Number.isInteger(minStockNum) || minStockNum < 0) {
+        setError('Stock mínimo inválido.')
+        return
+      }
+      minStockValue = minStockNum
+    }
+
+    // `stock` en el patch: solo va si hay un cambio real de modo (o, en
+    // alta, el valor inicial). Un producto que YA controla stock y sigue
+    // controlándolo NO manda `stock` — el input está deshabilitado y el
+    // número se ajusta desde Reposición/Merma/Ajuste (ver
+    // stockLockedFromCatalog más arriba).
+    let stockValue: number | null | undefined
+    if (!product) {
+      // Alta: sin cambios respecto al comportamiento previo.
+      stockValue = null
+      if (trackStock) {
+        const stockNum = Number(stock)
+        if (stock.trim() === '' || !Number.isInteger(stockNum) || stockNum < 0) {
+          setError('Ingresá el stock inicial (entero, 0 o más).')
+          return
+        }
+        stockValue = stockNum
+      }
+    } else if (stockLockedFromCatalog) {
+      stockValue = undefined
+    } else if (trackStock) {
+      // Estaba sin control y se activa ahora: manda el stock inicial.
       const stockNum = Number(stock)
       if (stock.trim() === '' || !Number.isInteger(stockNum) || stockNum < 0) {
         setError('Ingresá el stock inicial (entero, 0 o más).')
         return
       }
       stockValue = stockNum
-      if (minStock.trim() !== '') {
-        const minStockNum = Number(minStock)
-        if (!Number.isInteger(minStockNum) || minStockNum < 0) {
-          setError('Stock mínimo inválido.')
-          return
-        }
-        minStockValue = minStockNum
-      }
+    } else if (originallyControlled) {
+      // Se desactiva el control.
+      stockValue = null
+    } else {
+      // No controlaba y sigue sin controlar: sin cambios.
+      stockValue = undefined
     }
 
     startTransition(async () => {
@@ -220,7 +254,7 @@ export function ProductFormDialog({
           {trackStock && (
             <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="space-y-1">
-                <Label htmlFor="pf-stock">Stock inicial</Label>
+                <Label htmlFor="pf-stock">{stockLockedFromCatalog ? 'Stock actual' : 'Stock inicial'}</Label>
                 <Input
                   id="pf-stock"
                   type="number"
@@ -229,8 +263,13 @@ export function ProductFormDialog({
                   inputMode="numeric"
                   value={stock}
                   onChange={(e) => setStock(e.target.value)}
-                  disabled={isPending}
+                  disabled={isPending || stockLockedFromCatalog}
                 />
+                {stockLockedFromCatalog && (
+                  <p className="text-xs text-muted-foreground">
+                    Se ajusta desde Reposición o Merma, no desde acá.
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="pf-minstock">Stock mínimo (alerta)</Label>

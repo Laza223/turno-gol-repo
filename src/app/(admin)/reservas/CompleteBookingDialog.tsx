@@ -306,7 +306,7 @@ export default function CompleteBookingDialog({
             <button
               type="button"
               onClick={addChargeLine}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline md:min-h-0"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               Agregar otro cobro (pago dividido)

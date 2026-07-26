@@ -8,7 +8,10 @@ import { Logo } from '@/components/ui/logo'
  */
 export default function BusinessHeader() {
   return (
-    <header className="fixed top-0 z-50 w-full px-6 pt-[18px]">
+    // pt combina el respiro visual con el safe-area del notch: era el único
+    // header fixed sin compensarlo (los dos de admin sí lo hacen), y se nota
+    // sobre todo con la app instalada, donde no hay barra de navegador arriba.
+    <header className="fixed top-0 z-50 w-full px-6 pt-[calc(18px+env(safe-area-inset-top))]">
       <div className="mx-auto max-w-[1240px]">
         <div
           className="flex items-center justify-between gap-6"

@@ -246,7 +246,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
             size="sm"
             onClick={handleDismiss}
             disabled={dismissed}
-            className="text-xs"
+            className="h-11 md:h-9 text-xs"
           >
             {dismissed ? 'Descartado ✓' : 'Descartar'}
           </Button>

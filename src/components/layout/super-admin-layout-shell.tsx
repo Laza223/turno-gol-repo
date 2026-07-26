@@ -130,7 +130,7 @@ export function SuperAdminLayoutShell({
   }
 
   return (
-    <div className="min-h-screen shell-bg">
+    <div className="min-h-dvh shell-bg">
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
@@ -203,7 +203,7 @@ export function SuperAdminLayoutShell({
         <div className="pt-[calc(4rem+env(safe-area-inset-top))]">
           <main
             id="main-content"
-            className="content-area-gradient mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100vh-4rem)]"
+            className="content-area-gradient mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100dvh-4rem)]"
           >
             {children}
           </main>

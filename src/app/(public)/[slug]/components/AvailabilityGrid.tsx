@@ -254,7 +254,11 @@ export default function AvailabilityGrid({ tenant }: Props) {
       aria-label="Grilla de disponibilidad"
     >
       {/* Date navigation */}
-      <div className="flex items-center justify-between gap-2">
+      {/* flex-wrap: a 360px el título + los dos botones + el selector de fecha
+          sumaban más que el ancho del viewport y empujaban la página al scroll
+          horizontal. Envolver es preferible a achicar el selector, que ya está
+          en el mínimo para que quepa la fecha larga. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Disponibilidad</h2>
         <div className="flex items-center gap-2">
           <button
@@ -372,9 +376,11 @@ export default function AvailabilityGrid({ tenant }: Props) {
         </p>
       )}
 
-      {/* Grid */}
+      {/* Grid — snap-x: el desborde ya estaba contenido por overflow-x-auto (el
+          body nunca scrolleó), pero con 4+ canchas el gesto lateral no se sentía
+          intencional y quedaban columnas a medias. El snap las alinea. */}
       {!loading && availability && !noCourts && date && timeRows.length > 0 && (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overscroll-x-contain snap-x snap-proximity">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
@@ -388,7 +394,9 @@ export default function AvailabilityGrid({ tenant }: Props) {
                   <th
                     key={court.id}
                     scope="col"
-                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-center py-2 px-2 min-w-[110px]"
+                    // 88px en mobile para que entren 3 canchas a 360px sin
+                    // scroll; 110px de sm para arriba mantiene el aire original.
+                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-center py-2 px-2 min-w-[88px] snap-start sm:min-w-[110px]"
                   >
                     {court.name}
                   </th>

@@ -126,14 +126,14 @@ export default async function CajaPage(props: {
             >
               <Link
                 href={`/caja?date=${addDays(date, -1)}`}
-                className="border-r border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                className="inline-flex min-h-11 items-center border-r border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent md:min-h-9"
               >
                 ← Anterior
               </Link>
               <Link
                 href="/caja"
                 aria-current={isToday ? 'date' : undefined}
-                className={`border-r border-border px-3 py-2 text-sm transition-colors hover:bg-accent ${
+                className={`inline-flex min-h-11 items-center border-r border-border px-3 py-2 text-sm transition-colors hover:bg-accent md:min-h-9 ${
                   isToday
                     ? 'font-semibold text-emerald-700 dark:text-emerald-400'
                     : 'text-foreground'
@@ -143,7 +143,7 @@ export default async function CajaPage(props: {
               </Link>
               <Link
                 href={`/caja?date=${addDays(date, 1)}`}
-                className="px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                className="inline-flex min-h-11 items-center px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent md:min-h-9"
               >
                 Siguiente →
               </Link>

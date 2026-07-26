@@ -208,16 +208,17 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
                     type="number"
                     min="1"
                     step="1"
+                    inputMode="decimal"
                     placeholder="Monto"
                     value={line.amountPesos}
                     onChange={(e) => updateCharge(line.id, 'amountPesos', e.target.value)}
-                    className="w-full h-10 rounded-lg border border-input bg-background pl-7 pr-3 text-sm font-medium tabular-nums focus:outline-hidden focus:ring-2 focus:ring-ring"
+                    className="w-full h-10 rounded-lg border border-input bg-background pl-7 pr-3 text-base md:text-sm font-medium tabular-nums focus:outline-hidden focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <select
                   value={line.method}
                   onChange={(e) => updateCharge(line.id, 'method', e.target.value as Method)}
-                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                 >
                   {METHOD_OPTIONS.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -242,7 +243,7 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
               <button
                 type="button"
                 onClick={addChargeLine}
-                className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1"
+                className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1 md:min-h-0"
               >
                 <Plus className="h-3.5 w-3.5" /> Agregar pago dividido
               </button>

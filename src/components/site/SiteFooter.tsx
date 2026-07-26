@@ -9,12 +9,16 @@ export default function SiteFooter() {
           <Logo variant="horizontal" textClassName="text-foreground text-sm" iconClassName="h-7 w-7" />
           <span className="text-xs text-muted-foreground">© {new Date().getFullYear()} · Argentina</span>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-          <Link href="/explorar" className="transition-colors hover:text-foreground">Explorar</Link>
-          <Link href="/ingresar" className="transition-colors hover:text-foreground">Ingresar</Link>
-          <a href="mailto:hola@turnogol.app" className="transition-colors hover:text-foreground">Contacto</a>
-          <Link href="/privacidad" className="transition-colors hover:text-foreground">Privacidad</Link>
-          <Link href="/terminos" className="transition-colors hover:text-foreground">Términos</Link>
+        {/* Los links del footer son navegación real, no texto corrido: les
+            aplica el mínimo de 44px de WCAG 2.5.5 (medían 16px de alto y eran
+            difíciles de acertar con el pulgar). El `gap-y-0` en mobile compensa
+            la altura que suma cada link para que el bloque no crezca. */}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-0 text-xs text-muted-foreground sm:gap-y-2">
+          <Link href="/explorar" className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0">Explorar</Link>
+          <Link href="/ingresar" className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0">Ingresar</Link>
+          <a href="mailto:hola@turnogol.app" className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0">Contacto</a>
+          <Link href="/privacidad" className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0">Privacidad</Link>
+          <Link href="/terminos" className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0">Términos</Link>
         </div>
       </div>
     </footer>

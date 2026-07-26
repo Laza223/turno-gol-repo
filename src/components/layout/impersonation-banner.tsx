@@ -31,7 +31,7 @@ export function ImpersonationBanner({
       <form action={action}>
         <button
           type="submit"
-          className="rounded-md bg-black/20 px-3 py-1 text-xs font-semibold ring-1 ring-inset ring-white/40 transition-colors hover:bg-black/30"
+          className="rounded-md bg-black/20 px-3 py-1 min-h-11 md:min-h-9 text-xs font-semibold ring-1 ring-inset ring-white/40 transition-colors hover:bg-black/30"
         >
           Salir de impersonación
         </button>

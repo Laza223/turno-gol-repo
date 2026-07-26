@@ -110,7 +110,7 @@ export default async function AnaliticasPage(props: {
               <input type="hidden" name="month" value={prev} />
               <button
                 type="submit"
-                className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                className="rounded-md border border-border px-3 py-1.5 min-h-11 md:min-h-9 text-sm text-muted-foreground hover:bg-accent"
                 aria-label="Mes anterior"
               >
                 ←
@@ -126,7 +126,7 @@ export default async function AnaliticasPage(props: {
               <button
                 type="submit"
                 disabled={next > currentMonthStr()}
-                className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-md border border-border px-3 py-1.5 min-h-11 md:min-h-9 text-sm text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Mes siguiente"
               >
                 →

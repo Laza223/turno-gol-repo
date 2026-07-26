@@ -87,7 +87,7 @@ function FormPane() {
       />
       <Link
         href="/"
-        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white lg:hidden"
+        className="absolute left-4 top-4 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white md:min-h-0 lg:hidden"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Volver

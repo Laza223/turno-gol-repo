@@ -57,8 +57,10 @@ export default function ExplorarToolbar({ total }: Props) {
     router.push(buildExplorarUrl(params, { sort: value === 'name' ? undefined : value, lat: undefined, lng: undefined }))
   }
 
+  // min-w-11: en mobile el label se oculta (`hidden sm:inline`) y quedaba solo
+  // el ícono, así que el botón medía 40px de ancho — alto OK, ancho corto.
   const toggleBase =
-    'inline-flex h-11 md:h-9 items-center gap-1.5 px-3 text-sm font-medium transition-colors'
+    'inline-flex h-11 min-w-11 justify-center md:h-9 md:min-w-0 items-center gap-1.5 px-3 text-sm font-medium transition-colors'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">

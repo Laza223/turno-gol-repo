@@ -219,7 +219,7 @@ export default function DatePicker({
                 onChange('')
                 setOpen(false)
               }}
-              className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline px-1 py-0.5"
+              className="min-h-11 md:min-h-8 px-3 text-sm md:text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
             >
               Borrar
             </button>
@@ -231,7 +231,7 @@ export default function DatePicker({
                 onChange(formatted)
                 setOpen(false)
               }}
-              className="text-xs font-semibold text-primary hover:underline px-1 py-0.5"
+              className="min-h-11 md:min-h-8 px-3 text-sm md:text-xs font-semibold text-primary hover:underline"
             >
               Hoy
             </button>

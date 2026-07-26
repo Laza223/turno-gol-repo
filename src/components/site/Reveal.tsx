@@ -28,12 +28,18 @@ export default function Reveal({ children, className, delay = 0, style }: Props)
       setShown(true)
       return
     }
+
+    function reveal() {
+      setShown(true)
+      io.disconnect()
+      window.removeEventListener('scroll', onScrollPast, { capture: true })
+    }
+
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            setShown(true)
-            io.disconnect()
+            reveal()
             break
           }
         }
@@ -41,7 +47,33 @@ export default function Reveal({ children, className, delay = 0, style }: Props)
       { threshold: 0.12, rootMargin: '0px 0px -8% 0px' },
     )
     io.observe(el)
-    return () => io.disconnect()
+
+    // Red de seguridad: un flick de mobile puede mover el scroll de "el
+    // elemento está debajo del viewport" a "ya quedó arriba del viewport" en
+    // un único frame de composición, sin que el IntersectionObserver llegue a
+    // registrar ninguna muestra con overlap ≥ threshold en el medio — la
+    // sección queda opacity:0 PARA SIEMPRE (bug real: reportado en producción,
+    // landing casi vacía en iPhone; en desktop la rueda del mouse genera
+    // muchos más eventos de scroll de menor magnitud y nunca salta el hueco).
+    // Si ya pasó de largo sin haber sido revelada, no tiene sentido seguir
+    // ocultándola: se muestra igual apenas se detecta el salto.
+    //
+    // `capture: true` (no solo `passive`): el evento 'scroll' no burbujea, así
+    // que un listener en `window` sin capturing solo ve el scroll del propio
+    // documento. Si el layout cambia el día de mañana y algún ancestro termina
+    // scrolleando su propio contenedor (`overflow-y: auto`), la fase de
+    // captura sigue viéndolo igual — se propaga de la raíz hacia el target
+    // pase lo que pase con `bubbles`.
+    function onScrollPast() {
+      if (!el) return
+      if (el.getBoundingClientRect().bottom <= 0) reveal()
+    }
+    window.addEventListener('scroll', onScrollPast, { passive: true, capture: true })
+
+    return () => {
+      io.disconnect()
+      window.removeEventListener('scroll', onScrollPast, { capture: true })
+    }
   }, [])
 
   return (

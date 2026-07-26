@@ -5,6 +5,7 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { tournamentSlugBase } from './tournament-slug'
 import { countTournamentBookings } from './tournament-slots.service'
 import {
+  TeamHasPaymentsError,
   TournamentHasBookingsError,
   TournamentHasFixtureError,
   TournamentNotDeletableError,
@@ -243,6 +244,34 @@ export async function deleteTournament(
   `)) as unknown as Array<{ count: number }>
   const matchCount = fixture[0]?.count ?? 0
   if (matchCount > 0) throw new TournamentHasFixtureError(matchCount)
+
+  // Migr. 066: plata cobrada a cualquiera de sus equipos. Es lo único que NO
+  // se puede deshacer borrando — el cierre diario ya la contó.
+  const charged = (await tx.execute(sql`
+    SELECT count(*)::int AS "count" FROM cash_flows cf
+    JOIN tournament_teams t ON t.id = cf.tournament_team_id
+    WHERE cf.tenant_id = ${tenantId} AND t.tournament_id = ${tournamentId}
+  `)) as unknown as Array<{ count: number }>
+  const paymentCount = charged[0]?.count ?? 0
+  if (paymentCount > 0) throw new TeamHasPaymentsError(paymentCount)
+
+  // Los equipos y sus planteles SÍ se borran con el torneo: son parte de él,
+  // igual que removeTeam borra su propio plantel. Hijos antes que padres (no
+  // hay ON DELETE CASCADE en el repo). Sin esto, borrar un borrador con
+  // equipos cargados —el estado normal antes de tomar horarios— salía como un
+  // 23503 crudo de tournament_teams.tournament_id.
+  await tx.execute(sql`
+    DELETE FROM tournament_team_players
+    WHERE tenant_id = ${tenantId}
+      AND team_id IN (
+        SELECT id FROM tournament_teams
+        WHERE tenant_id = ${tenantId} AND tournament_id = ${tournamentId}
+      )
+  `)
+  await tx.execute(sql`
+    DELETE FROM tournament_teams
+    WHERE tenant_id = ${tenantId} AND tournament_id = ${tournamentId}
+  `)
 
   await tx
     .delete(tournaments)

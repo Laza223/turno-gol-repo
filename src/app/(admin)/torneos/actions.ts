@@ -14,10 +14,14 @@ import {
 import {
   addTeam,
   addTeamPlayer,
+  getTeam,
   removeTeam,
   removeTeamPlayer,
   updateTeam,
 } from '@/modules/tournaments/tournament-team.service'
+import { registerInscriptionPayment } from '@/modules/tournaments/tournament-payment.service'
+import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
+import { formatArs } from '@/lib/format'
 import {
   releaseTournamentSlots,
   reserveTournamentSlots,
@@ -46,6 +50,7 @@ import {
   deleteMatchEventSchema,
   generateFixtureSchema,
   markWalkoverSchema,
+  registerInscriptionPaymentSchema,
   rescheduleMatchSchema,
   saveMatchResultSchema,
   seedPlayoffsSchema,
@@ -67,6 +72,7 @@ import {
   EventTeamNotInMatchError,
   GoalsExceedScoreError,
   GroupStageNotFinishedError,
+  InscriptionOverpaidError,
   KnockoutTieUnresolvedError,
   MatchEventNotFoundError,
   MatchNotPlayableError,
@@ -80,6 +86,8 @@ import {
   StandingsTieUnresolvedError,
   TeamHasEventsError,
   TeamHasFixtureError,
+  TeamHasNoFeeError,
+  TeamHasPaymentsError,
   TeamPlayerHasEventsError,
   TournamentHasFixtureError,
   WalkoverNeedsWinnerError,
@@ -116,6 +124,8 @@ function revalidateTorneos(id?: string): void {
   if (id) {
     revalidatePath(`/torneos/${id}`)
     revalidatePath(`/torneos/${id}/fixture`)
+    revalidatePath(`/torneos/${id}/posiciones`)
+    revalidatePath(`/torneos/${id}/inscripciones`)
   }
   // Las horas del torneo son reservas: la grilla las muestra.
   revalidatePath('/grilla')
@@ -210,6 +220,18 @@ function mapTournamentError(err: unknown): string | null {
   }
   if (err instanceof TeamHasEventsError) {
     return `Ese equipo tiene ${err.count} gol(es) o tarjeta(s) cargados. Borralos del acta antes de sacarlo del torneo.`
+  }
+  // ── Inscripciones (migr. 066) ──
+  if (err instanceof TeamHasPaymentsError) {
+    return `Ese equipo ya tiene ${err.count} cobro(s) registrados en Caja. No se puede borrar: marcalo como "se bajó".`
+  }
+  if (err instanceof TeamHasNoFeeError) {
+    return `${err.teamName} no tiene arancel cargado: no hay nada que cobrar.`
+  }
+  if (err instanceof InscriptionOverpaidError) {
+    return err.pending === 0
+      ? `${err.teamName} ya pagó la inscripción completa.`
+      : `El cobro supera lo que ${err.teamName} debe (${formatArs(err.pending)}).`
   }
   if (err instanceof TeamPlayerHasEventsError) {
     return `Ese jugador tiene ${err.count} gol(es) o tarjeta(s) cargados. Borralos del acta antes de sacarlo del plantel.`
@@ -870,5 +892,56 @@ export async function seedPlayoffsAction(input: unknown): Promise<TournamentActi
   }
 
   revalidateTorneos(parsed.data.tournamentId)
+  return { success: true }
+}
+
+// ── Inscripciones (migr. 066) ───────────────────────────────────────
+// Cobrar es operación de mostrador, no configuración: el encargado cobra la
+// inscripción el sábado a la mañana igual que cobra un turno.
+
+export async function registerInscriptionPaymentAction(
+  input: unknown
+): Promise<TournamentActionResult> {
+  const parsed = registerInscriptionPaymentSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  // El equipo se relee adentro de la tx para saber a qué torneo revalidar: el
+  // input solo trae el teamId.
+  let tournamentId: string
+  try {
+    tournamentId = await withTenantContext(tenant.id, async (tx) => {
+      const team = await getTeam(tenant.id, parsed.data.teamId, tx)
+      await registerInscriptionPayment(tenant.id, user.staffUserId, parsed.data, tx)
+      return team.tournamentId
+    })
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    // DayAlreadyClosedError viene de createCashFlow y se mapea ACÁ afuera para
+    // que la transacción rollbackee en vez de commitear lo escrito antes.
+    if (err instanceof DayAlreadyClosedError) {
+      return {
+        success: false,
+        error: 'La caja de hoy ya fue cerrada. Registrá el cobro mañana o como ajuste en Caja.',
+      }
+    }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  // El cobro es un movimiento de Caja: el listado del día lo muestra.
+  revalidatePath('/caja')
   return { success: true }
 }

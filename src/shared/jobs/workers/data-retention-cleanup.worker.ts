@@ -354,12 +354,17 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM push_subscriptions WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM player_favorites WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM feature_flags WHERE tenant_id = ${tenantId}`)
-    // Torneos (migr. 062 + 064 + 065). Orden obligado por las FKs: el acta
-    // (065) es hija de partidos, equipos Y plantel, así que va PRIMERA;
+    // Torneos (migr. 062 + 064 + 065 + 066). Orden obligado por las FKs: el
+    // acta (065) es hija de partidos, equipos Y plantel, así que va PRIMERA;
     // después hay que cortar los punteros que los partidos se hacen entre sí
     // (avance de llaves); después partidos → fases → plantel → equipos.
     // `tournaments` va DESPUÉS de bookings porque bookings.tournament_id lo
     // referencia (FK sin CASCADE, a propósito).
+    //
+    // Y `tournament_teams` va después de cash_flows (más arriba): la 066 le
+    // agregó cash_flows.tournament_team_id para los cobros de inscripción.
+    // El setup de tests/helpers/retention.ts siembra un cobro justamente para
+    // que invertir ese orden salga rojo y no en verde por tabla vacía.
     await tx.execute(drizzleSql`DELETE FROM tournament_match_events WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`
       UPDATE tournament_matches

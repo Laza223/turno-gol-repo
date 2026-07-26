@@ -207,16 +207,25 @@ export async function insertPayment(
 
 export async function insertCashFlow(
   sql: Sql,
-  opts: { tenantId: string; registeredBy: string; bookingId?: string | null },
+  opts: {
+    tenantId: string
+    registeredBy: string
+    bookingId?: string | null
+    /** Migr. 066: con equipo la categoría pasa a 'tournament' — el CHECK
+     * chk_cashflow_tournament_team las ata en las dos direcciones. */
+    tournamentTeamId?: string | null
+  },
 ): Promise<string> {
+  const teamId = opts.tournamentTeamId ?? null
   const rows = await sql<{ id: string }[]>`
     INSERT INTO cash_flows (
       tenant_id, type, category, amount, method, description,
-      booking_id, registered_by, occurred_at
+      booking_id, tournament_team_id, registered_by, occurred_at
     )
     VALUES (
-      ${opts.tenantId}, 'income', 'booking', ${500000}, 'cash',
-      ${'Cobro turno'}, ${opts.bookingId ?? null}, ${opts.registeredBy}, NOW()
+      ${opts.tenantId}, 'income', ${teamId ? 'tournament' : 'booking'}, ${500000}, 'cash',
+      ${teamId ? 'Inscripción' : 'Cobro turno'},
+      ${opts.bookingId ?? null}, ${teamId}, ${opts.registeredBy}, NOW()
     )
     RETURNING id
   `

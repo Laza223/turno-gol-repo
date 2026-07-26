@@ -116,6 +116,8 @@ export const createTeamSchema = z.object({
   contactPlayerId: uuid.nullish(),
   contactName: boundedText(120).nullish(),
   contactPhone: boundedText(30).nullish(),
+  // Sin valor, addTeam le pone el arancel vigente del torneo (migr. 066).
+  inscriptionFee: moneyCents.optional(),
   notes: boundedText(500).nullish(),
 })
 
@@ -128,6 +130,7 @@ export const updateTeamSchema = z.object({
   status: z.enum(['registered', 'confirmed', 'withdrawn', 'disqualified']).optional(),
   groupLabel: z.string().trim().min(1).max(10).nullish(),
   seed: z.number().int().positive().nullish(),
+  inscriptionFee: moneyCents.optional(),
   notes: boundedText(500).nullish(),
 })
 
@@ -303,3 +306,18 @@ export const addMatchEventSchema = z
 export const deleteMatchEventSchema = z.object({ eventId: uuid })
 
 export const seedPlayoffsSchema = z.object({ tournamentId: uuid })
+
+// ─── Inscripciones (migr. 066) ──────────────────────────────────────
+
+export const registerInscriptionPaymentSchema = z.object({
+  teamId: uuid,
+  // moneyCents acepta 0; un cobro de $0 no es un cobro.
+  amount: moneyCents.refine((v) => v > 0, 'El monto tiene que ser mayor a cero.'),
+  method: z.enum(['cash', 'transfer', 'mercadopago', 'other'], {
+    message: 'Método de pago inválido.',
+  }),
+  note: boundedText(300).nullable().optional(),
+  // Cruce #10: sin la clave en el schema, z.object() la strippea y el
+  // ON CONFLICT del service nunca corre → doble-tap = cobro duplicado.
+  clientIdempotencyKey: uuid.optional(),
+})

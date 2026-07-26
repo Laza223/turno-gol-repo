@@ -74,6 +74,8 @@ export type TournamentTeamRow = {
   status: TournamentTeamStatus
   groupLabel: string | null
   seed: number | null
+  /** Migr. 066. Centavos ARS. Snapshot del arancel al inscribirse. */
+  inscriptionFee: number
   notes: string | null
   createdAt: Date
   updatedAt: Date
@@ -121,6 +123,8 @@ export type CreateTeamInput = {
   contactPlayerId?: string | null
   contactName?: string | null
   contactPhone?: string | null
+  /** Centavos ARS. Sin valor, hereda el del torneo (migr. 066). */
+  inscriptionFee?: number
   notes?: string | null
 }
 
@@ -330,4 +334,40 @@ export type TopScorersResult = {
   rows: ScorerRow[]
   /** Goles de los marcadores que todavía no tienen autor cargado. */
   unattributedGoals: number
+}
+
+// ─── Inscripciones (migr. 066) ──────────────────────────────────────
+
+/** Un cobro de inscripción, que por dentro es una fila de cash_flows. */
+export type InscriptionPaymentRow = {
+  id: string
+  teamId: string
+  /** Centavos ARS. */
+  amount: number
+  method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+  description: string
+  occurredAt: Date
+}
+
+/** Estado de cobro de un equipo: arancel, pagado y saldo. */
+export type TeamInscriptionStatus = {
+  teamId: string
+  teamName: string
+  teamStatus: TournamentTeamStatus
+  /** Snapshot del arancel de ESTE equipo, no el del torneo. */
+  fee: number
+  paid: number
+  /** fee − paid, nunca negativo. */
+  pending: number
+  payments: number
+  lastPaidAt: Date | null
+}
+
+export type RegisterInscriptionPaymentInput = {
+  teamId: string
+  /** Centavos ARS. */
+  amount: number
+  method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+  note?: string | null
+  clientIdempotencyKey?: string
 }

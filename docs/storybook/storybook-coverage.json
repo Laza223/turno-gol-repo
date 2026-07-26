@@ -1,6 +1,6 @@
 {
-  "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO",
-  "total": 317,
+  "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO + fase 4 de Torneos (portal público y cobro de inscripción)",
+  "total": 323,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -6963,6 +6963,141 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "Server Component de página: resuelve auth, tenant y feature flag contra la DB."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/inscripciones/InscripcionesPanel.tsx",
+      "name": "InscripcionesPanel",
+      "domain": "torneos",
+      "rendering": "client",
+      "role": "form",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "con deuda parcial",
+        "equipo ya pagado (cobro deshabilitado)",
+        "formulario precargado con el saldo",
+        "error del servidor (caja cerrada)",
+        "torneo sin arancel",
+        "vacío"
+      ],
+      "proposedStoryTitle": "Admin/Torneos/InscripcionesPanel",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": true,
+      "providers": [],
+      "isolationNotes": "La Server Action entra por prop (registerAction); router.refresh() lo cubre el decorator global de Next."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/PortalPanel.tsx",
+      "name": "PortalPanel",
+      "domain": "torneos",
+      "rendering": "client",
+      "role": "card",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "sin publicar",
+        "publicado con URL",
+        "público pero en borrador",
+        "sin permiso (encargado)"
+      ],
+      "proposedStoryTitle": "Admin/Torneos/PortalPanel",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": true,
+      "providers": [],
+      "isolationNotes": "updateTournamentAction entra por prop (setVisibilityAction)."
+    },
+    {
+      "path": "src/app/(public)/[slug]/torneos/components/PublicPosiciones.tsx",
+      "name": "PublicPosiciones",
+      "domain": "public",
+      "rendering": "server",
+      "role": "data-table",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "liga",
+        "zonas con clasificados",
+        "empate sin resolver (NO se anuncia)",
+        "sin tabla (no se dibuja)"
+      ],
+      "proposedStoryTitle": "Public/Torneos/PublicPosiciones",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Server Component puro sin await: recibe StandingsGroup[] por props y renderiza en Storybook igual que en el server."
+    },
+    {
+      "path": "src/app/(public)/[slug]/torneos/components/PublicFixture.tsx",
+      "name": "PublicFixture",
+      "domain": "public",
+      "rendering": "server",
+      "role": "list",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "agrupado por fecha",
+        "estados que no se deducen del marcador",
+        "walkover",
+        "llave sin definir",
+        "sin fixture (no se dibuja)"
+      ],
+      "proposedStoryTitle": "Public/Torneos/PublicFixture",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Server Component puro: TournamentMatchView[] + stages por props."
+    },
+    {
+      "path": "src/app/(public)/[slug]/torneos/components/PublicGoleadores.tsx",
+      "name": "PublicGoleadores",
+      "domain": "public",
+      "rendering": "server",
+      "role": "list",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "con goleadores",
+        "goles sin autor (NO se avisan)",
+        "sin goleadores (no se dibuja)"
+      ],
+      "proposedStoryTitle": "Public/Torneos/PublicGoleadores",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Server Component puro: TopScorersResult por props."
+    },
+    {
+      "path": "src/app/(public)/[slug]/torneos/components/TorneoPublicView.tsx",
+      "name": "TorneoPublicView",
+      "domain": "public",
+      "rendering": "server",
+      "role": "layout",
+      "isolationDifficulty": "easy",
+      "classification": "COVERED_BY_PARENT_STORY",
+      "exclusionReason": "Solo compone PublicPosiciones + PublicFixture + PublicGoleadores, que tienen story propia. No agrega estado ni lógica más allá de derivar advancePerGroup del stage de zonas.",
+      "relevantStates": [],
+      "proposedStoryTitle": "",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": ""
     }
   ]
 }

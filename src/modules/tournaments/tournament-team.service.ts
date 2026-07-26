@@ -16,6 +16,7 @@ import {
   countEventsForTeam,
   countEventsForTeamPlayer,
 } from './tournament-result.service'
+import { assertTeamHasNoPayments } from './tournament-payment.service'
 import type {
   CreateTeamInput,
   CreateTeamPlayerInput,
@@ -41,6 +42,7 @@ function rowToTeam(r: typeof tournamentTeams.$inferSelect): TournamentTeamRow {
     status: r.status,
     groupLabel: r.groupLabel ?? null,
     seed: r.seed ?? null,
+    inscriptionFee: r.inscriptionFee,
     notes: r.notes ?? null,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
@@ -132,6 +134,9 @@ export async function addTeam(
         contactPlayerId: input.contactPlayerId ?? null,
         contactName: input.contactName ?? null,
         contactPhone: input.contactPhone ?? null,
+        // Migr. 066: snapshot del arancel vigente al inscribirse. Un cambio
+        // posterior en el torneo no mueve lo que este equipo debe.
+        inscriptionFee: input.inscriptionFee ?? tournament.inscriptionFee,
         notes: input.notes ?? null,
       })
       .returning()
@@ -173,6 +178,7 @@ export async function updateTeam(
   if (input.status !== undefined) patch.status = input.status
   if (input.groupLabel !== undefined) patch.groupLabel = input.groupLabel
   if (input.seed !== undefined) patch.seed = input.seed
+  if (input.inscriptionFee !== undefined) patch.inscriptionFee = input.inscriptionFee
   if (input.notes !== undefined) patch.notes = input.notes
 
   if (Object.keys(patch).length === 0) return getTeam(tenantId, input.id, tx)
@@ -229,6 +235,10 @@ export async function removeTeam(
 
   const events = await countEventsForTeam(tenantId, teamId, tx)
   if (events > 0) throw new TeamHasEventsError(events)
+
+  // Migr. 066: y tampoco si ya pagó. Borrarlo dejaría la caja de ese día
+  // descuadrada contra un cierre ya firmado.
+  await assertTeamHasNoPayments(tenantId, teamId, tx)
 
   // Hijos antes que el padre: no hay ON DELETE CASCADE (convención del repo).
   await tx

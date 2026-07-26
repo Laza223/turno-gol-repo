@@ -54,6 +54,16 @@ export const tournamentTeams = pgTable(
     groupLabel: text('group_label'),
     /** Siembra para el sorteo. */
     seed: integer('seed'),
+
+    /**
+     * Migr. 066. Centavos ARS. SNAPSHOT del arancel al inscribirse, no lectura
+     * en vivo de `tournaments.inscription_fee`: subir el arancel a mitad de la
+     * inscripción no puede poner en deuda a los que ya pagaron. Editable por
+     * equipo (el descuento al que trae a otros dos es la regla, no la
+     * excepción, en un torneo amateur).
+     */
+    inscriptionFee: integer('inscription_fee').notNull().default(0),
+
     notes: text('notes'),
 
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -75,6 +85,10 @@ export const tournamentTeams = pgTable(
     groupLabelNonEmpty: check(
       'chk_team_group_label',
       sql`${table.groupLabel} IS NULL OR length(trim(${table.groupLabel})) > 0`,
+    ),
+    inscriptionFeeNonNeg: check(
+      'chk_team_inscription_fee_nonneg',
+      sql`${table.inscriptionFee} >= 0`,
     ),
 
     // Case-insensitive vía la columna generada: "Los Pibes" y "los pibes" son

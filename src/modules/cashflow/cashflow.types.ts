@@ -12,6 +12,9 @@ export type CashFlowCategory =
   | 'utilities'
   | 'maintenance'
   | 'other_expense'
+  // Inscripción a un torneo (migr. 066). Solo como ingreso y SIEMPRE con
+  // tournamentTeamId: el CHECK de DB lo hace bidireccional.
+  | 'tournament'
 export type CashPaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
 
 export type CashFlowRow = {
@@ -23,6 +26,8 @@ export type CashFlowRow = {
   method: CashPaymentMethod
   description: string
   bookingId: string | null
+  /** Migr. 066. Equipo del cobro de inscripción; null en todo lo demás. */
+  tournamentTeamId: string | null
   registeredBy: string
   occurredAt: Date
   createdAt: Date
@@ -83,6 +88,12 @@ export type CreateCashFlowInput = {
   method: CashPaymentMethod
   description: string
   bookingId?: string
+  /**
+   * Migr. 066. Obligatorio con category 'tournament' y prohibido sin ella.
+   * NO lo expone la Server Action genérica de Caja: el único camino es
+   * registerInscriptionPayment, igual que bookingId con addBookingChargeAction.
+   */
+  tournamentTeamId?: string
   occurredAt?: Date
   /** UUID v4 generado por el cliente al abrir el formulario. Previene duplicados por doble-submit. */
   clientIdempotencyKey?: string

@@ -1,12 +1,16 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
+import { Trophy } from 'lucide-react'
 import {
   getPublicTenant,
   getPublicCourtCards,
   listTopPublicTenantSlugs,
 } from '@/modules/tenants/public.service'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
+import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
+import { STATUS_LABELS, formatDateRange } from '@/app/(admin)/torneos/torneos-lib'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import TenantHeader from './components/TenantHeader'
 import TenantGallery from './components/TenantGallery'
@@ -61,12 +65,15 @@ export default async function PublicComplexPage(props: Props) {
     )
   }
 
-  // Datos complementarios (rating, canchas, reseñas). Resilientes: si fallan, la
-  // página igual renderiza con la grilla y el header.
-  const [summary, courtCards, reviewsPage] = await Promise.all([
+  // Datos complementarios (rating, canchas, reseñas, torneos). Resilientes: si
+  // fallan, la página igual renderiza con la grilla y el header.
+  const [summary, courtCards, reviewsPage, tournaments] = await Promise.all([
     getAverageRating(tenant.id).catch(() => ({ average: 0, count: 0 })),
     getPublicCourtCards(tenant).catch(() => []),
     getReviewsByTenant(tenant.id, 10, 0).catch(() => ({ reviews: [], total: 0 })),
+    // Devuelve [] con el flag apagado, que es el caso de casi todos: la sección
+    // no aparece y el complejo no paga nada por una feature que no usa.
+    listPublicTournaments(tenant.id).catch(() => []),
   ])
 
   const galleryPhotos = Array.from(
@@ -102,6 +109,48 @@ export default async function PublicComplexPage(props: Props) {
                 <CourtCard key={court.id} court={court} />
               ))}
             </div>
+          </section>
+        )}
+
+        {tournaments.length > 0 && (
+          <section aria-label="Torneos" className="space-y-3.5">
+            <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
+              Torneos{' '}
+              <span className="font-sans text-sm font-normal text-muted-foreground">
+                ({tournaments.length})
+              </span>
+            </h2>
+            <ul className="grid gap-2.5 sm:grid-cols-2">
+              {tournaments.slice(0, 4).map((t) => (
+                <li key={t.slug}>
+                  <Link
+                    href={`/${tenant.slug}/torneos/${t.slug}`}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-accent/50"
+                  >
+                    <Trophy
+                      className="h-5 w-5 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {t.name}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {STATUS_LABELS[t.status]} · {formatDateRange(t.startsOn, t.endsOn)}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {tournaments.length > 4 && (
+              <Link
+                href={`/${tenant.slug}/torneos`}
+                className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Ver los {tournaments.length} torneos
+              </Link>
+            )}
           </section>
         )}
 

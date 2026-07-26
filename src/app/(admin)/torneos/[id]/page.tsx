@@ -12,11 +12,13 @@ import { listTeams } from '@/modules/tournaments/tournament-team.service'
 import { listTournamentSlots } from '@/modules/tournaments/tournament-slots.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
 import { listCourts } from '@/modules/courts/court.service'
+import { getStaffRole } from '@/modules/staff/staff.service'
 import {
   addTeamAction,
   releaseSlotsAction,
   removeTeamAction,
   reserveSlotsAction,
+  updateTournamentAction,
 } from '../actions'
 import {
   FORMAT_SHORT,
@@ -25,6 +27,7 @@ import {
   formatDateRange,
   statusBadgeClass,
 } from '../torneos-lib'
+import { PortalPanel } from './PortalPanel'
 import { SlotsPanel } from './SlotsPanel'
 import { TeamsPanel } from './TeamsPanel'
 import { TorneoTabs } from './TorneoTabs'
@@ -41,6 +44,9 @@ export default async function TorneoDetailPage(props: {
   if (!tenant) redirect('/login')
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
+
+  // El rol define si se puede publicar; el panel igual muestra el estado.
+  const role = await getStaffRole(tenant.id, user.staffUserId)
 
   // Todo en UNA transacción, en paralelo adentro.
   let data
@@ -109,6 +115,16 @@ export default async function TorneoDetailPage(props: {
         courtNames={courtNames}
         reserveAction={reserveSlotsAction}
         releaseAction={releaseSlotsAction}
+      />
+
+      <PortalPanel
+        tournamentId={tournament.id}
+        slug={tournament.slug}
+        tenantSlug={tenant.slug}
+        status={tournament.status}
+        isPublic={tournament.isPublic}
+        canPublish={role === 'admin'}
+        setVisibilityAction={updateTournamentAction}
       />
     </div>
   )

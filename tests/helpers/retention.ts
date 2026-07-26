@@ -146,6 +146,14 @@ export async function setupTenant(
     teamId: tournamentTeamId,
     teamPlayerId: tournamentTeamPlayerId,
   })
+  // Migr. 066: un cobro de inscripción, que es cash_flows → tournament_teams.
+  // Es lo que obliga al wipe a borrar cash_flows ANTES que los equipos; sin
+  // esta fila el orden nunca se ejercita y una inversión pasaría en verde.
+  await insertCashFlow(sql, {
+    tenantId: tenant.id,
+    registeredBy: staff.id,
+    tournamentTeamId,
+  })
 
   // Hybrid / operational tenant-scoped rows the wipe must also clear.
   // reviews.booking_id is a RESTRICT FK to bookings: the wipe deletes reviews
@@ -313,7 +321,8 @@ export const ZERO: ChildCounts = {
 export const FULL: ChildCounts = {
   bookings: 1,
   payments: 1,
-  cashFlows: 1,
+  // Dos: el cobro del turno y el de la inscripción del torneo (migr. 066).
+  cashFlows: 2,
   notifications: 1,
   auditLogs: 1,
   abonados: 1,

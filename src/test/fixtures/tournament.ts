@@ -5,6 +5,7 @@ import type {
   TournamentRow,
   TournamentSlotRow,
   TournamentStageRow,
+  TeamInscriptionStatus,
   TournamentTeamPlayerRow,
   TournamentTeamRow,
 } from '@/modules/tournaments/tournament.types'
@@ -107,6 +108,8 @@ export const tournamentTeam = (
   status: 'registered',
   groupLabel: null,
   seed: null,
+  // Migr. 066: snapshot del arancel del torneo default ($45.000).
+  inscriptionFee: 4_500_000,
   notes: null,
   createdAt: hoursFromNow(-500),
   updatedAt: hoursFromNow(-500),
@@ -380,5 +383,42 @@ export const suspensionRows = (): SuspensionRow[] => [
     suspendedMatchIds: [uid(2402), uid(2403)],
     reason: 'red_card',
     triggerEventId: uid(2503),
+  },
+]
+
+/**
+ * Estado de cobro de las inscripciones (migr. 066): uno pagado, uno a medias y
+ * uno que no pagó nada. Los tres casos que la fila tiene que saber mostrar.
+ */
+export const inscriptionRows = (): TeamInscriptionStatus[] => [
+  {
+    teamId: uid(2101),
+    teamName: 'Los Pibes',
+    teamStatus: 'confirmed',
+    fee: 4_500_000,
+    paid: 4_500_000,
+    pending: 0,
+    payments: 2,
+    lastPaidAt: hoursFromNow(-48),
+  },
+  {
+    teamId: uid(2102),
+    teamName: 'Deportivo Central',
+    teamStatus: 'registered',
+    fee: 4_500_000,
+    paid: 2_000_000,
+    pending: 2_500_000,
+    payments: 1,
+    lastPaidAt: hoursFromNow(-24),
+  },
+  {
+    teamId: uid(2103),
+    teamName: 'Racing de Barrio',
+    teamStatus: 'registered',
+    fee: 4_500_000,
+    paid: 0,
+    pending: 4_500_000,
+    payments: 0,
+    lastPaidAt: null,
   },
 ]

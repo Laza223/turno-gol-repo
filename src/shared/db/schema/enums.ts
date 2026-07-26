@@ -138,6 +138,8 @@ export const cashflowCategoryEnum = pgEnum('cashflow_category', [
   'utilities',
   'maintenance',
   'other_expense',
+  // Inscripción a un torneo (migr. 066). Va siempre con tournament_team_id.
+  'tournament',
 ])
 
 // ─── Canteen (migración 048, rediseño Caja y Cantina) ───────────

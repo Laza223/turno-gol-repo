@@ -3,6 +3,7 @@ import {
   createTeamPlayerSchema,
   createTeamSchema,
   createTournamentSchema,
+  registerInscriptionPaymentSchema,
   releaseSlotsSchema,
   reserveSlotsSchema,
 } from '@/modules/tournaments/tournament.schema'
@@ -196,5 +197,46 @@ describe('releaseSlotsSchema', () => {
         .success,
     ).toBe(true)
     expect(releaseSlotsSchema.safeParse({ tournamentId: UUID }).success).toBe(false)
+  })
+})
+
+describe('registerInscriptionPaymentSchema (migr. 066)', () => {
+  const base = { teamId: UUID, amount: 1_000_000, method: 'cash' as const }
+
+  it('acepta un cobro mínimo', () => {
+    expect(registerInscriptionPaymentSchema.safeParse(base).success).toBe(true)
+  })
+
+  // moneyCents es nonnegative: sin el refine, un cobro de $0 pasaría la
+  // validación y moriría recién en chk_cashflow_amount_positive con un 23514.
+  it('rechaza un cobro de cero', () => {
+    expect(registerInscriptionPaymentSchema.safeParse({ ...base, amount: 0 }).success).toBe(
+      false,
+    )
+  })
+
+  it('rechaza un monto negativo o con decimales', () => {
+    expect(registerInscriptionPaymentSchema.safeParse({ ...base, amount: -1 }).success).toBe(
+      false,
+    )
+    expect(
+      registerInscriptionPaymentSchema.safeParse({ ...base, amount: 1000.5 }).success,
+    ).toBe(false)
+  })
+
+  it('rechaza un método que no existe', () => {
+    expect(
+      registerInscriptionPaymentSchema.safeParse({ ...base, method: 'crypto' }).success,
+    ).toBe(false)
+  })
+
+  // Cruce #10: si el schema strippeara la clave, el ON CONFLICT del service
+  // nunca correría y un doble-tap duplicaría el cobro.
+  it('conserva la clave de idempotencia', () => {
+    const parsed = registerInscriptionPaymentSchema.parse({
+      ...base,
+      clientIdempotencyKey: UUID,
+    })
+    expect(parsed.clientIdempotencyKey).toBe(UUID)
   })
 })

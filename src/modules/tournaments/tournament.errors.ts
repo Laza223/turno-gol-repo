@@ -304,6 +304,35 @@ export class PlayoffSeedMismatchError extends Error {
   }
 }
 
+// ─── Inscripciones (migr. 066) ──────────────────────────────────────
+
+/** El equipo no tiene arancel cargado: no hay nada que cobrar. */
+export class TeamHasNoFeeError extends Error {
+  constructor(public readonly teamName: string) {
+    super(`Team '${teamName}' has no inscription fee to charge.`)
+    this.name = 'TeamHasNoFeeError'
+  }
+}
+
+/** El cobro supera lo que el equipo todavía debe. */
+export class InscriptionOverpaidError extends Error {
+  constructor(
+    public readonly teamName: string,
+    public readonly pending: number,
+  ) {
+    super(`Charge exceeds the ${pending} pending for team '${teamName}'.`)
+    this.name = 'InscriptionOverpaidError'
+  }
+}
+
+/** Un equipo con plata cobrada no se borra: se marca 'withdrawn'. */
+export class TeamHasPaymentsError extends Error {
+  constructor(public readonly count: number) {
+    super(`That team has ${count} registered payment(s).`)
+    this.name = 'TeamHasPaymentsError'
+  }
+}
+
 /** Empate irresoluble justo en el puesto de corte de una zona. */
 export class StandingsTieUnresolvedError extends Error {
   constructor(

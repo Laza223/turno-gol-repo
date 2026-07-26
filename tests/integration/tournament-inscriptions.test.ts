@@ -1,0 +1,407 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
+import {
+  cleanupAll,
+  createTestStaffUser,
+  createTestTenant,
+  ensureRoles,
+  linkStaffToTenant,
+} from '../helpers/tenant'
+import { addTeam, addTeamPlayer, removeTeam } from '@/modules/tournaments/tournament-team.service'
+import { deleteTournament, updateTournament } from '@/modules/tournaments/tournament.service'
+import {
+  countTeamPayments,
+  listInscriptionStatus,
+  listTeamPayments,
+  registerInscriptionPayment,
+} from '@/modules/tournaments/tournament-payment.service'
+import {
+  InscriptionOverpaidError,
+  TeamHasNoFeeError,
+  TeamHasPaymentsError,
+  TournamentTeamNotFoundError,
+} from '@/modules/tournaments/tournament.errors'
+import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
+import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
+
+// assertDayOpen compara contra el día ART (UTC-3), no el UTC del host.
+function artDateOf(ts: Date): string {
+  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
+}
+
+const TODAY = artDateOf(new Date())
+const FEE = 4_500_000 // $45.000
+
+beforeAll(async () => {
+  const sql = getSql()
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+}, 30_000)
+
+afterAll(async () => {
+  await closeSql()
+})
+
+async function setup(opts: { teams?: number; fee?: number } = {}) {
+  const sql = getSql()
+  const tenant = await createTestTenant(sql)
+  const staff = await createTestStaffUser(sql)
+  await linkStaffToTenant(sql, tenant.id, staff.id)
+
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournaments (tenant_id, name, slug, format, starts_on, inscription_fee)
+    VALUES (
+      ${tenant.id}, 'Torneo Test', ${`i-${Math.floor(Math.random() * 1e9)}`},
+      'league'::tournament_format, '2027-03-06', ${opts.fee ?? FEE}
+    )
+    RETURNING id
+  `
+  const tournamentId = rows[0]!.id
+
+  const teamIds: string[] = []
+  for (let i = 0; i < (opts.teams ?? 2); i++) {
+    const team = await withTenantContext(tenant.id, (tx) =>
+      addTeam(tenant.id, staff.id, tournamentId, { name: `Equipo ${i + 1}` }, tx),
+    )
+    teamIds.push(team.id)
+  }
+
+  return { tenant, staff, tournamentId, teamIds }
+}
+
+describe('arancel por equipo (snapshot)', () => {
+  it('el equipo hereda el arancel vigente del torneo al inscribirse', async () => {
+    const { tenant, tournamentId } = await setup({ teams: 1 })
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listInscriptionStatus(tenant.id, tournamentId, tx),
+    )
+    expect(rows[0]!.fee).toBe(FEE)
+    expect(rows[0]!.paid).toBe(0)
+    expect(rows[0]!.pending).toBe(FEE)
+  })
+
+  /**
+   * El motivo entero por el que la 066 agregó la columna en vez de leer
+   * `tournaments.inscription_fee` en vivo: subir el arancel no puede poner en
+   * deuda a los que ya estaban.
+   */
+  it('subir el arancel del torneo NO mueve el de los equipos ya inscriptos', async () => {
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 1 })
+
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, amount: FEE, method: 'cash' },
+        tx,
+      ),
+    )
+
+    await withTenantContext(tenant.id, (tx) =>
+      updateTournament(tenant.id, staff.id, { id: tournamentId, inscriptionFee: FEE * 2 }, tx),
+    )
+
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listInscriptionStatus(tenant.id, tournamentId, tx),
+    )
+    expect(rows[0]!.fee).toBe(FEE)
+    expect(rows[0]!.pending).toBe(0)
+  })
+
+  it('el equipo nuevo sí toma el arancel nuevo', async () => {
+    const { tenant, staff, tournamentId } = await setup({ teams: 0 })
+    await withTenantContext(tenant.id, (tx) =>
+      updateTournament(tenant.id, staff.id, { id: tournamentId, inscriptionFee: 1_000_000 }, tx),
+    )
+    const team = await withTenantContext(tenant.id, (tx) =>
+      addTeam(tenant.id, staff.id, tournamentId, { name: 'Tarde' }, tx),
+    )
+    expect(team.inscriptionFee).toBe(1_000_000)
+  })
+
+  it('se puede pisar el arancel de un equipo puntual (descuento)', async () => {
+    const { tenant, staff, tournamentId } = await setup({ teams: 0 })
+    const team = await withTenantContext(tenant.id, (tx) =>
+      addTeam(
+        tenant.id,
+        staff.id,
+        tournamentId,
+        { name: 'Con descuento', inscriptionFee: 2_000_000 },
+        tx,
+      ),
+    )
+    expect(team.inscriptionFee).toBe(2_000_000)
+  })
+})
+
+describe('registerInscriptionPayment', () => {
+  it('registra el cobro como cash_flow income/tournament apuntando al equipo', async () => {
+    const sql = getSql()
+    const { tenant, staff, teamIds } = await setup({ teams: 1 })
+
+    const payment = await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, amount: FEE, method: 'cash' },
+        tx,
+      ),
+    )
+
+    const rows = await sql<
+      { category: string; amount: number; tournament_team_id: string; description: string }[]
+    >`SELECT category, amount, tournament_team_id, description FROM cash_flows WHERE id = ${payment.id}`
+    expect(rows[0]!.category).toBe('tournament')
+    expect(rows[0]!.amount).toBe(FEE)
+    expect(rows[0]!.tournament_team_id).toBe(teamIds[0])
+    expect(rows[0]!.description).toContain('Equipo 1')
+  })
+
+  it('acumula pagos parciales y baja el saldo', async () => {
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 1 })
+
+    for (const amount of [2_000_000, 1_500_000]) {
+      await withTenantContext(tenant.id, (tx) =>
+        registerInscriptionPayment(
+          tenant.id,
+          staff.id,
+          { teamId: teamIds[0]!, amount, method: 'cash' },
+          tx,
+        ),
+      )
+    }
+
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listInscriptionStatus(tenant.id, tournamentId, tx),
+    )
+    expect(rows[0]!.paid).toBe(3_500_000)
+    expect(rows[0]!.pending).toBe(1_000_000)
+    expect(rows[0]!.payments).toBe(2)
+    expect(rows[0]!.lastPaidAt).not.toBeNull()
+  })
+
+  it('rechaza un cobro que supere lo que el equipo debe', async () => {
+    const { tenant, staff, teamIds } = await setup({ teams: 1 })
+
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, amount: 4_000_000, method: 'cash' },
+        tx,
+      ),
+    )
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        registerInscriptionPayment(
+          tenant.id,
+          staff.id,
+          { teamId: teamIds[0]!, amount: 1_000_000, method: 'cash' },
+          tx,
+        ),
+      ),
+    ).rejects.toThrow(InscriptionOverpaidError)
+
+    expect(await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)))
+      .toBe(1)
+  })
+
+  it('rechaza cobrarle a un equipo sin arancel', async () => {
+    const { tenant, staff, teamIds } = await setup({ teams: 1, fee: 0 })
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        registerInscriptionPayment(
+          tenant.id,
+          staff.id,
+          { teamId: teamIds[0]!, amount: 100_000, method: 'cash' },
+          tx,
+        ),
+      ),
+    ).rejects.toThrow(TeamHasNoFeeError)
+  })
+
+  /** Fix #55: doble-submit con la misma clave = un solo movimiento. */
+  it('es idempotente con la misma clientIdempotencyKey', async () => {
+    const { tenant, staff, teamIds } = await setup({ teams: 1 })
+    const key = crypto.randomUUID()
+
+    const first = await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, amount: 2_000_000, method: 'cash', clientIdempotencyKey: key },
+        tx,
+      ),
+    )
+    const second = await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, amount: 2_000_000, method: 'cash', clientIdempotencyKey: key },
+        tx,
+      ),
+    )
+
+    expect(second.id).toBe(first.id)
+    expect(await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)))
+      .toBe(1)
+  })
+
+  it('respeta el guard de caja cerrada', async () => {
+    const { tenant, staff, teamIds } = await setup({ teams: 1 })
+
+    await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 0 }, 0, tx),
+    )
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        registerInscriptionPayment(
+          tenant.id,
+          staff.id,
+          { teamId: teamIds[0]!, amount: 1_000_000, method: 'cash' },
+          tx,
+        ),
+      ),
+    ).rejects.toThrow(DayAlreadyClosedError)
+  })
+
+  it('no deja cobrarle a un equipo de otro complejo', async () => {
+    const a = await setup({ teams: 1 })
+    const b = await setup({ teams: 1 })
+
+    await expect(
+      withTenantContext(a.tenant.id, (tx) =>
+        registerInscriptionPayment(
+          a.tenant.id,
+          a.staff.id,
+          { teamId: b.teamIds[0]!, amount: 1_000_000, method: 'cash' },
+          tx,
+        ),
+      ),
+    ).rejects.toThrow(TournamentTeamNotFoundError)
+
+    expect(
+      await withTenantContext(b.tenant.id, (tx) =>
+        countTeamPayments(b.tenant.id, b.teamIds[0]!, tx),
+      ),
+    ).toBe(0)
+  })
+
+  it('listTeamPayments devuelve los movimientos del equipo', async () => {
+    const { tenant, staff, teamIds } = await setup({ teams: 2 })
+
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, amount: 1_000_000, method: 'transfer', note: 'Seña' },
+        tx,
+      ),
+    )
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[1]!, amount: 500_000, method: 'cash' },
+        tx,
+      ),
+    )
+
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listTeamPayments(tenant.id, teamIds[0]!, tx),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.method).toBe('transfer')
+    expect(rows[0]!.description).toBe('Seña')
+  })
+})
+
+describe('chk_cashflow_tournament_team (la DB es el backstop)', () => {
+  it('rechaza categoría tournament sin equipo', async () => {
+    const sql = getSql()
+    const { tenant, staff } = await setup({ teams: 0 })
+
+    await expect(
+      sql`INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
+          VALUES (${tenant.id}, 'income', 'tournament', 1000, 'cash', 'huérfano', ${staff.id}, NOW())`,
+    ).rejects.toThrow(/chk_cashflow_tournament_team/)
+  })
+
+  it('rechaza un equipo colgado de una categoría que no es tournament', async () => {
+    const sql = getSql()
+    const { tenant, staff, teamIds } = await setup({ teams: 1 })
+
+    await expect(
+      sql`INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, tournament_team_id, registered_by, occurred_at)
+          VALUES (${tenant.id}, 'income', 'other', 1000, 'cash', 'mezclado', ${teamIds[0]!}, ${staff.id}, NOW())`,
+    ).rejects.toThrow(/chk_cashflow_tournament_team/)
+  })
+})
+
+describe('guards de borrado', () => {
+  it('no borra un equipo con cobros registrados', async () => {
+    const { tenant, staff, teamIds } = await setup({ teams: 1 })
+
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, amount: 1_000_000, method: 'cash' },
+        tx,
+      ),
+    )
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => removeTeam(tenant.id, staff.id, teamIds[0]!, tx)),
+    ).rejects.toThrow(TeamHasPaymentsError)
+  })
+
+  it('no borra un torneo si alguno de sus equipos ya pagó', async () => {
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 2 })
+
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[1]!, amount: 1_000_000, method: 'cash' },
+        tx,
+      ),
+    )
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        deleteTournament(tenant.id, staff.id, tournamentId, tx),
+      ),
+    ).rejects.toThrow(TeamHasPaymentsError)
+  })
+
+  /**
+   * Bug de la fase 1 que la fase 4 arregla: `deleteTournament` solo borraba la
+   * fila de `tournaments`, así que un borrador con equipos cargados —el estado
+   * NORMAL antes de tomar horarios— moría con un 23503 crudo de
+   * tournament_teams.tournament_id.
+   */
+  it('borra un torneo en borrador junto con sus equipos y planteles', async () => {
+    const sql = getSql()
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 2 })
+
+    await withTenantContext(tenant.id, (tx) =>
+      addTeamPlayer(tenant.id, staff.id, teamIds[0]!, { fullName: 'Juan Pérez' }, tx),
+    )
+
+    await withTenantContext(tenant.id, (tx) =>
+      deleteTournament(tenant.id, staff.id, tournamentId, tx),
+    )
+
+    const left = await sql<{ teams: string; players: string; tournaments: string }[]>`
+      SELECT
+        (SELECT count(*) FROM tournament_teams WHERE tournament_id = ${tournamentId})::text AS teams,
+        (SELECT count(*) FROM tournament_team_players WHERE team_id = ANY(${teamIds}))::text AS players,
+        (SELECT count(*) FROM tournaments WHERE id = ${tournamentId})::text AS tournaments
+    `
+    expect(left[0]).toEqual({ teams: '0', players: '0', tournaments: '0' })
+  })
+})

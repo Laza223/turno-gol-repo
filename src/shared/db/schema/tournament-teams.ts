@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
@@ -90,5 +91,11 @@ export const tournamentTeams = pgTable(
     playerIdx: index('idx_tournament_teams_player')
       .on(table.contactPlayerId)
       .where(sql`contact_player_id IS NOT NULL`),
+
+    // Migr. 065: clave candidata para la FK compuesta del acta.
+    idTournamentUq: unique('uq_tournament_teams_id_tournament').on(
+      table.id,
+      table.tournamentId,
+    ),
   }),
 )

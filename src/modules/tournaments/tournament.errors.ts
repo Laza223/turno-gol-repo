@@ -129,3 +129,190 @@ export class CourtSlotTakenError extends Error {
     this.name = 'CourtSlotTakenError'
   }
 }
+
+// ─── Resultados y disciplina (migr. 065) ────────────────────────────
+
+/** Se quiso cargar resultado en una llave que todavía no tiene equipos. */
+export class MatchTeamsUndefinedError extends Error {
+  constructor(public readonly matchId: string) {
+    super(`Match '${matchId}' does not have both teams defined yet.`)
+    this.name = 'MatchTeamsUndefinedError'
+  }
+}
+
+export class MatchNotPlayableError extends Error {
+  constructor(public readonly status: string) {
+    super(`A match with status '${status}' cannot take a result.`)
+    this.name = 'MatchNotPlayableError'
+  }
+}
+
+/** Una llave no puede terminar empatada: alguien tiene que pasar. */
+export class KnockoutTieUnresolvedError extends Error {
+  constructor() {
+    super('A knockout match cannot end in a draw without a penalty shootout.')
+    this.name = 'KnockoutTieUnresolvedError'
+  }
+}
+
+export class PenaltiesNotAllowedError extends Error {
+  constructor() {
+    super('Penalties can only be recorded on a drawn match.')
+    this.name = 'PenaltiesNotAllowedError'
+  }
+}
+
+export class WalkoverWinnerNotInMatchError extends Error {
+  constructor(public readonly teamId: string) {
+    super(`Team '${teamId}' does not play this match.`)
+    this.name = 'WalkoverWinnerNotInMatchError'
+  }
+}
+
+export class WalkoverNeedsWinnerError extends Error {
+  constructor() {
+    super('A knockout walkover needs a winner: someone has to advance.')
+    this.name = 'WalkoverNeedsWinnerError'
+  }
+}
+
+export class WalkoverWithEventsError extends Error {
+  constructor(public readonly eventCount: number) {
+    super(`The match already has ${eventCount} event(s) recorded.`)
+    this.name = 'WalkoverWithEventsError'
+  }
+}
+
+/** Corregir este partido cambiaría un partido posterior que ya se jugó. */
+export class DownstreamMatchAlreadyPlayedError extends Error {
+  constructor(public readonly matchId: string) {
+    super(`Downstream match '${matchId}' already has a result.`)
+    this.name = 'DownstreamMatchAlreadyPlayedError'
+  }
+}
+
+export class MatchEventNotFoundError extends Error {
+  constructor(public readonly eventId: string) {
+    super(`Match event '${eventId}' not found.`)
+    this.name = 'MatchEventNotFoundError'
+  }
+}
+
+export class EventTeamNotInMatchError extends Error {
+  constructor(public readonly teamId: string) {
+    super(`Team '${teamId}' does not play this match.`)
+    this.name = 'EventTeamNotInMatchError'
+  }
+}
+
+export class EventPlayerNotInTeamError extends Error {
+  constructor(public readonly teamPlayerId: string) {
+    super(`Player '${teamPlayerId}' is not in that team's roster.`)
+    this.name = 'EventPlayerNotInTeamError'
+  }
+}
+
+export class DuplicateCardError extends Error {
+  constructor(public readonly cardType: 'yellow_card' | 'red_card') {
+    super(`That player already has a ${cardType} in this match.`)
+    this.name = 'DuplicateCardError'
+  }
+}
+
+/** El acta tiene más goles cargados que los del marcador. */
+export class GoalsExceedScoreError extends Error {
+  constructor(
+    public readonly teamName: string,
+    public readonly score: number,
+  ) {
+    super(`More goals recorded for '${teamName}' than the ${score} on the scoreboard.`)
+    this.name = 'GoalsExceedScoreError'
+  }
+}
+
+export class TeamHasFixtureError extends Error {
+  constructor(public readonly matchCount: number) {
+    super(`That team already has ${matchCount} match(es) in the fixture.`)
+    this.name = 'TeamHasFixtureError'
+  }
+}
+
+export class TeamHasEventsError extends Error {
+  constructor(public readonly count: number) {
+    super(`That team has ${count} recorded event(s).`)
+    this.name = 'TeamHasEventsError'
+  }
+}
+
+export class TeamPlayerHasEventsError extends Error {
+  constructor(public readonly count: number) {
+    super(`That player has ${count} recorded event(s).`)
+    this.name = 'TeamPlayerHasEventsError'
+  }
+}
+
+export class TournamentHasFixtureError extends Error {
+  constructor(public readonly matchCount: number) {
+    super(`The tournament has a fixture of ${matchCount} match(es).`)
+    this.name = 'TournamentHasFixtureError'
+  }
+}
+
+export class NotAGroupsTournamentError extends Error {
+  constructor() {
+    super('Seeding playoffs only applies to group+playoff tournaments.')
+    this.name = 'NotAGroupsTournamentError'
+  }
+}
+
+export class PlayoffStageNotFoundError extends Error {
+  constructor() {
+    super('This tournament has no playoff stage.')
+    this.name = 'PlayoffStageNotFoundError'
+  }
+}
+
+export class GroupStageNotFinishedError extends Error {
+  constructor(public readonly pending: number) {
+    super(`${pending} group-stage match(es) still pending.`)
+    this.name = 'GroupStageNotFinishedError'
+  }
+}
+
+export class PlayoffsAlreadyStartedError extends Error {
+  constructor() {
+    super('The playoffs already started: they cannot be re-seeded.')
+    this.name = 'PlayoffsAlreadyStartedError'
+  }
+}
+
+/** El cuadro se generó antes de que existieran los source_seed (migr. 065). */
+export class PlayoffBracketNotSeedableError extends Error {
+  constructor() {
+    super('This bracket was generated before seeding support existed.')
+    this.name = 'PlayoffBracketNotSeedableError'
+  }
+}
+
+export class PlayoffSeedMismatchError extends Error {
+  constructor(
+    public readonly expected: number,
+    public readonly seeded: number,
+  ) {
+    super(`Expected to seed ${expected} slots but seeded ${seeded}.`)
+    this.name = 'PlayoffSeedMismatchError'
+  }
+}
+
+/** Empate irresoluble justo en el puesto de corte de una zona. */
+export class StandingsTieUnresolvedError extends Error {
+  constructor(
+    public readonly groupLabel: string,
+    public readonly teamNames: string[],
+  ) {
+    super(
+      `Group '${groupLabel}': ${teamNames.join(', ')} are tied at the qualification cut and no criterion separates them.`,
+    )
+    this.name = 'StandingsTieUnresolvedError'
+  }
+}

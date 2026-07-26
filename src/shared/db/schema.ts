@@ -21,6 +21,8 @@ export * from './schema/tournament-stages'
 export * from './schema/bookings'
 // Después de bookings: tournament_matches referencia bookings y courts.
 export * from './schema/tournament-matches'
+// Después de tournament-matches: el acta lo referencia con FK compuesta.
+export * from './schema/tournament-match-events'
 export * from './schema/payments'
 export * from './schema/cash-flows'
 export * from './schema/daily-cash-closes'

@@ -200,6 +200,16 @@ export const tournamentMatchStatusEnum = pgEnum('tournament_match_status', [
   'canceled',
 ])
 
+// ─── Tournament results (migración 065, fase 3) ─────────────────
+// El MISMO orden que el CREATE TYPE: schema-drift.test.ts §3 compara los labels
+// por enumsortorder.
+export const tournamentEventTypeEnum = pgEnum('tournament_event_type', [
+  'goal',
+  'own_goal',
+  'yellow_card',
+  'red_card',
+])
+
 // ─── Notification ───────────────────────────────────────────────
 export const recipientTypeEnum = pgEnum('recipient_type', [
   'player',

@@ -8,6 +8,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
@@ -73,6 +74,23 @@ export const tournamentMatches = pgTable(
     status: tournamentMatchStatusEnum('status').notNull().default('scheduled'),
     homeScore: smallint('home_score'),
     awayScore: smallint('away_score'),
+    /** Definición por penales (migr. 065). NO suma a goles a favor/en contra. */
+    homePenalties: smallint('home_penalties'),
+    awayPenalties: smallint('away_penalties'),
+    /**
+     * Migr. 065. NULL con status='walkover' = no se presentó ninguno de los
+     * dos. El resultado de un walkover nunca se infiere del marcador: con
+     * walkover_goals_for = 0 sería un 0-0 y se leería como empate.
+     */
+    walkoverWinnerTeamId: uuid('walkover_winner_team_id').references(
+      () => tournamentTeams.id,
+    ),
+    /**
+     * Migr. 065. De qué PUESTO de zona sale cada lado del cuadro (1-based).
+     * Lo escribe generateFixture; lo consume seedPlayoffs.
+     */
+    homeSourceSeed: smallint('home_source_seed'),
+    awaySourceSeed: smallint('away_source_seed'),
     playedAt: timestamp('played_at', { withTimezone: true, mode: 'date' }),
     notes: text('notes'),
 
@@ -93,13 +111,46 @@ export const tournamentMatches = pgTable(
       'chk_match_source_not_self',
       sql`(${table.homeSourceMatchId} IS NULL OR ${table.homeSourceMatchId} <> ${table.id}) AND (${table.awaySourceMatchId} IS NULL OR ${table.awaySourceMatchId} <> ${table.id})`,
     ),
+    // Migr. 065 los redefinió: un lado tiene UN SOLO mecanismo de alimentación
+    // (partido anterior XOR puesto de zona). El *_team_id es el valor ya
+    // resuelto y convive con su origen — sin eso el avance de llaves es
+    // imposible. schema-drift NO compara constraints, así que dejar acá la
+    // versión vieja sería drift silencioso.
     homeOrigin: check(
       'chk_match_home_origin',
-      sql`${table.homeTeamId} IS NULL OR ${table.homeSourceMatchId} IS NULL`,
+      sql`${table.homeSourceMatchId} IS NULL OR ${table.homeSourceSeed} IS NULL`,
     ),
     awayOrigin: check(
       'chk_match_away_origin',
-      sql`${table.awayTeamId} IS NULL OR ${table.awaySourceMatchId} IS NULL`,
+      sql`${table.awaySourceMatchId} IS NULL OR ${table.awaySourceSeed} IS NULL`,
+    ),
+    sourceSeedPositive: check(
+      'chk_match_source_seed_positive',
+      sql`(${table.homeSourceSeed} IS NULL OR ${table.homeSourceSeed} >= 1) AND (${table.awaySourceSeed} IS NULL OR ${table.awaySourceSeed} >= 1)`,
+    ),
+    walkoverHasScore: check(
+      'chk_match_walkover_has_score',
+      sql`${table.status} <> 'walkover' OR (${table.homeScore} IS NOT NULL AND ${table.awayScore} IS NOT NULL)`,
+    ),
+    walkoverWinner: check(
+      'chk_match_walkover_winner',
+      sql`${table.walkoverWinnerTeamId} IS NULL OR (${table.status} = 'walkover' AND (${table.walkoverWinnerTeamId} = ${table.homeTeamId} OR ${table.walkoverWinnerTeamId} = ${table.awayTeamId}))`,
+    ),
+    penaltiesPair: check(
+      'chk_match_penalties_pair',
+      sql`(${table.homePenalties} IS NULL) = (${table.awayPenalties} IS NULL)`,
+    ),
+    penaltiesNonNeg: check(
+      'chk_match_penalties_nonneg',
+      sql`${table.homePenalties} IS NULL OR (${table.homePenalties} >= 0 AND ${table.awayPenalties} >= 0)`,
+    ),
+    penaltiesOnDraw: check(
+      'chk_match_penalties_on_draw',
+      sql`${table.homePenalties} IS NULL OR (${table.status} = 'played' AND ${table.homeScore} IS NOT NULL AND ${table.homeScore} = ${table.awayScore})`,
+    ),
+    penaltiesDistinct: check(
+      'chk_match_penalties_distinct',
+      sql`${table.homePenalties} IS NULL OR ${table.homePenalties} <> ${table.awayPenalties}`,
     ),
     scorePair: check(
       'chk_match_score_pair',
@@ -144,5 +195,12 @@ export const tournamentMatches = pgTable(
     awayTeamIdx: index('idx_tournament_matches_away_team')
       .on(table.awayTeamId)
       .where(sql`away_team_id IS NOT NULL`),
+
+    // Migr. 065: clave candidata para la FK compuesta del acta. Redundante con
+    // la PK, pero Postgres exige un UNIQUE sobre las columnas exactas.
+    idTournamentUq: unique('uq_tournament_matches_id_tournament').on(
+      table.id,
+      table.tournamentId,
+    ),
   }),
 )

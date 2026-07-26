@@ -6,6 +6,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
@@ -60,5 +61,9 @@ export const tournamentTeamPlayers = pgTable(
     shirtIdx: uniqueIndex('uq_tournament_team_players_shirt')
       .on(table.teamId, table.shirtNumber)
       .where(sql`shirt_number IS NOT NULL`),
+
+    // Migr. 065: clave candidata para la FK compuesta del acta — garantiza que
+    // el goleador pertenece al equipo al que se le carga el gol.
+    idTeamUq: unique('uq_tournament_team_players_id_team').on(table.id, table.teamId),
   }),
 )

@@ -251,3 +251,75 @@ export type TournamentSlotRow = {
   startsAt: Date
   endsAt: Date
 }
+
+// ─── Resultados y acta (migr. 065) ──────────────────────────────────
+
+export type TournamentEventType = 'goal' | 'own_goal' | 'yellow_card' | 'red_card'
+
+export type TournamentMatchEventRow = {
+  id: string
+  tenantId: string
+  tournamentId: string
+  matchId: string
+  /** Equipo del AUTOR. En own_goal el gol suma al rival. */
+  teamId: string
+  teamPlayerId: string | null
+  type: TournamentEventType
+  minute: number | null
+  /** Override del tribunal para esta roja. 0 = indulto. */
+  suspensionMatches: number | null
+  notes: string | null
+  createdByStaff: string | null
+  createdAt: Date
+}
+
+/** Evento con los nombres ya resueltos, para el acta. */
+export type TournamentMatchEventView = TournamentMatchEventRow & {
+  teamName: string | null
+  playerName: string | null
+  shirtNumber: number | null
+}
+
+export type SaveMatchResultInput = {
+  matchId: string
+  homeScore: number
+  awayScore: number
+  /** Solo si la fase es de llaves y el partido terminó empatado. */
+  homePenalties?: number | null
+  awayPenalties?: number | null
+  notes?: string | null
+}
+
+export type MarkWalkoverInput = {
+  matchId: string
+  /** null = no se presentó ninguno de los dos: pierden ambos. */
+  winnerTeamId: string | null
+  notes?: string | null
+}
+
+export type AddMatchEventInput = {
+  matchId: string
+  teamId: string
+  teamPlayerId?: string | null
+  type: TournamentEventType
+  minute?: number | null
+  /** Solo en red_card: override de las fechas de suspensión. */
+  suspensionMatches?: number | null
+  notes?: string | null
+}
+
+/** Fila de la tabla de goleadores. */
+export type ScorerRow = {
+  teamPlayerId: string
+  playerName: string
+  shirtNumber: number | null
+  teamId: string
+  teamName: string
+  goals: number
+}
+
+export type TopScorersResult = {
+  rows: ScorerRow[]
+  /** Goles de los marcadores que todavía no tienen autor cargado. */
+  unattributedGoals: number
+}

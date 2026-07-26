@@ -22,7 +22,8 @@ const SAMPLE_PAYLOAD = {
   courtName: 'Cancha 1',
   dateLabel: '3 de junio',
   timeLabel: '18:00–19:00',
-  url: '/admin/grilla?date=2026-06-03&highlight=b-test-1',
+  // Sin prefijo `/admin`: es un route group de Next, la URL real es `/grilla`.
+  url: '/grilla?date=2026-06-03&highlight=b-test-1',
 } as const
 
 let dbAvailable = false

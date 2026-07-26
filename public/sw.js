@@ -1,6 +1,8 @@
-/* TurnoGol Push Service Worker (Fase F9)
+event.notification.data.url) || '/grilla'payload.url || '/grilla'/* TurnoGol Push Service Worker (Fase F9)
  *
- * Scopes: registered with { scope: '/admin/' } from PushNotificationManager.
+ * Scope: registered with { scope: '/' } from PushNotificationManager. NO puede
+ * ser '/admin/': `(admin)` es un route group de Next y no aparece en la URL, así
+ * que ese scope no controlaba ninguna página y clients.matchAll() venía vacío.
  *
  * Handles:
  *  - 'install' / 'activate' — skipWaiting + clients.claim for fast updates.
@@ -64,7 +66,7 @@ self.addEventListener('push', (event) => {
     if (acked) return
     const title = payload.courtName ? `Nueva reserva — ${payload.courtName}` : 'Nueva reserva'
     const body = [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
-    const url = payload.url || '/admin/grilla'
+    const url = payload.url || '/grilla'
     await self.registration.showNotification(title, {
       body,
       icon: '/favicon.ico',
@@ -79,7 +81,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = (event.notification.data && event.notification.data.url) || '/admin/grilla'
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/grilla'
   event.waitUntil((async () => {
     const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const client of allClients) {

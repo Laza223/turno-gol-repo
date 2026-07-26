@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import { AlertTriangle, CalendarPlus, Trash2, Trophy } from 'lucide-react'
@@ -293,9 +294,12 @@ export function FixturePanel({
             <ul className="divide-y divide-border">
               {group.rows.map((m) => (
                 <li key={m.id} className="px-4 py-3">
-                  <p className="text-sm font-medium text-foreground">
+                  <Link
+                    href={`/torneos/${tournamentId}/partidos/${m.id}`}
+                    className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
+                  >
                     {m.homeTeamName ?? 'A definir'} vs {m.awayTeamName ?? 'A definir'}
-                  </p>
+                  </Link>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                     {formatMatchWhen(m.startsAt)}
                     {m.courtName ? ` · ${m.courtName}` : ''}
@@ -356,6 +360,12 @@ export function FixturePanel({
                       >
                         {MATCH_STATUS_LABELS[m.status]}
                       </span>
+                      <Link
+                        href={`/torneos/${tournamentId}/partidos/${m.id}`}
+                        className="ml-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        Acta
+                      </Link>
                     </td>
                   </tr>
                 ))}

@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO",
-  "total": 311,
+  "total": 317,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -6833,6 +6833,136 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "Cubierto por FixturePanel.stories."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/posiciones/PosicionesTable.tsx",
+      "name": "PosicionesTable",
+      "domain": "torneos",
+      "rendering": "client",
+      "role": "data-table",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "liga (una tabla)",
+        "zonas con línea de clasificación",
+        "empate sin resolver",
+        "equipo bajado/descalificado",
+        "vacío"
+      ],
+      "proposedStoryTitle": "Admin/Torneos/PosicionesTable",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Componente puro de presentación: recibe StandingsGroup[] por props, sin acciones ni router."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/posiciones/GoleadoresTable.tsx",
+      "name": "GoleadoresTable",
+      "domain": "torneos",
+      "rendering": "client",
+      "role": "data-table",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "con goleadores",
+        "con goles sin autor",
+        "vacío"
+      ],
+      "proposedStoryTitle": "Admin/Torneos/GoleadoresTable",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Puro: recibe TopScorersResult por props."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/posiciones/SuspendidosPanel.tsx",
+      "name": "SuspendidosPanel",
+      "domain": "torneos",
+      "rendering": "client",
+      "role": "list",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "por amarillas",
+        "por roja",
+        "sin partidos por delante",
+        "vacío"
+      ],
+      "proposedStoryTitle": "Admin/Torneos/SuspendidosPanel",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Puro: recibe SuspensionRow[] enriquecido con nombres por props."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/partidos/[matchId]/ActaPanel.tsx",
+      "name": "ActaPanel",
+      "domain": "torneos",
+      "rendering": "client",
+      "role": "form",
+      "isolationDifficulty": "easy",
+      "classification": "STORY_COMPLETED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "sin cargar",
+        "con acta",
+        "llave empatada (penales)",
+        "llave sin definir",
+        "jugador suspendido (aviso)",
+        "error del servidor"
+      ],
+      "proposedStoryTitle": "Admin/Torneos/ActaPanel",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Recibe las 5 Server Actions como props (mockeables con fn()); usa useRouter solo para refresh."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/posiciones/page.tsx",
+      "name": "TorneoPosicionesPage",
+      "domain": "torneos",
+      "rendering": "server",
+      "role": "page",
+      "isolationDifficulty": "hard",
+      "classification": "EXCLUDED",
+      "exclusionReason": "Server Component de página: resuelve auth, tenant y feature flag contra la DB.",
+      "relevantStates": [],
+      "proposedStoryTitle": "",
+      "usesNetwork": true,
+      "usesSession": true,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Server Component de página: resuelve auth, tenant y feature flag contra la DB."
+    },
+    {
+      "path": "src/app/(admin)/torneos/[id]/partidos/[matchId]/page.tsx",
+      "name": "ActaPartidoPage",
+      "domain": "torneos",
+      "rendering": "server",
+      "role": "page",
+      "isolationDifficulty": "hard",
+      "classification": "EXCLUDED",
+      "exclusionReason": "Server Component de página: resuelve auth, tenant y feature flag contra la DB.",
+      "relevantStates": [],
+      "proposedStoryTitle": "",
+      "usesNetwork": true,
+      "usesSession": true,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Server Component de página: resuelve auth, tenant y feature flag contra la DB."
     }
   ]
 }

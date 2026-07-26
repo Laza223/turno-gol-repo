@@ -1,5 +1,7 @@
+import type { StandingRow } from '@/modules/tournaments/standings/types'
 import type {
   TournamentFormat,
+  TournamentEventType,
   TournamentMatchStatus,
   TournamentStatus,
   TournamentTeamStatus,
@@ -112,7 +114,7 @@ export function matchStatusBadgeClass(status: TournamentMatchStatus): string {
 export function roundLabel(
   round: number,
   kind: 'league' | 'group_stage' | 'knockout',
-  totalRounds: number,
+  totalRounds: number
 ): string {
   if (kind !== 'knockout') return `Fecha ${round}`
   const fromFinal = totalRounds - round
@@ -151,17 +153,74 @@ export function formatScore(home: number | null, away: number | null): string {
  * Resumen de las horas tomadas: "12 horas · 3 canchas · 4 fechas".
  * Se calcula sobre las reservas que el torneo posee, no sobre lo pedido.
  */
-export function summarizeSlots(
-  slots: ReadonlyArray<{ courtId: string; date: string }>,
-): string {
+export function summarizeSlots(slots: ReadonlyArray<{ courtId: string; date: string }>): string {
   if (slots.length === 0) return 'Sin horarios tomados'
   const courts = new Set(slots.map((s) => s.courtId)).size
   const dates = new Set(slots.map((s) => s.date)).size
-  const plural = (n: number, one: string, many: string) =>
-    `${n} ${n === 1 ? one : many}`
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
   return [
     plural(slots.length, 'hora', 'horas'),
     plural(courts, 'cancha', 'canchas'),
     plural(dates, 'fecha', 'fechas'),
   ].join(' · ')
+}
+
+// ─── Resultados y disciplina (migr. 065) ────────────────────────────
+
+export const EVENT_TYPE_LABELS: Record<TournamentEventType, string> = {
+  goal: 'Gol',
+  own_goal: 'Gol en contra',
+  yellow_card: 'Amarilla',
+  red_card: 'Roja',
+}
+
+/** Siempre ícono + texto, nunca color solo (MASTER §6.5). */
+export function eventTypeBadgeClass(type: TournamentEventType): string {
+  switch (type) {
+    case 'goal':
+      return 'bg-success/15 text-emerald-800 dark:text-emerald-300'
+    case 'own_goal':
+      return 'bg-muted text-muted-foreground'
+    case 'yellow_card':
+      return 'bg-warning/15 text-amber-800 dark:text-amber-300'
+    case 'red_card':
+      return 'bg-destructive/10 text-red-700 dark:text-red-300'
+  }
+}
+
+export const qualificationBadgeClass = 'bg-success/15 text-emerald-800 dark:text-emerald-300'
+export const suspensionBadgeClass = 'bg-warning/15 text-amber-800 dark:text-amber-300'
+
+/** '+5' / '-3' / '0' — la diferencia de gol se lee mejor con signo. */
+export function formatGoalDiff(diff: number): string {
+  return diff > 0 ? `+${diff}` : String(diff)
+}
+
+/** Por qué esta fila quedó arriba de la de abajo, en castellano. */
+export function decidedByLabel(decidedBy: StandingRow['decidedBy']): string | null {
+  switch (decidedBy) {
+    case 'points':
+      return 'Los separan los puntos'
+    case 'goal_diff':
+      return 'Los separa la diferencia de gol'
+    case 'goals_for':
+      return 'Los separan los goles a favor'
+    case 'goals_against':
+      return 'Los separan los goles en contra'
+    case 'head_to_head':
+      return 'Los separa el resultado entre ellos'
+    case 'wins':
+      return 'Los separan los partidos ganados'
+    case 'fair_play':
+      return 'Los separa el fair play'
+    case 'drawn_lots':
+      return 'Los separa el sorteo'
+    case 'none':
+      return null
+  }
+}
+
+export const SUSPENSION_REASON_LABELS: Record<'yellow_accumulation' | 'red_card', string> = {
+  yellow_accumulation: 'Acumulación de amarillas',
+  red_card: 'Expulsión',
 }

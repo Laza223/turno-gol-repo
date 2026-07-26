@@ -16,6 +16,7 @@ export function TorneoTabs({ tournamentId, active }: { tournamentId: string; act
       tabs={[
         { href: base, label: 'Equipos y horarios' },
         { href: `${base}/fixture`, label: 'Fixture' },
+        { href: `${base}/posiciones`, label: 'Posiciones' },
       ]}
     />
   )

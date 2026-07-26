@@ -103,9 +103,7 @@ export const updateTournamentSchema = z.object({
   yellowCardsForSuspension: z.number().int().min(1).max(20).optional(),
   redCardSuspensionMatches: z.number().int().min(0).max(20).optional(),
   walkoverGoalsFor: z.number().int().min(0).max(20).optional(),
-  status: z
-    .enum(['draft', 'registration', 'in_progress', 'finished', 'canceled'])
-    .optional(),
+  status: z.enum(['draft', 'registration', 'in_progress', 'finished', 'canceled']).optional(),
   isPublic: z.boolean().optional(),
   notes: boundedText(1000).nullish(),
 })
@@ -127,9 +125,7 @@ export const updateTeamSchema = z.object({
   contactPlayerId: uuid.nullish(),
   contactName: boundedText(120).nullish(),
   contactPhone: boundedText(30).nullish(),
-  status: z
-    .enum(['registered', 'confirmed', 'withdrawn', 'disqualified'])
-    .optional(),
+  status: z.enum(['registered', 'confirmed', 'withdrawn', 'disqualified']).optional(),
   groupLabel: z.string().trim().min(1).max(10).nullish(),
   seed: z.number().int().positive().nullish(),
   notes: boundedText(500).nullish(),
@@ -207,7 +203,7 @@ export const generateFixtureSchema = z
     {
       message: 'Tienen que clasificar al menos 2 equipos en total.',
       path: ['teamsAdvancePerGroup'],
-    },
+    }
   )
 
 export const clearFixtureSchema = z.object({ tournamentId: uuid })
@@ -216,7 +212,94 @@ export const rescheduleMatchSchema = z.object({
   matchId: uuid,
   courtId: uuid,
   /** Instante del partido en ISO. Lo arma la UI a partir de fecha + hora. */
-  startsAt: z
-    .string()
-    .refine((s) => !Number.isNaN(Date.parse(s)), 'Fecha y hora inválidas.'),
+  startsAt: z.string().refine((s) => !Number.isNaN(Date.parse(s)), 'Fecha y hora inválidas.'),
 })
+
+// ─── Resultados y acta (migr. 065) ──────────────────────────────────
+
+const score = z
+  .number()
+  .int()
+  .min(0, 'El marcador no puede ser negativo.')
+  .max(99, 'El marcador no puede pasar de 99.')
+
+const penalties = z
+  .number()
+  .int()
+  .min(0, 'Los penales no pueden ser negativos.')
+  .max(99, 'Demasiados penales.')
+
+export const saveMatchResultSchema = z
+  .object({
+    matchId: uuid,
+    homeScore: score,
+    awayScore: score,
+    homePenalties: penalties.nullable().optional(),
+    awayPenalties: penalties.nullable().optional(),
+    notes: boundedText(500).nullable().optional(),
+  })
+  // Los penales van de a dos o no van.
+  .refine((v) => (v.homePenalties ?? null) === null || (v.awayPenalties ?? null) !== null, {
+    message: 'Cargá los penales de los dos equipos.',
+    path: ['awayPenalties'],
+  })
+  .refine((v) => (v.awayPenalties ?? null) === null || (v.homePenalties ?? null) !== null, {
+    message: 'Cargá los penales de los dos equipos.',
+    path: ['homePenalties'],
+  })
+  // Una tanda de penales no termina empatada: alguien pasa.
+  .refine((v) => (v.homePenalties ?? null) === null || v.homePenalties !== v.awayPenalties, {
+    message: 'La tanda de penales no puede terminar empatada.',
+    path: ['awayPenalties'],
+  })
+  // El CHECK de la base dice lo mismo; acá el mensaje es en es-AR.
+  .refine((v) => (v.homePenalties ?? null) === null || v.homeScore === v.awayScore, {
+    message: 'Los penales solo se cargan si el partido terminó empatado.',
+    path: ['homePenalties'],
+  })
+
+export const markWalkoverSchema = z.object({
+  matchId: uuid,
+  /** null = no se presentó ninguno de los dos. */
+  winnerTeamId: uuid.nullable(),
+  notes: boundedText(500).nullable().optional(),
+})
+
+export const clearMatchResultSchema = z.object({ matchId: uuid })
+
+export const addMatchEventSchema = z
+  .object({
+    matchId: uuid,
+    teamId: uuid,
+    teamPlayerId: uuid.nullable().optional(),
+    type: z.enum(['goal', 'own_goal', 'yellow_card', 'red_card']),
+    minute: z
+      .number()
+      .int()
+      .min(0, 'El minuto no puede ser negativo.')
+      .max(200, 'Minuto fuera de rango.')
+      .nullable()
+      .optional(),
+    suspensionMatches: z
+      .number()
+      .int()
+      .min(0)
+      .max(20, 'Máximo 20 fechas de suspensión.')
+      .nullable()
+      .optional(),
+    notes: boundedText(300).nullable().optional(),
+  })
+  // Una tarjeta necesita sujeto: sin jugador no hay a quién suspender.
+  .refine(
+    (v) => (v.type !== 'yellow_card' && v.type !== 'red_card') || (v.teamPlayerId ?? null) !== null,
+    { message: 'Elegí al jugador que vio la tarjeta.', path: ['teamPlayerId'] }
+  )
+  // El override de fechas solo aplica a una roja.
+  .refine((v) => (v.suspensionMatches ?? null) === null || v.type === 'red_card', {
+    message: 'Las fechas de suspensión solo se cargan en una roja.',
+    path: ['suspensionMatches'],
+  })
+
+export const deleteMatchEventSchema = z.object({ eventId: uuid })
+
+export const seedPlayoffsSchema = z.object({ tournamentId: uuid })

@@ -40,13 +40,51 @@ import {
   rescheduleMatch,
 } from '@/modules/tournaments/tournament-fixture.service'
 import {
+  addMatchEventSchema,
   clearFixtureSchema,
+  clearMatchResultSchema,
+  deleteMatchEventSchema,
   generateFixtureSchema,
+  markWalkoverSchema,
   rescheduleMatchSchema,
+  saveMatchResultSchema,
+  seedPlayoffsSchema,
 } from '@/modules/tournaments/tournament.schema'
 import {
+  addMatchEvent,
+  clearMatchResult,
+  deleteMatchEvent,
+  markWalkover,
+  saveMatchResult,
+} from '@/modules/tournaments/tournament-result.service'
+import { seedPlayoffs } from '@/modules/tournaments/tournament-standings.service'
+import {
   CourtSlotTakenError,
+  DownstreamMatchAlreadyPlayedError,
+  DuplicateCardError,
   DuplicateShirtNumberError,
+  EventPlayerNotInTeamError,
+  EventTeamNotInMatchError,
+  GoalsExceedScoreError,
+  GroupStageNotFinishedError,
+  KnockoutTieUnresolvedError,
+  MatchEventNotFoundError,
+  MatchNotPlayableError,
+  MatchTeamsUndefinedError,
+  NotAGroupsTournamentError,
+  PenaltiesNotAllowedError,
+  PlayoffBracketNotSeedableError,
+  PlayoffSeedMismatchError,
+  PlayoffStageNotFoundError,
+  PlayoffsAlreadyStartedError,
+  StandingsTieUnresolvedError,
+  TeamHasEventsError,
+  TeamHasFixtureError,
+  TeamPlayerHasEventsError,
+  TournamentHasFixtureError,
+  WalkoverNeedsWinnerError,
+  WalkoverWinnerNotInMatchError,
+  WalkoverWithEventsError,
   DuplicateTeamNameError,
   FixtureAlreadyExistsError,
   FixtureGenerationError,
@@ -65,16 +103,13 @@ import {
 import type { SlotConflict } from '@/modules/tournaments/tournament.types'
 
 export type TournamentActionResult =
-  | { success: true; id?: string }
-  | { success: false; error: string }
+  { success: true; id?: string } | { success: false; error: string }
 
 export type ReserveSlotsActionResult =
-  | { success: true; reserved: number; conflicts: SlotConflict[] }
-  | { success: false; error: string }
+  { success: true; reserved: number; conflicts: SlotConflict[] } | { success: false; error: string }
 
 export type GenerateFixtureActionResult =
-  | { success: true; matches: number; unscheduled: number }
-  | { success: false; error: string }
+  { success: true; matches: number; unscheduled: number } | { success: false; error: string }
 
 function revalidateTorneos(id?: string): void {
   revalidatePath('/torneos')
@@ -132,6 +167,75 @@ function mapTournamentError(err: unknown): string | null {
   if (err instanceof CourtSlotTakenError) {
     return 'Esa cancha ya tiene otro partido a esa hora.'
   }
+  // ── Resultados y disciplina (migr. 065) ──
+  if (err instanceof MatchTeamsUndefinedError) {
+    return 'Todavía no se sabe qué equipos juegan este partido: primero se tiene que definir la llave.'
+  }
+  if (err instanceof MatchNotPlayableError) {
+    return 'Ese partido está cancelado: no se le puede cargar resultado.'
+  }
+  if (err instanceof KnockoutTieUnresolvedError) {
+    return 'Una llave no puede terminar empatada: cargá la definición por penales.'
+  }
+  if (err instanceof PenaltiesNotAllowedError) {
+    return 'Los penales solo se cargan si el partido terminó empatado.'
+  }
+  if (err instanceof WalkoverWinnerNotInMatchError) {
+    return 'El ganador del walkover tiene que ser uno de los dos equipos del partido.'
+  }
+  if (err instanceof WalkoverNeedsWinnerError) {
+    return 'En una llave el walkover necesita un ganador: alguien tiene que pasar de ronda.'
+  }
+  if (err instanceof WalkoverWithEventsError) {
+    return `Este partido tiene ${err.eventCount} gol(es) o tarjeta(s) cargados. Borralos del acta antes de marcarlo como no presentado.`
+  }
+  if (err instanceof DownstreamMatchAlreadyPlayedError) {
+    return 'El partido siguiente del cuadro ya tiene resultado cargado. Borralo antes de corregir éste.'
+  }
+  if (err instanceof MatchEventNotFoundError) return 'Ese gol o tarjeta ya no está en el acta.'
+  if (err instanceof EventTeamNotInMatchError) return 'Ese equipo no juega este partido.'
+  if (err instanceof EventPlayerNotInTeamError) {
+    return 'Ese jugador no está en el plantel del equipo.'
+  }
+  if (err instanceof DuplicateCardError) {
+    return err.cardType === 'yellow_card'
+      ? 'Ese jugador ya tiene una amarilla en este partido: la segunda amarilla se carga como roja.'
+      : 'Ese jugador ya tiene una roja en este partido.'
+  }
+  if (err instanceof GoalsExceedScoreError) {
+    return `Ya hay más goles cargados para ${err.teamName} que los ${err.score} del marcador. Borrá alguno o corregí el resultado.`
+  }
+  if (err instanceof TeamHasFixtureError) {
+    return `Ese equipo ya tiene ${err.matchCount} partido(s) en el fixture. Borrá el fixture o marcalo como "se bajó".`
+  }
+  if (err instanceof TeamHasEventsError) {
+    return `Ese equipo tiene ${err.count} gol(es) o tarjeta(s) cargados. Borralos del acta antes de sacarlo del torneo.`
+  }
+  if (err instanceof TeamPlayerHasEventsError) {
+    return `Ese jugador tiene ${err.count} gol(es) o tarjeta(s) cargados. Borralos del acta antes de sacarlo del plantel.`
+  }
+  if (err instanceof TournamentHasFixtureError) {
+    return `El torneo ya tiene un fixture de ${err.matchCount} partidos. Borralo antes de eliminar el torneo.`
+  }
+  if (err instanceof NotAGroupsTournamentError) {
+    return 'Sembrar playoffs solo aplica a torneos con zonas.'
+  }
+  if (err instanceof PlayoffStageNotFoundError) return 'Este torneo no tiene fase de playoffs.'
+  if (err instanceof GroupStageNotFinishedError) {
+    return `Faltan ${err.pending} partido(s) de zona por cerrar.`
+  }
+  if (err instanceof PlayoffsAlreadyStartedError) {
+    return 'Los playoffs ya arrancaron: no se pueden volver a sembrar. Borrá primero el resultado del cruce ya jugado.'
+  }
+  if (err instanceof PlayoffBracketNotSeedableError) {
+    return 'Este cuadro se generó antes de la última actualización: borrá el fixture y volvé a generarlo.'
+  }
+  if (err instanceof PlayoffSeedMismatchError) {
+    return 'El cuadro de playoffs no coincide con los clasificados. Regenerá el fixture.'
+  }
+  if (err instanceof StandingsTieUnresolvedError) {
+    return `Zona ${err.groupLabel}: ${err.teamNames.join(' y ')} están empatados justo en el puesto de corte y ningún criterio los separa. Cargales el número de siembra para definir el sorteo.`
+  }
   return null
 }
 
@@ -146,9 +250,7 @@ async function assertTournamentsEnabled(tenantId: string): Promise<string | null
 
 // ── Torneo (configuración: solo admin) ──────────────────────────────
 
-export async function createTournamentAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function createTournamentAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = createTournamentSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -167,7 +269,7 @@ export async function createTournamentAction(
   let id: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      createTournament(tenant.id, user.staffUserId, parsed.data, tx),
+      createTournament(tenant.id, user.staffUserId, parsed.data, tx)
     )
     id = row.id
   } catch (err) {
@@ -180,9 +282,7 @@ export async function createTournamentAction(
   return { success: true, id }
 }
 
-export async function updateTournamentAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function updateTournamentAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = updateTournamentSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -200,7 +300,7 @@ export async function updateTournamentAction(
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      updateTournament(tenant.id, user.staffUserId, parsed.data, tx),
+      updateTournament(tenant.id, user.staffUserId, parsed.data, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -212,9 +312,7 @@ export async function updateTournamentAction(
   return { success: true, id: parsed.data.id }
 }
 
-export async function deleteTournamentAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function deleteTournamentAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = tournamentIdSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -232,7 +330,7 @@ export async function deleteTournamentAction(
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      deleteTournament(tenant.id, user.staffUserId, parsed.data.id, tx),
+      deleteTournament(tenant.id, user.staffUserId, parsed.data.id, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -268,7 +366,7 @@ export async function addTeamAction(input: unknown): Promise<TournamentActionRes
   let id: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      addTeam(tenant.id, user.staffUserId, tournamentId, team, tx),
+      addTeam(tenant.id, user.staffUserId, tournamentId, team, tx)
     )
     id = row.id
   } catch (err) {
@@ -300,7 +398,7 @@ export async function updateTeamAction(input: unknown): Promise<TournamentAction
   let tournamentId: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      updateTeam(tenant.id, user.staffUserId, parsed.data, tx),
+      updateTeam(tenant.id, user.staffUserId, parsed.data, tx)
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -331,7 +429,7 @@ export async function removeTeamAction(input: unknown): Promise<TournamentAction
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      removeTeam(tenant.id, user.staffUserId, parsed.data.id, tx),
+      removeTeam(tenant.id, user.staffUserId, parsed.data.id, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -343,9 +441,7 @@ export async function removeTeamAction(input: unknown): Promise<TournamentAction
   return { success: true }
 }
 
-export async function addTeamPlayerAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function addTeamPlayerAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = createTeamPlayerSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -364,7 +460,7 @@ export async function addTeamPlayerAction(
   const { teamId, ...player } = parsed.data
   try {
     await withTenantContext(tenant.id, (tx) =>
-      addTeamPlayer(tenant.id, user.staffUserId, teamId, player, tx),
+      addTeamPlayer(tenant.id, user.staffUserId, teamId, player, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -376,9 +472,7 @@ export async function addTeamPlayerAction(
   return { success: true }
 }
 
-export async function removeTeamPlayerAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function removeTeamPlayerAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = teamPlayerIdSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -396,7 +490,7 @@ export async function removeTeamPlayerAction(
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      removeTeamPlayer(tenant.id, user.staffUserId, parsed.data.id, tx),
+      removeTeamPlayer(tenant.id, user.staffUserId, parsed.data.id, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -410,9 +504,7 @@ export async function removeTeamPlayerAction(
 
 // ── Ocupación de la grilla (operación: admin + encargado) ───────────
 
-export async function reserveSlotsAction(
-  input: unknown,
-): Promise<ReserveSlotsActionResult> {
+export async function reserveSlotsAction(input: unknown): Promise<ReserveSlotsActionResult> {
   const parsed = reserveSlotsSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -432,7 +524,7 @@ export async function reserveSlotsAction(
   let result: { reserved: number; conflicts: SlotConflict[] }
   try {
     result = await withTenantContext(tenant.id, (tx) =>
-      reserveTournamentSlots(tenant.id, tournamentId, user.staffUserId, slots, tx),
+      reserveTournamentSlots(tenant.id, tournamentId, user.staffUserId, slots, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -448,9 +540,7 @@ export async function reserveSlotsAction(
 
 // ── Fixture (operación: admin + encargado) ─────────────────────────
 
-export async function generateFixtureAction(
-  input: unknown,
-): Promise<GenerateFixtureActionResult> {
+export async function generateFixtureAction(input: unknown): Promise<GenerateFixtureActionResult> {
   const parsed = generateFixtureSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -470,7 +560,7 @@ export async function generateFixtureAction(
   let result: { matches: number; unscheduled: number }
   try {
     result = await withTenantContext(tenant.id, (tx) =>
-      generateFixture(tenant.id, user.staffUserId, tournamentId, opts, tx),
+      generateFixture(tenant.id, user.staffUserId, tournamentId, opts, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -484,9 +574,7 @@ export async function generateFixtureAction(
   return { success: true, matches: result.matches, unscheduled: result.unscheduled }
 }
 
-export async function clearFixtureAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function clearFixtureAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = clearFixtureSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -504,7 +592,7 @@ export async function clearFixtureAction(
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      clearFixture(tenant.id, user.staffUserId, parsed.data.tournamentId, tx),
+      clearFixture(tenant.id, user.staffUserId, parsed.data.tournamentId, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -516,9 +604,7 @@ export async function clearFixtureAction(
   return { success: true }
 }
 
-export async function rescheduleMatchAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function rescheduleMatchAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = rescheduleMatchSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -543,8 +629,8 @@ export async function rescheduleMatchAction(
         parsed.data.matchId,
         new Date(parsed.data.startsAt),
         parsed.data.courtId,
-        tx,
-      ),
+        tx
+      )
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -557,9 +643,7 @@ export async function rescheduleMatchAction(
   return { success: true }
 }
 
-export async function releaseSlotsAction(
-  input: unknown,
-): Promise<TournamentActionResult> {
+export async function releaseSlotsAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = releaseSlotsSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -582,8 +666,202 @@ export async function releaseSlotsAction(
         parsed.data.tournamentId,
         user.staffUserId,
         parsed.data.fromDate,
-        tx,
-      ),
+        tx
+      )
+    )
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(parsed.data.tournamentId)
+  return { success: true }
+}
+
+// ─── Resultados y acta (migr. 065) ──────────────────────────────────
+// El encargado carga resultados: requireOperatorStaff, no requireAdminStaff.
+
+export async function saveMatchResultAction(input: unknown): Promise<TournamentActionResult> {
+  const parsed = saveMatchResultSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  let tournamentId: string
+  try {
+    const row = await withTenantContext(tenant.id, (tx) =>
+      saveMatchResult(tenant.id, user.staffUserId, parsed.data, tx)
+    )
+    tournamentId = row.tournamentId
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  return { success: true }
+}
+
+export async function markWalkoverAction(input: unknown): Promise<TournamentActionResult> {
+  const parsed = markWalkoverSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  let tournamentId: string
+  try {
+    const row = await withTenantContext(tenant.id, (tx) =>
+      markWalkover(tenant.id, user.staffUserId, parsed.data, tx)
+    )
+    tournamentId = row.tournamentId
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  return { success: true }
+}
+
+export async function clearMatchResultAction(input: unknown): Promise<TournamentActionResult> {
+  const parsed = clearMatchResultSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  let tournamentId: string
+  try {
+    const row = await withTenantContext(tenant.id, (tx) =>
+      clearMatchResult(tenant.id, user.staffUserId, parsed.data.matchId, tx)
+    )
+    tournamentId = row.tournamentId
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  return { success: true }
+}
+
+export async function addMatchEventAction(input: unknown): Promise<TournamentActionResult> {
+  const parsed = addMatchEventSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  let tournamentId: string
+  try {
+    const row = await withTenantContext(tenant.id, (tx) =>
+      addMatchEvent(tenant.id, user.staffUserId, parsed.data, tx)
+    )
+    tournamentId = row.tournamentId
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  return { success: true }
+}
+
+export async function deleteMatchEventAction(input: unknown): Promise<TournamentActionResult> {
+  const parsed = deleteMatchEventSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  let tournamentId: string
+  try {
+    const res = await withTenantContext(tenant.id, (tx) =>
+      deleteMatchEvent(tenant.id, user.staffUserId, parsed.data.eventId, tx)
+    )
+    tournamentId = res.tournamentId
+  } catch (err) {
+    const mapped = mapTournamentError(err)
+    if (mapped) return { success: false, error: mapped }
+    throw err
+  }
+
+  revalidateTorneos(tournamentId)
+  return { success: true }
+}
+
+/** Cerrar las zonas y sembrar el cuadro. Configuración: solo admin. */
+export async function seedPlayoffsAction(input: unknown): Promise<TournamentActionResult> {
+  const parsed = seedPlayoffsSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      seedPlayoffs(tenant.id, user.staffUserId, parsed.data.tournamentId, tx)
     )
   } catch (err) {
     const mapped = mapTournamentError(err)

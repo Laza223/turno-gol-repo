@@ -36,6 +36,21 @@ export class StockNotTrackedError extends Error {
   }
 }
 
+/**
+ * updateProduct (edición de catálogo) rechaza un cambio de stock número→otro
+ * número: eso pisaba ventas concurrentes con un snapshot stale del diálogo
+ * (RI #4 D4). Solo se permite null→número, número→null, o número→el mismo
+ * número (no-op); el ajuste real va por Reposición/Merma/Ajuste (ledger).
+ */
+export class StockNotEditableFromCatalogError extends Error {
+  constructor(productName: string) {
+    super(
+      `Stock for '${productName}' cannot be edited from the catalog form; use the stock ledger (purchase/exit/adjustment) instead.`,
+    )
+    this.name = 'StockNotEditableFromCatalogError'
+  }
+}
+
 export class TabNotFoundError extends Error {
   constructor(tabId: string) {
     super(`Canteen tab ${tabId} not found for this tenant.`)

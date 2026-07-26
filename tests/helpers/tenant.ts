@@ -18,9 +18,22 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
   `)
   // Grant membership so the test superuser (postgres) can SET LOCAL ROLE turnogol_app
   // inside tests that need to exercise RLS policies as the app role.
+  //
+  // turnogol_worker (migr. 038) va en el mismo saco por PARIDAD LOCAL/CI: en CI
+  // `postgres` es superusuario real y asume cualquier rol sin membresía, pero en
+  // Supabase local NO lo es (rolsuper=f) y el SET LOCAL ROLE explota con
+  // "permission denied to set role". Sin este grant, retention-age-purges.test.ts
+  // (§grants del rol worker, migr. 057) pasa en CI y falla localmente. El IF
+  // EXISTS cubre el orden: el rol nace en una migración, no acá.
   await s.unsafe(`
     GRANT turnogol_app TO postgres;
     GRANT authenticated TO postgres;
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'turnogol_worker') THEN
+        GRANT turnogol_worker TO postgres;
+      END IF;
+    END $$;
   `)
   // Grant privileges so RLS (not GRANT) is what blocks.
   await s.unsafe(`

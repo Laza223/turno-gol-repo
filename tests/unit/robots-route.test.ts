@@ -22,10 +22,20 @@ describe('robots()', () => {
     const rules = Array.isArray(r.rules) ? r.rules : [r.rules]
     const disallow = rules[0]!.disallow as string[]
     expect(disallow).toContain('/api/')
-    expect(disallow).toContain('/admin/')
     expect(disallow).toContain('/super-admin/')
-    expect(disallow).toContain('/player/')
     expect(disallow).toContain('/monitoring')
+
+    // `(admin)` y `(player)` son route GROUPS: no aparecen en la URL, así que
+    // `/admin/` y `/player/` no bloqueaban absolutamente nada y las rutas
+    // reales quedaban sin declarar. Ahora se listan una por una.
+    for (const route of ['/dashboard', '/grilla', '/caja', '/reservas', '/settings']) {
+      expect(disallow, `falta la ruta admin ${route}`).toContain(route)
+    }
+    for (const route of ['/mis-reservas', '/perfil', '/configuracion']) {
+      expect(disallow, `falta la ruta de jugador ${route}`).toContain(route)
+    }
+    expect(disallow).not.toContain('/admin/')
+    expect(disallow).not.toContain('/player/')
   })
 
   it('references a sitemap URL', () => {

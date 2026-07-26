@@ -36,7 +36,10 @@ export function PlayerBottomNav() {
   return (
     <nav
       aria-label="Navegación del jugador"
-      className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+      // z-40 y no z-10: con el PortalHeader en z-50, cualquier elevación
+      // intermedia se le montaba encima a la nav. Queda igual por debajo del
+      // overlay de Dialog/Sheet, que es lo que se busca.
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {NAV_ITEMS.map(({ href, label, Icon, match }) => {
         const active = match(pathname)

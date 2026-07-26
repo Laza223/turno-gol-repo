@@ -57,7 +57,7 @@ export function LoginCard({
             required
             placeholder="vos@complejo.com"
             aria-invalid={isError ? 'true' : undefined}
-            className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-invalid:border-red-500"
+            className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-base md:text-sm text-foreground placeholder:text-muted-foreground shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-invalid:border-red-500"
           />
         </div>
 
@@ -68,7 +68,10 @@ export function LoginCard({
             </label>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline"
+              // inline-flex + min-h-11: es un control de la fila del campo, no un
+              // link dentro de texto corrido, así que no le aplica la excepción
+              // "inline" de WCAG 2.5.5. Medía 149x16.
+              className="inline-flex min-h-11 items-center text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline md:min-h-0"
             >
               ¿Olvidaste tu contraseña?
             </Link>
@@ -82,13 +85,16 @@ export function LoginCard({
               required
               placeholder="••••••••"
               aria-invalid={isError ? 'true' : undefined}
-              className="h-11 w-full rounded-lg border border-border bg-card px-3.5 pr-11 text-sm text-foreground placeholder:text-muted-foreground shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-invalid:border-red-500"
+              className="h-11 w-full rounded-lg border border-border bg-card px-3.5 pr-11 text-base md:text-sm text-foreground placeholder:text-muted-foreground shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-invalid:border-red-500"
             />
             <button
               type="button"
               onClick={() => setShow((v) => !v)}
               aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              // El área tocable era la del ícono: 16x16. Se le da la caja de 44
+              // que exige WCAG 2.5.5 sin mover el ícono (el input ya reserva
+              // pr-11 = 44px, así que el cuadrado encaja justo).
+              className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
             >
               {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
             </button>

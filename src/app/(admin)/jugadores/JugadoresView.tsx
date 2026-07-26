@@ -29,7 +29,7 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
           aria-label="Buscar jugadores"
           defaultValue={q ?? ''}
           placeholder="Buscar por nombre, teléfono o email"
-          className="w-full rounded-md border border-border py-2 pl-9 pr-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="w-full min-h-11 rounded-md border border-border py-2 pl-9 pr-3 text-base md:min-h-0 md:text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         />
       </form>
 

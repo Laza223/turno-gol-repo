@@ -165,7 +165,10 @@ export async function notifyAdminBookingConfirmed(
       courtName: ctx?.court_name,
       dateLabel,
       timeLabel,
-      url: `/admin/grilla?date=${ymd}&highlight=${bookingId}`,
+      // `/grilla`, no `/admin/grilla`: `(admin)` es un route GROUP de Next y no
+      // aparece en la URL. Con el prefijo, tocar la notificación de una reserva
+      // nueva llevaba a un 404 — el destino del push nunca existió.
+      url: `/grilla?date=${ymd}&highlight=${bookingId}`,
     })
   } catch (err) {
     logger.error('push dispatch after booking confirmation failed', {

@@ -45,7 +45,10 @@ export function AdminLayoutShell({
   }
 
   return (
-    <div className={cn("min-h-screen shell-bg", isGrilla && "h-screen overflow-hidden flex flex-col")}>
+    // dvh y no vh: en iOS `100vh` incluye la barra de URL, así que el contenedor
+    // queda más alto que el área visible — y con `overflow-hidden` el excedente
+    // es INALCANZABLE (los últimos turnos de la grilla no se podían tocar).
+    <div className={cn("min-h-dvh shell-bg", isGrilla && "h-dvh overflow-hidden flex flex-col")}>
       {/* Sidebar (el overlay mobile lo trae el Sheet de AdminSidebar) */}
       <AdminSidebar
         tenantName={tenantName}
@@ -62,7 +65,7 @@ export function AdminLayoutShell({
       />
 
       {/* Main content */}
-      <div className={cn("lg:pl-60", isGrilla && "h-screen flex flex-col min-h-0 overflow-hidden")}>
+      <div className={cn("lg:pl-60", isGrilla && "h-dvh flex flex-col min-h-0 overflow-hidden")}>
         <div className={cn("pt-[calc(4rem+env(safe-area-inset-top))]", isGrilla && "flex-1 flex flex-col min-h-0 overflow-hidden")}>
           {/* Banner de impersonación (super admin): pegado bajo el header */}
           {impersonationBanner}
@@ -81,7 +84,7 @@ export function AdminLayoutShell({
               "content-area-gradient mx-auto w-full px-4 sm:px-6 lg:px-8",
               isGrilla
                 ? "max-w-full flex-1 flex flex-col min-h-0 overflow-hidden py-4"
-                : "max-w-7xl py-8 min-h-[calc(100vh-4rem)]"
+                : "max-w-7xl py-8 min-h-[calc(100dvh-4rem)]"
             )}
           >
             {children}

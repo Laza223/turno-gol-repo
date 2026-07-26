@@ -31,7 +31,8 @@ export const POST = withTenant(async (_req, user) => {
     courtName: 'Test',
     dateLabel: 'ahora',
     timeLabel: 'mismo',
-    url: '/admin/grilla',
+    // Sin el prefijo `/admin`: es un route group, no un segmento de URL.
+    url: '/grilla',
   })
 
   return NextResponse.json({ success: true, dispatched: enqueued })

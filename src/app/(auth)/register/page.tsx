@@ -68,7 +68,7 @@ function FormPane() {
     <div className="relative flex items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
       <Link
         href="/"
-        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
+        className="absolute left-4 top-4 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1 text-xs md:min-h-0 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Volver

@@ -208,7 +208,10 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
       />
       <SearchBand cities={cities} />
 
-      <div className="relative -mx-4 space-y-2 border-b border-border bg-card px-4 py-2.5 sm:px-6 lg:px-8">
+      {/* El margen negativo tiene que acompañar al padding en cada breakpoint:
+          con `-mx-4` fijo y `px-4 sm:px-6 lg:px-8`, la banda sobresalía del
+          contenedor apenas la pantalla pasaba `sm`. */}
+      <div className="relative -mx-4 space-y-2 border-b border-border bg-card px-4 py-2.5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <Suspense fallback={<div className="h-16" />}>
           <QuickFilters />
           <ExplorarToolbar total={total} />
@@ -272,7 +275,9 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
       {view === 'map' && (
         <Link
           href={listHref}
-          className="fixed bottom-20 left-1/2 z-30 inline-flex h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden whitespace-nowrap"
+          // bottom con safe-area: sobre el home indicator del iPhone el FAB
+          // quedaba pegado al borde de gestos y era difícil de acertar.
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-30 inline-flex h-11 max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden whitespace-nowrap"
         >
           <List className="h-4 w-4" aria-hidden /> Ver lista
         </Link>

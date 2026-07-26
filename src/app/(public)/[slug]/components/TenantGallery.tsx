@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useScrollLock } from '@/hooks/use-scroll-lock'
 
 type Props = { photos: string[]; name: string }
 
@@ -29,12 +30,14 @@ export default function TenantGallery({ photos, name }: Props) {
       else if (e.key === 'ArrowRight') next()
     }
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
     }
   }, [open, close, prev, next])
+
+  // El scroll-lock va aparte: `body { overflow: hidden }` no frena el scroll en
+  // iOS Safari (el fondo se movía detrás del lightbox). Ver use-scroll-lock.
+  useScrollLock(open)
 
   if (photos.length === 0) return null
 

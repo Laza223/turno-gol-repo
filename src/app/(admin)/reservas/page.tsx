@@ -144,7 +144,7 @@ export default async function ReservasPage(props: Props) {
         actions={
           <Link
             href="/grilla"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-9"
           >
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
             Ir a la grilla
@@ -162,7 +162,7 @@ export default async function ReservasPage(props: Props) {
                 href={buildHref({ dia: s.value, status, q, compact })}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+                  'inline-flex min-h-11 items-center rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-8',
                   active ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -186,7 +186,7 @@ export default async function ReservasPage(props: Props) {
               href={buildHref({ dia: scope, status: f.value, q, compact })}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0',
                 active
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',

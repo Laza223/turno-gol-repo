@@ -95,8 +95,10 @@ export default function SearchBar({ cities }: Props) {
     )
   }
 
+  // text-base en mobile: < 16px hace que iOS zoomee al enfocar. Este es el campo
+  // "Nombre del complejo…" que el dueño reportó, y la const alimenta los 4 campos.
   const fieldClass =
-    'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-base md:text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
   const labelClass = 'mb-1.5 block font-logo text-[11px] font-bold uppercase tracking-wider text-muted-foreground'
 

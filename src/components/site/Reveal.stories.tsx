@@ -115,6 +115,59 @@ export const AntesDeIntersectar: Story = {
   },
 }
 
+/**
+ * Regresión de producción (landing casi vacía en iPhone real): un flick de
+ * mobile puede mover el scroll de "el elemento está debajo del viewport" a
+ * "ya quedó arriba del viewport" en un único frame de composición, sin que el
+ * IntersectionObserver llegue a registrar ninguna muestra con overlap — la
+ * sección quedaba `opacity:0` PARA SIEMPRE. Se reproduce asignando `scrollTop`
+ * directo (salto instantáneo, sin frames intermedios) en vez de animarlo, que
+ * es la peor condición posible para el IntersectionObserver y el escenario
+ * real de un flick rápido.
+ */
+export const RevelaTrasSaltoDeScrollRapido: Story = {
+  beforeEach: () => {
+    const real = window.matchMedia
+    window.matchMedia = ((query: string) =>
+      query.includes('prefers-reduced-motion')
+        ? { ...real(query), matches: false }
+        : real(query)) as typeof window.matchMedia
+    return () => {
+      window.matchMedia = real
+    }
+  },
+  decorators: [
+    (Story) => (
+      <div
+        data-testid="scroll-container"
+        tabIndex={0}
+        style={{ height: 220, overflow: 'auto' }}
+        className="rounded-lg border border-dashed border-border"
+      >
+        <div style={{ height: 600 }} className="flex items-center justify-center text-xs text-muted-foreground">
+          Scrolleá para ver el contenido
+        </div>
+        <Story />
+        <div style={{ height: 600 }} aria-hidden />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const el = canvas.getByText('Contenido revelado').parentElement!
+    const container = canvasElement.querySelector<HTMLElement>('[data-testid="scroll-container"]')!
+
+    // Salto instantáneo de 0 a "bien pasado el elemento" — sin animación, sin
+    // frames intermedios. Si el fix dependiera solo del IntersectionObserver,
+    // esto reproduciría el bug: el elemento nunca pasa por un estado con
+    // overlap > 0 antes de quedar completamente arriba del viewport.
+    container.scrollTop = container.scrollHeight
+    container.dispatchEvent(new Event('scroll'))
+
+    await waitFor(() => expect(el).toHaveClass('opacity-100'))
+  },
+}
+
 /** `prefers-reduced-motion: reduce`: aparece de inmediato, sin animar. */
 export const MovimientoReducido: Story = {
   parameters: { reducedMotion: true },

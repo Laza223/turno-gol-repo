@@ -182,7 +182,7 @@ export function DebtListClient({ debts }: { debts: DebtRow[] }) {
                           href={whatsappUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+                          className="inline-flex items-center gap-1.5 h-11 md:h-9 px-3 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
                           WhatsApp
@@ -193,7 +193,7 @@ export function DebtListClient({ debts }: { debts: DebtRow[] }) {
                         <button
                           type="button"
                           onClick={() => setSelectedBanPlayer({ id: debt.playerId!, name: debt.contactName || 'Jugador' })}
-                          className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors"
+                          className="inline-flex items-center gap-1.5 h-11 md:h-9 px-3 text-xs font-semibold rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors"
                           title="Sancionar / Banear jugador"
                         >
                           <ShieldAlert className="h-3.5 w-3.5" />
@@ -204,7 +204,7 @@ export function DebtListClient({ debts }: { debts: DebtRow[] }) {
                       <button
                         type="button"
                         onClick={() => setSelectedDebt(debt)}
-                        className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-colors"
+                        className="inline-flex items-center gap-1.5 h-11 md:h-9 px-3 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-colors"
                       >
                         <CreditCard className="h-3.5 w-3.5" />
                         Saldar deuda
@@ -212,7 +212,7 @@ export function DebtListClient({ debts }: { debts: DebtRow[] }) {
 
                       <Link
                         href={`/reservas/${debt.id}`}
-                        className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-input bg-background text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        className="inline-flex items-center justify-center h-11 w-11 md:h-9 md:w-9 rounded-lg border border-input bg-background text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                         title="Ver detalle del turno"
                       >
                         <ExternalLink className="h-4 w-4" />

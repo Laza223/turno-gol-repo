@@ -122,7 +122,7 @@ export function ScheduleFields({
           contrato de persistencia con horariosFormDataToInput() y tienen que
           serializar sin depender de que el usuario haya abierto el panel. */}
       <Collapsible defaultOpen={hasAdvancedConfig}>
-        <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
+        <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0">
           Excepciones y detalles avanzados
           <ChevronDown
             aria-hidden="true"
@@ -151,7 +151,13 @@ export function ScheduleFields({
                 >
                   {/* Fila Principal */}
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
+                    {/* Envuelto en <label> (no <div>): el área tocable pasa de
+                        16x16 (el <input> solo) a 44px de alto en mobile, y
+                        clickear el nombre del día también togglea (semántica
+                        correcta de <label>). aria-label en el input sigue
+                        siendo el nombre accesible (gana sobre el texto del
+                        label), sin anuncio duplicado. */}
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2.5 md:min-h-0">
                       <input
                         type="checkbox"
                         checked={!closed}
@@ -167,7 +173,7 @@ export function ScheduleFields({
                       >
                         {label}
                       </span>
-                    </div>
+                    </label>
 
                     <div className="flex items-center gap-2">
                       {closed ? (
@@ -183,7 +189,7 @@ export function ScheduleFields({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                            className="h-11 md:h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                             onClick={() =>
                               setDay(day, {
                                 mode: 'custom',
@@ -200,7 +206,7 @@ export function ScheduleFields({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                          className="h-11 md:h-7 px-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                           onClick={() => setDay(day, { mode: 'general' })}
                         >
                           Restablecer
@@ -221,7 +227,7 @@ export function ScheduleFields({
                           value={d.open}
                           onChange={(e) => setDay(day, { open: e.target.value })}
                           aria-label={`${label}: abre`}
-                          className="h-8 w-[76px] text-xs px-2 py-1 text-center"
+                          className="h-11 md:h-8 w-[92px] md:w-[76px] text-xs px-2 py-1 text-center"
                         />
                         <span className="text-xs text-muted-foreground">a</span>
                         <Input
@@ -229,7 +235,7 @@ export function ScheduleFields({
                           value={d.close}
                           onChange={(e) => setDay(day, { close: e.target.value })}
                           aria-label={`${label}: cierra`}
-                          className="h-8 w-[76px] text-xs px-2 py-1 text-center"
+                          className="h-11 md:h-8 w-[92px] md:w-[76px] text-xs px-2 py-1 text-center"
                         />
                       </div>
                     </div>

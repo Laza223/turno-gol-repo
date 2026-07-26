@@ -333,8 +333,9 @@ export default function AbonadoForm({
     )
   }
 
+  // text-base en mobile: < 16px dispara el zoom de iOS al enfocar (MASTER §3.x).
   const fieldBase =
-    'h-11 w-full rounded-xl border border-input bg-background text-sm text-foreground shadow-xs transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-ring hover:border-accent-foreground/20'
+    'h-11 w-full rounded-xl border border-input bg-background text-base md:text-sm text-foreground shadow-xs transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-ring hover:border-accent-foreground/20'
 
   return (
     <form onSubmit={handlePreviewSubmit} className="space-y-6">
@@ -509,7 +510,7 @@ export default function AbonadoForm({
                   name="notes"
                   rows={2}
                   placeholder="Observaciones internas sobre este turno fijo..."
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus-visible:ring-ring hover:border-accent-foreground/20"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-base md:text-sm text-foreground shadow-xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus-visible:ring-ring hover:border-accent-foreground/20"
                 />
               </div>
             </div>

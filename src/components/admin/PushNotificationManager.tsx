@@ -8,7 +8,17 @@ import { fetchWithTimeout, withTimeout } from '@/shared/utils/async'
 type Status = 'idle' | 'unsupported' | 'denied' | 'unsubscribed' | 'subscribed' | 'pending'
 
 const SW_PATH = '/sw.js'
-const SW_SCOPE = '/admin/'
+// Scope '/' y no '/admin/': `(admin)` es un route GROUP de Next, así que las URLs
+// reales son `/grilla`, `/caja`, `/dashboard` — ninguna empieza con `/admin/`.
+// Con el scope viejo el worker no controlaba NINGUNA página: la suscripción push
+// funcionaba igual (vive en la registration), pero `clients.matchAll()` en el
+// handler `notificationclick` de `public/sw.js` operaba sobre un conjunto vacío,
+// así que tocar una notificación abría siempre una ventana nueva en vez de
+// enfocar la pestaña abierta, y el BroadcastChannel de dedupe nunca llegaba a
+// ninguna página (el toast in-app caía siempre al fallback nativo).
+// Ampliar el scope es seguro: `sw.js` NO tiene handler de `fetch` a propósito
+// (el realtime de la grilla depende de fetch directo), así que no intercepta red.
+const SW_SCOPE = '/'
 const SOUND_ENABLED_KEY = 'turnogol:notif-sound'
 // ENS-11: descartar el banner lo desmonta (no lo oculta) por esta ventana,
 // para que un click real en un botón debajo no lo vuelva a interceptar.
@@ -259,7 +269,11 @@ export function PushNotificationManager() {
   }
 
   return (
-    <div className="card-premium fixed bottom-[max(env(safe-area-inset-bottom),1rem)] left-4 z-40 max-w-[calc(100vw-2rem)] sm:max-w-sm p-4">
+    // inset-x-4 en vez de `left-4 max-w-[calc(100vw-2rem)]`: ese par desbordaba
+    // 1rem exacto (el left-4 se suma al ancho ya calculado sobre el viewport
+    // completo). Además 100vw no descuenta el área bajo el notch con
+    // viewport-fit=cover, ni se recalcula si iOS zoomea.
+    <div className="card-premium fixed bottom-[max(env(safe-area-inset-bottom),1rem)] inset-x-4 z-40 sm:left-4 sm:right-auto sm:max-w-sm p-4">
       <button
         type="button"
         onClick={dismiss}

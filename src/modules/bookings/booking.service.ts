@@ -24,10 +24,10 @@ import {
   BookingNotInConfirmedError,
   BookingNotInNoShowError,
   BookingNotYetEndedError,
-  BookingNotYetStartedError,
   BookingValidationError,
   CourtOfflineError,
   NoShowCorrectionWindowExpiredError,
+  NoShowNotYetEndedError,
   NoShowRevertWindowExpiredError,
   PlayerBannedError,
   PriceUnavailableError,
@@ -611,13 +611,13 @@ export async function markNoShow(
   tx: DbTx,
 ): Promise<BookingRow> {
   // Dos caminos, ambos sólo para admin:
-  //   1. confirmed → no_show: flujo normal (requiere time_start pasado).
+  //   1. confirmed → no_show: flujo normal (requiere ends_at pasado, RI #5).
   //   2. completed → no_show: corrección de 24h (P5). Un admin revierte un turno
   //      mal completado dentro de las 24h de la completación (bookings.updated_at).
   const check = await tx.execute(sql`
     SELECT
       b.status,
-      b.starts_at > NOW() AS not_yet_started,
+      b.ends_at > NOW() AS not_yet_ended,
       (NOW() - b.updated_at) < INTERVAL '24 hours' AS within_correction_window
     FROM bookings b
     WHERE b.id = ${bookingId}
@@ -625,7 +625,7 @@ export async function markNoShow(
   const row = (
     check as unknown as Array<{
       status: BookingStatus
-      not_yet_started: boolean
+      not_yet_ended: boolean
       within_correction_window: boolean
     }>
   )[0]
@@ -641,12 +641,15 @@ export async function markNoShow(
     return applyNoShow(bookingId, 'completed', tx)
   }
 
-  // B1 audit fix: require that time_start has passed in ART. Otherwise admin could
-  // pre-mark no-show on a future booking, triggering false auto-ban via no-show
-  // penalty + corrupting reports.
+  // RI #5 (fase D4, doc6 §3): exige que el turno haya TERMINADO (ends_at
+  // pasado), no solo que haya empezado — un turno en curso todavía puede ver
+  // llegar al equipo. Usa el instante físico (starts_at/ends_at, migr.
+  // 040/041), no date/time_end reconstruido, por los turnos post-medianoche
+  // (closes_next_day). Antes exigía solo time_start pasado (B1 audit),
+  // permitiendo marcar no-show con hasta 59 min de turno en curso.
   assertTransition('confirmed', 'no_show', { actor: 'admin' })
-  if (row.not_yet_started) {
-    throw new BookingNotYetStartedError(bookingId)
+  if (row.not_yet_ended) {
+    throw new NoShowNotYetEndedError(bookingId)
   }
   return applyNoShow(bookingId, 'confirmed', tx)
 }

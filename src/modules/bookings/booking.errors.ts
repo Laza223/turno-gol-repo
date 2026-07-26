@@ -90,10 +90,15 @@ export class BookingNotYetEndedError extends Error {
   }
 }
 
-export class BookingNotYetStartedError extends Error {
+// RI #5 (fase D4, doc6 §3): marcar no-show exige que el turno haya TERMINADO
+// (ends_at pasado), no solo que haya empezado — con el equipo todavía en
+// cancha (hasta 59 min de ventana) el softban/captura de seña era prematuro.
+// Reemplaza a la vieja `BookingNotYetStartedError` (condición basada en
+// starts_at), alineando el código al spec.
+export class NoShowNotYetEndedError extends Error {
   constructor(bookingId: string) {
-    super(`Booking ${bookingId} cannot be marked no-show: time_start has not yet passed`)
-    this.name = 'BookingNotYetStartedError'
+    super(`Booking ${bookingId} cannot be marked no-show: time_end has not yet passed`)
+    this.name = 'NoShowNotYetEndedError'
   }
 }
 

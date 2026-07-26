@@ -1,7 +1,8 @@
 import { sql, and, eq, asc } from 'drizzle-orm'
 import { canteenProducts } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
-import { ProductNotFoundError } from './canteen.errors'
+import { ProductNotFoundError, StockNotEditableFromCatalogError } from './canteen.errors'
+import { lockProduct } from './stock.service'
 import type {
   CanteenProductRow,
   CreateProductInput,
@@ -70,10 +71,15 @@ export async function createProduct(
 }
 
 /**
- * Edición de catálogo (solo admin, guard en la action). Cambiar `stock` acá
- * es habilitar/deshabilitar el control (null ↔ número) o corregir en frío
- * desde el formulario; las correcciones operativas con motivo van por
- * adjustStock (stock.service) que deja rastro en el ledger.
+ * Edición de catálogo (solo admin, guard en la action). `stock` en el
+ * patch SOLO puede cambiar de MODO (null → número: activar control con un
+ * valor inicial; número → null: desactivar) o repetir el número vigente
+ * (no-op, el form puede reenviarlo sin intención de cambiar nada). Un
+ * número → OTRO número se rechaza: pisar el contador desde acá con un
+ * snapshot stale del diálogo perdía ventas concurrentes (RI #4 D4, ver
+ * `docs/audit/reports/fase-d4-flujos-integridad-report.md` §9 punto 4). Las
+ * correcciones operativas del número van por stock.service (reposición /
+ * merma / ajuste), que deja rastro en el ledger.
  */
 export async function updateProduct(
   tenantId: string,
@@ -81,6 +87,19 @@ export async function updateProduct(
   patch: UpdateProductInput,
   tx: DbTx,
 ): Promise<CanteenProductRow> {
+  if (patch.stock !== undefined) {
+    // Lock de la fila (mismo idioma que stock.service.ts:lockProduct) para
+    // comparar contra el valor VIGENTE, no el que cargó el diálogo.
+    const current = await lockProduct(tenantId, productId, tx)
+    const isModeChange =
+      (current.stock === null && patch.stock !== null) ||
+      (current.stock !== null && patch.stock === null)
+    const isNoOp = current.stock === patch.stock
+    if (!isModeChange && !isNoOp) {
+      throw new StockNotEditableFromCatalogError(current.name)
+    }
+  }
+
   const rows = await tx
     .update(canteenProducts)
     .set({

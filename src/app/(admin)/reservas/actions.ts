@@ -41,7 +41,7 @@ import {
   BookingNotInConfirmedError,
   BookingNotInNoShowError,
   BookingNotYetEndedError,
-  BookingNotYetStartedError,
+  NoShowNotYetEndedError,
   NoShowRevertWindowExpiredError,
   RefundUnavailableError,
 } from '@/modules/bookings/booking.errors'
@@ -298,11 +298,11 @@ export async function markNoShowAction(bookingId: string): Promise<BookingAction
     if (err instanceof BookingNotInConfirmedError) {
       return { success: false, error: 'La reserva no está en estado confirmado.' }
     }
-    if (err instanceof BookingNotYetStartedError) {
+    if (err instanceof NoShowNotYetEndedError) {
       return {
         success: false,
         error:
-          'El turno todavía no empezó. Podés marcar ausente recién después del horario de inicio.',
+          'El turno todavía no terminó. Podés marcar ausente recién después del horario de fin.',
       }
     }
     throw err

@@ -20,9 +20,9 @@ import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurr
 import {
   BookingNotInConfirmedError,
   BookingNotYetEndedError,
-  BookingNotYetStartedError,
   CourtOfflineError,
   NoShowCorrectionWindowExpiredError,
+  NoShowNotYetEndedError,
   PlayerBannedError,
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
@@ -180,6 +180,40 @@ async function insertNoShowBooking(opts: {
 
 const FUTURE_DATE = '2027-04-26' // Monday, far in the future
 const PAST_DATE = '2020-04-27' // Monday, far in the past (used by completeBooking/markNoShow tests)
+
+/**
+ * Turno `confirmed` con `starts_at`/`ends_at` seteados EXPLÍCITAMENTE relativos
+ * a `NOW()` (no vía `physicalRange`, que ata el instante físico a
+ * `date`/`time_start`/`time_end`) — necesario para simular un turno "en curso"
+ * o "recién terminado" sin depender de la hora real de ejecución del test
+ * (RI #5, ver describe `markNoShow`). `date`/`time_start`/`time_end` quedan en
+ * un placeholder válido (solo deben satisfacer `chk_time_valid`); `markNoShow`
+ * lee `starts_at`/`ends_at`, no esas columnas.
+ */
+async function insertConfirmedBookingWithWindow(opts: {
+  tenantId: string
+  courtId: string
+  playerId: string
+  startsAt: Date
+  endsAt: Date
+}): Promise<string> {
+  const sql = getSql()
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO bookings (
+      tenant_id, court_id, player_id, date, time_start, time_end,
+      starts_at, ends_at,
+      price_snapshot, deposit_amount, deposit_status, payment_method, status
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
+      ${PAST_DATE}::date, ${'08:00'}::time, ${'09:00'}::time,
+      ${opts.startsAt.toISOString()}, ${opts.endsAt.toISOString()},
+      ${800000}, ${0}, 'not_required', NULL, 'confirmed'
+    )
+    RETURNING id
+  `
+  return rows[0]!.id
+}
 
 // Capturing stub for the expiry-timer seam. The previous silent `() => {}`
 // no-op meant a regression that drops `scheduleBookingExpiry()` (Hallazgo 1 —
@@ -576,7 +610,7 @@ describe('terminal state inmutabilidad', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    // PAST_DATE so the slot is past-due for no-show marking (B1: time_start passed).
+    // PAST_DATE so the slot is past-due for no-show marking (RI #5: ends_at passed).
     const created = await withTenantContext(tenant.id, (tx) =>
       createManualBooking(
         tenant.id,
@@ -837,7 +871,7 @@ describe('markNoShow', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    // B1 audit: markNoShow now requires time_start to have passed.
+    // RI #5: markNoShow requires ends_at (not just starts_at) to have passed.
     // Using PAST_DATE so the slot is legitimately past-due for no-show marking.
     const created = await withTenantContext(tenant.id, (tx) =>
       createManualBooking(
@@ -864,6 +898,83 @@ describe('markNoShow', () => {
     await expect(
       withTenantContext(tenant.id, (tx) => markNoShow(created.id, staff.id, tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
+  })
+
+  // RI #5 (fase D4, doc6 §3): el turno EN CURSO (ya empezó, todavía no
+  // terminó) NO puede marcarse ausente — antes bastaba con starts_at pasado,
+  // dejando una ventana de hasta 59 min con el equipo pudiendo llegar.
+  it('rechaza un turno EN CURSO (empezó, ends_at todavía futuro) con NoShowNotYetEndedError', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+
+    const bookingId = await insertConfirmedBookingWithWindow({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      startsAt: new Date(Date.now() - 30 * 60_000),
+      endsAt: new Date(Date.now() + 30 * 60_000),
+    })
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => markNoShow(bookingId, staff.id, tx)),
+    ).rejects.toBeInstanceOf(NoShowNotYetEndedError)
+
+    // La transición no se aplicó: el turno sigue 'confirmed'.
+    const after = await sql<{ status: string }[]>`
+      SELECT status FROM bookings WHERE id = ${bookingId}
+    `
+    expect(after[0]!.status).toBe('confirmed')
+  })
+
+  // Caso límite: apenas pasó ends_at, ya se puede marcar (no hace falta
+  // esperar más allá del fin real del turno).
+  it("acepta un turno que apenas terminó (ends_at hace instantes)", async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+
+    const bookingId = await insertConfirmedBookingWithWindow({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      startsAt: new Date(Date.now() - 70 * 60_000),
+      endsAt: new Date(Date.now() - 2_000),
+    })
+
+    const marked = await withTenantContext(tenant.id, (tx) =>
+      markNoShow(bookingId, staff.id, tx),
+    )
+    expect(marked.status).toBe('no_show')
+  })
+
+  // Sigue rechazando el turno que ni siquiera arrancó (caso previo a RI #5,
+  // ahora subsumido por la misma condición ends_at).
+  it('sigue rechazando un turno que todavía no arrancó (starts_at futuro) con NoShowNotYetEndedError', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+
+    const bookingId = await insertConfirmedBookingWithWindow({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      startsAt: new Date(Date.now() + 60 * 60_000),
+      endsAt: new Date(Date.now() + 120 * 60_000),
+    })
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => markNoShow(bookingId, staff.id, tx)),
+    ).rejects.toBeInstanceOf(NoShowNotYetEndedError)
   })
 })
 
@@ -943,7 +1054,7 @@ describe('día operativo (closes_next_day) — instante físico del slot', () =>
     ).rejects.toBeInstanceOf(BookingNotYetEndedError)
   })
 
-  it('markNoShow rechaza un turno de madrugada de hoy operativo con BookingNotYetStartedError', async () => {
+  it('markNoShow rechaza un turno de madrugada de hoy operativo con NoShowNotYetEndedError', async () => {
     const sql = getSql()
     const { tenant, todayArt } = await setupClosesNextDayTenant(sql)
     const staff = await createTestStaffUser(sql)
@@ -964,7 +1075,7 @@ describe('día operativo (closes_next_day) — instante físico del slot', () =>
 
     await expect(
       withTenantContext(tenant.id, (tx) => markNoShow(bookingId, staff.id, tx)),
-    ).rejects.toBeInstanceOf(BookingNotYetStartedError)
+    ).rejects.toBeInstanceOf(NoShowNotYetEndedError)
   })
 })
 

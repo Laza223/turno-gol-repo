@@ -14,6 +14,7 @@ import {
   insertSubscription,
   insertTournament,
   insertTournamentMatch,
+  insertTournamentMatchEvent,
   insertTournamentStage,
   insertTournamentTeam,
   insertTournamentTeamPlayer,
@@ -40,6 +41,7 @@ export type IsolationSeed = {
   tournamentTeamPlayerId: string
   tournamentStageId: string
   tournamentMatchId: string
+  tournamentMatchEventId: string
 }
 
 /**
@@ -90,6 +92,15 @@ export async function seedIsolationData(
     stageId: tournamentStageId,
     homeTeamId: tournamentTeamId,
   })
+  // El acta cuelga del MISMO torneo que el partido y del MISMO equipo que el
+  // jugador: las FKs de la 065 son compuestas y lo exigen.
+  const tournamentMatchEventId = await insertTournamentMatchEvent(sql, {
+    tenantId,
+    tournamentId,
+    matchId: tournamentMatchId,
+    teamId: tournamentTeamId,
+    teamPlayerId: tournamentTeamPlayerId,
+  })
 
   return {
     tenantId,
@@ -112,5 +123,6 @@ export async function seedIsolationData(
     tournamentTeamPlayerId,
     tournamentStageId,
     tournamentMatchId,
+    tournamentMatchEventId,
   }
 }

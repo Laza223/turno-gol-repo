@@ -316,3 +316,27 @@ export async function insertAuditLog(
   `
   return rows[0].id
 }
+
+export async function insertTournamentMatchEvent(
+  sql: Sql,
+  args: {
+    tenantId: string
+    tournamentId: string
+    matchId: string
+    teamId: string
+    teamPlayerId?: string | null
+    type?: string
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO tournament_match_events (
+      tenant_id, tournament_id, match_id, team_id, team_player_id, type
+    )
+    VALUES (
+      ${args.tenantId}, ${args.tournamentId}, ${args.matchId}, ${args.teamId},
+      ${args.teamPlayerId ?? null}, ${args.type ?? 'goal'}::tournament_event_type
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}

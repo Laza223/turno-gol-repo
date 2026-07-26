@@ -6,6 +6,7 @@ import { tournamentSlugBase } from './tournament-slug'
 import { countTournamentBookings } from './tournament-slots.service'
 import {
   TournamentHasBookingsError,
+  TournamentHasFixtureError,
   TournamentNotDeletableError,
   TournamentNotFoundError,
 } from './tournament.errors'
@@ -234,6 +235,14 @@ export async function deleteTournament(
   // crudo; este chequeo da un mensaje que dice qué hacer.
   const owned = await countTournamentBookings(tenantId, tournamentId, tx)
   if (owned > 0) throw new TournamentHasBookingsError(owned)
+
+  // Ídem con el fixture (migr. 064): tournament_matches referencia al torneo.
+  const fixture = (await tx.execute(sql`
+    SELECT count(*)::int AS "count" FROM tournament_matches
+    WHERE tenant_id = ${tenantId} AND tournament_id = ${tournamentId}
+  `)) as unknown as Array<{ count: number }>
+  const matchCount = fixture[0]?.count ?? 0
+  if (matchCount > 0) throw new TournamentHasFixtureError(matchCount)
 
   await tx
     .delete(tournaments)

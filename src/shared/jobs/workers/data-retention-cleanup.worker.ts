@@ -354,11 +354,13 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM push_subscriptions WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM player_favorites WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM feature_flags WHERE tenant_id = ${tenantId}`)
-    // Torneos (migr. 062 + 064). Orden obligado por las FKs:
-    // los partidos se referencian ENTRE SÍ (avance de llaves), así que primero
-    // hay que cortar esos punteros; después partidos → fases → plantel →
-    // equipos. `tournaments` va DESPUÉS de bookings porque
-    // bookings.tournament_id lo referencia (FK sin CASCADE, a propósito).
+    // Torneos (migr. 062 + 064 + 065). Orden obligado por las FKs: el acta
+    // (065) es hija de partidos, equipos Y plantel, así que va PRIMERA;
+    // después hay que cortar los punteros que los partidos se hacen entre sí
+    // (avance de llaves); después partidos → fases → plantel → equipos.
+    // `tournaments` va DESPUÉS de bookings porque bookings.tournament_id lo
+    // referencia (FK sin CASCADE, a propósito).
+    await tx.execute(drizzleSql`DELETE FROM tournament_match_events WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`
       UPDATE tournament_matches
       SET home_source_match_id = NULL, away_source_match_id = NULL

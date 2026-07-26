@@ -68,6 +68,11 @@ function rowToMatch(r: typeof tournamentMatches.$inferSelect): TournamentMatchRo
     status: r.status,
     homeScore: r.homeScore ?? null,
     awayScore: r.awayScore ?? null,
+    homePenalties: r.homePenalties ?? null,
+    awayPenalties: r.awayPenalties ?? null,
+    walkoverWinnerTeamId: r.walkoverWinnerTeamId ?? null,
+    homeSourceSeed: r.homeSourceSeed ?? null,
+    awaySourceSeed: r.awaySourceSeed ?? null,
     playedAt: r.playedAt ?? null,
     notes: r.notes ?? null,
     createdAt: r.createdAt,
@@ -144,12 +149,25 @@ export async function generateFixture(
     awayTeamId: string | null
     homeSourceLocal: number | null
     awaySourceLocal: number | null
+    /** Puesto de zona del que sale cada lado (1-based). Solo groups_playoff. */
+    homeSourceSeed: number | null
+    awaySourceSeed: number | null
     isThirdPlace: boolean
     /** Índice local dentro de la fase, al que apuntan los `*SourceLocal`. */
     localIndex: number
   }> = []
 
-  /** Empuja un bracket de llaves respetando sus índices locales. */
+  /**
+ * '__q0__' -> 1. Los genera la rama de groups_playoff más abajo; también
+ * aparecen como homeTeamId en las rondas con BYE.
+ */
+function seedOfPlaceholder(id: string | null): number | null {
+  if (id === null || !id.startsWith('__q')) return null
+  const n = Number(id.slice(3, -2))
+  return Number.isFinite(n) ? n + 1 : null
+}
+
+/** Empuja un bracket de llaves respetando sus índices locales. */
   function pushBracket(stageIndex: number, bracket: BracketMatch[]): void {
     for (const m of bracket) {
       plan.push({
@@ -161,6 +179,8 @@ export async function generateFixture(
         awayTeamId: m.awayTeamId,
         homeSourceLocal: m.homeSourceIndex,
         awaySourceLocal: m.awaySourceIndex,
+        homeSourceSeed: null,
+        awaySourceSeed: null,
         isThirdPlace: m.isThirdPlace ?? false,
         localIndex: m.index,
       })
@@ -188,6 +208,8 @@ export async function generateFixture(
           awayTeamId: p.awayTeamId,
           homeSourceLocal: null,
           awaySourceLocal: null,
+          homeSourceSeed: null,
+          awaySourceSeed: null,
           isThirdPlace: false,
           localIndex: local++,
         })
@@ -220,6 +242,17 @@ export async function generateFixture(
       teamsAdvancePerGroup: advance,
     })
 
+    // La zona de cada equipo se persiste: la 062 dejó la columna en NULL y sin
+    // esto la ficha del equipo no sabe en qué zona juega.
+    for (const group of groups) {
+      for (const teamId of group.teamIds) {
+        await tx.execute(sql`
+          UPDATE tournament_teams SET group_label = ${group.label}
+          WHERE id = ${teamId} AND tenant_id = ${tenantId}
+        `)
+      }
+    }
+
     let local = 0
     for (const group of groups) {
       for (const round of generateRoundRobin(group.teamIds, { legs })) {
@@ -233,6 +266,8 @@ export async function generateFixture(
             awayTeamId: p.awayTeamId,
             homeSourceLocal: null,
             awaySourceLocal: null,
+            homeSourceSeed: null,
+            awaySourceSeed: null,
             isThirdPlace: false,
             localIndex: local++,
           })
@@ -269,6 +304,10 @@ export async function generateFixture(
           awayTeamId: null,
           homeSourceLocal: m.homeSourceIndex,
           awaySourceLocal: m.awaySourceIndex,
+          // ...pero QUÉ puesto de zona va en cada slot no se puede perder, o
+          // después no hay forma de sembrar el cuadro desde la tabla.
+          homeSourceSeed: seedOfPlaceholder(m.homeTeamId),
+          awaySourceSeed: seedOfPlaceholder(m.awayTeamId),
           isThirdPlace: m.isThirdPlace ?? false,
           localIndex: m.index,
         })
@@ -310,6 +349,8 @@ export async function generateFixture(
     awayTeamId: p.awayTeamId,
     homeSourceMatchId: idOf(p.stageIndex, p.homeSourceLocal),
     awaySourceMatchId: idOf(p.stageIndex, p.awaySourceLocal),
+    homeSourceSeed: p.homeSourceSeed,
+    awaySourceSeed: p.awaySourceSeed,
     isThirdPlace: p.isThirdPlace,
   }))
   const insertedMatches = await tx.insert(tournamentMatches).values(rows).returning()
@@ -385,6 +426,14 @@ export async function clearFixture(
   tournamentId: string,
   tx: DbTx,
 ): Promise<{ deleted: number }> {
+  // El acta (migr. 065) es hija de los partidos: va primero, o regenerar el
+  // fixture de un torneo con un solo gol cargado muere con un 23503 crudo.
+  const wiped = (await tx.execute(sql`
+    DELETE FROM tournament_match_events
+    WHERE tenant_id = ${tenantId} AND tournament_id = ${tournamentId}
+    RETURNING id
+  `)) as unknown as unknown[]
+
   // Los partidos se referencian entre sí (avance de llaves): cortar los
   // punteros antes de borrar, o la FK frena.
   await tx.execute(sql`
@@ -409,7 +458,7 @@ export async function clearFixture(
     action: 'tournament.fixture_cleared',
     resourceType: 'tournament',
     resourceId: tournamentId,
-    metadata: { deleted: deleted.length },
+    metadata: { deleted: deleted.length, deletedEvents: wiped.length },
   })
 
   return { deleted: deleted.length }
@@ -472,6 +521,11 @@ export async function listFixture(
     status: r.status as TournamentMatchRow['status'],
     homeScore: (r.home_score as number | null) ?? null,
     awayScore: (r.away_score as number | null) ?? null,
+    homePenalties: (r.home_penalties as number | null) ?? null,
+    awayPenalties: (r.away_penalties as number | null) ?? null,
+    walkoverWinnerTeamId: (r.walkover_winner_team_id as string | null) ?? null,
+    homeSourceSeed: (r.home_source_seed as number | null) ?? null,
+    awaySourceSeed: (r.away_source_seed as number | null) ?? null,
     playedAt: r.played_at ? new Date(r.played_at as string) : null,
     notes: (r.notes as string | null) ?? null,
     createdAt: new Date(r.created_at as string),

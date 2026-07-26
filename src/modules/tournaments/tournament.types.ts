@@ -209,6 +209,14 @@ export type TournamentMatchRow = {
   status: TournamentMatchStatus
   homeScore: number | null
   awayScore: number | null
+  /** Migr. 065. Solo definen la llave: no suman a goles a favor/en contra. */
+  homePenalties: number | null
+  awayPenalties: number | null
+  /** Migr. 065. null con status='walkover' = no se presentó ninguno. */
+  walkoverWinnerTeamId: string | null
+  /** Migr. 065. De qué puesto de zona sale cada lado del cuadro (1-based). */
+  homeSourceSeed: number | null
+  awaySourceSeed: number | null
   playedAt: Date | null
   notes: string | null
   createdAt: Date

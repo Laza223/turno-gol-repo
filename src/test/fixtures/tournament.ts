@@ -1,4 +1,6 @@
 import type {
+  ScorerRow,
+  TournamentMatchEventView,
   TournamentMatchView,
   TournamentRow,
   TournamentSlotRow,
@@ -6,6 +8,11 @@ import type {
   TournamentTeamPlayerRow,
   TournamentTeamRow,
 } from '@/modules/tournaments/tournament.types'
+import type {
+  StandingRow,
+  StandingsGroup,
+} from '@/modules/tournaments/standings/types'
+import type { SuspensionRow } from '@/modules/tournaments/standings/suspensions'
 import { daysFromNow, hoursFromNow } from './clock'
 import { uid } from './ids'
 import { courtFutbol5 } from './court'
@@ -224,6 +231,11 @@ export const tournamentMatch = (
   status: 'scheduled',
   homeScore: null,
   awayScore: null,
+  homePenalties: null,
+  awayPenalties: null,
+  walkoverWinnerTeamId: null,
+  homeSourceSeed: null,
+  awaySourceSeed: null,
   playedAt: null,
   notes: null,
   createdAt: hoursFromNow(-72),
@@ -278,3 +290,95 @@ export const tournamentSlots = (): TournamentSlotRow[] =>
       endsAt: hoursFromNow(24 * 7 + i + 1),
     }),
   )
+
+// ─── Resultados y acta (migr. 065) ──────────────────────────────────
+// Rango de ids: 2501-2599 tournament_match_events.
+
+export const tournamentMatchEvent = (
+  overrides: Partial<TournamentMatchEventView> = {},
+): TournamentMatchEventView => ({
+  id: uid(2501),
+  tenantId: tenant().id,
+  tournamentId: tournament().id,
+  matchId: tournamentMatch().id,
+  teamId: tournamentTeam().id,
+  teamPlayerId: uid(2201),
+  type: 'goal',
+  minute: 23,
+  suspensionMatches: null,
+  notes: null,
+  createdByStaff: null,
+  createdAt: hoursFromNow(-2),
+  teamName: 'Los Pibes',
+  playerName: 'Diego Fernández',
+  shirtNumber: 10,
+  ...overrides,
+})
+
+/** Una zona con tres equipos ya ordenados, para la tabla de posiciones. */
+export const standingsGroup = (
+  overrides: Partial<StandingsGroup> = {},
+): StandingsGroup => ({
+  stageId: tournamentStage().id,
+  groupLabel: null,
+  rows: [
+    standingRow({ position: 1, teamId: uid(2101), teamName: 'Los Pibes', played: 3, won: 3, goalsFor: 7, goalsAgainst: 2, goalDiff: 5, points: 9, decidedBy: 'points' }),
+    standingRow({ position: 2, teamId: uid(2102), teamName: 'Deportivo Central', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 4, goalsAgainst: 4, goalDiff: 0, points: 4, yellowCards: 2, fairPlayPoints: 2, decidedBy: 'goal_diff' }),
+    standingRow({ position: 3, teamId: uid(2103), teamName: 'Racing de Barrio', played: 3, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 7, goalDiff: -5, points: 1, yellowCards: 1, redCards: 1, fairPlayPoints: 4 }),
+  ],
+  ...overrides,
+})
+
+export const standingRow = (overrides: Partial<StandingRow> = {}): StandingRow => ({
+  position: 1,
+  teamId: uid(2101),
+  teamName: 'Los Pibes',
+  teamStatus: 'confirmed',
+  played: 0,
+  won: 0,
+  drawn: 0,
+  lost: 0,
+  goalsFor: 0,
+  goalsAgainst: 0,
+  goalDiff: 0,
+  points: 0,
+  yellowCards: 0,
+  redCards: 0,
+  fairPlayPoints: 0,
+  decidedBy: 'none',
+  unresolvedTie: false,
+  ...overrides,
+})
+
+export const scorerRows = (): ScorerRow[] => [
+  { teamPlayerId: uid(2201), playerName: 'Diego Fernández', shirtNumber: 10, teamId: uid(2101), teamName: 'Los Pibes', goals: 5 },
+  { teamPlayerId: uid(2202), playerName: 'Martín Sosa', shirtNumber: 9, teamId: uid(2102), teamName: 'Deportivo Central', goals: 3 },
+  { teamPlayerId: uid(2203), playerName: 'Bruno Aguirre', shirtNumber: null, teamId: uid(2101), teamName: 'Los Pibes', goals: 2 },
+]
+
+export const suspensionRows = (): SuspensionRow[] => [
+  {
+    teamPlayerId: uid(2201),
+    teamId: uid(2101),
+    yellowCards: 3,
+    redCards: 0,
+    yellowsTowardNext: 0,
+    pendingMatches: 1,
+    servedMatches: 0,
+    suspendedMatchIds: [uid(2402)],
+    reason: 'yellow_accumulation',
+    triggerEventId: uid(2502),
+  },
+  {
+    teamPlayerId: uid(2202),
+    teamId: uid(2102),
+    yellowCards: 0,
+    redCards: 1,
+    yellowsTowardNext: 0,
+    pendingMatches: 2,
+    servedMatches: 0,
+    suspendedMatchIds: [uid(2402), uid(2403)],
+    reason: 'red_card',
+    triggerEventId: uid(2503),
+  },
+]

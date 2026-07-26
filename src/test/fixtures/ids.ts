@@ -20,6 +20,7 @@
  *   2201-2299 tournament_team_players
  *   2301-2399 tournament_stages
  *   2401-2499 tournament_matches
+ *   2501-2599 tournament_match_events
  *   7001-7099 super-admin (planes, trials/signups/webhooks del dashboard global)
  *   7101-7199 super-admin (audit_logs / bookings del tenant activity tab)
  *   9001-9999 payments (mercadopago payment id / preference id)

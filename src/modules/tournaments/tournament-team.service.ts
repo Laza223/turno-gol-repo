@@ -6,9 +6,16 @@ import { getTournament } from './tournament.service'
 import {
   DuplicateShirtNumberError,
   DuplicateTeamNameError,
+  TeamHasEventsError,
+  TeamHasFixtureError,
+  TeamPlayerHasEventsError,
   TournamentFullError,
   TournamentTeamNotFoundError,
 } from './tournament.errors'
+import {
+  countEventsForTeam,
+  countEventsForTeamPlayer,
+} from './tournament-result.service'
 import type {
   CreateTeamInput,
   CreateTeamPlayerInput,
@@ -17,37 +24,10 @@ import type {
   UpdateTeamInput,
 } from './tournament.types'
 
-const PG_UNIQUE_VIOLATION = '23505'
-
-type PgErrorLike = { code?: string; constraint_name?: string; constraint?: string }
-
-/**
- * Desenvuelve el error de Postgres.
- *
- * Drizzle 0.45 envuelve lo que tira postgres-js en un `DrizzleQueryError`: el
- * `code` y el `constraint_name` viajan en `cause`, NO en el error de arriba.
- * Mirar solo el nivel superior hace que un 23505 se escape crudo hacia la UI
- * en vez de convertirse en un error de dominio con mensaje útil.
- */
-function asPgError(err: unknown): PgErrorLike | null {
-  let current: unknown = err
-  // Tope de saltos: la cadena de `cause` es corta y no queremos un ciclo.
-  for (let depth = 0; depth < 5 && current != null; depth++) {
-    if (typeof current === 'object' && 'code' in current) {
-      const code = (current as { code?: unknown }).code
-      if (typeof code === 'string') return current as PgErrorLike
-    }
-    current = (current as { cause?: unknown }).cause
-  }
-  return null
-}
-
-/** Exportada para test unitario: sin esto solo se cubre con DB real. */
-export function isUniqueViolation(err: unknown, constraint: string): boolean {
-  const pg = asPgError(err)
-  if (!pg || pg.code !== PG_UNIQUE_VIOLATION) return false
-  return String(pg.constraint_name ?? pg.constraint ?? '').includes(constraint)
-}
+// Los helpers viven en pg-errors.ts desde la fase 3 (los comparte el service de
+// resultados). Se re-exporta para no romper el import del test unitario.
+import { isUniqueViolation } from './pg-errors'
+export { isUniqueViolation }
 
 function rowToTeam(r: typeof tournamentTeams.$inferSelect): TournamentTeamRow {
   return {
@@ -236,6 +216,20 @@ export async function removeTeam(
 ): Promise<void> {
   const team = await getTeam(tenantId, teamId, tx)
 
+  // Un equipo que ya está en el fixture no se borra: la FK lo frenaría igual,
+  // pero con un 23503 crudo y sin decir qué hacer.
+  const inFixture = (await tx.execute(sql`
+    SELECT count(*)::int AS "count" FROM tournament_matches
+    WHERE tenant_id = ${tenantId}
+      AND (home_team_id = ${teamId} OR away_team_id = ${teamId}
+           OR walkover_winner_team_id = ${teamId})
+  `)) as unknown as Array<{ count: number }>
+  const matchCount = inFixture[0]?.count ?? 0
+  if (matchCount > 0) throw new TeamHasFixtureError(matchCount)
+
+  const events = await countEventsForTeam(tenantId, teamId, tx)
+  if (events > 0) throw new TeamHasEventsError(events)
+
   // Hijos antes que el padre: no hay ON DELETE CASCADE (convención del repo).
   await tx
     .delete(tournamentTeamPlayers)
@@ -327,6 +321,10 @@ export async function removeTeamPlayer(
   teamPlayerId: string,
   tx: DbTx,
 ): Promise<void> {
+  // Sus goles y tarjetas son historial del torneo: no se borra en silencio.
+  const events = await countEventsForTeamPlayer(tenantId, teamPlayerId, tx)
+  if (events > 0) throw new TeamPlayerHasEventsError(events)
+
   const deleted = await tx
     .delete(tournamentTeamPlayers)
     .where(

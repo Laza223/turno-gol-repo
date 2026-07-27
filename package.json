@@ -62,6 +62,7 @@
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
     "db:sync-supabase": "node scripts/sync-supabase-migrations.mjs",
+    "bootstrap:local-roles": "node scripts/bootstrap-local-roles.mjs",
     "jobs:start": "tsx src/shared/jobs/run-workers.ts",
     "analyze": "cross-env ANALYZE=true next build",
     "lighthouse": "lhci autorun",

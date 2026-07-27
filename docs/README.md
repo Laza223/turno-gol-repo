@@ -12,7 +12,7 @@ Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 
 | [`launch/`](./launch) | Backlog de lanzamiento, runbook, risk register, guía launch-first | **Vigente — foco actual** |
 | [`gtm/`](./gtm) | Sistema comercial: ICP, posicionamiento, oferta piloto, funnel, scripts, plan 7-30-90 | **Vigente — foco actual** |
 | [`marketing/`](./marketing) | Estrategia de contenido SEO/web + research (keywords, competidores, foros) | **Vigente** (SEO activado 2026-07-12) |
-| [`operations/`](./operations) | Lanzamiento, migraciones, soporte de navegadores | Vigente |
+| [`operations/`](./operations) | **Manual del dueño** + **checklist de infraestructura (qué pagar y dónde)**, lanzamiento, migraciones, soporte de navegadores | Vigente |
 | [`planning/`](./planning) | Deploy playbook, pricing, cambios de reglas de negocio, icebox de features | Vigente |
 | [`decisions/`](./decisions) | Decisiones de sistema y de seguridad transversales | Vigente |
 | [`qa/`](./qa) | Triage de fixes, decisiones pendientes, inventario de vistas | Vigente |

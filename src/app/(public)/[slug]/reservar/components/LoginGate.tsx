@@ -33,6 +33,9 @@ export default function LoginGate({
   action: SendPlayerMagicLink
 }) {
   const [state, formAction] = useActionState(action, initial)
+  // Repone lo tipeado tras un error: los inputs son NO controlados y el form
+  // usa noValidate, así que toda validación pasa por el servidor.
+  const vals = state.status === 'error' ? (state.values ?? {}) : {}
 
   if (state.status === 'sent') {
     return (
@@ -56,19 +59,19 @@ export default function LoginGate({
       <div className="grid grid-cols-2 gap-3">
         <label className="space-y-1 text-sm">
           <span className="font-medium text-foreground/90">Nombre</span>
-          <input name="firstName" required className={inputClass} />
+          <input name="firstName" required defaultValue={vals.firstName} className={inputClass} />
         </label>
         <label className="space-y-1 text-sm">
           <span className="font-medium text-foreground/90">Apellido</span>
-          <input name="lastName" className={inputClass} />
+          <input name="lastName" defaultValue={vals.lastName} className={inputClass} />
         </label>
       </div>
       <label className="block space-y-1 text-sm">
         <span className="font-medium text-foreground/90">Email</span>
-        <input name="email" type="email" autoComplete="email" required placeholder="vos@email.com" className={inputClass} />
+        <input name="email" type="email" autoComplete="email" required defaultValue={vals.email} placeholder="vos@email.com" className={inputClass} />
       </label>
       <label className="flex items-start gap-2 text-xs text-muted-foreground">
-        <input type="checkbox" name="terms" required className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/4" />
+        <input type="checkbox" name="terms" required defaultChecked={vals.terms} className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/4" />
         <span>Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada).</span>
       </label>
       {state.status === 'error' && <p role="alert" className="text-xs text-destructive dark:text-red-300">{state.message}</p>}

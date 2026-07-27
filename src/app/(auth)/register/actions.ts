@@ -9,6 +9,7 @@ import { signUpStaff } from '@/modules/auth/auth.service'
 import { passwordSchema } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
 import { parseClientIp } from '@/shared/rate-limit/key'
+import { echoFields } from '@/shared/forms/echo'
 
 // International mobile number validation (+ code + national digits)
 const phoneRegex = /^\+?[1-9][0-9\s-]{7,24}$/
@@ -29,16 +30,27 @@ const schema = z
 
 type FieldKey = 'email' | 'firstName' | 'lastName' | 'phone' | 'password' | 'confirmPassword' | '_form'
 
+/**
+ * Campos que se devuelven al formulario cuando la validación falla, para que el
+ * dueño no tenga que retipear todo. Las contraseñas quedan afuera a propósito
+ * (`echoFields` además las bloquea por nombre).
+ */
+const ECHO_KEYS = ['email', 'firstName', 'lastName', 'phone'] as const
+export type RegisterValues = Partial<Record<(typeof ECHO_KEYS)[number], string>>
+
 export type RegisterState =
   | { status: 'idle' }
   | { status: 'confirm'; email: string }
   | { status: 'existing'; email: string }
-  | { status: 'error'; fieldErrors: Partial<Record<FieldKey, string>> }
+  | { status: 'error'; fieldErrors: Partial<Record<FieldKey, string>>; values: RegisterValues }
 
 export async function registerAction(
   _prev: RegisterState,
   formData: FormData,
 ): Promise<RegisterState> {
+  // Se captura ANTES de validar: si la validación falla hay que devolver lo que
+  // el usuario escribió, no lo que el schema pudo parsear.
+  const values = echoFields(formData, ECHO_KEYS)
   const parsed = schema.safeParse({
     email: formData.get('email'),
     firstName: formData.get('firstName'),
@@ -53,7 +65,7 @@ export async function registerAction(
       const k = issue.path[0] as FieldKey
       if (k && !errs[k]) errs[k] = issue.message
     }
-    return { status: 'error', fieldErrors: errs }
+    return { status: 'error', fieldErrors: errs, values }
   }
 
   // Alta de bajo volumen, sin captcha (v1): rate-limit por IP (fail closed).
@@ -63,6 +75,7 @@ export async function registerAction(
     return {
       status: 'error',
       fieldErrors: { _form: 'Demasiados intentos. Esperá unos minutos y probá de nuevo.' },
+      values,
     }
   }
 
@@ -106,6 +119,7 @@ export async function registerAction(
     return {
       status: 'error',
       fieldErrors: { _form: 'No pudimos crear la cuenta. Probá de nuevo.' },
+      values,
     }
   }
   // enable_confirmations=true → signUp no crea sesión: confirmar email primero.

@@ -10,6 +10,7 @@ import {
 } from '@/modules/auth/auth.service'
 import { MIN_PASSWORD_LENGTH } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
+import { echoFields } from '@/shared/forms/echo'
 
 const GENERIC = 'Email o contraseña incorrectos.'
 
@@ -22,7 +23,7 @@ const schema = z.object({
 // magic link: idle | error. `unconfirmedEmail` habilita el reenvío de confirmación.
 export type LoginState =
   | { status: 'idle' }
-  | { status: 'error'; message: string; unconfirmedEmail?: string }
+  | { status: 'error'; message: string; unconfirmedEmail?: string; email?: string }
 
 async function callbackOrigin(): Promise<string> {
   return (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -32,19 +33,23 @@ export async function loginAction(
   _prev: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
+  // El email se devuelve SIEMPRE que haya error, para no obligar a retipearlo.
+  // La contraseña nunca: `echoFields` la bloquea por nombre.
+  const { email } = echoFields(formData, ['email'] as const)
   const parsed = schema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
   })
   // Respuesta genérica también ante zod inválido: no revela qué campo falló ni si
   // el email existe (§6.2).
-  if (!parsed.success) return { status: 'error', message: GENERIC }
+  if (!parsed.success) return { status: 'error', message: GENERIC, email }
 
   const rl = await enforce('authPassword', parsed.data.email)
   if (!rl.ok) {
     return {
       status: 'error',
       message: 'Demasiados intentos. Esperá unos minutos y probá de nuevo.',
+      email,
     }
   }
 
@@ -55,9 +60,10 @@ export async function loginAction(
         status: 'error',
         message: 'Tenés que confirmar tu email antes de entrar.',
         unconfirmedEmail: parsed.data.email,
+        email,
       }
     }
-    return { status: 'error', message: GENERIC }
+    return { status: 'error', message: GENERIC, email }
   }
 
   // Un jugador (passwordless por diseño) puede haber fijado una password vía
@@ -69,7 +75,7 @@ export async function loginAction(
   const userMeta = result.user.user_metadata ?? {}
   if (meta.is_player === true || userMeta.is_player === true) {
     await (await createClient()).auth.signOut()
-    return { status: 'error', message: GENERIC }
+    return { status: 'error', message: GENERIC, email }
   }
 
   // Cambio forzado (contraseña temporal del SuperAdmin): atajo que evita un render

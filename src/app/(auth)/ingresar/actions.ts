@@ -5,11 +5,12 @@ import { headers } from 'next/headers'
 import { signInWithExistingPlayerMagicLink } from '@/modules/auth/auth.service'
 import { enforce } from '@/shared/rate-limit/apply'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { echoFields } from '@/shared/forms/echo'
 
 export type PlayerLoginState =
   | { status: 'idle' }
   | { status: 'sent'; email: string }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: string; email?: string }
 
 async function callbackOrigin(): Promise<string> {
   return (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -21,17 +22,18 @@ export async function playerLoginAction(
   _prev: PlayerLoginState,
   formData: FormData,
 ): Promise<PlayerLoginState> {
+  const { email: tipeado } = echoFields(formData, ['email'] as const)
   const email = z
     .string()
     .trim()
     .toLowerCase()
     .pipe(z.email({ message: 'Ingresá un email válido' }))
     .safeParse(formData.get('email'))
-  if (!email.success) return { status: 'error', message: 'Ingresá un email válido.' }
+  if (!email.success) return { status: 'error', message: 'Ingresá un email válido.', email: tipeado }
 
   const rl = await enforce('authMagicLink', email.data)
   if (!rl.ok) {
-    return { status: 'error', message: 'Demasiados intentos. Esperá un minuto.' }
+    return { status: 'error', message: 'Demasiados intentos. Esperá un minuto.', email: tipeado }
   }
 
   const nextRaw = formData.get('next')
@@ -39,7 +41,7 @@ export async function playerLoginAction(
   const redirectTo = `${await callbackOrigin()}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
   const result = await signInWithExistingPlayerMagicLink(email.data, redirectTo)
   if (!result.ok) {
-    return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.' }
+    return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.', email: tipeado }
   }
   return { status: 'sent', email: email.data }
 }

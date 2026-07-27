@@ -119,6 +119,7 @@ function FormCard({ action }: { action: PlayerLoginAction }) {
             autoComplete="email"
             required
             placeholder="vos@email.com"
+            defaultValue={state.status === 'error' ? state.email : undefined}
             aria-invalid={state.status === 'error' ? 'true' : undefined}
             className={inputClass}
           />

@@ -37,6 +37,8 @@ function FormCard({
   formAction: (formData: FormData) => void
 }) {
   const errs = state.status === 'error' ? state.fieldErrors : {}
+  // Sin esto, cualquier error de validación le borra al dueño los 7 campos.
+  const vals = state.status === 'error' ? state.values : {}
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
@@ -57,6 +59,7 @@ function FormCard({
             label="Nombre"
             autoComplete="given-name"
             error={errs.firstName}
+            defaultValue={vals.firstName}
           />
           <Field
             id="lastName"
@@ -64,6 +67,7 @@ function FormCard({
             label="Apellido"
             autoComplete="family-name"
             error={errs.lastName}
+            defaultValue={vals.lastName}
           />
         </div>
         <Field
@@ -74,6 +78,7 @@ function FormCard({
           autoComplete="email"
           placeholder="vos@complejo.com"
           error={errs.email}
+          defaultValue={vals.email}
         />
         <PhoneInput
           id="phone"
@@ -81,6 +86,7 @@ function FormCard({
           label="Celular"
           placeholder="11 1234-5678"
           error={errs.phone}
+          defaultValue={vals.phone}
         />
         <Field
           id="password"
@@ -175,6 +181,8 @@ function Field(props: {
   placeholder?: string
   helper?: string
   error?: string
+  /** Repone lo tipeado cuando el server devuelve error (input NO controlado). */
+  defaultValue?: string
 }) {
   return (
     <div className="space-y-1.5">
@@ -188,6 +196,7 @@ function Field(props: {
         inputMode={props.inputMode}
         autoComplete={props.autoComplete}
         placeholder={props.placeholder}
+        defaultValue={props.defaultValue}
         required
         aria-invalid={props.error ? 'true' : undefined}
         className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-invalid:border-red-500"

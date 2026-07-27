@@ -49,6 +49,7 @@ export function ForgotPasswordCard({ action }: { action: ForgotPasswordAction })
             autoComplete="email"
             required
             placeholder="vos@complejo.com"
+            defaultValue={state.status === 'error' ? state.email : undefined}
             aria-invalid={state.status === 'error' ? 'true' : undefined}
             className="h-11 w-full rounded-lg border border-border bg-card px-3.5 text-sm text-foreground placeholder:text-muted-foreground shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 aria-invalid:border-red-500"
           />

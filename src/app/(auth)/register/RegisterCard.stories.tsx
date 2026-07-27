@@ -39,6 +39,13 @@ export const FieldErrors: Story = {
         password: 'La contraseña debe tener al menos 8 caracteres',
         confirmPassword: 'Las contraseñas no coinciden.',
       },
+      // El server devuelve lo tipeado (sin contraseñas): el dueño no retipea.
+      values: {
+        email: 'marcelo@complejo.com',
+        firstName: 'Marcelo',
+        lastName: 'Duarte',
+        phone: '+541144556677',
+      },
     })),
   },
   play: async ({ canvasElement }) => {
@@ -46,6 +53,10 @@ export const FieldErrors: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Crear cuenta' }))
     await expect(await canvas.findByText('Ingresá un email válido')).toBeInTheDocument()
     await expect(canvas.getByText('Las contraseñas no coinciden.')).toBeInTheDocument()
+    // Regresión: antes del eco, un error de validación vaciaba los 7 campos.
+    await expect(canvas.getByLabelText('Nombre')).toHaveValue('Marcelo')
+    await expect(canvas.getByLabelText('Apellido')).toHaveValue('Duarte')
+    await expect(canvas.getByLabelText('Email')).toHaveValue('marcelo@complejo.com')
   },
 }
 
@@ -54,6 +65,7 @@ export const ErrorGeneral: Story = {
     action: fn(async () => ({
       status: 'error' as const,
       fieldErrors: { _form: 'Demasiados intentos. Esperá unos minutos y probá de nuevo.' },
+      values: { email: 'marcelo@complejo.com', firstName: 'Marcelo', lastName: 'Duarte' },
     })),
   },
   play: async ({ canvasElement }) => {

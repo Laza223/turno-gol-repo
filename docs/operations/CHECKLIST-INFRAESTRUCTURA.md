@@ -6,7 +6,7 @@
 > Complementa a [`MANUAL-DUENO.md`](./MANUAL-DUENO.md), que explica *qué es* cada servicio.
 > Este archivo es la versión **accionable**: lo abrís, hacés los pasos, tachás.
 >
-> Verificado el **2026-07-26** contra los dashboards reales.
+> Verificado el **2026-07-27** contra los dashboards y contra producción.
 
 ---
 
@@ -25,21 +25,55 @@ Con **un solo complejo** en el plan Predio ($55.000 ARS/mes) pagás toda la infr
 
 ---
 
-## Estado real hoy (verificado 2026-07-26)
+## Estado real (verificado 2026-07-27, 12:53 ART)
 
-| Servicio | Cómo está | Riesgo |
+| Servicio | Cómo está | Nota |
 |---|---|---|
-| Supabase | 🔴 plan `free`, org *"turnogol production"* | **Sin backups.** Si la base se corrompe, no hay vuelta atrás |
-| Vercel | 🟡 Hobby | Los términos del plan **prohíben uso comercial** |
-| Railway | 🟢 Corriendo | Verificar que el plan no sea el trial |
-| Secrets de GitHub | 🔴 Sin cargar | Las migraciones no llegan solas a producción |
-| Usuario del worker | 🔴 Conecta como dueño de la base | Sin barrera si un bug del worker borra de más |
+| Supabase | ✅ plan **`pro`**, org *"turnogol production"* | Backups diarios activos. Confirmado contra la API |
+| Secrets de GitHub | ✅ **los 3 cargados** | `ACCESS_TOKEN`, `DB_PASSWORD`, `PROJECT_ID`. Pipeline **sin correr todavía** |
+| Usuario de la base | ✅ **`turnogol_app` en web y cola de trabajos** | Ver abajo — era peor de lo reportado |
+| Vercel | ❓ sin verificar | La API no expone el plan; confirmalo en el dashboard |
+| Railway | ❓ sin verificar | Sin acceso por API. El worker está sano: 59 trabajos / 15 min, 0 fallados |
+
+---
+
+## ⚠️ Corrección importante — el usuario de la base era peor de lo reportado
+
+La versión original de este checklist decía que solo el **worker de Railway** entraba a la base
+como `postgres`. **Falso.** `.env.production` probó que **Vercel también lo hacía desde siempre**.
+No era una pieza, era toda la plataforma.
+
+`postgres` tiene el atributo `rolbypassrls`: **saltea las 97 reglas de aislamiento entre
+complejos**, y ni el modo estricto (`FORCE ROW LEVEL SECURITY`, activo en las 30 tablas) lo
+frena. Sin daño real porque la base estaba vacía, pero era un lanzamiento sin la última barrera.
+
+**Resuelto el 2026-07-27.** Se le puso contraseña a `turnogol_app` (nunca había tenido en
+producción) y se cambió `DATABASE_URL` en Vercel y en Railway. Verificado en `pg_stat_activity`:
+la web y la cola de trabajos entran como `turnogol_app` (`rolbypassrls = false`), y los workers
+de negocio siguen como `turnogol_worker`, que **es lo correcto** — barren datos de todos los
+complejos por diseño. Efecto colateral medido: la base pasó de 779 ms a **117 ms**.
+
+### El gotcha que costó un deploy
+
+Después de un `ALTER ROLE ... PASSWORD`, el pooler de Supabase (Supavisor) **sigue sirviendo la
+credencial vieja unos minutos**. Todo falla con `28P01 password authentication failed` aunque la
+contraseña esté perfecta:
+
+```
+15:23:35 UTC   ALTER ROLE turnogol_app WITH PASSWORD '...'
+15:28:25 UTC   build de Vercel MUERTO: 28P01
+15:35:42 UTC   mismo commit, mismo valor, redeploy → VERDE
+```
+
+**Si ves `28P01` justo después de cambiar una contraseña: no busques el error, esperá 10 minutos
+y reintentá.** Para distinguir: si el mensaje **nombra el usuario nuevo**, la variable llegó bien
+y solo se rechazó la credencial; si nombrara el viejo, el redeploy no tomó la variable.
 
 ---
 
 # Los 5 pasos
 
-## ☐ Paso 1 — Los 3 secrets de GitHub
+## ✅ Paso 1 — Los 3 secrets de GitHub — HECHO 2026-07-27
 
 **Gratis. 5 minutos. Hacelo primero.**
 
@@ -78,13 +112,13 @@ Como producción ya está al día, tiene que terminar en verde diciendo que no h
 
 ---
 
-## ☐ Paso 2 — Supabase Pro (US$25/mes)
+## ✅ Paso 2 — Supabase Pro (US$25/mes) — HECHO 2026-07-27
 
 **Para qué pagás esto:** Supabase es **la base de datos**. Ahí vive absolutamente todo:
 complejos, canchas, reservas, pagos, caja, jugadores, contraseñas. Si Supabase muere,
 TurnoGol muere entero.
 
-Hoy estás en el plan gratis, que tiene **dos problemas serios**:
+Estabas en el plan gratis, que tiene **dos problemas serios**:
 - **No hace backups.** Un borrado accidental o una corrupción = perdiste todo, sin vuelta.
 - **Pausa el proyecto por inactividad.** Ya te pasó una vez: la web dejó de andar sola.
 
@@ -100,12 +134,13 @@ Los US$25 compran: **backup automático todos los días** (se guardan 7), que no
 3. *Upgrade to Pro* → cargá la tarjeta → confirmá.
 
 ### Cómo saber que salió bien
-Pedime que lo verifique: consulto el plan de la organización y te confirmo que dice `pro`.
-Después, a las 24 horas: Supabase → Database → Backups → tiene que aparecer el primero.
+✅ **Verificado 2026-07-27**: la org *"turnogol production"* (`xedcnyvqdtnaggcibhsj`) devuelve
+`plan: "pro"`. Pendiente menor: a las 24 h, Supabase → Database → Backups → que aparezca el
+primero.
 
 ---
 
-## ☐ Paso 3 — Vercel Pro (US$20/mes)
+## ❓ Paso 3 — Vercel Pro (US$20/mes) — sin verificar
 
 **Para qué pagás esto:** Vercel es **la web**. Cuando alguien entra a `turnogol.app`, Vercel
 arma la página y se la manda.
@@ -126,7 +161,7 @@ El cartel de "Hobby" al lado del nombre de tu cuenta cambia a "Pro".
 
 ---
 
-## ☐ Paso 4 — Railway (US$5/mes + uso)
+## ❓ Paso 4 — Railway (US$5/mes + uso) — sin verificar
 
 **Para qué pagás esto** — este es el que más cuesta entender, así que va largo:
 
@@ -164,34 +199,39 @@ El servicio dice **Active** (no "Crashed" ni "Sleeping"), y el plan no dice "Tri
 
 ---
 
-## ☐ Paso 5 — Arreglar el usuario del worker (gratis, 10 minutos)
+## ✅ Paso 5 — Arreglar el usuario de la base — HECHO 2026-07-27
 
-**Qué pasa hoy:** el programa de Railway entra a la base **como dueño de todo**. Puede borrar
-cualquier tabla y ve los datos de todos los complejos sin ninguna restricción.
+**Qué pasaba:** la web **y** la cola de trabajos entraban a la base como `postgres`, el dueño de
+todo — con el atributo `rolbypassrls`, que **saltea las 97 reglas de aislamiento entre
+complejos**. Ni el modo estricto (`FORCE ROW LEVEL SECURITY`) lo frena. Ver la corrección al
+principio de este archivo: el diagnóstico original decía "solo el worker" y era falso.
 
-Está diseñado para entrar con un usuario limitado (`turnogol_app`), pero la configuración quedó
-apuntando al dueño. Verificado: **6 conexiones activas así**.
+**Qué se hizo** (2026-07-27):
 
-**No rompe nada hoy.** Es un cinturón desabrochado: solo se nota el día del choque — un bug del
-worker que borra de más, sin nada que lo frene.
+1. `ALTER ROLE turnogol_app WITH PASSWORD '...'` desde el SQL Editor de Supabase — el rol
+   **nunca había tenido contraseña en producción** (la migración 037 lo deja anotado:
+   *"se hace A MANO fuera de"*).
+2. `DATABASE_URL` en Vercel y en Railway: usuario `postgres.<ref>` → `turnogol_app.<ref>`,
+   dejando host y puerto **sin tocar**. El sufijo `.<project-ref>` después del usuario es lo que
+   le dice al pooler a qué proyecto entrar; sin él no conecta.
+3. Redeploy en Vercel y restart del servicio en Railway (editar la variable **no alcanza**: el
+   proceso lee el valor al arrancar).
 
-### Pasos
+⚠️ `WORKER_DATABASE_URL` **no se tocó**. Usa `turnogol_worker`, que sí saltea el aislamiento —
+y **es correcto**: esos workers barren datos de todos los complejos por diseño.
 
-1. Railway → tu servicio del worker → pestaña **Variables**.
-2. Buscá la variable `DATABASE_URL`. Adentro dice `postgres:` como usuario.
-3. Abrí Vercel → tu proyecto → Settings → Environment Variables → mirá su `DATABASE_URL`:
-   **esa ya usa el usuario correcto** (`turnogol_app`).
-4. Copiá la de Vercel a Railway, **pero cambiá el puerto**:
-   Vercel usa `:6543`, Railway necesita `:5432`.
-5. Guardá. Railway reinicia el worker solo.
+### Estado verificado en `pg_stat_activity`
 
-**Nunca pegues esa cadena en un chat** — lleva la contraseña adentro. Si te trabás, pedí ayuda
-campo por campo sin mostrar el valor.
+| Quién | Usuario | ¿Saltea el aislamiento? |
+|---|---|---|
+| La web (Vercel) | `turnogol_app` | **No** ✅ |
+| La cola de trabajos (Railway) | `turnogol_app` | **No** ✅ |
+| Los workers de negocio | `turnogol_worker` | Sí — correcto por diseño |
 
-### Cómo saber que salió bien
-Pedime que lo verifique: miro quién está conectado a la base y te digo si el worker entra como
-`turnogol_app` o sigue como `postgres`.
+Worker sano tras el cambio: 59 trabajos completados en 15 minutos, 0 fallados. La base pasó de
+responder en 779 ms a **117 ms**.
 
+**Nunca pegues una cadena de conexión en un chat** — lleva la contraseña adentro.
 ---
 
 # Lo que NO tenés que pagar todavía
@@ -225,16 +265,19 @@ contra tu máquina y alcanza.
 # Resumen para tachar
 
 ```
-☐ 1. Los 3 secrets de GitHub          gratis      5 min
-☐ 2. Supabase Pro                     US$25/mes   2 min   ← el más importante
-☐ 3. Vercel Pro                       US$20/mes   2 min
-☐ 4. Railway plan Hobby               US$5/mes    2 min
-☐ 5. Usuario del worker en Railway    gratis     10 min
+✅ 1. Los 3 secrets de GitHub          gratis      HECHO 2026-07-27
+✅ 2. Supabase Pro                     US$25/mes   HECHO — org en plan `pro`
+❓ 3. Vercel Pro                       US$20/mes   sin verificar
+❓ 4. Railway plan Hobby               US$5/mes    sin verificar
+✅ 5. Usuario de la base               gratis      HECHO — web Y cola de trabajos
 
-   Total: ≈ US$50/mes  ·  ~25 minutos de trabajo
-
+☐ Probar el pipeline de migraciones end-to-end (Actions → DB Migrate → Run workflow)
 ☐ (a los 5 complejos) PITR            US$100/mes
 ```
+
+**Lo único que queda con acción pendiente**: confirmar los planes de Vercel y Railway (no se
+pueden ver por API), y correr el pipeline de migraciones una vez a mano para probarlo de punta a
+punta. Producción ya está al día, así que esa corrida no aplica nada: solo valida las llaves.
 
 ---
 

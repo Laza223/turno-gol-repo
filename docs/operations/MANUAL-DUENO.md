@@ -3,6 +3,10 @@
 > Para vos, Lazar. Panorama completo de la infraestructura: qué es cada pieza, para qué pagás cada cosa, qué se rompe si falla, y la rutina para manejar todo esto solo.
 >
 > **Escrito 2026-07-26.** Los precios son los vigentes a esa fecha en USD y **cambian**: confirmá en la web de cada servicio antes de pagar.
+>
+> 👉 **¿Buscás el paso a paso de qué pagar y dónde hacer clic?** Está en
+> [`CHECKLIST-INFRAESTRUCTURA.md`](./CHECKLIST-INFRAESTRUCTURA.md). Este archivo explica *qué es*
+> cada cosa; ese otro te dice *qué hacer*, con las URLs y en orden.
 
 ---
 

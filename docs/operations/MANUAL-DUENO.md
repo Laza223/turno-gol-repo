@@ -113,24 +113,50 @@ Lo mismo con staging: útil, no urgente con 0 clientes.
 
 ## 3. Qué tenés que tocar vos
 
-### 3.1 🔴 El usuario del worker en Railway
+### 3.1 ✅ El usuario de la base — RESUELTO 2026-07-27
 
-**Qué pasa hoy:** el programa de Railway se conecta a la base como `postgres`, que es **el dueño de todo** — puede borrar cualquier tabla y ve los datos de todos los complejos sin restricción.
+> **Ya está hecho.** Se deja escrito porque el diagnóstico original estaba **mal** y la
+> corrección importa para la próxima vez.
 
-Está diseñado para conectarse con un usuario limitado (`turnogol_app`), pero la configuración quedó apuntando al dueño. Verificado: **6 conexiones activas como `postgres`**.
+**Lo que decía este manual y era falso:** que solo el worker de Railway entraba como `postgres`
+y que *"la `DATABASE_URL` de la web ya usa `turnogol_app`"*. Mentira. `.env.production` probó que
+**Vercel también entraba como `postgres` desde siempre**. El problema era el doble de grande que
+lo reportado en la fase D5: no era el worker, era toda la plataforma.
 
-**Por qué importa:** hoy no rompe nada. Es un cinturón de seguridad desabrochado — solo se nota el día del choque (un bug del worker que borra de más, sin barrera que lo frene).
+**Por qué importaba:** `postgres` tiene el atributo `rolbypassrls`, que **saltea las 97 reglas de
+aislamiento entre complejos** — ni siquiera el modo estricto (`FORCE ROW LEVEL SECURITY`, activo
+en las 30 tablas) lo frena. Con la web corriendo así, lo único que separaba los datos de un
+complejo de otro era que el código pidiera bien las cosas. Sin daño real: la base estaba vacía.
 
-**Qué hacer** (10 minutos, dashboard de Railway):
-1. Railway → tu servicio del worker → pestaña **Variables**.
-2. Buscá `DATABASE_URL`. Hoy tiene adentro el usuario `postgres`.
-3. Necesitás la misma cadena pero con el usuario `turnogol_app`. La conseguís del dashboard de Vercel: la `DATABASE_URL` de la web ya usa ese usuario.
-4. **Ojo con el puerto**: Vercel usa `:6543` (el pooler). Railway necesita `:5432` (conexión directa) — cambiá ese número al copiar.
-5. Guardá. Railway reinicia el worker solo.
+**Qué se hizo:** se le puso contraseña a `turnogol_app` (nunca había tenido una en producción —
+la migración 037 lo deja anotado: *"se hace A MANO fuera de"*), y se cambió `DATABASE_URL` en
+Vercel **y** en Railway.
 
-**Cómo saber si salió bien**: pedime que lo verifique — miro las conexiones de la base y te digo si el worker entra como `turnogol_app` o sigue como `postgres`. También lo caza `pnpm launch:check`.
+**Estado verificado en producción (12:53 ART):**
 
-**Nunca mandes la contraseña por chat.** Si necesitás ayuda, te guío campo por campo sin que me pases el valor.
+| Quién | Usuario | ¿Saltea el aislamiento? |
+|---|---|---|
+| La web (Vercel) | `turnogol_app` | **No** ✅ |
+| La cola de trabajos (Railway) | `turnogol_app` | **No** ✅ |
+| Los workers de negocio (`WORKER_DATABASE_URL`) | `turnogol_worker` | Sí — **es correcto**, barre datos de todos los complejos por diseño |
+
+Worker sano: 59 trabajos completados en 15 minutos, 0 fallados. La base pasó de responder en
+779 ms a **117 ms**.
+
+**⚠️ El gotcha que costó un deploy fallido.** Después de un `ALTER ROLE ... PASSWORD`, el pooler
+de Supabase (Supavisor) **sigue sirviendo la credencial vieja durante varios minutos**. Toda
+conexión falla con `28P01 password authentication failed` aunque la contraseña esté perfecta.
+Pasó exactamente eso: contraseña puesta 15:23:35 UTC, build de Vercel muerto 15:28:25, **mismo
+commit y mismo valor a las 15:35 → verde**.
+
+**Si ves `28P01` justo después de cambiar una contraseña: no busques el error. Esperá 10 minutos
+y reintentá.** Si el mensaje nombra el usuario nuevo, la variable llegó bien y solo se rechazó la
+credencial; si nombrara el usuario viejo, el problema sería que el redeploy no tomó la variable.
+
+**Cómo re-verificarlo cuando quieras**: pedímelo — miro `pg_stat_activity` y te digo con qué
+usuario entra cada pieza. También lo caza `pnpm launch:check`.
+
+**Nunca mandes una contraseña por chat.** Si te trabás, te guío campo por campo sin verla.
 
 ### 3.2 Los dos upgrades de plan
 

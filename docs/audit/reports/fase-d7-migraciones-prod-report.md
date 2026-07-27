@@ -89,7 +89,7 @@ La versión nueva documenta: los dos árboles y el candado, el flujo de deploy a
 
 ## Gaps remanentes
 
-1. **3 secrets sin cargar** (acción del dueño). Hasta entonces el workflow existe pero falla en el primer paso con un mensaje explícito. **El pipeline no está probado end-to-end contra prod** — la primera corrida real será el próximo merge con migración.
+1. ~~3 secrets sin cargar~~ **CERRADO 2026-07-27**: los 3 cargados y el pipeline **probado end-to-end** contra prod ([run 30283704750](https://github.com/Laza223/turno-gol-repo/actions/runs/30283704750), 16:13 UTC): link + dry-run + push + verificación, todo verde, `Remote database is up to date`, schema intacto (34 tablas / 97 policies / 150 índices, 66 migraciones registradas). El 1er intento falló con `28P01 password authentication failed for user "postgres"` — el secret `SUPABASE_DB_PASSWORD` no matcheaba la contraseña real; recargado, verde al reintento. Nota: `postgres` ya no lo usa nadie más que este pipeline (ver D5-H1), así que rotar esa contraseña dejó de ser riesgoso.
 2. **La carrera con Vercel no se elimina, se mitiga.** Secuenciar migración→deploy exigiría mover el deploy adentro de Actions; se difiere por costo/beneficio al volumen actual. La mitigación es expand & contract, ahora documentado y obligatorio.
 3. **`CONCURRENTLY` no se retrofitea** a las migraciones existentes: las tablas de prod están vacías, un `CREATE INDEX` común es instantáneo. La regla aplica desde el primer complejo con datos reales.
 4. **La tabla de respaldo `schema_migrations_backup_20260726` queda en prod.** Borrarla cuando el pipeline tenga un par de corridas verdes.

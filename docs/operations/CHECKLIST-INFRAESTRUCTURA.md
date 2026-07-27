@@ -30,9 +30,9 @@ Con **un solo complejo** en el plan Predio ($55.000 ARS/mes) pagás toda la infr
 | Servicio | Cómo está | Nota |
 |---|---|---|
 | Supabase | ✅ plan **`pro`**, org *"turnogol production"* | Backups diarios activos. Confirmado contra la API |
-| Secrets de GitHub | ✅ **los 3 cargados** | `ACCESS_TOKEN`, `DB_PASSWORD`, `PROJECT_ID`. Pipeline **sin correr todavía** |
+| Secrets de GitHub | ✅ **los 3 cargados** | Pipeline **probado end-to-end 16:13 UTC**: link + dry-run + push + verificación, todo verde |
 | Usuario de la base | ✅ **`turnogol_app` en web y cola de trabajos** | Ver abajo — era peor de lo reportado |
-| Vercel | ❓ sin verificar | La API no expone el plan; confirmalo en el dashboard |
+| Vercel | ✅ **Pro** | Reportado por el dueño 2026-07-27. La API no expone el plan, así que no está verificado por mí |
 | Railway | ❓ sin verificar | Sin acceso por API. El worker está sano: 59 trabajos / 15 min, 0 fallados |
 
 ---
@@ -106,9 +106,16 @@ Ahora hay un robot que las aplica solo al mergear, pero necesita estas 3 llaves 
 - Name: `SUPABASE_DB_PASSWORD` → pegá → *Add secret*
 
 ### Cómo saber que salió bien
-GitHub → pestaña **Actions** → *DB Migrate (producción)* → **Run workflow**.
-Como producción ya está al día, tiene que terminar en verde diciendo que no hay nada pendiente.
-**No toca la base** — es una prueba sin riesgo de que las 3 llaves funcionan.
+✅ **Probado 2026-07-27 16:13 UTC** — ver "El pipeline de migraciones, probado" al final.
+
+Para repetirlo cuando quieras: GitHub → **Actions** → *DB Migrate (producción)* → **Run workflow**.
+Con producción al día tiene que terminar en verde diciendo que no hay nada pendiente; **no toca
+la base**.
+
+⚠️ El `SUPABASE_DB_PASSWORD` es la contraseña de **`postgres`**, no la de `turnogol_app`. Son dos
+distintas y confundirlas es el error natural: el pipeline necesita la del dueño de la base porque
+tiene que poder cambiar su estructura; la app usa la limitada justamente porque **no** puede. El
+primer intento murió por esto (`28P01 ... for user "postgres"`).
 
 ---
 
@@ -140,7 +147,7 @@ primero.
 
 ---
 
-## ❓ Paso 3 — Vercel Pro (US$20/mes) — sin verificar
+## ✅ Paso 3 — Vercel Pro (US$20/mes) — HECHO 2026-07-27 (reportado por el dueño; la API no expone el plan)
 
 **Para qué pagás esto:** Vercel es **la web**. Cuando alguien entra a `turnogol.app`, Vercel
 arma la página y se la manda.
@@ -265,19 +272,33 @@ contra tu máquina y alcanza.
 # Resumen para tachar
 
 ```
-✅ 1. Los 3 secrets de GitHub          gratis      HECHO 2026-07-27
-✅ 2. Supabase Pro                     US$25/mes   HECHO — org en plan `pro`
-❓ 3. Vercel Pro                       US$20/mes   sin verificar
-❓ 4. Railway plan Hobby               US$5/mes    sin verificar
-✅ 5. Usuario de la base               gratis      HECHO — web Y cola de trabajos
+✅ 1. Los 3 secrets de GitHub          gratis      HECHO — pipeline probado en verde
+✅ 2. Supabase Pro                     US$25/mes   HECHO — org en plan `pro` (verificado)
+✅ 3. Vercel Pro                       US$20/mes   HECHO — reportado por el dueño
+❓ 4. Railway plan Hobby               US$5/mes    sin verificar (sin acceso por API)
+✅ 5. Usuario de la base               gratis      HECHO — web Y cola de trabajos (verificado)
+✅ 6. Pipeline de migraciones          gratis      PROBADO end-to-end 2026-07-27 16:13 UTC
 
-☐ Probar el pipeline de migraciones end-to-end (Actions → DB Migrate → Run workflow)
 ☐ (a los 5 complejos) PITR            US$100/mes
 ```
 
-**Lo único que queda con acción pendiente**: confirmar los planes de Vercel y Railway (no se
-pueden ver por API), y correr el pipeline de migraciones una vez a mano para probarlo de punta a
-punta. Producción ya está al día, así que esa corrida no aplica nada: solo valida las llaves.
+**Único pendiente**: confirmar el plan de Railway — es el único que no se puede ver por API.
+Entrá al dashboard y fijate que no diga *Trial*.
+
+### El pipeline de migraciones, probado
+
+Corrida manual del 2026-07-27 16:13 UTC ([run 30283704750](https://github.com/Laza223/turno-gol-repo/actions/runs/30283704750)), los 4 pasos en verde:
+
+```
+Verificar secrets presentes    ✅
+Link al proyecto de producción ✅  Finished supabase link.
+Qué se va a aplicar (dry run)  ✅  Remote database is up to date.
+Aplicar                        ✅  Remote database is up to date.
+Verificar que no quedó nada    ✅  Producción al día.
+```
+
+Schema intacto tras la corrida (no aplicó nada, como se esperaba): **34 tablas / 97 policies /
+150 índices**, y **66 migraciones registradas** (`20260424000001` … `20260424000066`).
 
 ---
 

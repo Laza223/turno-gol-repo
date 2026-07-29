@@ -11,7 +11,13 @@
  * Ver docs/testing/VISUAL_REGRESSION.md.
  */
 
-import { test, expect, devChrome, suppressPushBanner, ADMIN_STORAGE_STATE } from './_visual-test'
+import {
+  test,
+  expect,
+  assertDevOverlayHookExists,
+  suppressPushBanner,
+  ADMIN_STORAGE_STATE,
+} from './_visual-test'
 import { FROZEN_NOW, VISUAL_DATE, VISUAL_TENANT_SLUG, seedVisualData } from './_seed'
 
 test.describe('visual — público', () => {
@@ -22,7 +28,10 @@ test.describe('visual — público', () => {
     // token de diseño, una fuente de next/font o el CSS base, esta foto lo grita
     // y no hay otra explicación posible.
     await expect(page.getByRole('button').first()).toBeVisible()
-    await expect(page).toHaveScreenshot('login.png', { mask: devChrome(page) })
+    // Único llamado de la suite: verifica que los selectores de screenshot.css
+    // sigan matcheando el overlay de dev de Next. Ver _visual-test.ts.
+    await assertDevOverlayHookExists(page)
+    await expect(page).toHaveScreenshot('login.png')
   })
 
   test('landing @visual', async ({ page }) => {
@@ -31,7 +40,7 @@ test.describe('visual — público', () => {
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     // viewport-only (el default de toHaveScreenshot): la landing es larguísima y
     // un cambio abajo de todo no debería romper la foto del hero.
-    await expect(page).toHaveScreenshot('landing.png', { mask: devChrome(page) })
+    await expect(page).toHaveScreenshot('landing.png')
   })
 
   test('ficha pública del complejo @visual', async ({ page }) => {
@@ -40,7 +49,6 @@ test.describe('visual — público', () => {
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     await expect(page).toHaveScreenshot('perfil-publico.png', {
       mask: [
-        ...devChrome(page),
         // La grilla de disponibilidad se clampea a [hoy, hoy + anticipación] en
         // el cliente Y en el servidor: es "ahora"-relativa por diseño y no hay
         // fecha fija que la estabilice. Se enmascara ese bloque; el resto de la
@@ -76,7 +84,7 @@ test.describe('visual — admin', () => {
     await expect(page.getByText('Martina Sosa')).toBeVisible()
     await expect(page.getByText('Equipo Los Pinos')).toBeVisible()
 
-    await expect(page).toHaveScreenshot('admin-grilla.png', { mask: devChrome(page) })
+    await expect(page).toHaveScreenshot('admin-grilla.png')
   })
 
   test('canchas @visual', async ({ page }) => {
@@ -85,7 +93,7 @@ test.describe('visual — admin', () => {
     await expect(page.getByText('Cancha E2E 1')).toBeVisible()
     // Shell de lista del admin: si se rompe, se rompen también /staff,
     // /jugadores y /abonados.
-    await expect(page).toHaveScreenshot('admin-canchas.png', { mask: devChrome(page) })
+    await expect(page).toHaveScreenshot('admin-canchas.png')
   })
 
   test('settings de reservas @visual', async ({ page }) => {
@@ -94,6 +102,6 @@ test.describe('visual — admin', () => {
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     // Formulario denso (switches, inputs numéricos, help text, botón sticky):
     // representa a todos los formularios del producto.
-    await expect(page).toHaveScreenshot('admin-settings-reservas.png', { mask: devChrome(page) })
+    await expect(page).toHaveScreenshot('admin-settings-reservas.png')
   })
 })

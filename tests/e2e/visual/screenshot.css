@@ -1,0 +1,61 @@
+/*
+ * Hoja de estilo que Playwright inyecta ANTES de cada `toHaveScreenshot` y saca
+ * después (`expect.toHaveScreenshot.stylePath` en playwright.config.ts). No es
+ * CSS de la app: no lo importa nadie, no entra a ningún bundle.
+ *
+ * ── Por qué existe ────────────────────────────────────────────────────────────
+ *
+ * El overlay de devtools de Next llega al DOM en `next dev` SIEMPRE, y
+ * `devIndicators: false` NO lo evita. Verificado contra Next 16.2.11:
+ *
+ *   - `next/dist/client/app-next-dev.js` llama a `renderAppDevOverlay(...)` en un
+ *     `finally`, sin ninguna condición;
+ *   - esa función (`next/dist/compiled/next-devtools/index.js`) monta
+ *     `<script data-nextjs-dev-overlay="true" style="display:block;position:absolute">`
+ *     con un `<nextjs-portal>` adentro, y le engancha un shadow root;
+ *   - `devIndicators: false` solo define `process.env.__NEXT_DEV_INDICATOR=false`
+ *     (`next/dist/build/define-env.js`), que gatea el CONTENIDO del indicador —
+ *     no el montaje del portal.
+ *
+ * Antes esto se enmascaraba (`mask: devChrome(page)`), y ahí estaba el bug: un
+ * mask no oculta nada, PINTA una caja magenta del tamaño del elemento. Medido el
+ * 2026-07-29: esa caja es ~101×36 px abajo a la izquierda — 0.28% de una foto de
+ * escritorio (1440×900), pero **1.09% de una mobile** (393×851). O sea que su sola
+ * aparición o desaparición movía el diff por encima de `maxDiffPixelRatio: 0.01`
+ * sin que cambiara un pixel de producto: en `perfil-publico-mobile.png`, de 1.15%
+ * de diff total, 1.09% era la caja y 225 px (0.07%) la pantalla.
+ *
+ * ── Por qué `stylePath` y no `mask` ───────────────────────────────────────────
+ *
+ * `stylePath` está documentado como "pierces the Shadow DOM and applies to the
+ * inner frames": alcanza tanto al host (`nextjs-portal`) como a lo que vive
+ * adentro del shadow root (el indicador es `[data-nextjs-toast]`, inaccesible a
+ * un `<style>` normal del documento). Y `display: none` no pinta: el pixel queda
+ * exactamente igual esté el overlay montado o no, que es todo el punto.
+ *
+ * No hay riesgo de mover el layout del producto: los dos contenedores que Next
+ * monta son `position: absolute` (fuera de flujo) y el host es un custom element
+ * vacío en el light DOM.
+ *
+ * ── Descartado ────────────────────────────────────────────────────────────────
+ *
+ * Correr las fotos contra `next build` + `next start` (que no tiene overlay) es
+ * el fix de raíz, pero el webServer es UNO para las 8 suites de e2e y el mock de
+ * MercadoPago se apaga con `NODE_ENV=production` (`computeMpMockEnabled` en
+ * `mock-mp.ts`) — ver el comentario del step de e2e en `ci.yml`. Cambiarlo por
+ * estas 8 fotos rompería los flujos de checkout de todos los demás specs.
+ */
+
+/* Raíz del overlay del App Router: el wrapper que Next mete en <body>. */
+[data-nextjs-dev-overlay],
+/* El host del shadow root. En el App Router va adentro del wrapper de arriba; el
+   Pages Router lo cuelga del <body> directo. Se listan los dos por separado para
+   no depender de cuál de los dos caminos montó. */
+nextjs-portal,
+/* Lo que vive DENTRO del shadow root. Redundante mientras el host esté oculto,
+   pero es lo que sobrevive si un bump de Next cambia dónde monta el portal. */
+[data-nextjs-toast],
+[data-nextjs-dev-tools-button],
+[data-nextjs-devtools-panel-overlay] {
+  display: none !important;
+}

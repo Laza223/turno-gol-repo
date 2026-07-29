@@ -33,11 +33,25 @@ export async function suppressPushBanner(page: Page): Promise<void> {
 }
 
 /**
- * Chrome del dev server. Los e2e corren contra `pnpm dev`; `devIndicators` ya
- * está apagado en next.config.ts cuando NEXT_PUBLIC_E2E=1, pero el portal sigue
- * existiendo en el DOM y puede renderizar overlays de error/HMR. Enmascararlo es
- * la red de seguridad.
+ * El chrome del dev server NO se enmascara: se oculta con CSS al momento de la
+ * foto, vía `expect.toHaveScreenshot.stylePath` → `screenshot.css`. Un `mask`
+ * pinta una caja magenta en vez de ocultar, y esa caja valía 1.09% de una foto
+ * mobile — sola, por encima del `maxDiffPixelRatio: 0.01`. El racional completo
+ * está en `tests/e2e/visual/screenshot.css`.
+ *
+ * Canario del contrato con Next: `screenshot.css` apunta a hooks del DOM que son
+ * internos de Next (`[data-nextjs-dev-overlay]`, `nextjs-portal`). Si un bump los
+ * renombra, el CSS deja de matchear en silencio y el overlay vuelve a entrar a
+ * las fotos. Esta aserción lo convierte en un test rojo. Se llama una sola vez,
+ * desde la foto `login` (la que ya es el canario de la suite).
+ *
+ * Corolario deliberado: si algún día las fotos se corren contra `next build` +
+ * `next start` (sin overlay), esto se pone rojo — y ahí hay que revisar
+ * `screenshot.css`, no borrar la aserción.
  */
-export function devChrome(page: Page) {
-  return [page.locator('nextjs-portal'), page.locator('[data-nextjs-toast]')]
+export async function assertDevOverlayHookExists(page: Page): Promise<void> {
+  await expect(
+    page.locator('[data-nextjs-dev-overlay], nextjs-portal').first(),
+    'El hook del overlay de dev de Next cambió de nombre: revisá los selectores de tests/e2e/visual/screenshot.css'
+  ).toBeAttached()
 }

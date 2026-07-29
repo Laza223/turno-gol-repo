@@ -31,6 +31,13 @@ export default defineConfig({
       animations: 'disabled',
       caret: 'hide',
       scale: 'css',
+      // Oculta el overlay de devtools de Next antes de disparar la foto. Va acá
+      // y no en cada `toHaveScreenshot` a propósito: una foto visual nueva lo
+      // hereda sin que haya que acordarse. El racional completo (por qué
+      // `devIndicators: false` no alcanza, y por qué esto reemplaza al `mask`
+      // que pintaba una caja magenta de 1.09% del cuadro en mobile) está en el
+      // comentario del propio archivo.
+      stylePath: path.resolve('./tests/e2e/visual/screenshot.css'),
     },
     // toHaveScreenshot reintenta hasta que dos capturas seguidas coincidan;
     // 10s le da margen a las fuentes y a la hidratación sin colgarse.

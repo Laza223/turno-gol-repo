@@ -8,7 +8,7 @@
  * El project `visual-mobile` matchea por `*.mobile.spec.ts`.
  */
 
-import { test, expect, devChrome, suppressPushBanner, ADMIN_STORAGE_STATE } from './_visual-test'
+import { test, expect, suppressPushBanner, ADMIN_STORAGE_STATE } from './_visual-test'
 import { FROZEN_NOW, VISUAL_DATE, VISUAL_TENANT_SLUG, seedVisualData } from './_seed'
 
 test('ficha pública mobile @visual', async ({ page }) => {
@@ -17,7 +17,7 @@ test('ficha pública mobile @visual', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
   await expect(page).toHaveScreenshot('perfil-publico-mobile.png', {
     // Ver el spec de escritorio: la disponibilidad es "ahora"-relativa por diseño.
-    mask: [...devChrome(page), page.getByRole('region', { name: 'Grilla de disponibilidad' })],
+    mask: [page.getByRole('region', { name: 'Grilla de disponibilidad' })],
   })
 })
 
@@ -33,6 +33,6 @@ test.describe('visual mobile — admin', () => {
     await page.clock.setFixedTime(FROZEN_NOW)
     await page.goto(`/grilla?date=${VISUAL_DATE}`)
     await expect(page.getByText('Martina Sosa')).toBeVisible()
-    await expect(page).toHaveScreenshot('admin-grilla-mobile.png', { mask: devChrome(page) })
+    await expect(page).toHaveScreenshot('admin-grilla-mobile.png')
   })
 })

@@ -68,14 +68,16 @@ async function selectCombobox(page: Page, fieldId: string, optionName: string): 
  * punto de partida fijo.
  *
  * `trigger` es opcional porque el botón, sin fecha elegida, se identifica por
- * su placeholder "Seleccionar fecha" — pero el picker de "Cancelar desde"
- * arranca PREFILLED (defaultCancelDate() en AbonadosList.tsx), así que su
- * botón ya muestra una fecha formateada y hay que ubicarlo por id.
+ * su placeholder "Seleccionar fecha" — pero tanto "Empieza el" (autocompletado
+ * a la próxima fecha que matchea el día semanal elegido, ver AbonadoForm.tsx
+ * `getNextMatchingDate`) como "Cancelar desde" (defaultCancelDate() en
+ * AbonadosList.tsx) arrancan PREFILLED, así que sus botones ya muestran una
+ * fecha formateada y hay que ubicarlos por id en vez de por accessible name.
  */
 async function pickDate(
   page: Page,
   dateStr: string,
-  trigger: Locator = page.getByRole('button', { name: 'Seleccionar fecha' }),
+  trigger: Locator = page.locator('#startsOn'),
 ): Promise<void> {
   const [y, m, d] = dateStr.split('-').map(Number)
   const targetLabel = `${MONTH_NAMES[m - 1]} de ${y}`

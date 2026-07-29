@@ -570,7 +570,7 @@ export function BookingFormModal({
                       placeholder="Buscar por nombre o email..."
                       aria-expanded={playerSearchOpen}
                       aria-autocomplete="list"
-                      className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus:border-emerald-500"
+                      className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-colors focus:border-emerald-500"
                     />
                     {playerId && (
                       <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
@@ -619,7 +619,7 @@ export function BookingFormModal({
                       maxLength={200}
                       autoComplete="name"
                       placeholder={reason === 'other' ? 'Ej: Torneo nocturno, Cumpleaños, Juan...' : 'Ej: Juan Pérez'}
-                      className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus:border-emerald-500"
+                      className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-colors focus:border-emerald-500"
                     />
                   </div>
                 )}
@@ -703,7 +703,7 @@ export function BookingFormModal({
                         id="guestPhone"
                         name="guestPhone"
                         placeholder="Ej: 11 2345-6789"
-                        className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus-within:border-emerald-500"
+                        className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-colors focus-within:border-emerald-500"
                       />
                     </div>
                   )}
@@ -723,7 +723,7 @@ export function BookingFormModal({
                         step="1"
                         inputMode="decimal"
                         placeholder="Precio de la grilla"
-                        className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-all focus:border-emerald-500 focus:outline-hidden"
+                        className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-colors focus:border-emerald-500 focus:outline-hidden"
                       />
                     </div>
                   </div>
@@ -738,7 +738,7 @@ export function BookingFormModal({
                         id="depositMethod"
                         value={depositMethod}
                         onChange={(e) => setDepositMethod(e.target.value as typeof depositMethod)}
-                        className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm font-medium text-foreground transition-all focus:border-emerald-500 focus:outline-hidden"
+                        className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm font-medium text-foreground transition-colors focus:border-emerald-500 focus:outline-hidden"
                       >
                         <option value="">Sin seña</option>
                         <option value="cash">Efectivo</option>
@@ -764,7 +764,7 @@ export function BookingFormModal({
                           step="1"
                           inputMode="decimal"
                           placeholder="Monto"
-                          className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-all focus:border-emerald-500 focus:outline-hidden"
+                          className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-colors focus:border-emerald-500 focus:outline-hidden"
                         />
                       </div>
                     </div>

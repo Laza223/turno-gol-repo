@@ -49,13 +49,32 @@ se toca.
 | Los seeds funcionales usan fechas relativas | Seed propio (`tests/e2e/visual/_seed.ts`) con UUIDs, horarios y fecha **absolutos**, idempotente |
 | Animaciones | `reducedMotion: 'reduce'` engancha el `@media` que ya existe en `globals.css`. Cero CSS nuevo, y de paso se fotografía el camino accesible |
 | Banner de push (`fixed bottom-left z-40`) | `addInitScript` + `localStorage` antes del primer `goto` |
-| Indicador de devtools de Next | `devIndicators: false` cuando `NEXT_PUBLIC_E2E=1` (`next.config.ts`) |
+| Indicador de devtools de Next | `devIndicators: false` cuando `NEXT_PUBLIC_E2E=1` (`next.config.ts`) — **no alcanza**, ver la deuda de abajo |
 | Disponibilidad del perfil público | **No se estabiliza**: se clampea a `[hoy, hoy+anticipación]` en cliente Y servidor. Se enmascara ese bloque por su `aria-label` |
 
 Los projects declaran `viewport`, `deviceScaleFactor`, `colorScheme`, `locale` y
 `timezoneId` **explícitos** en vez de heredarlos de `devices[]`: un bump de
 Playwright puede cambiar el descriptor del device e invalidar todas las baselines
 en silencio.
+
+### Deuda: el mask del overlay de dev es intermitente
+
+`devChrome(page)` enmascara `nextjs-portal` + `[data-nextjs-toast]` como red de
+seguridad. Pero el portal **igual aparece a veces** pese a `devIndicators: false`,
+y cuando aparece Playwright le pinta encima una caja magenta de ~101×36 px abajo a
+la izquierda.
+
+En las fotos de escritorio (1440×900) esa caja es 0.28% del cuadro: irrelevante.
+En `perfil-publico-mobile.png` (393×851) es **1.09%** — o sea que su sola
+aparición/desaparición mueve el diff por encima de `maxDiffPixelRatio: 0.01` sin
+que haya cambiado un solo pixel de producto. Medido: entre las baselines de
+`e1f1284` y las de `0c09296`, esa foto dio 1.15% de diff, del cual 1.09% era la
+caja (presente en la vieja, ausente en la nueva) y 225 px (0.07%) el borde.
+
+Hasta que se arregle, un diff de ~1.1% en las fotos mobile es sospechoso de ser
+esto y no una regresión: mirá primero la esquina inferior izquierda. El fix real
+es que el portal no llegue al DOM (o excluirlo del screenshot en vez de
+enmascararlo), no aflojar el umbral.
 
 > Los specs visuales usan el fixture `page` + `test.use({ storageState })`, **no**
 > `browser.newContext({ storageState })` como el resto de los specs del repo. Un

@@ -211,7 +211,7 @@ export function PreviewSlotsView({
           type="button"
           onClick={onConfirm}
           disabled={noSlots || isConfirming}
-          className="h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50 transition-all flex items-center gap-2 active:scale-[0.98]"
+          className="h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50 transition flex items-center gap-2 active:scale-[0.98]"
         >
           {isConfirming ? (
             <>

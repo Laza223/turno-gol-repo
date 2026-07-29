@@ -174,6 +174,7 @@ export function TeamsPanel({
             autoComplete="off"
             maxLength={120}
             placeholder="Buscar jugador u opcional"
+            role="combobox"
             aria-expanded={captainOpen}
             aria-autocomplete="list"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
@@ -430,7 +431,7 @@ function TeamRosterEditor({
         <button
           type="submit"
           disabled={pending || fullName.trim() === ''}
-          className="inline-flex h-[34px] items-center justify-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex h-[34px] items-center justify-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
           Agregar

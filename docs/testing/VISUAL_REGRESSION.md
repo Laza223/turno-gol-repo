@@ -39,6 +39,9 @@ y de agregaciones — el seed fijo cuesta más de lo que aportan) y `/dashboard`
 para auditoría UX que escribe a `docs/audit/screenshots/`. No compara nada y no
 se toca.
 
+El project `visual` lista **9** tests y no 8: el noveno es
+`stylepath-guard.spec.ts`, que no compara ninguna baseline (ver más abajo).
+
 ## Cómo se logra el determinismo
 
 | Problema | Solución |
@@ -49,7 +52,7 @@ se toca.
 | Los seeds funcionales usan fechas relativas | Seed propio (`tests/e2e/visual/_seed.ts`) con UUIDs, horarios y fecha **absolutos**, idempotente |
 | Animaciones | `reducedMotion: 'reduce'` engancha el `@media` que ya existe en `globals.css`. Cero CSS nuevo, y de paso se fotografía el camino accesible |
 | Banner de push (`fixed bottom-left z-40`) | `addInitScript` + `localStorage` antes del primer `goto` |
-| Indicador de devtools de Next | `devIndicators: false` cuando `NEXT_PUBLIC_E2E=1` (`next.config.ts`) — **no alcanza**, ver la deuda de abajo |
+| Overlay de devtools de Next | `stylePath` → `tests/e2e/visual/screenshot.css` lo hace `display: none` al momento de la foto. `devIndicators: false` (`next.config.ts`) se mantiene, pero **no alcanza solo**: apaga el indicador, no el portal — ver abajo |
 | Disponibilidad del perfil público | **No se estabiliza**: se clampea a `[hoy, hoy+anticipación]` en cliente Y servidor. Se enmascara ese bloque por su `aria-label` |
 
 Los projects declaran `viewport`, `deviceScaleFactor`, `colorScheme`, `locale` y
@@ -71,24 +74,102 @@ Ese run dejó además una falla que el timeout no explica del todo
 aparecer con los timeouts nuevos, es un problema de datos —la suite @critical corre
 antes y toca reservas— y no de tiempo.
 
-### Deuda: el mask del overlay de dev es intermitente
+### El overlay de dev se oculta con CSS, no se enmascara (RESUELTO)
 
-`devChrome(page)` enmascara `nextjs-portal` + `[data-nextjs-toast]` como red de
-seguridad. Pero el portal **igual aparece a veces** pese a `devIndicators: false`,
-y cuando aparece Playwright le pinta encima una caja magenta de ~101×36 px abajo a
-la izquierda.
+**El problema (medido el 2026-07-29).** El overlay de devtools de Next se
+enmascaraba con `devChrome(page)` (`nextjs-portal` + `[data-nextjs-toast]`). Pero
+un `mask` de Playwright no oculta: **pinta una caja magenta** (`#FF00FF` exacto)
+del tamaño del elemento. Esa caja mide 101×36 px abajo a la izquierda — 0.28% de
+una foto de escritorio (1440×900), pero **1.09% de una mobile** (393×851). O sea
+que su sola aparición o desaparición movía el diff por encima de
+`maxDiffPixelRatio: 0.01` sin que hubiera cambiado un pixel de producto: entre las
+baselines de `e1f1284` y las de `0c09296`, `perfil-publico-mobile.png` dio 1.15% de
+diff, del cual 1.09% era la caja (presente en la vieja, ausente en la nueva) y
+225 px (0.07%) la pantalla.
 
-En las fotos de escritorio (1440×900) esa caja es 0.28% del cuadro: irrelevante.
-En `perfil-publico-mobile.png` (393×851) es **1.09%** — o sea que su sola
-aparición/desaparición mueve el diff por encima de `maxDiffPixelRatio: 0.01` sin
-que haya cambiado un solo pixel de producto. Medido: entre las baselines de
-`e1f1284` y las de `0c09296`, esa foto dio 1.15% de diff, del cual 1.09% era la
-caja (presente en la vieja, ausente en la nueva) y 225 px (0.07%) el borde.
+Y era intermitente **dentro de la misma corrida**. Contando pixeles `#FF00FF` en
+las 8 baselines de `0c09296` (mismo `pnpm dev`, misma sesión):
 
-Hasta que se arregle, un diff de ~1.1% en las fotos mobile es sospechoso de ser
-esto y no una regresión: mirá primero la esquina inferior izquierda. El fix real
-es que el portal no llegue al DOM (o excluirlo del screenshot en vez de
-enmascararlo), no aflojar el umbral.
+| Foto | `#FF00FF` | Qué es |
+|---|---|---|
+| `visual/landing.png` | 3636 px (0.281%) — bbox 101×36 en `[20,844]` | caja del overlay |
+| `visual/admin-settings-reservas.png` | 3636 px (0.281%) — bbox 101×36 en `[20,844]` | caja del overlay |
+| `visual/login.png`, `visual/admin-canchas.png`, `visual/admin-grilla.png`, `visual-mobile/admin-grilla-mobile.png` | 0 | el overlay no pintó |
+| `visual/perfil-publico.png` | 83820 px (6.468%) — bbox 1270×66 | mask de la grilla de disponibilidad (legítimo, se queda) |
+| `visual-mobile/perfil-publico-mobile.png` | 0 | la grilla de disponibilidad queda abajo del fold de 851 px, así que su mask no entra al cuadro |
+
+2 de 6 fotos de escritorio con caja y 4 sin: eso es exactamente la moneda al aire
+que movía el gate.
+
+**Después del fix** (baselines del run 30497324106): las 7 fotos que no enmascaran
+nada dan **0 pixeles `#FF00FF`**, y `perfil-publico.png` conserva sus 83820 px en el
+mismo bbox de siempre. Es un invariante estructural, no una convención: sin `mask`
+en la llamada, Playwright no tiene con qué pintar. `landing.png` y
+`admin-settings-reservas.png` cambiaron 0.615% cada una, en bbox
+`[1,836..139,899]` — el pill del overlay más su sombra, más grande que los 101×36
+de la caja magenta que lo tapaba. Las otras 6 quedaron byte-idénticas.
+
+> Si volvés a medir esto, el contador de `#FF00FF` sirve para el mask, no para todo:
+> un diff exacto byte a byte NO es el diff que mira el gate. `threshold: 0.2` es
+> perceptual (YIQ), así que hay fotos byte-distintas que la comparación considera
+> iguales — ver la nota del DPR 2 más abajo.
+
+**Por qué `devIndicators: false` no lo evitaba.** Porque no apaga el overlay,
+apaga el *indicador*. Verificado contra Next 16.2.11:
+
+| Pieza | Qué hace |
+|---|---|
+| `next/dist/client/app-next-dev.js` | llama `renderAppDevOverlay(...)` en un `finally`, **sin condición** |
+| `renderAppDevOverlay` (`next/dist/compiled/next-devtools/index.js`) | monta `<script data-nextjs-dev-overlay="true" style="display:block;position:absolute">` con un `<nextjs-portal>` adentro, y le engancha un shadow root |
+| `devIndicators: false` (`next/dist/build/define-env.js`) | define `process.env.__NEXT_DEV_INDICATOR=false`, que gatea el **contenido** del indicador — no el montaje del portal |
+
+O sea: en `next dev` el portal está **siempre**. Lo intermitente era qué
+renderizaba adentro, y por lo tanto si el mask tenía caja que pintar o no.
+
+**El fix.** `expect.toHaveScreenshot.stylePath` en `playwright.config.ts` apunta a
+`tests/e2e/visual/screenshot.css`: Playwright lo inyecta antes de cada foto y lo
+saca después. Ese CSS hace `display: none` de todo el árbol de devtools. Dos
+propiedades que el mask no tenía:
+
+- **`display: none` no pinta.** El pixel queda idéntico esté el overlay montado o
+  no — que era todo el punto.
+- **`stylePath` atraviesa el Shadow DOM** (documentado en la API de Playwright).
+  El indicador (`[data-nextjs-toast]`) vive adentro del shadow root, donde un
+  `<style>` normal del documento no llega.
+
+No mueve el layout del producto: los dos contenedores que Next monta son
+`position: absolute` (fuera de flujo) y el host es un custom element vacío.
+
+**Cómo se sabe que sigue funcionando.** Todo esto se rompe en silencio: si el CSS
+deja de matchear, el overlay simplemente vuelve a las fotos. Tres guards, cada uno
+cubriendo una mitad distinta del contrato:
+
+| Guard | Qué prueba | Dónde corre |
+|---|---|---|
+| `tests/unit/playwright-visual-config.test.ts` | que el `stylePath` esté cableado y apunte a un archivo que existe y no está vacío; que nadie aflojó `maxDiffPixelRatio`/`threshold`; que ningún project defina su propio `expect`; que las baselines estén donde `snapshotPathTemplate` las busca | job **bloqueante** (`pnpm test`) |
+| `tests/e2e/visual/stylepath-guard.spec.ts` | que el CSS realmente borre del pixel un overlay con la estructura de Next 16 (host + shadow root), por equivalencia de bytes contra el mismo DOM sin overlay. Con control negativo, para no pasar por vacuidad | project `visual` |
+| `assertDevOverlayHookExists(page)` en la foto `login` | que el Next real siga montando uno de esos hooks. El guard de arriba usa un fixture sintético; este verifica que el fixture no quedó viejo | project `visual` |
+
+Los dos primeros están mutation-tested: comentar el `stylePath` del config pone
+rojo al unit test, y renombrar los selectores de `screenshot.css` pone rojo al
+guard e2e.
+
+Ojo con el detalle de Playwright que descubrió el tercer chequeo del unit test:
+`expect` del project se resuelve con `takeFirst(projectConfig.expect,
+config.expect, {})` — **no hay merge**. Un `expect` a nivel project descartaría el
+global entero (`stylePath`, `threshold` y `maxDiffPixelRatio` de una) y las fotos
+seguirían "pasando" con los defaults de Playwright. Por eso el `stylePath` va en el
+`expect` de arriba y no en los projects.
+
+**Descartado: correr las fotos contra `next build` + `next start`.** Es el fix de
+raíz (no hay overlay en producción), pero el `webServer` es **uno** para las 8
+suites de e2e y el mock de MercadoPago se apaga con `NODE_ENV=production`
+(`computeMpMockEnabled` en `mock-mp.ts`) — ver el comentario del step de e2e en
+`ci.yml`. Cambiarlo por estas 8 fotos rompería los flujos de checkout de todos los
+demás specs.
+
+**Descartado: aflojar `maxDiffPixelRatio`.** Tapa el síntoma y baja la
+sensibilidad del gate justo en las fotos mobile, que son las que más se rompen.
 
 > Los specs visuales usan el fixture `page` + `test.use({ storageState })`, **no**
 > `browser.newContext({ storageState })` como el resto de los specs del repo. Un
@@ -149,8 +230,38 @@ git commit -m "test(visual): baselines linux"
 > manda `snapshotPathTemplate` en `playwright.config.ts` — si dudás, la fuente de
 > verdad son los paths que el propio log de CI reporta como faltantes.
 
+> **La trampa del `--update-snapshots` pelado (ya costó 3 corridas).** El
+> workflow usa `--update-snapshots=all` y **el `=all` es obligatorio**. Sin valor,
+> el flag toma el preset `changed`, y `changed` reescribe la baseline **solo cuando
+> la comparación falla**: cualquier drift por debajo de `maxDiffPixelRatio: 0.01`
+> se considera "matching" y la PNG vieja queda intacta, con el workflow en
+> `success` sin haber regenerado nada.
+>
+> Así se congeló la caja magenta de 0.281% del overlay de dev en `landing.png` y
+> `admin-settings-reservas.png`: el fix ya estaba en el código y las fotos nuevas
+> eran correctas, pero `changed` las descartaba por estar dentro del umbral. El
+> síntoma es traicionero — el artifact baja byte-idéntico al que ya tenías y parece
+> que "no cambió nada". Con `=all`, Playwright captura sin comparar y reescribe si
+> los bytes difieren.
+
+> **Las fotos de DPR 2 vuelven "cambiadas" casi siempre, y casi siempre es ruido.**
+> `=all` reescribe cuando los **bytes** difieren, pero el gate compara con
+> `threshold: 0.2` en YIQ — que es **perceptual**. En los projects mobile
+> (`deviceScaleFactor: 2` + `scale: 'css'`, o sea captura a 786×1702 y downscale a
+> 393×851) el anti-aliasing del texto se corre un subpixel entre corridas: medido en
+> `perfil-publico-mobile.png`, **9.14% de los pixeles byte-distintos** (delta máximo
+> 218, concentrado en las filas de los glifos) y sin embargo la comparación de
+> Playwright **pasa** — se comprobó corriendo el mismo commit en modo `changed`, que
+> dejó la PNG intacta justamente porque no falló.
+>
+> Criterio: en las fotos mobile, **no bendigas por byte, bendecí por estructura.** Si
+> las dos imágenes tienen el mismo layout, el mismo texto y las mismas posiciones,
+> dejá la baseline vieja: re-bendecirla mete miles de pixeles de churn al diff sin
+> cambiar nada de lo que el gate mira. Bendecila solo si el cambio se ve.
+
 **Cuando un diff es legítimo** (cambiaste un padding a propósito): exactamente los
-mismos 5 pasos. `--update-snapshots` reescribe solo lo que cambió.
+mismos 5 pasos. Con `=all` se reescribe toda PNG cuyos bytes cambien; el colador
+contra bendecir basura es el paso 5, no el flag.
 
 **Cuando no lo es**: el job sube `test-results/` como artifact, con los
 `*-actual.png` y `*-diff.png`. Los mirás, arreglás el código, y las baselines ni

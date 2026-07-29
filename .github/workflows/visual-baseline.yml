@@ -35,11 +35,26 @@ jobs:
 
       - uses: ./.github/actions/e2e-stack
 
+      # `=all` es OBLIGATORIO, no cosmético. `--update-snapshots` sin valor toma
+      # el preset `changed` (ver el `preset` de la opción en
+      # playwright/lib/program.js), y `changed` solo reescribe la baseline cuando
+      # la comparación FALLA. O sea: cualquier drift por debajo de
+      # `maxDiffPixelRatio: 0.01` se considera "matching" y la PNG vieja queda
+      # intacta — el workflow decía "success" sin regenerar nada.
+      #
+      # Así se congeló durante 3 corridas la caja magenta de 0.281% del overlay de
+      # dev en `landing.png` y `admin-settings-reservas.png`: el fix ya estaba en
+      # el código, las fotos nuevas eran correctas, y `changed` las descartaba por
+      # estar dentro del umbral. Con `=all` Playwright captura sin comparar
+      # (`expected = undefined`) y reescribe si los bytes difieren.
+      #
+      # El colador contra bendecir basura NO es este flag: es el paso 5 del doc
+      # (mirar las PNG con los ojos antes de commitear).
       - name: Regenerar baselines
         run: |
           pnpm exec playwright test \
             --project visual --project visual-mobile \
-            --update-snapshots \
+            --update-snapshots=all \
             --reporter=list
 
       - name: Empaquetar baselines

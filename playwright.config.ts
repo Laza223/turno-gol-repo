@@ -134,7 +134,12 @@ export default defineConfig({
     command: 'pnpm dev',
     url: 'http://localhost:3000/api/status',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    // El gate de readiness es /api/status, que además de compilar la ruta con
+    // Turbopack en frío levanta pg-boss (crea/migra su schema) sobre el runner
+    // de 2 cores compartido con el stack de Supabase. Un run real murió con
+    // "Timed out waiting 120000ms from config.webServer" sin ejecutar un solo
+    // test (run 30485811020). 240s en CI; local queda en 120s.
+    timeout: process.env.CI ? 240_000 : 120_000,
     env: {
       NEXT_PUBLIC_E2E: '1',
       UPSTASH_REDIS_REST_URL: '',

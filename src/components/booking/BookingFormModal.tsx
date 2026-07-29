@@ -40,10 +40,8 @@ type Slot = {
   durationMins: 60 | 120
 }
 
-/** Firma de createBookingAction (@/app/(admin)/reservas/actions). */
 export type CreateBookingAction = (data: unknown) => Promise<BookingActionResult>
 
-/** Firma de checkSlotAvailabilityAction (@/app/(admin)/reservas/actions). */
 export type CheckSlotAvailabilityAction = (input: {
   courtId: string
   date: string
@@ -55,35 +53,15 @@ type Props = {
   open: boolean
   onClose: () => void
   onSuccess: (booking: BookingRow) => void
-  /**
-   * La Server Action llega por PROP, no por import: `./actions` es `'use server'`
-   * y arrastra drizzle/postgres/`node:async_hooks`, que Vite externaliza en el
-   * bundle de browser y rompe cualquier story (ver docs/storybook/STORYBOOK_ARCHITECTURE.md).
-   * BookingGrid (único caller) la recibe a su vez por prop y la reenvía acá.
-   */
   action: CreateBookingAction
-  /**
-   * Chequeo optimista de disponibilidad (Fase 4 UX), opcional: sin esta prop
-   * (tests/stories viejas, o callers que todavía no la cablean) el modal se
-   * comporta exactamente igual que antes. Ver el comentario en
-   * checkSlotAvailabilityAction (@/app/(admin)/reservas/actions) — nunca
-   * reemplaza la validación real del server en el submit.
-   */
   checkAvailabilityAction?: CheckSlotAvailabilityAction
 }
 
-// Motivo / Tipo de bloqueo del turno manual. Dos familias:
-//   * 'contact' → reserva real (type='spontaneous'): muestra datos de contacto
-//     opcionales y cotiza con el precio de la cancha.
-//   * 'internal' → bloqueo interno (type='block'): sin contacto, sin costo
-//     (el server fuerza price 0 para type='block') y `guestName` autocompletado
-//     con el motivo, que la grilla muestra como etiqueta del bloque.
 type ReasonValue = 'phone' | 'maintenance' | 'school' | 'teachers' | 'other'
 type Reason = {
   value: ReasonValue
   label: string
   kind: 'contact' | 'internal'
-  /** Nombre autocompletado para bloqueos internos (se guarda en guest_name). */
   autoName?: string
   icon: React.ComponentType<{ className?: string }>
 }
@@ -113,6 +91,11 @@ function timeToMins(hhmm: string): number {
   return (h ?? 0) * 60 + (m ?? 0)
 }
 
+const BASE_HOURLY_START_TIMES = [
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00',
+  '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
+]
+
 export function BookingFormModal({
   slot,
   open,
@@ -121,9 +104,11 @@ export function BookingFormModal({
   action,
   checkAvailabilityAction,
 }: Props) {
+  const [timeStart, setTimeStart] = useState<string>(slot.timeStart)
   const [duration, setDuration] = useState<number>(slot.durationMins)
   const [reason, setReason] = useState<ReasonValue>(DEFAULT_REASON)
-  const [isDurationOpen, setIsDurationOpen] = useState(false)
+  const [isTimeStartOpen, setIsTimeStartOpen] = useState(false)
+  const [isTimeEndOpen, setIsTimeEndOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
@@ -138,19 +123,11 @@ export function BookingFormModal({
     }
   }
 
-  // If the parent reuses this modal instance for a different slot, the duration
-  // useState initializer won't re-run — resync it so the summary and payload
-  // don't go stale.
   useEffect(() => {
     setDuration(slot.durationMins)
+    setTimeStart(slot.timeStart)
   }, [slot.courtId, slot.date, slot.timeStart, slot.durationMins])
 
-  // Fase 4 UX: chequeo optimista de disponibilidad al abrir el modal (o si el
-  // caller lo reutiliza para otro slot sin desmontarlo). Solo un aviso
-  // temprano — el server sigue siendo quien decide en el submit — así que
-  // nunca deshabilita el botón, solo muestra el mismo alert inline de abajo.
-  // `cancelled` evita que una respuesta tardía (o el doble efecto de strict
-  // mode) pise el estado de un slot que ya no es el actual.
   useEffect(() => {
     if (!open || !checkAvailabilityAction) return
     let cancelled = false
@@ -158,43 +135,43 @@ export function BookingFormModal({
     checkAvailabilityAction({
       courtId: slot.courtId,
       date: slot.date,
-      timeStart: slot.timeStart,
+      timeStart,
     })
       .then((result) => {
         if (!cancelled && !result.available) {
           setError('Este turno acaba de ser tomado.')
         }
       })
-      .catch(() => {
-        // Fail-open: un chequeo optimista roto (red, timeout) nunca debe
-        // bloquear ni mostrar error — el submit real sigue siendo la fuente
-        // de verdad.
-      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
-  }, [open, slot.courtId, slot.date, slot.timeStart, checkAvailabilityAction])
+  }, [open, slot.courtId, slot.date, timeStart, checkAvailabilityAction])
 
   const selectedReason = reasonFor(reason)
   const isInternalBlock = selectedReason.kind === 'internal'
-  const allowsCustomDuration = isInternalBlock
-  // Solo los bloqueos internos (type='block') pueden abarcar desde 1 hora
-  // hasta la jornada completa: el server (createManualBooking →
-  // assertSlotDuration) SIEMPRE exige turnos de 60 min para cualquier otro
-  // type, incluido 'other' (viaja como type='spontaneous') — ofrecerle acá un
-  // selector de duración prometería algo que el submit real siempre rechaza.
-  const startMins = timeToMins(slot.timeStart)
+  const isOtherReason = reason === 'other'
+  const allowsCustomDuration = isInternalBlock || isOtherReason
+
+  const startMins = timeToMins(timeStart)
   const maxHours = Math.max(1, Math.floor((END_OF_DAY_MINS - startMins) / 60))
   const allDurations = Array.from({ length: maxHours }, (_, i) => (i + 1) * 60)
   const effectiveDuration = allowsCustomDuration ? duration : 60
   const timeEnd = endLabelFromMins(startMins + effectiveDuration)
 
-  // Invariante: createManualBookingSchema tiene un .refine() que exige playerId
-  // XOR guestName/guestPhone (no se puede mezclar un jugador registrado con
-  // datos de invitado). Este form nunca setea `playerId` — no tiene selector de
-  // jugador, solo guestName/guestPhone sueltos — así que ese refine nunca puede
-  // fallar acá y no hace falta espejarlo del lado del cliente. Si algún día se
-  // agrega un selector de jugador, ahí sí replicar el refine en este handler.
+  const startTimes = BASE_HOURLY_START_TIMES.includes(slot.timeStart)
+    ? BASE_HOURLY_START_TIMES
+    : [...BASE_HOURLY_START_TIMES, slot.timeStart].sort((a, b) => timeToMins(a) - timeToMins(b))
+
+  const endOptions = allDurations.map((d) => {
+    const mins = startMins + d
+    return {
+      durationMins: d,
+      label: endLabelFromMins(mins),
+      hoursLabel: `${d / 60} ${d === 60 ? 'hora' : 'horas'}`,
+    }
+  })
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
@@ -205,17 +182,19 @@ export function BookingFormModal({
     const common = {
       courtId: slot.courtId,
       date: slot.date,
-      timeStart: slot.timeStart,
+      timeStart,
       timeEnd,
       ...(notesInternal ? { notesInternal } : {}),
     }
 
-    // Bloqueo interno: type='block' (precio 0 forzado en el server), nombre
-    // autocompletado con el motivo, sin datos de contacto.
-    // Reserva real (telefónica / otro): type='spontaneous'; nombre y teléfono
-    // son opcionales e independientes (sin burocracia para el admin).
-    const data = isInternalBlock
-      ? { ...common, type: 'block' as const, guestName: selectedReason.autoName }
+    const isBlockType = isInternalBlock || (isOtherReason && effectiveDuration > 60)
+    const data = isBlockType
+      ? {
+          ...common,
+          type: 'block' as const,
+          guestName: selectedReason.autoName ?? (guestName || 'Otro / Evento'),
+          ...(guestPhone ? { guestPhone } : {}),
+        }
       : {
           ...common,
           type: 'spontaneous' as const,
@@ -233,7 +212,7 @@ export function BookingFormModal({
           setReason(DEFAULT_REASON)
           toast({
             title: isInternalBlock ? 'Turno bloqueado' : 'Reserva creada',
-            description: `${slot.courtName} · ${slot.timeStart}–${timeEnd}`,
+            description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
             variant: 'success',
           })
           onSuccess(result.booking)
@@ -241,9 +220,6 @@ export function BookingFormModal({
           setError(result.error)
         }
       } catch (err) {
-        // A thrown action (network drop, server crash) must not leave the submit
-        // button stuck on "Guardando…" — surface a recoverable error instead.
-        // Report it too: a silent catch would hide a real server failure.
         Sentry.captureException(err)
         setError('No pudimos crear la reserva. Revisá tu conexión e intentá de nuevo.')
       }
@@ -263,9 +239,7 @@ export function BookingFormModal({
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 dark:bg-black/80 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        {/* w-[calc(100vw-2rem)]: gutter de 1rem por lado en mobile (misma receta
-            que ui/dialog.tsx) — con w-full el card quedaba edge-to-edge <448px. */}
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100vw-2rem)] max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border/80 rounded-2xl shadow-2xl backdrop-blur-xl p-6 sm:p-7 focus:outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border/80 rounded-2xl shadow-2xl backdrop-blur-xl p-6 sm:p-7 focus:outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
           <Dialog.Close className="absolute right-4 top-4 rounded-lg opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
             <span className="sr-only">Cerrar</span>
@@ -286,237 +260,327 @@ export function BookingFormModal({
                   <Calendar className="h-3 w-3 shrink-0" />
                   {formatDateLong(slot.date)}
                 </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-xs font-medium border border-border/60">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-semibold border border-emerald-500/30">
                   <Clock className="h-3 w-3 shrink-0" />
-                  {slot.timeStart}–{timeEnd}
+                  {timeStart}–{timeEnd} ({effectiveDuration / 60} {effectiveDuration === 60 ? 'hr' : 'hrs'})
                 </span>
               </div>
             </Dialog.Description>
           </div>
 
-          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="reason" className="block text-sm font-semibold text-foreground">
-                Motivo / Tipo de Bloqueo
-              </Label>
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+              {/* Columna Izquierda: Horarios y Motivos */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Horario de inicio */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="time-start-trigger" className="block text-xs font-semibold text-foreground">
+                      Horario de inicio
+                    </Label>
 
-              {/* Selector táctil en chips para UX rápida de 1 tap */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {REASONS.map((r) => {
-                  const Icon = r.icon
-                  const isSelected = reason === r.value
-                  return (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => handleReasonSelect(r.value)}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all duration-150 text-left cursor-pointer',
-                        isSelected
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-semibold shadow-2xs'
-                          : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground'
-                      )}
+                    <select
+                      id="timeStart"
+                      name="timeStart"
+                      value={timeStart}
+                      onChange={(e) => {
+                        const newStart = e.target.value
+                        setTimeStart(newStart)
+                        const newStartMins = timeToMins(newStart)
+                        const newMaxHours = Math.max(1, Math.floor((END_OF_DAY_MINS - newStartMins) / 60))
+                        if (duration / 60 > newMaxHours) {
+                          setDuration(newMaxHours * 60)
+                        }
+                      }}
+                      className="sr-only"
                     >
-                      <Icon className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')} />
-                      <span className="truncate">{r.label}</span>
-                    </button>
-                  )
-                })}
+                      {startTimes.map((t) => (
+                        <option key={t} value={t}>
+                          {t} hs
+                        </option>
+                      ))}
+                    </select>
+
+                    <Popover open={isTimeStartOpen} onOpenChange={setIsTimeStartOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          id="time-start-trigger"
+                          type="button"
+                          aria-label="Seleccionar horario de inicio"
+                          className="flex w-full items-center justify-between gap-1.5 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-xs font-semibold text-foreground transition-all hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/40 shadow-xs cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span>{timeStart} hs</span>
+                          </div>
+                          <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isTimeStartOpen && "rotate-180")} />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-44 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
+                        {startTimes.map((t) => {
+                          const isSelected = timeStart === t
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => {
+                                setTimeStart(t)
+                                const newStartMins = timeToMins(t)
+                                const newMaxHours = Math.max(1, Math.floor((END_OF_DAY_MINS - newStartMins) / 60))
+                                if (duration / 60 > newMaxHours) {
+                                  setDuration(newMaxHours * 60)
+                                }
+                                setIsTimeStartOpen(false)
+                              }}
+                              className={cn(
+                                'flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors cursor-pointer text-left',
+                                isSelected
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
+                                  : 'hover:bg-accent text-foreground'
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                {isSelected ? (
+                                  <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                ) : (
+                                  <div className="h-4 w-4 shrink-0" />
+                                )}
+                                <span>{t} hs</span>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Horario de fin */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="time-end-trigger" className="block text-xs font-semibold text-foreground">
+                      Horario de fin
+                    </Label>
+
+                    <select
+                      id="duration"
+                      name="duration"
+                      value={duration}
+                      onChange={(e) => setDuration(Number(e.target.value))}
+                      className="sr-only"
+                    >
+                      {allDurations.map((d) => (
+                        <option key={d} value={d}>
+                          {d / 60} {d === 60 ? 'hora' : 'horas'}
+                        </option>
+                      ))}
+                    </select>
+
+                    {allowsCustomDuration ? (
+                      <Popover open={isTimeEndOpen} onOpenChange={setIsTimeEndOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            id="time-end-trigger"
+                            type="button"
+                            aria-label="Seleccionar horario de fin"
+                            className="flex w-full items-center justify-between gap-1.5 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-xs font-semibold text-foreground transition-all hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/40 shadow-xs cursor-pointer"
+                          >
+                            <div className="flex items-center gap-1.5 truncate">
+                              <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <span>{timeEnd} hs</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">
+                                ({effectiveDuration / 60} {effectiveDuration === 60 ? 'hr' : 'hrs'})
+                              </span>
+                            </div>
+                            <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isTimeEndOpen && "rotate-180")} />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-48 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
+                          {endOptions.map((opt) => {
+                            const isSelected = duration === opt.durationMins
+                            return (
+                              <button
+                                key={opt.durationMins}
+                                type="button"
+                                onClick={() => {
+                                  setDuration(opt.durationMins)
+                                  setIsTimeEndOpen(false)
+                                }}
+                                className={cn(
+                                  'flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors cursor-pointer text-left',
+                                  isSelected
+                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
+                                    : 'hover:bg-accent text-foreground'
+                                )}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {isSelected ? (
+                                    <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                  ) : (
+                                    <div className="h-4 w-4 shrink-0" />
+                                  )}
+                                  <span>{opt.label} hs</span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground">
+                                  ({opt.hoursLabel})
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <div className="flex w-full items-center justify-between gap-1 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs font-semibold text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span>{timeEnd} hs</span>
+                        </div>
+                        <span className="text-[10px] font-normal">(1 hr)</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {!isInternalBlock && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="guestName" className="flex items-center justify-between text-sm font-medium text-foreground">
+                      <span>{reason === 'other' ? 'Nombre / Motivo' : 'Nombre del cliente'}</span>
+                      <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                    </Label>
+                    <Input
+                      ref={guestNameInputRef}
+                      id="guestName"
+                      name="guestName"
+                      type="text"
+                      maxLength={200}
+                      autoComplete="name"
+                      placeholder={reason === 'other' ? 'Ej: Torneo nocturno, Cumpleaños, Juan...' : 'Ej: Juan Pérez'}
+                      className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus:border-emerald-500"
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Native Select oculto visualmente pero activo en DOM para accesibilidad/tests */}
-              <select
-                id="reason"
-                name="reason"
-                value={reason}
-                onChange={(e) => handleReasonSelect(e.target.value as ReasonValue)}
-                className="sr-only"
-              >
-                {REASONS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+              {/* Columna Derecha: Motivos y chips */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reason" className="block text-sm font-semibold text-foreground">
+                    Motivo / Tipo de Bloqueo
+                  </Label>
 
-              {isInternalBlock && (
-                <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl font-medium mt-1.5">
-                  <Info className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                  <span>Bloqueo interno sin costo. Se agenda como <strong>“{selectedReason.autoName}”</strong>.</span>
-                </p>
-              )}
-            </div>
-
-            {allowsCustomDuration && (
-              <div className="space-y-1.5">
-                <Label htmlFor="duration-select-trigger" className="flex items-center justify-between text-sm font-semibold text-foreground">
-                  <span>Duración del bloqueo / evento</span>
-                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
-                    Hasta las {timeEnd} ({effectiveDuration / 60} hs)
-                  </span>
-                </Label>
-
-                {/* Hidden native select for form serialization & accessible test queries */}
-                <select
-                  id="duration"
-                  name="duration"
-                  value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
-                  className="sr-only"
-                >
-                  {allDurations.map((d) => (
-                    <option key={d} value={d}>
-                      {d / 60} {d === 60 ? 'hora' : 'horas'}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Modern Popover Selector Custom UI */}
-                <Popover open={isDurationOpen} onOpenChange={setIsDurationOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      id="duration-select-trigger"
-                      type="button"
-                      aria-label="Seleccionar duración"
-                      className="flex w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/40 shadow-xs cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span className="font-semibold text-foreground">
-                          {duration / 60} {duration === 60 ? 'hora' : 'horas'}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-normal">
-                          (hasta las {endLabelFromMins(startMins + duration)})
-                        </span>
-                      </div>
-                      <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isDurationOpen && "rotate-180")} />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5">
-                    {allDurations.map((d) => {
-                      const isSelected = duration === d
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {REASONS.map((r) => {
+                      const Icon = r.icon
+                      const isSelected = reason === r.value
                       return (
                         <button
-                          key={d}
+                          key={r.value}
                           type="button"
-                          onClick={() => {
-                            setDuration(d)
-                            setIsDurationOpen(false)
-                          }}
+                          onClick={() => handleReasonSelect(r.value)}
                           className={cn(
-                            'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer text-left',
+                            'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all duration-150 text-left cursor-pointer',
                             isSelected
-                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
-                              : 'hover:bg-accent text-foreground'
+                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-semibold shadow-2xs'
+                              : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground'
                           )}
                         >
-                          <div className="flex items-center gap-2">
-                            {isSelected ? (
-                              <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            ) : (
-                              <div className="h-4 w-4 shrink-0" />
-                            )}
-                            <span>{d / 60} {d === 60 ? 'hora' : 'horas'}</span>
-                          </div>
-                          <span className="text-xs font-medium text-muted-foreground">
-                            hasta {endLabelFromMins(startMins + d)}
-                          </span>
+                          <Icon className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')} />
+                          <span className="truncate">{r.label}</span>
                         </button>
                       )
                     })}
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+                  </div>
 
-            {!isInternalBlock && (
-              <div className="space-y-1.5">
-                <Label htmlFor="guestName" className="flex items-center justify-between text-sm font-medium text-foreground">
-                  <span>{reason === 'other' ? 'Nombre / Motivo' : 'Nombre'}</span>
-                  <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
-                </Label>
-                <Input
-                  ref={guestNameInputRef}
-                  id="guestName"
-                  name="guestName"
-                  type="text"
-                  maxLength={200}
-                  autoComplete="name"
-                  placeholder={reason === 'other' ? 'Ej: Torneo nocturno, Cumpleaños, Juan...' : 'Ej: Juan Pérez'}
-                  className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus:border-emerald-500"
-                />
-              </div>
-            )}
+                  <select
+                    id="reason"
+                    name="reason"
+                    value={reason}
+                    onChange={(e) => handleReasonSelect(e.target.value as ReasonValue)}
+                    className="sr-only"
+                  >
+                    {REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
 
-            {/* Secundarios (Fase 3 UX, progressive disclosure): teléfono y notas
-                internas no son necesarios para cargar el turno rápido — se
-                colapsan bajo "Opciones avanzadas". El único error de esta action
-                es el genérico de abajo (result.error, sin atar a un campo
-                puntual) y vive FUERA de este Collapsible, siempre visible sea
-                cual sea su estado — no hace falta auto-expandirlo. */}
+                  {isInternalBlock && (
+                    <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl font-medium mt-1.5">
+                      <Info className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                      <span>Bloqueo interno sin costo. Se agenda como <strong>“{selectedReason.autoName}”</strong>.</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <Collapsible>
-              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/20 px-3.5 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground group-hover:text-foreground">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors pt-1 cursor-pointer"
+                >
                   <SlidersHorizontal className="h-3.5 w-3.5" />
-                  Opciones avanzadas
-                </span>
-                <ChevronDown
-                  aria-hidden="true"
-                  className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
-                />
+                  <span>Opciones avanzadas</span>
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3.5 pt-3">
-                {!isInternalBlock && (
-                  <PhoneInput
-                    id="guestPhone"
-                    name="guestPhone"
-                    label="Teléfono (opcional)"
-                    placeholder="11 1234-5678"
-                  />
-                )}
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="notesInternal" className="flex items-center justify-between text-sm font-medium text-foreground">
-                    <span>Notas internas</span>
-                    <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
-                  </Label>
-                  <textarea
-                    id="notesInternal"
-                    name="notesInternal"
-                    maxLength={1000}
-                    rows={2}
-                    className="w-full rounded-xl border border-input bg-background dark:bg-zinc-900/60 text-foreground placeholder:text-muted-foreground/60 px-3.5 py-2.5 min-h-16 text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary resize-none shadow-xs"
-                    placeholder="Solo visible para el staff"
-                  />
+              <CollapsibleContent forceMount className="pt-3 space-y-3 data-[state=closed]:hidden">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {!isInternalBlock && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="guestPhone" className="flex items-center justify-between text-sm font-medium text-foreground">
+                        <span>Teléfono del cliente</span>
+                        <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                      </Label>
+                      <PhoneInput
+                        id="guestPhone"
+                        name="guestPhone"
+                        placeholder="Ej: 11 2345-6789"
+                        className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus-within:border-emerald-500"
+                      />
+                    </div>
+                  )}
+
+                  <div className={cn("space-y-1.5", isInternalBlock && "col-span-2")}>
+                    <Label htmlFor="notesInternal" className="flex items-center justify-between text-sm font-medium text-foreground">
+                      <span>Notas internas</span>
+                      <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                    </Label>
+                    <textarea
+                      id="notesInternal"
+                      name="notesInternal"
+                      rows={2}
+                      maxLength={1000}
+                      placeholder="Ej: Avisó que llega 10 min tarde, traen pelota propia..."
+                      className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm text-foreground transition-all focus:border-emerald-500 focus:outline-hidden resize-none"
+                    />
+                  </div>
                 </div>
               </CollapsibleContent>
             </Collapsible>
 
             {error && (
-              <div
-                role="alert"
-                className="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-sm font-medium text-red-700 dark:text-red-400 shadow-xs animate-in fade-in-50"
-              >
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium">
+                <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="flex gap-2.5 justify-end pt-2">
-              <Dialog.Close asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl px-4"
-                >
-                  Cancelar
-                </Button>
-              </Dialog.Close>
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/60">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isPending}
+                className="rounded-xl font-medium"
+              >
+                Cancelar
+              </Button>
               <Button
                 type="submit"
                 disabled={isPending}
-                isLoading={isPending}
-                className="rounded-xl px-5 font-semibold bg-primary hover:bg-emerald-600 text-primary-foreground shadow-md shadow-emerald-500/20"
+                className="rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500"
               >
                 {isPending ? 'Guardando…' : 'Confirmar'}
               </Button>

@@ -15,13 +15,12 @@ import type {
   PaymentMethodValue,
 } from '@/modules/bookings/booking.types'
 
-
 export default async function GrillaPage(
   props: {
     searchParams: Promise<{ date?: string }>
   }
 ) {
-  const searchParams = await props.searchParams;
+  const searchParams = await props.searchParams
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -29,38 +28,39 @@ export default async function GrillaPage(
   if (!tenant) redirect('/onboarding')
 
   const todayArt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  // #28: un ?date con formato/calendario invalido (2024-13-32) reventaba el cast
-  // SQL ${dateStr}::date -> 500/error.tsx. Degradar a hoy (ART) en su lugar.
   const dateStr = safeDateParam(searchParams.date, todayArt)
 
   const [courts, rawBookings] = await withTenantContext(tenant.id, async (tx) => {
-    const courtList = await listCourts(tenant.id, tx)
-    const bookingRows = await tx
-      .select({
-        id: bookings.id,
-        courtId: bookings.courtId,
-        date: bookings.date,
-        timeStart: bookings.timeStart,
-        timeEnd: bookings.timeEnd,
-        status: bookings.status,
-        type: bookings.type,
-        guestName: bookings.guestName,
-        priceSnapshot: bookings.priceSnapshot,
-        paymentMethod: bookings.paymentMethod,
-        depositStatus: bookings.depositStatus,
-        depositAmount: bookings.depositAmount,
-        playerFirstName: players.firstName,
-        playerLastName: players.lastName,
-      })
-      .from(bookings)
-      .leftJoin(players, eq(bookings.playerId, players.id))
-      .where(
-        and(
-          eq(bookings.tenantId, tenant.id),
-          sql`${bookings.date} = ${dateStr}::date`,
-          sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+    const [courtList, bookingRows] = await Promise.all([
+      listCourts(tenant.id, tx),
+      tx
+        .select({
+          id: bookings.id,
+          courtId: bookings.courtId,
+          date: bookings.date,
+          timeStart: bookings.timeStart,
+          timeEnd: bookings.timeEnd,
+          status: bookings.status,
+          type: bookings.type,
+          guestName: bookings.guestName,
+          priceSnapshot: bookings.priceSnapshot,
+          paymentMethod: bookings.paymentMethod,
+          depositStatus: bookings.depositStatus,
+          depositAmount: bookings.depositAmount,
+          playerFirstName: players.firstName,
+          playerLastName: players.lastName,
+        })
+        .from(bookings)
+        .leftJoin(players, eq(bookings.playerId, players.id))
+        .where(
+          and(
+            eq(bookings.tenantId, tenant.id),
+            sql`${bookings.date} = ${dateStr}::date`,
+            sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+          ),
         ),
-      )
+    ])
+
     return [courtList, bookingRows] as const
   })
 

@@ -13,7 +13,7 @@ import { StatCard } from '@/components/admin/StatCard'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { getStaffRole } from '@/modules/staff/staff.service'
+import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { MetricsDashboardLoader } from '@/app/(admin)/metricas/MetricsDashboardLoader'
 import { getRevenueReport } from '@/modules/reports/report.service'
 import {
@@ -51,7 +51,7 @@ function isValidMonth(s: string): boolean {
  * reporte mensual de /reportes (abajo, con navegación mes a mes y export CSV
  * acotado al mes seleccionado).
  * Zona sensible: va detrás del PinGate (ingresos visibles).
- * El panel "Estado del sistema" se renderiza solo para rol 'admin'.
+ * El panel "Estado del sistema" se renderiza solo para superadministradores de la plataforma.
  */
 export default async function AnaliticasPage(props: {
   searchParams: Promise<{ month?: string | string[] }>
@@ -63,7 +63,8 @@ export default async function AnaliticasPage(props: {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const canSeeSystem = (await getStaffRole(tenant.id, user.staffUserId)) === 'admin'
+  const systemAdmin = await resolveSystemAdmin()
+  const canSeeSystem = systemAdmin !== null
 
   const rawMonth = typeof searchParams.month === 'string' ? searchParams.month : ''
   const month = isValidMonth(rawMonth) ? rawMonth : currentMonthStr()

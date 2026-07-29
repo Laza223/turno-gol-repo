@@ -384,4 +384,4 @@ async function main(): Promise<void> {
   console.log('\nAll launch checks passed.')
 }
 
-main()
+void main()

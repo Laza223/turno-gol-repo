@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { chipClass } from '../caja-lib'
+import { chipClass, METHOD_OPTIONS, type SaleMethod as SettleMethod } from '../caja-lib'
 import { relativeTimeEs } from '@/app/(admin)/metricas/dashboard-helpers'
 import { formatArs } from '@/lib/format'
 import { toast } from '@/hooks/use-toast'
@@ -24,14 +24,6 @@ export type SettleTabAction = (input: {
 }) => Promise<SettleTabActionResult>
 
 export type CancelTabAction = (input: { tabId: string; reason: string }) => Promise<CancelTabActionResult>
-
-const METHOD_OPTIONS = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-] as const
-
-type SettleMethod = (typeof METHOD_OPTIONS)[number]['value']
 
 /**
  * Fiados abiertos (canteen_tabs, status='open'): se llenan al "Anotar como
@@ -186,7 +178,7 @@ function SettleTabDialog({
 
   return (
     <Dialog open={tab !== null} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Cobrar fiado — {tab?.debtorName}</DialogTitle>
         </DialogHeader>
@@ -289,7 +281,7 @@ function CancelTabDialog({
 
   return (
     <Dialog open={tab !== null} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Anular fiado — {tab?.debtorName}</DialogTitle>
         </DialogHeader>

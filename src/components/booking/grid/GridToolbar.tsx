@@ -17,6 +17,7 @@ type Props = {
   isCompact: boolean
   onToggleDensity: () => void
   onNavigate: (date: string) => void
+  actions?: React.ReactNode
 }
 
 /**
@@ -32,17 +33,19 @@ export function GridToolbar({
   isCompact,
   onToggleDensity,
   onNavigate,
+  actions,
 }: Props) {
   return (
     <div className="relative -mx-4 space-y-3 bg-background/95 px-4 py-2 backdrop-blur-sm shrink-0">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Grilla</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {dayLabel} {dateLabel}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {actions}
           <Tooltip>
             <TooltipTrigger asChild>
               <button

@@ -147,111 +147,121 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
 
   return (
     <Dialog open={debt !== null} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] max-w-2xl">
         <DialogHeader>
           <DialogTitle>Saldar Deuda</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">{label}</p>
 
         <div className="space-y-4">
-          {/* Breakdown */}
-          <dl className="space-y-1.5 text-sm">
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Precio original del turno</dt>
-              <dd className="font-semibold text-foreground">{formatArs(debt.priceSnapshot)}</dd>
-            </div>
-            {debt.depositCounted > 0 && (
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Seña abonada</dt>
-                <dd className="text-foreground">−{formatArs(debt.depositCounted)}</dd>
-              </div>
-            )}
-            {debt.chargesTotal > 0 && (
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Pagos cobrados previamente</dt>
-                <dd className="text-foreground">−{formatArs(debt.chargesTotal)}</dd>
-              </div>
-            )}
-            <div className="flex items-center justify-between border-t border-border pt-1.5">
-              <dt className="font-medium text-foreground">Deuda actual pendiente</dt>
-              <dd className="font-bold text-red-600 dark:text-red-400">{formatArs(debt.pending)}</dd>
-            </div>
-          </dl>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Columna Izquierda: Breakdown de deuda y nota */}
+            <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Estado de deuda
+              </h4>
 
-          {debt.notesInternal && (
-            <div className="rounded-lg bg-amber-500/10 p-2.5 text-xs text-amber-900 dark:text-amber-300 border border-amber-500/20">
-              <span className="font-semibold">Nota previa de deuda:</span> {debt.notesInternal}
-            </div>
-          )}
-
-          {/* Quick action button */}
-          <button
-            type="button"
-            onClick={quickAllCash}
-            className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-          >
-            Saldar todo en efectivo — {formatArs(debt.pending)}
-          </button>
-
-          {/* Charges inputs */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Ingresar pago(s) de deuda
-            </label>
-            {charges.map((line) => (
-              <div key={line.id} className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    inputMode="decimal"
-                    placeholder="Monto"
-                    value={line.amountPesos}
-                    onChange={(e) => updateCharge(line.id, 'amountPesos', e.target.value)}
-                    className="w-full h-10 rounded-lg border border-input bg-background pl-7 pr-3 text-base md:text-sm font-medium tabular-nums focus:outline-hidden focus:ring-2 focus:ring-ring"
-                  />
+              <dl className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Precio original del turno</dt>
+                  <dd className="font-semibold text-foreground">{formatArs(debt.priceSnapshot)}</dd>
                 </div>
-                <select
-                  value={line.method}
-                  onChange={(e) => updateCharge(line.id, 'method', e.target.value as Method)}
-                  className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
-                >
-                  {METHOD_OPTIONS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-                {charges.length > 1 && (
+                {debt.depositCounted > 0 && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Seña abonada</dt>
+                    <dd className="text-foreground">−{formatArs(debt.depositCounted)}</dd>
+                  </div>
+                )}
+                {debt.chargesTotal > 0 && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Pagos cobrados previamente</dt>
+                    <dd className="text-foreground">−{formatArs(debt.chargesTotal)}</dd>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-border/80 pt-2">
+                  <dt className="font-medium text-foreground">Deuda actual pendiente</dt>
+                  <dd className="font-bold text-base text-red-600 dark:text-red-400">{formatArs(debt.pending)}</dd>
+                </div>
+              </dl>
+
+              {debt.notesInternal && (
+                <div className="rounded-lg bg-amber-500/10 p-2.5 text-xs text-amber-900 dark:text-amber-300 border border-amber-500/20">
+                  <span className="font-semibold">Nota previa:</span> {debt.notesInternal}
+                </div>
+              )}
+            </div>
+
+            {/* Columna Derecha: Ingreso de pagos */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Registrar cobro de deuda
+              </h4>
+
+              <button
+                type="button"
+                onClick={quickAllCash}
+                className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+              >
+                Saldar todo en efectivo — {formatArs(debt.pending)}
+              </button>
+
+              <div className="space-y-2">
+                {charges.map((line) => (
+                  <div key={line.id} className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        inputMode="decimal"
+                        placeholder="Monto"
+                        value={line.amountPesos}
+                        onChange={(e) => updateCharge(line.id, 'amountPesos', e.target.value)}
+                        className="w-full h-10 rounded-lg border border-input bg-background pl-7 pr-3 text-base md:text-sm font-medium tabular-nums focus:outline-hidden focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <select
+                      value={line.method}
+                      onChange={(e) => updateCharge(line.id, 'method', e.target.value as Method)}
+                      className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                    >
+                      {METHOD_OPTIONS.map((m) => (
+                        <option key={m.value} value={m.value} className="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100">
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                    {charges.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeChargeLine(line.id)}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        aria-label="Eliminar cobro"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {charges.length < 5 && (
                   <button
                     type="button"
-                    onClick={() => removeChargeLine(line.id)}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    aria-label="Eliminar cobro"
+                    onClick={addChargeLine}
+                    className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1 md:min-h-0"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5" /> Agregar pago dividido
                   </button>
                 )}
               </div>
-            ))}
-
-            {charges.length < 5 && (
-              <button
-                type="button"
-                onClick={addChargeLine}
-                className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1 md:min-h-0"
-              >
-                <Plus className="h-3.5 w-3.5" /> Agregar pago dividido
-              </button>
-            )}
+            </div>
           </div>
 
           {/* Remaining balance preview */}
-          <div className="rounded-lg bg-accent/50 p-3 text-sm flex items-center justify-between">
+          <div className="rounded-lg bg-accent/50 p-3 text-xs md:text-sm flex items-center justify-between">
             <span className="text-muted-foreground font-medium">Deuda restante post-pago:</span>
             <span
               className={`font-semibold tabular-nums ${
@@ -272,12 +282,12 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
             <button
               type="button"
               onClick={handleClose}
               disabled={isPending}
-              className="h-10 px-4 rounded-lg border border-input bg-background text-sm font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              className="h-10 px-4 rounded-lg border border-input bg-background text-sm font-semibold text-foreground hover:bg-accent transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -285,7 +295,7 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
               type="button"
               onClick={submit}
               disabled={isPending}
-              className="h-10 px-4 rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="h-10 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold text-white shadow-xs transition-colors disabled:opacity-50"
             >
               {isPending ? 'Registrando...' : 'Registrar pago de deuda'}
             </button>

@@ -74,6 +74,32 @@ function addOneHour(time: string): string {
   return `${hh}:${mm}`
 }
 
+function getNextMatchingDate(fromDateStr: string | null, targetDayOfWeek: number): string {
+  let base: Date
+  if (fromDateStr && /^\d{4}-\d{2}-\d{2}$/.test(fromDateStr)) {
+    const [y, m, d] = fromDateStr.split('-').map(Number)
+    base = new Date(y!, m! - 1, d!)
+  } else {
+    base = new Date()
+  }
+
+  if (base.getDay() === targetDayOfWeek) {
+    const y = base.getFullYear()
+    const m = String(base.getMonth() + 1).padStart(2, '0')
+    const d = String(base.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  const next = new Date(base)
+  while (next.getDay() !== targetDayOfWeek) {
+    next.setDate(next.getDate() + 1)
+  }
+  const y = next.getFullYear()
+  const m = String(next.getMonth() + 1).padStart(2, '0')
+  const d = String(next.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 type PreviewData = {
   dates: string[]
   conflicts: string[]
@@ -379,7 +405,13 @@ export default function AbonadoForm({
                     id="dayOfWeek"
                     options={DAYS}
                     value={dayOfWeek}
-                    onChange={setDayOfWeek}
+                    onChange={(newDay) => {
+                      setDayOfWeek(newDay)
+                      const targetDay = Number(newDay)
+                      if (!isNaN(targetDay)) {
+                        setStartsOn((prev) => getNextMatchingDate(prev || null, targetDay))
+                      }
+                    }}
                     placeholder="Elegí un día"
                     inputClassName={`${fieldBase} pl-3 pr-8`}
                     listboxLabel="Días de la semana"
@@ -394,6 +426,7 @@ export default function AbonadoForm({
                     id="startsOn"
                     value={startsOn}
                     onChange={setStartsOn}
+                    allowedDayOfWeek={dayOfWeek !== '' ? Number(dayOfWeek) : undefined}
                     placeholder="Seleccionar fecha"
                   />
                 </div>

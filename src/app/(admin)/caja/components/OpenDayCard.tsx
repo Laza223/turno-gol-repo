@@ -126,7 +126,7 @@ export function OpenDayCard({
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {open

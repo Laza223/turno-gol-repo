@@ -185,114 +185,138 @@ export function ProductFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] max-w-2xl">
         <DialogHeader>
           <DialogTitle>{product ? 'Editar producto' : 'Nuevo producto'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="pf-name">Nombre</Label>
-            <Input
-              id="pf-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={40}
-              disabled={isPending}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="pf-price">Precio (pesos)</Label>
-              <Input
-                id="pf-price"
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                value={pricePesos}
-                onChange={(e) => setPricePesos(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="pf-cost">Costo (pesos, opcional)</Label>
-              <Input
-                id="pf-cost"
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                value={costPesos}
-                onChange={(e) => setCostPesos(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-          </div>
-          <fieldset>
-            <legend className="mb-1.5 text-xs font-medium text-foreground">Control de stock</legend>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                aria-pressed={trackStock}
-                disabled={isPending}
-                onClick={() => setTrackStock(true)}
-                className={chipClass(trackStock)}
-              >
-                Sí, controlar
-              </button>
-              <button
-                type="button"
-                aria-pressed={!trackStock}
-                disabled={isPending}
-                onClick={() => setTrackStock(false)}
-                className={chipClass(!trackStock)}
-              >
-                No controlar
-              </button>
-            </div>
-          </fieldset>
-          {trackStock && (
-            <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Columna Izquierda: Información de producto */}
+            <div className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="pf-stock">{stockLockedFromCatalog ? 'Stock actual' : 'Stock inicial'}</Label>
+                <Label htmlFor="pf-name">Nombre del producto</Label>
                 <Input
-                  id="pf-stock"
-                  type="number"
-                  min="0"
-                  step="1"
-                  inputMode="numeric"
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
-                  disabled={isPending || stockLockedFromCatalog}
-                />
-                {stockLockedFromCatalog && (
-                  <p className="text-xs text-muted-foreground">
-                    Se ajusta desde Reposición o Merma, no desde acá.
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="pf-minstock">Stock mínimo (alerta)</Label>
-                <Input
-                  id="pf-minstock"
-                  type="number"
-                  min="0"
-                  step="1"
-                  inputMode="numeric"
-                  value={minStock}
-                  onChange={(e) => setMinStock(e.target.value)}
+                  id="pf-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={40}
+                  placeholder="Ej: Gatorade 500ml, Alquiler Pecheras"
                   disabled={isPending}
+                  className="h-10 rounded-lg"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="pf-price">Precio (pesos)</Label>
+                  <Input
+                    id="pf-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={pricePesos}
+                    onChange={(e) => setPricePesos(e.target.value)}
+                    disabled={isPending}
+                    className="h-10 rounded-lg tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="pf-cost">Costo (opcional)</Label>
+                  <Input
+                    id="pf-cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={costPesos}
+                    onChange={(e) => setCostPesos(e.target.value)}
+                    disabled={isPending}
+                    className="h-10 rounded-lg tabular-nums"
+                  />
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Columna Derecha: Control de Stock */}
+            <div className="space-y-3">
+              <fieldset>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Control de stock</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    aria-pressed={trackStock}
+                    disabled={isPending}
+                    onClick={() => setTrackStock(true)}
+                    className={chipClass(trackStock)}
+                  >
+                    Sí, controlar
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={!trackStock}
+                    disabled={isPending}
+                    onClick={() => setTrackStock(false)}
+                    className={chipClass(!trackStock)}
+                  >
+                    No controlar
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {trackStock
+                    ? 'Controla inventario físico disponible (ej: Agua, Gatorade, cerveza, alfajores).'
+                    : 'Sin límite de stock. Ideal para servicios o alquileres (ej: Alquiler de pecheras, pelotas, fichas de ducha, pases).'}
+                </p>
+              </fieldset>
+
+              {trackStock && (
+                <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="space-y-1">
+                    <Label htmlFor="pf-stock">{stockLockedFromCatalog ? 'Stock actual' : 'Stock inicial'}</Label>
+                    <Input
+                      id="pf-stock"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={stock}
+                      onChange={(e) => setStock(e.target.value)}
+                      disabled={isPending || stockLockedFromCatalog}
+                      className="h-10 rounded-lg tabular-nums"
+                    />
+                    {stockLockedFromCatalog && (
+                      <p className="text-xs text-muted-foreground">
+                        Se ajusta desde Reposición o Merma.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="pf-minstock">Stock mínimo (alerta)</Label>
+                    <Input
+                      id="pf-minstock"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={minStock}
+                      onChange={(e) => setMinStock(e.target.value)}
+                      disabled={isPending}
+                      className="h-10 rounded-lg tabular-nums"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 pt-1">
+
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
             <button
               type="button"
               disabled={isPending}
               onClick={() => handleClose(false)}
-              className="h-11 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60"
+              className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -300,7 +324,7 @@ export function ProductFormDialog({
               type="button"
               disabled={isPending}
               onClick={submit}
-              className="h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+              className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
             >
               {isPending ? 'Guardando…' : 'Guardar'}
             </button>

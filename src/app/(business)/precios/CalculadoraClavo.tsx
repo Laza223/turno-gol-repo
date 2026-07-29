@@ -17,12 +17,19 @@ const MAX_CLAVOS = 10
  */
 export default function CalculadoraClavo() {
   const [turnoArs, setTurnoArs] = useState<number>(30000)
+  const [customInput, setCustomInput] = useState<string>('')
   const [clavos, setClavos] = useState<number>(2)
 
   const perdidaCents = turnoArs * 100 * clavos * WEEKS_PER_MONTH
   const desdeCents = PLANS[0]!.priceMonthly
 
+  function selectPreset(preset: number) {
+    setTurnoArs(preset)
+    setCustomInput('')
+  }
+
   function onTurnoInput(raw: string) {
+    setCustomInput(raw)
     const digits = raw.replace(/\D/g, '')
     const parsed = digits === '' ? 0 : Number.parseInt(digits, 10)
     setTurnoArs(Math.min(Number.isNaN(parsed) ? 0 : parsed, MAX_TURNO_ARS))
@@ -51,12 +58,12 @@ export default function CalculadoraClavo() {
             </label>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {TURNO_PRESETS.map((preset) => {
-                const selected = turnoArs === preset
+                const selected = customInput === '' && turnoArs === preset
                 return (
                   <button
                     key={preset}
                     type="button"
-                    onClick={() => setTurnoArs(preset)}
+                    onClick={() => selectPreset(preset)}
                     aria-pressed={selected}
                     className={`h-11 rounded-full px-4 text-sm font-semibold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                       selected
@@ -77,7 +84,7 @@ export default function CalculadoraClavo() {
                   type="text"
                   inputMode="numeric"
                   autoComplete="off"
-                  value={turnoArs === 0 ? '' : String(turnoArs)}
+                  value={customInput}
                   onChange={(e) => onTurnoInput(e.target.value)}
                   placeholder="Otro"
                   className="h-11 w-[110px] rounded-full border border-white/10 bg-white/4 pl-8 pr-4 text-sm font-semibold tabular-nums text-white placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"

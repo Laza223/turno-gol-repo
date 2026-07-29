@@ -1,13 +1,12 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { ChevronLeft, ChevronRight, Trophy } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Sparkles, Trophy } from 'lucide-react'
 import { getPublicTenant } from '@/modules/tenants/public.service'
 import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 import JsonLd from '@/components/seo/JsonLd'
-import { EmptyState } from '@/components/ui/empty-state'
 import {
   FORMAT_SHORT,
   STATUS_LABELS,
@@ -53,11 +52,19 @@ export default async function TorneosPublicosPage(props: Props) {
       <h1 className="text-xl font-bold tracking-tight text-foreground">Torneos</h1>
 
       {tournaments.length === 0 ? (
-        <EmptyState
-          icon={Trophy}
-          title="No hay torneos publicados"
-          description={`${tenant.name} todavía no publicó ningún torneo.`}
-        />
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-linear-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-6 text-center sm:p-8">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
+            <Trophy className="h-7 w-7 text-emerald-500" />
+          </div>
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+            Próximamente
+          </div>
+          <h2 className="text-lg font-bold text-foreground">Módulo de Torneos</h2>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground leading-relaxed">
+            {tenant.name} estará publicando los próximos torneos, tablas de posiciones y fixtures muy pronto.
+          </p>
+        </div>
       ) : (
         <ul className="space-y-3">
           {tournaments.map((t) => (

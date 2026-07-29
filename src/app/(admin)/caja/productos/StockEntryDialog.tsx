@@ -153,123 +153,160 @@ export function StockEntryDialog({
 
   return (
     <Dialog open={product !== null} onOpenChange={handleClose}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[95vw] max-w-2xl">
         <DialogHeader>
           <DialogTitle>Reponer — {product?.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="se-packs">Packs</Label>
-              <Input
-                id="se-packs"
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={packs}
-                onChange={(e) => setPacks(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="se-per-pack">Unidades por pack</Label>
-              <Input
-                id="se-per-pack"
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={unitsPerPack}
-                onChange={(e) => setUnitsPerPack(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            = {totalUnits} unidad{totalUnits === 1 ? '' : 'es'}
-          </p>
-          <div className="space-y-1">
-            <Label htmlFor="se-cost">Costo por unidad (pesos, opcional)</Label>
-            <Input
-              id="se-cost"
-              type="number"
-              min="0"
-              step="0.01"
-              inputMode="decimal"
-              value={unitCostPesos}
-              onChange={(e) => setUnitCostPesos(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-          {unitCostPesos.trim() !== '' && (
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input
-                type="checkbox"
-                checked={updateCost}
-                onChange={(e) => setUpdateCost(e.target.checked)}
-                disabled={isPending}
-                className="h-4 w-4 rounded border-border"
-              />
-              Actualizar costo del producto
-            </label>
-          )}
-          {hasValidCost && (
-            <div className="space-y-2 rounded-md border border-border p-3">
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={payFromCash}
-                  onChange={(e) => setPayFromCash(e.target.checked)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Columna Izquierda: Cantidades e ingreso */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Detalle de unidades
+              </h4>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="se-packs">Packs</Label>
+                  <Input
+                    id="se-packs"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={packs}
+                    onChange={(e) => setPacks(e.target.value)}
+                    disabled={isPending}
+                    className="h-10 rounded-lg tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="se-per-pack">Unidades por pack</Label>
+                  <Input
+                    id="se-per-pack"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={unitsPerPack}
+                    onChange={(e) => setUnitsPerPack(e.target.value)}
+                    disabled={isPending}
+                    className="h-10 rounded-lg tabular-nums"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                Total a ingresar: {totalUnits} unidad{totalUnits === 1 ? '' : 'es'}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="se-note">Nota (opcional)</Label>
+                <textarea
+                  id="se-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
                   disabled={isPending}
-                  className="h-4 w-4 rounded border-border"
+                  placeholder="ej: Distribuidora Central, Factura B N° 123..."
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring resize-none"
                 />
-                Pagalo de la caja (queda como gasto de mercadería)
-              </label>
-              {payFromCash && (
-                <>
-                  <div className="grid grid-cols-3 gap-2">
-                    {EXPENSE_METHODS.map((m) => (
-                      <button
-                        key={m.value}
-                        type="button"
-                        disabled={isPending}
-                        aria-pressed={expenseMethod === m.value}
-                        onClick={() => setExpenseMethod(m.value)}
-                        className={chipClass(expenseMethod === m.value)}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Registra el gasto de {formatArs(totalUnits * Math.round(unitCostNum * 100))} en la
-                    caja de hoy.
-                  </p>
-                </>
+              </div>
+            </div>
+
+            {/* Columna Derecha: Costos y pago de caja */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Costo y pago
+              </h4>
+
+              <div className="space-y-1">
+                <Label htmlFor="se-cost">Costo por unidad (pesos, opcional)</Label>
+                <Input
+                  id="se-cost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={unitCostPesos}
+                  onChange={(e) => setUnitCostPesos(e.target.value)}
+                  disabled={isPending}
+                  className="h-10 rounded-lg tabular-nums"
+                />
+              </div>
+
+              {unitCostPesos.trim() !== '' && (
+                <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={updateCost}
+                    onChange={(e) => setUpdateCost(e.target.checked)}
+                    disabled={isPending}
+                    className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500"
+                  />
+                  Actualizar costo del producto
+                </label>
+              )}
+
+              {hasValidCost && (
+                <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={payFromCash}
+                      onChange={(e) => setPayFromCash(e.target.checked)}
+                      disabled={isPending}
+                      className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500"
+                    />
+                    Pagalo de la caja (gasto de mercadería)
+                  </label>
+
+                  {payFromCash && (
+                    <div className="space-y-2 pt-1">
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {EXPENSE_METHODS.map((m) => (
+                          <button
+                            key={m.value}
+                            type="button"
+                            disabled={isPending}
+                            aria-pressed={expenseMethod === m.value}
+                            onClick={() => setExpenseMethod(m.value)}
+                            className={chipClass(expenseMethod === m.value)}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Registra gasto de {formatArs(totalUnits * Math.round(unitCostNum * 100))} en la caja.
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
-          <div className="space-y-1">
-            <Label htmlFor="se-note">Nota (opcional)</Label>
-            <textarea
-              id="se-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={2}
-              disabled={isPending}
-              className="min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm"
-            />
           </div>
+
           {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
-          <button
-            type="button"
-            onClick={submit}
-            disabled={isPending}
-            className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
-          >
-            {isPending ? 'Registrando…' : 'Registrar reposición'}
-          </button>
+
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => handleClose(false)}
+              className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={isPending}
+              className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
+            >
+              {isPending ? 'Registrando…' : 'Registrar reposición'}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

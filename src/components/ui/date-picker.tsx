@@ -10,6 +10,7 @@ type Props = {
   value: string // YYYY-MM-DD
   onChange: (value: string) => void
   min?: string // YYYY-MM-DD
+  allowedDayOfWeek?: number // 0=Domingo, 1=Lunes, ..., 6=Sábado
   placeholder?: string
   className?: string
 }
@@ -36,6 +37,7 @@ export default function DatePicker({
   value,
   onChange,
   min,
+  allowedDayOfWeek,
   placeholder = 'Seleccionar fecha',
   className,
 }: Props) {
@@ -96,11 +98,15 @@ export default function DatePicker({
     return `${d}/${m}/${y}`
   }, [value])
 
-  // Deshabilitar días menores que 'min'
+  // Deshabilitar días menores que 'min' o que no coincidan con allowedDayOfWeek (0=Domingo, 1=Lunes, etc.)
   const isDateDisabled = (day: number) => {
-    if (!min) return false
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    return dateStr < min
+    if (min && dateStr < min) return true
+    if (allowedDayOfWeek !== undefined && allowedDayOfWeek !== null && allowedDayOfWeek >= 0) {
+      const dt = new Date(year, month, day)
+      if (dt.getDay() !== allowedDayOfWeek) return true
+    }
+    return false
   }
 
   const currentMonthLabel = `${MONTH_NAMES[month]} de ${year}`
@@ -227,7 +233,21 @@ export default function DatePicker({
               type="button"
               onClick={() => {
                 const today = new Date()
-                const formatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                let y = today.getFullYear()
+                let m = today.getMonth()
+                let d = today.getDate()
+
+                if (allowedDayOfWeek !== undefined && allowedDayOfWeek !== null && allowedDayOfWeek >= 0) {
+                  const target = new Date(y, m, d)
+                  while (target.getDay() !== allowedDayOfWeek) {
+                    target.setDate(target.getDate() + 1)
+                  }
+                  y = target.getFullYear()
+                  m = target.getMonth()
+                  d = target.getDate()
+                }
+
+                const formatted = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
                 onChange(formatted)
                 setOpen(false)
               }}

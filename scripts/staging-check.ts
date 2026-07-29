@@ -244,4 +244,4 @@ async function main(): Promise<void> {
   console.log('\nStaging is verifiable: all checks passed.')
 }
 
-main()
+void main()

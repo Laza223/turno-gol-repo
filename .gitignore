@@ -47,3 +47,8 @@ ds-bundle/
 
 .vercel
 .env*
+
+# Baselines visuales: SOLO se versionan las de linux (generadas en CI).
+# Ver docs/testing/VISUAL_REGRESSION.md.
+tests/e2e/visual/__screenshots__/*/win32/
+tests/e2e/visual/__screenshots__/*/darwin/

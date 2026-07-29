@@ -32,11 +32,21 @@ export function DashboardCanteenButton({
           Venta rápida
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-md p-2">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Venta rápida de cantina</DialogTitle>
+      <DialogContent className="w-[95vw] max-w-5xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            <DialogTitle className="text-lg font-semibold text-foreground">
+              Venta rápida de cantina y caja
+            </DialogTitle>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Seleccioná productos o servicios y cobrá al instante en la caja del día.
+          </p>
         </DialogHeader>
-        <TicketPanel products={products} sellTicketAction={sellTicketAction} isInDialog />
+        <div className="pt-2">
+          <TicketPanel products={products} sellTicketAction={sellTicketAction} isInDialog />
+        </div>
       </DialogContent>
     </Dialog>
   )

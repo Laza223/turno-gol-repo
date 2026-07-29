@@ -21,6 +21,14 @@ export const METHOD_LABELS: Record<MethodKey, string> = {
 // Orden fijo de arqueo: el efectivo (lo que se cuenta) primero.
 const METHOD_ORDER: MethodKey[] = ['cash', 'transfer', 'mercadopago', 'other']
 
+export const METHOD_OPTIONS = [
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'transfer', label: 'Transferencia' },
+  { value: 'mercadopago', label: 'MercadoPago' },
+] as const
+
+export type SaleMethod = (typeof METHOD_OPTIONS)[number]['value']
+
 export type MethodTotal = { key: MethodKey; label: string; total: number }
 
 /** Desglose neto por método en orden canónico; solo los métodos con movimientos. */

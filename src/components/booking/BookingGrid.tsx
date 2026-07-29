@@ -58,6 +58,7 @@ type Props = {
   action: CreateBookingAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   checkAvailabilityAction?: CheckSlotAvailabilityAction
+  actions?: React.ReactNode
 }
 
 export function BookingGrid({
@@ -70,6 +71,7 @@ export function BookingGrid({
   closesNextDay,
   action,
   checkAvailabilityAction,
+  actions,
 }: Props) {
   const router = useRouter()
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
@@ -231,6 +233,7 @@ export function BookingGrid({
         isCompact={isCompact}
         onToggleDensity={toggleDensity}
         onNavigate={navigateToDate}
+        actions={actions}
       />
 
       {courts.length === 0 && (

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { signOutAction } from '@/modules/auth/sign-out.action'
 import PortalShell from '@/components/site/PortalShell'
 
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
@@ -9,5 +10,5 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
     redirect('/ingresar')
   }
 
-  return <PortalShell>{children}</PortalShell>
+  return <PortalShell signOutAction={signOutAction}>{children}</PortalShell>
 }

@@ -138,83 +138,95 @@ export function RegisterMovementModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] max-w-2xl">
         <DialogHeader><DialogTitle>Agregar movimiento</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Chips en vez de selects (§7): 1 tap por decisión, opciones visibles. */}
-          <fieldset>
-            <legend className="mb-1.5 text-xs font-medium text-foreground">Tipo</legend>
-            <div className="grid grid-cols-3 gap-2">
-              {TYPES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  disabled={isPending}
-                  aria-pressed={type === t.value}
-                  onClick={() => selectType(t.value)}
-                  className={chipClass(type === t.value)}
-                >
-                  {t.label}
-                </button>
-              ))}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Columna Izquierda: Tipo y Categoría */}
+            <div className="space-y-4">
+              <fieldset>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {TYPES.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      disabled={isPending}
+                      aria-pressed={type === t.value}
+                      onClick={() => selectType(t.value)}
+                      className={chipClass(type === t.value)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoría</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATEGORIES[type].map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      disabled={isPending}
+                      aria-pressed={category === c.value}
+                      onClick={() => setCategory(c.value)}
+                      className={chipClass(category === c.value)}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
             </div>
-          </fieldset>
-          <fieldset>
-            <legend className="mb-1.5 text-xs font-medium text-foreground">Categoría</legend>
-            {/* grid-cols-2 (no flex-wrap): con las 5 categorías de gasto (migr. 050)
-                un flex-wrap deja líneas de ancho dispar; 2 columnas fijas caben en
-                375px sin desborde y cada chip mantiene el h-11 (44px) de chipClass. */}
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORIES[type].map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  disabled={isPending}
-                  aria-pressed={category === c.value}
-                  onClick={() => setCategory(c.value)}
-                  className={chipClass(category === c.value)}
-                >
-                  {c.label}
-                </button>
-              ))}
+
+            {/* Columna Derecha: Método, Monto y Descripción */}
+            <div className="space-y-3">
+              <fieldset>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Método de pago</legend>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {METHODS.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      disabled={isPending}
+                      aria-pressed={method === m.value}
+                      onClick={() => setMethod(m.value)}
+                      className={chipClass(method === m.value)}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className="space-y-1">
+                <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">Monto (pesos)</label>
+                <input id="cf-amount" type="number" min="0" step="0.01" value={amountPesos}
+                  onChange={(e) => setAmountPesos(e.target.value)}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="0.00"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm tabular-nums focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring" />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="cf-desc" className="text-xs font-medium text-foreground">Descripción</label>
+                <textarea id="cf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+                  placeholder="ej: Pago de luz, hielo para cantina..."
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring resize-none" />
+              </div>
             </div>
-          </fieldset>
-          <fieldset>
-            <legend className="mb-1.5 text-xs font-medium text-foreground">Método</legend>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {METHODS.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  disabled={isPending}
-                  aria-pressed={method === m.value}
-                  onClick={() => setMethod(m.value)}
-                  className={chipClass(method === m.value)}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <div className="space-y-1">
-            <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">Monto (pesos)</label>
-            <input id="cf-amount" type="number" min="0" step="0.01" value={amountPesos}
-              onChange={(e) => setAmountPesos(e.target.value)}
-              inputMode="decimal"
-              autoComplete="off"
-              className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-base md:text-sm tabular-nums" />
           </div>
-          <div className="space-y-1">
-            <label htmlFor="cf-desc" className="text-xs font-medium text-foreground">Descripción</label>
-            <textarea id="cf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-              className="w-full rounded-md border border-border px-3 py-2 min-h-[44px] md:min-h-0 text-base md:text-sm" />
-          </div>
+
           {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 pt-1">
+
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
             <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
-              className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>
+              className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>
             <button type="submit" disabled={isPending || !isValid}
-              className="h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+              className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors">
               {isPending ? 'Guardando…' : 'Guardar'}</button>
           </div>
         </form>

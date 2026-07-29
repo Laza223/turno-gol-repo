@@ -79,7 +79,7 @@ export default function ExplorarToolbar({ total }: Props) {
           className="h-11 md:h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           {SORTS.map((s) => (
-            <option key={s.value} value={s.value}>
+            <option key={s.value} value={s.value} className="bg-card text-foreground dark:bg-slate-900 dark:text-slate-100">
               {s.label}
             </option>
           ))}

@@ -107,7 +107,7 @@ export function StockExitDialog({
 
   return (
     <Dialog open={product !== null} onOpenChange={handleClose}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Salida — {product?.name}</DialogTitle>
         </DialogHeader>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffRole } from '@/modules/staff/staff.service'
+import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
@@ -74,8 +74,7 @@ async function lastHealthPing(): Promise<string | null> {
 
 /**
  * Estado del sistema para el panel de observabilidad del dashboard /metricas.
- * Solo rol 'admin' verificado contra DB (getStaffRole): el claim `role` del JWT
- * está hardcodeado en 'admin' para todo el staff, así que NO sirve como barrera.
+ * Solo superadministradores de la plataforma (resolveSystemAdmin).
  * Una dependencia caída degrada su campo (down / null) — nunca un 500.
  */
 export async function GET(): Promise<NextResponse> {
@@ -83,19 +82,17 @@ export async function GET(): Promise<NextResponse> {
   if (!user) {
     return unauthorized('Autenticación requerida.', { code: 'AUTH_REQUIRED' })
   }
-  if (user.type !== 'staff' || !user.staffUserId || !user.tenantId) {
-    return forbidden('Se requiere una cuenta de staff.', { code: 'STAFF_REQUIRED' })
+
+  const systemAdmin = await resolveSystemAdmin()
+  if (!systemAdmin) {
+    return forbidden('Solo superadministradores de la plataforma pueden ver el estado del sistema.', {
+      code: 'SUPER_ADMIN_REQUIRED',
+    })
   }
 
-  const throttled = await guard('adminCrud', user.tenantId)
-  if (throttled) return throttled
-
-  const role = await getStaffRole(user.tenantId, user.staffUserId)
-  if (role !== 'admin') {
-    return forbidden('Solo administradores pueden ver el estado del sistema.', {
-      code: 'ROLE_REQUIRED',
-      details: { required: 'admin' },
-    })
+  if (user.type === 'staff' && user.tenantId) {
+    const throttled = await guard('adminCrud', user.tenantId)
+    if (throttled) return throttled
   }
 
   const [db, pgboss, ping] = await Promise.all([checkDb(), checkQueues(), lastHealthPing()])

@@ -48,11 +48,10 @@ export default function PlanSelector() {
                   role="radio"
                   aria-checked={selected}
                   onClick={() => setCourts(n)}
-                  className={`h-11 w-11 rounded-full text-sm font-bold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                    selected
+                  className={`h-11 w-11 rounded-full text-sm font-bold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${selected
                       ? 'bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,.45)]'
                       : 'text-slate-400 hover:bg-white/[.07] hover:text-white'
-                  }`}
+                    }`}
                 >
                   {n === 8 ? '8+' : n}
                 </button>
@@ -80,16 +79,14 @@ export default function PlanSelector() {
                 role="radio"
                 aria-checked={selected}
                 onClick={() => setCycle(value)}
-                className={`inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                  selected ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${selected ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 {label}
                 {value === 'annual' && (
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                      selected ? 'bg-slate-950/20 text-slate-950' : 'bg-emerald-500/15 text-emerald-400'
-                    }`}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${selected ? 'bg-slate-950/20 text-slate-950' : 'bg-emerald-500/15 text-emerald-400'
+                      }`}
                   >
                     −20%
                   </span>
@@ -121,8 +118,8 @@ export default function PlanSelector() {
         >
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
           <span>
-            <span className="font-semibold text-white">Todos los planes tienen todo.</span> Pagás por tamaño,
-            no por funciones desbloqueadas.
+            <span className="font-semibold text-white">Todos los planes tienen todo.</span> Pagás por cantidad de canchas,
+            no por funcionalidades.
           </span>
         </p>
       </div>
@@ -141,13 +138,11 @@ function PlanCardView({
 }) {
   const annual = cycle === 'annual'
   const price = annual ? plan.priceAnnual : plan.priceMonthly
-  const perDay = Math.round(price / 30)
 
   return (
     <div
-      className={`relative flex h-full flex-col p-7 transition-all duration-300 ${
-        isActive ? 'border border-emerald-400/50 md:scale-[1.02]' : 'border border-white/9'
-      }`}
+      className={`relative flex h-full flex-col p-7 transition-all duration-300 ${isActive ? 'border border-emerald-400/50 md:scale-[1.02]' : 'border border-white/9'
+        }`}
       style={{
         borderRadius: '20px',
         background: isActive
@@ -170,26 +165,41 @@ function PlanCardView({
       </div>
 
       <div className="mt-6">
-        {annual && (
-          <div className="text-[15px] font-semibold text-slate-500">
-            <s>{formatArs(plan.priceMonthly)}</s>
+        {annual ? (
+          <div>
+            <div className="text-[13px] font-semibold text-slate-500">
+              <s>{formatArs(plan.priceMonthly)}/mes</s>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span
+                className="font-display font-black tabular-nums text-[#f8fafc]"
+                style={{ fontSize: 'clamp(38px, 3.6vw, 46px)', letterSpacing: '-0.02em', lineHeight: 1 }}
+              >
+                {formatArs(price)}
+              </span>
+              <span className="text-sm font-medium text-slate-400">/mes</span>
+            </div>
+            <div className="mt-2 text-[13px] font-medium text-slate-300">
+              Total: <span className="font-bold text-white">{formatArs(plan.priceAnnual * 12)}</span> /año (pago único)
+            </div>
+            <div className="mt-1 text-[13px] font-semibold text-[#6ee7b7]">
+              Ahorrás {formatArs(annualSavings(plan))} al año
+            </div>
           </div>
-        )}
-        <div className="flex items-baseline gap-2">
-          <span
-            className="font-display font-black tabular-nums text-[#f8fafc]"
-            style={{ fontSize: 'clamp(38px, 3.6vw, 46px)', letterSpacing: '-0.02em', lineHeight: 1 }}
-          >
-            {formatArs(price)}
-          </span>
-          <span className="text-sm font-medium text-slate-400">/mes</span>
-        </div>
-        <div className="mt-2 text-[13px] text-slate-500">
-          ≈ {formatArs(perDay)} por día
-        </div>
-        {annual && (
-          <div className="mt-2 text-[13px] font-semibold text-[#6ee7b7]">
-            Ahorrás {formatArs(annualSavings(plan))} al año
+        ) : (
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span
+                className="font-display font-black tabular-nums text-[#f8fafc]"
+                style={{ fontSize: 'clamp(38px, 3.6vw, 46px)', letterSpacing: '-0.02em', lineHeight: 1 }}
+              >
+                {formatArs(price)}
+              </span>
+              <span className="text-sm font-medium text-slate-400">/mes</span>
+            </div>
+            <div className="mt-2 text-[13px] text-slate-400">
+              Facturación mensual
+            </div>
           </div>
         )}
       </div>
@@ -199,11 +209,10 @@ function PlanCardView({
       <div className="mt-6">
         <Link
           href="/register"
-          className={`group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 whitespace-nowrap ${
-            isActive
+          className={`group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 whitespace-nowrap ${isActive
               ? 'border border-emerald-400/60 bg-emerald-500/5 text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97]'
               : 'border border-white/15 bg-white/5 text-white hover:bg-white/10 active:scale-[0.97]'
-          }`}
+            }`}
         >
           Empezar 30 días gratis
           <ArrowRight

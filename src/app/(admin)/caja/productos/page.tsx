@@ -1,8 +1,5 @@
-import { redirect } from 'next/navigation'
 import { Banknote } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
@@ -12,9 +9,9 @@ import {
   getCanteenTotalsByMethod,
   getSalesRanking,
 } from '@/modules/canteen/canteen-report.service'
-import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { CajaTabs } from '../components/CajaTabs'
 import { addDays } from '../caja-lib'
+import { requireCajaContext } from '../queries'
 import { CanteenReport } from './CanteenReport'
 import { ProductsTable } from './ProductsTable'
 import { StockLedgerList } from './StockLedgerList'
@@ -34,18 +31,12 @@ export default async function CajaProductosPage(props: {
   // (basura, ausente) degrada a 7.
   const range: 7 | 30 = searchParams.range === '30' ? 30 : 7
 
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+  const { tenant, staffUserId, cutoffMins, today } = await requireCajaContext()
 
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
-
-  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
-  const today = operatingDateOf(new Date(), cutoffMins)
   const reportRange = { from: addDays(today, -(range - 1)), to: today }
 
   const [role, { products, ledger, ranking, byMethod, daily }] = await Promise.all([
-    getStaffRole(tenant.id, user.staffUserId),
+    getStaffRole(tenant.id, staffUserId),
     withTenantContext(tenant.id, async (tx) => {
       const [p, l, rk, bm, dl] = await Promise.all([
         listProducts(tenant.id, tx, { includeInactive: true }),

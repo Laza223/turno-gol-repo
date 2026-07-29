@@ -11,6 +11,7 @@ import type {
 } from '@/modules/tenants/public.service'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capitalizeFirst } from '@/lib/format'
+import WeeklyAvailabilityModal from './WeeklyAvailabilityModal'
 
 type Props = {
   tenant: PublicTenant
@@ -165,6 +166,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [courtFilter, setCourtFilter] = useState<string>('all')
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const maxDate = today ? addDays(today, tenant.bookingAdvanceDays) : null
 
@@ -270,34 +272,16 @@ export default function AvailabilityGrid({ tenant }: Props) {
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
-          <div className="relative">
-            {/* Input nativo invisible por encima del label: abre el picker del
-                browser sin libreria externa. `peer` para dibujar el focus ring
-                en el label visible (el input es opacity-0). */}
-            <input
-              type="date"
-              value={date ?? ''}
-              min={today ?? undefined}
-              max={maxDate ?? undefined}
-              disabled={loading || !date}
-              aria-label="Elegir fecha"
-              onChange={(e) => {
-                if (e.target.value) void loadDate(e.target.value)
-              }}
-              onClick={(e) => {
-                try {
-                  e.currentTarget.showPicker?.()
-                } catch {
-                  // showPicker exige gesto de usuario; el input nativo sigue funcionando
-                }
-              }}
-              className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
-            />
-            <span className="flex h-11 md:h-9 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-border px-2 text-sm font-medium text-foreground tabular-nums peer-hover:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-2 transition-colors duration-150">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-              {date ? formatDateES(date) : ' '}
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            disabled={loading || !date}
+            aria-label="Elegir fecha"
+            className="flex h-11 md:h-9 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground tabular-nums hover:bg-accent hover:border-emerald-500/50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 transition-colors duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            <span>{date ? formatDateES(date) : ' '}</span>
+          </button>
           <button
             type="button"
             onClick={() => date && loadDate(addDays(date, 1))}
@@ -457,6 +441,18 @@ export default function AvailabilityGrid({ tenant }: Props) {
           </span>
         </div>
       )}
+
+      <WeeklyAvailabilityModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        tenant={tenant}
+        selectedDate={date}
+        onSelectDate={(newDate) => {
+          void loadDate(newDate)
+        }}
+        today={today}
+        maxDate={maxDate}
+      />
     </section>
   )
 }

@@ -7,7 +7,7 @@
 // Source of truth: src/shared/db/migrations/00{1..8}_*.sql
 // Target:          supabase/migrations/202604240000{1..8}_*.sql
 
-import { readdir, readFile, writeFile, unlink, stat } from 'node:fs/promises'
+import { readdir, readFile, writeFile, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const SOURCE_DIR = 'src/shared/db/migrations'

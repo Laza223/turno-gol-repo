@@ -55,12 +55,25 @@ function parseArgs(argv) {
     const bump = () => {
       if (inline === undefined) i++
     }
-    if (flag === '--url') (args.url = value), bump()
-    else if (flag === '--session') (args.session = value), bump()
-    else if (flag === '--grep') (args.grep = value), bump()
-    else if (flag === '--out') (args.out = value), bump()
-    else if (flag === '--theme') (args.theme = value), bump()
-    else if (flag === '--viewports') (args.viewports = value.split(',')), bump()
+    if (flag === '--url') {
+      args.url = value
+      bump()
+    } else if (flag === '--session') {
+      args.session = value
+      bump()
+    } else if (flag === '--grep') {
+      args.grep = value
+      bump()
+    } else if (flag === '--out') {
+      args.out = value
+      bump()
+    } else if (flag === '--theme') {
+      args.theme = value
+      bump()
+    } else if (flag === '--viewports') {
+      args.viewports = value.split(',')
+      bump()
+    }
   }
   const unknown = args.viewports.filter((v) => !VIEWPORTS[v])
   if (unknown.length) {

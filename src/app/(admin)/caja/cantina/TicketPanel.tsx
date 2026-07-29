@@ -3,11 +3,16 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
-import { Minus, Pencil, Plus, Trash2 } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { chipClass, canteenStockBadge, stockBadgeToneClass, type StockBadge } from '../caja-lib'
+import { Minus, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
+import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
+import {
+  chipClass,
+  canteenStockBadge,
+  stockBadgeToneClass,
+  METHOD_OPTIONS,
+  type SaleMethod,
+  type StockBadge,
+} from '../caja-lib'
 import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
@@ -22,17 +27,8 @@ import {
   ticketTotal,
   type TicketLine,
 } from './ticket-lib'
+import { TabDialog } from './TabDialog'
 
-/**
- * sellTicketAction/createTabAction llegan por PROP: './actions' (mismo
- * directorio) es `'use server'` y arrastra drizzle/postgres al bundle de
- * browser (mismo motivo que RegisterMovementModal). Reemplaza CanteenQuickSale
- * (Fase 3): la venta ahora es un ticket multi-ítem — tap suma producto, un
- * solo "Cobrar". Venta de 1 ítem sigue siendo 2 taps (tap producto + tap
- * Cobrar). Fase 4: el mismo ticket se puede anotar como fiado en vez de
- * cobrarlo — `createTabAction` es opcional para no romper los consumidores
- * que todavía no ofrecen fiado (venta rápida del dashboard, `isInDialog`).
- */
 export type SellTicketAction = (input: {
   lines: { productId: string; qty: number }[]
   method: 'cash' | 'transfer' | 'mercadopago'
@@ -45,14 +41,6 @@ export type CreateTabAction = (input: {
   note?: string
   clientIdempotencyKey: string
 }) => Promise<CreateTabActionResult>
-
-const METHOD_OPTIONS = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-] as const
-
-type SaleMethod = (typeof METHOD_OPTIONS)[number]['value']
 
 export function TicketPanel({
   products,
@@ -71,22 +59,32 @@ export function TicketPanel({
   const router = useRouter()
   const [lines, setLines] = useState<TicketLine[]>([])
   const [method, setMethod] = useState<SaleMethod>('cash')
+  const [comboboxValue, setComboboxValue] = useState('')
+  const [recentIds, setRecentIds] = useState<string[]>(() => products.slice(0, 6).map((p) => p.id))
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   // Una key por ticket: se genera al agregar el primer ítem y se regenera
   // recién tras cobrar OK (mismo criterio anti doble-tap que CanteenQuickSale/Fix #55).
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null)
-
-  // Diálogo "Anotar como fiado": key de idempotencia PROPIA, distinta de la
-  // del ticket cobrado (createTab y sellTicket son flujos separados).
   const [tabDialogOpen, setTabDialogOpen] = useState(false)
-  const [debtorName, setDebtorName] = useState('')
-  const [tabNote, setTabNote] = useState('')
-  const [tabError, setTabError] = useState<string | null>(null)
-  const [tabPending, startTabTransition] = useTransition()
-  const [tabIdempotencyKey, setTabIdempotencyKey] = useState<string | null>(null)
 
   const total = ticketTotal(lines)
+
+  const recentProducts = recentIds
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is CanteenProductRow => p != null)
+
+  const comboboxOptions: ComboboxOption[] = products.map((p) => {
+    const badge = canteenStockBadge(p.stock, p.minStock)
+    const hint = badge
+      ? `${formatArs(p.price)} · ${badge.label}`
+      : `${formatArs(p.price)} · Servicio / Alquiler`
+    return {
+      value: p.id,
+      label: p.name,
+      hint,
+    }
+  })
 
   function handleAdd(product: CanteenProductRow) {
     if (isPending) return
@@ -99,6 +97,7 @@ export function TicketPanel({
         stock: product.stock,
       }),
     )
+    setRecentIds((prev) => [product.id, ...prev.filter((id) => id !== product.id)].slice(0, 6))
     setIdempotencyKey((prev) => prev ?? crypto.randomUUID())
   }
 
@@ -128,51 +127,10 @@ export function TicketPanel({
     })
   }
 
-  function openTabDialog() {
-    if (lines.length === 0) return
-    setDebtorName('')
-    setTabNote('')
-    setTabError(null)
-    setTabIdempotencyKey(crypto.randomUUID())
-    setTabDialogOpen(true)
-  }
-
-  function handleTabDialogChange(next: boolean) {
-    if (tabPending) return
-    setTabDialogOpen(next)
-  }
-
-  function submitTab() {
-    if (!createTabAction || lines.length === 0 || !tabIdempotencyKey) return
-    const trimmedName = debtorName.trim()
-    if (trimmedName === '') {
-      setTabError('Poné un nombre para el fiado.')
-      return
-    }
-    setTabError(null)
-    startTabTransition(async () => {
-      try {
-        const res = await createTabAction({
-          debtorName: trimmedName,
-          lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
-          note: tabNote.trim() || undefined,
-          clientIdempotencyKey: tabIdempotencyKey,
-        })
-        if (res.success) {
-          toast({ title: `Fiado anotado — ${res.debtorName}`, variant: 'success' })
-          setLines([])
-          setMethod('cash')
-          setIdempotencyKey(null)
-          setTabDialogOpen(false)
-          router.refresh()
-        } else {
-          setTabError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setTabError('No pudimos anotar el fiado. Revisá tu conexión e intentá de nuevo.')
-      }
-    })
+  function handleTabSuccess() {
+    setLines([])
+    setMethod('cash')
+    setIdempotencyKey(null)
   }
 
   if (products.length === 0) {
@@ -193,104 +151,206 @@ export function TicketPanel({
   }
 
   return (
-    <div className={cn('grid gap-4', !isInDialog && 'lg:grid-cols-[1fr_360px]')}>
-      <div className="grid content-start grid-cols-2 gap-2 rounded-lg border border-border bg-card p-4 shadow-xs sm:grid-cols-3 lg:grid-cols-4">
-        {/* En la página, la tab "Productos y stock" ya está visible arriba; en el
-            diálogo del dashboard no hay tabs — sin este atajo, editar el catálogo
-            exigía cerrar y navegar por el sidebar (paridad con CanteenQuickSale). */}
-        {isInDialog && (
-          <div className="col-span-full -mb-1 flex justify-end">
-            <button
-              type="button"
-              onClick={() => router.push('/caja/productos?configureCanteen=true')}
-              className="mr-7 inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:mr-8"
-            >
-              <Pencil className="h-4 w-4" aria-hidden="true" />
-              Configurar
-            </button>
+    <div className="grid gap-4 md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px]">
+      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-xs">
+        {/* Desplegable / Buscador de productos */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="ticket-product-combobox" className="text-xs font-semibold text-foreground">
+              Buscar o seleccionar producto / servicio
+            </label>
+            {isInDialog && (
+              <button
+                type="button"
+                onClick={() => router.push('/caja/productos?configureCanteen=true')}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground shrink-0"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                Configurar
+              </button>
+            )}
+          </div>
+          <Combobox
+            id="ticket-product-combobox"
+            options={comboboxOptions}
+            value={comboboxValue}
+            onChange={(val) => {
+              if (!val) return
+              const prod = products.find((p) => p.id === val)
+              if (prod) {
+                handleAdd(prod)
+                setComboboxValue('')
+              }
+            }}
+            placeholder="Escribí o desplegá para buscar..."
+            inputClassName="h-11 w-full rounded-md border border-border bg-card px-3 text-sm focus-visible:ring-2 focus-visible:ring-emerald-500"
+            listboxLabel="Productos y servicios de cantina"
+            emptyMessage="No se encontraron productos."
+          />
+        </div>
+
+        {/* Sección "Recientes / Accesos rápidos" */}
+        {recentProducts.length > 0 && (
+          <div className="space-y-2 pt-1 border-t border-border">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Recientes / Accesos rápidos</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {recentProducts.map((p) => {
+                const badge = canteenStockBadge(p.stock, p.minStock)
+                const out = badge?.tone === 'out'
+                const line = lines.find((l) => l.productId === p.id)
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleAdd(p)}
+                    disabled={out || isPending}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-all hover:border-emerald-500 hover:bg-accent disabled:opacity-50"
+                  >
+                    <span>{p.name}</span>
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                      {formatArs(p.price)}
+                    </span>
+                    {line && (
+                      <span className="rounded-full bg-emerald-700 px-1.5 py-0.2 text-[10px] font-bold text-white dark:bg-emerald-600">
+                        ×{line.qty}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
-        {products.map((p) => {
-          const badge = canteenStockBadge(p.stock, p.minStock)
-          const out = badge?.tone === 'out'
-          const line = lines.find((l) => l.productId === p.id)
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => handleAdd(p)}
-              disabled={out || isPending}
-              className="min-h-[56px] rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-emerald-400 hover:bg-primary/5 active:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10 dark:active:bg-emerald-500/15"
-            >
-              <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
-              <span className="block text-sm tabular-nums text-muted-foreground">{formatArs(p.price)}</span>
-              {badge && <StockChip badge={badge} />}
-              {line && (
-                <span className="mt-1 inline-block rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white dark:bg-emerald-600">
-                  ×{line.qty}
-                </span>
-              )}
-            </button>
-          )
-        })}
+
+        {/* Grilla completa por categorías */}
+        <div className="space-y-2 pt-2 border-t border-border">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Catálogo completo
+          </div>
+          <div className="grid content-start grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {(() => {
+              const renderProductButton = (p: CanteenProductRow) => {
+                const badge = canteenStockBadge(p.stock, p.minStock)
+                const out = badge?.tone === 'out'
+                const line = lines.find((l) => l.productId === p.id)
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleAdd(p)}
+                    disabled={out || isPending}
+                    className="min-h-[64px] flex flex-col justify-between rounded-lg border border-border bg-card p-3 text-left transition-all hover:border-emerald-500 hover:bg-primary/5 active:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10"
+                  >
+                    <div>
+                      <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
+                      <span className="block text-sm font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+                        {formatArs(p.price)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-1">
+                      {badge ? (
+                        <StockChip badge={badge} />
+                      ) : (
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          Servicio / Alquiler
+                        </span>
+                      )}
+                      {line && (
+                        <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white dark:bg-emerald-600">
+                          ×{line.qty}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              }
+
+              const tracked = products.filter((p) => p.stock !== null)
+              const untracked = products.filter((p) => p.stock === null)
+              const hasBoth = tracked.length > 0 && untracked.length > 0
+
+              if (hasBoth) {
+                return (
+                  <>
+                    <div className="col-span-full text-[11px] font-medium text-muted-foreground pt-1">
+                      Productos (con stock)
+                    </div>
+                    {tracked.map(renderProductButton)}
+                    <div className="col-span-full text-[11px] font-medium text-muted-foreground pt-2 border-t border-border mt-1">
+                      Servicios y Alquileres
+                    </div>
+                    {untracked.map(renderProductButton)}
+                  </>
+                )
+              }
+
+              return products.map(renderProductButton)
+            })()}
+          </div>
+        </div>
       </div>
 
       <div
         className={cn(
-          'rounded-lg border border-border bg-card shadow-xs',
+          'flex flex-col justify-between rounded-lg border border-border bg-card shadow-xs',
           !isInDialog && 'lg:sticky lg:top-4 lg:self-start',
         )}
       >
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="font-medium text-foreground">Ticket</h2>
-        </div>
+        <div>
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="font-medium text-foreground">Ticket</h2>
+          </div>
 
-        {lines.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-            Tocá un producto para empezar
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {lines.map((l) => (
-              <li key={l.productId} className="flex items-center justify-between gap-2 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{l.name}</p>
-                  <p className="text-xs tabular-nums text-muted-foreground">{formatArs(l.price * l.qty)}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setLines((prev) => decrementLine(prev, l.productId))}
-                    disabled={isPending}
-                    aria-label={`Restar uno a ${l.name}`}
-                    className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
-                  >
-                    <Minus className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <span className="w-6 text-center text-sm font-semibold tabular-nums">{l.qty}</span>
-                  <button
-                    type="button"
-                    onClick={() => setLines((prev) => incrementLine(prev, l.productId))}
-                    disabled={isPending || l.qty >= maxQtyFor(l.stock)}
-                    aria-label={`Sumar uno a ${l.name}`}
-                    className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLines((prev) => removeLine(prev, l.productId))}
-                    disabled={isPending}
-                    aria-label={`Quitar ${l.name} del ticket`}
-                    className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+          {lines.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+              Tocá un producto o servicio para empezar
+            </p>
+          ) : (
+            <ul className="divide-y divide-border max-h-[260px] overflow-y-auto">
+              {lines.map((l) => (
+                <li key={l.productId} className="flex items-center justify-between gap-2 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{l.name}</p>
+                    <p className="text-xs tabular-nums text-muted-foreground">{formatArs(l.price * l.qty)}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setLines((prev) => decrementLine(prev, l.productId))}
+                      disabled={isPending}
+                      aria-label={`Restar uno a ${l.name}`}
+                      className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
+                    >
+                      <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                    <span className="w-6 text-center text-sm font-semibold tabular-nums">{l.qty}</span>
+                    <button
+                      type="button"
+                      onClick={() => setLines((prev) => incrementLine(prev, l.productId))}
+                      disabled={isPending || l.qty >= maxQtyFor(l.stock)}
+                      aria-label={`Sumar uno a ${l.name}`}
+                      className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
+                    >
+                      <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLines((prev) => removeLine(prev, l.productId))}
+                      disabled={isPending}
+                      aria-label={`Quitar ${l.name} del ticket`}
+                      className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="space-y-3 border-t border-border p-4">
           <fieldset>
@@ -320,7 +380,7 @@ export function TicketPanel({
             onClick={submit}
             disabled={isPending || lines.length === 0 || saleDisabled}
             aria-describedby={saleDisabled ? 'ticket-sale-disabled-hint' : undefined}
-            className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+            className="h-12 w-full rounded-md bg-emerald-700 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
           >
             {isPending ? 'Cobrando…' : `Cobrar ${formatArs(total)}`}
           </button>
@@ -332,7 +392,7 @@ export function TicketPanel({
           {createTabAction && lines.length > 0 && (
             <button
               type="button"
-              onClick={openTabDialog}
+              onClick={() => setTabDialogOpen(true)}
               disabled={isPending}
               className="h-11 w-full rounded-md border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
@@ -343,51 +403,14 @@ export function TicketPanel({
       </div>
 
       {createTabAction && (
-        <Dialog open={tabDialogOpen} onOpenChange={handleTabDialogChange}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Anotar fiado</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="tab-debtor-name">Nombre</Label>
-                <Input
-                  id="tab-debtor-name"
-                  value={debtorName}
-                  onChange={(e) => setDebtorName(e.target.value)}
-                  placeholder="ej: Capitán equipo 22hs"
-                  maxLength={80}
-                  disabled={tabPending}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="tab-note">Nota (opcional)</Label>
-                <textarea
-                  id="tab-note"
-                  value={tabNote}
-                  onChange={(e) => setTabNote(e.target.value)}
-                  rows={2}
-                  disabled={tabPending}
-                  placeholder="ej: paga el sábado que viene"
-                  className="min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm"
-                />
-              </div>
-              {tabError && (
-                <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-                  {tabError}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={submitTab}
-                disabled={tabPending}
-                className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
-              >
-                {tabPending ? 'Anotando…' : `Anotar fiado — ${formatArs(total)}`}
-              </button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <TabDialog
+          open={tabDialogOpen}
+          onOpenChange={setTabDialogOpen}
+          lines={lines}
+          total={total}
+          createTabAction={createTabAction}
+          onSuccess={handleTabSuccess}
+        />
       )}
     </div>
   )
@@ -395,7 +418,7 @@ export function TicketPanel({
 
 function StockChip({ badge }: { badge: StockBadge }) {
   return (
-    <span className={`mt-0.5 block text-xs font-medium ${stockBadgeToneClass(badge.tone)}`}>
+    <span className={`text-[11px] font-medium ${stockBadgeToneClass(badge.tone)}`}>
       {badge.label}
     </span>
   )

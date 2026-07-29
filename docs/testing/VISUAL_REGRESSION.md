@@ -10,7 +10,10 @@ Todo lo que se pueda afirmar con un assert de texto va en un spec funcional.
 
 `continue-on-error: true` en el step de `ci.yml`. No bloquea nada todavía.
 
-**Se endurece** después de 10 PRs consecutivos sin una sola falsa alarma.
+**Se endurece** después de 10 PRs consecutivos sin una sola falsa alarma. El
+contador arranca en el primer run que **realmente comparó** algo: entre `be8813a`
+y el fix del path de las baselines, las 8 fotos venían fallando con
+`A snapshot doesn't exist` y el step nunca comparó nada.
 **Se borra** si a las 6 semanas nunca llegó a 10 seguidos. La conclusión en ese
 caso no es aflojar el umbral — es que la pieza no se ganó el lugar. Ver el ADR:
 `docs/decisions/2026-07-29-regresion-visual.md`.
@@ -83,12 +86,35 @@ gh run watch
 # 4) Bajás el artifact al lugar exacto
 gh run download --name visual-baselines --dir tests/e2e/visual/__screenshots__
 
+# 4-bis) VERIFICÁS el path. Tiene que dar exactamente 8 líneas, todas con la
+#        forma __screenshots__/<project>/linux/<foto>.png. Si aparece un nivel
+#        `visual-baselines/` en el medio, ver la trampa de abajo.
+git status --porcelain tests/e2e/visual/__screenshots__
+
 # 5) MIRÁS las PNG con tus ojos. No es opcional: es la única revisión humana
 #    de la baseline. Después de esto el gate es automático y ciego.
 git status
 git add tests/e2e/visual/__screenshots__
 git commit -m "test(visual): baselines linux"
 ```
+
+> **La trampa del artifact (ya pasó una vez, commit `be8813a`).** El artifact se
+> llama `visual-baselines` y su `path:` es `tests/e2e/visual/__screenshots__/`, así
+> que **el contenido del zip va DENTRO de `__screenshots__/`, no en una subcarpeta
+> con el nombre del artifact.** El comando del paso 4 (`gh run download --name
+> ... --dir ...`) hace exactamente eso. Lo que NO sirve:
+>
+> - bajar el `.zip` desde la UI de GitHub y descomprimirlo con doble clic (te
+>   crea `visual-baselines/` y ahí adentro `visual/linux/…`);
+> - `gh run download --dir tests/e2e/visual/__screenshots__` **sin** `--name`
+>   (sin `--name`, gh crea una carpeta por artifact).
+>
+> Si el nivel de más se cuela, las baselines quedan en un path que
+> `snapshotPathTemplate` no mira nunca: el step advisory de `ci.yml` falla con
+> `A snapshot doesn't exist at …, writing actual` para las 8 fotos, y como el step
+> es `continue-on-error: true` el CI sigue verde y no lo ves. El path correcto lo
+> manda `snapshotPathTemplate` en `playwright.config.ts` — si dudás, la fuente de
+> verdad son los paths que el propio log de CI reporta como faltantes.
 
 **Cuando un diff es legítimo** (cambiaste un padding a propósito): exactamente los
 mismos 5 pasos. `--update-snapshots` reescribe solo lo que cambió.

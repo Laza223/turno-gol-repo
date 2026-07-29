@@ -106,13 +106,19 @@ export default defineConfig({
       // paralelizar.
       fullyParallel: false,
       workers: 1,
-      // En CI el step visual corre DESPUÉS de la suite @critical, en el mismo job
-      // y sobre el mismo runner de 2 cores: las rutas de admin (auth + queries +
-      // compilación en frío de Turbopack) no entran en los 30s de
-      // navigationTimeout. Run 30494580493: las 3 fotos de admin murieron con
-      // "page.goto: Timeout 30000ms exceeded" sin llegar a comparar, mientras las
-      // públicas (más livianas) pasaron. El test timeout sube en la misma
-      // proporción porque acota al de navegación.
+      // Margen para la compilación en frío de Turbopack: las rutas de admin (auth
+      // + queries + compilación on-demand) no entran en los 30s de
+      // navigationTimeout la primera vez que se visitan en un runner de 2 cores.
+      //
+      // Historia, porque el número parece arbitrario: esto empezó en 30s, y las 3
+      // fotos de admin murieron con "page.goto: Timeout 30000ms exceeded" sin
+      // llegar a comparar (run 30494580493). Se subió a 90s y volvieron a morir
+      // (run 30498550346). La causa no era el timeout: el step visual compartía
+      // runner con la suite @critical. Desde el 2026-07-29 la regresión visual
+      // tiene su propio job en ci.yml y estos valores son margen, no la línea de
+      // flotación — sobre un runner fresco los 9 tests corren en ~2 min.
+      //
+      // El test timeout sube en la misma proporción porque acota al de navegación.
       timeout: process.env.CI ? 180_000 : 30_000,
       use: {
         ...devices['Desktop Chrome'],

@@ -190,19 +190,70 @@ jobs:
         # NODE_ENV=production (computeMpMockEnabled, mock-mp.ts).
         run: pnpm exec playwright test --project chromium --grep @critical --reporter=github
 
-      # Va como STEP de este job y no como job aparte: el stack (Supabase +
-      # migraciones + browsers) cuesta ~8 min y acá ya está pago. Un job propio
-      # sumaría ~9 min de minutos facturados para ahorrar ~70s de wall clock.
-      #
-      # ADVISORY: `continue-on-error` desde el día 1. Se saca después de 10 PRs
-      # consecutivos sin una sola falsa alarma. Si a las 6 semanas no llegó a 10
-      # seguidos, la conclusión NO es aflojar el umbral: se borra la pieza.
-      # Ver docs/testing/VISUAL_REGRESSION.md.
-      #
-      # Si falla con "snapshot doesn't exist", las baselines no están
-      # commiteadas: correr el workflow `visual-baseline.yml`.
-      - name: Regresión visual (ADVISORY — no bloquea)
-        continue-on-error: true
+      # La regresión visual NO va acá. Estuvo como step de este job hasta el
+      # 2026-07-29 y no podía terminar: ver el job `visual-regression` abajo.
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ── Job 5: regresión visual — only on PRs to main ──────────────────────────
+  #
+  # Job propio y NO un step de e2e-tests. Estuvo como step hasta el 2026-07-29 con
+  # este razonamiento: el stack (Supabase + migraciones + browsers) cuesta ~8 min y
+  # ahí ya estaba pago, así que un job aparte sumaba ~9 min de minutos facturados
+  # para ahorrar ~70s de wall clock.
+  #
+  # Se movió porque ese step NO PODÍA TERMINAR. Corriendo después de la suite
+  # @critical sobre el mismo runner de 2 cores, las 3 fotos de admin de escritorio
+  # morían con `page.goto: Timeout exceeded` sin llegar a comparar — primero a 30s
+  # (run 30494580493), y después de subirlo a 90s igual (run 30498550346, con un
+  # panic de Turbopack en `aggregation_update.rs` de yapa). La evidencia de que la
+  # causa es compartir el runner y no las fotos: `visual-baseline.yml` corre EXACTOS
+  # los mismos 9 tests sobre un runner fresco en ~2 min, 9/9 verde.
+  #
+  # Un gate que no compara 3 de 8 fotos no es un gate: los ~9 min facturados son el
+  # precio de que exista.
+  #
+  # ADVISORY: `continue-on-error` a nivel JOB desde el día 1. Se saca después de 10
+  # PRs consecutivos sin una sola falsa alarma — y el contador arranca en el primer
+  # run que compare las 8. Si a las 6 semanas no llegó a 10 seguidos, la conclusión
+  # NO es aflojar el umbral: se borra la pieza. Ver docs/testing/VISUAL_REGRESSION.md.
+  #
+  # OJO al leer los resultados: con `continue-on-error` GitHub reporta el job como
+  # `success` aunque los tests fallen. El color del check NO dice nada — hay que
+  # abrir el log. Ya pasó dos veces.
+  #
+  # Si falla con "snapshot doesn't exist", las baselines no están commiteadas:
+  # correr el workflow `visual-baseline.yml`.
+  visual-regression:
+    name: Regresión visual (ADVISORY)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    needs: [lint-and-types, unit-tests]
+    continue-on-error: true
+    timeout-minutes: 25
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres
+      IMPERSONATION_COOKIE_SECRET: e2e-ci-dummy-impersonation-secret
+      ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+
+    steps:
+      # checkout ANTES de la composite: la action vive en este repo.
+      - uses: actions/checkout@v4
+
+      # Mismo stack que e2e-tests y que visual-baseline.yml, una sola definición.
+      - uses: ./.github/actions/e2e-stack
+        with:
+          browsers: chromium
+
+      - name: Regresión visual
         run: |
           pnpm exec playwright test \
             --project visual --project visual-mobile \
@@ -212,7 +263,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-results
+          name: visual-results
           path: test-results/
           retention-days: 7
           if-no-files-found: ignore

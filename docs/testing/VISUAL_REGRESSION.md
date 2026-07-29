@@ -8,12 +8,23 @@ Todo lo que se pueda afirmar con un assert de texto va en un spec funcional.
 
 ## Estado: ADVISORY
 
-`continue-on-error: true` en el step de `ci.yml`. No bloquea nada todavía.
+Job `visual-regression` de `ci.yml`, con `continue-on-error: true` a nivel **job**.
+No bloquea nada todavía.
+
+> **El color del check no dice nada.** Con `continue-on-error`, GitHub reporta el
+> job como `success` aunque los tests hayan fallado adentro. Para saber si comparó
+> hay que abrir el log. Ya engañó dos veces: hay que leer el `N passed` / `N
+> failed`, no el ✓.
 
 **Se endurece** después de 10 PRs consecutivos sin una sola falsa alarma. El
-contador arranca en el primer run que **realmente comparó** algo: entre `be8813a`
-y el fix del path de las baselines, las 8 fotos venían fallando con
-`A snapshot doesn't exist` y el step nunca comparó nada.
+contador arranca en el primer run que **realmente comparó las 8**, y hasta ahora
+ninguno lo hizo:
+
+| Época | Qué pasaba |
+|---|---|
+| `be8813a` → fix del path | las 8 fallaban con `A snapshot doesn't exist`: las baselines estaban en un path que `snapshotPathTemplate` no mira |
+| fix del path → 2026-07-29 | el step compartía runner con la suite @critical y las 3 fotos de admin de escritorio morían en `page.goto` sin comparar (30s, después 90s) |
+| desde el job propio | pendiente: el primer run que compare 8/8 arranca el contador |
 **Se borra** si a las 6 semanas nunca llegó a 10 seguidos. La conclusión en ese
 caso no es aflojar el umbral — es que la pieza no se ganó el lugar. Ver el ADR:
 `docs/decisions/2026-07-29-regresion-visual.md`.
@@ -60,19 +71,33 @@ Los projects declaran `viewport`, `deviceScaleFactor`, `colorScheme`, `locale` y
 Playwright puede cambiar el descriptor del device e invalidar todas las baselines
 en silencio.
 
-### El step comparte runner con la suite @critical
+### Por qué la regresión visual tiene su propio job (RESUELTO 2026-07-29)
 
-El step visual corre como paso del job de E2E, después de `--grep @critical`, sobre
-el mismo runner de 2 cores. Las fotos de admin cargan auth + queries + compilación
-en frío, y con 30s de `navigationTimeout` no llegaban: en el run 30494580493 las 4
-de admin murieron con `page.goto: Timeout 30000ms exceeded` mientras las 4 públicas
-comparaban y pasaban. Por eso los projects `visual`/`visual-mobile` llevan
-`timeout: 180s` + `navigationTimeout: 90s` **solo en CI**.
+Vivía como **step** del job de E2E, después de `--grep @critical`, sobre el mismo
+runner de 2 cores. El razonamiento era de costo: el stack (Supabase + migraciones +
+browsers) cuesta ~8 min y ahí ya estaba pago, así que un job aparte sumaba ~9 min de
+minutos facturados para ahorrar ~70s de wall clock.
 
-Ese run dejó además una falla que el timeout no explica del todo
-(`element(s) not found` sobre un dato del seed en la grilla mobile). Si vuelve a
-aparecer con los timeouts nuevos, es un problema de datos —la suite @critical corre
-antes y toca reservas— y no de tiempo.
+**Ese step no podía terminar.** Las 3 fotos de admin de escritorio morían en
+`page.goto` sin llegar a comparar — auth + queries + compilación en frío de
+Turbopack sobre un runner que la suite @critical ya dejó saturado:
+
+| Run | `navigationTimeout` | Resultado |
+|---|---|---|
+| 30494580493 | 30s | las de admin mueren con `Timeout 30000ms exceeded` |
+| 30498550346 | 90s | **igual**, más un panic de Turbopack (`aggregation_update.rs:1677`) *después* de las 2 primeras fallas, o sea consecuencia y no causa |
+
+La prueba de que la causa era compartir el runner y no las fotos: `visual-baseline.yml`
+corre **exactamente los mismos 9 tests** sobre un runner fresco en ~2 min, 9/9 verde.
+Mismo commit, mismo stack, mismo browser.
+
+Así que se movió a su propio job (`visual-regression`), que además cuelga solo de
+`lint-and-types` + `unit-tests` y corre **en paralelo** con integración y e2e: los
+~9 min son de minutos facturados, no de wall clock. Un gate que no compara 3 de 8
+fotos no es un gate, y ese es el precio de que exista.
+
+Los `timeout: 180s` + `navigationTimeout: 90s` de los projects visuales quedan como
+margen para la compilación en frío, no como línea de flotación.
 
 ### El overlay de dev se oculta con CSS, no se enmascara (RESUELTO)
 

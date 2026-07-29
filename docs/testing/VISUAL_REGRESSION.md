@@ -219,8 +219,23 @@ git commit -m "test(visual): baselines linux"
 > manda `snapshotPathTemplate` en `playwright.config.ts` — si dudás, la fuente de
 > verdad son los paths que el propio log de CI reporta como faltantes.
 
+> **La trampa del `--update-snapshots` pelado (ya costó 3 corridas).** El
+> workflow usa `--update-snapshots=all` y **el `=all` es obligatorio**. Sin valor,
+> el flag toma el preset `changed`, y `changed` reescribe la baseline **solo cuando
+> la comparación falla**: cualquier drift por debajo de `maxDiffPixelRatio: 0.01`
+> se considera "matching" y la PNG vieja queda intacta, con el workflow en
+> `success` sin haber regenerado nada.
+>
+> Así se congeló la caja magenta de 0.281% del overlay de dev en `landing.png` y
+> `admin-settings-reservas.png`: el fix ya estaba en el código y las fotos nuevas
+> eran correctas, pero `changed` las descartaba por estar dentro del umbral. El
+> síntoma es traicionero — el artifact baja byte-idéntico al que ya tenías y parece
+> que "no cambió nada". Con `=all`, Playwright captura sin comparar y reescribe si
+> los bytes difieren.
+
 **Cuando un diff es legítimo** (cambiaste un padding a propósito): exactamente los
-mismos 5 pasos. `--update-snapshots` reescribe solo lo que cambió.
+mismos 5 pasos. Con `=all` se reescribe toda PNG cuyos bytes cambien; el colador
+contra bendecir basura es el paso 5, no el flag.
 
 **Cuando no lo es**: el job sube `test-results/` como artifact, con los
 `*-actual.png` y `*-diff.png`. Los mirás, arreglás el código, y las baselines ni

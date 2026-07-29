@@ -1,8 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { sql as drizzleSql } from 'drizzle-orm'
 import {
   closeSql,
-  getDb,
   getSql,
   withTenantContext,
 } from '@/shared/db/client'

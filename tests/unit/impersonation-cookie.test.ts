@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildImpersonationCookie,
-  IMPERSONATION_COOKIE_NAME,
   IMPERSONATION_TTL_MS,
   verifyImpersonationCookie,
 } from '@/modules/auth/impersonation'

@@ -23,7 +23,7 @@ import {
   upcomingForDay,
   type DayBookingRow,
   type DayOccupancy,
-} from './dashboard-lib'
+} from '@/lib/dashboard/day-bookings'
 
 export interface DashboardData {
   /** Día ART — la MISMA fecha para caja y reservas (pages/dashboard.md §9). */

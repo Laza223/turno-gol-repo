@@ -7,7 +7,7 @@ import {
   deriveScheduleView,
   type LooseOpeningHours,
   type ScheduleView,
-} from './horarios-lib'
+} from '@/lib/schedule/schedule-view'
 import type { HorariosActionResult } from './actions'
 
 const INITIAL: HorariosActionResult = { success: true }

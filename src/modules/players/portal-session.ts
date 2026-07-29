@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getPlayerHeaderInfo } from '@/modules/players/get-player-header-info'
+import { getPlayerHeaderInfo } from './get-player-header-info'
 
 export type PortalSession = {
   playerId: string

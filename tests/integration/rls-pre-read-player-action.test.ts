@@ -13,7 +13,6 @@ import { insertBooking } from '../helpers/factories'
 
 let tenantA: { id: string }
 let tenantB: { id: string }
-let seedA: IsolationSeed
 let seedB: IsolationSeed
 let playerA: { id: string }
 let playerB: { id: string }
@@ -26,7 +25,9 @@ beforeAll(async () => {
 
   tenantA = await createTestTenant(s)
   tenantB = await createTestTenant(s)
-  seedA = await seedIsolationData(s, tenantA.id)
+  // El seed de A tiene que existir (el test comprueba que B no lo ve), pero su
+  // handle no se usa: los asserts van todos contra seedB.
+  await seedIsolationData(s, tenantA.id)
   seedB = await seedIsolationData(s, tenantB.id)
 
   playerA = await createTestPlayer(s)

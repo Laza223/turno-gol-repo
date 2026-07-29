@@ -15,7 +15,7 @@ import {
   rowDisplayName,
   type BookingBadgeKind,
   type DayBookingRow,
-} from '@/app/(admin)/dashboard/dashboard-lib'
+} from '@/lib/dashboard/day-bookings'
 
 const MAX_ROWS = 6
 

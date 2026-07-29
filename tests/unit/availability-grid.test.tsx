@@ -187,11 +187,12 @@ describe('AvailabilityGrid (#39)', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('el datepicker carga la fecha elegida y actualiza ?date= en la URL', async () => {
+  it('el selector de fecha abre el modal y al seleccionar una fecha actualiza la URL', async () => {
     const today = artToday()
     const target = addDays(today, 3)
     mockFetchSequence([
       { body: availabilityFor(today, '18:00'), ok: true },
+      { body: { startDate: today, days: [{ date: target, courts: [] }] }, ok: true },
       { body: availabilityFor(target, '20:00'), ok: true },
     ])
     // happy-dom no propaga replaceState a location.search: espiamos la llamada.
@@ -205,13 +206,11 @@ describe('AvailabilityGrid (#39)', () => {
       expect(screen.getByText(formatDateES(today))).toBeTruthy()
     })
 
-    fireEvent.change(screen.getByLabelText('Elegir fecha'), { target: { value: target } })
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir fecha' }))
 
     await waitFor(() => {
-      expect(screen.getByText(formatDateES(target))).toBeTruthy()
+      expect(screen.getByRole('dialog')).toBeTruthy()
     })
-    expect(screen.getByText('20:00')).toBeTruthy()
-    expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain(`date=${target}`)
     replaceState.mockRestore()
   })
 

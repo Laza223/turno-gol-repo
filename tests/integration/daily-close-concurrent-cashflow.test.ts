@@ -24,7 +24,6 @@ import { todayART } from '@/shared/time/art-date'
 // el alta es rechazada por DayAlreadyClosedError — nunca las dos cosas a la
 // vez (alta exitosa + cierre que no la cuenta).
 
-let tenantId: string
 let staffId: string
 
 beforeAll(async () => {
@@ -34,7 +33,6 @@ beforeAll(async () => {
   const tenant = await createTestTenant(sql)
   const staff = await createTestStaffUser(sql)
   await linkStaffToTenant(sql, tenant.id, staff.id)
-  tenantId = tenant.id
   staffId = staff.id
 }, 30_000)
 

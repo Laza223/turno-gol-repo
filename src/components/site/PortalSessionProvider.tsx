@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { PortalSession } from './portal-session'
+import type { PortalSession } from '@/modules/players/portal-session'
 
 type PortalSessionContextValue = {
   /** null mientras hidrata o si no hay jugador logueado (anónimo/staff). */

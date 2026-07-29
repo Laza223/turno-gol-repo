@@ -238,7 +238,6 @@ describe('GET bookings list — cursor pagination', () => {
       `
     }
 
-    const db = getDb()
     const dateStr = FUTURE_DATE
 
     // Fetch page 1 (limit 2)

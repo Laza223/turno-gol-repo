@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
@@ -16,7 +17,6 @@ const PLAYER_ID = '00000000-0000-4000-8000-000000000020'
 // Mismo id que scripts/seed-e2e.ts (E2E.freshStaffUserId). Se necesita en el afterAll para
 // borrar los tenants que este spec le crea al fresh admin al fotografiar el wizard.
 const FRESH_STAFF_USER_ID = '00000000-0000-4000-8000-000000000005'
-const DEPOSIT_TENANT_ID = '00000000-0000-4000-8000-000000000030'
 const DEPOSIT_COURT_ID = '00000000-0000-4000-8000-000000000031'
 
 function makeServiceClient() {
@@ -174,7 +174,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     const screenDir = (category: string) =>
       path.resolve(`./docs/audit/screenshots/${vpName}/${category}`)
 
-    const takeShot = async (page: any, category: string, name: string) => {
+    const takeShot = async (page: Page, category: string, name: string) => {
       const dir = screenDir(category)
       await fs.mkdir(dir, { recursive: true })
       // Wait for page to settle (animations, layout shifts, images)

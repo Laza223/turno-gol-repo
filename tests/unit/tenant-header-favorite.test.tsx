@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import TenantHeader from '@/app/(public)/[slug]/components/TenantHeader'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
-import type { PortalSession } from '@/components/site/portal-session'
+import type { PortalSession } from '@/modules/players/portal-session'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 
 afterEach(() => {

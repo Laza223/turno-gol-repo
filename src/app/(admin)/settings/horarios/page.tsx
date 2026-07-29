@@ -4,7 +4,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { AddClosedDateForm } from './AddClosedDateForm'
 import { HorariosForm } from './HorariosForm'
 import { RemoveClosedDateForm } from './RemoveClosedDateForm'
-import type { LooseOpeningHours } from './horarios-lib'
+import type { LooseOpeningHours } from '@/lib/schedule/schedule-view'
 import { addClosedDateAction, removeClosedDateAction, updateHorariosAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 

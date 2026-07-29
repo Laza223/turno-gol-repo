@@ -48,7 +48,12 @@ function booking(overrides: Partial<Parameters<typeof QuickActions>[0]['booking'
 
 const quickActions = {
   confirmDepositPaymentAction: confirmDepositMock,
-  completeAndChargeBookingAction: completeMock as any,
+  // El mock devuelve `booking: {} as never`; el tipo real de la Action pide un
+  // BookingRow completo. El componente sólo lee `success`, así que se castea a
+  // la firma que espera la prop en vez de tipar un booking entero de mentira.
+  completeAndChargeBookingAction: completeMock as unknown as React.ComponentProps<
+    typeof QuickActions
+  >['completeAndChargeBookingAction'],
   markNoShowAction: noShowMock,
   cancelBookingAction: cancelMock,
   getBookingChargesAction: getBookingChargesMock,

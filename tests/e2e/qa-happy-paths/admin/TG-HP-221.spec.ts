@@ -15,8 +15,8 @@ import { suppressPushPrompt } from '../_qa/session'
  * `/metricas` fue reubicado a `/analiticas` (redirect permanente,
  * src/app/(admin)/metricas/page.tsx es ahora solo el stub de redirect) — el
  * contenido real (MetricsDashboard) se embebe ahí vía MetricsDashboardLoader.
- * Rol: Admin — `getStaffRole(...) === 'admin'` habilita además el panel
- * "Estado del sistema" (`canSeeSystem`, `analiticas/page.tsx`).
+ * Rol: Admin — el panel "Estado del sistema" está reservado únicamente para SuperAdmin
+ * de plataforma (`resolveSystemAdmin`, `analiticas/page.tsx`), por lo que un admin estándar no lo ve.
  * NOTA (verificación fresca de código, no del manual): `GET /api/admin/metrics`
  * usa `withAnyRole(['admin','manager'])` (`route.ts:21`) — NO `withRole('admin')`
  * como decía el GAP #2 del manual (ya desactualizado respecto al código actual).
@@ -121,12 +121,12 @@ test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
         page.getByRole('heading', { name: 'Top 5 horarios más reservados' }),
       ).toBeVisible()
 
-      // Estado del sistema (admin-only).
-      await expect(page.getByRole('heading', { name: 'Estado del sistema' })).toBeVisible({
-        timeout: 15_000,
-      })
-      await expect(page.getByText('Base de datos')).toBeVisible()
-      await expect(page.getByText(/Operativa|Caída/)).toBeVisible()
+      // Estado del sistema (solo SuperAdmin — admin estándar NO lo ve).
+      await expect(page.getByText('Estado del sistema')).not.toBeVisible()
+
+      // Verificar que /api/admin/system-status da 403 Forbidden para admin de tenant estándar.
+      const sysStatusRes = await page.request.get('/api/admin/system-status')
+      expect(sysStatusRes.status()).toBe(403)
 
       // ── Componente/API: golpear /api/admin/metrics directo (mismas cookies) ──
       const apiRes = await page.request.get('/api/admin/metrics')

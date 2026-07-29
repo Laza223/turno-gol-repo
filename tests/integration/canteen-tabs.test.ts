@@ -693,10 +693,12 @@ describe('canteen tabs — listOpenTabs', () => {
       clientIdempotencyKey: crypto.randomUUID(),
     })
 
-    const { tab: tab1 } = await withTenantContext(tenantA.id, (tx) =>
+    // Las dos primeras cuentas existen solo para que la tercera no sea la única
+    // del tenant: el assert es sobre tab3, pero el escenario necesita las 3.
+    await withTenantContext(tenantA.id, (tx) =>
       createTab(tenantA.id, staffA.id, makeInput('Primero', productA.id), tx),
     )
-    const { tab: tab2 } = await withTenantContext(tenantA.id, (tx) =>
+    await withTenantContext(tenantA.id, (tx) =>
       createTab(tenantA.id, staffA.id, makeInput('Segundo', productA.id), tx),
     )
     const { tab: tab3 } = await withTenantContext(tenantA.id, (tx) =>

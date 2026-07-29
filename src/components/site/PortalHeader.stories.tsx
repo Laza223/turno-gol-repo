@@ -1,6 +1,6 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, within } from 'storybook/test'
-import type { PortalSession } from './portal-session'
+import type { PortalSession } from '@/modules/players/portal-session'
 import { PortalSessionProvider } from './PortalSessionProvider'
 import PortalHeader from './PortalHeader'
 

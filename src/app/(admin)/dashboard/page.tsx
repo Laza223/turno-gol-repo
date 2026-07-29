@@ -10,16 +10,19 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
+import { listCourts } from '@/modules/courts/court.service'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { UpcomingBookings } from '@/components/dashboard/upcoming-bookings'
 import { DashboardCanteenButton } from '@/components/dashboard/DashboardCanteenButton'
+import { QuickBookingButton } from '@/components/booking/QuickBookingButton'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
 import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
 import { sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
+import { createBookingAction, checkSlotAvailabilityAction } from '@/app/(admin)/reservas/actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -40,7 +43,7 @@ export default async function DashboardPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const [data, checklistState, products] = await Promise.all([
+  const [data, checklistState, products, courts] = await Promise.all([
     getDashboardData({
       id: tenant.id,
       openingHours: tenant.openingHours,
@@ -49,6 +52,7 @@ export default async function DashboardPage() {
     }),
     getChecklistState(tenant.id, tenant.settings, !!tenant.mpConnectedAt),
     withTenantContext(tenant.id, (tx) => listProducts(tenant.id, tx)),
+    withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx)),
   ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
@@ -82,7 +86,14 @@ export default async function DashboardPage() {
         subtitle={todayMediumArt()}
         icon={<LayoutDashboard className="h-6 w-6" aria-hidden="true" />}
         actions={
-          <DashboardCanteenButton products={products} sellTicketAction={sellTicketAction} />
+          <div className="flex items-center gap-2">
+            <QuickBookingButton
+              courts={courts}
+              createBookingAction={createBookingAction}
+              checkSlotAvailabilityAction={checkSlotAvailabilityAction}
+            />
+            <DashboardCanteenButton products={products} sellTicketAction={sellTicketAction} />
+          </div>
         }
       />
 
@@ -105,53 +116,52 @@ export default async function DashboardPage() {
         closesNextDay={data.closesNextDay}
       />
 
-      {/* 4 KPIs, orden fijo §2: la plata primero (serial position §9). */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <div className="order-first col-span-2 lg:order-0 lg:col-span-1">
+          <MetricCard
+            label="Caja del día"
+            value={cajaValue}
+            sub={`Ingresos: ${formatArs(caja.incomeCents)} · Egresos: ${formatArs(caja.expenseCents)}`}
+            icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
+            href="/caja"
+          />
+        </div>
         <MetricCard
-          label="Caja de hoy"
-          value={cajaValue}
-          icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
-          sub={`Ingresos ${formatArs(caja.incomeCents)} · Egresos ${formatArs(caja.expenseCents)}`}
-          accent="emerald"
-          href="/caja"
-          ariaLabel={`Caja de hoy: ${caja.balanceCents < 0 ? 'menos ' : ''}${formatArs(Math.abs(caja.balanceCents))} — ver caja`}
-        />
-        <MetricCard
-          label="Turnos hoy"
+          label="Turnos de hoy"
           value={turnosValue}
-          icon={<CalendarCheck className="h-5 w-5" aria-hidden="true" />}
           sub={turnosSub}
-          accent="slate"
+          icon={<Clock className="h-4 w-4" aria-hidden="true" />}
           href="/grilla"
-          ariaLabel={`Turnos hoy: ${turnosValue} — ver grilla`}
         />
         <MetricCard
-          label="Esperando seña"
-          value={String(pendingDeposits.count)}
-          icon={<Clock className="h-5 w-5" aria-hidden="true" />}
-          sub={
-            pendingDeposits.count > 0
-              ? `${formatArs(pendingDeposits.amountCents)} en señas por acreditar`
-              : 'Sin pendientes'
-          }
-          accent="amber"
-          href="/reservas?status=pending_payment"
-          ariaLabel={`Esperando seña: ${pendingDeposits.count} — ver reservas pendientes`}
-        />
-        <MetricCard
-          label="Cantina hoy"
-          value={String(canteenSales.count)}
-          icon={<ShoppingBag className="h-5 w-5" aria-hidden="true" />}
-          sub={
-            canteenSales.count > 0
-              ? `${formatArs(canteenSales.amountCents)} en ventas de hoy`
-              : 'Sin ventas hoy'
-          }
-          accent="emerald"
+          label="Ventas de cantina"
+          value={formatArs(canteenSales.amountCents)}
+          sub={`${canteenSales.count} ${canteenSales.count === 1 ? 'venta' : 'ventas'} hoy`}
+          icon={<ShoppingBag className="h-4 w-4" aria-hidden="true" />}
           href="/caja/cantina"
-          ariaLabel={`Cantina hoy: ${canteenSales.count} ventas — ver caja`}
         />
       </div>
+
+      {pendingDeposits.count > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <CalendarCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                {pendingDeposits.count}{' '}
+                {pendingDeposits.count === 1 ? 'seña pendiente' : 'señas pendientes'} de confirmación
+              </p>
+              <p className="text-xs">
+                Total:{' '}
+                <span className="font-semibold tabular-nums">
+                  {formatArs(pendingDeposits.amountCents)}
+                </span>
+                . Confirmá los pagos desde la lista de reservas.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

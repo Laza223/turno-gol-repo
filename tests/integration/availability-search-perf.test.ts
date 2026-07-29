@@ -84,7 +84,6 @@ describe('findAvailableTenantIds @ 50 tenants', () => {
 
     // Los tenants impares (bookings a la tarde) están libres a las 20:00.
     expect(ids.length).toBeGreaterThanOrEqual(Math.floor(TENANTS / 2))
-    // eslint-disable-next-line no-console
     console.info(`findAvailableTenantIds(50 tenants, sin cache): ${elapsed.toFixed(1)}ms`)
     expect(elapsed).toBeLessThan(500)
   })

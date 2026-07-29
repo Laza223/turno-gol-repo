@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
-import { getPortalSession } from '@/components/site/portal-session'
+import { getPortalSession } from '@/modules/players/portal-session'
 import { withPlayerContext } from '@/shared/db/client'
 import { playerFavorites } from '@/shared/db/schema'
 

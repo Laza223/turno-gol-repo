@@ -1,7 +1,6 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import {
   closeSql,
-  getDb,
   getSql,
   withTenantContext,
 } from '@/shared/db/client'

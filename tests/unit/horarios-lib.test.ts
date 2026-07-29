@@ -4,7 +4,7 @@ import {
   effectiveDay,
   needsNextDayHint,
   type LooseOpeningHours,
-} from '@/app/(admin)/settings/horarios/horarios-lib'
+} from '@/lib/schedule/schedule-view'
 import { DAY_KEYS } from '@/shared/time/week-days'
 
 const UNIFORM: LooseOpeningHours = Object.fromEntries(

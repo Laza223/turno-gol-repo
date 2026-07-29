@@ -10,7 +10,7 @@ import {
   slotHours,
   upcomingForDay,
   type DayBookingRow,
-} from '@/app/(admin)/dashboard/dashboard-lib'
+} from '@/lib/dashboard/day-bookings'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 
 // ---------------------------------------------------------------------------

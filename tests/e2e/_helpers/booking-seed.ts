@@ -13,7 +13,7 @@
 import { randomUUID } from 'node:crypto'
 import { addDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
-import { makeServiceClient } from './player-seed'
+import type { makeServiceClient } from './player-seed'
 import { bookingInstants } from './booking-instants'
 
 export {

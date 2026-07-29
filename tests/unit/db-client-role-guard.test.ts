@@ -5,7 +5,7 @@ vi.mock('postgres', () => {
   fakeTx.unsafe = async () => {}
   return {
     default: () => ({
-      begin: async (cb: any) => cb(fakeTx),
+      begin: async (cb: (tx: typeof fakeTx) => unknown) => cb(fakeTx),
       end: async () => {}
     })
   }

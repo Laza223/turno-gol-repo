@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import type { DayBookingRow } from '@/app/(admin)/dashboard/dashboard-lib'
+import type { DayBookingRow } from '@/lib/dashboard/day-bookings'
 import { UpcomingBookings } from './upcoming-bookings'
 
 /** Fila mínima de `DayBookingRow` — tipo local sin módulo de fixtures propio

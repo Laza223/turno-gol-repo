@@ -12,7 +12,7 @@ import {
   effectiveDay,
   needsNextDayHint,
   type ScheduleView,
-} from '@/app/(admin)/settings/horarios/horarios-lib'
+} from '@/lib/schedule/schedule-view'
 
 type Props = {
   view: ScheduleView

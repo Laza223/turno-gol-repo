@@ -7,7 +7,7 @@ import {
   deriveScheduleView,
   type LooseOpeningHours,
   type ScheduleView,
-} from '@/app/(admin)/settings/horarios/horarios-lib'
+} from '@/lib/schedule/schedule-view'
 import { sanitizeWizardHours } from '../wizard-hours'
 import type { WizardActionResult } from '../actions'
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fireEvent, userEvent, within } from 'storybook/test'
-import { deriveScheduleView, type ScheduleView } from '@/app/(admin)/settings/horarios/horarios-lib'
+import { deriveScheduleView, type ScheduleView } from '@/lib/schedule/schedule-view'
 import { openingHours, openingHoursClosesNextDay } from '@/test/fixtures/tenant'
 import { ScheduleFields } from './ScheduleFields'
 

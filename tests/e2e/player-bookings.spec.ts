@@ -237,7 +237,7 @@ test.describe('Player bookings', () => {
     playerStorageState,
   }) => {
     const supabase = makeServiceClient()
-    const bookingId = await insertPlayerBooking(supabase, {
+    await insertPlayerBooking(supabase, {
       date: '2026-06-01',
       timeStart: '18:00',
       timeEnd: '19:00',

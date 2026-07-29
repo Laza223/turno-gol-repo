@@ -7,7 +7,7 @@
 // con el toggle «Cierra después de medianoche».
 
 import { DAY_KEYS } from '@/shared/time/week-days'
-import type { LooseOpeningHours } from '@/app/(admin)/settings/horarios/horarios-lib'
+import type { LooseOpeningHours } from '@/lib/schedule/schedule-view'
 
 function toMins(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)

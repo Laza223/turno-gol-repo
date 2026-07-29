@@ -9,7 +9,6 @@ import {
 } from 'vitest'
 import {
   closeSql,
-  getDb,
   getSql,
   withTenantContext,
 } from '@/shared/db/client'

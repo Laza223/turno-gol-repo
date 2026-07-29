@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { sql } from 'drizzle-orm'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { onPaymentApproved } from '@/modules/billing/dunning.service'
 import { cancel, reactivate, subscribe } from '@/modules/billing/billing.service'

@@ -177,6 +177,7 @@ export function TeamsPanel({
             role="combobox"
             aria-expanded={captainOpen}
             aria-autocomplete="list"
+            aria-controls="equipo-contacto-listbox"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           />
           {contactPlayerId && (
@@ -185,7 +186,10 @@ export function TeamsPanel({
             </p>
           )}
           {captainOpen && captainResults.length > 0 && (
-            <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
+            <ul
+              id="equipo-contacto-listbox"
+              className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg"
+            >
               {captainResults.map((p) => (
                 <li key={p.id}>
                   <button

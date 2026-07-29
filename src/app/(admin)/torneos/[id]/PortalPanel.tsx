@@ -19,6 +19,7 @@ export function PortalPanel({
   isPublic,
   canPublish,
   setVisibilityAction,
+  openRegistrationAction,
 }: {
   tournamentId: string
   slug: string
@@ -28,6 +29,8 @@ export function PortalPanel({
   /** Publicar es configuración: el encargado ve el estado pero no lo cambia. */
   canPublish: boolean
   setVisibilityAction: SetVisibilityAction
+  /** Mueve el torneo de borrador a inscripción abierta. Misma action que updateTournamentAction. */
+  openRegistrationAction: SetVisibilityAction
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -41,6 +44,18 @@ export function PortalPanel({
     setError(null)
     startTransition(async () => {
       const result = await setVisibilityAction({ id: tournamentId, isPublic: !isPublic })
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  function openRegistration() {
+    setError(null)
+    startTransition(async () => {
+      const result = await openRegistrationAction({ id: tournamentId, status: 'registration' })
       if (!result.success) {
         setError(result.error)
         return
@@ -68,15 +83,27 @@ export function PortalPanel({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={pending || !canPublish}
-          aria-pressed={isPublic}
-          className="inline-flex h-9 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
-        >
-          {isPublic ? 'Despublicar' : 'Publicar'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {status === 'draft' && canPublish && (
+            <button
+              type="button"
+              onClick={openRegistration}
+              disabled={pending}
+              className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+            >
+              Abrir inscripción
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={toggle}
+            disabled={pending || !canPublish}
+            aria-pressed={isPublic}
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+          >
+            {isPublic ? 'Despublicar' : 'Publicar'}
+          </button>
+        </div>
       </div>
 
       {isPublic && !publishable && (

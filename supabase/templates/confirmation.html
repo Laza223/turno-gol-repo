@@ -10,9 +10,41 @@
   staff pasa `?next=/onboarding` (ignorado por su rama, solo aporta el `?`
   separador). Ambos flujos arman redirectTo = `/api/auth/callback?next=…`.
   Ver docs/superpowers/specs/2026-06-16-auth-password-migration-design.md §3.2/§5.
+
+  Copy bifurcado por el user_metadata is_player. GoTrue expone el
+  user_metadata (raw_user_meta_data) del signup/OTP como .Data en los
+  templates de email de Auth — documentado oficialmente
+  (https://supabase.com/docs/guides/auth/auth-email-templates, cita textual:
+  "if you write full_name into user metadata during signup, you can greet
+  people by name in the confirmation email with .Data.full_name", ejemplo
+  dado justo para ESTE template, confirmation). El jugador nuevo llama
+  signInWithOtp con data: { is_player: true, ... } (signInWithPlayerMagicLink,
+  src/modules/auth/auth.service.ts); el staff llama signUp SIN esa key
+  (signUpStaff, mismo archivo). Un lookup de map a una key ausente en el
+  motor de templates de Go no tira error de ejecución: devuelve el zero
+  value (falsy), así que el condicional de abajo cae solo en la rama staff
+  sin necesidad de chequear la ausencia explícitamente.
+
+  OJO al editar este comentario: el html/template de Go NO distingue
+  comentarios HTML de contenido real — cualquier doble-llave en TODO el
+  archivo se parsea como acción de template, comentario o no. Escribir un
+  condicional incompleto (las palabras sueltas if, else o end sin expresión
+  ni bloque balanceado) envuelto en doble-llave como ejemplo de sintaxis ACA
+  ADENTRO revienta el parseo del documento ENTERO con "missing value for if"
+  y GoTrue cae silencioso al template default en inglés — confirmado en
+  local: hasta sacar esa doble-llave suelta de este comentario, tanto el
+  signup de jugador como el de staff mandaban el email genérico de GoTrue en
+  vez de este template (docker logs supabase_auth_...,
+  event=templatemailer_template_body_parse_error).
+  Al documentar sintaxis de template en prosa, usar los nombres de campo
+  sueltos (sin envolver en doble-llave).
 -->
 <h2>Confirmá tu cuenta en TurnoGol</h2>
+{{if .Data.is_player}}
+<p>¡Bienvenido! Hacé click para activar tu cuenta y reservar tu cancha:</p>
+{{else}}
 <p>¡Bienvenido! Hacé click para activar tu cuenta y empezar a gestionar tu complejo:</p>
+{{end}}
 <p>
   <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=signup">
     Confirmar mi cuenta

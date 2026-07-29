@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   provisionAndRouteStaff,
   signInWithPassword,
+  OrphanedStaffSessionError,
 } from '@/modules/auth/auth.service'
 import { MIN_PASSWORD_LENGTH } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
@@ -91,7 +92,21 @@ export async function loginAction(
     redirect('/super-admin')
   }
 
-  const { path } = await provisionAndRouteStaff(result.user)
+  // JWT con staff_user_id huérfano (típicamente reset de DB local sin reseed
+  // completo, no un flujo real en operación normal): en vez de dejar que el
+  // throw llegue sin manejar a la pantalla de error genérica de Next.js, se
+  // cierra la sesión y se le pide reloguearse con el mismo mecanismo de error
+  // inline que ya usa este form (GENERIC arriba).
+  let path: string
+  try {
+    ;({ path } = await provisionAndRouteStaff(result.user))
+  } catch (err) {
+    if (err instanceof OrphanedStaffSessionError) {
+      await (await createClient()).auth.signOut()
+      return { status: 'error', message: 'Tu sesión expiró, volvé a iniciar sesión.', email }
+    }
+    throw err
+  }
   redirect(path)
 }
 

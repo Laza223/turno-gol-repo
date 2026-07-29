@@ -105,13 +105,13 @@ export function ActivatePlanSection({
       {/* Controles */}
       <div className="flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
-          <span id="courts-label" className="font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
+          <span id="courts-label" className="font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-700 dark:text-emerald-400">
             ¿Cuántas canchas tenés?
           </span>
           <div
             role="radiogroup"
             aria-labelledby="courts-label"
-            className="inline-flex flex-wrap justify-center gap-1 rounded-full border border-white/10 bg-white/4 p-1.5 backdrop-blur-xs"
+            className="inline-flex flex-wrap justify-center gap-1 rounded-full border border-border bg-muted p-1.5 backdrop-blur-xs dark:border-white/10 dark:bg-white/4"
           >
             {COURT_OPTIONS.map((n) => {
               const selected = courts === n
@@ -124,7 +124,7 @@ export function ActivatePlanSection({
                   onClick={() => setCourts(n)}
                   className={`h-11 w-11 rounded-full text-sm font-bold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 ${selected
                       ? 'bg-emerald-505 bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,.45)] font-bold'
-                      : 'text-slate-400 hover:bg-white/[.07] hover:text-white'
+                      : 'text-muted-foreground hover:bg-accent hover:text-foreground dark:hover:bg-white/[.07] dark:hover:text-white'
                     }`}
                 >
                   {n === 8 ? '8+' : n}
@@ -137,7 +137,7 @@ export function ActivatePlanSection({
         <div
           role="radiogroup"
           aria-label="Ciclo de facturación"
-          className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/4 p-1.5 backdrop-blur-xs"
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted p-1.5 backdrop-blur-xs dark:border-white/10 dark:bg-white/4"
         >
           {(
             [
@@ -153,13 +153,13 @@ export function ActivatePlanSection({
                 role="radio"
                 aria-checked={selected}
                 onClick={() => setBillingCycle(value)}
-                className={`inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 ${selected ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                className={`inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 ${selected ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-muted-foreground hover:text-foreground dark:hover:text-white'
                   }`}
               >
                 {label}
                 {value === 'annual' && (
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${selected ? 'bg-slate-950/20 text-slate-950' : 'bg-emerald-500/15 text-emerald-400'
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${selected ? 'bg-slate-950/20 text-slate-950' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                       }`}
                   >
                     −20%
@@ -171,9 +171,9 @@ export function ActivatePlanSection({
         </div>
 
         {/* Anuncio del plan resultante (refuerzo + screen readers) */}
-        <p aria-live="polite" className="text-center text-sm text-slate-400">
+        <p aria-live="polite" className="text-center text-sm text-muted-foreground">
           Para {courts === 8 ? '8 o más' : courts} {courts === 1 ? 'cancha' : 'canchas'}, tu plan sugerido es{' '}
-          <span className="font-semibold text-[#6ee7b7]">
+          <span className="font-semibold text-emerald-700 dark:text-emerald-300">
             {plans.find((p) => p.slug === activeStaticPlan.slug)?.name ?? activeStaticPlan.name}
           </span>.
         </p>
@@ -197,17 +197,10 @@ export function ActivatePlanSection({
           return (
             <div
               key={dbPlan.id}
-              className={`relative flex h-full flex-col p-6 transition-all duration-300 ${isActive ? 'border border-emerald-400/50 md:scale-[1.02]' : 'border border-white/9'
+              className={`relative flex h-full flex-col rounded-[20px] p-6 transition-all duration-300 ${isActive
+                  ? 'border border-emerald-400/50 bg-linear-to-b from-emerald-50 to-card shadow-[0_18px_40px_-16px_rgba(16,185,129,.20)] md:scale-[1.02] dark:from-emerald-900/30 dark:to-slate-950/85 dark:shadow-[0_0_50px_rgba(16,185,129,.22),inset_0_1px_0_rgba(255,255,255,.08)]'
+                  : 'border border-border bg-card dark:border-white/9 dark:bg-linear-to-b dark:from-slate-800/60 dark:to-slate-950/70'
                 }`}
-              style={{
-                borderRadius: '20px',
-                background: isActive
-                  ? 'linear-gradient(180deg, rgba(6,78,59,.32), rgba(2,6,23,.85))'
-                  : 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))',
-                boxShadow: isActive
-                  ? '0 0 50px rgba(16,185,129,.22), inset 0 1px 0 rgba(255,255,255,.08)'
-                  : undefined,
-              }}
             >
               {isActive && (
                 <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-500 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[.08em] text-slate-950 shadow-[0_6px_20px_rgba(16,185,129,.45)]">
@@ -216,29 +209,29 @@ export function ActivatePlanSection({
               )}
 
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="font-display text-xl font-bold text-[#f8fafc]">{dbPlan.name}</h3>
-                <span className="text-xs font-semibold text-slate-400">{staticPlan.rangeLabel}</span>
+                <h3 className="font-display text-xl font-bold text-foreground">{dbPlan.name}</h3>
+                <span className="text-xs font-semibold text-muted-foreground">{staticPlan.rangeLabel}</span>
               </div>
 
               <div className="mt-5">
                 {annual ? (
                   <div>
-                    <div className="text-xs font-semibold text-slate-500">
+                    <div className="text-xs font-semibold text-muted-foreground">
                       <s>{formatArs(dbPlan.priceMonthly)}/mes</s>
                     </div>
                     <div className="flex items-baseline gap-2">
                       <span
-                        className="font-display font-black tabular-nums text-[#f8fafc] text-3xl"
+                        className="font-display font-black tabular-nums text-foreground text-3xl"
                         style={{ letterSpacing: '-0.02em', lineHeight: 1 }}
                       >
                         {formatArs(price)}
                       </span>
-                      <span className="text-xs font-medium text-slate-400">/mes</span>
+                      <span className="text-xs font-medium text-muted-foreground">/mes</span>
                     </div>
-                    <div className="mt-1.5 text-xs font-medium text-slate-300">
-                      Total: <span className="font-bold text-white">{formatArs(dbPlan.priceAnnual * 12)}</span> /año (pago único)
+                    <div className="mt-1.5 text-xs font-medium text-muted-foreground">
+                      Total: <span className="font-bold text-foreground">{formatArs(dbPlan.priceAnnual * 12)}</span> /año (pago único)
                     </div>
-                    <div className="mt-1 text-xs font-semibold text-[#6ee7b7]">
+                    <div className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                       Ahorrás {formatArs((dbPlan.priceMonthly - dbPlan.priceAnnual) * 12)} al año
                     </div>
                   </div>
@@ -246,21 +239,21 @@ export function ActivatePlanSection({
                   <div>
                     <div className="flex items-baseline gap-2">
                       <span
-                        className="font-display font-black tabular-nums text-[#f8fafc] text-3xl"
+                        className="font-display font-black tabular-nums text-foreground text-3xl"
                         style={{ letterSpacing: '-0.02em', lineHeight: 1 }}
                       >
                         {formatArs(price)}
                       </span>
-                      <span className="text-xs font-medium text-slate-400">/mes</span>
+                      <span className="text-xs font-medium text-muted-foreground">/mes</span>
                     </div>
-                    <div className="mt-1.5 text-xs text-slate-400">
+                    <div className="mt-1.5 text-xs text-muted-foreground">
                       Facturación mensual
                     </div>
                   </div>
                 )}
               </div>
 
-              <p className="mt-4 flex-1 text-xs leading-relaxed text-slate-400">{staticPlan.sizeLine}</p>
+              <p className="mt-4 flex-1 text-xs leading-relaxed text-muted-foreground">{staticPlan.sizeLine}</p>
 
               <div className="mt-5">
                 <button
@@ -268,8 +261,8 @@ export function ActivatePlanSection({
                   onClick={() => handleActivate(dbPlan.id)}
                   disabled={status === 'loading'}
                   className={`group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-xs font-bold transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 whitespace-nowrap cursor-pointer ${isActive
-                      ? 'bg-emerald-500 text-slate-950 shadow-[0_0_16px_rgba(16,185,129,0.15)] hover:bg-emerald-400 active:scale-[0.97]'
-                      : 'border border-white/15 bg-white/5 text-white hover:bg-white/10 active:scale-[0.97]'
+                      ? 'bg-emerald-700 text-white shadow-[0_0_16px_rgba(16,185,129,0.15)] hover:bg-emerald-600 active:scale-[0.97] dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400'
+                      : 'border border-border bg-card text-foreground hover:bg-accent active:scale-[0.97] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10'
                     }`}
                 >
                   {isActivating ? ctaLoadingLabel : ctaLabel}
@@ -286,13 +279,10 @@ export function ActivatePlanSection({
 
       {/* Todos los planes tienen todo */}
       <div className="flex justify-center">
-        <p
-          className="inline-flex max-w-[640px] items-center gap-3 rounded-2xl border border-emerald-500/20 px-5 py-3.5 text-center text-xs leading-snug text-slate-300"
-          style={{ background: 'rgba(16,185,129,.06)' }}
-        >
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+        <p className="inline-flex max-w-[640px] items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] px-5 py-3.5 text-center text-xs leading-snug text-muted-foreground">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
           <span>
-            <span className="font-semibold text-white">Todos los planes tienen todo.</span> Pagás por cantidad de canchas,
+            <span className="font-semibold text-foreground">Todos los planes tienen todo.</span> Pagás por cantidad de canchas,
             no por funcionalidades.
           </span>
         </p>

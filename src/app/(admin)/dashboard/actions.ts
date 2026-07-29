@@ -2,7 +2,7 @@
 
 import { eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { requireOperatorStaff } from '@/modules/staff/guards'
+import { requireAdminStaffAction, requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
@@ -75,9 +75,14 @@ export async function markTourSeenAction(): Promise<MarkTourSeenResult> {
 
 export type MarkChecklistDismissedResult = { success: true } | { success: false; error: string }
 
-/** Persiste `checklist_dismissed_at`: el admin descartó manualmente la checklist de onboarding. */
+/**
+ * Persiste `checklist_dismissed_at`: el admin descartó manualmente la
+ * checklist de onboarding — a nivel TENANT, no por-usuario. Solo admin
+ * (requireAdminStaffAction): el manager no puede descartarla para todo el
+ * complejo.
+ */
 export async function markChecklistDismissedAction(): Promise<MarkChecklistDismissedResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

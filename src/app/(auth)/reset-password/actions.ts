@@ -47,6 +47,9 @@ export async function resetPasswordAction(
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
   if (error) {
+    if (error.code === 'same_password') {
+      return { status: 'error', message: 'Esa ya es tu contraseña actual. Elegí una diferente.' }
+    }
     return { status: 'error', message: 'No pudimos actualizar la contraseña. Probá de nuevo.' }
   }
 

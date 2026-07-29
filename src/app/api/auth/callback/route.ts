@@ -3,7 +3,11 @@ import { z } from 'zod'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { provisionAndRouteStaff, syncStaffUserEmail } from '@/modules/auth/auth.service'
+import {
+  provisionAndRouteStaff,
+  syncStaffUserEmail,
+  OrphanedStaffSessionError,
+} from '@/modules/auth/auth.service'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
@@ -115,6 +119,20 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     if (staffUserId) await syncStaffUserEmail(staffUserId, user.email)
   }
 
-  const { path } = await provisionAndRouteStaff(user)
+  // JWT con staff_user_id huérfano (típicamente reset de DB local sin reseed
+  // completo, no un flujo real en operación normal): en vez de dejar que el
+  // throw llegue sin manejar a la pantalla de error genérica de Next.js, se
+  // cierra la sesión y se redirige a /verify con el mismo mecanismo de error
+  // por query param que ya usan expired/used/invalid/exchange_failed.
+  let path: string
+  try {
+    ;({ path } = await provisionAndRouteStaff(user))
+  } catch (err) {
+    if (err instanceof OrphanedStaffSessionError) {
+      await supabase.auth.signOut()
+      return redirectVerifyError(req, 'orphaned_session')
+    }
+    throw err
+  }
   return NextResponse.redirect(new URL(successVerifyPath(path, 'signup'), req.url))
 }

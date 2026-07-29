@@ -395,7 +395,7 @@ async function getPublicAvailabilityImpl(
           and(
             eq(bookings.tenantId, tenant.id),
             sql`${bookings.date} = ${dateStr}::date`,
-            notInArray(bookings.status, ['canceled_refunded', 'canceled_no_refund']),
+            notInArray(bookings.status, ['canceled_refunded', 'canceled_no_refund', 'expired']),
           ),
         )
 
@@ -483,7 +483,7 @@ export async function getPublicWeeklyAvailability(
       FROM bookings
       WHERE tenant_id = ${tenant.id}::uuid
         AND date >= ${startDateStr}::date AND date <= ${endDateStr}::date
-        AND status NOT IN ('canceled_refunded', 'canceled_no_refund')
+        AND status NOT IN ('canceled_refunded', 'canceled_no_refund', 'expired')
     `)) as unknown as Array<{
       courtId: string
       date: string

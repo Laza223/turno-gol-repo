@@ -15,9 +15,12 @@ import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 export function DashboardCanteenButton({
   products,
   sellTicketAction,
+  saleDisabled = false,
 }: {
   products: CanteenProductRow[]
   sellTicketAction: SellTicketAction
+  /** true = caja de hoy cerrada: mismo criterio que /caja/cantina. */
+  saleDisabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -44,8 +47,19 @@ export function DashboardCanteenButton({
             Seleccioná productos o servicios y cobrá al instante en la caja del día.
           </p>
         </DialogHeader>
+        {saleDisabled && (
+          <div className="mt-3 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+            La caja de hoy ya está cerrada. Podés armar el ticket, pero el cobro se habilita recién con
+            la caja abierta.
+          </div>
+        )}
         <div className="pt-2">
-          <TicketPanel products={products} sellTicketAction={sellTicketAction} isInDialog />
+          <TicketPanel
+            products={products}
+            sellTicketAction={sellTicketAction}
+            isInDialog
+            saleDisabled={saleDisabled}
+          />
         </div>
       </DialogContent>
     </Dialog>

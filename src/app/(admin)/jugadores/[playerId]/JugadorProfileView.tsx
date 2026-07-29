@@ -103,7 +103,7 @@ export function JugadorProfileView({
           {profile.firstSeenAt && (
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">Cliente desde</dt>
-              <dd className="text-foreground">{formatDate(profile.firstSeenAt.slice(0, 10))}</dd>
+              <dd className="text-foreground">{formatDateArt(new Date(profile.firstSeenAt))}</dd>
             </div>
           )}
         </dl>

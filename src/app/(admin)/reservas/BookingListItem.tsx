@@ -36,9 +36,16 @@ type Props = {
    * Client Component). Solo se usan si `hasQuickActions(booking)` es true.
    */
   actions: BookingQuickActions
+  /**
+   * Horas de anticipación de la política de cancelación del complejo (mismo
+   * dato en las 200 filas de la página — se calcula una sola vez arriba,
+   * page.tsx, no por fila). Reenviado a QuickActions para el preview de
+   * plazo de cancelación (cluster F bug 2).
+   */
+  cancellationPolicyHours?: number
 }
 
-export function BookingListItem({ booking, compact = false, actions }: Props) {
+export function BookingListItem({ booking, compact = false, actions, cancellationPolicyHours }: Props) {
   const visual = reservaStatusVisual(booking)
   const name = clientName(booking)
   const isBlock = booking.type === 'block'
@@ -72,9 +79,11 @@ export function BookingListItem({ booking, compact = false, actions }: Props) {
         guestName: booking.guestName ?? null,
         guestPhone: null,
         playerName: booking.playerName,
+        startsAt: booking.startsAt,
         endsAt: booking.endsAt,
       }}
       label={`${name} · ${timeRange}`}
+      cancellationPolicyHours={cancellationPolicyHours}
       {...actions}
     />
   )

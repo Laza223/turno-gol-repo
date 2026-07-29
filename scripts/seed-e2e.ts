@@ -289,6 +289,21 @@ async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
   `
 }
 
+async function seedSubscription(sql: SqlClient): Promise<void> {
+  // Sin esto getSubscriptionState() tira SubscriptionNotFoundError para el
+  // tenant demo, y ActivatePlanSection/CancelSubscriptionSection (ambas
+  // requieren `sub` truthy) nunca se montan en /settings/facturacion — ninguna
+  // cuenta e2e podía ejercer upgrade/downgrade/cancelación de punta a punta.
+  // status/billing_cycle quedan en su default de columna ('trialing'/'monthly').
+  await sql`
+    INSERT INTO tenant_subscriptions (
+      tenant_id, plan_id, current_period_start, current_period_end
+    )
+    SELECT ${E2E.tenantId}, id, NOW(), NOW() + INTERVAL '30 days'
+    FROM plans WHERE slug = 'complejo'
+  `
+}
+
 async function seedFreshAdminStaff(sql: SqlClient): Promise<void> {
   await sql`
     INSERT INTO staff_users (id, email, first_name, last_name)
@@ -369,6 +384,7 @@ async function main(): Promise<void> {
     await seedDepositTenantAndCourt(sql)
     await seedStaffAndPlayer(sql)
     await seedFreshAdminStaff(sql)
+    await seedSubscription(sql)
     await seedAuthUsers()
     console.log('E2E seed OK')
     console.log(`  tenant: ${E2E.tenantId} (${E2E.tenantSlug})`)

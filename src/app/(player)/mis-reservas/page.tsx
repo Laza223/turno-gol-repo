@@ -46,7 +46,8 @@ export default async function MisReservasPage(
 ) {
   const searchParams = await props.searchParams;
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/ingresar')
+  if (!user || user.type !== 'player')
+    redirect(`/ingresar?next=${encodeURIComponent('/mis-reservas')}`)
 
   const today = artToday()
   const tab = searchParams.tab === 'historial' ? 'historial' : 'proximos'

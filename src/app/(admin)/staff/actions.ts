@@ -218,7 +218,10 @@ export async function inviteStaffAction(
     const adminClient = createAdminClient()
     const { data: inviteData, error: inviteError } =
       await adminClient.auth.admin.inviteUserByEmail(lowerEmail, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        // Mismo patrón token_hash que signup/recovery/magic-link (ADR-002):
+        // el link tiene que apuntar a /api/auth/callback, no directo a
+        // /dashboard — invite.html arma `{{ .RedirectTo }}&token_hash=...`.
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
       })
 
     if (inviteError && !inviteError.message.includes('already been registered')) {
@@ -227,11 +230,15 @@ export async function inviteStaffAction(
 
     if (inviteData?.user?.id) {
       // Usuario nuevo en auth: solo pertenece a este complejo, claim completo.
+      // force_password_change: el invite de GoTrue crea el usuario SIN
+      // contraseña — sin este flag entra directo a /dashboard y queda sin
+      // forma de volver a loguearse una vez que cierra sesión.
       await adminClient.auth.admin.updateUserById(inviteData.user.id, {
         app_metadata: {
           staff_user_id: staffUser.id,
           tenant_id: tenant.id,
           role,
+          force_password_change: true,
         },
       })
     } else if (inviteError) {
@@ -422,7 +429,7 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
 
   const adminClient = createAdminClient()
   const { error } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
   })
 
   if (error) return { success: false, error: `Error reenviando invitación: ${error.message}` }

@@ -167,10 +167,9 @@ content_path = "./supabase/templates/recovery.html"
 subject = "Tu acceso a TurnoGol"
 content_path = "./supabase/templates/magic_link.html"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+[auth.email.template.invite]
+subject = "Te invitaron a un complejo en TurnoGol"
+content_path = "./supabase/templates/invite.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

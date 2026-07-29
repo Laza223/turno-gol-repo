@@ -309,6 +309,12 @@ export const seedPlayoffsSchema = z.object({ tournamentId: uuid })
 
 // ─── Inscripciones (migr. 066) ──────────────────────────────────────
 
+// ─── Autocomplete de capitán (Equipos) ──────────────────────────────
+
+export const searchPlayersForCaptainSchema = z.object({
+  query: z.string().trim().max(120),
+})
+
 export const registerInscriptionPaymentSchema = z.object({
   teamId: uuid,
   // moneyCents acepta 0; un cobro de $0 no es un cobro.

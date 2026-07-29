@@ -16,11 +16,11 @@ const MAX_CLAVOS = 10
  * La matemática es del cliente — cero claims inventados.
  */
 export default function CalculadoraClavo() {
-  const [turnoArs, setTurnoArs] = useState<number>(30000)
+  const [turnoArs, setTurnoArs] = useState<number | null>(30000)
   const [customInput, setCustomInput] = useState<string>('')
   const [clavos, setClavos] = useState<number>(2)
 
-  const perdidaCents = turnoArs * 100 * clavos * WEEKS_PER_MONTH
+  const perdidaCents = turnoArs === null ? null : turnoArs * 100 * clavos * WEEKS_PER_MONTH
   const desdeCents = PLANS[0]!.priceMonthly
 
   function selectPreset(preset: number) {
@@ -31,7 +31,13 @@ export default function CalculadoraClavo() {
   function onTurnoInput(raw: string) {
     setCustomInput(raw)
     const digits = raw.replace(/\D/g, '')
-    const parsed = digits === '' ? 0 : Number.parseInt(digits, 10)
+    if (digits === '') {
+      // Campo vacío o solo texto no numérico ("abc"): sin número parseable,
+      // no forzar a 0 (leería como "no perdés nada").
+      setTurnoArs(null)
+      return
+    }
+    const parsed = Number.parseInt(digits, 10)
     setTurnoArs(Math.min(Number.isNaN(parsed) ? 0 : parsed, MAX_TURNO_ARS))
   }
 
@@ -136,6 +142,21 @@ export default function CalculadoraClavo() {
                 <span className="font-semibold text-white">{formatArs(desdeCents)}/mes</span>.
               </span>
             </p>
+          ) : perdidaCents === null ? (
+            <>
+              <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-slate-500">
+                Se te van por mes
+              </div>
+              <div
+                className="mt-1 font-display font-black tabular-nums text-slate-500"
+                style={{ fontSize: 'clamp(40px, 4.5vw, 56px)', letterSpacing: '-0.02em', lineHeight: 1 }}
+              >
+                —
+              </div>
+              <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
+                Ingresá el precio de tu turno para ver cuánto perdés.
+              </p>
+            </>
           ) : (
             <>
               <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-slate-500">

@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { StaffRole } from '@/modules/staff/roles'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 
@@ -25,6 +26,9 @@ interface SidebarProps {
   onClose: () => void
   /** Feature flag 'tournaments' resuelto server-side para este complejo. */
   tournamentsEnabled?: boolean
+  /** Rol del staff logueado, leído de la DB server-side. Sin valor (p. ej. stories/tests
+   *  sin threadear el prop) se trata como no-admin, igual criterio que `tournamentsEnabled`. */
+  staffRole?: StaffRole
 }
 
 interface NavItem {
@@ -33,6 +37,8 @@ interface NavItem {
   label: string
   /** Solo se muestra si la feature está prendida para el complejo. */
   requiresTournaments?: boolean
+  /** Solo se muestra al rol admin (el manager no puede completar estas pantallas). */
+  requiresAdmin?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -44,7 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/jugadores', icon: Contact, label: 'Jugadores' },
   { href: '/caja', icon: Banknote, label: 'Caja y Cantina' },
   { href: '/analiticas', icon: ChartLine, label: 'Analíticas' },
-  { href: '/settings', icon: Settings, label: 'Configuración' },
+  { href: '/settings', icon: Settings, label: 'Configuración', requiresAdmin: true },
 ]
 
 function SidebarContent({
@@ -53,15 +59,19 @@ function SidebarContent({
   onClose,
   isMobile,
   tournamentsEnabled,
+  staffRole,
 }: {
   tenantName: string
   pathname: string
   onClose?: () => void
   isMobile?: boolean
   tournamentsEnabled?: boolean
+  staffRole?: StaffRole
 }) {
   const navItems = NAV_ITEMS.filter(
-    (item) => !item.requiresTournaments || tournamentsEnabled,
+    (item) =>
+      (!item.requiresTournaments || tournamentsEnabled) &&
+      (!item.requiresAdmin || staffRole === 'admin'),
   )
   return (
     <div className="flex flex-col h-full">
@@ -148,6 +158,7 @@ export function AdminSidebar({
   mobileOpen,
   onClose,
   tournamentsEnabled,
+  staffRole,
 }: SidebarProps) {
   const pathname = usePathname()
 
@@ -159,6 +170,7 @@ export function AdminSidebar({
           tenantName={tenantName}
           pathname={pathname}
           tournamentsEnabled={tournamentsEnabled}
+          staffRole={staffRole}
         />
       </aside>
 
@@ -178,6 +190,7 @@ export function AdminSidebar({
             onClose={onClose}
             isMobile
             tournamentsEnabled={tournamentsEnabled}
+            staffRole={staffRole}
           />
         </SheetContent>
       </Sheet>

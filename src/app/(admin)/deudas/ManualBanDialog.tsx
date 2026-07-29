@@ -83,17 +83,17 @@ export function ManualBanDialog({ player, onClose, onSuccess }: Props) {
 
   return (
     <Dialog open={!!player} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md bg-white p-6 shadow-xl dark:bg-zinc-900">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <ShieldAlert className="h-6 w-6" />
-            <DialogTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+            <DialogTitle className="text-xl font-bold text-foreground">
               Sancionar Jugador
             </DialogTitle>
           </div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Se bloqueará la capacidad de reservar online para{' '}
-            <strong className="text-zinc-800 dark:text-zinc-200">{player.name}</strong> en este complejo.
+            <strong className="text-foreground">{player.name}</strong> en este complejo.
           </p>
         </DialogHeader>
 
@@ -106,7 +106,7 @@ export function ManualBanDialog({ player, onClose, onSuccess }: Props) {
           )}
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Motivo del Bloqueo
             </label>
             <textarea
@@ -114,18 +114,18 @@ export function ManualBanDialog({ player, onClose, onSuccess }: Props) {
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ej: Deuda pendiente incobrable de $5.000"
               rows={3}
-              className="w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+              className="w-full rounded-lg border border-input bg-background p-2.5 text-sm text-foreground shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Duración de la Sanción
             </label>
             <select
               value={duration}
               onChange={(e) => setDuration(e.target.value as ManualBanDuration)}
-              className="w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+              className="w-full rounded-lg border border-input bg-background p-2.5 text-sm text-foreground shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
             >
               {DURATION_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -140,7 +140,7 @@ export function ManualBanDialog({ player, onClose, onSuccess }: Props) {
               type="button"
               onClick={handleClose}
               disabled={isPending}
-              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
             >
               Cancelar
             </button>

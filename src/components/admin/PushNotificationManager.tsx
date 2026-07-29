@@ -273,7 +273,11 @@ export function PushNotificationManager() {
     // 1rem exacto (el left-4 se suma al ancho ya calculado sobre el viewport
     // completo). Además 100vw no descuenta el área bajo el notch con
     // viewport-fit=cover, ni se recalcula si iOS zoomea.
-    <div className="card-premium fixed bottom-[max(env(safe-area-inset-bottom),1rem)] inset-x-4 z-40 sm:left-4 sm:right-auto sm:max-w-sm p-4">
+    // p-3/mt-2/h-9 en mobile (vs p-4/mt-3/h-11 desde sm:): en la grilla mobile
+    // este banner fijo tapaba hasta 4 de 9 botones "Reservar turno" con la
+    // versión completa (~130px de alto) — la descripción larga se oculta bajo
+    // sm: y el resto se achica para que la franja tapada sea mínima.
+    <div className="card-premium fixed bottom-[max(env(safe-area-inset-bottom),1rem)] inset-x-4 z-40 sm:left-4 sm:right-auto sm:max-w-sm p-3 sm:p-4">
       <button
         type="button"
         onClick={dismiss}
@@ -283,14 +287,14 @@ export function PushNotificationManager() {
         <X className="h-4 w-4" aria-hidden="true" />
       </button>
       <p className="pr-6 text-sm font-semibold text-foreground">¿Habilitar notificaciones?</p>
-      <p className="mt-1 text-xs text-muted-foreground">
+      <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
         Recibí un aviso cuando se confirma una reserva online, incluso si no tenés la grilla abierta.
       </p>
       <button
         type="button"
         onClick={enable}
         disabled={status === 'pending'}
-        className="mt-3 inline-flex h-11 md:h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white shadow-xs transition-all hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50"
+        className="mt-2 sm:mt-3 inline-flex h-9 sm:h-11 md:h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white shadow-xs transition hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50"
       >
         {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
       </button>

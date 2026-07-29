@@ -15,6 +15,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 vi.mock('@/modules/auth/impersonation.server', () => ({ resolveImpersonatedStaffContext: vi.fn() }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
+vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn(async () => 'admin') }))
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async () => ({ currentPeriodEnd: new Date('2026-09-13T12:00:00.000Z') })),
 }))

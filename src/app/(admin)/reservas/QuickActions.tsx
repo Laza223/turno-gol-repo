@@ -37,6 +37,15 @@ type QuickActionsBooking = {
    * ver comentario homólogo en BookingActions.tsx.
    */
   endsAt?: string | null
+  /**
+   * Instante físico absoluto del INICIO del turno (TIMESTAMPTZ ISO,
+   * migraciones 040/041) — junto con `cancellationPolicyHours` (prop de
+   * `Props`, ver más abajo) permite calcular si ESTA reserva puntual está
+   * dentro o fuera de la ventana de cancelación, igual que BookingActions.tsx
+   * (cluster F bug 2). Opcional/nullable: sin este dato, `refundWarning` cae
+   * al mensaje genérico previo (no rompe consumidores/stories viejas).
+   */
+  startsAt?: string | null
 }
 
 type SimpleBookingFn = (bookingId: string) => Promise<BookingActionResult>
@@ -88,6 +97,13 @@ type Props = BookingQuickActions & {
   booking: QuickActionsBooking
   /** Nombre + horario para que el menú mobile y los toasts tengan contexto. */
   label: string
+  /**
+   * Horas de anticipación de la política de cancelación del complejo (mismo
+   * dato que `ReservaDetail.cancellationPolicyHours` en BookingActions.tsx).
+   * Opcional: sin ella (callers/stories/tests viejas) `refundWarning` cae al
+   * mensaje genérico previo al fix (cluster F bug 2) en vez de romper.
+   */
+  cancellationPolicyHours?: number
 }
 
 /**
@@ -105,6 +121,7 @@ type Props = BookingQuickActions & {
 export function QuickActions({
   booking,
   label,
+  cancellationPolicyHours,
   cancelBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
@@ -224,8 +241,16 @@ export function QuickActions({
     })
   }
 
-  // Preview del destino de la seña según el motivo. En la grilla no calculamos
-  // el plazo (no tenemos la política a mano); el server resuelve la retención.
+  // Preview del destino de la seña según el motivo. Con `startsAt` +
+  // `cancellationPolicyHours` a mano (cluster F bug 2) calculamos el mismo
+  // `inPolicy` que BookingActions.tsx para ESTA reserva puntual; sin esos
+  // datos (callers/stories/tests viejas) cae al mensaje genérico previo.
+  const bookingStartUtcMs = booking.startsAt ? new Date(booking.startsAt).getTime() : null
+  const inPolicy =
+    bookingStartUtcMs !== null && Number.isFinite(bookingStartUtcMs) && cancellationPolicyHours !== undefined
+      ? Date.now() < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
+      : null
+
   let refundWarning: string | null = null
   if (cancelType) {
     if (!hasPaidDeposit) {
@@ -239,8 +264,15 @@ export function QuickActions({
         booking.paymentMethod === 'mercadopago'
           ? `Se reembolsará la seña de ${formatArs(booking.depositAmount)} vía MercadoPago.`
           : `Coordiná el reembolso de ${formatArs(booking.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
-    } else {
+    } else if (inPolicy === null) {
       refundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount)} si está dentro del plazo, retención si no.`
+    } else if (inPolicy) {
+      refundWarning =
+        booking.paymentMethod === 'mercadopago'
+          ? `Se reembolsará la seña de ${formatArs(booking.depositAmount)} vía MercadoPago.`
+          : `Coordiná el reembolso de ${formatArs(booking.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+    } else {
+      refundWarning = `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatArs(booking.depositAmount)} queda para el complejo (sin reembolso).`
     }
   }
 

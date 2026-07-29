@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
 import type { MarkSharedResult, MarkChecklistDismissedResult } from '@/app/(admin)/dashboard/actions'
+import type { StaffRole } from '@/modules/staff/roles'
 
 /** localStorage key para el estado plegado/desplegado (bidireccional: se lee post-mount y se escribe en cada toggle). */
 const MINIMIZED_STORAGE_KEY = 'tg-hint-checklist-minimized'
@@ -15,14 +16,17 @@ interface ChecklistItem {
   label: string
   href?: string
   action?: 'copy-link'
+  /** Solo lo puede completar el admin (pantallas de Configuración). Se excluye
+   *  del conteo para el manager en vez de mostrarle un dead-end. */
+  adminOnly?: boolean
 }
 
 const ITEMS: ChecklistItem[] = [
   { key: 'accountCreated',       label: 'Cuenta creada' },
   { key: 'complexData',          label: 'Datos del complejo completados' },
-  { key: 'hasCourts',            label: 'Al menos una cancha configurada',    href: '/settings/canchas' },
-  { key: 'hasSchedule',          label: 'Horarios definidos',                 href: '/settings/horarios' },
-  { key: 'mpConnected',          label: 'MercadoPago conectado',              href: '/settings/facturacion' },
+  { key: 'hasCourts',            label: 'Al menos una cancha configurada',    href: '/settings/canchas', adminOnly: true },
+  { key: 'hasSchedule',          label: 'Horarios definidos',                 href: '/settings/horarios', adminOnly: true },
+  { key: 'mpConnected',          label: 'MercadoPago conectado',              href: '/settings/facturacion', adminOnly: true },
   { key: 'publicLinkShared',     label: 'Link público compartido',            action: 'copy-link' },
   { key: 'firstBookingReceived', label: 'Primera reserva online recibida' },
 ]
@@ -40,6 +44,9 @@ interface OnboardingChecklistProps {
   action: () => Promise<MarkSharedResult>
   /** Server Action que persiste el descarte manual de la checklist (mismo motivo de PROP que `action`). */
   onDismiss: () => Promise<MarkChecklistDismissedResult>
+  /** Rol del staff logueado: oculta del conteo los pasos admin-only (Configuración) para el manager.
+   *  Sin valor se trata como no-admin (mismo criterio que `staffRole` en AdminSidebar). */
+  staffRole?: StaffRole
 }
 
 /**
@@ -47,11 +54,15 @@ interface OnboardingChecklistProps {
  * PENDIENTES quedan siempre visibles con su CTA; los completados se pliegan a
  * una fila-toggle para que el setup no entierre los KPIs del día.
  */
-export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismiss }: OnboardingChecklistProps) {
-  const pendingItems = ITEMS.filter((i) => !state[i.key])
-  const doneItems = ITEMS.filter((i) => state[i.key])
+export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismiss, staffRole }: OnboardingChecklistProps) {
+  // El manager no puede completar los pasos de Configuración (guard server-side
+  // ya se lo bloquea): se excluyen del conteo para no mostrarle un "N de 7"
+  // imposible de completar al 100%.
+  const visibleItems = ITEMS.filter((i) => !i.adminOnly || staffRole === 'admin')
+  const pendingItems = visibleItems.filter((i) => !state[i.key])
+  const doneItems = visibleItems.filter((i) => state[i.key])
   const completed = doneItems.length
-  const total = ITEMS.length
+  const total = visibleItems.length
   const pct = Math.round((completed / total) * 100)
   const [minimized, setMinimized] = useState(completed === total)
   const [showDone, setShowDone] = useState(false)
@@ -83,21 +94,32 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
     }
   }
 
+  const [dismissError, setDismissError] = useState<string | null>(null)
+
   // Descarte manual (antes de completar el 100%): feedback transitorio
   // ("Descartado ✓", 2s) igual que `copied`, y recién después se oculta
-  // localmente — best-effort como `persistShared`, si la Action falla la
-  // checklist igual desaparece (no tiene sentido reinsistir por un error
-  // transitorio de red/rate-limit).
+  // localmente — best-effort ante fallas transitorias de red/rate-limit. Pero
+  // el rechazo por rol (`markChecklistDismissedAction` es admin-only) es un
+  // resultado NORMAL, no una excepción — hay que leer result.success, si no
+  // el manager ve "Descartado ✓" con el toggle real rechazado en el server y
+  // la checklist vuelve a aparecer en la próxima visita.
   function handleDismiss() {
-    setDismissed(true)
+    setDismissError(null)
     startTransition(async () => {
       try {
-        await onDismiss()
+        const res = await onDismiss()
+        if (!res.success) {
+          setDismissError(res.error)
+          return
+        }
+        setDismissed(true)
+        setTimeout(() => setHidden(true), 2000)
       } catch {
-        /* best-effort: se oculta igual aunque no se persista */
+        /* best-effort: falla transitoria, se oculta igual */
+        setDismissed(true)
+        setTimeout(() => setHidden(true), 2000)
       }
     })
-    setTimeout(() => setHidden(true), 2000)
   }
 
   if (hidden) return null
@@ -241,15 +263,24 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
             />
           </div>
           <span className="text-xs font-medium tabular-nums text-muted-foreground">{pct}%</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDismiss}
-            disabled={dismissed}
-            className="h-11 md:h-9 text-xs"
-          >
-            {dismissed ? 'Descartado ✓' : 'Descartar'}
-          </Button>
+          {staffRole === 'admin' && (
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDismiss}
+                disabled={dismissed}
+                className="h-11 md:h-9 text-xs"
+              >
+                {dismissed ? 'Descartado ✓' : 'Descartar'}
+              </Button>
+              {dismissError && (
+                <p role="alert" className="max-w-40 text-right text-xs text-red-600 dark:text-red-400">
+                  {dismissError}
+                </p>
+              )}
+            </div>
+          )}
           {completed === total && (
             <Button
               variant="ghost"

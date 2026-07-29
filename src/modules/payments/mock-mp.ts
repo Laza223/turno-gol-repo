@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm'
+import { getWorkerDb } from '@/shared/db/client'
 import type { PaymentGateway } from './mp-gateway'
 import type {
   CreatePreapprovalInput,
@@ -79,15 +81,24 @@ export class LocalMockGateway implements PaymentGateway {
       return {
         mpPaymentId,
         status: 'pending',
-        amount: 1,
+        amount: 0,
         externalReference: '',
         paymentMethodId: 'mock',
       }
     }
+    // El monto real de la seña vive en `bookings.deposit_amount` — un valor fijo
+    // acá (antes 1) queda menor que la seña real y `createRefund` explota con
+    // RefundAmountExceedsOriginalError al cancelar. Bypass RLS (worker pool):
+    // este gateway solo existe fuera de producción (isNonProductionRuntime).
+    const db = getWorkerDb()
+    const rows = (await db.execute(sql`
+      SELECT deposit_amount AS "depositAmount" FROM bookings WHERE id = ${parsed.bookingId} LIMIT 1
+    `)) as unknown as Array<{ depositAmount: number }>
+    const amount = rows[0]?.depositAmount ?? 0
     return {
       mpPaymentId,
       status: parsed.outcome === 'approved' ? 'approved' : 'rejected',
-      amount: 1, // mock artifact; E2E asserts booking.status, not amount
+      amount,
       externalReference: parsed.bookingId,
       paymentMethodId: 'mock',
     }

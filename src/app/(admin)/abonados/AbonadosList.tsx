@@ -10,7 +10,7 @@ import type { AbonadoActionResult } from './actions'
 import type { PreviewAbonadoSlotsInput, PreviewAbonadoSlotsResult } from './nuevo/actions'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
-import { formatArs } from '@/lib/format'
+import { formatArs, formatTime } from '@/lib/format'
 import { AbonadoStatusBadge } from './status-visual'
 import { toast } from '@/hooks/use-toast'
 
@@ -321,7 +321,7 @@ function AbonadoTableRow({
     <>
       <tr className="border-b border-border last:border-0 transition-colors hover:bg-accent/50">
         <td className="p-3 font-medium tabular-nums">
-          {DAY_NAMES[a.dayOfWeek]} {a.timeStart}–{a.timeEnd}
+          {DAY_NAMES[a.dayOfWeek]} {formatTime(a.timeStart)}–{formatTime(a.timeEnd)}
         </td>
         <td className="p-3">
           <div>{a.contactName}</div>
@@ -405,7 +405,7 @@ function AbonadoCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium tabular-nums text-foreground">
-            {DAY_NAMES[a.dayOfWeek]} {a.timeStart}–{a.timeEnd}
+            {DAY_NAMES[a.dayOfWeek]} {formatTime(a.timeStart)}–{formatTime(a.timeEnd)}
           </p>
           <p className="mt-0.5 truncate text-sm text-foreground">{a.contactName}</p>
           <p className="text-xs text-muted-foreground">{a.contactPhone}</p>

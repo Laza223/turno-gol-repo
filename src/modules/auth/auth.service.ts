@@ -6,6 +6,19 @@ import { track } from '@/shared/observability'
 
 export type SignInResult = { ok: true } | { ok: false; error: string }
 
+/**
+ * El JWT trae `app_metadata.staff_user_id` pero esa fila ya no existe en
+ * `staff_users` (típicamente un reset de DB local sin reseed completo). Clase
+ * propia en vez de matchear el mensaje del Error a mano en los callers —
+ * `instanceof` no se rompe si el texto cambia.
+ */
+export class OrphanedStaffSessionError extends Error {
+  constructor(staffUserId: string) {
+    super(`provisionAndRouteStaff: staff_user_id ${staffUserId} en metadata no existe en staff_users`)
+    this.name = 'OrphanedStaffSessionError'
+  }
+}
+
 export type PlayerProfile = {
   firstName: string
   lastName: string
@@ -254,9 +267,7 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   if (staffUserIdMeta) {
     const existing = await getStaffUserById(staffUserIdMeta)
     if (!existing) {
-      throw new Error(
-        `provisionAndRouteStaff: staff_user_id ${staffUserIdMeta} en metadata no existe en staff_users`,
-      )
+      throw new OrphanedStaffSessionError(staffUserIdMeta)
     }
     ourStaff = existing
   } else {

@@ -2,7 +2,6 @@ import { getPostBySlug } from '@/lib/content/posts'
 import { ArticleShell } from '@/components/site/ArticleShell'
 import { Mdx } from '@/components/site/Mdx'
 import { notFound } from 'next/navigation'
-import BusinessHeader from '@/components/site/BusinessHeader'
 import type { Metadata } from 'next'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -23,17 +22,12 @@ export default async function AlternativasAlquilaTuCanchaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <BusinessHeader />
-      <main>
-        <ArticleShell
-          title={post.frontmatter.title}
-          description={post.frontmatter.description}
-          addFaqSchema={true}
-        >
-          <Mdx source={post.content} />
-        </ArticleShell>
-      </main>
-    </div>
+    <ArticleShell
+      title={post.frontmatter.title}
+      description={post.frontmatter.description}
+      addFaqSchema={true}
+    >
+      <Mdx source={post.content} />
+    </ArticleShell>
   )
 }

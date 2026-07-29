@@ -2,12 +2,14 @@
 
 import { Fragment } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { DAY_KEYS, DAY_LABELS_LONG, type DayKey } from '@/shared/time/week-days'
+import { effectiveCloseMins, END_OF_DAY_MINS } from '@/shared/time/operating-day'
 import {
   effectiveDay,
   needsNextDayHint,
@@ -136,6 +138,15 @@ export function ScheduleFields({
               const d = view.days[day]
               const label = DAY_LABELS_LONG[day]
               const closed = d.mode === 'closed'
+              // Mismo criterio que effectiveCloseMins (operating-day.ts): con
+              // "Cierra después de medianoche" activo, un cierre <= apertura
+              // (excepto '00:00', que YA es fin de día) cruza a la madrugada
+              // del día calendario siguiente.
+              const eff = effectiveDay(view, day)
+              const crossesMidnight =
+                !closed &&
+                closesNextDay &&
+                effectiveCloseMins(eff.open, eff.close, closesNextDay) > END_OF_DAY_MINS
               return (
                 <li
                   key={day}
@@ -185,6 +196,15 @@ export function ScheduleFields({
                           <span className="text-xs font-medium text-muted-foreground bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-600/10">
                             {view.general.open} a {view.general.close}
                           </span>
+                          {crossesMidnight && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px]"
+                              title="Este cierre cruza a la madrugada del día siguiente"
+                            >
+                              +1 día
+                            </Badge>
+                          )}
                           <Button
                             type="button"
                             variant="ghost"
@@ -237,6 +257,15 @@ export function ScheduleFields({
                           aria-label={`${label}: cierra`}
                           className="h-11 md:h-8 w-[92px] md:w-[76px] text-xs px-2 py-1 text-center"
                         />
+                        {crossesMidnight && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px]"
+                            title="Este cierre cruza a la madrugada del día siguiente"
+                          >
+                            +1 día
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   )}

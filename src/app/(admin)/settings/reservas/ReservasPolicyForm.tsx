@@ -39,14 +39,18 @@ export function ReservasPolicyForm({
   const [requiresDeposit, setRequiresDeposit] = useState(s.requires_deposit !== false)
   const [allowOnlineBooking, setAllowOnlineBooking] = useState(s.allow_online_booking !== false)
 
-  // Deposit percentage states
+  // Deposit percentage states. Un tenant en "Sin seña" puede tener
+  // deposit_percentage=0 guardado (fuera del rango válido 10-100): si no se
+  // clampea acá, al activar "Requerir seña" por primera vez el input "Otro"
+  // arranca precargado con "0", por debajo del min=10 del campo.
   const initialDeposit = s.deposit_percentage ?? 30
   const isPresetDeposit = [30, 50, 100].includes(initialDeposit)
+  const isValidCustomDeposit = initialDeposit >= 10 && initialDeposit <= 100
   const [selectedPercentage, setSelectedPercentage] = useState<number | 'other'>(
-    isPresetDeposit ? initialDeposit : 'other'
+    isPresetDeposit ? initialDeposit : isValidCustomDeposit ? 'other' : 30
   )
   const [customPercentage, setCustomPercentage] = useState<string>(
-    isPresetDeposit ? '30' : String(initialDeposit)
+    isPresetDeposit || !isValidCustomDeposit ? '30' : String(initialDeposit)
   )
 
   // Cancellation hours states
@@ -183,6 +187,31 @@ export function ReservasPolicyForm({
           </button>
         </div>
         <input type="hidden" name="allowOnlineBooking" value={allowOnlineBooking ? 'true' : 'false'} />
+      </div>
+
+      {/* ANTICIPACION MAXIMA PARA RESERVAR */}
+      <div className="space-y-3">
+        <Label htmlFor="bookingAdvanceDays" className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
+          Anticipación para reservar
+        </Label>
+        <p className="text-xs text-muted-foreground max-w-md">
+          Cuántos días a futuro pueden ver y reservar los jugadores desde la página pública.
+        </p>
+        <div className="flex items-center gap-2">
+          <Input
+            id="bookingAdvanceDays"
+            name="bookingAdvanceDays"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={60}
+            defaultValue={s.booking_advance_days ?? 6}
+            className="w-24 h-10 rounded-xl bg-background border-border"
+            required
+          />
+          <span className="text-sm text-muted-foreground">días</span>
+        </div>
+        <p className="text-xs text-muted-foreground">Entre 1 y 60 días</p>
       </div>
 
       {/* ANTICIPACION MINIMA PARA CANCELAR */}

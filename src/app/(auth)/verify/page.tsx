@@ -10,6 +10,7 @@ const ERROR_COPY: Record<string, string> = {
   used: 'Este enlace ya fue utilizado. Iniciá sesión nuevamente.',
   invalid: 'No pudimos verificar el enlace. Probá de nuevo.',
   exchange_failed: 'No pudimos completar el inicio de sesión. Probá de nuevo.',
+  orphaned_session: 'Tu sesión expiró, volvé a iniciar sesión.',
 }
 
 const SUCCESS_COPY: Record<SuccessIntent, { title: string; subtitle: string; cta: string }> = {
@@ -158,6 +159,15 @@ function ErrorState({ code }: { code: string }) {
       <Link href="/login" className={ctaClass}>
         Volver a intentar
       </Link>
+      {/* El error no trae ninguna señal de si quien falló fue un jugador (passwordless)
+          o un staff — `redirectVerifyError` en api/auth/callback/route.ts solo manda
+          `error`, nunca `type`/intent. En vez de adivinar, se ofrecen los dos caminos. */}
+      <p className="mt-4 text-xs text-slate-400">
+        ¿Sos jugador?{' '}
+        <Link href="/ingresar" className="font-medium text-emerald-300 underline-offset-2 hover:underline">
+          Ingresá acá
+        </Link>
+      </p>
     </>
   )
 }

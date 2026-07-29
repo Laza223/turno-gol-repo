@@ -99,8 +99,17 @@ export default defineConfig({
       // paralelizar.
       fullyParallel: false,
       workers: 1,
+      // En CI el step visual corre DESPUÉS de la suite @critical, en el mismo job
+      // y sobre el mismo runner de 2 cores: las rutas de admin (auth + queries +
+      // compilación en frío de Turbopack) no entran en los 30s de
+      // navigationTimeout. Run 30494580493: las 3 fotos de admin murieron con
+      // "page.goto: Timeout 30000ms exceeded" sin llegar a comparar, mientras las
+      // públicas (más livianas) pasaron. El test timeout sube en la misma
+      // proporción porque acota al de navegación.
+      timeout: process.env.CI ? 180_000 : 30_000,
       use: {
         ...devices['Desktop Chrome'],
+        navigationTimeout: process.env.CI ? 90_000 : 30_000,
         viewport: { width: 1440, height: 900 },
         deviceScaleFactor: 1,
         colorScheme: 'light',
@@ -117,8 +126,11 @@ export default defineConfig({
       retries: 0,
       fullyParallel: false,
       workers: 1,
+      // Mismo motivo que en `visual`: ver el comentario de arriba.
+      timeout: process.env.CI ? 180_000 : 30_000,
       use: {
         ...devices['Pixel 5'],
+        navigationTimeout: process.env.CI ? 90_000 : 30_000,
         viewport: { width: 393, height: 851 },
         deviceScaleFactor: 2,
         colorScheme: 'light',

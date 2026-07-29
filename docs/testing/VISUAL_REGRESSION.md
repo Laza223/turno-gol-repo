@@ -57,6 +57,20 @@ Los projects declaran `viewport`, `deviceScaleFactor`, `colorScheme`, `locale` y
 Playwright puede cambiar el descriptor del device e invalidar todas las baselines
 en silencio.
 
+### El step comparte runner con la suite @critical
+
+El step visual corre como paso del job de E2E, después de `--grep @critical`, sobre
+el mismo runner de 2 cores. Las fotos de admin cargan auth + queries + compilación
+en frío, y con 30s de `navigationTimeout` no llegaban: en el run 30494580493 las 4
+de admin murieron con `page.goto: Timeout 30000ms exceeded` mientras las 4 públicas
+comparaban y pasaban. Por eso los projects `visual`/`visual-mobile` llevan
+`timeout: 180s` + `navigationTimeout: 90s` **solo en CI**.
+
+Ese run dejó además una falla que el timeout no explica del todo
+(`element(s) not found` sobre un dato del seed en la grilla mobile). Si vuelve a
+aparecer con los timeouts nuevos, es un problema de datos —la suite @critical corre
+antes y toca reservas— y no de tiempo.
+
 ### Deuda: el mask del overlay de dev es intermitente
 
 `devChrome(page)` enmascara `nextjs-portal` + `[data-nextjs-toast]` como red de

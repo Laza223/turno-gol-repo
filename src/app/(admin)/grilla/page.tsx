@@ -7,7 +7,11 @@ import { listCourts } from '@/modules/courts/court.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { bookings, players } from '@/shared/db/schema'
 import { BookingGrid, type GridBooking } from '@/components/booking/BookingGrid'
-import { createBookingAction, checkSlotAvailabilityAction } from '@/app/(admin)/reservas/actions'
+import {
+  createBookingAction,
+  checkSlotAvailabilityAction,
+  searchBookingPlayersAction,
+} from '@/app/(admin)/reservas/actions'
 import type {
   BookingStatus,
   BookingType,
@@ -94,6 +98,7 @@ export default async function GrillaPage(
         closesNextDay={tenant.closesNextDay}
         action={createBookingAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}
+        searchPlayersAction={searchBookingPlayersAction}
       />
     </div>
   )

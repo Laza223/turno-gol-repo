@@ -1,0 +1,17 @@
+<!--
+  Invitación de staff (`/settings/equipo` → inviteStaffAction/resendInviteAction,
+  admin.inviteUserByEmail). Patrón token_hash (NO PKCE `.ConfirmationURL`), igual
+  que confirmation.html/recovery.html — el callback solo soporta token_hash+
+  verifyOtp. `redirectTo` ya viene armado como `/api/auth/callback?next=...`
+  (staff/actions.ts), así que `{{ .RedirectTo }}&token_hash=...` arma una
+  querystring válida. type=invite cae en la rama "Staff" del callback
+  (provisionAndRouteStaff) — el invitado no es nunca jugador.
+-->
+<h2>Te invitaron a un complejo en TurnoGol</h2>
+<p>Te sumaron como parte del equipo. Hacé click para activar tu cuenta y fijar tu contraseña:</p>
+<p>
+  <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite">
+    Aceptar invitación
+  </a>
+</p>
+<p>Si no esperabas esta invitación, ignorá este email.</p>

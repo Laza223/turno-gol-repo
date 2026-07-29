@@ -8,16 +8,20 @@ import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { getTournament } from '@/modules/tournaments/tournament.service'
-import { listTeams } from '@/modules/tournaments/tournament-team.service'
+import { listTeamPlayers, listTeams } from '@/modules/tournaments/tournament-team.service'
 import { listTournamentSlots } from '@/modules/tournaments/tournament-slots.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
 import { listCourts } from '@/modules/courts/court.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
+import type { TournamentTeamPlayerRow } from '@/modules/tournaments/tournament.types'
 import {
   addTeamAction,
+  addTeamPlayerAction,
   releaseSlotsAction,
   removeTeamAction,
+  removeTeamPlayerAction,
   reserveSlotsAction,
+  searchPlayersForCaptainAction,
   updateTournamentAction,
 } from '../actions'
 import {
@@ -58,14 +62,22 @@ export default async function TorneoDetailPage(props: {
         listTournamentSlots(tenant.id, id, tx),
         listCourts(tenant.id, tx),
       ])
-      return { tournament, teams, slots, courts }
+      // Plantel de cada equipo, para la UI de altas/bajas de jugadores.
+      const rosterLists = await Promise.all(
+        teams.map((t) => listTeamPlayers(tenant.id, t.id, tx)),
+      )
+      const rosters: Record<string, TournamentTeamPlayerRow[]> = {}
+      teams.forEach((t, i) => {
+        rosters[t.id] = rosterLists[i]!
+      })
+      return { tournament, teams, slots, courts, rosters }
     })
   } catch (err) {
     if (err instanceof TournamentNotFoundError) notFound()
     throw err
   }
 
-  const { tournament, teams, slots, courts } = data
+  const { tournament, teams, slots, courts, rosters } = data
   const courtNames = Object.fromEntries(courts.map((c) => [c.id, c.name]))
 
   return (
@@ -104,8 +116,12 @@ export default async function TorneoDetailPage(props: {
         tournamentId={tournament.id}
         teams={teams}
         maxTeams={tournament.maxTeams}
+        rosters={rosters}
         addAction={addTeamAction}
         removeAction={removeTeamAction}
+        searchCaptainAction={searchPlayersForCaptainAction}
+        addPlayerAction={addTeamPlayerAction}
+        removePlayerAction={removeTeamPlayerAction}
       />
 
       <SlotsPanel
@@ -125,6 +141,7 @@ export default async function TorneoDetailPage(props: {
         isPublic={tournament.isPublic}
         canPublish={role === 'admin'}
         setVisibilityAction={updateTournamentAction}
+        openRegistrationAction={updateTournamentAction}
       />
     </div>
   )

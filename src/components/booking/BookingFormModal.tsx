@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import * as Sentry from '@sentry/nextjs'
 import {
   AlertCircle,
+  AlertTriangle,
   Calendar,
   Check,
   ChevronDown,
@@ -26,8 +27,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { dialogContentClass } from '@/components/ui/dialog'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { BookingActionResult } from '@/app/(admin)/reservas/actions'
+import type { PlayerSearchResult } from '@/modules/players/player-search.service'
 import { formatDateLong } from '@/lib/format'
 import { END_OF_DAY_MINS, endLabelFromMins } from '@/shared/time/operating-day'
 import { cn } from '@/lib/utils'
@@ -38,6 +41,13 @@ type Slot = {
   date: string
   timeStart: string
   durationMins: 60 | 120
+  /**
+   * Estado de la cancha preseleccionada (BookingGrid/QuickBookingButton la
+   * traen de CourtRow — ver settings/canchas). Opcional: sin este dato
+   * (stories/tests viejas, u otro caller que no lo cablea) el modal no
+   * bloquea el submit — mismo criterio "fail open" que checkAvailabilityAction.
+   */
+  courtStatus?: 'online' | 'offline'
 }
 
 export type CreateBookingAction = (data: unknown) => Promise<BookingActionResult>
@@ -48,6 +58,11 @@ export type CheckSlotAvailabilityAction = (input: {
   timeStart: string
 }) => Promise<{ available: boolean }>
 
+export type SearchBookingPlayersResult =
+  { success: true; players: PlayerSearchResult[] } | { success: false; error: string }
+
+export type SearchBookingPlayersAction = (input: unknown) => Promise<SearchBookingPlayersResult>
+
 type Props = {
   slot: Slot
   open: boolean
@@ -55,6 +70,7 @@ type Props = {
   onSuccess: (booking: BookingRow) => void
   action: CreateBookingAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
+  searchPlayersAction?: SearchBookingPlayersAction
 }
 
 type ReasonValue = 'phone' | 'maintenance' | 'school' | 'teachers' | 'other'
@@ -103,6 +119,7 @@ export function BookingFormModal({
   onSuccess,
   action,
   checkAvailabilityAction,
+  searchPlayersAction,
 }: Props) {
   const [timeStart, setTimeStart] = useState<string>(slot.timeStart)
   const [duration, setDuration] = useState<number>(slot.durationMins)
@@ -113,6 +130,66 @@ export function BookingFormModal({
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
   const guestNameInputRef = useRef<HTMLInputElement>(null)
+
+  // Autocomplete de jugador registrado: mientras no se elige un resultado
+  // viaja como guestName/guestPhone libre igual que antes (playerId null).
+  // Elegir un jugador oculta/vacía guestName/guestPhone — createManualBookingSchema
+  // los declara mutuamente excluyentes.
+  const [playerId, setPlayerId] = useState<string | null>(null)
+  const [playerQuery, setPlayerQuery] = useState('')
+  const [playerResults, setPlayerResults] = useState<PlayerSearchResult[]>([])
+  const [playerSearchOpen, setPlayerSearchOpen] = useState(false)
+  const playerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Seña cobrada de mostrador (opcional): elegir un método pide el monto: los
+  // tres campos (depositMethod/depositAmount/depositStatus:'paid') viajan
+  // juntos o no viajan ninguno.
+  const [depositMethod, setDepositMethod] = useState<
+    '' | 'cash' | 'transfer' | 'mercadopago' | 'other'
+  >('')
+
+  const isCourtOffline = slot.courtStatus === 'offline'
+
+  function clearPlayer() {
+    setPlayerId(null)
+    setPlayerQuery('')
+    setPlayerResults([])
+    setPlayerSearchOpen(false)
+  }
+
+  function handlePlayerQueryChange(next: string) {
+    setPlayerQuery(next)
+    setPlayerId(null)
+    if (playerDebounceRef.current) clearTimeout(playerDebounceRef.current)
+    const q = next.trim()
+    if (!searchPlayersAction || q.length < 2) {
+      setPlayerResults([])
+      setPlayerSearchOpen(false)
+      return
+    }
+    playerDebounceRef.current = setTimeout(() => {
+      void (async () => {
+        const result = await searchPlayersAction({ query: q })
+        if (result.success) {
+          setPlayerResults(result.players)
+          setPlayerSearchOpen(result.players.length > 0)
+        }
+      })()
+    }, 300)
+  }
+
+  function selectPlayer(player: PlayerSearchResult) {
+    setPlayerId(player.id)
+    setPlayerQuery(player.name)
+    setPlayerResults([])
+    setPlayerSearchOpen(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (playerDebounceRef.current) clearTimeout(playerDebounceRef.current)
+    }
+  }, [])
 
   function handleReasonSelect(val: ReasonValue) {
     setReason(val)
@@ -174,10 +251,33 @@ export function BookingFormModal({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (isCourtOffline) return
     const fd = new FormData(e.currentTarget)
-    const guestName = ((fd.get('guestName') as string) ?? '').trim()
-    const guestPhone = ((fd.get('guestPhone') as string) ?? '').trim()
+    // Jugador registrado y datos de invitado son mutuamente excluyentes
+    // (createManualBookingSchema): con playerId elegido, guestName/guestPhone
+    // viajan vacíos aunque el input siga montado en el DOM.
+    const guestName = playerId ? '' : ((fd.get('guestName') as string) ?? '').trim()
+    const guestPhone = playerId ? '' : ((fd.get('guestPhone') as string) ?? '').trim()
     const notesInternal = ((fd.get('notesInternal') as string) ?? '').trim()
+
+    const priceOverridePesosRaw = ((fd.get('priceOverridePesos') as string) ?? '').trim()
+    const priceOverridePesosNum = Number(priceOverridePesosRaw)
+    const priceOverride =
+      priceOverridePesosRaw && Number.isFinite(priceOverridePesosNum) && priceOverridePesosNum >= 0
+        ? Math.round(priceOverridePesosNum * 100)
+        : undefined
+
+    // La seña solo aplica a reservas de cliente (no a bloqueos internos): los
+    // tres campos (method/amount/status) viajan juntos o no viaja ninguno.
+    const depositAmountPesosRaw =
+      !isInternalBlock && depositMethod
+        ? ((fd.get('depositAmountPesos') as string) ?? '').trim()
+        : ''
+    const depositAmountPesosNum = Number(depositAmountPesosRaw)
+    const depositAmount =
+      depositAmountPesosRaw && Number.isFinite(depositAmountPesosNum) && depositAmountPesosNum > 0
+        ? Math.round(depositAmountPesosNum * 100)
+        : undefined
 
     const common = {
       courtId: slot.courtId,
@@ -185,6 +285,10 @@ export function BookingFormModal({
       timeStart,
       timeEnd,
       ...(notesInternal ? { notesInternal } : {}),
+      ...(priceOverride !== undefined ? { priceOverride } : {}),
+      ...(!isInternalBlock && depositMethod && depositAmount !== undefined
+        ? { depositMethod, depositAmount, depositStatus: 'paid' as const }
+        : {}),
     }
 
     const isBlockType = isInternalBlock || (isOtherReason && effectiveDuration > 60)
@@ -198,6 +302,7 @@ export function BookingFormModal({
       : {
           ...common,
           type: 'spontaneous' as const,
+          ...(playerId ? { playerId } : {}),
           ...(guestName ? { guestName } : {}),
           ...(guestPhone ? { guestPhone } : {}),
         }
@@ -210,6 +315,8 @@ export function BookingFormModal({
           formRef.current?.reset()
           setDuration(slot.durationMins)
           setReason(DEFAULT_REASON)
+          clearPlayer()
+          setDepositMethod('')
           toast({
             title: isInternalBlock ? 'Turno bloqueado' : 'Reserva creada',
             description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
@@ -231,6 +338,8 @@ export function BookingFormModal({
       setError(null)
       setDuration(slot.durationMins)
       setReason(DEFAULT_REASON)
+      clearPlayer()
+      setDepositMethod('')
       onClose()
     }
   }
@@ -239,7 +348,7 @@ export function BookingFormModal({
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/60 dark:bg-black/80 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card text-card-foreground border border-border/80 rounded-2xl shadow-2xl backdrop-blur-xl p-6 sm:p-7 focus:outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <Dialog.Content className={cn(dialogContentClass, 'max-w-3xl')}>
           <Dialog.Close className="absolute right-4 top-4 rounded-lg opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
             <span className="sr-only">Cerrar</span>
@@ -440,6 +549,63 @@ export function BookingFormModal({
                 </div>
 
                 {!isInternalBlock && (
+                  <div className="relative space-y-1.5">
+                    <Label htmlFor="playerSearch" className="flex items-center justify-between text-sm font-medium text-foreground">
+                      <span>Jugador registrado</span>
+                      <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                    </Label>
+                    <Input
+                      id="playerSearch"
+                      type="text"
+                      autoComplete="off"
+                      value={playerQuery}
+                      onChange={(e) => handlePlayerQueryChange(e.target.value)}
+                      onFocus={() => {
+                        if (playerResults.length > 0) setPlayerSearchOpen(true)
+                      }}
+                      onBlur={() => {
+                        // Delay para que el mousedown de la opción llegue a disparar antes.
+                        setTimeout(() => setPlayerSearchOpen(false), 150)
+                      }}
+                      placeholder="Buscar por nombre o email..."
+                      aria-expanded={playerSearchOpen}
+                      aria-autocomplete="list"
+                      className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-all focus:border-emerald-500"
+                    />
+                    {playerId && (
+                      <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+                        <Check className="h-3 w-3 shrink-0" />
+                        <span>Vinculado a un jugador registrado.</span>
+                        <button
+                          type="button"
+                          onClick={clearPlayer}
+                          className="underline underline-offset-2 hover:text-emerald-800 dark:hover:text-emerald-300 cursor-pointer"
+                        >
+                          Quitar
+                        </button>
+                      </p>
+                    )}
+                    {playerSearchOpen && playerResults.length > 0 && (
+                      <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border/90 bg-popover text-popover-foreground shadow-xl backdrop-blur-xl p-1 space-y-0.5">
+                        {playerResults.map((p) => (
+                          <li key={p.id}>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => selectPlayer(p)}
+                              className="flex w-full flex-col items-start rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer hover:bg-accent"
+                            >
+                              <span className="truncate font-medium text-foreground">{p.name}</span>
+                              <span className="truncate text-muted-foreground">{p.email}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {!isInternalBlock && !playerId && (
                   <div className="space-y-1.5">
                     <Label htmlFor="guestName" className="flex items-center justify-between text-sm font-medium text-foreground">
                       <span>{reason === 'other' ? 'Nombre / Motivo' : 'Nombre del cliente'}</span>
@@ -527,7 +693,7 @@ export function BookingFormModal({
 
               <CollapsibleContent forceMount className="pt-3 space-y-3 data-[state=closed]:hidden">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {!isInternalBlock && (
+                  {!isInternalBlock && !playerId && (
                     <div className="space-y-1.5">
                       <Label htmlFor="guestPhone" className="flex items-center justify-between text-sm font-medium text-foreground">
                         <span>Teléfono del cliente</span>
@@ -542,7 +708,69 @@ export function BookingFormModal({
                     </div>
                   )}
 
-                  <div className={cn("space-y-1.5", isInternalBlock && "col-span-2")}>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="priceOverridePesos" className="flex items-center justify-between text-sm font-medium text-foreground">
+                      <span>Precio del turno</span>
+                      <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                      <input
+                        id="priceOverridePesos"
+                        name="priceOverridePesos"
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputMode="decimal"
+                        placeholder="Precio de la grilla"
+                        className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-all focus:border-emerald-500 focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+
+                  {!isInternalBlock && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="depositMethod" className="flex items-center justify-between text-sm font-medium text-foreground">
+                        <span>Seña cobrada</span>
+                        <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                      </Label>
+                      <select
+                        id="depositMethod"
+                        value={depositMethod}
+                        onChange={(e) => setDepositMethod(e.target.value as typeof depositMethod)}
+                        className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm font-medium text-foreground transition-all focus:border-emerald-500 focus:outline-hidden"
+                      >
+                        <option value="">Sin seña</option>
+                        <option value="cash">Efectivo</option>
+                        <option value="transfer">Transferencia</option>
+                        <option value="mercadopago">MercadoPago</option>
+                        <option value="other">Otro</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {!isInternalBlock && depositMethod && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="depositAmountPesos" className="text-sm font-medium text-foreground">
+                        Monto de la seña
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                        <input
+                          id="depositAmountPesos"
+                          name="depositAmountPesos"
+                          type="number"
+                          min="1"
+                          step="1"
+                          inputMode="decimal"
+                          placeholder="Monto"
+                          className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-all focus:border-emerald-500 focus:outline-hidden"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={cn("space-y-1.5", (isInternalBlock || playerId) && "col-span-2")}>
                     <Label htmlFor="notesInternal" className="flex items-center justify-between text-sm font-medium text-foreground">
                       <span>Notas internas</span>
                       <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
@@ -559,6 +787,13 @@ export function BookingFormModal({
                 </div>
               </CollapsibleContent>
             </Collapsible>
+
+            {isCourtOffline && (
+              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-medium">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Esta cancha está offline, no recibe reservas nuevas.</span>
+              </div>
+            )}
 
             {error && (
               <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium">
@@ -579,7 +814,7 @@ export function BookingFormModal({
               </Button>
               <Button
                 type="submit"
-                disabled={isPending}
+                disabled={isPending || isCourtOffline}
                 className="rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500"
               >
                 {isPending ? 'Guardando…' : 'Confirmar'}

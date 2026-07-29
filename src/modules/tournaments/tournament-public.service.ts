@@ -86,7 +86,10 @@ export async function listPublicTournaments(
         ON t.tournament_id = tr.id AND t.tenant_id = tr.tenant_id
       WHERE tr.tenant_id = ${tenantId}
         AND tr.is_public
-        AND tr.status = ANY(${PUBLIC_STATUSES as unknown as string[]}::tournament_status[])
+        AND tr.status = ANY(ARRAY[${sql.join(
+          PUBLIC_STATUSES.map((s) => sql`${s}::tournament_status`),
+          sql`, `,
+        )}])
       GROUP BY tr.id
       ORDER BY tr.starts_on DESC, tr.name
     `)) as unknown as Array<PublicTournamentCard>
@@ -157,7 +160,10 @@ async function findPublicTournament(
     WHERE tr.tenant_id = ${tenantId}
       AND tr.slug = ${slug}
       AND tr.is_public
-      AND tr.status = ANY(${PUBLIC_STATUSES as unknown as string[]}::tournament_status[])
+      AND tr.status = ANY(ARRAY[${sql.join(
+        PUBLIC_STATUSES.map((s) => sql`${s}::tournament_status`),
+        sql`, `,
+      )}])
     GROUP BY tr.id
     LIMIT 1
   `)) as unknown as Array<PublicTournamentCard & { id: string }>

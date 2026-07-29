@@ -126,8 +126,16 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
     expect(res.success).toBe(true)
     expect(h.listUsers).not.toHaveBeenCalled()
     // El form de makeForm no manda rol → default Encargado (manager).
+    // force_password_change: true porque GoTrue crea el usuario invitado sin
+    // contraseña (ver invite.html/Wave 1) — sin el flag entraría directo a
+    // /dashboard sin forma de volver a loguearse.
     expect(h.updateUserById).toHaveBeenCalledWith('auth-new', {
-      app_metadata: { staff_user_id: 'staff-new', tenant_id: 'tenant-1', role: 'manager' },
+      app_metadata: {
+        staff_user_id: 'staff-new',
+        tenant_id: 'tenant-1',
+        role: 'manager',
+        force_password_change: true,
+      },
     })
   })
 

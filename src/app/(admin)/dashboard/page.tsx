@@ -8,7 +8,9 @@ import {
 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
+import { getDailyClose } from '@/modules/cashflow/daily-close.service'
 import { listProducts } from '@/modules/canteen/canteen.service'
 import { listCourts } from '@/modules/courts/court.service'
 import { MetricCard } from '@/components/dashboard/metric-card'
@@ -22,7 +24,11 @@ import { formatArs } from '@/lib/format'
 import { getDashboardData, getChecklistState } from './queries'
 import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
 import { sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
-import { createBookingAction, checkSlotAvailabilityAction } from '@/app/(admin)/reservas/actions'
+import {
+  createBookingAction,
+  checkSlotAvailabilityAction,
+  searchBookingPlayersAction,
+} from '@/app/(admin)/reservas/actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -43,7 +49,7 @@ export default async function DashboardPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const [data, checklistState, products, courts] = await Promise.all([
+  const [data, checklistState, products, courts, staffRole] = await Promise.all([
     getDashboardData({
       id: tenant.id,
       openingHours: tenant.openingHours,
@@ -53,7 +59,14 @@ export default async function DashboardPage() {
     getChecklistState(tenant.id, tenant.settings, !!tenant.mpConnectedAt),
     withTenantContext(tenant.id, (tx) => listProducts(tenant.id, tx)),
     withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx)),
+    getStaffRole(tenant.id, user.staffUserId),
   ])
+
+  // Mismo criterio que /caja/cantina: caja del día cerrada → venta rápida
+  // deshabilitada (bug: este botón no lo chequeaba y dejaba armar el ticket
+  // entero antes de que el servidor lo rechace).
+  const dailyClose = await withTenantContext(tenant.id, (tx) => getDailyClose(tenant.id, data.date, tx))
+  const saleDisabled = dailyClose !== null
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
   // podía dar "por terminado" el onboarding con canchas/horarios sin cargar).
@@ -72,10 +85,20 @@ export default async function DashboardPage() {
       formatArs(caja.balanceCents)
     )
 
-  const turnosValue = data.dayIsClosed ? 'Cerrado' : `${occupancy.occupied} de ${occupancy.available}`
+  // Bug: con 0 canchas online (o todo bloqueado) el denominador da 0 pero el
+  // numerador puede seguir contando reservas reales — evitamos el "N de 0"
+  // literal y el "0% de ocupación" engañoso mostrando solo el numerador.
+  const noAvailability = !data.dayIsClosed && occupancy.available === 0
+  const turnosValue = data.dayIsClosed
+    ? 'Cerrado'
+    : noAvailability
+      ? `${occupancy.occupied}`
+      : `${occupancy.occupied} de ${occupancy.available}`
   const turnosSub = data.dayIsClosed
     ? 'Sin horarios para hoy'
-    : `${occupancy.pct}% de ocupación${occupancy.blocked > 0 ? ` · ${occupancy.blocked} bloqueados` : ''}`
+    : noAvailability
+      ? 'Sin turnos disponibles hoy'
+      : `${occupancy.pct}% de ocupación${occupancy.blocked > 0 ? ` · ${occupancy.blocked} bloqueados` : ''}`
 
   return (
     <div className="space-y-6">
@@ -91,8 +114,13 @@ export default async function DashboardPage() {
               courts={courts}
               createBookingAction={createBookingAction}
               checkSlotAvailabilityAction={checkSlotAvailabilityAction}
+              searchPlayersAction={searchBookingPlayersAction}
             />
-            <DashboardCanteenButton products={products} sellTicketAction={sellTicketAction} />
+            <DashboardCanteenButton
+              products={products}
+              sellTicketAction={sellTicketAction}
+              saleDisabled={saleDisabled}
+            />
           </div>
         }
       />
@@ -104,6 +132,7 @@ export default async function DashboardPage() {
           appUrl={appUrl}
           action={markPublicLinkSharedAction}
           onDismiss={markChecklistDismissedAction}
+          staffRole={staffRole ?? 'manager'}
         />
       )}
 

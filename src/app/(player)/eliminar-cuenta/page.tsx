@@ -19,7 +19,8 @@ export function generateMetadata(): Metadata {
 
 export default async function EliminarCuentaPage() {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/ingresar')
+  if (!user || user.type !== 'player')
+    redirect(`/ingresar?next=${encodeURIComponent('/eliminar-cuenta')}`)
 
   const [playerRows, futureBookingRows] = await withPlayerContext(user.playerId, async (tx) => {
     const todayDate = new Date(new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10) + 'T00:00:00Z')
@@ -39,7 +40,7 @@ export default async function EliminarCuentaPage() {
   })
 
   const player = playerRows[0]
-  if (!player) redirect('/ingresar')
+  if (!player) redirect(`/ingresar?next=${encodeURIComponent('/eliminar-cuenta')}`)
 
   const futureConfirmedCount = futureBookingRows[0]?.count ?? 0
 

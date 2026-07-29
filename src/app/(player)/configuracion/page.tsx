@@ -19,14 +19,15 @@ export function generateMetadata(): Metadata {
 
 export default async function ConfiguracionPage() {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/ingresar')
+  if (!user || user.type !== 'player')
+    redirect(`/ingresar?next=${encodeURIComponent('/configuracion')}`)
 
   const rows = await withPlayerContext(user.playerId, (tx) =>
     tx.select().from(players).where(eq(players.id, user.playerId)).limit(1),
   )
 
   const player = rows[0]
-  if (!player) redirect('/ingresar')
+  if (!player) redirect(`/ingresar?next=${encodeURIComponent('/configuracion')}`)
 
   return <ConfiguracionView firstName={player.firstName} />
 }

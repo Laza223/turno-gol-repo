@@ -26,6 +26,14 @@ export type ReservaListRow = {
    * arman un `ReservaListRow` a mano sin este campo.
    */
   endsAt?: string | null
+  /**
+   * Instante físico absoluto del INICIO del turno (TIMESTAMPTZ, migraciones
+   * 040/041) — fuente de verdad para que QuickActions calcule si ESTA reserva
+   * está dentro o fuera del plazo de cancelación (mismo criterio que
+   * BookingActions.tsx/`ReservaDetail.startsAt`, cluster F bug 2). Opcional
+   * por el mismo motivo que `endsAt`.
+   */
+  startsAt?: string | null
 }
 
 /** Rango temporal de la lista, relativo al día ART actual. */
@@ -85,7 +93,7 @@ export async function listTenantBookings(
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
-           b.payment_method AS "paymentMethod", b.ends_at AS "endsAt",
+           b.payment_method AS "paymentMethod", b.starts_at AS "startsAt", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
            b.guest_name AS "guestName"

@@ -99,6 +99,11 @@ export default async function ReservasPage(props: Props) {
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
+  // Mismo dato/mismo default (24) que `getBookingDetail` (queries.ts) usa vía
+  // COALESCE en SQL para `ReservaDetail.cancellationPolicyHours` — acá se lee
+  // en JS porque `getStaffTenant` ya trae `settings` completo, sin query
+  // extra. Reenviado a QuickActions (cluster F bug 2).
+  const cancellationPolicyHours = tenant.settings?.cancellation_policy?.hours_before ?? 24
 
   const today = artTodayStr()
   const requestedScope = searchParams.dia ?? ''
@@ -130,7 +135,7 @@ export default async function ReservasPage(props: Props) {
       ? groupBy(rows, (r) => r.courtName)
       : groupBy(rows, (r) => r.date)
 
-  const total = countFor(counts, '')
+  const total = status ? countFor(counts, status) : countFor(counts, '')
   const reservaWord = total === 1 ? '1 reserva' : `${total} reservas`
   const headerSubtitle =
     scope === 'hoy' ? `${formatDateLong(today)} · ${reservaWord}` : reservaWord
@@ -236,7 +241,13 @@ export default async function ReservasPage(props: Props) {
               </h2>
               <ul className={compact ? 'space-y-1' : 'space-y-2'}>
                 {groupRows.map((r) => (
-                  <BookingListItem key={r.id} booking={r} compact={compact} actions={QUICK_ACTIONS} />
+                  <BookingListItem
+                    key={r.id}
+                    booking={r}
+                    compact={compact}
+                    actions={QUICK_ACTIONS}
+                    cancellationPolicyHours={cancellationPolicyHours}
+                  />
                 ))}
               </ul>
             </section>

@@ -21,6 +21,7 @@ import {
   type AdminCancellationType,
   type CancellationOutcome,
 } from '@/modules/bookings/booking.cancellation'
+import { searchTenantPlayers, type PlayerSearchResult } from '@/modules/players/player-search.service'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
@@ -165,6 +166,46 @@ export async function checkSlotAvailabilityAction(
     captureException(err)
     return { available: true }
   }
+}
+
+const searchBookingPlayersSchema = z.object({
+  query: z.string().trim().max(120),
+})
+
+export type SearchBookingPlayersActionResult =
+  { success: true; players: PlayerSearchResult[] } | { success: false; error: string }
+
+/**
+ * Autocomplete de jugador registrado para la reserva manual (BookingFormModal,
+ * cluster BookingFormModal Wave 3): mismo servicio que el autocomplete de
+ * capitán de Torneos (searchTenantPlayers, ver torneos/actions.ts). Balde
+ * propio (adminAvailabilityCheck, NO adminCrud) porque se dispara en cada
+ * tecleo debounced desde el modal — mismo razonamiento que
+ * checkSlotAvailabilityAction arriba: compartir el límite de 100/60s por
+ * tenant dejaría sin cupo a las mutaciones reales de dinero del staff.
+ */
+export async function searchBookingPlayersAction(
+  input: unknown
+): Promise<SearchBookingPlayersActionResult> {
+  const parsed = searchBookingPlayersSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const outcome = await enforce('adminAvailabilityCheck', tenant.id)
+  if (!outcome.ok) {
+    return { success: false, error: 'Demasiadas búsquedas. Esperá un momento.' }
+  }
+
+  const players = await withTenantContext(tenant.id, (tx) =>
+    searchTenantPlayers(tenant.id, parsed.data.query, tx)
+  )
+
+  return { success: true, players }
 }
 
 // NOTE: detail/action mutations also need to revalidate `/reservas/[id]`.

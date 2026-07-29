@@ -61,6 +61,15 @@ const TIME_OPTIONS: ComboboxOption[] = Array.from({ length: 48 }, (_, i) => {
 
 const initial: NewAbonadoState = { status: 'idle' }
 
+/**
+ * Plural correcto del nombre de un día. Lunes/Martes/Miércoles/Jueves/Viernes
+ * ya terminan en "s" y son invariables en plural ("los Lunes"); Sábado/Domingo
+ * suman "s" ("Sábados"/"Domingos").
+ */
+function pluralizeDayLabel(label: string): string {
+  return label.endsWith('s') ? label : `${label}s`
+}
+
 function normalizeMidnightEnd(timeEnd: string): string {
   return timeEnd === '00:00' ? '24:00' : timeEnd
 }
@@ -588,7 +597,7 @@ export default function AbonadoForm({
                   <Repeat className="h-3.5 w-3.5 text-primary" /> Frecuencia
                 </span>
                 <span className="font-semibold text-foreground">
-                  {selectedDayLabel}s
+                  {pluralizeDayLabel(selectedDayLabel)}
                 </span>
               </div>
 

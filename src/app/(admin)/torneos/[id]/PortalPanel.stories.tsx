@@ -18,6 +18,7 @@ const meta = {
     isPublic: false,
     canPublish: true,
     setVisibilityAction: ok(),
+    openRegistrationAction: ok(),
   },
 } satisfies Meta<typeof PortalPanel>
 

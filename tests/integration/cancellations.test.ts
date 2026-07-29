@@ -472,7 +472,7 @@ describe('cancelByPlayer — 4B: out-of-policy, deposit paid', () => {
 
 // ─── 4A: player cancel, no deposit ──────────────────────────────────
 describe('cancelByPlayer — 4A: no deposit', () => {
-  it('status=canceled_refunded, no payment rows touched', async () => {
+  it('status=canceled_no_refund (nunca hubo seña que devolver), no payment rows touched', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -494,7 +494,11 @@ describe('cancelByPlayer — 4A: no deposit', () => {
       await cancelByPlayer(bookingId, player.id, undefined, null, tx)
     })
 
-    expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
+    // Bug: sin seña pagada (deposit_status='not_required'), 'canceled_refunded'
+    // es un estado mentiroso aunque la cancelación caiga in-policy — no hay
+    // nada que reembolsar.
+    expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
+    expect(await getBookingDepositStatus(bookingId)).toBe('not_required')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
     expect(await countCashFlows(bookingId)).toBe(0)
   })

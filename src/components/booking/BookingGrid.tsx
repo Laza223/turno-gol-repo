@@ -21,7 +21,11 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import type { CheckSlotAvailabilityAction, CreateBookingAction } from './BookingFormModal'
+import type {
+  CheckSlotAvailabilityAction,
+  CreateBookingAction,
+  SearchBookingPlayersAction,
+} from './BookingFormModal'
 
 // Re-export GridBooking so BookingCard (and others) can import it from here.
 export type { GridBooking } from '@/lib/booking/grid-cells'
@@ -44,6 +48,7 @@ type SelectedSlot = {
   date: string
   timeStart: string
   durationMins: 60 | 120
+  courtStatus?: 'online' | 'offline'
 }
 
 type Props = {
@@ -58,6 +63,8 @@ type Props = {
   action: CreateBookingAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   checkAvailabilityAction?: CheckSlotAvailabilityAction
+  /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
+  searchPlayersAction?: SearchBookingPlayersAction
   actions?: React.ReactNode
 }
 
@@ -71,6 +78,7 @@ export function BookingGrid({
   closesNextDay,
   action,
   checkAvailabilityAction,
+  searchPlayersAction,
   actions,
 }: Props) {
   const router = useRouter()
@@ -138,6 +146,7 @@ export function BookingGrid({
         date,
         timeStart: slotTime,
         durationMins: 60,
+        courtStatus: court.status,
       })
     },
     [courts, date],
@@ -317,6 +326,7 @@ export function BookingGrid({
           onSuccess={handleBookingSuccess}
           action={action}
           checkAvailabilityAction={checkAvailabilityAction}
+          searchPlayersAction={searchPlayersAction}
         />
       )}
     </div>

@@ -193,7 +193,11 @@ export async function cancelByPlayer(
   const policyHours = settings.cancellation_policy.hours_before
   const inPolicy = Date.now() < bookingStartUtc.getTime() - policyHours * 3_600_000
 
-  const targetStatus = inPolicy ? 'canceled_refunded' : 'canceled_no_refund'
+  // Bug: 'canceled_refunded' solo tiene sentido si había una seña PAGADA para
+  // devolver — inPolicy por sí solo no alcanza (reservas sin seña, ej. pago en
+  // efectivo, no tienen nada que reembolsar aunque caigan dentro del plazo).
+  const hadPaidDeposit = b.deposit_status === 'paid'
+  const targetStatus = inPolicy && hadPaidDeposit ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
   let pendingRefund: PreparedRefund | undefined
 
@@ -336,7 +340,12 @@ export async function cancelByAdmin(
     nowMs: Date.now(),
   })
 
-  const targetStatus = shouldRefund ? 'canceled_refunded' : 'canceled_no_refund'
+  // Bug: 'canceled_refunded' solo tiene sentido si había una seña PAGADA para
+  // devolver — shouldRefund por sí solo no alcanza (reservas sin seña, ej.
+  // pago en efectivo, no tienen nada que reembolsar aunque el motivo/plazo
+  // lo habilite).
+  const hadPaidDeposit = b.deposit_status === 'paid'
+  const targetStatus = shouldRefund && hadPaidDeposit ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
   let pendingRefund: PreparedRefund | undefined
 

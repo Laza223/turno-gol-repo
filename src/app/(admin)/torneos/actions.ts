@@ -23,6 +23,10 @@ import { registerInscriptionPayment } from '@/modules/tournaments/tournament-pay
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { formatArs } from '@/lib/format'
 import {
+  searchTenantPlayers,
+  type PlayerSearchResult,
+} from '@/modules/players/player-search.service'
+import {
   releaseTournamentSlots,
   reserveTournamentSlots,
 } from '@/modules/tournaments/tournament-slots.service'
@@ -53,6 +57,7 @@ import {
   registerInscriptionPaymentSchema,
   rescheduleMatchSchema,
   saveMatchResultSchema,
+  searchPlayersForCaptainSchema,
   seedPlayoffsSchema,
 } from '@/modules/tournaments/tournament.schema'
 import {
@@ -118,6 +123,9 @@ export type ReserveSlotsActionResult =
 
 export type GenerateFixtureActionResult =
   { success: true; matches: number; unscheduled: number } | { success: false; error: string }
+
+export type SearchPlayersActionResult =
+  { success: true; players: PlayerSearchResult[] } | { success: false; error: string }
 
 function revalidateTorneos(id?: string): void {
   revalidatePath('/torneos')
@@ -399,6 +407,36 @@ export async function addTeamAction(input: unknown): Promise<TournamentActionRes
 
   revalidateTorneos(tournamentId)
   return { success: true, id }
+}
+
+/**
+ * Autocomplete de capitán al anotar un equipo: busca entre los jugadores que
+ * ya jugaron en este complejo (searchTenantPlayers). Es una lectura, así que
+ * no revalida ninguna ruta.
+ */
+export async function searchPlayersForCaptainAction(
+  input: unknown
+): Promise<SearchPlayersActionResult> {
+  const parsed = searchPlayersForCaptainSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const off = await assertTournamentsEnabled(tenant.id)
+  if (off) return { success: false, error: off }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const players = await withTenantContext(tenant.id, (tx) =>
+    searchTenantPlayers(tenant.id, parsed.data.query, tx)
+  )
+
+  return { success: true, players }
 }
 
 export async function updateTeamAction(input: unknown): Promise<TournamentActionResult> {

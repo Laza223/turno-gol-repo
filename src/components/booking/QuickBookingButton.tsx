@@ -2,23 +2,31 @@
 
 import { useState } from 'react'
 import { CalendarPlus } from 'lucide-react'
-import { BookingFormModal, type CreateBookingAction, type CheckSlotAvailabilityAction } from './BookingFormModal'
+import {
+  BookingFormModal,
+  type CreateBookingAction,
+  type CheckSlotAvailabilityAction,
+  type SearchBookingPlayersAction,
+} from './BookingFormModal'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 
 type CourtOption = {
   id: string
   name: string
+  status: 'online' | 'offline'
 }
 
 export function QuickBookingButton({
   courts,
   createBookingAction,
   checkSlotAvailabilityAction,
+  searchPlayersAction,
   defaultDate,
 }: {
   courts: CourtOption[]
   createBookingAction: CreateBookingAction
   checkSlotAvailabilityAction?: CheckSlotAvailabilityAction
+  searchPlayersAction?: SearchBookingPlayersAction
   defaultDate?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -34,6 +42,7 @@ export function QuickBookingButton({
     date: todayArt,
     timeStart: '20:00',
     durationMins: 60 as const,
+    courtStatus: defaultCourt.status,
   }
 
   function handleSuccess(_booking: BookingRow) {
@@ -59,6 +68,7 @@ export function QuickBookingButton({
           onSuccess={handleSuccess}
           action={createBookingAction}
           checkAvailabilityAction={checkSlotAvailabilityAction}
+          searchPlayersAction={searchPlayersAction}
         />
       )}
     </>

@@ -2,7 +2,6 @@ import { getPostBySlug, getAllPosts } from '@/lib/content/posts'
 import { ArticleShell } from '@/components/site/ArticleShell'
 import { Mdx } from '@/components/site/Mdx'
 import { notFound } from 'next/navigation'
-import BusinessHeader from '@/components/site/BusinessHeader'
 import type { Metadata } from 'next'
 
 export async function generateStaticParams() {
@@ -32,17 +31,12 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <BusinessHeader />
-      <main>
-        <ArticleShell
-          title={post.frontmatter.title}
-          description={post.frontmatter.description}
-          date={post.frontmatter.date}
-        >
-          <Mdx source={post.content} />
-        </ArticleShell>
-      </main>
-    </div>
+    <ArticleShell
+      title={post.frontmatter.title}
+      description={post.frontmatter.description}
+      date={post.frontmatter.date}
+    >
+      <Mdx source={post.content} />
+    </ArticleShell>
   )
 }

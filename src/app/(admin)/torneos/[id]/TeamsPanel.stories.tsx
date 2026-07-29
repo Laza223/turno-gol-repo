@@ -7,9 +7,10 @@ import {
   tournamentTeams,
 } from '@/test/fixtures'
 import { TeamsPanel } from './TeamsPanel'
-import type { TournamentActionResult } from '../actions'
+import type { SearchPlayersActionResult, TournamentActionResult } from '../actions'
 
 const ok = async (): Promise<TournamentActionResult> => ({ success: true })
+const searchOk = async (): Promise<SearchPlayersActionResult> => ({ success: true, players: [] })
 
 /** Vive suelto sobre el fondo de la ficha del torneo (define su propia `bg-card`). */
 const meta = {
@@ -20,8 +21,12 @@ const meta = {
     tournamentId: tournament().id,
     teams: tournamentTeams(),
     maxTeams: tournament().maxTeams,
+    rosters: {},
     addAction: fn(ok),
     removeAction: fn(ok),
+    searchCaptainAction: fn(searchOk),
+    addPlayerAction: fn(ok),
+    removePlayerAction: fn(ok),
   },
 } satisfies Meta<typeof TeamsPanel>
 

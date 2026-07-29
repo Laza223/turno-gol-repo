@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import type { StaffRole } from '@/modules/staff/roles'
 import { AdminSidebar } from './admin-sidebar'
 import { AdminHeader } from './admin-header'
 import { StatusBanner } from './status-banner'
@@ -20,6 +21,9 @@ interface AdminLayoutShellProps {
   impersonationBanner?: ReactNode
   /** Feature flag 'tournaments' resuelto server-side para este complejo. */
   tournamentsEnabled?: boolean
+  /** Rol del staff logueado, leído de la DB server-side. Sin valor se trata como
+   *  no-admin en el sidebar (mismo criterio que `tournamentsEnabled`). */
+  staffRole?: StaffRole
 }
 
 export function AdminLayoutShell({
@@ -32,6 +36,7 @@ export function AdminLayoutShell({
   signOut,
   impersonationBanner,
   tournamentsEnabled,
+  staffRole,
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -55,6 +60,7 @@ export function AdminLayoutShell({
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
         tournamentsEnabled={tournamentsEnabled}
+        staffRole={staffRole}
       />
 
       {/* Header */}

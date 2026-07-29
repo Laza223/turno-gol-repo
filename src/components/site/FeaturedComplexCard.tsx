@@ -92,12 +92,9 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
         <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/8">
           <div>
             {fromPrice && (
-              <>
-                <span className="text-xs text-muted-foreground">Desde </span>
-                <span className="font-display text-[17px] font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                  {fromPrice}
-                </span>
-              </>
+              <span className="font-display text-[17px] font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                {fromPrice}
+              </span>
             )}
           </div>
           <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[13.5px] font-bold text-emerald-700 dark:text-emerald-400">

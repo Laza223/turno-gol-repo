@@ -9,6 +9,7 @@ import { redirectIfTenantSuspended } from '@/shared/kill-switch'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { tenantSubscriptions } from '@/shared/db/schema'
+import { getStaffRole } from '@/modules/staff/staff.service'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
 import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
@@ -41,6 +42,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         impersonationBanner={
           <ImpersonationBanner tenantName={imp.tenant.name} action={stopImpersonationAction} />
         }
+        staffRole="admin"
       >
         {children}
         <PushNotificationManagerLoader />
@@ -84,7 +86,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Independientes entre sí: van en paralelo. El flag de torneos nace global en
   // false (migr. 062) y se prende por complejo con una fila de override, así el
   // módulo se pilotea sin redeploy. Cachea 60s in-process (feature-flags.ts).
-  const [sub, tournamentsEnabled] = await Promise.all([
+  const [sub, tournamentsEnabled, staffRole] = await Promise.all([
     withTenantContext(tenant.id, async (tx) =>
       tx
         .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
@@ -94,6 +96,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         .then((r) => r[0] ?? null),
     ),
     isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id),
+    getStaffRole(tenant.id, user.staffUserId),
   ])
 
   return (
@@ -105,6 +108,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       userEmail={user.email}
       signOut={signOutAction}
       tournamentsEnabled={tournamentsEnabled}
+      staffRole={staffRole ?? 'manager'}
     >
       {children}
       <PushNotificationManagerLoader />

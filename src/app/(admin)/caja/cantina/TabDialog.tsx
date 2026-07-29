@@ -31,16 +31,27 @@ export function TabDialog({
   const [tabNote, setTabNote] = useState('')
   const [tabError, setTabError] = useState<string | null>(null)
   const [tabPending, startTabTransition] = useTransition()
-  const [tabIdempotencyKey, setTabIdempotencyKey] = useState<string | null>(null)
+  const [tabIdempotencyKey, setTabIdempotencyKey] = useState(() => crypto.randomUUID())
+
+  // Se re-inicializa en cada apertura, en RENDER (mismo patrón que
+  // FiadosList/SettleTabDialog) — no en onOpenChange: ese callback de Radix
+  // solo dispara ante triggers INTERNOS del diálogo (Escape, overlay, botón
+  // cerrar), nunca cuando el padre cambia `open` directamente desde afuera
+  // (TicketPanel hace justamente eso), así que la key quedaba en null para
+  // siempre y el submit hacía return silencioso.
+  const [lastOpen, setLastOpen] = useState(false)
+  if (open && !lastOpen) {
+    setLastOpen(true)
+    setDebtorName('')
+    setTabNote('')
+    setTabError(null)
+    setTabIdempotencyKey(crypto.randomUUID())
+  } else if (!open && lastOpen) {
+    setLastOpen(false)
+  }
 
   function handleOpenChange(next: boolean) {
     if (tabPending) return
-    if (next) {
-      setDebtorName('')
-      setTabNote('')
-      setTabError(null)
-      setTabIdempotencyKey(crypto.randomUUID())
-    }
     onOpenChange(next)
   }
 

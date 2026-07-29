@@ -63,7 +63,8 @@ export default async function PerfilPage(
 ) {
   const searchParams = await props.searchParams;
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/ingresar')
+  if (!user || user.type !== 'player')
+    redirect(`/ingresar?next=${encodeURIComponent('/perfil')}`)
 
   const tab: ProfileTabKey = PROFILE_TABS.some((t) => t.key === searchParams.tab)
     ? (searchParams.tab as ProfileTabKey)
@@ -74,7 +75,7 @@ export default async function PerfilPage(
   )
 
   const player = rows[0]
-  if (!player) redirect('/ingresar')
+  if (!player) redirect(`/ingresar?next=${encodeURIComponent('/perfil')}`)
 
   const favorites = tab === 'favoritos' ? await loadFavorites(user.playerId) : null
 

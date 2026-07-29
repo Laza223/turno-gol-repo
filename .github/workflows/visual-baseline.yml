@@ -1,0 +1,51 @@
+name: Visual — regenerar baselines
+
+# Las baselines de regresión visual se generan SOLO acá, en Linux.
+#
+# Por qué no local: el desarrollo es en Windows y CI corre en ubuntu-latest. El
+# renderizado de texto difiere, así que un PNG generado en Windows nunca matchea
+# el de CI. Y la salida fácil ("generalas en la imagen mcr.microsoft.com/
+# playwright") tampoco sirve: esa imagen trae un set de fuentes curado distinto
+# al del runner de GitHub, así que tampoco matchearía — además de exponer un
+# node_modules instalado por pnpm en Windows adentro de un container Linux.
+#
+# Flujo completo en docs/testing/VISUAL_REGRESSION.md.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-baselines:
+    name: Regenerar baselines (linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres
+      IMPERSONATION_COOKIE_SECRET: e2e-ci-dummy-impersonation-secret
+      ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+
+    steps:
+      # checkout ANTES de la composite: la action vive en este repo y sin el
+      # working tree en disco no se puede resolver.
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/e2e-stack
+
+      - name: Regenerar baselines
+        run: |
+          pnpm exec playwright test \
+            --project visual --project visual-mobile \
+            --update-snapshots \
+            --reporter=list
+
+      - name: Empaquetar baselines
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: tests/e2e/visual/__screenshots__/
+          retention-days: 7
+          if-no-files-found: error

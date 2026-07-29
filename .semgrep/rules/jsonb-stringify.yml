@@ -1,0 +1,28 @@
+rules:
+  - id: turnogol-jsonb-stringify-en-sql
+    languages: [ts]
+    severity: ERROR
+    message: |
+      JSON.stringify() adentro de un template SQL corrompe el JSONB.
+
+      postgres-js ya serializa el objeto al bindear el parámetro. Si le pasás un
+      string ya serializado, lo serializa DE NUEVO y la fila queda como un escalar
+      JSON string (jsonb_typeof = 'string', no 'object'). A partir de ahí
+      `columna->>'campo'` devuelve NULL para siempre.
+
+      Lo peor es que la lectura lo ENMASCARA: el customType de drizzle hace
+      JSON.parse en fromDriver, así que desde la app "se ve bien" y sólo explota
+      en las queries que tocan el JSONB desde SQL. Verificalo con jsonb_typeof(),
+      no leyendo el valor por el ORM.
+
+      Pasá el objeto crudo. Historia completa: src/shared/db/jsonb.ts.
+    metadata:
+      category: correctness
+      confidence: HIGH
+      turnogol-invariant: jsonb-single-encoding
+    patterns:
+      - pattern-regex: '(?s)\b(sql|drizzleSql|tx)`[^`]*\$\{\s*JSON\.stringify\s*\('
+    paths:
+      include:
+        - 'src/**/*.ts'
+        - 'scripts/**/*.ts'

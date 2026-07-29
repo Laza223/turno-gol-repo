@@ -1,0 +1,40 @@
+rules:
+  - id: turnogol-set-config-session-scope
+    languages: [ts]
+    severity: ERROR
+    message: |
+      set_config() sin el 3er argumento `true` (o un `SET` sin `LOCAL`) escribe el
+      GUC a nivel SESIÓN, no transacción. La conexión vuelve al pool con el
+      app.current_tenant_id del request ANTERIOR, y a partir de ahí RLS filtra por
+      el tenant equivocado: fuga cross-tenant silenciosa, sin error, sin log.
+
+      Usá:  set_config('app.current_tenant_id', $id, true)
+            SET LOCAL ROLE ...
+
+      Referencia canónica: src/shared/db/client.ts:207 (withTenantContext).
+      Regla de CLAUDE.md: "SET LOCAL para tenant context, nunca SET sin LOCAL".
+    metadata:
+      category: security
+      confidence: HIGH
+      turnogol-invariant: tenant-isolation
+    patterns:
+      - pattern-either:
+          # `(?:[^()]|\([^()]*\))*` = los argumentos de set_config, tolerando UN
+          # nivel de paréntesis anidados. Es load-bearing: con `[^)]*` a secas,
+          # una llamada anidada como `set_config(k, JSON.stringify(v), true)`
+          # corta el match en el `)` de stringify, el pattern-not no llega a ver
+          # el `, true)` final, y la regla reporta código correcto.
+          - patterns:
+              - pattern-regex: 'set_config\s*\((?:[^()]|\([^()]*\))*\)'
+              - pattern-not-regex: 'set_config\s*\((?:[^()]|\([^()]*\))*,\s*true\s*\)'
+          - patterns:
+              - pattern-regex: '\bSET\s+(ROLE|SESSION\s+AUTHORIZATION|app\.[a-z_]+)'
+              - pattern-not-regex: '\bSET\s+LOCAL\b'
+    paths:
+      include:
+        - 'src/**/*.ts'
+        - 'scripts/**/*.ts'
+      exclude:
+        # Las migraciones corren fuera del pool de request: ahí un SET de sesión
+        # es legítimo (y a veces necesario, ej. SET row_security).
+        - 'src/shared/db/migrations/**'

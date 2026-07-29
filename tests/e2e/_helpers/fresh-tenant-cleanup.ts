@@ -55,6 +55,16 @@ export async function deleteFreshAdminTenants(
     await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${tid}`
     await sql`DELETE FROM bookings WHERE tenant_id = ${tid}`
     await sql`DELETE FROM payments WHERE tenant_id = ${tid}`
+    // Torneos (migrs. 062/064/065/066): hijos antes que padres, y todo el bloque
+    // antes de `courts` — tournament_matches.court_id es NO ACTION y un partido
+    // residual bloquea el DELETE de la cancha. Misma clase que el ledger de
+    // cantina de arriba.
+    await sql`DELETE FROM tournament_match_events WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tournament_matches WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tournament_team_players WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tournament_teams WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tournament_stages WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM tournaments WHERE tenant_id = ${tid}`
     await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${tid}`
     await sql`DELETE FROM abonados WHERE tenant_id = ${tid}`
     await sql`DELETE FROM courts WHERE tenant_id = ${tid}`

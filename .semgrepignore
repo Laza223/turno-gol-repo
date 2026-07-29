@@ -1,0 +1,28 @@
+# OJO: si este archivo existe, REEMPLAZA la lista default de semgrep (que ya
+# excluía node_modules/, tests/, etc.). Todo lo que haga falta va acá.
+
+:include .gitignore
+
+node_modules/
+.next/
+storybook-static/
+ds-bundle/
+.design-sync/
+.worktrees/
+playwright-report/
+test-results/
+
+# Espejo generado de src/shared/db/migrations/ (pnpm db:sync-supabase).
+# Escanear las dos copias duplica cada hallazgo de SQL.
+supabase/migrations/
+
+# Assets, no código.
+public/
+docs/audit/screenshots/
+*.min.js
+pnpm-lock.yaml
+
+# CRÍTICO: los fixtures de nuestras propias reglas contienen violaciones A
+# PROPÓSITO. Sin esta línea, cada `pnpm semgrep` se reporta a sí mismo.
+# `semgrep --test` los lee igual: --test ignora .semgrepignore.
+.semgrep/rules/*.ts

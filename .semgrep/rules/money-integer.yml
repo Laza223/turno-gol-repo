@@ -1,0 +1,31 @@
+rules:
+  - id: turnogol-money-not-integer
+    languages: [ts]
+    severity: ERROR
+    message: |
+      Los montos de TurnoGol son CENTAVOS de ARS en columnas `integer`.
+      Regla de CLAUDE.md: "Montos en centavos de ARS (integer, nunca decimal)".
+
+      numeric/decimal/real/doublePrecision meten redondeo de punto flotante y
+      rompen la conciliación contra MercadoPago: el total del cierre de caja deja
+      de cerrar por centavos y no hay forma de saber cuál de las N filas mintió.
+
+      Usá integer('$COL').
+    metadata:
+      category: correctness
+      confidence: HIGH
+      turnogol-invariant: money-in-cents
+    patterns:
+      - pattern-either:
+          - pattern: numeric($COL, ...)
+          - pattern: decimal($COL, ...)
+          - pattern: real($COL, ...)
+          - pattern: doublePrecision($COL, ...)
+      # Sin este filtro la regla marcaría latitude/longitude, que legítimamente
+      # son numeric. Sólo importan las columnas cuyo nombre habla de plata.
+      - metavariable-regex:
+          metavariable: $COL
+          regex: '(?i).*(price|precio|amount|monto|importe|total|cost|fee|arancel|balance|deuda|debt|cents|centavos|cash|efectivo|subtotal|descuento|discount).*'
+    paths:
+      include:
+        - 'src/shared/db/schema/**'

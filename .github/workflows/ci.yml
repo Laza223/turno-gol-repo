@@ -6,11 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+# Un push nuevo a una rama de PR cancela el run anterior de esa misma rama.
+# Sin esto cada push re-corría los 4 jobs enteros en paralelo con el anterior.
+# En main NO se cancela: cada commit de main queda con su propio CI verificado.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # ── Job 1: lint + typecheck (~30s, no DB) ──────────────────────────────────
   lint-and-types:
     name: Lint & Types
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +34,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # NOTA: `pnpm format:check` NO está cableado acá todavía. Prettier nunca se
+      # corrió en bulk sobre este repo: hoy reporta ~716 archivos con diferencias
+      # (printWidth, paréntesis de `??` de Prettier 3, y `trailingComma: "es5"` en
+      # .prettierrc contra un código escrito en estilo "all"). Enchufar el gate
+      # exige un reformateo masivo, que es un esfuerzo aparte. El script existe
+      # (`pnpm format:check`) para correrlo a mano mientras tanto.
       - name: Lint
         run: pnpm lint
 
@@ -36,6 +50,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +73,7 @@ jobs:
   integration-and-isolation:
     name: Integration & Isolation (BLOCKING)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -149,98 +165,18 @@ jobs:
       ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
 
     steps:
+      # checkout ANTES de la composite: la action vive en este repo, sin el
+      # working tree en disco no se puede resolver.
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v3
+      # pnpm + node + Supabase local + roles + migraciones + env + browsers.
+      # Extraído a composite para que visual-baseline.yml levante EXACTAMENTE el
+      # mismo stack sin mantener dos copias que se desincronizan.
+      # Solo chromium: webkit/firefox/mobile-safari corren local vía
+      # `pnpm test:e2e:cross-browser`.
+      - uses: ./.github/actions/e2e-stack
         with:
-          version: 10.34.5
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install psql client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      # Versión pinneada a la resuelta en pnpm-lock.yaml (devDependency `supabase`)
-      # para no depender de "latest" en un paso crítico de CI.
-      - uses: supabase/setup-cli@v1
-        with:
-          version: 1.226.4
-
-      # supabase/migrations/ (espejo de src/shared/db/migrations/, ver
-      # db:sync-supabase) se auto-aplica en el primer `start` sobre una DB
-      # fresca — y rompe en 008_revokes.sql porque el rol turnogol_app todavía
-      # no existe (lo crea el paso "Create roles" de más abajo, después de
-      # start). Se saca del paso momentáneamente para que `start` solo levante
-      # el stack de Supabase (Postgres + GoTrue + Kong + Realtime + Inbucket)
-      # sin tocar el schema de la app; "Apply migrations" sigue aplicando
-      # src/shared/db/migrations/0*.sql a mano vía psql, igual que el job de
-      # integración.
-      - name: Start Supabase local stack
-        # Reintento: docker en el runner a veces falla el bind del puerto con
-        # "address already in use" por un contenedor a medio crear (visto en un
-        # run real). `supabase stop --no-backup` limpia los residuos y se
-        # intenta de nuevo una vez.
-        run: |
-          mv supabase/migrations supabase/migrations.disabled
-          start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector; }
-          if ! start_stack; then
-            echo "::warning::supabase start falló — limpiando residuos y reintentando"
-            supabase stop --no-backup || true
-            docker ps -aq --filter name=supabase | xargs -r docker rm -f || true
-            start_stack
-          fi
-          mv supabase/migrations.disabled supabase/migrations
-
-      - name: Create roles required by 008_revokes.sql
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-          DO $$
-          BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'turnogol_app') THEN
-              CREATE ROLE turnogol_app NOLOGIN;
-            END IF;
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-              CREATE ROLE authenticated NOLOGIN;
-            END IF;
-          END $$;
-          SQL
-
-      - name: Apply migrations
-        env:
-          PGPASSWORD: postgres
-        run: |
-          for f in src/shared/db/migrations/0*.sql; do
-            echo ">>> $f"
-            psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
-          done
-
-      # Las keys demo del CLI local son fijas (mismo JWT_SECRET default en
-      # supabase/config.toml), pero se leen del stack recién levantado en vez
-      # de hardcodearlas: `--override-name` las mapea directo a los nombres que
-      # espera la app (src/shared/env.ts) y se agregan a $GITHUB_ENV para que
-      # los pasos siguientes (Playwright: globalSetup + webServer `pnpm dev`,
-      # que mergea su env con el del proceso padre) las hereden.
-      - name: Export Supabase local env
-        run: |
-          supabase status -o env \
-            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
-            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
-            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
-            | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' \
-            | sed 's/"//g' >> "$GITHUB_ENV"
-
-      - name: Install Playwright browsers
-        # Only chromium is installed in CI. Projects webkit/firefox/mobile-safari
-        # run locally via `pnpm test:e2e:cross-browser` or in a future nightly job.
-        run: npx playwright install --with-deps chromium
+          browsers: chromium
 
       - name: E2E tests (chromium, solo @critical)
         # El runner estándar (2 cores) no banca las 3 suites completas de
@@ -254,9 +190,29 @@ jobs:
         # NODE_ENV=production (computeMpMockEnabled, mock-mp.ts).
         run: pnpm exec playwright test --project chromium --grep @critical --reporter=github
 
+      # Va como STEP de este job y no como job aparte: el stack (Supabase +
+      # migraciones + browsers) cuesta ~8 min y acá ya está pago. Un job propio
+      # sumaría ~9 min de minutos facturados para ahorrar ~70s de wall clock.
+      #
+      # ADVISORY: `continue-on-error` desde el día 1. Se saca después de 10 PRs
+      # consecutivos sin una sola falsa alarma. Si a las 6 semanas no llegó a 10
+      # seguidos, la conclusión NO es aflojar el umbral: se borra la pieza.
+      # Ver docs/testing/VISUAL_REGRESSION.md.
+      #
+      # Si falla con "snapshot doesn't exist", las baselines no están
+      # commiteadas: correr el workflow `visual-baseline.yml`.
+      - name: Regresión visual (ADVISORY — no bloquea)
+        continue-on-error: true
+        run: |
+          pnpm exec playwright test \
+            --project visual --project visual-mobile \
+            --reporter=github
+
       - name: Upload test results
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-results
           path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

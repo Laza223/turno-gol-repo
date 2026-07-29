@@ -42,6 +42,10 @@
     "node_modules",
     "ui-ux-pro-max-skill",
     ".worktrees",
-    "TurnoGol-audit-f02"
+    "TurnoGol-audit-f02",
+    // Fixtures de las reglas de Semgrep: contienen violaciones a propósito y no
+    // son parte del programa. El `include` de arriba es `**/*.ts` desde la raíz,
+    // así que sin esta línea tsc los compila.
+    ".semgrep"
   ]
 }

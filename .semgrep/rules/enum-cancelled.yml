@@ -1,0 +1,36 @@
+rules:
+  - id: turnogol-enum-cancelled-doble-l
+    languages: [ts]
+    severity: ERROR
+    message: |
+      Los ENUMs de TurnoGol usan `canceled` (americano, UNA L). Nunca `cancelled`.
+      Ver src/shared/db/migrations/002_enums.sql y CLAUDE.md § "Convenciones
+      críticas de schema".
+
+      Un 'cancelled' acá NO falla el typecheck si el tipo es string: explota en
+      runtime contra el enum de Postgres, o peor, matchea nada y el WHERE filtra
+      cero filas en silencio.
+
+      Aplica igual a las columnas: canceled_at / canceled_by / canceled_reason.
+    metadata:
+      category: correctness
+      confidence: HIGH
+      turnogol-invariant: schema-naming
+    patterns:
+      - pattern-either:
+          # Pattern AST: matchea el STRING LITERAL 'cancelled'. NO matchea el
+          # identificador `let cancelled = false` (el patrón de cleanup de
+          # useEffect), que es el 90% de las apariciones de la palabra en el
+          # repo. Eso es exactamente lo que un `grep -i cancelled` no sabe hacer.
+          - pattern: '"cancelled"'
+          - pattern-regex: '\bcancelled_(at|by|reason)\b|\bcancelled(At|By|Reason)\b'
+    paths:
+      include:
+        - 'src/**/*.ts'
+        - 'src/**/*.tsx'
+      exclude:
+        # MercadoPago usa 'cancelled' (doble L) en SU API. Es vocabulario ajeno
+        # que entra por el borde: traducirlo es responsabilidad de estos módulos,
+        # no un error de naming nuestro.
+        - 'src/modules/payments/**'
+        - 'src/modules/billing/**'

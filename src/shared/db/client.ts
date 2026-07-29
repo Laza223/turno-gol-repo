@@ -261,6 +261,11 @@ async function applyContext(tx: TransactionSql, opts: ContextOpts): Promise<void
     await tx`SELECT set_config('app.current_system_admin_id', ${opts.systemAdminId}, true)`
   }
   if (opts.jwtClaims) {
+    // `request.jwt.claims` es un GUC de TEXTO, no una columna jsonb: Postgres
+    // espera acá un string y lo parsea al leerlo con current_setting(). El
+    // stringify es obligatorio, no la doble serialización que la regla persigue.
+    // Único uso legítimo del repo.
+    // nosemgrep: turnogol-jsonb-stringify-en-sql
     await tx`SELECT set_config('request.jwt.claims', ${JSON.stringify(opts.jwtClaims)}, true)`
   }
 }

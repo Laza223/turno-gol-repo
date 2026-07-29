@@ -1,0 +1,90 @@
+name: Semgrep
+
+# Análisis estático de los invariantes de dominio de TurnoGol (aislamiento
+# multi-tenant, enums, plata, JSONB) más tres packs del registry.
+#
+# Job propio y NO está en el `needs:` de e2e-tests a propósito: corre en paralelo
+# con `integration-and-isolation` (4m25s), así que suma ~0s de wall clock al PR.
+#
+# FASE 1 — ADVISORY. Nada acá bloquea todavía, salvo el test de las propias
+# reglas. Pasa a bloqueante (solo las ERROR propias) después de 2 semanas
+# consecutivas sin un falso positivo. Ver .semgrep/README.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semgrep-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  semgrep:
+    name: Semgrep (invariantes TurnoGol)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      # Misma imagen pinneada que `pnpm semgrep` local (scripts/semgrep.mjs):
+      # si pasa en tu máquina, pasa acá. Trae su propio runtime, no hace falta
+      # node ni pip.
+      image: semgrep/semgrep:1.145.0
+
+    steps:
+      # fetch-depth: 0 — `--baseline-commit` necesita el merge-base presente
+      # localmente para poder escanear las dos puntas.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Adentro del container, git ve el workdir como de otro usuario y aborta
+      # con "detected dubious ownership".
+      - name: Marcar el workspace como seguro para git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # BLOQUEANTE desde el día 1: una regla rota es un bug de tooling, no un
+      # hallazgo de código. Cuesta ~3s.
+      - name: Test de las reglas propias
+        run: semgrep --test --config .semgrep/rules .semgrep/rules
+
+      # En PRs, --baseline-commit deja fuera todo lo preexistente: solo se
+      # reporta lo que el PR introduce. En push a main va el scan completo, que
+      # sirve de termómetro de deuda (advisory para siempre).
+      - name: Scan (ADVISORY — no bloquea)
+        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config .semgrep/rules \
+            --config p/nextjs \
+            --config p/github-actions \
+            --config p/docker \
+            --metrics=off \
+            --disable-version-check \
+            --sarif --output /tmp/semgrep.sarif \
+            ${{ github.event_name == 'pull_request' && format('--baseline-commit={0}', github.event.pull_request.base.sha) || '' }}
+
+      # Segunda pasada en texto: el SARIF es para la herramienta, esto es para
+      # que se lea en el log del job sin bajarse un artifact.
+      - name: Reporte legible
+        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config .semgrep/rules \
+            --config p/nextjs \
+            --config p/github-actions \
+            --config p/docker \
+            --metrics=off \
+            --disable-version-check \
+            --text \
+            ${{ github.event_name == 'pull_request' && format('--baseline-commit={0}', github.event.pull_request.base.sha) || '' }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-sarif
+          path: /tmp/semgrep.sarif
+          retention-days: 7
+          if-no-files-found: ignore

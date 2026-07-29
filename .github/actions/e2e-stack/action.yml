@@ -1,0 +1,106 @@
+name: 'Stack E2E'
+description: >
+  Levanta todo lo que necesita un run de Playwright: pnpm + node, el stack local
+  de Supabase (Postgres + GoTrue + Kong + Realtime), los roles, las migraciones,
+  el env exportado a $GITHUB_ENV y los browsers.
+
+  OJO: NO hace checkout. La action vive adentro del repo, así que el caller tiene
+  que haber hecho `actions/checkout` antes de poder resolverla.
+
+  El caller también tiene que definir a nivel job:
+    DATABASE_URL, IMPERSONATION_COOKIE_SECRET, ENCRYPTION_KEY
+
+inputs:
+  browsers:
+    description: 'Browsers de Playwright a instalar'
+    required: false
+    default: 'chromium'
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 10.34.5
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Install psql client
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+    # Pinneada a la versión resuelta en pnpm-lock.yaml (devDependency `supabase`)
+    # para no depender de "latest" en un paso crítico.
+    - uses: supabase/setup-cli@v1
+      with:
+        version: 1.226.4
+
+    # supabase/migrations/ (espejo de src/shared/db/migrations/) se auto-aplica
+    # en el primer `start` sobre una DB fresca — y rompe en 008_revokes.sql
+    # porque el rol turnogol_app todavía no existe. Se saca del paso para que
+    # `start` levante solo el stack; las migraciones se aplican a mano abajo.
+    - name: Start Supabase local stack
+      shell: bash
+      # Reintento: docker en el runner a veces falla el bind del puerto con
+      # "address already in use" por un contenedor a medio crear.
+      run: |
+        mv supabase/migrations supabase/migrations.disabled
+        start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector; }
+        if ! start_stack; then
+          echo "::warning::supabase start falló — limpiando residuos y reintentando"
+          supabase stop --no-backup || true
+          docker ps -aq --filter name=supabase | xargs -r docker rm -f || true
+          start_stack
+        fi
+        mv supabase/migrations.disabled supabase/migrations
+
+    - name: Create roles required by 008_revokes.sql
+      shell: bash
+      env:
+        PGPASSWORD: postgres
+      run: |
+        psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'turnogol_app') THEN
+            CREATE ROLE turnogol_app NOLOGIN;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+            CREATE ROLE authenticated NOLOGIN;
+          END IF;
+        END $$;
+        SQL
+
+    - name: Apply migrations
+      shell: bash
+      env:
+        PGPASSWORD: postgres
+      run: |
+        for f in src/shared/db/migrations/0*.sql; do
+          echo ">>> $f"
+          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
+        done
+
+    # Las keys demo del CLI local son fijas, pero se leen del stack recién
+    # levantado en vez de hardcodearlas. Van a $GITHUB_ENV para que los pasos
+    # siguientes (globalSetup de Playwright + webServer `pnpm dev`) las hereden.
+    - name: Export Supabase local env
+      shell: bash
+      run: |
+        supabase status -o env \
+          --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+          --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+          --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+          | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' \
+          | sed 's/"//g' >> "$GITHUB_ENV"
+
+    - name: Install Playwright browsers
+      shell: bash
+      run: npx playwright install --with-deps ${{ inputs.browsers }}

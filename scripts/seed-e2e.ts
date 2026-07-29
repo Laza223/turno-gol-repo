@@ -78,6 +78,19 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
+  // Torneos (migrs. 062/064/065/066): hijos antes que padres, y TODO el bloque
+  // antes de `courts` — tournament_matches.court_id es NO ACTION, así que un
+  // partido residual bloquea el DELETE de la cancha con
+  // "violates foreign key constraint tournament_matches_court_id_fkey".
+  // Misma clase que el ledger de cantina de arriba y que el wipe de retención.
+  // OJO: en CI no se nota (la DB nace vacía en cada run); esto rompe SOLO en una
+  // DB local que ya corrió specs de torneos.
+  await sql`DELETE FROM tournament_match_events WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM tournament_matches WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM tournament_team_players WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM tournament_teams WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM tournament_stages WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM tournaments WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM courts WHERE tenant_id = ${E2E.tenantId}`
@@ -96,6 +109,13 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
+  // Ver la nota del bloque equivalente del tenant principal.
+  await sql`DELETE FROM tournament_match_events WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tournament_matches WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tournament_team_players WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tournament_teams WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tournament_stages WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM tournaments WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_player_bans WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM abonados WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM courts WHERE tenant_id = ${E2E.depositTenantId}`

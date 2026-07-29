@@ -746,7 +746,7 @@ describe('SaaS Billing Lifecycle', () => {
 
 | Cosa que NO testeamos | Por qué |
 |---|---|
-| **UI pixel-perfect** | Los tests de snapshot visual son frágiles. Un cambio de padding rompe 20 tests sin bug real. Revisión visual manual. |
+| **UI pixel-perfect a nivel componente** | Los tests de snapshot **por componente** son frágiles: un cambio de padding rompe 20 tests sin bug real. Para eso está la revisión visual manual y Storybook. **Excepción acotada**: sí existe un canario de 8 fotos de **pantalla completa** (`tests/e2e/visual/`, projects `visual` y `visual-mobile`) con datos y fecha congelados, que ataja regresiones de tokens, fuentes y layout de shell. Corre advisory y tiene condición de muerte escrita — ver `docs/testing/VISUAL_REGRESSION.md` y `docs/decisions/2026-07-29-regresion-visual.md`. |
 | **shadcn/ui components internos** | Los testean ellos. Si el `<Dialog>` se abre, funciona. |
 | **Edge cases internos de MercadoPago** | MP testea su checkout. Nosotros testeamos que nuestro webhook handler procesa correctamente lo que MP nos envía. |
 | **Edge cases internos de Supabase Auth** | Supabase testea que el magic link llega. Nosotros testeamos que al verificar el token, nuestro sistema genera el JWT correcto. |

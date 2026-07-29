@@ -58,6 +58,12 @@ const securityHeaders = [
 // lint` y la integración de ESLint en el build, así que la key no existe más en
 // NextConfig. El lint sigue corriendo aparte (`pnpm lint`) y en CI.
 const nextConfig: NextConfig = {
+  // El indicador de devtools de Next se renderiza EN PANTALLA en `next dev`, y
+  // los e2e corren contra `pnpm dev` (no contra un build). Sin apagarlo entra en
+  // cada screenshot de regresión visual y ata las baselines a la versión de
+  // Next: un bump de patch las invalida todas sin que cambie una línea nuestra.
+  // Fuera de E2E queda como está — es útil para desarrollar.
+  devIndicators: process.env.NEXT_PUBLIC_E2E === '1' ? false : undefined,
   // Sigue bajo `experimental` en Next 16 (verificado contra ExperimentalConfig en
   // next/dist/server/config-shared.d.ts), no se promovió a top-level.
   experimental: { optimizePackageImports: ['lucide-react', 'date-fns'] },

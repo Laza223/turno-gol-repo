@@ -99,9 +99,20 @@ las 8 baselines de `0c09296` (mismo `pnpm dev`, misma sesión):
 | `visual-mobile/perfil-publico-mobile.png` | 0 | la grilla de disponibilidad queda abajo del fold de 851 px, así que su mask no entra al cuadro |
 
 2 de 6 fotos de escritorio con caja y 4 sin: eso es exactamente la moneda al aire
-que movía el gate. Después del fix, las 6 fotos que no enmascaran nada tienen que
-dar **0 pixeles `#FF00FF`** — es un invariante estructural, no una convención: sin
-`mask` en la llamada, Playwright no tiene con qué pintar.
+que movía el gate.
+
+**Después del fix** (baselines del run 30497324106): las 7 fotos que no enmascaran
+nada dan **0 pixeles `#FF00FF`**, y `perfil-publico.png` conserva sus 83820 px en el
+mismo bbox de siempre. Es un invariante estructural, no una convención: sin `mask`
+en la llamada, Playwright no tiene con qué pintar. `landing.png` y
+`admin-settings-reservas.png` cambiaron 0.615% cada una, en bbox
+`[1,836..139,899]` — el pill del overlay más su sombra, más grande que los 101×36
+de la caja magenta que lo tapaba. Las otras 6 quedaron byte-idénticas.
+
+> Si volvés a medir esto, el contador de `#FF00FF` sirve para el mask, no para todo:
+> un diff exacto byte a byte NO es el diff que mira el gate. `threshold: 0.2` es
+> perceptual (YIQ), así que hay fotos byte-distintas que la comparación considera
+> iguales — ver la nota del DPR 2 más abajo.
 
 **Por qué `devIndicators: false` no lo evitaba.** Porque no apaga el overlay,
 apaga el *indicador*. Verificado contra Next 16.2.11:
@@ -232,6 +243,21 @@ git commit -m "test(visual): baselines linux"
 > síntoma es traicionero — el artifact baja byte-idéntico al que ya tenías y parece
 > que "no cambió nada". Con `=all`, Playwright captura sin comparar y reescribe si
 > los bytes difieren.
+
+> **Las fotos de DPR 2 vuelven "cambiadas" casi siempre, y casi siempre es ruido.**
+> `=all` reescribe cuando los **bytes** difieren, pero el gate compara con
+> `threshold: 0.2` en YIQ — que es **perceptual**. En los projects mobile
+> (`deviceScaleFactor: 2` + `scale: 'css'`, o sea captura a 786×1702 y downscale a
+> 393×851) el anti-aliasing del texto se corre un subpixel entre corridas: medido en
+> `perfil-publico-mobile.png`, **9.14% de los pixeles byte-distintos** (delta máximo
+> 218, concentrado en las filas de los glifos) y sin embargo la comparación de
+> Playwright **pasa** — se comprobó corriendo el mismo commit en modo `changed`, que
+> dejó la PNG intacta justamente porque no falló.
+>
+> Criterio: en las fotos mobile, **no bendigas por byte, bendecí por estructura.** Si
+> las dos imágenes tienen el mismo layout, el mismo texto y las mismas posiciones,
+> dejá la baseline vieja: re-bendecirla mete miles de pixeles de churn al diff sin
+> cambiar nada de lo que el gate mira. Bendecila solo si el cambio se ve.
 
 **Cuando un diff es legítimo** (cambiaste un padding a propósito): exactamente los
 mismos 5 pasos. Con `=all` se reescribe toda PNG cuyos bytes cambien; el colador

@@ -97,7 +97,7 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 
 ### Tests y CI
 - `tests/unit/` (~200 archivos), `tests/integration/` (~90, DB real: aislamiento, carreras, idempotencia de webhooks), `tests/e2e/` (`critical-flows/`, `a11y/`, `mobile/`, `cross-browser/`).
-- CI (4 jobs): lint+types → unit → integration+isolation (BLOQUEANTE; postgres:15 en 54322, aplica `0*.sql` vía psql) → e2e (solo PRs a main). Deploy automático a Vercel tras CI verde en main.
+- CI (5 jobs): lint+types → unit → integration+isolation (BLOQUEANTE; postgres:15 en 54322, aplica `0*.sql` vía psql) → e2e (solo PRs a main) + `visual-regression` (regresión visual, solo PRs a main, `continue-on-error` a nivel job — corre en paralelo con integración/e2e porque solo depende de lint+unit). Deploy automático a Vercel tras CI verde en main. OJO: con `continue-on-error` GitHub pinta el job VERDE aunque los tests fallen adentro — el color del check de regresión visual no prueba nada, hay que leer el log (ver `docs/testing/VISUAL_REGRESSION.md`).
 
 ## Reglas críticas
 - TypeScript strict, nunca `any`

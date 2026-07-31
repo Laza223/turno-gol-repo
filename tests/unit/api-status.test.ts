@@ -27,6 +27,7 @@ function workerPoolSano() {
 beforeEach(() => {
   vi.clearAllMocks()
   workerPoolSano()
+  process.env.ENCRYPTION_KEY = 'a'.repeat(64)
   process.env.MP_CLIENT_ID = 'set'
   process.env.MP_CLIENT_SECRET = 'set'
   process.env.RESEND_API_KEY = 'set'
@@ -228,5 +229,89 @@ describe('GET /api/status', () => {
     const consulta = (sqlSpy.mock.calls[0]?.[0] as string[]).join(' ')
     expect(consulta).toMatch(/rolbypassrls/)
     expect(consulta).toMatch(/rolsuper/)
+  })
+
+  // ─── encryption-key ───────────────────────────────────────────────────────
+  // Presencia no alcanza: en prod la variable ESTABA, con el formato mal, y el
+  // único lugar donde se notaba era /api/mp/callback — el complejo autorizaba
+  // en MercadoPago y caía en una pantalla de error.
+
+  it.each([
+    ['ausente', undefined],
+    ['32 chars', 'a'.repeat(32)],
+    ['65 hex', 'a'.repeat(65)],
+    ['64 chars no-hex', 'z'.repeat(64)],
+  ])('503 cuando ENCRYPTION_KEY es %s', async (_caso, key) => {
+    dbYBossSanos()
+    if (key === undefined) delete process.env.ENCRYPTION_KEY
+    else process.env.ENCRYPTION_KEY = key
+
+    const res = await GET()
+    expect(res.status).toBe(503)
+    const body = await res.json()
+    const check = body.checks.find((c: { name: string }) => c.name === 'encryption-key')
+    expect(check.status).toBe('down')
+    // Respuesta pública: ni la clave ni su longitud salen.
+    expect(JSON.stringify(check)).not.toMatch(/aaaa|zzzz|\b32\b|\b65\b/)
+  })
+
+  it('encryption-key ok con 64 hex', async () => {
+    dbYBossSanos()
+    process.env.ENCRYPTION_KEY = 'A1B2C3D4E5F6'.repeat(5) + 'A1B2'
+
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const check = body.checks.find((c: { name: string }) => c.name === 'encryption-key')
+    expect(check.status).toBe('ok')
+  })
+
+  // ─── storage (R2) ─────────────────────────────────────────────────────────
+  // A diferencia de encryption-key, NO tumba el semáforo: sin R2 no se suben
+  // imágenes, pero reservas, caja y cobros andan igual.
+
+  it('storage sin configurar: nota visible, pero sigue 200', async () => {
+    dbYBossSanos()
+    for (const k of ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET', 'R2_PUBLIC_BASE_URL']) {
+      delete process.env[k]
+    }
+
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const check = body.checks.find((c: { name: string }) => c.name === 'storage')
+    expect(check.status).toBe('ok')
+    expect(check.note).toMatch(/not configured/i)
+  })
+
+  it('storage configurado: sin nota', async () => {
+    dbYBossSanos()
+    process.env.R2_ACCOUNT_ID = 'acc'
+    process.env.R2_ACCESS_KEY_ID = 'key'
+    process.env.R2_SECRET_ACCESS_KEY = 'secret'
+    process.env.R2_BUCKET = 'bucket'
+    process.env.R2_PUBLIC_BASE_URL = 'https://media.example.com'
+
+    const res = await GET()
+    const body = await res.json()
+    const check = body.checks.find((c: { name: string }) => c.name === 'storage')
+    expect(check.status).toBe('ok')
+    expect(check.note).toBeUndefined()
+  })
+
+  it('falta UNA sola credencial de R2 y ya cuenta como no configurado', async () => {
+    // isR2Configured() en r2.ts exige las 5; este check tiene que decir lo
+    // mismo, o el payload diria "configurado" mientras el upload falla.
+    dbYBossSanos()
+    process.env.R2_ACCOUNT_ID = 'acc'
+    process.env.R2_ACCESS_KEY_ID = 'key'
+    process.env.R2_SECRET_ACCESS_KEY = 'secret'
+    process.env.R2_BUCKET = 'bucket'
+    delete process.env.R2_PUBLIC_BASE_URL
+
+    const res = await GET()
+    const body = await res.json()
+    const check = body.checks.find((c: { name: string }) => c.name === 'storage')
+    expect(check.note).toMatch(/not configured/i)
   })
 })

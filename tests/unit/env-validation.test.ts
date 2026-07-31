@@ -9,7 +9,7 @@ describe('validateServerEnv', () => {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: 'a'.repeat(40),
     SUPABASE_SERVICE_ROLE_KEY: 'a'.repeat(40),
     IMPERSONATION_COOKIE_SECRET: 'a'.repeat(32),
-    ENCRYPTION_KEY: 'a'.repeat(32),
+    ENCRYPTION_KEY: 'a'.repeat(64),
     MP_CLIENT_ID: 'mp-id',
     MP_CLIENT_SECRET: 'mp-secret',
     MP_WEBHOOK_SECRET: 'a'.repeat(32),
@@ -29,6 +29,26 @@ describe('validateServerEnv', () => {
 
   it('passes with all required vars', () => {
     expect(() => validateServerEnv({ ...baseValid, NODE_ENV: 'production' })).not.toThrow()
+  })
+
+  // ENCRYPTION_KEY: 64 hex EXACTOS. El esquema pedía `min(32)`, así que una
+  // clave con el formato equivocado lo pasaba entero y recién moría en runtime,
+  // dentro del callback de OAuth de MercadoPago. Caso real en prod 2026-07-31.
+  it.each([
+    ['32 chars (el largo que el esquema viejo aceptaba)', 'a'.repeat(32)],
+    ['65 hex (uno de más)', 'a'.repeat(65)],
+    ['64 chars con un no-hex adentro', 'z' + 'a'.repeat(63)],
+  ])('rechaza ENCRYPTION_KEY de %s', (_caso, key) => {
+    expect(() => validateServerEnv({ ...baseValid, ENCRYPTION_KEY: key })).toThrow(
+      /ENCRYPTION_KEY/,
+    )
+  })
+
+  it('acepta ENCRYPTION_KEY de 64 hex, en mayúsculas o minúsculas', () => {
+    for (const key of ['a1b2c3d4e5f6'.repeat(5) + 'a1b2', 'A1B2C3D4E5F6'.repeat(5) + 'A1B2']) {
+      expect(key).toHaveLength(64)
+      expect(() => validateServerEnv({ ...baseValid, ENCRYPTION_KEY: key })).not.toThrow()
+    }
   })
 
   it('fails when IMPERSONATION_COOKIE_SECRET < 16', () => {

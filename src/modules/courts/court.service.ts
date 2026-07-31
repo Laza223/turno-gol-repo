@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { courts, tenantSubscriptions, plans } from '@/shared/db/schema'
+import { courts, tenantSubscriptions, plans, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { CourtRow, CreateCourtInput, UpdateCourtInput, PricingRule, CourtPricingData } from './court.types'
@@ -114,6 +114,22 @@ export async function toggleStatus(
   return rows[0] ? rowToCourtRow(rows[0]) : null
 }
 
+/**
+ * Cuenta las canchas del complejo y devuelve el techo que le impone su plan.
+ * `maxCourts: null` = sin techo.
+ *
+ * **Durante el trial NO hay techo.** `createTenantWithTrial` arranca a todos en
+ * el plan `predio` (max_courts=2), así que sin esta excepción un complejo con 3+
+ * canchas se choca contra el gate en el paso 3 del wizard — y el upgrade
+ * self-service está cerrado (`saas_upgrade` sin fila en `feature_flags` → 501),
+ * o sea que queda trabado SIN SALIDA in-app: la única puerta es que un
+ * SuperAdmin le cambie el plan a mano. Con registro público eso no escala y el
+ * complejo se va sin que nos enteremos.
+ *
+ * El techo vuelve a aplicar apenas el complejo pasa a un estado pago: la
+ * decisión de a qué plan entra la toma al suscribirse, ya sabiendo cuántas
+ * canchas cargó.
+ */
 export async function getCourtCountAndLimit(
   tenantId: string,
   tx: DbTx,
@@ -130,9 +146,17 @@ export async function getCourtCountAndLimit(
     .where(eq(tenantSubscriptions.tenantId, tenantId))
     .limit(1)
 
+  const [tenantRow] = await tx
+    .select({ status: tenants.status })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1)
+
+  const enTrial = tenantRow?.status === 'trialing'
+
   return {
     count: Number(countRow?.count ?? 0),
-    maxCourts: subRows[0]?.maxCourts ?? null,
+    maxCourts: enTrial ? null : (subRows[0]?.maxCourts ?? null),
     planSlug: subRows[0]?.planSlug ?? null,
   }
 }

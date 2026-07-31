@@ -52,6 +52,7 @@
     "seed:system-admin": "tsx scripts/seed-system-admin.ts",
     "stress:bookings": "tsx scripts/stress-test.ts",
     "launch:check": "tsx scripts/launch-check.ts",
+    "sentry:issues": "tsx scripts/sentry-issues.ts",
     "staging:check": "tsx scripts/staging-check.ts",
     "staging:seed": "tsx scripts/seed-staging.ts",
     "webhook:replay": "tsx scripts/replay-mp-webhook.ts",

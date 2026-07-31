@@ -27,3 +27,27 @@ export const NO_SHOW_STRIKE_WINDOW_DAYS = 90
  * de la ventana de reincidencia (`NO_SHOW_STRIKE_WINDOW_DAYS`).
  */
 export const NO_SHOW_SOFTBAN_DAYS = 14
+
+/**
+ * Días de prueba gratuita. Fijado en `createTenantWithTrial`; se declara acá
+ * para que los avisos de abajo se lean contra el mismo número.
+ */
+export const TRIAL_DAYS = 30
+
+/**
+ * Umbrales (en días restantes) a los que se avisa que la prueba se termina.
+ * De mayor a menor: el de 7 días da margen para decidir y cargar la tarjeta,
+ * el de 1 es el último llamado.
+ *
+ * Antes no se avisaba NADA: el complejo pasaba a `blocked` de un día para el
+ * otro. El cron corre una vez por día, así que un umbral se dispara cuando los
+ * días restantes bajan de él, no en un instante exacto — y
+ * `tenants.trial_warning_days_sent` (migr. 068) impide repetirlo.
+ *
+ * Ordenados ASCENDENTE porque el worker elige el umbral más CHICO que todavía
+ * aplica, no el primero de la lista. Con `[7, 1]` y un complejo al que le
+ * quedan 12 horas, recorrer en orden daría 7 (12 h ≤ 7 días es verdadero) y le
+ * mandaría "te quedan 7 días" marcándolo como ya avisado — nunca recibiría el
+ * último llamado. Ascendente, el primero que matchea es el correcto.
+ */
+export const TRIAL_ENDING_WARNING_DAYS = [1, 7] as const

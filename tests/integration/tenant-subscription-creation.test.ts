@@ -64,4 +64,42 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
     expect(periodStart.getTime()).toBeLessThanOrEqual(Date.now())
     expect(periodStart.getTime()).toBeGreaterThan(Date.now() - 60_000)
   })
+
+  it('encola el mail de bienvenida dirigido al dueño, con su nombre de pila', async () => {
+    // La plantilla `trial_welcome` existía desde siempre y nadie la encolaba.
+    // El destinatario se resuelve leyendo `tenant_staff_members`, así que este
+    // test también fija el ORDEN de los inserts: si la bienvenida se encolara
+    // antes de crear la fila de staff, no le llegaría a nadie y en silencio.
+    const sql = getSql()
+    const staff = await createTestStaffUser(sql)
+    const staffRows = await sql<{ first_name: string }[]>`
+      SELECT first_name FROM staff_users WHERE id = ${staff.id}
+    `
+
+    const tenant = await createTenantWithTrial({
+      name: 'Complejo Bienvenida',
+      address: 'Calle 456',
+      city: 'CABA',
+      province: 'Buenos Aires',
+      phone: '1122334455',
+      email: 'bienvenida@test.local',
+      staffUserId: staff.id,
+    })
+
+    const rows = await sql<
+      { recipient_type: string; recipient_id: string; status: string; content: Record<string, unknown> }[]
+    >`
+      SELECT recipient_type, recipient_id, status, content
+      FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'trial_welcome'
+    `
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.recipient_type).toBe('tenant_owner')
+    expect(rows[0]!.recipient_id).toBe(staff.id)
+    // 'queued' es lo que barre el worker send-email cada minuto; no hace falta
+    // un dispatch explícito post-commit.
+    expect(rows[0]!.status).toBe('queued')
+    expect(rows[0]!.content.tenantName).toBe('Complejo Bienvenida')
+    expect(rows[0]!.content.ownerName).toBe(staffRows[0]!.first_name)
+  })
 })

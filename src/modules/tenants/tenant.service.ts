@@ -1,6 +1,8 @@
-import { and, eq, like, or } from 'drizzle-orm'
+import { and, eq, like, or, sql } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
+import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { TRIAL_DAYS } from '@/shared/constants'
 import { generateSlug, RESERVED_SLUGS } from './tenant.utils'
 import type {
   CreateTenantInput,
@@ -56,7 +58,7 @@ export async function createTenantWithTrial(
 ): Promise<{ id: string; slug: string }> {
   const db = getDb()
   const slug = await generateUniqueSlug(input.name)
-  const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
 
   const [tenant] = await db
     .insert(tenants)
@@ -104,6 +106,38 @@ export async function createTenantWithTrial(
       currentPeriodStart: new Date(),
       currentPeriodEnd: trialEndsAt,
     })
+
+    // Bienvenida. Va DESPUÉS del insert de tenant_staff_members a propósito:
+    // `enqueueTenantOwnerNotification` resuelve los destinatarios leyendo esa
+    // tabla, así que invertir el orden manda el mail a nadie, en silencio.
+    //
+    // Sin try/catch adentro de la transacción — es una clase de bug ya barrida
+    // en este repo (ver caja/actions.ts:107): tragarse el error dejaría el alta
+    // commiteada a medias. Acá encolar es un INSERT más; si falla, falló la DB
+    // y el alta entera tiene que abortar igual.
+    //
+    // No hace falta `dispatchEmail` post-commit: el worker send-email barre las
+    // notificaciones en `queued` cada minuto.
+    //
+    // El nombre sale de `staff_users` (tabla global, sin RLS) en vez de sumarlo
+    // a `CreateTenantInput`: ya está en la base y así no hay dos fuentes que
+    // puedan discrepar.
+    const ownerRows = (await tx.execute(
+      sql`SELECT first_name FROM staff_users WHERE id = ${input.staffUserId} LIMIT 1`,
+    )) as unknown as Array<{ first_name: string | null }>
+
+    await enqueueTenantOwnerNotification(
+      {
+        tenantId: tenant.id,
+        templateName: 'trial_welcome',
+        triggerEvent: 'tenant.created',
+        content: {
+          ownerName: ownerRows[0]?.first_name ?? 'Hola',
+          tenantName: input.name,
+        },
+      },
+      tx,
+    )
   })
 
   return tenant

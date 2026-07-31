@@ -7,18 +7,18 @@
 
 **Relacionados**: `docs/spec/doc19_runbook.md` (runbook canónico), `docs/operations/LAUNCH.md` (checklist pre-launch), `turnogol-launch-addendum-dia0.md` (draft original de este ticket).
 
-**Evidencia de esta ventana**: registrar hallazgos, chequeos hechos y horarios en `docs/operations/RUNBOOK_LAUNCH.md` (crear el archivo si no existe — a la fecha de este documento no existe todavía). Cada bloque de revisión de la sección 1 debe dejar un registro ahí, aunque sea una línea tipo `[HH:MM] OK — sin novedades`.
+**Evidencia de esta ventana**: registrar hallazgos, chequeos hechos y horarios en `docs/launch/RUNBOOK_LAUNCH.md` (⚠️ ojo: este doc decía antes `docs/operations/RUNBOOK_LAUNCH.md`, que no existe — el runbook real vive en `docs/launch/`, no crear un duplicado). Cada bloque de revisión de la sección 1 debe dejar un registro ahí, aunque sea una línea tipo `[HH:MM] OK — sin novedades`.
 
 ---
 
 ## 0. Antes de arrancar el reloj
 
-- [ ] `docs/operations/LAUNCH.md` completo (todos los `- [ ]` tildados)
+- [ ] Fases F0 (SuperAdmin operativo), F1 (dashboards de Supabase Auth / Resend / MP), F2 (ensayo end-to-end en prod) y F5 (guion del día 1) del plan de go-live cerradas — ver `docs/launch/RUNBOOK_LAUNCH.md` §"Guion del día 1". **No** usar `docs/operations/LAUNCH.md` como gate: sus ~40 checkboxes están sin tildar pero varios ya se resolvieron en la realidad (Supabase Pro, páginas legales, pipeline de migraciones), así que tildarlo no prueba nada
 - [x] Riesgo aceptado explícitamente: **NO hay kill switch implementado en código** (`DISABLE_PUBLIC_BOOKING` / `DISABLE_MP_PAYMENTS` / `FORCE_MANUAL_CONFIRMATION` no existen en `src/` — ver §5.2). El único lever disponible ante un incidente es rollback de Vercel (§3) o un fix manual en DB. **Riesgo aceptado por: el Fundador** (ver `docs/launch/RISK_REGISTER.md` TG-P0-KILLSWITCH-01).
 - [ ] Accesos de doc19 §1.1 probados por la persona de guardia (Vercel, Supabase, Sentry, MP, Resend, UptimeRobot)
 - [ ] `equipo@turnogol.app` / grupo de emergencias con destinatarios correctos, no placeholders
 - [ ] Complejo(s) piloto avisados de que están en fase supervisada (para bajar expectativas si hay fricción)
-- [ ] `docs/operations/RUNBOOK_LAUNCH.md` creado con timestamp de "Hora 0" (momento del primer deploy a prod)
+- [ ] Bloque de bitácora de la ventana abierto en `docs/launch/RUNBOOK_LAUNCH.md` con el timestamp de "Hora 0" (momento del primer deploy a prod)
 
 ---
 

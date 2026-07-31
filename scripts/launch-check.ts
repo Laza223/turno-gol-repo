@@ -1,5 +1,10 @@
 import { config } from 'dotenv'
-config({ path: '.env.local' })
+// El archivo de env es configurable para poder auditar un ambiente REMOTO (prod)
+// sin tener que pisar `.env.local`:
+//   LAUNCH_CHECK_ENV_FILE=.env.production pnpm launch:check --probe-only
+// `override: true` hace que el archivo elegido gane sobre lo que ya haya en la
+// shell: un gate que mezcla mitad prod y mitad dev no verifica nada.
+config({ path: process.env.LAUNCH_CHECK_ENV_FILE ?? '.env.local', override: true })
 // .env.local sets NODE_ENV=development for the app's own runtime; that must
 // not leak into the execSync steps below (`pnpm build` needs Next.js to set
 // it to 'production' itself, otherwise it prerenders with a dev/prod chunk
@@ -12,6 +17,7 @@ import {
   e2eBypassDisabledCheck,
   mpMockModeDisabledCheck,
   webhookTestBypassSecretAbsentCheck,
+  selectSteps,
   REQUIRED_ENV,
 } from './launch-check.helpers'
 
@@ -359,8 +365,18 @@ const steps: Step[] = [
 ]
 
 async function main(): Promise<void> {
+  const probeOnly = process.argv.includes('--probe-only') || process.env.PROBE_ONLY === '1'
+  const selected = selectSteps(steps, probeOnly)
+  if (probeOnly) {
+    console.log(
+      `Modo probe-only: ${selected.length} sondas de ambiente, ` +
+        `${steps.length - selected.length} steps locales salteados ` +
+        `(env file: ${process.env.LAUNCH_CHECK_ENV_FILE ?? '.env.local'})\n`,
+    )
+  }
+
   const failed: string[] = []
-  for (const step of steps) {
+  for (const step of selected) {
     const t0 = Date.now()
     process.stdout.write(`▶ ${step.name}... `)
     try {

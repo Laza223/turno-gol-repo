@@ -120,11 +120,12 @@ export async function toggleStatus(
  *
  * **Durante el trial NO hay techo.** `createTenantWithTrial` arranca a todos en
  * el plan `predio` (max_courts=2), así que sin esta excepción un complejo con 3+
- * canchas se choca contra el gate en el paso 3 del wizard — y el upgrade
- * self-service está cerrado (`saas_upgrade` sin fila en `feature_flags` → 501),
- * o sea que queda trabado SIN SALIDA in-app: la única puerta es que un
- * SuperAdmin le cambie el plan a mano. Con registro público eso no escala y el
- * complejo se va sin que nos enteremos.
+ * canchas se choca contra el gate en el paso 3 del wizard, y en ese momento el
+ * upgrade self-service todavía devolvía 501: quedaba trabado SIN SALIDA in-app,
+ * con un SuperAdmin cambiándole el plan a mano como única puerta. Con registro
+ * público eso no escala y el complejo se va sin que nos enteremos. (El upgrade
+ * ya se abrió — migr. 067 — pero esta excepción sigue siendo la correcta: en el
+ * trial no se le cobra nada todavía.)
  *
  * El techo vuelve a aplicar apenas el complejo pasa a un estado pago: la
  * decisión de a qué plan entra la toma al suscribirse, ya sabiendo cuántas

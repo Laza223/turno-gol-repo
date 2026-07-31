@@ -26,6 +26,13 @@ export type MpWebhookJob = {
   eventType: string
   mpPaymentId: string
   rawPayload: unknown
+  /**
+   * `'saas'` cuando el pago pertenece a la cuenta MASTER de TurnoGol
+   * (suscripción o proraeo de upgrade) en vez de al MP del complejo. Viene del
+   * `&source=saas` que TurnoGol mismo pone en la `notification_url`
+   * (billing.service). Opcional: los webhooks de seña no lo traen.
+   */
+  source?: 'saas'
 }
 
 /**
@@ -85,8 +92,18 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     job.eventType === 'subscription_authorized_payment' ||
     job.eventType === 'subscription_preapproval'
 
+  // TG-P1-MP-02: el proraeo de un upgrade llega como `payment` — mismo tipo que
+  // una seña — pero su preferencia la creó la cuenta MASTER
+  // (`createSaasUpgradePreference` vía `getBillingGateway`). Sin este `source`,
+  // caía en el `else` y se consultaba con el token OAuth del complejo: MP no
+  // encuentra un pago de otra cuenta, el job falla y el upgrade nunca se aplica
+  // pese a estar cobrado. Peor todavía, un complejo que nunca conectó MP para
+  // señas ni siquiera llegaba hasta ahí — moría en el throw de abajo. Era el
+  // motivo por el que `/api/billing/upgrade` estaba gateado en 501.
+  const isMasterAccountEvent = isSubscriptionEvent || job.source === 'saas'
+
   let gateway: PaymentGateway
-  if (isSubscriptionEvent) {
+  if (isMasterAccountEvent) {
     gateway = getBillingGateway()
   } else {
     if (!tenant?.mpAccessToken) {
@@ -196,6 +213,19 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       throw new Error('mp-webhook: missing prefetched payment info for payment event')
     }
     const upgrade = parseSaasUpgradeRef(info.externalReference)
+
+    // El `source=saas` de la URL y el `external_reference` del pago tienen que
+    // contar la misma historia. No alcanza con confiar en la query: quien tenga
+    // el secreto del webhook podría mandar `source=saas` sobre una seña y
+    // hacerla resolver contra la cuenta master. Si no coinciden, se corta —
+    // pg-boss reintenta y el evento queda visible en vez de aplicar plata por
+    // la rama equivocada.
+    if ((job.source === 'saas') !== Boolean(upgrade)) {
+      throw new Error(
+        `webhook source mismatch: source=${job.source ?? 'none'} ref=${info.externalReference}`,
+      )
+    }
+
     if (upgrade) {
       // Cross-check: the webhook's claimed tenant (?tenant= query) MUST match the
       // tenant embedded in the payment's external_reference. A holder of

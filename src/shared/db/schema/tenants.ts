@@ -56,6 +56,12 @@ export const tenants = pgTable(
 
     status: tenantStatusEnum('status').notNull().default('trialing'),
     trialEndsAt: timestamp('trial_ends_at', { withTimezone: true, mode: 'date' }),
+    // Umbral en días del último aviso de fin de prueba enviado (el más chico).
+    // NULL = ninguno todavía. Es el gate de idempotencia del cron: el complejo
+    // sigue en `trialing` antes y después de avisarle, así que —a diferencia
+    // del sweep de dunning, donde la transición de estado ya evita el reenvío—
+    // sin esta columna recibiría el mismo mail todos los días (migr. 068).
+    trialWarningDaysSent: integer('trial_warning_days_sent'),
 
     settings: jsonb('settings').notNull().default(
       sql`'{

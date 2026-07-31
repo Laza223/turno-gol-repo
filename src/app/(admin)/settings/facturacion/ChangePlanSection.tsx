@@ -38,11 +38,20 @@ type ChangePlanSectionProps = {
 
 type Phase = 'idle' | 'loading' | 'error' | 'scheduled'
 
+/**
+ * `timeZone` explícito, no el del runtime. Este componente es `'use client'`
+ * pero igual se renderiza en el servidor, y ahí la zona es UTC (Vercel):
+ * un `currentPeriodEnd` de las 22:00 ART se vería como el día SIGUIENTE en el
+ * HTML del server y como el correcto tras hidratar. Además de la advertencia
+ * de hidratación, es una fecha de cobro — mostrarla corrida un día es peor que
+ * feo. Fijar ART hace que las dos pasadas rindan el mismo texto.
+ */
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'America/Argentina/Buenos_Aires',
   })
 }
 
@@ -76,10 +85,17 @@ export function ChangePlanSection({
           body: JSON.stringify({ targetPlanId: target.id }),
         },
       )
-      const parsed = (await res.json()) as {
-        data?: { checkoutUrl?: string; appliesAt?: string }
-        error?: { message?: string }
-      }
+      // `fetch` NO rechaza ante 4xx/5xx, así que el status se mira siempre y
+      // el body se parsea a la defensiva: un 500 puede devolver HTML (página
+      // de error del edge, no JSON) y `res.json()` tiraría, dejando al dueño
+      // con el error genérico del catch en vez de saber qué pasó.
+      const parsed = await res
+        .json()
+        .then(
+          (b) =>
+            b as { data?: { checkoutUrl?: string; appliesAt?: string }; error?: { message?: string } },
+        )
+        .catch(() => ({}) as { data?: undefined; error?: undefined })
 
       // Subir manda al checkout de MP a pagar el proraeo; el plan cambia
       // recién cuando el webhook confirma ese pago.
@@ -188,7 +204,9 @@ export function ChangePlanSection({
                     type="button"
                     onClick={() => handleChange(plan, direction)}
                     disabled={phase === 'loading'}
-                    className="group inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-card text-xs font-bold text-foreground transition-all duration-300 hover:bg-accent active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                    // Propiedades nombradas en vez de `transition-all`: el anillo
+                    // de foco tiene que aparecer al instante, no animarse.
+                    className="group inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-card text-xs font-bold text-foreground transition-[background-color,transform] duration-300 hover:bg-accent active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                   >
                     {busy
                       ? 'Procesando…'

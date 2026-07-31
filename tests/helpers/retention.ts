@@ -177,11 +177,16 @@ export async function setupTenant(
 
   // Seed every anonymizable PII / MP-credential field with a non-null value so
   // the worker's UPDATE has something to actually scrub.
+  //
+  // `mp_user_id` va derivado del id del complejo, no fijo: una cuenta de
+  // MercadoPago cobra para UN solo complejo (índice `uq_tenants_mp_user_id`,
+  // migr. 069) y este helper se llama varias veces por test. Con un valor
+  // constante, el segundo complejo choca con el primero.
   await sql`
     UPDATE tenants
     SET mp_access_token = ${'enc-token'},
         mp_refresh_token = ${'enc-refresh'},
-        mp_user_id = ${'mp-user-123'},
+        mp_user_id = ${`mp-user-${tenant.id}`},
         mp_public_key = ${'mp-pub-key'},
         description = ${'Complejo de prueba'},
         logo_url = ${'https://cdn.example/logo.png'},

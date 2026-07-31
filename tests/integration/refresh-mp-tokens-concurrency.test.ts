@@ -32,7 +32,11 @@ function installFetchMock(): void {
         JSON.stringify({
           access_token: `fresh-access-${seq}`,
           refresh_token: `fresh-refresh-${seq}`,
-          user_id: 12345,
+          // Distinto por llamada: el worker reescribe mp_user_id con lo que
+          // devuelve MP, y una cuenta de MercadoPago cobra para UN solo
+          // complejo (uq_tenants_mp_user_id, migr. 069). Con un valor fijo, el
+          // segundo complejo choca con el primero y se queda sin refrescar.
+          user_id: 12345 + seq,
           public_key: 'PK',
           expires_in: 21600,
         }),

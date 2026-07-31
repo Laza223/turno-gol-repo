@@ -92,6 +92,7 @@ export const tenant = (overrides: Partial<TenantRow> = {}): TenantRow => ({
   closedDates: [],
   closesNextDay: false,
   mpConnectedAt: daysFromNow(-180),
+  mpNickname: 'COMPLEJOFENIX',
   ...overrides,
 })
 
@@ -104,6 +105,7 @@ export const tenantTrialing = (): TenantRow =>
     status: 'trialing',
     trialEndsAt: daysFromNow(9),
     mpConnectedAt: null,
+    mpNickname: null,
     settings: tenantSettings({
       onboarding_step: 2,
       onboarding_completed: false,

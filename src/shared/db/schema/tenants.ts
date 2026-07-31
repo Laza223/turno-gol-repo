@@ -103,7 +103,14 @@ export const tenants = pgTable(
 
     mpAccessToken: text('mp_access_token'),
     mpRefreshToken: text('mp_refresh_token'),
+    // UNIQUE parcial en la migr. 069: una cuenta de MercadoPago cobra para UN
+    // solo complejo. Drizzle no declara el índice acá porque es parcial
+    // (`WHERE mp_user_id IS NOT NULL`) y drizzle-kit no lo genera.
     mpUserId: text('mp_user_id'),
+    // Nombre visible de la cuenta de MP conectada. Existe para que la UI pueda
+    // decir CUÁL cuenta quedó conectada: antes solo había un booleano, así que
+    // conectar la cuenta personal en vez de la del complejo era invisible.
+    mpNickname: text('mp_nickname'),
     mpPublicKey: text('mp_public_key'),
     mpConnectedAt: timestamp('mp_connected_at', {
       withTimezone: true,

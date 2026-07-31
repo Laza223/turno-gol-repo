@@ -23,7 +23,7 @@ import {
 
 export default async function OnboardingPage(
   props: {
-    searchParams?: Promise<{ error?: string }>
+    searchParams?: Promise<{ error?: string; complejo?: string }>
   }
 ) {
   const searchParams = await props.searchParams;
@@ -76,7 +76,9 @@ export default async function OnboardingPage(
         {currentStep === 4 && tenantData && (
           <StepPayments
             mpConnected={!!tenantData.mpConnectedAt}
+            mpNickname={tenantData.mpNickname}
             mpError={searchParams?.error ?? null}
+            mpConflictTenant={searchParams?.complejo ?? null}
             finishAction={finishOnboardingAction}
             setStepAction={setWizardStepAction}
           />

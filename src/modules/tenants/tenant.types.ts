@@ -102,4 +102,6 @@ export type TenantRow = {
   closedDates: string[] | null
   closesNextDay: boolean
   mpConnectedAt: Date | null
+  /** Apodo de la cuenta de MP conectada. Sirve para mostrar CUÁL quedó. */
+  mpNickname: string | null
 }

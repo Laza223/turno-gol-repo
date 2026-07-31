@@ -122,6 +122,18 @@ export default async function FacturacionPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Conectá tu cuenta para cobrar las señas de las reservas online directamente.
               </p>
+              {/* Decir CUÁL cuenta está conectada, no solo que hay una: MercadoPago
+                  no vuelve a pedir permiso si la app ya está autorizada, así que
+                  conectar la cuenta personal en vez de la del complejo era un clic
+                  sin ninguna pantalla de por medio — y las señas caían ahí sin que
+                  nada lo dijera. */}
+              {mpConnected && (
+                <p className="mt-2 text-sm text-foreground">
+                  Cobrando en la cuenta{' '}
+                  <span className="font-semibold">{tenant.mpNickname ?? 'conectada'}</span>. Si no es
+                  la del complejo, escribinos para cambiarla.
+                </p>
+              )}
             </div>
             {mpConnected && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-500/30">

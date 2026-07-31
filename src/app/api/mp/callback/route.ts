@@ -5,6 +5,7 @@ import { encrypt } from '@/lib/crypto/encrypt'
 import {
   connectMercadoPago,
   completeOnboarding,
+  findTenantUsingMpAccount,
   getTenantById,
   updateTenantSettings,
 } from '@/modules/tenants/tenant.service'
@@ -19,6 +20,34 @@ type MpTokenResponse = {
   refresh_token: string
   user_id: number
   public_key: string
+}
+
+/**
+ * Nombre visible de la cuenta de MP recién conectada.
+ *
+ * Existe para que la pantalla pueda decir CUÁL cuenta quedó conectada. Antes
+ * solo se guardaba un booleano, así que el dueño que tenía abierto su
+ * MercadoPago personal lo conectaba de un clic —MP no vuelve a pedir permiso
+ * si la app ya está autorizada— y las señas empezaban a caer en la cuenta
+ * equivocada sin que nada se lo dijera.
+ *
+ * NO es fatal: si esta llamada falla, la conexión se guarda igual y la UI cae
+ * al `mp_user_id`. Perder el apodo no justifica perder la conexión.
+ *
+ * Se guarda el nickname y NO el email: identifica igual de bien a la cuenta y
+ * es un dato público de MercadoPago, no un dato personal (Ley 25.326, doc18).
+ */
+async function fetchMpNickname(accessToken: string): Promise<string | null> {
+  try {
+    const res = await fetch('https://api.mercadopago.com/users/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) return null
+    const me = (await res.json()) as { nickname?: string }
+    return me.nickname ?? null
+  } catch {
+    return null
+  }
 }
 
 const querySchema = z.object({
@@ -126,12 +155,33 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const tokenData = (await tokenRes.json()) as MpTokenResponse
+  const mpUserId = String(tokenData.user_id)
+
+  // Una cuenta de MercadoPago cobra para UN solo complejo (migr. 069). El
+  // índice único es la red ante dos requests simultáneos; este chequeo existe
+  // para cortar antes y poder decir con cuál complejo choca.
+  //
+  // Por qué hace falta un chequeo explícito: MercadoPago guarda el
+  // consentimiento por (usuario, aplicación), no por complejo. A partir de la
+  // segunda vez conecta sin volver a preguntar nada, así que sin esto la misma
+  // cuenta se enchufa a N complejos con un clic y sin ninguna pantalla de por
+  // medio — pasó en producción el 2026-07-31.
+  const ocupada = await findTenantUsingMpAccount(mpUserId, tenantId)
+  if (ocupada) {
+    return NextResponse.redirect(
+      new URL(
+        `/onboarding?error=mp_already_connected&complejo=${encodeURIComponent(ocupada.name)}`,
+        req.url,
+      ),
+    )
+  }
 
   await connectMercadoPago(tenantId, {
     mpAccessToken: encrypt(tokenData.access_token),
     mpRefreshToken: encrypt(tokenData.refresh_token),
-    mpUserId: String(tokenData.user_id),
+    mpUserId,
     mpPublicKey: tokenData.public_key,
+    mpNickname: await fetchMpNickname(tokenData.access_token),
   })
 
   // Flujo wizard vs reconexión (pages/onboarding.md §6.3): llegar acá desde el

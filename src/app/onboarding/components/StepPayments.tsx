@@ -14,8 +14,12 @@ export type SetWizardStepAction = (completedStep: number) => Promise<WizardActio
 
 type Props = {
   mpConnected: boolean
+  /** Apodo de la cuenta de MP conectada, para poder ver CUÁL quedó. */
+  mpNickname?: string | null
   /** Código `?error=mp_*` del callback OAuth (pages/onboarding.md §6.2). */
   mpError: string | null
+  /** Complejo que ya usa esa cuenta, cuando el error es `mp_already_connected`. */
+  mpConflictTenant?: string | null
   finishAction: FinishOnboardingAction
   setStepAction: SetWizardStepAction
 }
@@ -23,7 +27,14 @@ type Props = {
 // Nunca mostrar el código crudo: siempre qué pasó + qué hacer (§6.7).
 const MP_UNAVAILABLE = new Set(['mp_not_configured', 'mp_config_missing'])
 
-function mpErrorMessage(code: string): string {
+function mpErrorMessage(code: string, conflictTenant?: string | null): string {
+  if (code === 'mp_already_connected') {
+    // Una cuenta de MP cobra para un solo complejo. El mensaje nombra al
+    // complejo que la tiene: sin eso, el dueño no sabe si chocó con algo suyo
+    // (otro complejo que administra) o con algo ajeno.
+    const cual = conflictTenant ? `"${conflictTenant}"` : 'otro complejo'
+    return `Esa cuenta de MercadoPago ya está cobrando para ${cual}. Cada complejo necesita su propia cuenta: entrá a MercadoPago con la cuenta de este complejo y volvé a intentar.`
+  }
   if (MP_UNAVAILABLE.has(code)) {
     return 'La conexión con MercadoPago no está disponible en este momento. Terminá sin seña y conectala después desde Configuración.'
   }
@@ -36,7 +47,14 @@ function mpErrorMessage(code: string): string {
  * MP (el callback activa la seña y cierra el wizard); "No" cierra el wizard
  * directo. Ambos caminos aterrizan en /onboarding/listo.
  */
-export function StepPayments({ mpConnected, mpError, finishAction, setStepAction }: Props) {
+export function StepPayments({
+  mpConnected,
+  mpNickname,
+  mpError,
+  mpConflictTenant,
+  finishAction,
+  setStepAction,
+}: Props) {
   const [isPending, startTransition] = useTransition()
   const [isGoingBack, startBackTransition] = useTransition()
   const [backError, setBackError] = useState<string | null>(null)
@@ -66,9 +84,15 @@ export function StepPayments({ mpConnected, mpError, finishAction, setStepAction
         <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
           <div className="text-emerald-900 dark:text-emerald-100">
-            <p className="font-medium">MercadoPago conectado.</p>
+            <p className="font-medium">
+              {/* Decir CUÁL cuenta quedó conectada, no solo que hay una: es la
+                  única forma de que alguien note que conectó su MercadoPago
+                  personal en vez del del complejo. */}
+              MercadoPago conectado{mpNickname ? `: ${mpNickname}` : ''}.
+            </p>
             <p className="mt-1 text-emerald-800 dark:text-emerald-200">
               Tus jugadores pagan la seña online al reservar y la plata va directo a tu cuenta.
+              {mpNickname ? ' Si esa no es la cuenta del complejo, cambiala desde Configuración.' : ''}
             </p>
           </div>
         </div>
@@ -94,7 +118,7 @@ export function StepPayments({ mpConnected, mpError, finishAction, setStepAction
           className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          <p>{mpErrorMessage(mpError)}</p>
+          <p>{mpErrorMessage(mpError, mpConflictTenant)}</p>
         </div>
       )}
 

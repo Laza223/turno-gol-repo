@@ -1,4 +1,4 @@
-import { and, eq, like, or, sql } from 'drizzle-orm'
+import { and, eq, like, ne, or, sql } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
@@ -163,6 +163,7 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     closedDates: t.closedDates as string[] | null,
     closesNextDay: t.closesNextDay,
     mpConnectedAt: t.mpConnectedAt,
+    mpNickname: t.mpNickname,
   }
 }
 
@@ -272,6 +273,31 @@ export async function completeOnboarding(tenantId: string): Promise<void> {
   `
 }
 
+/**
+ * ¿Esta cuenta de MercadoPago ya está cobrando para OTRO complejo?
+ *
+ * Una cuenta de MP cobra para un solo complejo (decisión 2026-07-31, migr.
+ * 069). El índice único es la red de seguridad ante dos requests simultáneos;
+ * este chequeo existe para poder dar un mensaje que se entienda en vez de un
+ * error de constraint.
+ *
+ * Pool worker a propósito: `tenants` no tiene RLS, pero la consulta es
+ * cross-tenant por naturaleza —justamente busca en los complejos ajenos— y
+ * dejarla en el pool restringido la ataría al contexto del tenant en curso.
+ * Devuelve solo el nombre: nunca credenciales de otro complejo.
+ */
+export async function findTenantUsingMpAccount(
+  mpUserId: string,
+  exceptTenantId: string,
+): Promise<{ id: string; name: string } | null> {
+  const rows = await getWorkerDb()
+    .select({ id: tenants.id, name: tenants.name })
+    .from(tenants)
+    .where(and(eq(tenants.mpUserId, mpUserId), ne(tenants.id, exceptTenantId)))
+    .limit(1)
+  return rows[0] ?? null
+}
+
 export async function connectMercadoPago(
   tenantId: string,
   data: {
@@ -279,6 +305,7 @@ export async function connectMercadoPago(
     mpRefreshToken: string
     mpUserId: string
     mpPublicKey: string
+    mpNickname?: string | null
   },
 ): Promise<void> {
   const db = getDb()
@@ -289,6 +316,7 @@ export async function connectMercadoPago(
       mpRefreshToken: data.mpRefreshToken,
       mpUserId: data.mpUserId,
       mpPublicKey: data.mpPublicKey,
+      mpNickname: data.mpNickname ?? null,
       mpConnectedAt: new Date(),
       updatedAt: new Date(),
     })

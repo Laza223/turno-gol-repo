@@ -180,8 +180,24 @@ function computeReturnUrl(): string {
   return `${process.env.APP_URL ?? 'http://localhost:3000'}/settings/facturacion`
 }
 
+/**
+ * Webhook URL para TODO lo que se cobra por la cuenta MASTER de TurnoGol
+ * (suscripción SaaS y proraeo de upgrade), a diferencia de las señas de
+ * reserva, que se cobran por el MP del complejo (ADR-004).
+ *
+ * El `&source=saas` es el discriminador que el handler necesita para elegir
+ * la cuenta correcta (TG-P1-MP-02). Sin él, un `payment` de proraeo entra por
+ * la rama de seña y se consulta con el token del complejo contra un pago que
+ * vive en la cuenta master: MP no lo encuentra y el upgrade nunca se aplica
+ * aunque el dueño ya haya pagado. El tipo del evento NO alcanza como
+ * discriminador: el proraeo llega como `payment`, igual que una seña.
+ *
+ * No se confía a ciegas: el handler exige que el `external_reference` del pago
+ * efectivamente parsee como referencia de upgrade, y que el tenant que declara
+ * la URL coincida con el embebido en esa referencia.
+ */
 function computeNotificationUrl(tenantId: string): string {
-  return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/mercadopago?tenant=${tenantId}`
+  return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/mercadopago?tenant=${tenantId}&source=saas`
 }
 
 /**

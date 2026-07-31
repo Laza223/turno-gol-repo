@@ -7,6 +7,7 @@ import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing
 import { listCourts } from '@/modules/courts/court.service'
 import { SettingsTabs } from '../SettingsTabs'
 import { ActivatePlanSection } from './ActivatePlanSection'
+import { ChangePlanSection } from './ChangePlanSection'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -45,10 +46,17 @@ export default async function FacturacionPage() {
   // Bug raíz: createTenantWithTrial no insertaba tenant_subscriptions, así que
   // subscribe() siempre tiraba SubscriptionNotFoundError (fix 1a). Con la fila
   // ya sembrada en 'trialing', el admin necesita una forma de activar el plan.
-  const activePlans =
-    sub?.status === 'trialing'
-      ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx))
-      : []
+  //
+  // Ya suscripto (`active`) el catálogo se sigue necesitando, ahora para
+  // CAMBIAR de plan: el complejo que sumó canchas se choca contra el techo del
+  // suyo y hasta ahora no tenía salida in-app (el endpoint existía, ninguna UI
+  // lo llamaba). Los demás estados no ofrecen catálogo a propósito: en
+  // `past_due`/`suspended`/`blocked` lo que corresponde es regularizar el pago,
+  // no cambiar de plan, y `upgrade()` los rechaza igual.
+  const needsPlanCatalog = sub?.status === 'trialing' || sub?.status === 'active'
+  const activePlans = needsPlanCatalog
+    ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx))
+    : []
 
   return (
     <div className="space-y-6">
@@ -86,6 +94,16 @@ export default async function FacturacionPage() {
 
         {sub?.status === 'trialing' && activePlans.length > 0 && (
           <ActivatePlanSection plans={activePlans} defaultCourts={defaultCourts} />
+        )}
+
+        {sub?.status === 'active' && activePlans.length > 0 && (
+          <ChangePlanSection
+            plans={activePlans}
+            currentPlanId={sub.planId}
+            billingCycle={sub.billingCycle}
+            pendingPlanId={sub.pendingPlanChange}
+            periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
+          />
         )}
 
         {sub && (

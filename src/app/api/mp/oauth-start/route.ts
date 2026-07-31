@@ -43,7 +43,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
   const redirectUri = `${appUrl}/api/mp/callback`
 
-  const mpAuthUrl = new URL('https://auth.mercadopago.com/authorization')
+  // Host de Argentina a propósito: `auth.mercadopago.com` (sin `.com.ar`) mete
+  // un interstitial "Seleccione el país" antes de la pantalla de autorizar, y
+  // recién después valida la redirect_uri. Un click de fricción evitable en el
+  // camino de la plata, para un producto que sólo opera en Argentina.
+  const mpAuthUrl = new URL('https://auth.mercadopago.com.ar/authorization')
   mpAuthUrl.searchParams.set('client_id', clientId)
   mpAuthUrl.searchParams.set('response_type', 'code')
   mpAuthUrl.searchParams.set('platform_id', 'mp')

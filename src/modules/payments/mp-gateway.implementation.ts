@@ -273,6 +273,21 @@ export class MercadoPagoGateway implements PaymentGateway {
             transaction_amount: centsToPesos(input.amount),
             currency_id: 'ARS',
           },
+          // `notification_url` NO está declarado en `PreApprovalRequest` del SDK
+          // (sí en `PreferenceRequest`), pero la API REST de preapproval lo
+          // acepta y el SDK reenvía el body tal cual — mismo hueco de tipos que
+          // `point_of_interaction.transaction_data`. Va con spread + cast para
+          // no ensuciar la firma entera con un `as`.
+          //
+          // Sin esto MP no notifica NINGÚN cobro recurrente del SaaS: el dueño
+          // paga, `subscription_authorized_payment` nunca llega, y la
+          // suscripción se queda en `trialing` (o entra a dunning y bloquea a
+          // un complejo que ya pagó). El webhook global del panel de MP no
+          // sirve como reemplazo: `api/webhooks/mercadopago/route.ts:22`
+          // devuelve 400 si falta el `?tenant=` que sólo esta URL lleva.
+          ...({ notification_url: normalizeUrl(input.notificationUrl) } as {
+            notification_url: string
+          }),
         },
       })
       if (!res.id || !res.init_point) {

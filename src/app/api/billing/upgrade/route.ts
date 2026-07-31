@@ -20,10 +20,14 @@ export const POST = withTenant(async (req: NextRequest, user, tx) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
 
-  // Gateado cerrado (TG-P1-MP-02): el webhook que confirma el upgrade usa el
-  // gateway del tenant contra un preapproval del MASTER y rompe el flujo. Sin
-  // fila en `feature_flags`, `saas_upgrade` resuelve `false` (unknown = off) —
-  // no requiere migración. Sacar el gate recién cuando se corrija el webhook.
+  // TG-P1-MP-02 CERRADO: el webhook ya distingue los pagos de la cuenta MASTER
+  // de los del MP del complejo vía `source=saas` (mp-webhook.handler.ts), así
+  // que el proraeo se consulta y se aplica contra la cuenta correcta. La migr.
+  // 067 dejó el flag global en `true`.
+  //
+  // El gate sobrevive como kill switch, no como "todavía no está listo": es
+  // plata real por un camino recién estrenado, y una fila de override por
+  // complejo (o volver el global a `false`) lo apaga sin esperar un deploy.
   const upgradesEnabled = await isFeatureEnabled('saas_upgrade', user.tenantId!)
   if (!upgradesEnabled) {
     return apiError(501, 'NOT_IMPLEMENTED', 'Cambio de plan no disponible todavía.')

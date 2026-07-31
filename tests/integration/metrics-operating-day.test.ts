@@ -66,7 +66,19 @@ describe('getTenantMetrics — bucketing de cash_flows por día operativo', () =
       ),
     )
 
-    const metrics = await withTenantContext(tenant.id, (tx) => getTenantMetrics(tenant.id, tx))
+    // `now` explícito (mediodía ART) en vez del reloj de pared. Sin esto el
+    // test dependía de la HORA a la que corriera: `getTenantMetrics` ancla el
+    // tope de la ventana en `operatingDateOf(now, cutoffMins)`, así que entre
+    // las 00:00 y las 02:00 ART ese tope cae en `yesterday` y `today` queda
+    // FUERA de la serie — `todayBucket` es undefined y el test explota con
+    // "expected undefined to be +0". Pasó de verdad en CI el 2026-07-31 a las
+    // 03:50 UTC (00:50 ART). El test de abajo ya inyectaba su `now` y por eso
+    // seguía verde; este quedó como el único con reloj real del archivo.
+    const mediodia = new Date(`${today}T18:00:00Z`) // 15:00 ART → día operativo = today
+
+    const metrics = await withTenantContext(tenant.id, (tx) =>
+      getTenantMetrics(tenant.id, tx, mediodia),
+    )
 
     const yesterdayBucket = metrics.revenuePerDay.find((d) => d.date === yesterday)
     const todayBucket = metrics.revenuePerDay.find((d) => d.date === today)

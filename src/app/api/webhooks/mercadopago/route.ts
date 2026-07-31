@@ -67,12 +67,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
   }
 
+  // `source=saas` lo pone TurnoGol al crear el preapproval / la preferencia de
+  // proraeo (billing.service.computeNotificationUrl): marca que el pago vive en
+  // la cuenta MASTER y no en el MP del complejo. Se normaliza a un literal para
+  // no propagar texto arbitrario de la query al job.
+  const source = url.searchParams.get('source') === 'saas' ? ('saas' as const) : undefined
+
   const job: MpWebhookJob = {
     tenantId,
     mpEventId: payload.id,
     eventType: payload.type,
     mpPaymentId: payload.data.id,
     rawPayload: payload,
+    ...(source ? { source } : {}),
   }
 
   try {

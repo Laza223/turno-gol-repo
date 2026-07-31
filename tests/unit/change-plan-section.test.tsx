@@ -139,6 +139,39 @@ describe('ChangePlanSection', () => {
     expect(assignSpy).not.toHaveBeenCalled()
   })
 
+  it('un 500 con cuerpo HTML no explota: muestra el error genérico', async () => {
+    // `res.json()` tira ante HTML (página de error del edge). Sin el catch de
+    // `readJson`, el dueño se quedaba sin ningún mensaje.
+    fetchSpy = vi.fn(
+      async () =>
+        new Response('<html><body>502 Bad Gateway</body></html>', {
+          status: 500,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+    )
+    global.fetch = fetchSpy as unknown as typeof global.fetch
+    renderSection()
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Pasar a este plan/i })[0]!)
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta.textContent).toContain('No se pudo cambiar el plan')
+    expect(assignSpy).not.toHaveBeenCalled()
+  })
+
+  it('un 200 sin checkoutUrl avisa en vez de quedarse en silencio', async () => {
+    // No debería pasar, pero si pasa el botón no puede quedar girando para
+    // siempre sin decir nada.
+    mockFetch({ data: {} })
+    renderSection()
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Pasar a este plan/i })[0]!)
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta.textContent).toContain('No se pudo cambiar el plan')
+    expect(assignSpy).not.toHaveBeenCalled()
+  })
+
   it('anuncia un cambio ya agendado (downgrade pendiente)', () => {
     renderSection({ currentPlanId: 'plan-estadio', pendingPlanId: 'plan-predio' })
     expect(screen.getByText(/Ya tenés agendado el cambio/i)).toBeTruthy()

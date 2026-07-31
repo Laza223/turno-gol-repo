@@ -39,6 +39,21 @@ type ChangePlanSectionProps = {
 type Phase = 'idle' | 'loading' | 'error' | 'scheduled'
 
 /**
+ * Lee el JSON de una respuesta CUYO STATUS YA SE EVALUÓ, devolviendo
+ * `undefined` si el cuerpo no es JSON parseable. Existe porque los dos caminos
+ * (éxito y error) necesitan leer cuerpos con formas distintas y ninguno puede
+ * darse el lujo de tirar: un 500 del edge devuelve HTML, y sin este `catch` el
+ * dueño vería un error genérico en vez del mensaje real del backend.
+ */
+async function readJson<T>(res: Response): Promise<T | undefined> {
+  try {
+    return (await res.json()) as T
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * `timeZone` explícito, no el del runtime. Este componente es `'use client'`
  * pero igual se renderiza en el servidor, y ahí la zona es UTC (Vercel):
  * un `currentPeriodEnd` de las 22:00 ART se vería como el día SIGUIENTE en el
@@ -85,39 +100,41 @@ export function ChangePlanSection({
           body: JSON.stringify({ targetPlanId: target.id }),
         },
       )
-      // `fetch` NO rechaza ante 4xx/5xx, así que el status se mira siempre y
-      // el body se parsea a la defensiva: un 500 puede devolver HTML (página
-      // de error del edge, no JSON) y `res.json()` tiraría, dejando al dueño
-      // con el error genérico del catch en vez de saber qué pasó.
-      const parsed = await res
-        .json()
-        .then(
-          (b) =>
-            b as { data?: { checkoutUrl?: string; appliesAt?: string }; error?: { message?: string } },
-        )
-        .catch(() => ({}) as { data?: undefined; error?: undefined })
+      // `fetch` NO rechaza ante 4xx/5xx: el status se decide ANTES de tocar el
+      // body, y cada rama lee el suyo. El `.catch` de cada lectura cubre que un
+      // 500 puede devolver HTML (página de error del edge, no JSON), en cuyo
+      // caso `res.json()` tiraría y el dueño se quedaría sin saber qué pasó.
+      if (!res.ok) {
+        const errorBody = await readJson<{ error?: { message?: string } }>(res)
+        setPhase('error')
+        setBusyPlanId(null)
+        setMessage(errorBody?.error?.message ?? 'No se pudo cambiar el plan. Intentá de nuevo.')
+        return
+      }
+
+      const okBody = await readJson<{ data?: { checkoutUrl?: string; appliesAt?: string } }>(res)
 
       // Subir manda al checkout de MP a pagar el proraeo; el plan cambia
       // recién cuando el webhook confirma ese pago.
-      if (res.ok && direction === 'up' && parsed.data?.checkoutUrl) {
-        window.location.assign(parsed.data.checkoutUrl)
+      if (direction === 'up') {
+        if (okBody?.data?.checkoutUrl) {
+          window.location.assign(okBody.data.checkoutUrl)
+          return
+        }
+        // 2xx sin checkout no debería pasar; no dejarlo en silencio.
+        setPhase('error')
+        setBusyPlanId(null)
+        setMessage('No se pudo cambiar el plan. Intentá de nuevo.')
         return
       }
 
       // Bajar no cobra: queda agendado para el fin del período.
-      if (res.ok && direction === 'down') {
-        setPhase('scheduled')
-        setBusyPlanId(null)
-        setMessage(
-          `Listo: pasás al plan ${target.name} el ${formatDate(parsed.data?.appliesAt ?? periodEnd)}. ` +
-            'Hasta esa fecha seguís con el plan actual, que ya está pago.',
-        )
-        return
-      }
-
-      setPhase('error')
+      setPhase('scheduled')
       setBusyPlanId(null)
-      setMessage(parsed.error?.message ?? 'No se pudo cambiar el plan. Intentá de nuevo.')
+      setMessage(
+        `Listo: pasás al plan ${target.name} el ${formatDate(okBody?.data?.appliesAt ?? periodEnd)}. ` +
+          'Hasta esa fecha seguís con el plan actual, que ya está pago.',
+      )
     } catch {
       setPhase('error')
       setBusyPlanId(null)

@@ -1,8 +1,16 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
+import { ENCRYPTION_KEY_PATTERN } from '@/shared/env'
 
+/**
+ * El chequeo de largo solo no alcanza: `Buffer.from(x, 'hex')` NO falla ante
+ * caracteres inválidos, los descarta en silencio y devuelve un buffer más
+ * corto. Una clave de 64 caracteres con una `z` adentro pasaba el guard viejo
+ * (`key.length !== 64`) y moría después, adentro de `createCipheriv`, con
+ * "Invalid key length" — un mensaje que no señala a la variable culpable.
+ */
 function getKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY
-  if (!key || key.length !== 64) {
+  if (!key || !ENCRYPTION_KEY_PATTERN.test(key)) {
     throw new Error('ENCRYPTION_KEY must be exactly 64 hex chars (32 bytes)')
   }
   return Buffer.from(key, 'hex')

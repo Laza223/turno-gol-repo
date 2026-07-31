@@ -1,4 +1,5 @@
 import { getSql, getWorkerSql } from '@/shared/db/client'
+import { ENCRYPTION_KEY_PATTERN } from '@/shared/env'
 import { getBoss } from '@/shared/jobs/boss'
 import { getRedis } from '@/shared/rate-limit/client'
 import { captureException } from '@/lib/sentry'
@@ -132,6 +133,49 @@ function checkConfigured(): Check[] {
   }))
 }
 
+/**
+ * Fails si `ENCRYPTION_KEY` no tiene el formato que exige `encrypt.ts`.
+ *
+ * Presencia no alcanza — de ahí que no viva en `checkConfigured` de arriba. En
+ * producción la variable ESTABA, pero con un formato inválido, y el único
+ * lugar donde eso se manifestaba era `/api/mp/callback`: el complejo autorizaba
+ * a TurnoGol en MercadoPago y aterrizaba en una pantalla de error, con la
+ * conexión de su cuenta de cobro a medio hacer. Un camino que solo se recorre
+ * una vez por complejo, durante el alta, y que por eso nadie mira.
+ *
+ * Es fatal a propósito: sin esta clave no se pueden guardar los tokens de MP,
+ * o sea que ningún complejo puede cobrar señas.
+ */
+function checkEncryptionKey(): Check {
+  const key = process.env.ENCRYPTION_KEY
+  if (!key || !ENCRYPTION_KEY_PATTERN.test(key)) {
+    // Ni la clave ni su longitud salen en la respuesta, que es pública.
+    return { name: 'encryption-key', status: 'down', error: GENERIC_CHECK_ERROR }
+  }
+  return { name: 'encryption-key', status: 'ok' }
+}
+
+/**
+ * Reporta si R2 (fotos de canchas y del complejo) está configurado.
+ *
+ * NO es fatal, y la diferencia con `encryption-key` es deliberada: sin R2 no se
+ * pueden subir imágenes, pero todo lo demás —reservas, caja, cobros— anda.
+ * Tumbar el semáforo entero por eso le haría gritar al monitor de uptime que el
+ * sitio está caído cuando no lo está. Mismo criterio que `upstash` arriba: se
+ * expone en el payload con una nota, para que se pueda consultar sin adivinar.
+ */
+function checkStorage(): Check {
+  const configured =
+    !!process.env.R2_ACCOUNT_ID &&
+    !!process.env.R2_ACCESS_KEY_ID &&
+    !!process.env.R2_SECRET_ACCESS_KEY &&
+    !!process.env.R2_BUCKET &&
+    !!process.env.R2_PUBLIC_BASE_URL
+  return configured
+    ? { name: 'storage', status: 'ok' }
+    : { name: 'storage', status: 'ok', note: 'not configured (image upload disabled)' }
+}
+
 function overallFrom(checks: Check[]): CheckStatus {
   if (checks.every((c) => c.status === 'ok')) return 'ok'
   if (checks.some((c) => c.status === 'down')) return 'down'
@@ -145,7 +189,15 @@ export async function GET(): Promise<Response> {
     checkPgBoss(),
     checkUpstash(),
   ])
-  const checks: Check[] = [db, workerPool, pgboss, upstash, ...checkConfigured()]
+  const checks: Check[] = [
+    db,
+    workerPool,
+    pgboss,
+    upstash,
+    checkEncryptionKey(),
+    checkStorage(),
+    ...checkConfigured(),
+  ]
   const status = overallFrom(checks)
   const httpStatus = status === 'ok' ? 200 : 503
   return Response.json(

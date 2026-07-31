@@ -106,10 +106,14 @@ export function encryptionKeyStrengthCheck(
       error: 'ENCRYPTION_KEY is empty or undefined (must be >= 64 hex chars)',
     }
   }
-  if (key.length < 64) {
+  // EXACTAMENTE 64, no ">= 64": `encrypt.ts` deriva de acá una clave de
+  // AES-256 y rechaza cualquier otro largo. Con `>=`, una clave de 128 hex
+  // pasaba este gate y después reventaba en runtime, en el callback de OAuth
+  // de MercadoPago.
+  if (key.length !== 64) {
     return {
       ok: false,
-      error: `ENCRYPTION_KEY must be >= 64 hex chars (got length ${key.length})`,
+      error: `ENCRYPTION_KEY must be exactly 64 hex chars (got length ${key.length})`,
     }
   }
   if (!/^[0-9a-f]+$/i.test(key)) {

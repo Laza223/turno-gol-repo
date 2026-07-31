@@ -1,5 +1,13 @@
 import { z } from 'zod'
 
+/**
+ * 64 caracteres hexadecimales = 32 bytes = la clave de AES-256 que usa
+ * `src/lib/crypto/encrypt.ts`. Vive acá, y no en encrypt.ts, para que el
+ * esquema de env no tenga que importar `node:crypto` (env.ts se evalúa también
+ * en contextos edge). encrypt.ts la importa de este lado.
+ */
+export const ENCRYPTION_KEY_PATTERN = /^[0-9a-fA-F]{64}$/
+
 const minLen = (n: number, name: string) =>
   z.string().min(n, `${name} must be at least ${n} chars`)
 
@@ -11,7 +19,15 @@ function makeSchema(isProd: boolean) {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
     IMPERSONATION_COOKIE_SECRET: minLen(16, 'IMPERSONATION_COOKIE_SECRET'),
-    ENCRYPTION_KEY: minLen(32, 'ENCRYPTION_KEY'),
+    // 64 hex EXACTOS, no "32+ caracteres": `encrypt.ts` deriva de acá la clave
+    // de AES-256 y rechaza cualquier otra cosa. El esquema pedía `min(32)`, así
+    // que una clave con el formato equivocado lo pasaba entero y recién moría
+    // en runtime, en el callback de OAuth de MercadoPago — o sea, con el
+    // complejo mirando una pantalla de error a mitad de la conexión de su
+    // cuenta de cobro. Caso real en producción, 2026-07-31.
+    ENCRYPTION_KEY: z
+      .string()
+      .regex(ENCRYPTION_KEY_PATTERN, 'ENCRYPTION_KEY must be exactly 64 hex chars (32 bytes)'),
     MP_CLIENT_ID: z.string().min(1),
     MP_CLIENT_SECRET: z.string().min(1),
     MP_WEBHOOK_SECRET: isProd ? minLen(16, 'MP_WEBHOOK_SECRET') : minLen(16, 'MP_WEBHOOK_SECRET').optional(),

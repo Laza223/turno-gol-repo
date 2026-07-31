@@ -12,6 +12,8 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
   // la seña y cierra en /onboarding/listo. El caso "reconexión" lo overridea.
   getTenantById: vi.fn(async () => ({ id: 'tenant-xyz-abc', settings: {} })),
   updateTenantSettings: vi.fn(async () => {}),
+  // Una cuenta de MP cobra para un solo complejo (migr. 069). Default: libre.
+  findTenantUsingMpAccount: vi.fn(async () => null),
 }))
 
 // El callback ahora revalida sesión + rol (audit_report.md 3-15): sin esto
@@ -52,6 +54,7 @@ import { GET as mpCallback } from '@/app/api/mp/callback/route'
 import {
   connectMercadoPago,
   completeOnboarding,
+  findTenantUsingMpAccount,
   getTenantById,
   updateTenantSettings,
 } from '@/modules/tenants/tenant.service'
@@ -124,6 +127,9 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
       mpRefreshToken: 'enc(rt)',
       mpUserId: '1',
       mpPublicKey: 'pk',
+      // El mock de fetch devuelve el mismo payload para /users/me, que no trae
+      // `nickname`: se guarda null y la conexión NO se pierde por eso.
+      mpNickname: null,
     })
     // Conectar desde el wizard = elección "Sí, cobrar seña" → seña activa.
     expect(updateTenantSettings).toHaveBeenCalledWith(TENANT, { requires_deposit: true })
@@ -159,9 +165,13 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
 
     await mpCallback(req)
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // Dos llamadas a MP: el intercambio del code y, después, /users/me para el
+    // apodo de la cuenta. Lo que se fija acá es que la PRIMERA sea el token —
+    // el orden importa, porque el apodo se pide con el access_token recién
+    // obtenido.
     expect(fetchMock.mock.calls[0]![0]).toBe('https://api.mercadopago.com/oauth/token')
     expect(fetchMock.mock.calls[0]![1]!.method).toBe('POST')
+    expect(fetchMock.mock.calls[1]![0]).toBe('https://api.mercadopago.com/users/me')
     expect(tokenRequestBody()).toMatchObject({
       grant_type: 'authorization_code',
       code: 'authcode',
@@ -277,7 +287,8 @@ describe('MP OAuth callback state expiry (replay protection, #10)', () => {
     )
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/\/onboarding\/listo$/)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // Dos: el intercambio del code y /users/me para el apodo de la cuenta.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('state with future timestamp (clock skew / forjado) → reject', async () => {
@@ -393,5 +404,49 @@ describe('MP OAuth callback error paths', () => {
     expect(res.headers.get('location')).toMatch(/mp_token_failed/)
     expect(connectMercadoPago).not.toHaveBeenCalled()
     expect(completeOnboarding).not.toHaveBeenCalled()
+  })
+})
+
+// Una cuenta de MercadoPago cobra para UN solo complejo (migr. 069). Reproducido
+// en producción el 2026-07-31: dos cuentas de TurnoGol distintas conectaron la
+// misma cuenta de MP. No falló ninguna autorización — MP guarda el
+// consentimiento por (usuario, aplicación), así que la segunda vez conecta sin
+// preguntar nada.
+describe('MP OAuth callback — una cuenta de MP por complejo', () => {
+  it('cuenta ya usada por otro complejo → rechaza SIN pisar la conexión', async () => {
+    ;(findTenantUsingMpAccount as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: 'otro-tenant',
+      name: 'Complejo Vecino',
+    })
+    const state = makeState(TENANT, SECRET)
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
+
+    const res = await mpCallback(req)
+    const location = res.headers.get('location') ?? ''
+
+    expect(location).toMatch(/mp_already_connected/)
+    // El nombre viaja para que el mensaje diga con QUÉ complejo choca.
+    expect(decodeURIComponent(location)).toContain('Complejo Vecino')
+    // Lo que más importa: no se guardó nada. El complejo que ya cobraba con esa
+    // cuenta conserva su conexión intacta.
+    expect(connectMercadoPago).not.toHaveBeenCalled()
+    expect(completeOnboarding).not.toHaveBeenCalled()
+  })
+
+  it('cuenta libre → conecta y guarda el apodo de la cuenta', async () => {
+    // El apodo existe para poder ver CUÁL cuenta quedó: antes solo había un
+    // booleano y conectar la cuenta personal era invisible.
+    const state = makeState(TENANT, SECRET)
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
+
+    await mpCallback(req)
+
+    expect(connectMercadoPago).toHaveBeenCalledTimes(1)
+    const [, data] = (connectMercadoPago as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      { mpUserId: string; mpNickname: string | null },
+    ]
+    expect(data.mpUserId).toBeTruthy()
+    expect(data).toHaveProperty('mpNickname')
   })
 })

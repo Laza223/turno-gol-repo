@@ -64,6 +64,7 @@ function tenantRow(status: TenantRow['status']): TenantRow {
     closedDates: null,
     closesNextDay: false,
     mpConnectedAt: null,
+    mpNickname: null,
   }
 }
 

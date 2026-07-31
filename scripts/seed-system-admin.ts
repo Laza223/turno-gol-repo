@@ -22,6 +22,68 @@ function usage(): never {
   process.exit(1)
 }
 
+function isLocalHost(host: string): boolean {
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]'
+}
+
+/**
+ * Rinde un valor para un mensaje de error SIN filtrar la contraseña: enmascara
+ * el userinfo (todo lo que va entre `//` y `@`) y recorta. Pensado para que el
+ * operador reconozca un placeholder sin pegar, o una referencia de Railway sin
+ * resolver (`${{Postgres.DATABASE_URL}}`), en el propio mensaje de error.
+ */
+function maskUrlish(value: string): string {
+  const masked = value.replace(/\/\/[^@/]*@/, '//***:***@')
+  return masked.length > 60 ? `${masked.slice(0, 60)}…` : masked
+}
+
+/** Devuelve el hostname, o un error legible que nombra la var que falló. */
+function hostnameOrThrow(value: string, varName: string): string {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new Error(
+      `${varName} no es una URL parseable.\n` +
+        `  valor (contraseña enmascarada): ${maskUrlish(value)}\n` +
+        `  largo: ${value.length} chars\n` +
+        '  Causas típicas: quedó pegado un placeholder tipo "<DSN PROD ...>"; se copió una\n' +
+        '  referencia de Railway sin resolver (${{Postgres.DATABASE_URL}}) en vez del valor;\n' +
+        '  o la contraseña tiene caracteres sin URL-encodear (@ : / ? # [ ] %).',
+    )
+  }
+  if (!parsed.hostname) {
+    throw new Error(`${varName} no tiene hostname: ${maskUrlish(value)}`)
+  }
+  return parsed.hostname
+}
+
+/**
+ * Aborta si el proyecto de Supabase Auth y la base de datos no son el MISMO
+ * ambiente. Sin esto el script escribe partido al medio y reporta éxito:
+ * el auth user + el claim van al proyecto de NEXT_PUBLIC_SUPABASE_URL, y la
+ * fila de system_admins va a la DB de WORKER_DATABASE_URL.
+ *
+ * Pasó de verdad (2026-07-29, preparando el go-live): `.env.production` no
+ * define WORKER_DATABASE_URL, así que al correr apuntado a prod el
+ * `config({ path: '.env.local' })` de arriba la rellenó con el DSN LOCAL
+ * (127.0.0.1:54322). Los 3 pasos dieron OK y `system_admins` en prod siguió
+ * vacía. Misma clase que el gotcha de copiar .env.local a un worktree.
+ */
+function assertSameEnvironment(supabaseUrl: string, workerDsn: string | undefined): void {
+  if (!workerDsn) return // getWorkerDb caerá a DATABASE_URL / default; no hay nada que comparar acá
+  const authHost = hostnameOrThrow(supabaseUrl, 'NEXT_PUBLIC_SUPABASE_URL')
+  const dbHost = hostnameOrThrow(workerDsn, 'WORKER_DATABASE_URL')
+  if (isLocalHost(authHost) === isLocalHost(dbHost)) return
+  throw new Error(
+    `Ambientes cruzados: Supabase Auth apunta a '${authHost}' y la base a '${dbHost}'.\n` +
+      '  El auth user iría a un ambiente y la fila de system_admins a otro, y el script\n' +
+      '  reportaría los 3 pasos OK igual. Setear las DOS del mismo ambiente:\n' +
+      '    NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (proyecto Supabase)\n' +
+      '    WORKER_DATABASE_URL (DSN del rol turnogol_worker de ESE proyecto)',
+  )
+}
+
 /**
  * supabase-js no expone lookup por email: paginamos listUsers de forma
  * acotada (mismo patrón que findAuthUserByEmail en (admin)/staff/actions.ts).
@@ -59,7 +121,9 @@ async function main(): Promise<void> {
   if (!url || !key) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY required')
   }
+  assertSameEnvironment(url, process.env.WORKER_DATABASE_URL)
   const supabase = createClient(url, key, { auth: { persistSession: false } })
+  console.log(`Target: auth=${new URL(url).hostname} db=${new URL(process.env.WORKER_DATABASE_URL ?? url).hostname}`)
 
   try {
     // (a) Auth user: buscar por email; crear con email_confirm si no existe

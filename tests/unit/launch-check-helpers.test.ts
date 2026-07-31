@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   ENCRYPTION_KEY_PLACEHOLDER,
@@ -5,6 +7,8 @@ import {
   e2eBypassDisabledCheck,
   mpMockModeDisabledCheck,
   webhookTestBypassSecretAbsentCheck,
+  selectSteps,
+  REQUIRED_ENV,
 } from '../../scripts/launch-check.helpers'
 
 describe('encryptionKeyStrengthCheck', () => {
@@ -105,5 +109,81 @@ describe('webhookTestBypassSecretAbsentCheck (MP-WEBHOOK-001)', () => {
 
   it('accepts empty string', () => {
     expect(webhookTestBypassSecretAbsentCheck('').ok).toBe(true)
+  })
+})
+
+describe('selectSteps (--probe-only)', () => {
+  // Espejo de la forma real de `steps` en launch-check.ts: sondas de ambiente
+  // con `check`, comandos locales con `cmd`.
+  const fixture = [
+    { name: 'env vars present', check: async () => true },
+    { name: 'bypassrls role check', check: async () => true },
+    { name: 'typecheck', cmd: () => undefined },
+    { name: 'integration tests', cmd: () => undefined },
+    { name: '/api/status healthy', check: async () => true },
+  ]
+
+  it('en probe-only deja SOLO las sondas de ambiente', () => {
+    const selected = selectSteps(fixture, true)
+    expect(selected.map((s) => s.name)).toEqual([
+      'env vars present',
+      'bypassrls role check',
+      '/api/status healthy',
+    ])
+  })
+
+  it('en probe-only NINGÚN step ejecuta un comando local', () => {
+    // El punto del modo: sin steps `cmd` no hay nada que pueda escribir en la
+    // DB apuntada por el env file (p. ej. `pnpm test:integration` contra prod).
+    for (const step of selectSteps(fixture, true)) {
+      expect(step).not.toHaveProperty('cmd')
+    }
+  })
+
+  it('control positivo: sin probe-only conserva la lista completa', () => {
+    expect(selectSteps(fixture, false)).toHaveLength(fixture.length)
+  })
+
+  it('no muta el array recibido', () => {
+    const original = [...fixture]
+    selectSteps(fixture, true)
+    expect(fixture).toEqual(original)
+  })
+})
+
+describe('launch-check.ts main() usa la lista filtrada', () => {
+  // Guard de regresión de la clase peligrosa: si main() vuelve a iterar `steps`
+  // en vez de `selected`, `--probe-only` pasa a ser un no-op silencioso y el
+  // próximo que lo apunte a producción corre `pnpm test:integration` contra la
+  // base del cliente. El test es textual a propósito: importar launch-check.ts
+  // ejecutaría `void main()` y con él todos los checks contra una DB real.
+  const source = readFileSync(
+    path.resolve(process.cwd(), 'scripts/launch-check.ts'),
+    'utf8',
+  )
+
+  it('itera la lista filtrada, no el array completo', () => {
+    expect(source).toContain('for (const step of selected)')
+    expect(source).not.toContain('for (const step of steps)')
+  })
+
+  it('deriva la selección de selectSteps con el flag --probe-only', () => {
+    expect(source).toContain('selectSteps(steps,')
+    expect(source).toContain('--probe-only')
+  })
+})
+
+describe('REQUIRED_ENV', () => {
+  it('cubre las 2 vars del camino de la plata que ningún otro mecanismo valida', () => {
+    // MP_TURNOGOL_ACCESS_TOKEN: billing.gateway.ts la lee con `?? ''` → el
+    // dueño no puede pagar el plan. APP_URL: billing.service.ts cae a
+    // http://localhost:3000 → el webhook de la suscripción nunca llega.
+    // Ninguna de las dos está en el schema Zod de src/shared/env.ts.
+    expect(REQUIRED_ENV).toContain('MP_TURNOGOL_ACCESS_TOKEN')
+    expect(REQUIRED_ENV).toContain('APP_URL')
+  })
+
+  it('no tiene duplicados', () => {
+    expect(new Set(REQUIRED_ENV).size).toBe(REQUIRED_ENV.length)
   })
 })

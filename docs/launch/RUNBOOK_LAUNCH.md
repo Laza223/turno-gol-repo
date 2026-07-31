@@ -17,6 +17,83 @@ TurnoGol se puede mostrar/vender si:
 
 ---
 
+## Guion del día 1 — primer complejo real (lunes 2026-08-03)
+
+> Escrito el 2026-07-29 para el onboarding del complejo piloto (6+ canchas, cobra seña online por MercadoPago). Se ejecuta de arriba a abajo. **Los pasos con 🛑 son puntos donde hay que parar y hacer algo desde el panel antes de que el complejo siga.**
+
+### Antes de que llegue el complejo
+
+| | Qué | Verificación |
+|---|---|---|
+| ☐ | SuperAdmin operativo | Login en `/super-admin` carga el dashboard. **Sin esto no hay red de seguridad** — es lo que destraba el paso 🛑 de abajo |
+| ☐ | Templates de email de Supabase Auth en prod | Ver "Trampa del template de confirmación" abajo |
+| ☐ | Dominio `turnogol.app` **Verified** en Resend (SPF + DKIM) | Sin esto no sale ningún email transaccional |
+| ☐ | `https://turnogol.app/api/mp/callback` en los redirect URIs de la app de MP | Sin esto el complejo no puede conectar su cuenta |
+| ☐ | `pnpm launch:check --probe-only` con `LAUNCH_CHECK_ENV_FILE=.env.production` | `All launch checks passed.` |
+
+### Secuencia de onboarding
+
+1. El dueño del complejo se registra en `https://turnogol.app/register` con su email real.
+2. **Le llega el email de confirmación** y hace click.
+3. Wizard **paso 1 — Identidad**: nombre, dirección, ciudad, provincia, teléfono, email (los 6 obligatorios). Al guardar se crea el tenant en `trialing`, 30 días.
+4. Wizard **paso 2 — Horarios**. Si el complejo cierra después de medianoche, prender `closes_next_day`.
+5. 🛑 **PARAR ACÁ — cambiar el plan antes del paso 3.**
+6. Wizard **paso 3 — Canchas**: recién ahora puede cargar las 6+.
+7. Wizard **paso 4 — Pagos**: "Sí, cobrar seña" → **Conectar MercadoPago** → autoriza con la cuenta MP *del complejo* (no la tuya). Al volver queda `requires_deposit=true`.
+8. Cae en `/onboarding/listo` con el CTA para compartir el link por WhatsApp.
+9. Primera reserva real de punta a punta, con vos presente: reservar desde `/{slug}/reservar` → pagar la seña → verificar que la grilla la muestre `confirmed` y que **llegue el email de reserva confirmada**.
+
+### 🛑 El paso 5, en detalle (por qué existe)
+
+El trial arranca **siempre** en plan Predio, que tiene un techo de **2 canchas** — está clavado en `createTenantWithTrial` ([tenant.service.ts:80-88](../../src/modules/tenants/tenant.service.ts)). Con 6 canchas, el paso 3 del wizard corta con:
+
+> `Tu plan soporta hasta 2 canchas. Hacé upgrade para agregar más.`
+
+Y el upgrade self-service devuelve **501** (falta la fila `saas_upgrade` en `feature_flags`), así que **desde la app no hay salida**. El único camino es:
+
+**SuperAdmin → Tenants → el complejo → ChangePlan → `estadio`** (canchas ilimitadas).
+
+Notas:
+- Funciona **sin** `MP_TURNOGOL_ACCESS_TOKEN` ni cobro: en `trialing` el `mp_subscription_id` es `NULL` y `changePlanForSupport` sólo llama al gateway de MP si existe. No le cobra nada al complejo.
+- El tenant **no existe** hasta que termina el paso 1, así que el cambio de plan no se puede hacer antes. De ahí el orden: paso 1 → cambio de plan → paso 3.
+- Si el complejo se adelanta y come el error, no se rompe nada: cambiás el plan y reintenta el paso 3.
+
+### Trampa del template de confirmación
+
+El callback de auth acepta **únicamente** `token_hash` ([auth/callback/route.ts:45-52](../../src/app/api/auth/callback/route.ts)) — la rama PKCE `code` fue eliminada. Si el dashboard de Supabase de prod tiene el template default de Supabase, el link del email apunta a `/auth/v1/verify?token=...` y el callback redirige a `/verify?error=invalid`: **el dueño del complejo no puede confirmar su email nunca.**
+
+- Los templates correctos están en `supabase/templates/` (`confirmation.html`, `recovery.html`, `magic_link.html`, `invite.html`). Los de `supabase/config.toml` son **sólo para el entorno local** — hay que pegarlos a mano en Supabase → Authentication → Email Templates.
+- **Pegar los archivos completos sin editar**: una doble-llave suelta rompe el parseo del template entero y GoTrue cae en silencio al default en inglés.
+- Site URL = `https://turnogol.app` exacto, sin barra final. Redirect URLs debe incluir `https://turnogol.app/api/auth/callback*`.
+- **Cómo saber si está bien, en 5 segundos:** mirar el link del email. Si dice `token_hash=` → bien. Si dice `/auth/v1/verify?token=` → mal, y el lanzamiento no puede seguir.
+
+### Post-wizard: anotar el vencimiento del trial
+
+`trial_ends_at` cae a los 30 días (≈ **2026-09-02**). El worker `expire-trials` mueve `trialing` → **`blocked` directo, sin aviso previo**: los templates `trial_welcome`/`trial_ending` existen pero ningún código los encola todavía.
+
+**Poner un recordatorio propio ~5 días antes (≈ 28/08)** para cobrar el plan o extender el trial desde SuperAdmin → ExtendTrial. Si para esa fecha el complejo va a pagar por MercadoPago, revisar antes que `MP_TURNOGOL_ACCESS_TOKEN` y `APP_URL` estén en Vercel (`launch:check --probe-only` ya las verifica) y que el webhook de la suscripción llegue con `?tenant=<uuid>`.
+
+### Palancas de emergencia
+
+Todas se accionan **sin deploy**. Con un solo tenant, alcanzan.
+
+| Si pasa esto | Palanca | Dónde |
+|---|---|---|
+| Las reservas online rompen | `allow_online_booking = false` | Settings → Reservas, o SuperAdmin → Settings del tenant |
+| Los pagos de MP rompen | `requires_deposit = false` → todo pasa a efectivo | idem |
+| El panel admin rompe | fila `('suspended', true, <tenantId>)` en `feature_flags` | SQL Editor de Supabase (tarda ~60 s por el TTL del cache) |
+| Regresión de código | Promote to Production del deployment anterior | Vercel (ver sección Rollback) |
+| El complejo quedó `blocked` por el trial | ExtendTrial | SuperAdmin |
+| Falla el reembolso automático de MP al cancelar | Reembolsar a mano en MP + cancelar por soporte | riesgo TG-P0-REFUND-01, ya aceptado |
+
+### Qué NO prometerle al complejo
+
+- **Cambio de plan self-service**: devuelve 501. Los cambios de plan los hacés vos desde SuperAdmin.
+- **Reembolso automático garantizado**: al cancelar una reserva con seña, el refund de MP corre dentro de la misma transacción y sin reintento (TG-P0-REFUND-01). Si falla, hay que reembolsar a mano.
+- **Avisos automáticos de vencimiento del trial**: todavía no se envían.
+
+---
+
 ## Deploy
 
 ## Rollback

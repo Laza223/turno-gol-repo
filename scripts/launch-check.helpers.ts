@@ -17,6 +17,32 @@ export const ENCRYPTION_KEY_PLACEHOLDER =
 export type CheckResult = { ok: true } | { ok: false; error: string }
 
 /**
+ * Filtra la lista de steps de launch-check para el modo `--probe-only`: deja
+ * solo los que sondean el ambiente (`check`) y saltea los que ejecutan comandos
+ * locales (`cmd`: typecheck, lint, test, test:integration, test:isolation,
+ * build, e2e, stress).
+ *
+ * Existe porque no había forma segura de verificar PRODUCCIÓN: apuntar el env
+ * file a prod y correr la lista completa dispara `pnpm test:integration`, que
+ * escribe y borra filas. La única defensa era `tests/setup.ts`, que re-apunta
+ * DATABASE_URL a `.env.test` con `override: true` — pero solo si ese archivo
+ * existe y define el DSN. Este modo saca esa dependencia del camino: sin steps
+ * `cmd`, no hay nada que pueda tocar datos.
+ *
+ * Genérico y estructural para no importar el tipo `Step` de launch-check.ts:
+ * ese módulo termina en `void main()`, así que importarlo desde un test
+ * ejecutaría todos los checks contra una DB real.
+ *
+ * Pure (no I/O): safe to import from tests.
+ */
+export function selectSteps<T extends { check?: unknown; cmd?: unknown }>(
+  all: readonly T[],
+  probeOnly: boolean,
+): T[] {
+  return probeOnly ? all.filter((s) => s.check !== undefined) : [...all]
+}
+
+/**
  * Env vars the app needs to boot in a real (non-local) environment. Shared
  * between launch-check.ts (pre-deploy CI gate) and staging-check.ts
  * (post-deploy staging verification) so the two lists can't drift apart.
@@ -37,6 +63,21 @@ export const REQUIRED_ENV = [
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
   'NEXT_PUBLIC_APP_URL',
+  // Las dos únicas vars del camino de la plata que NINGÚN otro mecanismo valida
+  // (no están en el schema Zod de src/shared/env.ts) y que fallan en silencio:
+  //   - MP_TURNOGOL_ACCESS_TOKEN: billing.gateway.ts la lee con `?? ''`. Sin
+  //     ella, subscribe()/reactivate() llaman a MP con token vacío y el dueño
+  //     del complejo no puede pagar el plan — el trial sigue andando, así que
+  //     el síntoma recién aparece cuando vence.
+  //   - APP_URL (distinta de NEXT_PUBLIC_APP_URL): billing.service.ts la usa
+  //     para el returnUrl/notificationUrl de la suscripción con fallback
+  //     silencioso a http://localhost:3000 — el webhook de la suscripción SaaS
+  //     nunca llega y la suscripción no se confirma.
+  // Van acá y no en el check de /api/status a propósito: `overallFrom` devuelve
+  // 503 ante cualquier check en no-ok, así que una var que recién importa a los
+  // 30 días pintaría la app como caída ante el uptime monitor.
+  'MP_TURNOGOL_ACCESS_TOKEN',
+  'APP_URL',
 ] as const
 
 /**

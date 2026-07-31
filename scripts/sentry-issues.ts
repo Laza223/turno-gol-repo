@@ -101,11 +101,12 @@ async function pedir<T>(path: string): Promise<T> {
 }
 
 function listar(issues: Issue[], periodo: string): void {
+  const ventana = periodo === '' ? 'sin límite de fecha' : `últimas ${periodo}`
   if (issues.length === 0) {
-    console.log(`Sin issues en las últimas ${periodo}.`)
+    console.log(`Sin issues (${ventana}).`)
     return
   }
-  console.log(`${issues.length} issue(s), últimas ${periodo}:\n`)
+  console.log(`${issues.length} issue(s), ${ventana}:\n`)
   for (const i of issues) {
     const nivel = (i.level ?? '?').toUpperCase().padEnd(7)
     console.log(`${nivel} ${i.count.padStart(5)}x  ${i.shortId}  ${i.title}`)
@@ -164,7 +165,17 @@ async function main(): Promise<void> {
     return
   }
 
-  const periodo = args.find((a) => /^\d+[hd]$/.test(a)) ?? '24h'
+  // Este endpoint NO acepta cualquier ventana: solo '24h', '14d' o vacío
+  // (= todo). Cualquier otra cosa vuelve como 400 con un mensaje que no dice
+  // cuál fue el argumento culpable, así que se valida acá.
+  const PERIODOS = ['24h', '14d', ''] as const
+  const pedido = args.find((a) => /^\d+[hdmw]$/.test(a))
+  if (pedido !== undefined && !PERIODOS.includes(pedido as (typeof PERIODOS)[number])) {
+    throw new SalidaLimpia(
+      `Ventana "${pedido}" no soportada por la API de Sentry. Usá: 24h, 14d, o "todo".`,
+    )
+  }
+  const periodo = args.includes('todo') ? '' : (pedido ?? '24h')
   const todos = args.includes('--all')
   const query = todos ? '' : 'is:unresolved'
 

@@ -1,4 +1,4 @@
-import { getSql } from '@/shared/db/client'
+import { getSql, getWorkerSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { getRedis } from '@/shared/rate-limit/client'
 import { captureException } from '@/lib/sentry'
@@ -54,6 +54,54 @@ async function checkPgBoss(): Promise<Check> {
   }
 }
 
+/**
+ * Fails if the pool que usan las lecturas cross-tenant (`getWorkerSql()`,
+ * DSN `WORKER_DATABASE_URL`) entra con un rol que NO puede saltear RLS.
+ *
+ * Por qué vive acá y no solo en launch-check: `getWorkerSql()` cae a
+ * `DATABASE_URL` cuando `WORKER_DATABASE_URL` no está seteada (client.ts:150),
+ * y en producción ese DSN es `turnogol_app`, restringido a propósito. El
+ * resultado no es un error: los barridos y las búsquedas cross-tenant del
+ * panel web devuelven CERO filas, en silencio, para siempre. Los workers de
+ * Railway ya se protegen con `assertWorkerDbVisibility()` al arrancar; la app
+ * de Next no tenía ninguna red — y el síntoma es invisible mientras no haya
+ * complejos cargados, justo cuando nadie está mirando.
+ *
+ * `rolsuper` cuenta como aprobado además de `rolbypassrls`: un superusuario
+ * saltea RLS por definición aunque el atributo figure en false, y es el rol
+ * con el que corren el Supabase local y el CI. Sin esa rama, este check
+ * tumbaría el gate de readiness del webServer de Playwright y se llevaría
+ * puesta la suite E2E entera. La identidad exacta del login (que el DSN no
+ * apunte al owner de las tablas) la sigue verificando `roleIdentityCheck` en
+ * launch-check, que es donde corresponde.
+ */
+async function checkWorkerPool(): Promise<Check> {
+  const t0 = Date.now()
+  try {
+    const sql = getWorkerSql()
+    const rows = await sql<{ ok: boolean }[]>`
+      SELECT (rolbypassrls OR rolsuper) AS ok
+      FROM pg_roles
+      WHERE rolname = current_user
+    `
+    if (rows[0]?.ok !== true) {
+      // El nombre del rol NO sale en la respuesta (es pública): se loguea para
+      // diagnóstico, igual que el resto de los checks.
+      captureException(
+        new Error(
+          'worker pool role cannot bypass RLS — cross-tenant reads would silently ' +
+            'return 0 rows. Set WORKER_DATABASE_URL to the turnogol_worker DSN.',
+        ),
+      )
+      return { name: 'worker-pool', status: 'down', error: GENERIC_CHECK_ERROR }
+    }
+    return { name: 'worker-pool', status: 'ok', latencyMs: Date.now() - t0 }
+  } catch (err) {
+    captureException(err)
+    return { name: 'worker-pool', status: 'down', error: GENERIC_CHECK_ERROR }
+  }
+}
+
 async function checkUpstash(): Promise<Check> {
   const t0 = Date.now()
   // Not configured (dev/E2E): rate limiting degrades gracefully (enforce()
@@ -91,8 +139,13 @@ function overallFrom(checks: Check[]): CheckStatus {
 }
 
 export async function GET(): Promise<Response> {
-  const [db, pgboss, upstash] = await Promise.all([checkDb(), checkPgBoss(), checkUpstash()])
-  const checks: Check[] = [db, pgboss, upstash, ...checkConfigured()]
+  const [db, workerPool, pgboss, upstash] = await Promise.all([
+    checkDb(),
+    checkWorkerPool(),
+    checkPgBoss(),
+    checkUpstash(),
+  ])
+  const checks: Check[] = [db, workerPool, pgboss, upstash, ...checkConfigured()]
   const status = overallFrom(checks)
   const httpStatus = status === 'ok' ? 200 : 503
   return Response.json(

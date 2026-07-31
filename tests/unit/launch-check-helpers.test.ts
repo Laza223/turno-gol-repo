@@ -183,6 +183,14 @@ describe('REQUIRED_ENV', () => {
     expect(REQUIRED_ENV).toContain('APP_URL')
   })
 
+  it('exige WORKER_DATABASE_URL', () => {
+    // Sin ella el gate no falla con "falta esta variable": corre media docena
+    // de checks y muere con un mensaje sobre identidades de rol. Y en el deploy
+    // su ausencia no da error: getWorkerSql() cae a DATABASE_URL y las lecturas
+    // cross-tenant devuelven 0 filas en silencio.
+    expect(REQUIRED_ENV).toContain('WORKER_DATABASE_URL')
+  })
+
   it('no tiene duplicados', () => {
     expect(new Set(REQUIRED_ENV).size).toBe(REQUIRED_ENV.length)
   })

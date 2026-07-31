@@ -78,6 +78,14 @@ export const REQUIRED_ENV = [
   // 30 días pintaría la app como caída ante el uptime monitor.
   'MP_TURNOGOL_ACCESS_TOKEN',
   'APP_URL',
+  // `roleIdentityCheck` más abajo la exige, pero sin ella acá el gate no dice
+  // "falta esta variable": arranca, corre media docena de checks y recién
+  // entonces muere con un mensaje sobre identidades de rol. Ausente en el
+  // deploy, `getWorkerSql()` cae a DATABASE_URL (turnogol_app, sin BYPASSRLS)
+  // y toda lectura cross-tenant devuelve 0 filas en silencio — a diferencia de
+  // las dos de arriba, esta SÍ vale un 503 del uptime monitor, y por eso además
+  // tiene su propio check funcional en /api/status.
+  'WORKER_DATABASE_URL',
 ] as const
 
 /**

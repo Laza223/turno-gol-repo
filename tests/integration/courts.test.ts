@@ -94,13 +94,41 @@ describe('createCourt', () => {
 })
 
 describe('plan limit enforcement', () => {
-  it('getCourtCountAndLimit returns limit=2 when predio plan linked', async () => {
+  it('en TRIAL el plan predio NO impone techo (el complejo puede cargar 3+ canchas)', async () => {
+    // Regresión del muro de onboarding: createTenantWithTrial arranca a TODOS en
+    // `predio` (max_courts=2), así que sin esta excepción un complejo con 3+
+    // canchas se traba en el paso 3 del wizard — y como el upgrade self-service
+    // está cerrado (501), queda sin salida in-app. Con registro público eso se
+    // lleva puesto a la mayoría de los complejos, que tienen más de 2 canchas.
+    const sql = getSql()
+    const tenant = await createTestTenant(sql) // status default = 'trialing'
+    const planId = await getOrCreatePlanId(sql)
+    await insertSubscription(sql, { tenantId: tenant.id, planId })
+
+    for (let i = 1; i <= 3; i++) {
+      await withTenantContext(tenant.id, (tx) =>
+        createCourt(tenant.id, { ...COURT_INPUT, name: `Cancha ${i}` }, tx),
+      )
+    }
+
+    const { count, maxCourts } = await withTenantContext(tenant.id, (tx) =>
+      getCourtCountAndLimit(tenant.id, tx),
+    )
+
+    expect(count).toBe(3)
+    expect(maxCourts).toBeNull()
+  })
+
+  it('ya suscripto (active), el plan predio SÍ impone su techo de 2', async () => {
+    // Control positivo del test de arriba: el techo no desapareció, sólo no
+    // aplica durante el trial. Si esto se pone verde con maxCourts null, la
+    // excepción del trial se comió el límite para todos.
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const planId = await getOrCreatePlanId(sql)
     await insertSubscription(sql, { tenantId: tenant.id, planId })
+    await sql`UPDATE tenants SET status = 'active' WHERE id = ${tenant.id}`
 
-    // Create 2 courts (nuevo límite del plan predio, migr. 043)
     for (let i = 1; i <= 2; i++) {
       await withTenantContext(tenant.id, (tx) =>
         createCourt(tenant.id, { ...COURT_INPUT, name: `Cancha ${i}` }, tx),
@@ -113,7 +141,7 @@ describe('plan limit enforcement', () => {
 
     expect(count).toBe(2)
     expect(maxCourts).toBe(2)
-    // 3rd creation would be blocked (count >= maxCourts)
+    // una 3ra quedaría bloqueada (count >= maxCourts)
     expect(count >= maxCourts!).toBe(true)
   })
 

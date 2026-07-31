@@ -59,7 +59,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - `pnpm jobs:start` — workers pg-boss standalone (`src/shared/jobs/run-workers.ts`)
 - `pnpm supabase:start|stop|reset` — Postgres + Auth local (puerto 54322)
 - `pnpm db:studio` — Drizzle Studio
-- `pnpm sentry:issues [24h|14d] [--all] [--detail <SHORT-ID>]` — errores de producción en texto (`scripts/sentry-issues.ts`). Necesita `SENTRY_READ_TOKEN` con scope `event:read` en el env file (`SENTRY_ENV_FILE`, default `.env.production`); el `SENTRY_AUTH_TOKEN` del build NO sirve, solo tiene `project:releases` y devuelve 403. Complemento, no reemplazo, de los logs de Vercel: Sentry además ve los errores del navegador del usuario
+- `pnpm sentry:issues [24h|14d|todo] [--all] [--detail <SHORT-ID>]` — errores de producción en texto (la API de Sentry SOLO acepta esas ventanas; cualquier otra da 400) (`scripts/sentry-issues.ts`). Necesita `SENTRY_READ_TOKEN` con scope `event:read` en el env file (`SENTRY_ENV_FILE`, default `.env.production`); el `SENTRY_AUTH_TOKEN` del build NO sirve, solo tiene `project:releases` y devuelve 403. Complemento, no reemplazo, de los logs de Vercel: Sentry además ve los errores del navegador del usuario
 
 ### Correr un test individual
 - Unit: `pnpm vitest run tests/unit/<archivo>.test.ts` (+ `-t "nombre"` para un caso puntual)

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import ExpiryCountdown from './ExpiryCountdown'
 
 type Props = {
@@ -198,9 +199,9 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
   // Default: pending_payment / anything else
   return (
     <div className="flex flex-col items-center text-center" aria-live="polite">
-      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 dark:text-emerald-400" aria-hidden />
-      </div>
+      {/* aria-hidden: el wrapper ya es región live — un role="status" anidado
+          duplica el anuncio en lectores de pantalla. */}
+      <TgBallSpinner size="lg" aria-hidden />
       <h2 className="font-display text-2xl font-black italic tracking-tight text-foreground">Confirmando tu pago…</h2>
       <p className="mt-3 text-sm text-muted-foreground">Esto puede tardar unos segundos.</p>
       <p className="mt-4 text-sm text-muted-foreground">

@@ -100,11 +100,13 @@ export default async function AnaliticasPage(props: {
         icon={<ChartLine className="h-6 w-6" aria-hidden="true" />}
       />
 
-      <MetricsDashboardLoader canSeeSystem={canSeeSystem} />
+      <div className="card-entrance" style={{ animationDelay: '80ms' }}>
+        <MetricsDashboardLoader canSeeSystem={canSeeSystem} />
+      </div>
 
       <div className="space-y-6">
         {/* Reporte mensual: header + navegación mes a mes */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="card-entrance flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: '160ms' }}>
           <h2 className="text-lg font-semibold text-foreground">Reporte mensual</h2>
           <div className="flex items-center gap-2">
             <form method="get" action="/analiticas">
@@ -141,7 +143,7 @@ export default async function AnaliticasPage(props: {
         ) : (
           <>
             {/* KPI cards */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="card-entrance grid grid-cols-2 gap-4 sm:grid-cols-4" style={{ animationDelay: '200ms' }}>
               <StatCard
                 label="Ingresos"
                 value={formatArsContable(report.income)}
@@ -217,7 +219,7 @@ export default async function AnaliticasPage(props: {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {report.byCourt.map((c) => (
-                        <tr key={c.courtId}>
+                        <tr key={c.courtId} className="transition-colors hover:bg-accent/40">
                           <td className="px-6 py-3 text-foreground">{c.courtName}</td>
                           <td className="px-6 py-3 text-right tabular-nums text-foreground">
                             {formatArsContable(c.income)}
@@ -238,7 +240,7 @@ export default async function AnaliticasPage(props: {
 
             {/* By payment method */}
             {report.byMethod.length > 0 && (
-              <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+              <div className="card-entrance overflow-hidden rounded-lg border border-border bg-card shadow-xs" style={{ animationDelay: '360ms' }}>
                 <div className="border-b border-border px-6 py-4">
                   <h2 className="text-sm font-semibold text-foreground">Por método de pago</h2>
                 </div>
@@ -252,7 +254,7 @@ export default async function AnaliticasPage(props: {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {report.byMethod.map((m) => (
-                        <tr key={m.method}>
+                        <tr key={m.method} className="transition-colors hover:bg-accent/40">
                           <td className="px-6 py-3 text-foreground">{formatMethodLabel(m.method)}</td>
                           <td className="px-6 py-3 text-right tabular-nums text-foreground">
                             {formatArsContable(m.total)}

@@ -21,11 +21,11 @@ import {
   Repeat,
   CheckCircle2,
   AlertTriangle,
-  Loader2,
   CalendarCheck2,
   ArrowRight,
   Sparkles,
 } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 
 export type SubmitNewAbonadoAction = (
   prevState: NewAbonadoState,
@@ -215,7 +215,7 @@ export function PreviewSlotsView({
         >
           {isConfirming ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <TgBallSpinner size="xs" aria-hidden />
               Guardando abonado...
             </>
           ) : (
@@ -657,7 +657,7 @@ export default function AbonadoForm({
             >
               {isPreviewing ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <TgBallSpinner size="xs" aria-hidden />
                   Procesando...
                 </>
               ) : (

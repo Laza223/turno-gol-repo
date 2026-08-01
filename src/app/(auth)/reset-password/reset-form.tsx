@@ -2,7 +2,8 @@
 
 import { useFormStatus } from 'react-dom'
 import { useActionState, useState } from 'react'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { ResetState } from './actions'
 
 const initial: ResetState = { status: 'idle' }
@@ -89,7 +90,7 @@ function SubmitButton() {
     >
       {pending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+          <TgBallSpinner size="xs" className="mr-2" aria-hidden />
           Guardando…
         </>
       ) : (

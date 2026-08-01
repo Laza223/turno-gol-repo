@@ -157,7 +157,7 @@ export default async function ReservasPage(props: Props) {
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="card-entrance flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: '80ms' }}>
         <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-muted p-1">
           {SCOPES.map((s) => {
             const active = scope === s.value
@@ -181,7 +181,7 @@ export default async function ReservasPage(props: Props) {
         </Suspense>
       </div>
 
-      <nav aria-label="Filtro por estado" className="flex flex-wrap gap-2">
+      <nav aria-label="Filtro por estado" className="card-entrance flex flex-wrap gap-2" style={{ animationDelay: '120ms' }}>
         {FILTERS.map((f) => {
           const active = status === f.value
           const count = countFor(counts, f.value)
@@ -233,7 +233,7 @@ export default async function ReservasPage(props: Props) {
           }
         />
       ) : (
-        <div className="space-y-6">
+        <div className="card-entrance space-y-6" style={{ animationDelay: '200ms' }}>
           {groups.map(([groupKey, groupRows]) => (
             <section key={groupKey} aria-label={scope === 'hoy' ? groupKey : formatDateLong(groupKey)}>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

@@ -23,20 +23,24 @@ export default async function SettingsCanchasPage() {
 
   return (
     <div className="space-y-6">
-      <SettingsTabs active="/settings/canchas" />
-      <CourtList
-        initialCourts={courts}
-        openingHours={tenant.openingHours}
-        isAdmin={role === 'admin'}
-        tenantName={tenant.name}
-        toggleStatusAction={toggleCourtStatusAction}
-        getDeactivationImpactAction={getCourtDeactivationImpactAction}
-        createAction={createCourtAction}
-        updateAction={updateCourtAction}
-        uploadPhotoAction={uploadCourtPhotoAction}
-        removePhotoAction={removeCourtPhotoAction}
-        reorderPhotosAction={reorderCourtPhotosAction}
-      />
+      <div className="card-entrance">
+        <SettingsTabs active="/settings/canchas" />
+      </div>
+      <div className="card-entrance" style={{ animationDelay: '120ms' }}>
+        <CourtList
+          initialCourts={courts}
+          openingHours={tenant.openingHours}
+          isAdmin={role === 'admin'}
+          tenantName={tenant.name}
+          toggleStatusAction={toggleCourtStatusAction}
+          getDeactivationImpactAction={getCourtDeactivationImpactAction}
+          createAction={createCourtAction}
+          updateAction={updateCourtAction}
+          uploadPhotoAction={uploadCourtPhotoAction}
+          removePhotoAction={removeCourtPhotoAction}
+          reorderPhotosAction={reorderCourtPhotosAction}
+        />
+      </div>
     </div>
   )
 }

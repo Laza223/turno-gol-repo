@@ -19,9 +19,11 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
         icon={<Contact className="h-6 w-6" aria-hidden="true" />}
       />
 
-      <JugadoresTabs active="/jugadores" />
+      <div className="card-entrance" style={{ animationDelay: '80ms' }}>
+        <JugadoresTabs active="/jugadores" />
+      </div>
 
-      <form method="GET" className="relative max-w-md">
+      <form method="GET" className="card-entrance relative max-w-md" style={{ animationDelay: '120ms' }}>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <input
           type="search"

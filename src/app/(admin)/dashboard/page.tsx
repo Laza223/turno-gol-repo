@@ -136,17 +136,19 @@ export default async function DashboardPage() {
         />
       )}
 
-      <UpcomingBookings
-        upcoming={data.upcoming}
-        playedToday={data.playedToday}
-        dayIsClosed={data.dayIsClosed}
-        nowHhmm={data.nowHhmm}
-        openHhmm={data.openHhmm}
-        closesNextDay={data.closesNextDay}
-      />
+      <div className="card-entrance" style={{ animationDelay: '240ms' }}>
+        <UpcomingBookings
+          upcoming={data.upcoming}
+          playedToday={data.playedToday}
+          dayIsClosed={data.dayIsClosed}
+          nowHhmm={data.nowHhmm}
+          openHhmm={data.openHhmm}
+          closesNextDay={data.closesNextDay}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <div className="order-first col-span-2 lg:order-0 lg:col-span-1">
+        <div className="card-entrance order-first col-span-2 lg:order-0 lg:col-span-1">
           <MetricCard
             label="Caja del día"
             value={cajaValue}
@@ -155,24 +157,28 @@ export default async function DashboardPage() {
             href="/caja"
           />
         </div>
-        <MetricCard
-          label="Turnos de hoy"
-          value={turnosValue}
-          sub={turnosSub}
-          icon={<Clock className="h-4 w-4" aria-hidden="true" />}
-          href="/grilla"
-        />
-        <MetricCard
-          label="Ventas de cantina"
-          value={formatArs(canteenSales.amountCents)}
-          sub={`${canteenSales.count} ${canteenSales.count === 1 ? 'venta' : 'ventas'} hoy`}
-          icon={<ShoppingBag className="h-4 w-4" aria-hidden="true" />}
-          href="/caja/cantina"
-        />
+        <div className="card-entrance" style={{ animationDelay: '80ms' }}>
+          <MetricCard
+            label="Turnos de hoy"
+            value={turnosValue}
+            sub={turnosSub}
+            icon={<Clock className="h-4 w-4" aria-hidden="true" />}
+            href="/grilla"
+          />
+        </div>
+        <div className="card-entrance" style={{ animationDelay: '160ms' }}>
+          <MetricCard
+            label="Ventas de cantina"
+            value={formatArs(canteenSales.amountCents)}
+            sub={`${canteenSales.count} ${canteenSales.count === 1 ? 'venta' : 'ventas'} hoy`}
+            icon={<ShoppingBag className="h-4 w-4" aria-hidden="true" />}
+            href="/caja/cantina"
+          />
+        </div>
       </div>
 
       {pendingDeposits.count > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <div className="card-entrance rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10" style={{ animationDelay: '320ms' }}>
           <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
             <CalendarCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
             <div className="min-w-0">

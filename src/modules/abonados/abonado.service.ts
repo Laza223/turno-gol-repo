@@ -3,6 +3,7 @@ import { abonados, bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { ensurePTR } from '@/modules/relationships/ptr.service'
+import { getCourtById } from '@/modules/courts/court.service'
 import { generateSlotDates } from './slot-generator'
 import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
 import { physicalRange } from '@/shared/time/physical-range'
@@ -11,6 +12,7 @@ import {
   AbonadoNotFoundError,
   AbonadoAlreadyCanceledError,
   ReactivationConflictError,
+  CourtNotFoundError,
 } from './abonado.errors'
 import type { AbonadoRow, AbonadoStatus, AbonadoPaymentMethod, CreateAbonadoInput } from './abonado.types'
 
@@ -144,6 +146,12 @@ export async function createAbonado(
   input: CreateAbonadoInput,
   tx: DbTx,
 ): Promise<{ abonado: AbonadoRow; slotsGenerated: number; conflictDates: string[] }> {
+  // El courtId lo manda el cliente: sin este chequeo, un staff de otro tenant
+  // podría crear un abonado (y 8 semanas de bookings confirmados) contra una
+  // cancha ajena. getCourtById ya filtra por tenant_id en la query.
+  const court = await getCourtById(input.courtId, tenantId, tx)
+  if (!court) throw new CourtNotFoundError(input.courtId)
+
   const hasConflict = await checkAbonadoSlotConflict(
     input.courtId,
     input.dayOfWeek,

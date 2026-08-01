@@ -105,6 +105,34 @@ export function buildOrganization(): JsonLdNode {
   }
 }
 
+// Characters that JSON.stringify does not escape but that are unsafe to emit verbatim
+// inside a `<script type="application/ld+json">` element. Mapped by codepoint (rather
+// than literal regex characters) so the escaping table itself can't silently drift.
+//   - `<` (U+003C): without this, a value containing a literal `</script>` (e.g.
+//     free-text tenant name/address controlled by any self-service tenant signup)
+//     would prematurely close the script tag, letting the browser parse the rest as
+//     real HTML/JS — this is the XSS vector.
+//   - `>` and `/` (U+003E, U+002F): also escaped so no substring of the JSON can form
+//     `<`, `>` or a closing tag when concatenated with surrounding markup.
+//   - U+2028/U+2029 (LINE SEPARATOR / PARAGRAPH SEPARATOR): valid inside JSON strings
+//     but illegal, unescaped line terminators in JS source, which can break parsing.
+const SCRIPT_TAG_ESCAPES: Record<number, string> = {
+  0x3c: '\\u003c', // <
+  0x3e: '\\u003e', // >
+  0x2f: '\\u002f', // /
+  0x2028: '\\u2028',
+  0x2029: '\\u2029',
+}
+
+function escapeForScriptTag(json: string): string {
+  let result = ''
+  for (const char of json) {
+    const replacement = SCRIPT_TAG_ESCAPES[char.codePointAt(0)!]
+    result += replacement ?? char
+  }
+  return result
+}
+
 export function renderStructuredData(data: StructuredData): string {
-  return JSON.stringify(data)
+  return escapeForScriptTag(JSON.stringify(data))
 }

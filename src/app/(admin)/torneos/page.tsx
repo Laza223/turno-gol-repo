@@ -61,7 +61,7 @@ export default async function TorneosPage() {
       {total === 0 && (
         // Banner Próximamente: solo tiene sentido si todavía no hay torneos,
         // si no se autocontradice con la lista/estado de abajo.
-        <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-linear-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-6 sm:p-8 dark:from-emerald-500/15 dark:via-teal-500/10">
+        <div className="card-entrance relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-linear-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-6 sm:p-8 dark:from-emerald-500/15 dark:via-teal-500/10" style={{ animationDelay: '80ms' }}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-2 max-w-xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
@@ -99,8 +99,10 @@ export default async function TorneosPage() {
         />
       ) : (
         <ul className="space-y-3">
-          {tournaments.map((t) => (
-            <li key={t.id}>
+          {tournaments.map((t, i) => (
+            // Delay capeado: sin cota, en listas largas los últimos ítems quedan
+            // invisibles (opacity 0) más de un segundo aunque ya sean focuseables.
+            <li key={t.id} className="card-entrance" style={{ animationDelay: `${80 + Math.min(i, 8) * 50}ms` }}>
               <Link
                 href={`/torneos/${t.id}`}
                 className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent/40 sm:flex-row sm:items-center sm:justify-between"

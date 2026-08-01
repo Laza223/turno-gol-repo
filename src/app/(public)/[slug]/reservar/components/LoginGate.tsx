@@ -2,7 +2,8 @@
 
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Loader2, Mail } from 'lucide-react'
+import { Mail } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { sendPlayerMagicLink, GateState } from '../actions'
 
 const initial: GateState = { status: 'idle' }
@@ -19,7 +20,7 @@ function Submit() {
   const { pending } = useFormStatus()
   return (
     <button type="submit" disabled={pending} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] disabled:scale-100 disabled:opacity-60 whitespace-nowrap">
-      {pending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Enviando…</> : 'Continuar con email'}
+      {pending ? <><TgBallSpinner size="xs" className="mr-2" aria-hidden /> Enviando…</> : 'Continuar con email'}
     </button>
   )
 }

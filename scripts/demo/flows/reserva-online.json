@@ -1,0 +1,25 @@
+{
+  "name": "reserva-online",
+  "auth": "player",
+  "viewport": "mobile",
+  "steps": [
+    { "action": "caption", "text": "Así reserva un jugador en tu complejo" },
+    { "action": "goto", "url": "/la-redonda" },
+    { "action": "pause", "ms": 2600 },
+    { "action": "caption", "text": "Elige el día y la hora…" },
+    { "action": "goto", "url": "/la-redonda/reservar?court=d0000000-0000-4000-8000-000000000010&date={date+2}&time=21:00&dur=60" },
+    { "action": "pause", "ms": 2200 },
+    { "action": "caption", "text": "…y paga la seña por MercadoPago" },
+    { "action": "click", "name": "Pagar seña y reservar" },
+    { "action": "cut", "mode": "start" },
+    { "action": "pause", "ms": 2000 },
+    { "action": "click", "name": "Pagar (aprobado)" },
+    { "action": "waitText", "text": "¡Reserva confirmada!" },
+    { "action": "cut", "mode": "end" },
+    { "action": "caption", "text": "Reserva confirmada, seña cobrada." },
+    { "action": "caption", "text": "Reserva confirmada. Sin llamados, sin WhatsApp." },
+    { "action": "pause", "ms": 2600 },
+    { "action": "caption", "text": "TurnoGol — tu complejo online 24/7" },
+    { "action": "pause", "ms": 1500 }
+  ]
+}

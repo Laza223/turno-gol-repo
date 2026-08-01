@@ -3,7 +3,8 @@
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
-import { Loader2, Mail } from 'lucide-react'
+import { Mail } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { ForgotState } from './actions'
 
 const initial: ForgotState = { status: 'idle' }
@@ -98,7 +99,7 @@ function SubmitButton() {
     >
       {pending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+          <TgBallSpinner size="xs" className="mr-2" aria-hidden />
           Enviando…
         </>
       ) : (

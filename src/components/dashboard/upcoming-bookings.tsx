@@ -131,14 +131,14 @@ export function UpcomingBookings({
       ) : (
         <>
           <ul className="divide-y divide-border">
-            {visible.map((row) => {
+            {visible.map((row, i) => {
               const relative = relativeStartLabel(row, nowHhmm, openHhmm, closesNextDay)
               const name = rowDisplayName(row)
               return (
-                <li key={row.id}>
+                <li key={row.id} className="card-entrance" style={{ animationDelay: `${i * 50}ms` }}>
                   <Link
                     href={`/reservas/${row.id}`}
-                    className="flex min-h-[44px] items-center gap-4 px-5 py-3 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-hidden"
+                    className="flex min-h-[44px] items-center gap-4 px-5 py-3 transition-colors hover:bg-emerald-500/5 focus-visible:bg-accent focus-visible:outline-hidden dark:hover:bg-emerald-500/10"
                     aria-label={`${formatTime(row.timeStart)} ${name} en ${row.courtName} — ver reserva`}
                   >
                     <div className="w-14 shrink-0">

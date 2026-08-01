@@ -127,21 +127,21 @@ function SidebarContent({
               aria-current={isActive ? 'page' : undefined}
               onClick={isMobile ? onClose : undefined}
               className={cn(
-                'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                'sidebar-nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium',
                 isActive
                   ? 'bg-emerald-500/10 text-emerald-700 shadow-xs dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-emerald-900/30'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
               {isActive && (
-                <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-emerald-500" aria-hidden />
+                <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-emerald-500 shadow-sm shadow-emerald-500/40" aria-hidden />
               )}
               <Icon
                 className={cn(
-                  'h-4 w-4 shrink-0 transition-colors',
+                  'h-4 w-4 shrink-0 transition-all duration-200',
                   isActive
                     ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-muted-foreground/70 group-hover:text-foreground',
+                    : 'text-muted-foreground/70 group-hover:text-foreground group-hover:scale-110',
                 )}
               />
               <span className="flex-1 truncate">{label}</span>

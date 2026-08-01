@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Logo } from '@/components/ui/logo'
 import { ResetForm } from './reset-form'
 import { resetPasswordAction } from './actions'
+import { AuthBackdrop } from '@/app/(auth)/AuthBackdrop'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,8 @@ export default async function ResetPasswordPage() {
   const hasSession = !!data?.user
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
+      <AuthBackdrop />
       <div className="w-full max-w-md">
         <div className="mb-8 flex justify-center">
           <Logo variant="vertical" className="w-32" />

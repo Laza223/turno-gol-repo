@@ -140,6 +140,7 @@
   --animate-tg-drift: tg-drift 18s ease-in-out infinite;
   --animate-slot-pulse: slot-pulse 600ms ease-out 1;
   --animate-faq-in: faq-in 0.2s ease-out;
+  --animate-header-shimmer: header-shimmer 8s ease-in-out infinite;
 
   @keyframes accordion-down {
     from {
@@ -195,6 +196,34 @@
       transform: translateY(0);
     }
   }
+  /* Shimmer sutil que recorre la banda del page-header — mueve un
+     highlight diagonal a velocidad lenta para dar vida sin distraer. */
+  @keyframes header-shimmer {
+    0% { background-position: -100% 0, 0 0, 0 0; }
+    50% { background-position: 200% 0, 0 0, 0 0; }
+    100% { background-position: 200% 0, 0 0, 0 0; }
+  }
+  /* Pelotita TG: bounce elástico vertical */
+  @keyframes tg-ball-bounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    30% { transform: translateY(calc(var(--tg-bounce, -16px) * 0.75)) rotate(8deg); }
+    50% { transform: translateY(var(--tg-bounce, -16px)) rotate(-4deg); }
+    70% { transform: translateY(calc(var(--tg-bounce, -16px) * 0.625)) rotate(6deg); }
+  }
+  /* Pelotita TG: sombra que sigue el bounce */
+  @keyframes tg-ball-shadow {
+    0%, 100% { transform: scaleX(1); opacity: 0.25; }
+    50% { transform: scaleX(0.7); opacity: 0.12; }
+  }
+  /* Stagger-fade para cards del dashboard */
+  @keyframes card-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  --animate-tg-ball-bounce: tg-ball-bounce 1.2s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+  --animate-tg-ball-shadow: tg-ball-shadow 1.2s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+  --animate-card-fade-in: card-fade-in 0.4s ease-out both;
 }
 
 /*
@@ -371,20 +400,30 @@ html {
 }
 
 /* Field texture shell — layout wrapper del panel admin. Theme-adaptive:
-   light = campo slate claro + glow emerald tenue; dark = campo slate-900. */
+   light = campo slate claro con gradiente diagonal + glows emerald + grid sutil;
+   dark = campo slate-900 profundo con glows emerald más intensos.
+   El grid SVG evoca una cancha (identidad deportiva) sin ser literal. */
 .shell-bg {
   background-color: hsl(214 25% 90%);
   background-image:
-    radial-gradient(circle at top right, rgba(5, 150, 105, 0.06), transparent 40%),
-    radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.05), transparent 40%);
+    radial-gradient(ellipse 80% 60% at 85% 15%, rgba(5, 150, 105, 0.10), transparent),
+    radial-gradient(ellipse 70% 50% at 10% 85%, rgba(13, 148, 136, 0.08), transparent),
+    radial-gradient(ellipse 50% 50% at 50% 50%, rgba(5, 150, 105, 0.04), transparent),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%23059669' stroke-opacity='0.04' stroke-width='0.5'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, hsl(214 25% 92%) 0%, hsl(160 10% 91%) 50%, hsl(214 25% 89%) 100%);
   background-attachment: fixed;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 60px 60px, 100% 100%;
 }
 .dark .shell-bg {
   background-color: hsl(var(--shell-bg));
   background-image:
-    radial-gradient(circle at top right, rgba(5, 150, 105, 0.15), transparent 40%),
-    radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.1), transparent 40%);
+    radial-gradient(ellipse 80% 60% at 85% 15%, rgba(16, 185, 129, 0.18), transparent),
+    radial-gradient(ellipse 70% 50% at 10% 85%, rgba(13, 148, 136, 0.12), transparent),
+    radial-gradient(ellipse 50% 50% at 50% 50%, rgba(16, 185, 129, 0.05), transparent),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%2334d399' stroke-opacity='0.03' stroke-width='0.5'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, hsl(222 47% 6%) 0%, hsl(224 60% 5%) 50%, hsl(220 40% 7%) 100%);
   background-attachment: fixed;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 60px 60px, 100% 100%;
 }
 
 /* Player shell — clean, modern vector soccer pitch background */
@@ -410,81 +449,112 @@ html {
   background-attachment: fixed;
 }
 
-/* Subtle gradient para el área de contenido — evita un bloque plano */
+/* Gradiente del área de contenido — gradiente más visible con tinte emerald
+   suave que separa visualmente del shell. El contenido "flota" sobre el fondo. */
 .content-area-gradient {
-  background: linear-gradient(
-    160deg,
-    hsl(214 25% 88%) 0%,
-    hsl(214 25% 93%) 50%,
-    hsl(214 25% 90%) 100%
-  );
+  background:
+    radial-gradient(ellipse 100% 80% at 80% 0%, rgba(5, 150, 105, 0.06), transparent 60%),
+    linear-gradient(
+      160deg,
+      hsl(214 25% 91%) 0%,
+      hsl(160 8% 93%) 40%,
+      hsl(214 25% 92%) 70%,
+      hsl(214 25% 89%) 100%
+    );
 }
 
-/* Variante dark: slate-950 profundo + glow emerald sutil (lenguaje del portal) */
+/* Variante dark: slate-950 profundo con glow emerald más pronunciado y
+   gradiente diagonal que da dimensión al área de contenido */
 .dark .content-area-gradient {
   background:
-    radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 42%),
-    linear-gradient(160deg, hsl(224 60% 5%) 0%, hsl(224 71% 4%) 55%, hsl(222 47% 6%) 100%);
+    radial-gradient(ellipse 100% 60% at 75% 5%, rgba(16, 185, 129, 0.12), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 20% 90%, rgba(13, 148, 136, 0.06), transparent),
+    linear-gradient(160deg, hsl(224 60% 5%) 0%, hsl(222 50% 5%) 45%, hsl(224 71% 4%) 100%);
 }
 
 /* ─── Sistema de superficies premium (theme-adaptive) ──────────────────────
-   Light = elevación (sombra suave en capas, sin translucidez → no se ve barroso).
+   Light = elevación con borde top emerald sutil + sombra profunda en capas.
    Dark  = glass (relleno white-alpha + blur + sombra profunda + glow emerald).
    Base estática; el lift/glow en hover es opt-in vía .card-premium-interactive. */
 .card-premium {
   background-color: hsl(var(--card));
   border: 1px solid hsl(var(--border));
+  border-top: 2px solid rgba(5, 150, 105, 0.20);
   border-radius: calc(var(--radius) + 0.25rem);
   box-shadow:
-    0 1px 2px rgba(2, 6, 23, 0.04),
-    0 8px 24px -12px rgba(2, 6, 23, 0.12);
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+    0 1px 2px rgba(2, 6, 23, 0.05),
+    0 4px 12px -4px rgba(2, 6, 23, 0.08),
+    0 12px 32px -12px rgba(2, 6, 23, 0.12);
+  transition: transform 250ms cubic-bezier(0.33, 1, 0.68, 1),
+    box-shadow 250ms cubic-bezier(0.33, 1, 0.68, 1),
+    border-color 250ms ease;
 }
 .dark .card-premium {
   background-color: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.9);
+  border-top-color: rgba(16, 185, 129, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 24px 50px -34px rgba(0, 0, 0, 0.9);
 }
 
 /* Lift/glow en hover. NO fija cursor: los cards genuinamente clickeables
-   agregan `cursor-pointer`; los KPI display-only conservan el lift sin engañar. */
+   agregan `cursor-pointer`; los KPI display-only conservan el lift sin engañar.
+   Curva cubic-bezier(0.33, 1, 0.68, 1) = ease-out-cubic: lift rápido, aterrizaje suave. */
 .card-premium-interactive:hover {
   transform: translateY(-4px);
-  border-color: rgba(16, 185, 129, 0.30);
+  border-color: rgba(16, 185, 129, 0.35);
+  border-top-color: rgba(16, 185, 129, 0.50);
   box-shadow:
-    0 1px 2px rgba(2, 6, 23, 0.05),
-    0 18px 40px -16px rgba(16, 185, 129, 0.20);
+    0 1px 2px rgba(2, 6, 23, 0.06),
+    0 8px 20px -8px rgba(16, 185, 129, 0.14),
+    0 20px 44px -16px rgba(16, 185, 129, 0.20);
 }
 .dark .card-premium-interactive:hover {
-  border-color: rgba(16, 185, 129, 0.40);
+  border-color: rgba(16, 185, 129, 0.45);
+  border-top-color: rgba(16, 185, 129, 0.60);
   box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
     0 24px 50px -30px rgba(0, 0, 0, 0.9),
-    0 0 40px -8px rgba(16, 185, 129, 0.35);
+    0 0 44px -8px rgba(16, 185, 129, 0.35);
 }
 
 /* ─── Banda de page-header premium (theme-adaptive) ────────────────────────
-   Light = gradiente slate sutil + tinte emerald. Dark = slate-950 + radial glow. */
+   Light = gradiente con tinte emerald visible + shimmer diagonal lento + borde
+   inferior accent. Dark = fondo profundo + glow emerald intenso + shimmer.
+   El shimmer se desactiva con prefers-reduced-motion (bloque único, más abajo). */
 .page-header-band {
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, 0.06), transparent 55%),
-    linear-gradient(180deg, hsl(214 25% 95%), hsl(214 25% 91%));
+    linear-gradient(105deg, transparent 30%, rgba(16, 185, 129, 0.08) 50%, transparent 70%),
+    radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, 0.12), transparent 50%),
+    linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(160 12% 95%) 60%, hsl(214 25% 92%) 100%);
+  background-size: 200% 100%, 100% 100%, 100% 100%;
+  animation: header-shimmer 8s ease-in-out infinite;
+  border-bottom: 2px solid rgba(5, 150, 105, 0.15);
 }
 .dark .page-header-band {
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(16, 185, 129, 0.16), transparent 55%),
-    linear-gradient(180deg, hsl(222 47% 7%), hsl(224 71% 4%));
+    linear-gradient(105deg, transparent 30%, rgba(16, 185, 129, 0.06) 50%, transparent 70%),
+    radial-gradient(120% 140% at 100% 0%, rgba(16, 185, 129, 0.22), transparent 50%),
+    linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(224 60% 5%) 100%);
+  background-size: 200% 100%, 100% 100%, 100% 100%;
+  animation: header-shimmer 8s ease-in-out infinite;
+  border-bottom: 2px solid rgba(16, 185, 129, 0.20);
 }
 
-/* Halo emerald reutilizable para icon-chips de StatCard / acciones */
+/* Halo emerald reutilizable para icon-chips de StatCard / acciones.
+   Más vibrante que antes: gradiente más saturado + shadow colored sutil. */
 .icon-halo {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(13, 148, 136, 0.10));
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(5, 150, 105, 0.14));
   color: hsl(var(--primary));
+  box-shadow: 0 2px 8px -2px rgba(16, 185, 129, 0.20);
 }
 .dark .icon-halo {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(13, 148, 136, 0.12));
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.28), rgba(13, 148, 136, 0.16));
   color: hsl(160 84% 55%);
+  box-shadow: 0 2px 12px -2px rgba(16, 185, 129, 0.30);
 }
 
 /* ─── Banda hero del jugador (theme-adaptive) ──────────────────────────────
@@ -745,7 +815,59 @@ html {
   );
 }
 
-/* Skeleton shimmer */
+/* ─── TG Ball Spinner (loading indicator premium) ─────────────────────────
+   Pelotita de fútbol SVG con bounce elástico. La sombra pseudo-element se
+   escala/opacita en sync con el bounce para dar profundidad. GPU-composited
+   (solo transform + opacity). */
+.tg-ball-spinner {
+  position: relative;
+  animation: tg-ball-bounce 1.2s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+  will-change: transform;
+  filter: drop-shadow(0 4px 8px rgba(5, 150, 105, 0.18));
+}
+.tg-ball-spinner::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 15%;
+  right: 15%;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.25), transparent);
+  animation: tg-ball-shadow 1.2s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* Variante inline (xs, 16px): vive DENTRO de botones — rebote corto para no
+   escapar del recorte del botón, sin sombra de piso ni drop-shadow (a ese
+   tamaño son ruido visual). */
+.tg-ball-spinner-xs {
+  --tg-bounce: -2.5px;
+  filter: none;
+}
+.tg-ball-spinner-xs::after {
+  display: none;
+}
+
+/* ─── Sidebar nav-item transitions ────────────────────────────────────────
+   Hover con escala sutil del icono + fondo que aparece con ease. El active
+   state tiene un pill indicator con glow. */
+.sidebar-nav-item {
+  transition: background-color 200ms ease, color 200ms ease, transform 150ms ease;
+}
+.sidebar-nav-item:hover {
+  transform: translateX(2px);
+}
+.sidebar-nav-item:active {
+  transform: translateX(1px) scale(0.99);
+}
+
+/* Card entrance animation — usar con style={{ animationDelay: `${i * 80}ms` }} */
+.card-entrance {
+  animation: card-fade-in 0.4s ease-out both;
+}
+
+/* Skeleton shimmer — premium gradient sweep con ease-in-out y emerald tint dark */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -753,16 +875,29 @@ html {
 
 .skeleton {
   background: linear-gradient(
-    90deg,
-    hsl(var(--muted)) 25%,
-    hsl(var(--secondary)) 50%,
-    hsl(var(--muted)) 75%
+    100deg,
+    hsl(var(--muted)) 30%,
+    hsl(var(--secondary) / 0.7) 50%,
+    hsl(var(--muted)) 70%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.8s ease-in-out infinite;
 }
 
-/* Reduced motion */
+:is(.dark) .skeleton {
+  background: linear-gradient(
+    100deg,
+    hsl(var(--muted)) 30%,
+    hsl(142 71% 45% / 0.06) 50%,
+    hsl(var(--muted)) 70%
+  );
+  background-size: 200% 100%;
+}
+
+/* ─── Accessibility: prefers-reduced-motion ─────────────────────────────
+   Desactiva todas las animaciones custom (bounce, stagger, shimmer, sidebar
+   transitions) cuando el usuario pide movimiento reducido. Las transiciones
+   de color/opacidad se mantienen (no causan mareo). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -778,6 +913,24 @@ html {
 
   .card-premium-interactive:hover {
     transform: none;
+  }
+
+  .tg-ball-spinner,
+  .tg-ball-spinner::after {
+    animation: none !important;
+  }
+  .card-entrance {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .page-header-band {
+    animation: none !important;
+  }
+  .sidebar-nav-item {
+    transition: none !important;
+  }
+  .sidebar-nav-item:hover {
+    transform: none !important;
   }
 }
 
@@ -830,3 +983,4 @@ html {
     width: 100%;
   }
 }
+

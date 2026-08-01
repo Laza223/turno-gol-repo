@@ -16,7 +16,10 @@ export function AdminHeader({
   onSignOut,
 }: AdminHeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-border bg-card/80 backdrop-blur-xl shadow-xs shadow-black/3 dark:shadow-black/20 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
+    <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-border/50 bg-card/80 backdrop-blur-xl shadow-xs shadow-black/3 dark:shadow-black/20 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
+      {/* Gradient accent line — borde inferior emerald sutil */}
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" aria-hidden />
+
       {/* Mobile hamburger */}
       <Button
         variant="ghost"
@@ -33,14 +36,13 @@ export function AdminHeader({
 
       {/* Right side */}
       <div className="flex items-center gap-2 sm:gap-3">
-        <span className="hidden sm:inline-flex items-center rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground">
+        <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" aria-hidden />
           {userEmail}
         </span>
         <AdminThemeMenu />
         <Button
           variant="ghost"
-          // No explicit h-* — let Button's default size (h-11 md:h-10) keep
-          // the 44 px mobile touch target.
           className="gap-2 text-muted-foreground hover:text-foreground"
           onClick={onSignOut}
           aria-label="Cerrar sesión"

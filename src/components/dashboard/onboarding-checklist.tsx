@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
@@ -172,7 +172,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
 
   if (minimized) {
     return (
-      <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-xs shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
+      <div className="card-entrance flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-xs shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
         <div className="flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">¡Tu complejo está 100% listo!</p>
@@ -194,7 +194,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
     return (
       <li key={key} className="flex items-center gap-3 py-2.5">
         {done ? (
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50 fade-in duration-300" aria-hidden="true" />
         ) : (
           <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" aria-hidden="true" />
         )}
@@ -249,11 +249,16 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
   }
 
   return (
-    <div className="card-premium rounded-2xl">
+    <div className="card-premium card-entrance rounded-2xl">
       <div data-tour-id="tour-checklist" className="flex items-center justify-between border-b border-border px-5 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Configuración del complejo</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{completed} de {total} completados</p>
+        <div className="flex items-center gap-3">
+          <div className="icon-halo inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true">
+            <Rocket className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Configuración del complejo</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{completed} de {total} completados</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">

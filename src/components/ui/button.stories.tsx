@@ -53,7 +53,7 @@ export const Tamanos: Story = {
   ),
 }
 
-/** `isLoading` deshabilita el botón y muestra el spinner de lucide (`Loader2`). */
+/** `isLoading` deshabilita el botón y muestra el spinner branded (`TgBallSpinner`). */
 export const Cargando: Story = {
   args: { isLoading: true, children: 'Guardando…' },
   play: async ({ canvasElement }) => {

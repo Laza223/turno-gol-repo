@@ -1,7 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ImagePlus, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ImagePlus, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import { resizeToPreset, type ImagePreset } from '@/shared/images/resize-image'
 import { cn } from '@/lib/utils'
 
@@ -144,7 +145,7 @@ export function ImageUploader({
             )}
           >
             {busy ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+              <TgBallSpinner size="sm" aria-hidden />
             ) : (
               <ImagePlus className="h-5 w-5" aria-hidden />
             )}

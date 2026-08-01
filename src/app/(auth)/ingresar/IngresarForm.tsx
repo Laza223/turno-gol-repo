@@ -3,7 +3,8 @@
 import { useFormStatus } from 'react-dom'
 import { useActionState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { CheckCircle2, Loader2, Mail } from 'lucide-react'
+import { CheckCircle2, Mail } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { PlayerLoginState } from './actions'
 
 const initial: PlayerLoginState = { status: 'idle' }
@@ -145,7 +146,7 @@ function SubmitButton() {
     >
       {pending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+          <TgBallSpinner size="xs" className="mr-2" aria-hidden />
           Enviando…
         </>
       ) : (

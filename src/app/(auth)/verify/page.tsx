@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import { parseIntent, type SuccessIntent } from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { Logo } from '@/components/ui/logo'
@@ -134,9 +135,7 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
 function LoadingState() {
   return (
     <>
-      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
-        <Loader2 className="h-7 w-7 animate-spin text-emerald-300" aria-hidden />
-      </div>
+      <TgBallSpinner size="lg" className="mb-5" />
       <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
         Verificando tu enlace…
       </h1>

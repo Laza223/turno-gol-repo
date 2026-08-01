@@ -13,7 +13,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { ArrowDownRight, ArrowUpRight, RefreshCw } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { TenantMetrics } from '@/modules/metrics/metrics.service'
 import type { SystemStatus } from '@/app/api/admin/system-status/route'
 import { useChartTheme } from '@/components/admin/useChartTheme'
@@ -334,7 +335,9 @@ export default function MetricsDashboard({
   if (!metrics) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Cargando métricas">
-        <RefreshCw className="h-6 w-6 animate-spin text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+        {/* aria-hidden: el wrapper ya anuncia la carga — un role="status"
+            anidado duplica el anuncio en lectores de pantalla. */}
+        <TgBallSpinner size="lg" text="Cargando métricas…" aria-hidden />
       </div>
     )
   }

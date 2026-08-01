@@ -1,0 +1,24 @@
+{
+  "name": "venta-cantina",
+  "auth": "admin",
+  "viewport": "mobile",
+  "steps": [
+    { "action": "caption", "text": "La cantina de tu complejo, sin cuaderno" },
+    { "action": "goto", "url": "/caja/cantina" },
+    { "action": "pause", "ms": 1800 },
+    { "action": "caption", "text": "Tocás el producto…" },
+    { "action": "click", "name": "re:^Cerveza Quilmes" },
+    { "action": "pause", "ms": 700 },
+    { "action": "click", "name": "re:^Cerveza Quilmes" },
+    { "action": "pause", "ms": 900 },
+    { "action": "caption", "text": "…y cobrás. Dos toques." },
+    { "action": "click", "name": "re:^Cobrar" },
+    { "action": "waitText", "text": "Venta registrada" },
+    { "action": "pause", "ms": 1400 },
+    { "action": "caption", "text": "La venta ya está en la caja del día" },
+    { "action": "goto", "url": "/caja" },
+    { "action": "pause", "ms": 2600 },
+    { "action": "caption", "text": "Stock y plata, siempre al día — TurnoGol" },
+    { "action": "pause", "ms": 1800 }
+  ]
+}

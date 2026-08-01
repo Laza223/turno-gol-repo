@@ -1,16 +1,17 @@
+import type { ComponentPropsWithoutRef } from 'react'
 import { cn } from '@/lib/utils'
 
-interface TgBallSpinnerProps {
-  /** Tamaño del spinner ('sm' | 'md' | 'lg'). */
-  size?: 'sm' | 'md' | 'lg'
+interface TgBallSpinnerProps extends ComponentPropsWithoutRef<'div'> {
+  /** Tamaño del spinner. `xs` (16px) es la variante inline para botones: rebote corto. */
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   /** Label de accesibilidad. */
   label?: string
   /** Texto debajo del spinner (ej. "Cargando reservas…"). */
   text?: string
-  className?: string
 }
 
 const SIZE_MAP = {
+  xs: { ball: 'h-4 w-4', text: 'text-xs', tg: 'text-[7px]' },
   sm: { ball: 'h-8 w-8', text: 'text-xs', tg: 'text-[7px]' },
   md: { ball: 'h-12 w-12', text: 'text-sm', tg: 'text-[10px]' },
   lg: { ball: 'h-16 w-16', text: 'text-base', tg: 'text-sm' },
@@ -19,27 +20,42 @@ const SIZE_MAP = {
 /**
  * Spinner branded de TurnoGol: pelotita de fútbol SVG con el monograma "TG"
  * en el centro. Rebota suavemente (bounce) y rota sobre su eje.
+ *
+ * Usa CSS puro — sin JS, sin requestAnimationFrame. El bounce y rotation
+ * se combinan con `animation-composition: accumulate` para que ambas
+ * animaciones corran simultáneamente sin conflicto.
+ *
+ * Performance: SVG inline (no raster), animaciones en `transform` (GPU-composited),
+ * `will-change: transform` para promover al compositor. Se desactiva
+ * automáticamente con `prefers-reduced-motion: reduce`.
  */
 export function TgBallSpinner({
   size = 'md',
   label = 'Cargando…',
   text,
   className,
+  ...rest
 }: TgBallSpinnerProps) {
-  const s = SIZE_MAP[size] ?? SIZE_MAP.md
+  const s = SIZE_MAP[size]
   return (
     <div
       role="status"
       aria-label={label}
       className={cn('flex flex-col items-center justify-center gap-3', className)}
+      {...rest}
     >
-      <div className={cn('tg-ball-spinner', s.ball)} aria-hidden="true">
+      <div
+        className={cn('tg-ball-spinner', size === 'xs' && 'tg-ball-spinner-xs', s.ball)}
+        aria-hidden="true"
+      >
+        {/* Pelota de fútbol SVG — pentágonos estilizados + monograma TG */}
         <svg
           viewBox="0 0 64 64"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           className="h-full w-full drop-shadow-lg"
         >
+          {/* Cuerpo de la pelota */}
           <circle
             cx="32"
             cy="32"
@@ -49,12 +65,16 @@ export function TgBallSpinner({
             strokeWidth="1.5"
             className="text-emerald-600 dark:text-emerald-400"
           />
+          {/* Patrón de pentágonos de fútbol — simplificado y estilizado */}
           <g className="text-emerald-600/20 dark:text-emerald-400/20" fill="currentColor">
+            {/* Pentágono central (arriba) */}
             <polygon points="32,8 38,16 35,24 29,24 26,16" />
+            {/* Pentágonos laterales */}
             <polygon points="52,22 54,32 48,38 42,34 44,24" />
-            <polygon points="12,22 20,24 22,34 16,38 10,32" />
+            {/* Pentágonos inferiores */}
             <polygon points="44,46 38,50 32,56 26,50 20,46 24,40 40,40" />
           </g>
+          {/* Líneas de costura */}
           <g
             stroke="currentColor"
             strokeWidth="0.8"
@@ -74,6 +94,7 @@ export function TgBallSpinner({
             <line x1="20" y1="46" x2="14" y2="54" />
             <line x1="32" y1="56" x2="32" y2="62" />
           </g>
+          {/* Monograma TG — centrado, bold, italic */}
           <text
             x="32"
             y="36"

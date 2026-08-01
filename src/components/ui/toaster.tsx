@@ -1,5 +1,6 @@
 'use client'
 
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import {
   Toast,
   ToastClose,
@@ -30,6 +31,12 @@ export function Toaster() {
             if (!open) dismiss(t.id)
           }}
         >
+          {/* Ícono por variante: hereda el color del texto del toast (ya AA). */}
+          {t.variant === 'success' ? (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+          ) : t.variant === 'destructive' ? (
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+          ) : null}
           <div className="grid gap-1">
             {t.title ? <ToastTitle>{t.title}</ToastTitle> : null}
             {t.description ? (

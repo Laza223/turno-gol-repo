@@ -38,7 +38,12 @@ const TooltipContent = React.forwardRef<
       className={cn(
         // Inversión de tokens (§6.1): contraste máximo en ambos temas sin hex.
         'z-50 overflow-hidden rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background shadow-md',
-        'animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none',
+        // Entrada con slide direccional sutil (1 = 4px) según el lado en que
+        // Radix lo posiciona, y salida animada simétrica (Radix espera el
+        // animate-out antes de desmontar).
+        'animate-in fade-in-0 zoom-in-95 data-[side=top]:slide-in-from-bottom-1 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1',
+        'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+        'motion-reduce:animate-none',
         className,
       )}
       {...props}

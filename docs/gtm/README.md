@@ -17,6 +17,9 @@ Carpeta operativa de venta. No es marketing: es la máquina para conseguir conve
 | [09-contenido.md](./09-contenido.md) | Contenido que apoya ventas (municiones, no likes) | Cuando haya 30 min libres, nunca antes de prospectar |
 | [10-playbook-ia.md](./10-playbook-ia.md) | Cómo Sonnet/Opus ejecutan este sistema sesión a sesión | Al inicio de cada sesión de trabajo comercial con IA |
 | [11-contenido-viral-ig.md](./11-contenido-viral-ig.md) | Vía viral IG: 30 guiones de reels, funnel "comentá YO", producción con avatares IA. ⚠️ Auditado por el red team (2026-07-18): estrategia de distribución superseded; guiones válidos como biblioteca | Solo como biblioteca de guiones — la estrategia vigente es la del red team |
+| [12-guiones-validados-competencia.md](./12-guiones-validados-competencia.md) | Evidencia de ads de la competencia (ATC sin ads Meta; Clubo 14+ activos): corpus de 36 reels con views y captions | Antes de escribir guiones nuevos — es el corpus validado por plata ajena |
+| [13-guiones-higgsfield.md](./13-guiones-higgsfield.md) | 20 guiones palabra por palabra para avatar (Higgsfield), CTA mixto A/B: WhatsApp+mes gratis vs turnogol.app | Al producir videos con avatar |
+| [14-perfil-instagram.md](./14-perfil-instagram.md) | Kit de setup del perfil @turnogol: categoría, nombre, bio, links, destacadas, fijados y grilla inicial — con evidencia de bios de ATC/Clubo | Al configurar o auditar el perfil de IG |
 | [TURNOGOL_MARKETING_RED_TEAM.md](./TURNOGOL_MARKETING_RED_TEAM.md) | **Red team completo del marketing (2026-07-18)**: auditoría de evidencia y del doc 11, mercado real con fuentes ([research/](./research/)), posicionamiento, 15 piezas reconstruidas, experimentos y plan de 30 días | Antes de ejecutar CUALQUIER acción de marketing/adquisición; contiene las decisiones pendientes del founder (§21) |
 
 ## Las 4 reglas de oro

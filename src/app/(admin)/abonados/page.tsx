@@ -60,7 +60,7 @@ export default async function AbonadosPage(
         }
       />
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="card-entrance flex gap-2 flex-wrap" style={{ animationDelay: '80ms' }}>
         <Link
           href="/abonados"
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
@@ -86,14 +86,16 @@ export default async function AbonadosPage(
         ))}
       </div>
 
-      <AbonadosList
-        abonados={abonados}
-        filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
-        pauseAction={pauseAbonadoAction}
-        reactivateAction={reactivateAbonadoAction}
-        cancelAction={cancelAbonadoAction}
-        previewSlotsAction={previewAbonadoSlotsAction}
-      />
+      <div className="card-entrance" style={{ animationDelay: '160ms' }}>
+        <AbonadosList
+          abonados={abonados}
+          filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
+          pauseAction={pauseAbonadoAction}
+          reactivateAction={reactivateAbonadoAction}
+          cancelAction={cancelAbonadoAction}
+          previewSlotsAction={previewAbonadoSlotsAction}
+        />
+      </div>
     </div>
   )
 }

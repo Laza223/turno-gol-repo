@@ -10,7 +10,7 @@ function Inner({ depositAmount }: { depositAmount: number }) {
   const { pending } = useFormStatus()
   return (
     <button type="submit" disabled={pending} className="inline-flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] disabled:scale-100 disabled:opacity-60 whitespace-nowrap">
-      {pending ? <><TgBallSpinner size="sm" className="mr-1" aria-hidden /> Procesando.</> : (
+      {pending ? <><TgBallSpinner size="xs" className="mr-1" aria-hidden /> Procesando…</> : (
         <><ShieldCheck className="h-4 w-4" aria-hidden /> {depositAmount > 0 ? 'Pagar seña y reservar' : 'Confirmar reserva'}</>
       )}
     </button>
@@ -25,7 +25,6 @@ export default function ConfirmBookingButton(props: {
   dur: number
   depositAmount: number
   payMethods: PayMethod[]
-  /** Server Action inyectada por la page (../actions#createBookingAndCheckout). */
   action: typeof createBookingAndCheckout
 }) {
   return (
@@ -35,12 +34,10 @@ export default function ConfirmBookingButton(props: {
       <input type="hidden" name="date" value={props.date} />
       <input type="hidden" name="time" value={props.time} />
       <input type="hidden" name="dur" value={props.dur} />
+
       <PaymentMethodSelector methods={props.payMethods} />
+
       <Inner depositAmount={props.depositAmount} />
-      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden />
-        {props.depositAmount > 0 ? 'Te llevamos a MercadoPago para pagar la seña.' : 'Tu turno queda confirmado al instante.'}
-      </p>
     </form>
   )
 }

@@ -21,7 +21,7 @@ type Props = {
  */
 export function ResponsiveList({ header, cards, table, className }: Props) {
   return (
-    <div className={cn('rounded-lg border border-border bg-card', className)}>
+    <div className={cn('overflow-hidden rounded-xl border border-border/60 bg-card shadow-xs', className)}>
       {header}
       <div className="hidden overflow-x-auto sm:block">{table}</div>
       <div className="sm:hidden">{cards}</div>

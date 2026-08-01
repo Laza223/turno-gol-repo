@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, Mail, Loader2, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Mail, AlertCircle } from 'lucide-react'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { UpdateEmailActionResult } from './actions'
 
 type UpdateUserEmailAction = (newEmail: string) => Promise<UpdateEmailActionResult>
@@ -96,7 +97,7 @@ export function AccountEmailForm({
           disabled={status === 'loading' || !newEmail || newEmail === currentEmail}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
         >
-          {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+          {status === 'loading' && <TgBallSpinner size="xs" aria-hidden />}
           Actualizar email
         </button>
       </form>

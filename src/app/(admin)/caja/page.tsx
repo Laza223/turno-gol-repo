@@ -103,33 +103,49 @@ export default async function CajaPage(props: {
         }
       />
 
-      <CajaTabs active="/caja" />
+      <div className="card-entrance">
+        <CajaTabs active="/caja" />
+      </div>
 
       {!summary.isClosed && (
-        <OpenDayCard
-          date={date}
-          open={open}
-          openDayAction={openDayAction}
-          isToday={isToday}
-        />
+        <div className="card-entrance" style={{ animationDelay: '80ms' }}>
+          <OpenDayCard
+            date={date}
+            open={open}
+            openDayAction={openDayAction}
+            isToday={isToday}
+          />
+        </div>
       )}
 
-      {!summary.isClosed && <CajaCierreHint />}
+      {!summary.isClosed && (
+        <div className="card-entrance" style={{ animationDelay: '120ms' }}>
+          <CajaCierreHint />
+        </div>
+      )}
 
       {/* Peak-end (§5): el cierre abre la vista — recibo verde e inmutable. */}
-      {summary.isClosed && summary.close && <CierreCard close={summary.close} />}
+      {summary.isClosed && summary.close && (
+        <div className="card-entrance" style={{ animationDelay: '80ms' }}>
+          <CierreCard close={summary.close} />
+        </div>
+      )}
 
       {/* Movimientos del día */}
-      <MovementsList
-        cashFlows={cashFlows}
-        isClosed={summary.isClosed}
-        date={date}
-        cutoffMins={cutoffMins}
-        createCashFlowAction={createCashFlowAction}
-      />
+      <div className="card-entrance" style={{ animationDelay: '160ms' }}>
+        <MovementsList
+          cashFlows={cashFlows}
+          isClosed={summary.isClosed}
+          date={date}
+          cutoffMins={cutoffMins}
+          createCashFlowAction={createCashFlowAction}
+        />
+      </div>
 
       {/* Desglose por método: referencia del arqueo, al final para no abrumar. */}
-      <MethodBreakdown methods={methods} />
+      <div className="card-entrance" style={{ animationDelay: '240ms' }}>
+        <MethodBreakdown methods={methods} />
+      </div>
     </div>
   )
 }

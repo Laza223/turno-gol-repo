@@ -1,0 +1,29 @@
+{
+  "name": "turno-fijo",
+  "auth": "admin",
+  "viewport": "mobile",
+  "steps": [
+    { "action": "caption", "text": "Cargá un turno fijo en un minuto" },
+    { "action": "goto", "url": "/abonados/nuevo" },
+    { "action": "pause", "ms": 1600 },
+    { "action": "caption", "text": "Elegís cancha, día y horario…" },
+    { "action": "click", "css": "#courtId" },
+    { "action": "clickText", "text": "Cancha 2 — F5" },
+    { "action": "pause", "ms": 500 },
+    { "action": "click", "name": "Seleccionar fecha" },
+    { "action": "pause", "ms": 700 },
+    { "action": "click", "css": "button[aria-label*='next' i], button[aria-label*='siguiente' i]" },
+    { "action": "pause", "ms": 500 },
+    { "action": "clickText", "text": "3" },
+    { "action": "pause", "ms": 700 },
+    { "action": "caption", "text": "…los datos del cliente…" },
+    { "action": "fill", "css": "#contactName, input[name='contactName'], input[placeholder*='ombre']", "text": "Daniel Aguirre" },
+    { "action": "fill", "css": "#contactPhone", "text": "1161234455", "fast": true },
+    { "action": "fill", "css": "#pricePerSession, input[name='pricePerSession'], input[inputmode='numeric']", "text": "40000", "fast": true },
+    { "action": "caption", "text": "…y TurnoGol genera todas las fechas" },
+    { "action": "click", "name": "Continuar" },
+    { "action": "pause", "ms": 2600 },
+    { "action": "caption", "text": "El mismo día y hora, todas las semanas" },
+    { "action": "pause", "ms": 2000 }
+  ]
+}

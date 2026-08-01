@@ -27,6 +27,10 @@ describe('SubmitButton (#20)', () => {
     render(<SubmitButton pendingLabel="Procesando…">Guardar</SubmitButton>)
     const btn = screen.getByRole('button') as HTMLButtonElement
     expect(btn.disabled).toBe(true)
-    expect(btn.textContent).toBe('Procesando…')
+    // textContent crudo ya no sirve: el TgBallSpinner del estado isLoading trae
+    // el monograma SVG "TG" (aria-hidden, invisible como texto). Se asserta el
+    // nombre accesible, que es lo que el usuario percibe.
+    expect(btn).toHaveAccessibleName('Procesando…')
+    expect(btn.textContent).not.toContain('Guardar')
   })
 })

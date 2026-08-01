@@ -1,0 +1,90 @@
+{
+  "flow": "reserva-online",
+  "viewport": {
+    "width": 393,
+    "height": 851
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "caption",
+      "text": "Así reserva un jugador en tu complejo"
+    },
+    {
+      "t": 0,
+      "type": "goto",
+      "text": "/la-redonda"
+    },
+    {
+      "t": 1465,
+      "type": "ready",
+      "text": "/la-redonda"
+    },
+    {
+      "t": 4073,
+      "type": "caption",
+      "text": "Elige el día y la hora…"
+    },
+    {
+      "t": 4077,
+      "type": "goto",
+      "text": "/la-redonda/reservar?court=d0000000-0000-4000-8000-000000000010&date=2026-08-01&time=21:00&dur=60"
+    },
+    {
+      "t": 5202,
+      "type": "ready",
+      "text": "/la-redonda/reservar?court=d0000000-0000-4000-8000-000000000010&date=2026-08-01&time=21:00&dur=60"
+    },
+    {
+      "t": 7403,
+      "type": "caption",
+      "text": "…y paga la seña por MercadoPago"
+    },
+    {
+      "t": 8279,
+      "type": "click",
+      "x": 196.5,
+      "y": 643,
+      "text": "Pagar seña y reservar"
+    },
+    {
+      "t": 8279,
+      "type": "cutStart"
+    },
+    {
+      "t": 11015,
+      "type": "click",
+      "x": 196.5,
+      "y": 519,
+      "text": "Pagar (aprobado)"
+    },
+    {
+      "t": 11832,
+      "type": "waitText",
+      "text": "¡Reserva confirmada!"
+    },
+    {
+      "t": 11832,
+      "type": "cutEnd"
+    },
+    {
+      "t": 11832,
+      "type": "caption",
+      "text": "Reserva confirmada, seña cobrada."
+    },
+    {
+      "t": 11832,
+      "type": "caption",
+      "text": "Reserva confirmada. Sin llamados, sin WhatsApp."
+    },
+    {
+      "t": 14433,
+      "type": "caption",
+      "text": "TurnoGol — tu complejo online 24/7"
+    },
+    {
+      "t": 15939,
+      "type": "done"
+    }
+  ]
+}

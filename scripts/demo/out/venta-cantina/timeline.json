@@ -1,0 +1,74 @@
+{
+  "flow": "venta-cantina",
+  "viewport": {
+    "width": 393,
+    "height": 851
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "caption",
+      "text": "La cantina de tu complejo, sin cuaderno"
+    },
+    {
+      "t": 0,
+      "type": "goto",
+      "text": "/caja/cantina"
+    },
+    {
+      "t": 11605,
+      "type": "caption",
+      "text": "Tocás el producto…"
+    },
+    {
+      "t": 12543,
+      "type": "click",
+      "x": 128.9296875,
+      "y": 438,
+      "text": "re:^Cerveza Quilmes"
+    },
+    {
+      "t": 14023,
+      "type": "click",
+      "x": 144.484375,
+      "y": 438,
+      "text": "re:^Cerveza Quilmes"
+    },
+    {
+      "t": 14925,
+      "type": "caption",
+      "text": "…y cobrás. Dos toques."
+    },
+    {
+      "t": 15710,
+      "type": "click",
+      "x": 196.5,
+      "y": 579,
+      "text": "re:^Cobrar"
+    },
+    {
+      "t": 16540,
+      "type": "waitText",
+      "text": "Venta registrada"
+    },
+    {
+      "t": 17944,
+      "type": "caption",
+      "text": "La venta ya está en la caja del día"
+    },
+    {
+      "t": 17944,
+      "type": "goto",
+      "text": "/caja"
+    },
+    {
+      "t": 22592,
+      "type": "caption",
+      "text": "Stock y plata, siempre al día — TurnoGol"
+    },
+    {
+      "t": 24395,
+      "type": "done"
+    }
+  ]
+}

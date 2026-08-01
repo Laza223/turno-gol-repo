@@ -1,0 +1,105 @@
+{
+  "flow": "turno-fijo",
+  "viewport": {
+    "width": 393,
+    "height": 851
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "caption",
+      "text": "Cargá un turno fijo en un minuto"
+    },
+    {
+      "t": 0,
+      "type": "goto",
+      "text": "/abonados/nuevo"
+    },
+    {
+      "t": 1415,
+      "type": "ready",
+      "text": "/abonados/nuevo"
+    },
+    {
+      "t": 3021,
+      "type": "caption",
+      "text": "Elegís cancha, día y horario…"
+    },
+    {
+      "t": 3857,
+      "type": "click",
+      "x": 196.5,
+      "y": 346,
+      "text": "#courtId"
+    },
+    {
+      "t": 4797,
+      "type": "click",
+      "x": 108.7109375,
+      "y": 435,
+      "text": "Cancha 2 — F5"
+    },
+    {
+      "t": 6107,
+      "type": "click",
+      "x": 196.5,
+      "y": 518,
+      "text": "Seleccionar fecha"
+    },
+    {
+      "t": 7555,
+      "type": "click",
+      "x": 282,
+      "y": 100,
+      "text": "button[aria-label*='next' i], button[aria-label*='siguiente' i]"
+    },
+    {
+      "t": 8896,
+      "type": "click",
+      "x": 73.8515625,
+      "y": 188,
+      "text": "3"
+    },
+    {
+      "t": 9606,
+      "type": "caption",
+      "text": "…los datos del cliente…"
+    },
+    {
+      "t": 9654,
+      "type": "fill",
+      "text": "Daniel Aguirre"
+    },
+    {
+      "t": 10978,
+      "type": "fill",
+      "text": "1161234455"
+    },
+    {
+      "t": 11054,
+      "type": "fill",
+      "text": "40000"
+    },
+    {
+      "t": 11114,
+      "type": "caption",
+      "text": "…y TurnoGol genera todas las fechas"
+    },
+    {
+      "t": 11894,
+      "type": "click",
+      "x": 196.5,
+      "y": 771.5,
+      "text": "Continuar"
+    },
+    {
+      "t": 14505,
+      "type": "caption",
+      "text": "El mismo día y hora, todas las semanas"
+    },
+    {
+      "t": 16513,
+      "type": "done"
+    }
+  ]
+}

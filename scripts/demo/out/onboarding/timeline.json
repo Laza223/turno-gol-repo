@@ -1,0 +1,140 @@
+{
+  "flow": "onboarding",
+  "viewport": {
+    "width": 393,
+    "height": 851
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "caption",
+      "text": "Creá tu complejo en 4 pasos"
+    },
+    {
+      "t": 0,
+      "type": "goto",
+      "text": "/onboarding"
+    },
+    {
+      "t": 4971,
+      "type": "ready",
+      "text": "/onboarding"
+    },
+    {
+      "t": 6777,
+      "type": "caption",
+      "text": "1 — Los datos de tu complejo"
+    },
+    {
+      "t": 6888,
+      "type": "fill",
+      "text": "Complejo El Potrero"
+    },
+    {
+      "t": 8473,
+      "type": "fill",
+      "text": "Av. Mitre 1850"
+    },
+    {
+      "t": 8526,
+      "type": "fill",
+      "text": "Avellaneda"
+    },
+    {
+      "t": 9428,
+      "type": "fill",
+      "text": "undefined = Buenos Aires"
+    },
+    {
+      "t": 9543,
+      "type": "fill",
+      "text": "+5491144556677"
+    },
+    {
+      "t": 9647,
+      "type": "fill",
+      "text": "hola@elpotrero.com.ar"
+    },
+    {
+      "t": 10523,
+      "type": "click",
+      "x": 196.5,
+      "y": 784,
+      "text": "re:Continuar"
+    },
+    {
+      "t": 11925,
+      "type": "caption",
+      "text": "2 — Horarios (vienen listos, los tocás si querés)"
+    },
+    {
+      "t": 14092,
+      "type": "click",
+      "x": 196.5,
+      "y": 772,
+      "text": "re:Continuar"
+    },
+    {
+      "t": 15299,
+      "type": "caption",
+      "text": "3 — Tus canchas y el precio"
+    },
+    {
+      "t": 15319,
+      "type": "fill",
+      "text": "40.000"
+    },
+    {
+      "t": 17438,
+      "type": "click",
+      "x": 239.8359375,
+      "y": 772,
+      "text": "re:Continuar"
+    },
+    {
+      "t": 18646,
+      "type": "caption",
+      "text": "4 — ¿Cobrás seña online?"
+    },
+    {
+      "t": 19387,
+      "type": "click",
+      "x": 152.9609375,
+      "y": 403.5,
+      "text": "Sin seña por ahora"
+    },
+    {
+      "t": 20928,
+      "type": "click",
+      "x": 196.5,
+      "y": 562,
+      "text": "re:Terminar y ver mi complejo"
+    },
+    {
+      "t": 21761,
+      "type": "waitText",
+      "text": "Ir a mi panel"
+    },
+    {
+      "t": 21761,
+      "type": "caption",
+      "text": "Listo: tu complejo ya está online"
+    },
+    {
+      "t": 24724,
+      "type": "click",
+      "x": 196.4921875,
+      "y": 552,
+      "text": "re:Ir a mi panel"
+    },
+    {
+      "t": 26932,
+      "type": "caption",
+      "text": "De cero a recibir reservas: una tarde — TurnoGol"
+    },
+    {
+      "t": 28941,
+      "type": "done"
+    }
+  ]
+}

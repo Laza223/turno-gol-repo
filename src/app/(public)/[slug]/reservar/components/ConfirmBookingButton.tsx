@@ -2,9 +2,9 @@
 
 import { useFormStatus } from 'react-dom'
 import { ShieldCheck } from 'lucide-react'
-import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { createBookingAndCheckout } from '../actions'
 import PaymentMethodSelector, { type PayMethod } from './PaymentMethodSelector'
+import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 
 function Inner({ depositAmount }: { depositAmount: number }) {
   const { pending } = useFormStatus()
@@ -25,7 +25,6 @@ export default function ConfirmBookingButton(props: {
   dur: number
   depositAmount: number
   payMethods: PayMethod[]
-  /** Server Action inyectada por la page (../actions#createBookingAndCheckout). */
   action: typeof createBookingAndCheckout
 }) {
   return (
@@ -35,12 +34,10 @@ export default function ConfirmBookingButton(props: {
       <input type="hidden" name="date" value={props.date} />
       <input type="hidden" name="time" value={props.time} />
       <input type="hidden" name="dur" value={props.dur} />
+
       <PaymentMethodSelector methods={props.payMethods} />
+
       <Inner depositAmount={props.depositAmount} />
-      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden />
-        {props.depositAmount > 0 ? 'Te llevamos a MercadoPago para pagar la seña.' : 'Tu turno queda confirmado al instante.'}
-      </p>
     </form>
   )
 }

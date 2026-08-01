@@ -1,0 +1,17 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Demo,Arial,64,&H00FFFFFF,&H00FFFFFF,&H00101010,&H88101010,-1,0,0,0,100,100,0,0,1,4,2,2,60,60,110,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.50,Demo,,0,0,0,,La cantina de tu complejo, sin cuaderno
+Dialogue: 0,0:00:00.26,0:00:03.58,Demo,,0,0,0,,Tocás el producto…
+Dialogue: 0,0:00:03.58,0:00:06.60,Demo,,0,0,0,,…y cobrás. Dos toques.
+Dialogue: 0,0:00:06.60,0:00:11.25,Demo,,0,0,0,,La venta ya está en la caja del día
+Dialogue: 0,0:00:11.25,0:00:13.85,Demo,,0,0,0,,Stock y plata, siempre al día — TurnoGol

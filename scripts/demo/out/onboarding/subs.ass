@@ -1,0 +1,19 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Demo,Arial,64,&H00FFFFFF,&H00FFFFFF,&H00101010,&H88101010,-1,0,0,0,100,100,0,0,1,4,2,2,60,60,110,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:02.11,Demo,,0,0,0,,Creá tu complejo en 4 pasos
+Dialogue: 0,0:00:02.11,0:00:07.25,Demo,,0,0,0,,1 — Los datos de tu complejo
+Dialogue: 0,0:00:07.25,0:00:10.63,Demo,,0,0,0,,2 — Horarios (vienen listos, los tocás si querés)
+Dialogue: 0,0:00:10.63,0:00:13.98,Demo,,0,0,0,,3 — Tus canchas y el precio
+Dialogue: 0,0:00:13.98,0:00:17.09,Demo,,0,0,0,,4 — ¿Cobrás seña online?
+Dialogue: 0,0:00:17.09,0:00:22.26,Demo,,0,0,0,,Listo: tu complejo ya está online
+Dialogue: 0,0:00:22.26,0:00:25.07,Demo,,0,0,0,,De cero a recibir reservas: una tarde — TurnoGol

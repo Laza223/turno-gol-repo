@@ -71,7 +71,6 @@ export function TgBallSpinner({
             <polygon points="32,8 38,16 35,24 29,24 26,16" />
             {/* Pentágonos laterales */}
             <polygon points="52,22 54,32 48,38 42,34 44,24" />
-            <polygon points="12,22 20,24 22,34 16,38 10,32" />
             {/* Pentágonos inferiores */}
             <polygon points="44,46 38,50 32,56 26,50 20,46 24,40 40,40" />
           </g>

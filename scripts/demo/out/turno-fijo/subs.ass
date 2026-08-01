@@ -1,0 +1,17 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Demo,Arial,64,&H00FFFFFF,&H00FFFFFF,&H00101010,&H88101010,-1,0,0,0,100,100,0,0,1,4,2,2,60,60,110,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.91,Demo,,0,0,0,,Cargá un turno fijo en un minuto
+Dialogue: 0,0:00:01.91,0:00:08.49,Demo,,0,0,0,,Elegís cancha, día y horario…
+Dialogue: 0,0:00:08.49,0:00:10.00,Demo,,0,0,0,,…los datos del cliente…
+Dialogue: 0,0:00:10.00,0:00:13.39,Demo,,0,0,0,,…y TurnoGol genera todas las fechas
+Dialogue: 0,0:00:13.39,0:00:16.20,Demo,,0,0,0,,El mismo día y hora, todas las semanas

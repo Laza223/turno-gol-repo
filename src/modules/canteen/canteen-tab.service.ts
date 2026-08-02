@@ -1,12 +1,13 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { chargeSplitPayment, type SplitCharge } from '@/modules/cashflow/cashflow.service'
 import { insertAuditLog } from '@/shared/db/audit'
 import {
   EmptyTicketError,
   InsufficientStockError,
   ProductInactiveError,
   ProductNotFoundError,
+  TabChargeMismatchError,
   TabNotFoundError,
   TabNotOpenError,
 } from './canteen.errors'
@@ -158,18 +159,26 @@ export async function createTab(
   return { tab: rowToTab(tabRow), duplicate: false }
 }
 
+export type SettleTabCharge = { amount: number; method: CanteenSaleMethod }
+
 export type SettleTabInput = {
   tabId: string
-  method: CanteenSaleMethod
+  /**
+   * Método mixto (D2, Fase 1): 1-5 líneas que tienen que sumar EXACTO
+   * `tab.totalAmount` — a diferencia de turnos/inscripciones, un fiado no
+   * admite pago parcial (el ticket ya se entregó completo).
+   */
+  charges: SettleTabCharge[]
   clientIdempotencyKey: string
 }
 
 /**
- * Salda el fiado: cash_flow income/product_sale con el método elegido
- * (occurred_at = ahora → la plata entra HOY) + transición open→paid.
- * El lock es la transición condicionada: FOR UPDATE + re-check de status.
- * Idempotencia doble: la transición WHERE status='open' (un segundo settle
- * concurrente ve 'paid' y corta) + la key del cash_flow (reintento de red
+ * Salda el fiado: uno o más cash_flow income/product_sale (occurred_at =
+ * ahora → la plata entra HOY) que suman el total del ticket, partidos por
+ * método si hace falta + transición open→paid. El lock es la transición
+ * condicionada: FOR UPDATE + re-check de status. Idempotencia doble: la
+ * transición WHERE status='open' (un segundo settle concurrente ve 'paid' y
+ * corta) + la key de cada línea (chargeSplitPayment, reintento de red
  * devuelve el mismo resultado).
  */
 export async function settleTab(
@@ -192,17 +201,21 @@ export async function settleTab(
   }
   if (tab.status !== 'open') throw new TabNotOpenError(input.tabId)
 
-  const cashFlow = await createCashFlow(
+  const totalCharging = input.charges.reduce((sum, c) => sum + c.amount, 0)
+  if (totalCharging !== tab.total_amount) {
+    throw new TabChargeMismatchError(tab.total_amount, totalCharging)
+  }
+
+  const cashFlows = await chargeSplitPayment(
     tenantId,
     staffUserId,
-    {
+    input.charges as SplitCharge[],
+    () => ({
       type: 'income',
       category: 'product_sale',
-      amount: tab.total_amount,
-      method: input.method,
       description: `Fiado cobrado — ${tab.debtor_name}`,
-      clientIdempotencyKey: input.clientIdempotencyKey,
-    },
+    }),
+    input.clientIdempotencyKey,
     tx,
   )
 
@@ -211,7 +224,7 @@ export async function settleTab(
     SET status = 'paid',
         settled_at = now(),
         settled_by = ${staffUserId},
-        settled_cash_flow_id = ${cashFlow.id}
+        settled_cash_flow_id = ${cashFlows[0]!.id}
     WHERE id = ${tab.id} AND tenant_id = ${tenantId} AND status = 'open'
     RETURNING *
   `)

@@ -25,12 +25,15 @@ export function SplitPaymentFields({
   /** Si se pasa, muestra el atajo de un tap "Pagar todo en efectivo — $X". */
   quickAllCashCents,
   disabled = false,
+  /** Default: las 4 (incluye 'other'). Cantina no admite 'other' (canteen.types.ts). */
+  methodOptions = PAYMENT_METHOD_OPTIONS,
 }: {
   lines: ChargeLine[]
   onChange: (lines: ChargeLine[]) => void
   maxLines?: number
   quickAllCashCents?: number
   disabled?: boolean
+  methodOptions?: { value: MethodKey; label: string }[]
 }) {
   function update(id: string, patch: Partial<Pick<ChargeLine, 'amountCents' | 'method'>>) {
     onChange(lines.map((l) => (l.id === id ? { ...l, ...patch } : l)))
@@ -79,7 +82,7 @@ export function SplitPaymentFields({
             disabled={disabled}
             className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring disabled:opacity-60"
           >
-            {PAYMENT_METHOD_OPTIONS.map((m) => (
+            {methodOptions.map((m) => (
               <option key={m.value} value={m.value} className="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100">
                 {m.label}
               </option>

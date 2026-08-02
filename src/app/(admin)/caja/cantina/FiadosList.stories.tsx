@@ -51,12 +51,16 @@ export const CobrarFiado: Story = {
     const dialog = within(await body.findByRole('dialog'))
     await expect(dialog.getByText(`Cobrar fiado — ${tab.debtorName}`)).toBeVisible()
 
-    await userEvent.click(dialog.getByRole('button', { name: 'Transferencia' }))
+    // SplitPaymentFields (Fase 1, D2): el método es un <select>, no un chip.
+    await userEvent.selectOptions(dialog.getByRole('combobox'), 'Transferencia')
     await userEvent.click(dialog.getByRole('button', { name: /^Cobrar/ }))
 
     await waitFor(() =>
       expect(args.settleTabAction).toHaveBeenCalledWith(
-        expect.objectContaining({ tabId: tab.id, method: 'transfer' }),
+        expect.objectContaining({
+          tabId: tab.id,
+          charges: [{ amount: tab.totalAmount, method: 'transfer' }],
+        }),
       ),
     )
   },

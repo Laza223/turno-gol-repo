@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
-import { chipClass, METHOD_OPTIONS, type SaleMethod } from '../caja-lib'
+import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 // Server Actions importadas directamente (mismo patrón que deudas/ChargeDebtDialog.tsx,
 // que tampoco tiene story de Storybook — CloseDayButton/TabDialog SÍ la pasan por prop
@@ -22,15 +22,16 @@ const ORIGIN_LABEL: Record<StreetMoneyRow['origin'], string> = {
   tournament: 'inscripción',
 }
 
+// Fiados no admiten 'other' (canteen.types.ts: CanteenSaleMethod excluye 'other').
+const CANTEEN_METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS.filter((m) => m.value !== 'other')
+
 /**
  * "Cobrar" único para las 3 filas de Plata en la calle (criterio de salida
- * #2). Turnos ya soporta método mixto (chargeDebtAction) — usa
- * SplitPaymentFields con hasta 5 líneas. Cuotas de torneo soportan pago
- * parcial pero todavía un solo método (registerInscriptionPayment) — 1 línea
- * editable. Fiados no soportan monto editable ni split (settleTab siempre
- * cobra el total del ticket): solo elegir método, mismo patrón que
- * cantina/FiadosList.tsx → SettleTabDialog. T3/T4 amplían fiados/torneos a
- * método mixto — esta misma UI (SplitPaymentFields) ya está lista para eso.
+ * #2), con método mixto en las 3 (criterio #3, D2) vía SplitPaymentFields:
+ * - booking: hasta 5 líneas, pago parcial permitido (chargeDebtAction).
+ * - tournament: hasta 5 líneas, pago parcial permitido (registerInscriptionPayment).
+ * - canteen_tab: hasta 5 líneas, pero TIENEN que sumar EXACTO lo pendiente
+ *   (settleTab no admite parcial — el ticket ya se entregó completo).
  */
 export function StreetMoneyChargeDialog({
   row,
@@ -43,14 +44,12 @@ export function StreetMoneyChargeDialog({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [lines, setLines] = useState<ChargeLine[]>([])
-  const [canteenMethod, setCanteenMethod] = useState<SaleMethod>('cash')
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const [lastRefId, setLastRefId] = useState<string | null>(null)
   if (row && row.refId !== lastRefId) {
     setLastRefId(row.refId)
     setError(null)
-    setCanteenMethod('cash')
     setIdempotencyKey(crypto.randomUUID())
     setLines([newChargeLine(row.pendingCents, 'cash')])
   }
@@ -69,34 +68,14 @@ export function StreetMoneyChargeDialog({
     if (!row) return
     setError(null)
 
-    if (row.origin === 'canteen_tab') {
-      startTransition(async () => {
-        try {
-          const res = await settleTabAction({
-            tabId: row.refId,
-            method: canteenMethod,
-            clientIdempotencyKey: idempotencyKey,
-          })
-          if (res.success) {
-            toast({ title: `Fiado cobrado — ${row.debtorName}`, variant: 'success' })
-            setLastRefId(null)
-            onClose()
-            router.refresh()
-          } else {
-            setError(res.error)
-          }
-        } catch (err) {
-          Sentry.captureException(err)
-          setError('No pudimos cobrar el fiado. Revisá tu conexión e intentá de nuevo.')
-        }
-      })
-      return
-    }
-
     const parsedCharges: { amount: number; method: ChargeLine['method'] }[] = []
     for (const l of lines) {
       if (l.amountCents == null || l.amountCents <= 0) {
         setError('Todos los cobros deben tener un monto mayor a $0.')
+        return
+      }
+      if (row.origin === 'canteen_tab' && l.method === 'other') {
+        setError('Elegí efectivo, transferencia o MercadoPago.')
         return
       }
       parsedCharges.push({ amount: l.amountCents, method: l.method })
@@ -106,7 +85,13 @@ export function StreetMoneyChargeDialog({
       return
     }
     const totalCents = parsedCharges.reduce((s, c) => s + c.amount, 0)
-    if (totalCents > row.pendingCents) {
+
+    if (row.origin === 'canteen_tab') {
+      if (totalCents !== row.pendingCents) {
+        setError(`Los cobros tienen que sumar exacto ${formatArs(row.pendingCents)} (ingresaste ${formatArs(totalCents)}).`)
+        return
+      }
+    } else if (totalCents > row.pendingCents) {
       setError(`El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(row.pendingCents)}).`)
       return
     }
@@ -120,12 +105,18 @@ export function StreetMoneyChargeDialog({
                 charges: parsedCharges,
                 clientIdempotencyKey: idempotencyKey,
               })
-            : await registerInscriptionPaymentAction({
-                teamId: row.refId,
-                amount: parsedCharges[0]!.amount,
-                method: parsedCharges[0]!.method,
-                clientIdempotencyKey: idempotencyKey,
-              })
+            : row.origin === 'canteen_tab'
+              ? await settleTabAction({
+                  tabId: row.refId,
+                  charges: parsedCharges as { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[],
+                  clientIdempotencyKey: idempotencyKey,
+                })
+              : await registerInscriptionPaymentAction({
+                  teamId: row.refId,
+                  amount: parsedCharges[0]!.amount,
+                  method: parsedCharges[0]!.method,
+                  clientIdempotencyKey: idempotencyKey,
+                })
         if (res.success) {
           toast({
             title: `Cobro registrado — ${row.debtorName}`,
@@ -157,33 +148,14 @@ export function StreetMoneyChargeDialog({
             <span className="font-semibold text-foreground">{formatArs(row.pendingCents)}</span>
           </p>
 
-          {row.origin === 'canteen_tab' ? (
-            <fieldset>
-              <legend className="mb-1.5 text-xs font-medium text-foreground">Método de pago</legend>
-              <div className="grid grid-cols-3 gap-2">
-                {METHOD_OPTIONS.map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => setCanteenMethod(m.value)}
-                    disabled={isPending}
-                    aria-pressed={canteenMethod === m.value}
-                    className={chipClass(canteenMethod === m.value)}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          ) : (
-            <SplitPaymentFields
-              lines={lines}
-              onChange={setLines}
-              maxLines={row.origin === 'booking' ? 5 : 1}
-              quickAllCashCents={row.pendingCents}
-              disabled={isPending}
-            />
-          )}
+          <SplitPaymentFields
+            lines={lines}
+            onChange={setLines}
+            maxLines={row.origin === 'tournament' ? 1 : 5}
+            quickAllCashCents={row.pendingCents}
+            disabled={isPending}
+            methodOptions={row.origin === 'canteen_tab' ? CANTEEN_METHOD_OPTIONS : undefined}
+          />
 
           {error && (
             <p role="alert" className="text-xs text-red-700 dark:text-red-400">

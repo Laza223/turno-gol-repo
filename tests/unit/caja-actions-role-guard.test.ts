@@ -99,7 +99,7 @@ const CREATE_TAB = {
 
 const SETTLE_TAB = {
   tabId: TAB_ID,
-  method: 'cash' as const,
+  charges: [{ amount: 250000, method: 'cash' as const }],
   clientIdempotencyKey: KEY_2,
 }
 

@@ -193,12 +193,15 @@ export async function countTeamPayments(
  *   2. Orden de locks: fila del equipo SIEMPRE antes del advisory lock diario
  *      que toma `createCashFlow` → `assertDayOpen` (dentro de `chargeSplitPayment`).
  *      Ningún caller invierte ese orden; invertirlo acá sería un deadlock.
- *   3. Un reintento con la MISMA `clientIdempotencyKey` ya insertada no
- *      re-valida el pendiente: ese cobro ya se aceptó, y volver a compararlo
- *      contra un pendiente que él mismo bajó lo rechazaría por error. Se
- *      chequea la key de la PRIMER línea (`${key}-0`, ver chargeSplitPayment)
- *      como proxy de "este lote ya se procesó entero" — un reintento reenvía
- *      el mismo array de `charges` en el mismo orden.
+ *   3. Un reintento con la MISMA `clientIdempotencyKey` no re-valida las
+ *      líneas que YA están commiteadas (ese cobro ya se aceptó, y volver a
+ *      compararlo contra un pendiente que él mismo bajó lo rechazaría por
+ *      error) — pero SÍ valida cualquier línea nueva que el reintento sume
+ *      al array. No hay atajo por "la línea 0 ya existe → me salteo todo":
+ *      eso permitía que un reintento que MUTA el array (reusa la key pero
+ *      agrega líneas) colara plata sin pasar por el `FOR UPDATE` ni por
+ *      `InscriptionOverpaidError` — caza-bugs de la revisión adversarial de
+ *      Fase 1 T7, con escenario de sobre-cobro reproducido paso a paso.
  */
 export async function registerInscriptionPayment(
   tenantId: string,
@@ -208,30 +211,46 @@ export async function registerInscriptionPayment(
 ): Promise<InscriptionPaymentRow[]> {
   const team = await getTeam(tenantId, input.teamId, tx)
 
-  let alreadyRegistered = false
-  if (input.clientIdempotencyKey) {
-    const dup = await tx.execute(sql`
-      SELECT 1 FROM cash_flows WHERE client_idempotency_key = ${`${input.clientIdempotencyKey}-0`} LIMIT 1
-    `)
-    alreadyRegistered = (dup as unknown[]).length > 0
-  }
+  // Arancel en cero = torneo gratis (o equipo con beca): no hay nada que
+  // cobrar. Sin esto, CUALQUIER monto sería un sobrepago y el error diría
+  // algo incomprensible ("supera lo pendiente de $0").
+  if (team.inscriptionFee <= 0) throw new TeamHasNoFeeError(team.name)
 
-  if (!alreadyRegistered) {
-    // Arancel en cero = torneo gratis (o equipo con beca): no hay nada que
-    // cobrar. Sin esto, CUALQUIER monto sería un sobrepago y el error diría
-    // algo incomprensible ("supera lo pendiente de $0").
-    if (team.inscriptionFee <= 0) throw new TeamHasNoFeeError(team.name)
+  await tx.execute(
+    sql`SELECT id FROM tournament_teams WHERE id = ${input.teamId} FOR UPDATE`,
+  )
 
-    await tx.execute(
-      sql`SELECT id FROM tournament_teams WHERE id = ${input.teamId} FOR UPDATE`,
-    )
+  const lineKeys = input.clientIdempotencyKey
+    ? input.charges.map((_, i) => `${input.clientIdempotencyKey}-${i}`)
+    : []
+  const alreadyChargedKeys = new Set(
+    lineKeys.length === 0
+      ? []
+      : (
+          (await tx.execute(sql`
+            SELECT client_idempotency_key AS key FROM cash_flows
+            WHERE tenant_id = ${tenantId}
+              AND client_idempotency_key = ANY(ARRAY[${sql.join(
+                lineKeys.map((k) => sql`${k}`),
+                sql`, `,
+              )}])
+          `)) as unknown as Array<{ key: string }>
+        ).map((r) => r.key),
+  )
 
-    const paid = await sumTeamPayments(tenantId, input.teamId, tx)
-    const pending = pendingFor(team.inscriptionFee, paid)
-    const totalCharging = input.charges.reduce((sum, c) => sum + c.amount, 0)
-    if (totalCharging > pending) {
-      throw new InscriptionOverpaidError(team.name, pending)
-    }
+  const paid = await sumTeamPayments(tenantId, input.teamId, tx)
+  const pending = pendingFor(team.inscriptionFee, paid)
+  // Solo cuenta contra `pending` lo que todavía NO está commiteado: una línea
+  // cuya key ya existe es un no-op garantizado por el ON CONFLICT de
+  // chargeSplitPayment, así que no debe sumar de nuevo (rechazaría un
+  // reintento legítimo). Lo que SÍ es nuevo (índice sin key previa) se valida
+  // siempre, sea la primera vez o la línea agregada en un reintento mutado.
+  const newCharging = input.charges.reduce((sum, c, i) => {
+    const key = lineKeys[i]
+    return key !== undefined && alreadyChargedKeys.has(key) ? sum : sum + c.amount
+  }, 0)
+  if (newCharging > pending) {
+    throw new InscriptionOverpaidError(team.name, pending)
   }
 
   const description = input.note?.trim() ? input.note.trim() : `Inscripción — ${team.name}`

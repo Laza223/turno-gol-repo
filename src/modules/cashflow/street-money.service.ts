@@ -60,6 +60,15 @@ export type StreetMoneyRow =
 /**
  * Los 3 orígenes, unidos y ordenados por antigüedad ascendente (más vieja
  * primero — el criterio del contrato: "ordenado por antigüedad").
+ *
+ * El `Promise.all` corre las 3 queries en la misma tx, pero NO comparten una
+ * única snapshot: bajo READ COMMITTED (default, nadie sube el nivel acá) cada
+ * SELECT toma la suya al ejecutarse. Si un cobro de otro origen commitea
+ * justo entre medio, la respuesta puede mezclar un estado "antes" con uno
+ * "después" — una foto momentáneamente inconsistente entre dos refrescos, no
+ * un cash_flow mal calculado: los 3 orígenes son conjuntos disjuntos (cada
+ * turno/fiado/equipo aparece en uno solo), así que esto nunca duplica ni
+ * pierde plata dentro de una misma respuesta.
  */
 export async function getStreetMoney(tenantId: string, tx: DbTx): Promise<StreetMoneyRow[]> {
   const [debts, tabs, teams] = await Promise.all([

@@ -29,6 +29,28 @@ function artDateOf(ts: Date): string {
   return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
 }
 
+// El valor de la prueba de carrera de este archivo depende de que las 2 tx
+// corran en conexiones SEPARADAS y choquen en el `FOR UPDATE` a nivel DB. Con
+// un pool chico (DATABASE_POOL_MAX=1) se serializan en la cola del pool ANTES
+// de tocar la DB: el test seguiría verde pero ya no ejercitaría el lock.
+// Mismo patrón que billing-race-conditions.test.ts. Espejo de resolvePoolMax()
+// en src/shared/db/client.ts.
+const EFFECTIVE_POOL_MAX = (() => {
+  const raw = process.env.DATABASE_POOL_MAX
+  const n = raw ? Number(raw) : NaN
+  return Number.isInteger(n) && n > 0 ? n : 3
+})()
+
+function requirePoolMaxAtLeast2(testName: string): void {
+  if (EFFECTIVE_POOL_MAX < 2) {
+    throw new Error(
+      `${testName} requiere DATABASE_POOL_MAX>=2 para ejercitar la serialización ` +
+        `por FOR UPDATE entre 2 tx concurrentes; valor efectivo=${EFFECTIVE_POOL_MAX}. ` +
+        `Con menos conexiones las transacciones se serializan en la cola del pool.`,
+    )
+  }
+}
+
 const TODAY = artDateOf(new Date())
 const FEE = 4_500_000 // $45.000
 
@@ -244,6 +266,7 @@ describe('registerInscriptionPayment', () => {
    * equipo nunca queda sobre-cobrado, pase lo que pase con el orden real.
    */
   it('dos cobros concurrentes que juntos superan lo pendiente: uno gana, el otro se rechaza', async () => {
+    requirePoolMaxAtLeast2('dos cobros concurrentes que juntos superan lo pendiente')
     const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 1, fee: 5_000_000 })
 
     const attempt = () =>
@@ -311,6 +334,61 @@ describe('registerInscriptionPayment', () => {
     expect(second[0]!.id).toBe(first[0]!.id)
     expect(await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)))
       .toBe(1)
+  })
+
+  /**
+   * Regresión del hallazgo crítico de la revisión adversarial de Fase 1 T7:
+   * el atajo viejo de idempotencia ("la key de la línea 0 ya existe → me
+   * salteo TODA la validación") asumía que un reintento con la misma
+   * clientIdempotencyKey siempre reenvía el mismo array. Si el cliente reusa
+   * la key pero MUTA el array (agrega una línea, ej. tras una respuesta
+   * perdida en tránsito que el usuario no vio y edita el diálogo antes de
+   * reenviar), las líneas nuevas se insertaban sin FOR UPDATE ni chequeo de
+   * InscriptionOverpaidError — sobre-cobro real. El fix valida cada línea
+   * NUEVA (key sin commitear) contra el pendiente actual, sin importar si el
+   * lote es un reintento o no.
+   */
+  it('un reintento que reusa la key pero agrega líneas no se cuela sin validar', async () => {
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 1, fee: 1_000_000 })
+    const key = crypto.randomUUID()
+
+    // Primer cobro: salda el arancel completo ($10.000) con esta key.
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        { teamId: teamIds[0]!, charges: [{ amount: 1_000_000, method: 'cash' }], clientIdempotencyKey: key },
+        tx,
+      ),
+    )
+
+    // Reintento MUTADO: misma key, pero un array distinto que agrega una
+    // línea nueva — si el atajo viejo siguiera vivo, esta línea se insertaría
+    // sin validar (la key de la línea 0 ya existe → "alreadyRegistered").
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        registerInscriptionPayment(
+          tenant.id,
+          staff.id,
+          {
+            teamId: teamIds[0]!,
+            charges: [
+              { amount: 300_000, method: 'cash' },
+              { amount: 700_000, method: 'transfer' },
+            ],
+            clientIdempotencyKey: key,
+          },
+          tx,
+        ),
+      ),
+    ).rejects.toThrow(InscriptionOverpaidError)
+
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listInscriptionStatus(tenant.id, tournamentId, tx),
+    )
+    // Nunca $1.700.000: el equipo quedó exactamente en lo que pagó la primera vez.
+    expect(rows[0]!.paid).toBe(1_000_000)
+    expect(rows[0]!.payments).toBe(1)
   })
 
   it('respeta el guard de caja cerrada', async () => {

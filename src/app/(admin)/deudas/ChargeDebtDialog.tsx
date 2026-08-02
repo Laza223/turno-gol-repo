@@ -2,25 +2,16 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { MoneyInput } from '@/components/ui/money-input'
+import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
-import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
+import type { MethodKey } from '@/lib/payment-method'
 import { chargeDebtAction, type ChargeDebtResult } from './actions'
 import type { DebtRow } from './queries'
 
-const METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS
-
 type Method = MethodKey
-
-type ChargeLine = {
-  id: string
-  amountCents: number | null
-  method: Method
-}
 
 type Props = {
   debt: DebtRow | null
@@ -41,13 +32,7 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
     setLastDebtId(debt.id)
     setError(null)
     const initialAmount = Math.max(0, debt.pending)
-    setCharges([
-      {
-        id: crypto.randomUUID(),
-        amountCents: initialAmount > 0 ? initialAmount : null,
-        method: 'cash',
-      },
-    ])
+    setCharges([newChargeLine(initialAmount > 0 ? initialAmount : null, 'cash')])
   }
 
   if (!debt) return null
@@ -56,33 +41,6 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
     setError(null)
     setLastDebtId(null)
     onClose()
-  }
-
-  function addChargeLine() {
-    setCharges((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), amountCents: null, method: 'transfer' },
-    ])
-  }
-
-  function removeChargeLine(id: string) {
-    setCharges((prev) => prev.filter((c) => c.id !== id))
-  }
-
-  function updateCharge(id: string, patch: Partial<Pick<ChargeLine, 'amountCents' | 'method'>>) {
-    setCharges((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-    )
-  }
-
-  function quickAllCash() {
-    setCharges([
-      {
-        id: crypto.randomUUID(),
-        amountCents: debt!.pending,
-        method: 'cash',
-      },
-    ])
   }
 
   const totalChargingCents = charges.reduce((acc, c) => {
@@ -193,59 +151,12 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
                 Registrar cobro de deuda
               </h4>
 
-              <button
-                type="button"
-                onClick={quickAllCash}
-                className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-              >
-                Saldar todo en efectivo — {formatArs(debt.pending)}
-              </button>
-
-              <div className="space-y-2">
-                {charges.map((line) => (
-                  <div key={line.id} className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <MoneyInput
-                        valueCents={line.amountCents}
-                        onValueChange={(cents) => updateCharge(line.id, { amountCents: cents })}
-                        minCents={1}
-                        placeholder="Monto"
-                      />
-                    </div>
-                    <select
-                      value={line.method}
-                      onChange={(e) => updateCharge(line.id, { method: e.target.value as Method })}
-                      className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
-                    >
-                      {METHOD_OPTIONS.map((m) => (
-                        <option key={m.value} value={m.value} className="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100">
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                    {charges.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeChargeLine(line.id)}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        aria-label="Eliminar cobro"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {charges.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={addChargeLine}
-                    className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1 md:min-h-0"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Agregar pago dividido
-                  </button>
-                )}
-              </div>
+              <SplitPaymentFields
+                lines={charges}
+                onChange={setCharges}
+                quickAllCashCents={debt.pending}
+                disabled={isPending}
+              />
             </div>
           </div>
 

@@ -7,7 +7,7 @@ import { uuid, moneyCents } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { formatArs } from '@/lib/format'
@@ -106,31 +106,25 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
         }
       }
 
-      // 2. Register each charge line
-      for (let i = 0; i < charges.length; i++) {
-        const charge = charges[i]!
-        const description =
-          charges.length === 1
-            ? 'Cobro de deuda atrasada'
-            : `Cobro de deuda atrasada (${i + 1}/${charges.length})`
-
-        const lineKey = clientIdempotencyKey ? `${clientIdempotencyKey}-${i}` : undefined
-
-        await createCashFlow(
-          tenant.id,
-          user.staffUserId,
-          {
-            type: 'income',
-            category: 'booking',
-            amount: charge.amount,
-            method: charge.method,
-            description,
-            bookingId,
-            clientIdempotencyKey: lineKey,
-          },
-          tx
-        )
-      }
+      // 2. Register each charge line — chargeSplitPayment (D2, Fase 1) es la
+      // misma fuente única que usan settleTab/registerInscriptionPayment: una
+      // línea por cash_flow, idempotente por separado (`${key}-${i}`).
+      await chargeSplitPayment(
+        tenant.id,
+        user.staffUserId,
+        charges,
+        (_charge, i) => ({
+          type: 'income',
+          category: 'booking',
+          description:
+            charges.length === 1
+              ? 'Cobro de deuda atrasada'
+              : `Cobro de deuda atrasada (${i + 1}/${charges.length})`,
+          bookingId,
+        }),
+        clientIdempotencyKey,
+        tx,
+      )
 
       return { success: true as const }
     })

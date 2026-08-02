@@ -39,11 +39,13 @@ interface NavItem {
   requiresTournaments?: boolean
   /** Solo se muestra al rol admin (el manager no puede completar estas pantallas). */
   requiresAdmin?: boolean
+  /** Ancla para DashboardTour/useCoachmarkTour (`[data-tour-id]`). */
+  tourId?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Inicio' },
-  { href: '/grilla', icon: CalendarDays, label: 'Grilla' },
+  { href: '/grilla', icon: CalendarDays, label: 'Grilla', tourId: 'tour-grilla' },
   { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
   { href: '/abonados', icon: Users, label: 'Turnos fijos' },
   { href: '/torneos', icon: Trophy, label: 'Torneos', requiresTournaments: true },
@@ -115,7 +117,7 @@ function SidebarContent({
 
       {/* Nav */}
       <nav aria-label="Navegación del panel" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {navItems.map(({ href, icon: Icon, label }) => {
+        {navItems.map(({ href, icon: Icon, label, tourId }) => {
           const isActive =
             pathname === href ||
             (href !== '/dashboard' && pathname.startsWith(href + '/'))
@@ -124,6 +126,7 @@ function SidebarContent({
             <Link
               key={href}
               href={href}
+              data-tour-id={tourId}
               aria-current={isActive ? 'page' : undefined}
               onClick={isMobile ? onClose : undefined}
               className={cn(

@@ -365,9 +365,8 @@ export type TeamInscriptionStatus = {
 
 export type RegisterInscriptionPaymentInput = {
   teamId: string
-  /** Centavos ARS. */
-  amount: number
-  method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+  /** Método mixto (D2, Fase 1): 1-5 líneas de {monto en centavos ARS, método}. */
+  charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' | 'other' }[]
   note?: string | null
   clientIdempotencyKey?: string
 }

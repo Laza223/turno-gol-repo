@@ -2,6 +2,7 @@ import { ScrollTabs } from '@/components/ui/scroll-tabs'
 
 const CAJA_TABS = [
   { href: '/caja', label: 'Caja del día' },
+  { href: '/caja/deudas', label: 'Plata en la calle' },
   { href: '/caja/cantina', label: 'Cantina' },
   { href: '/caja/productos', label: 'Productos y stock' },
 ]

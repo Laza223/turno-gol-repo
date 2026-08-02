@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
-vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
+vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), addBreadcrumb: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 
@@ -17,6 +17,7 @@ function renderButton() {
   return render(
     <CloseDayButton
       date="2026-06-10"
+      tenantId="t-1"
       totalIncome={12000}
       totalExpense={2000}
       balance={10000}

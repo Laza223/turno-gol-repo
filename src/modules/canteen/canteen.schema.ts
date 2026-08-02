@@ -49,9 +49,16 @@ export const createTabSchema = z.object({
   clientIdempotencyKey: uuid,
 })
 
+// Método mixto (D2, Fase 1): 1-5 líneas de {monto, método} que tienen que
+// sumar EXACTO el total del ticket — validado en settleTab (canteen-tab.service.ts).
+const settleTabChargeSchema = z.object({
+  amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
+  method: z.enum(['cash', 'transfer', 'mercadopago']),
+})
+
 export const settleTabSchema = z.object({
   tabId: uuid,
-  method: z.enum(['cash', 'transfer', 'mercadopago']),
+  charges: z.array(settleTabChargeSchema).min(1, 'Ingresá al menos un cobro.').max(5),
   clientIdempotencyKey: uuid,
 })
 

@@ -101,6 +101,27 @@ type NotificationCtx = {
   reason?: string
 }
 
+/**
+ * Proxies de medición de Fase 1 (contrato §3, criterio de salida #6, visión
+ * §11): "cierre de caja ≤ 90s y diferencia promedio → $0" y "plata en la
+ * calle: tendencia ↓ por tenant". Solo instrumentación — el baseline y el
+ * dashboard se arman después con estos datos en Sentry, no acá.
+ */
+type CashflowEvent =
+  | 'close.opened'
+  | 'close.confirmed'
+  | 'street_money.viewed'
+
+type CashflowCtx = {
+  tenantId?: string
+  /** close.confirmed: ms desde que se abrió el diálogo hasta que se confirmó. */
+  durationMs?: number
+  /** close.confirmed: declarado − esperado en centavos ARS (0 si no hubo diferencia o no se declaró). */
+  diffCents?: number
+  /** street_money.viewed: total de "plata en la calle" en centavos ARS, al momento de ver la pantalla. */
+  totalCents?: number
+}
+
 function emit(category: string, message: string, data: Record<string, unknown>): void {
   Sentry.addBreadcrumb({ category, message, data, level: 'info' })
 }
@@ -113,4 +134,5 @@ export const track = {
   availability: (ev: AvailabilityEvent, ctx: AvailabilityCtx) => emit('availability', ev, ctx),
   search: (ev: SearchEvent, ctx: SearchCtx) => emit('search', ev, ctx),
   notification: (ev: NotificationEvent, ctx: NotificationCtx) => emit('notification', ev, ctx),
+  cashflow: (ev: CashflowEvent, ctx: CashflowCtx) => emit('cashflow', ev, ctx),
 }

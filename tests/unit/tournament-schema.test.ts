@@ -200,33 +200,69 @@ describe('releaseSlotsSchema', () => {
   })
 })
 
-describe('registerInscriptionPaymentSchema (migr. 066)', () => {
-  const base = { teamId: UUID, amount: 1_000_000, method: 'cash' as const }
+describe('registerInscriptionPaymentSchema (migr. 066, método mixto D2 — Fase 1)', () => {
+  const base = { teamId: UUID, charges: [{ amount: 1_000_000, method: 'cash' as const }] }
 
   it('acepta un cobro mínimo', () => {
     expect(registerInscriptionPaymentSchema.safeParse(base).success).toBe(true)
   })
 
-  // moneyCents es nonnegative: sin el refine, un cobro de $0 pasaría la
-  // validación y moriría recién en chk_cashflow_amount_positive con un 23514.
-  it('rechaza un cobro de cero', () => {
-    expect(registerInscriptionPaymentSchema.safeParse({ ...base, amount: 0 }).success).toBe(
+  it('acepta método mixto (D2): varias líneas suman un solo cobro', () => {
+    const parsed = registerInscriptionPaymentSchema.safeParse({
+      teamId: UUID,
+      charges: [
+        { amount: 600_000, method: 'cash' as const },
+        { amount: 400_000, method: 'mercadopago' as const },
+      ],
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('rechaza una lista de cobros vacía', () => {
+    expect(registerInscriptionPaymentSchema.safeParse({ teamId: UUID, charges: [] }).success).toBe(
       false,
     )
   })
 
-  it('rechaza un monto negativo o con decimales', () => {
-    expect(registerInscriptionPaymentSchema.safeParse({ ...base, amount: -1 }).success).toBe(
+  it('rechaza más de 5 líneas de cobro', () => {
+    const charges = Array.from({ length: 6 }, () => ({ amount: 100_000, method: 'cash' as const }))
+    expect(registerInscriptionPaymentSchema.safeParse({ teamId: UUID, charges }).success).toBe(
       false,
     )
+  })
+
+  // moneyCents es nonnegative: sin el refine, un cobro de $0 pasaría la
+  // validación y moriría recién en chk_cashflow_amount_positive con un 23514.
+  it('rechaza una línea de cobro en cero', () => {
     expect(
-      registerInscriptionPaymentSchema.safeParse({ ...base, amount: 1000.5 }).success,
+      registerInscriptionPaymentSchema.safeParse({
+        teamId: UUID,
+        charges: [{ amount: 0, method: 'cash' as const }],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('rechaza un monto negativo o con decimales', () => {
+    expect(
+      registerInscriptionPaymentSchema.safeParse({
+        teamId: UUID,
+        charges: [{ amount: -1, method: 'cash' as const }],
+      }).success,
+    ).toBe(false)
+    expect(
+      registerInscriptionPaymentSchema.safeParse({
+        teamId: UUID,
+        charges: [{ amount: 1000.5, method: 'cash' as const }],
+      }).success,
     ).toBe(false)
   })
 
   it('rechaza un método que no existe', () => {
     expect(
-      registerInscriptionPaymentSchema.safeParse({ ...base, method: 'crypto' }).success,
+      registerInscriptionPaymentSchema.safeParse({
+        teamId: UUID,
+        charges: [{ amount: 1_000_000, method: 'crypto' }],
+      }).success,
     ).toBe(false)
   })
 

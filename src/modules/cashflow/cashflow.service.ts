@@ -167,6 +167,50 @@ export async function createCashFlow(
   return rowToCashFlowRow(rows[0]!)
 }
 
+export type SplitCharge = { amount: number; method: CreateCashFlowInput['method'] }
+
+/**
+ * Inserta N `cash_flows`, uno por línea de `charges` — el patrón de "cobro
+ * con método mixto" (D2, criterio de salida #3 de Fase 1: docs/planning/
+ * 2026-08-01-decisiones-de-fase-v2.md §3). Cada línea es idempotente por
+ * separado (`${clientIdempotencyKey}-${i}`), mismo criterio que ya usaba
+ * chargeDebtAction (deudas/actions.ts) a mano antes de esta extracción.
+ *
+ * A propósito NO valida el total contra "lo pendiente": esa regla difiere
+ * por entidad (un booking admite pago parcial, un fiado de cantina exige el
+ * monto exacto del ticket) y depende del lock que cada caller ya tomó sobre
+ * su propia fila ANTES de invocar esto — validarlo acá sería una fuente de
+ * verdad paralela a la del caller, que es quien determina qué "correcto"
+ * significa para su tabla. Ver la guardia en el caller (ej. settleTab,
+ * registerInscriptionPayment).
+ */
+export async function chargeSplitPayment(
+  tenantId: string,
+  staffUserId: string,
+  charges: SplitCharge[],
+  build: (
+    charge: SplitCharge,
+    index: number,
+  ) => Omit<CreateCashFlowInput, 'amount' | 'method' | 'clientIdempotencyKey'>,
+  clientIdempotencyKey: string | undefined,
+  tx: DbTx,
+): Promise<CashFlowRow[]> {
+  const rows: CashFlowRow[] = []
+  for (let i = 0; i < charges.length; i++) {
+    const charge = charges[i]!
+    const lineKey = clientIdempotencyKey ? `${clientIdempotencyKey}-${i}` : undefined
+    rows.push(
+      await createCashFlow(
+        tenantId,
+        staffUserId,
+        { ...build(charge, i), amount: charge.amount, method: charge.method, clientIdempotencyKey: lineKey },
+        tx,
+      ),
+    )
+  }
+  return rows
+}
+
 export async function getCashFlows(
   tenantId: string,
   date: string,

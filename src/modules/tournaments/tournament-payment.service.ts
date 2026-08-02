@@ -79,6 +79,64 @@ export async function listInscriptionStatus(
   }))
 }
 
+/**
+ * Equipos con cuota de inscripción impaga, de TODOS los torneos del tenant —
+ * a diferencia de `listInscriptionStatus` (por torneo), esta es la fuente del
+ * origen "torneos" de street-money.service.ts (Fase 1, "Plata en la calle").
+ * Mismo criterio de `pendingFor`; solo trae equipos con `pending > 0`.
+ */
+export async function listTenantInscriptionDebts(
+  tenantId: string,
+  tx: DbTx,
+): Promise<Array<TeamInscriptionStatus & { tournamentId: string; tournamentName: string; createdAt: Date }>> {
+  const rows = (await tx.execute(sql`
+    SELECT t.id                             AS "teamId",
+           t.name                           AS "teamName",
+           t.status                         AS "teamStatus",
+           t.inscription_fee                AS fee,
+           t.tournament_id                  AS "tournamentId",
+           t.created_at                     AS "createdAt",
+           tr.name                          AS "tournamentName",
+           COALESCE(SUM(cf.amount), 0)::int AS paid,
+           count(cf.id)::int                AS payments,
+           max(cf.occurred_at)              AS "lastPaidAt"
+    FROM tournament_teams t
+    JOIN tournaments tr ON tr.id = t.tournament_id
+    LEFT JOIN cash_flows cf
+      ON cf.tournament_team_id = t.id
+     AND cf.tenant_id = t.tenant_id
+    WHERE t.tenant_id = ${tenantId}
+    GROUP BY t.id, t.name, t.status, t.inscription_fee, t.tournament_id, t.created_at, tr.name
+    HAVING t.inscription_fee - COALESCE(SUM(cf.amount), 0) > 0
+    ORDER BY t.name
+  `)) as unknown as Array<{
+    teamId: string
+    teamName: string
+    teamStatus: TeamInscriptionStatus['teamStatus']
+    fee: number
+    tournamentId: string
+    tournamentName: string
+    createdAt: string
+    paid: number
+    payments: number
+    lastPaidAt: string | null
+  }>
+
+  return rows.map((r) => ({
+    teamId: r.teamId,
+    teamName: r.teamName,
+    teamStatus: r.teamStatus,
+    fee: r.fee,
+    tournamentId: r.tournamentId,
+    tournamentName: r.tournamentName,
+    createdAt: new Date(r.createdAt),
+    paid: r.paid,
+    pending: pendingFor(r.fee, r.paid),
+    payments: r.payments,
+    lastPaidAt: r.lastPaidAt ? new Date(r.lastPaidAt) : null,
+  }))
+}
+
 /** Los movimientos de un equipo, del más nuevo al más viejo. */
 export async function listTeamPayments(
   tenantId: string,

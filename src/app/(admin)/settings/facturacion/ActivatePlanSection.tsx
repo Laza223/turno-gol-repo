@@ -261,7 +261,7 @@ export function ActivatePlanSection({
                   onClick={() => handleActivate(dbPlan.id)}
                   disabled={status === 'loading'}
                   className={`group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-xs font-bold transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 whitespace-nowrap cursor-pointer ${isActive
-                      ? 'bg-emerald-700 text-white shadow-[0_0_16px_rgba(16,185,129,0.15)] hover:bg-emerald-600 active:scale-[0.97] dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400'
+                      ? 'bg-primary text-primary-foreground shadow-[0_0_16px_rgba(16,185,129,0.15)] hover:bg-primary/90 active:scale-[0.97]'
                       : 'border border-border bg-card text-foreground hover:bg-accent active:scale-[0.97] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10'
                     }`}
                 >

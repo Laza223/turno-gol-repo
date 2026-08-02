@@ -42,11 +42,16 @@ export const NoEstaEnTrial: Story = {
   args: { isTrialing: false },
 }
 
+/** Confirma en el ConfirmDialog (§6.2) antes de extender — no ejecuta al primer click. */
 export const ExtendidoOk: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByLabelText(/días/i)).toHaveValue(7)
     await userEvent.click(canvas.getByRole('button', { name: 'Extender trial' }))
+    await expect(args.action).not.toHaveBeenCalled()
+
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Extender' }))
     await expect(await canvas.findByText(/trial extendido 7 días/i)).toBeInTheDocument()
   },
 }
@@ -60,6 +65,8 @@ export const TenantNoEstaEnTrialEnElServidor: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Extender trial' }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Extender' }))
     await expect(await canvas.findByText(/actual: 'active'/i)).toBeInTheDocument()
   },
 }

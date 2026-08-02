@@ -214,7 +214,7 @@ export function TicketPanel({
                       {formatArs(p.price)}
                     </span>
                     {line && (
-                      <span className="rounded-full bg-emerald-700 px-1.5 py-0.2 text-[10px] font-bold text-white dark:bg-emerald-600">
+                      <span className="rounded-full bg-primary px-1.5 py-0.2 text-[10px] font-bold text-primary-foreground">
                         ×{line.qty}
                       </span>
                     )}
@@ -259,7 +259,7 @@ export function TicketPanel({
                         </span>
                       )}
                       {line && (
-                        <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white dark:bg-emerald-600">
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
                           ×{line.qty}
                         </span>
                       )}
@@ -380,7 +380,7 @@ export function TicketPanel({
             onClick={submit}
             disabled={isPending || lines.length === 0 || saleDisabled}
             aria-describedby={saleDisabled ? 'ticket-sale-disabled-hint' : undefined}
-            className="h-12 w-full rounded-md bg-emerald-700 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+            className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {isPending ? 'Cobrando…' : `Cobrar ${formatArs(total)}`}
           </button>

@@ -5,20 +5,11 @@ import { useEffect, useState } from 'react'
 import { Umbrella, Zap } from 'lucide-react'
 import { AMENITIES, AMENITY_ORDER } from '@/components/public/amenities'
 import { FORMAT_OPTIONS, SURFACE_OPTIONS, formatLabel } from '@/components/public/courtFacets'
+import { MoneyInput } from '@/components/ui/money-input'
 import { buildExplorarUrl } from './url'
 
 // 'techado' se maneja en su propia sección de "Cerramiento", no en Servicios.
 const SERVICE_KEYS = AMENITY_ORDER.filter((k) => k !== 'techado')
-
-function centsToPesos(v: string | null): string {
-  if (!v) return ''
-  const n = Number(v)
-  return Number.isFinite(n) ? String(Math.round(n / 100)) : ''
-}
-function pesosToCents(v: string): string | undefined {
-  const n = Number(v)
-  return v.trim() && Number.isFinite(n) && n >= 0 ? String(Math.round(n * 100)) : undefined
-}
 
 type Props = {
   /** Callback al aplicar (lo usa el drawer mobile para cerrarse). */
@@ -39,8 +30,8 @@ export default function ExplorarFilters({ onApplied }: Props) {
   const [services, setServices] = useState<Set<string>>(new Set())
   const [techado, setTechado] = useState(false)
   const [online, setOnline] = useState(false)
-  const [minPrice, setMinPrice] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
+  const [minPriceCents, setMinPriceCents] = useState<number | null>(null)
+  const [maxPriceCents, setMaxPriceCents] = useState<number | null>(null)
   const [priceError, setPriceError] = useState<string | null>(null)
 
   // (Re)inicializar el borrador desde la URL cada vez que cambia.
@@ -59,8 +50,10 @@ export default function ExplorarFilters({ onApplied }: Props) {
     setTechado(amenities.has('techado'))
     setServices(new Set(Array.from(amenities).filter((a) => a !== 'techado')))
     setOnline(params.get('online') === '1')
-    setMinPrice(centsToPesos(params.get('minPrice')))
-    setMaxPrice(centsToPesos(params.get('maxPrice')))
+    const rawMin = params.get('minPrice')
+    const rawMax = params.get('maxPrice')
+    setMinPriceCents(rawMin ? Number(rawMin) : null)
+    setMaxPriceCents(rawMax ? Number(rawMax) : null)
   }, [params])
 
   function toggle<T>(set: Set<T>, value: T): Set<T> {
@@ -71,9 +64,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
   }
 
   function apply() {
-    const minCents = pesosToCents(minPrice)
-    const maxCents = pesosToCents(maxPrice)
-    if (minCents && maxCents && Number(minCents) > Number(maxCents)) {
+    if (minPriceCents != null && maxPriceCents != null && minPriceCents > maxPriceCents) {
       setPriceError('El precio mínimo no puede superar el máximo.')
       return
     }
@@ -86,8 +77,8 @@ export default function ExplorarFilters({ onApplied }: Props) {
         formats: formats.size ? Array.from(formats).join(',') : undefined,
         amenities: amenities.length ? amenities.join(',') : undefined,
         online: online ? '1' : undefined,
-        minPrice: minCents,
-        maxPrice: maxCents,
+        minPrice: minPriceCents != null ? String(minPriceCents) : undefined,
+        maxPrice: maxPriceCents != null ? String(maxPriceCents) : undefined,
       }),
     )
     onApplied?.()
@@ -196,15 +187,12 @@ export default function ExplorarFilters({ onApplied }: Props) {
             <label htmlFor="min-price" className="sr-only">
               Precio mínimo
             </label>
-            <input
+            <MoneyInput
               id="min-price"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
+              valueCents={minPriceCents}
+              onValueChange={setMinPriceCents}
+              minCents={0}
               placeholder="Desde"
-              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
           <span className="text-muted-foreground">–</span>
@@ -212,15 +200,12 @@ export default function ExplorarFilters({ onApplied }: Props) {
             <label htmlFor="max-price" className="sr-only">
               Precio máximo
             </label>
-            <input
+            <MoneyInput
               id="max-price"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
+              valueCents={maxPriceCents}
+              onValueChange={setMaxPriceCents}
+              minCents={0}
               placeholder="Hasta"
-              className="h-11 md:h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
           </div>
         </div>

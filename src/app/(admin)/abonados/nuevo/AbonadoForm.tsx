@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { PhoneInput } from '@/components/ui/phone-input'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
+import { MoneyInput } from '@/components/ui/money-input'
 import { formatArs } from '@/lib/format'
 import {
   Clock,
@@ -121,7 +122,7 @@ type FormValues = {
   timeEnd: string
   contactName: string
   contactPhone: string
-  pricePerSession: string
+  pricePerSessionCents: number | null
   startsOn: string
   notes: string
 }
@@ -253,7 +254,7 @@ export default function AbonadoForm({
   const [timeStart, setTimeStart] = useState('19:00')
   const [timeEnd, setTimeEnd] = useState('20:00')
   const [contactName, setContactName] = useState('')
-  const [pricePerSession, setPricePerSession] = useState('')
+  const [pricePerSessionCents, setPricePerSessionCents] = useState<number | null>(null)
 
   const courtOptions: ComboboxOption[] = useMemo(
     () => courts.map((c) => ({ value: c.id, label: c.name })),
@@ -275,16 +276,14 @@ export default function AbonadoForm({
   }, [startsOn])
 
   const formattedPrice = useMemo(() => {
-    const num = Number(pricePerSession)
-    if (isNaN(num) || num <= 0) return '$ 0'
-    return formatArs(Math.round(num * 100))
-  }, [pricePerSession])
+    if (!pricePerSessionCents || pricePerSessionCents <= 0) return '$ 0'
+    return formatArs(pricePerSessionCents)
+  }, [pricePerSessionCents])
 
   const formattedMonthly = useMemo(() => {
-    const num = Number(pricePerSession)
-    if (isNaN(num) || num <= 0) return '$ 0'
-    return formatArs(Math.round(num * 4 * 100))
-  }, [pricePerSession])
+    if (!pricePerSessionCents || pricePerSessionCents <= 0) return '$ 0'
+    return formatArs(pricePerSessionCents * 4)
+  }, [pricePerSessionCents])
 
   function handlePreviewSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -298,7 +297,7 @@ export default function AbonadoForm({
       timeEnd: normalizeMidnightEnd((fd.get('timeEnd') as string) || timeEnd),
       contactName,
       contactPhone: fd.get('contactPhone') as string,
-      pricePerSession,
+      pricePerSessionCents,
       startsOn,
       notes: (fd.get('notes') as string) || '',
     }
@@ -313,6 +312,10 @@ export default function AbonadoForm({
     }
     if (!values.timeStart || !values.timeEnd) {
       setPreviewError('Elegí los horarios de inicio y fin.')
+      return
+    }
+    if (values.pricePerSessionCents == null || values.pricePerSessionCents <= 0) {
+      setPreviewError('Ingresá el precio por turno.')
       return
     }
 
@@ -341,7 +344,7 @@ export default function AbonadoForm({
     if (!formValues) return
     const fd = new FormData()
     for (const [key, val] of Object.entries(formValues)) {
-      fd.set(key, val)
+      fd.set(key, val == null ? '' : String(val))
     }
     startConfirmTransition(async () => {
       const result = await submitAction(initial, fd)
@@ -522,25 +525,19 @@ export default function AbonadoForm({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <label
+                    htmlFor="pricePerSessionCents"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                  >
                     <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Precio por turno (pesos)
                   </label>
-                  <div className="relative">
-                    <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
-                    <input
-                      name="pricePerSession"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      required
-                      value={pricePerSession}
-                      onChange={(e) => setPricePerSession(e.target.value)}
-                      placeholder="Ej: 25000"
-                      className={`${fieldBase} pl-10 pr-3 font-semibold text-foreground`}
-                    />
-                  </div>
+                  <MoneyInput
+                    id="pricePerSessionCents"
+                    valueCents={pricePerSessionCents}
+                    onValueChange={setPricePerSessionCents}
+                    placeholder="Ej: 25.000"
+                    required
+                  />
                 </div>
               </div>
 

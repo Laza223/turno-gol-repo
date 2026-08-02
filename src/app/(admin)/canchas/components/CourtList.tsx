@@ -242,7 +242,9 @@ function CourtCard({
       if (!res.success) {
         setCurrentStatus(prev)
         toast({ title: 'No se pudo activar', description: res.error, variant: 'destructive' })
+        return
       }
+      toast({ title: 'Cancha activada', variant: 'success' })
     })
   }
 

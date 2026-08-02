@@ -10,6 +10,9 @@ import type {
 import type { PlayerSearchResult } from '@/modules/players/player-search.service'
 import type { SearchPlayersActionResult, TournamentActionResult } from '../actions'
 import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../torneos-lib'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { toast } from '@/hooks/use-toast'
 
 export type AddTeamAction = (input: unknown) => Promise<TournamentActionResult>
 export type RemoveTeamAction = (input: unknown) => Promise<TournamentActionResult>
@@ -54,6 +57,7 @@ export function TeamsPanel({
   const captainDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
+  const [removeConfirm, setRemoveConfirm] = useState<TournamentTeamRow | null>(null)
 
   // El cupo cuenta solo a los que siguen en carrera, igual que el service.
   const active = teams.filter(
@@ -76,6 +80,7 @@ export function TeamsPanel({
         setError(result.error)
         return
       }
+      toast({ title: 'Equipo anotado', description: name.trim(), variant: 'success' })
       setName('')
       setContactName('')
       setContactPlayerId(null)
@@ -84,16 +89,14 @@ export function TeamsPanel({
     })
   }
 
-  function handleRemove(id: string) {
-    setError(null)
-    startTransition(async () => {
-      const result = await removeAction({ id })
-      if (!result.success) {
-        setError(result.error)
-        return
-      }
+  async function confirmRemoveTeam(): Promise<{ success: boolean; error?: string }> {
+    if (!removeConfirm) return { success: false, error: 'No hay equipo seleccionado.' }
+    const res = await removeAction({ id: removeConfirm.id })
+    if (res.success) {
+      toast({ title: 'Equipo borrado', description: removeConfirm.name, variant: 'success' })
       router.refresh()
-    })
+    }
+    return res
   }
 
   function onCaptainChange(next: string) {
@@ -249,12 +252,7 @@ export function TeamsPanel({
       )}
 
       {teams.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-8 text-center">
-          <Users className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">
-            Todavía no hay equipos anotados.
-          </p>
-        </div>
+        <EmptyState icon={Users} title="Todavía no hay equipos anotados." />
       ) : (
         <ul className="divide-y divide-border">
           {teams.map((t) => {
@@ -295,7 +293,7 @@ export function TeamsPanel({
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleRemove(t.id)}
+                      onClick={() => setRemoveConfirm(t)}
                       disabled={pending}
                       aria-label={`Borrar ${t.name}`}
                       className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
@@ -317,6 +315,22 @@ export function TeamsPanel({
           })}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={removeConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveConfirm(null)
+        }}
+        title={`Borrar ${removeConfirm?.name ?? 'equipo'}`}
+        consequences={[
+          'Se borra el plantel completo junto con el equipo.',
+          'No se puede deshacer.',
+        ]}
+        variant="destructive"
+        confirmLabel="Borrar equipo"
+        cancelLabel="Volver"
+        onConfirm={confirmRemoveTeam}
+      />
     </section>
   )
 }
@@ -354,6 +368,7 @@ function TeamRosterEditor({
         setError(result.error)
         return
       }
+      toast({ title: 'Jugador agregado al plantel', description: fullName.trim(), variant: 'success' })
       setFullName('')
       setShirtNumber('')
       setDni('')
@@ -361,14 +376,33 @@ function TeamRosterEditor({
     })
   }
 
-  function handleRemove(id: string) {
+  function undoRemove(p: TournamentTeamPlayerRow) {
+    startTransition(async () => {
+      await addPlayerAction({
+        teamId,
+        fullName: p.fullName,
+        playerId: p.playerId,
+        dni: p.dni,
+        shirtNumber: p.shirtNumber,
+      })
+      router.refresh()
+    })
+  }
+
+  function handleRemove(p: TournamentTeamPlayerRow) {
     setError(null)
     startTransition(async () => {
-      const result = await removePlayerAction({ id })
+      const result = await removePlayerAction({ id: p.id })
       if (!result.success) {
         setError(result.error)
         return
       }
+      toast({
+        title: 'Sacado del plantel',
+        description: p.fullName,
+        variant: 'success',
+        action: { label: 'Deshacer', onClick: () => undoRemove(p) },
+      })
       router.refresh()
     })
   }
@@ -376,7 +410,7 @@ function TeamRosterEditor({
   return (
     <div className="space-y-3 border-t border-border bg-muted/30 px-3 py-3 sm:px-8">
       {players.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Todavía no hay plantel cargado.</p>
+        <EmptyState title="Todavía no hay plantel cargado." className="py-4" />
       ) : (
         <ul className="space-y-1">
           {players.map((p) => (
@@ -391,7 +425,7 @@ function TeamRosterEditor({
               </span>
               <button
                 type="button"
-                onClick={() => handleRemove(p.id)}
+                onClick={() => handleRemove(p)}
                 disabled={pending}
                 aria-label={`Sacar a ${p.fullName} del plantel`}
                 className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"

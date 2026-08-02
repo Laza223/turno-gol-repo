@@ -44,11 +44,16 @@ export const EmailVacio: Story = {
   },
 }
 
+/** Confirma en el ConfirmDialog (§6.2) antes de resetear — no ejecuta al primer click. */
 export const ReseteoOk: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText('Email del staff'), 'rodrigo@complejofenix.com.ar')
     await userEvent.click(canvas.getByRole('button', { name: 'Resetear contraseña' }))
+    await expect(args.action).not.toHaveBeenCalled()
+
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Confirmar reseteo' }))
     await expect(await canvas.findByText(/contraseña temporal: tg-/i)).toBeInTheDocument()
   },
 }
@@ -60,6 +65,8 @@ export const NoEsMiembroActivo: Story = {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText('Email del staff'), 'exempleado@complejofenix.com.ar')
     await userEvent.click(canvas.getByRole('button', { name: 'Resetear contraseña' }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Confirmar reseteo' }))
     await expect(await canvas.findByText(/no es un miembro activo/i)).toBeInTheDocument()
   },
 }

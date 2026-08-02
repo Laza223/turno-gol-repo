@@ -3,11 +3,19 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import CompleteBookingDialog from '../CompleteBookingDialog'
 import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from '../actions'
+
+/** Mismo texto que QuickActions.tsx (lista) — una sola gramática (visión v2 §6.2). */
+const NO_SHOW_CONSEQUENCES = [
+  'La seña pagada queda para el complejo.',
+  'Si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online.',
+  'No se puede deshacer pasadas 24hs.',
+]
 
 type CancellationType = 'complejo' | 'jugador'
 
@@ -187,7 +195,11 @@ export default function BookingActions({
   async function onConfirmNoShow(): Promise<{ success: boolean; error?: string }> {
     const res = await markNoShowAction(bookingId)
     if (res.success) {
-      toast({ title: 'Marcada como ausente', variant: 'success' })
+      toast({
+        title: 'Marcada como ausente',
+        variant: 'success',
+        action: { label: 'Deshacer', onClick: () => void onConfirmRevertNoShow() },
+      })
       router.refresh()
     }
     return res
@@ -257,34 +269,20 @@ export default function BookingActions({
         onConfirm={onConfirmCancel}
       >
         <div className="space-y-3">
-          <fieldset className="space-y-1">
+          <fieldset className="space-y-1.5">
             <legend className="text-xs font-medium text-foreground">¿Quién cancela?</legend>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
-                name="cancel-type"
-                className="mt-0.5"
-                checked={cancelType === 'complejo'}
-                onChange={() => setCancelType('complejo')}
-              />
-              <span>
-                <span className="font-medium">El complejo necesita cancelar</span>
-                <span className="block text-xs text-muted-foreground">Rotura, mantenimiento o error. Reembolso automático de la seña.</span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
-                name="cancel-type"
-                className="mt-0.5"
-                checked={cancelType === 'jugador'}
-                onChange={() => setCancelType('jugador')}
-              />
-              <span>
-                <span className="font-medium">El jugador pidió cancelar</span>
-                <span className="block text-xs text-muted-foreground">Se aplica la política de cancelación del complejo.</span>
-              </span>
-            </label>
+            <RadioChipGroup
+              // '' (nunca undefined) — ver comentario homólogo en QuickActions.tsx.
+              value={cancelType ?? ''}
+              onValueChange={(v) => setCancelType(v as CancellationType)}
+            >
+              <RadioChip value="complejo" description="Rotura, mantenimiento o error. Reembolso automático de la seña.">
+                El complejo necesita cancelar
+              </RadioChip>
+              <RadioChip value="jugador" description="Se aplica la política de cancelación del complejo.">
+                El jugador pidió cancelar
+              </RadioChip>
+            </RadioChipGroup>
           </fieldset>
 
           <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
@@ -308,7 +306,8 @@ export default function BookingActions({
         open={noShowOpen}
         onOpenChange={setNoShowOpen}
         title="Marcar como ausente"
-        description="Se registrará que el jugador no se presentó. La seña pagada queda para el complejo; si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online. Esta acción no se puede deshacer pasadas 24hs."
+        description="Se registrará que el jugador no se presentó."
+        consequences={NO_SHOW_CONSEQUENCES}
         variant="destructive"
         confirmLabel="Marcar ausente"
         cancelLabel="Volver"

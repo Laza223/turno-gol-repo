@@ -5,18 +5,15 @@
  */
 
 import { formatArs } from '@/lib/format'
+import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
 import type { CashFlowCategory, DailyCashCloseRow } from '@/modules/cashflow/cashflow.types'
 
 // ── Métodos de pago ──────────────────────────────────────────────────────────
+// Fuente canónica: @/lib/payment-method (la necesitan componentes fuera de
+// app/, ver BookingPopover). Re-exportadas acá para no tocar los consumidores
+// existentes de caja-lib.
 
-export type MethodKey = 'cash' | 'transfer' | 'mercadopago' | 'other'
-
-export const METHOD_LABELS: Record<MethodKey, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
-  other: 'Otro',
-}
+export { METHOD_LABELS, type MethodKey }
 
 // Orden fijo de arqueo: el efectivo (lo que se cuenta) primero.
 const METHOD_ORDER: MethodKey[] = ['cash', 'transfer', 'mercadopago', 'other']

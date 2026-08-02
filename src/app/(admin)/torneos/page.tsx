@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { Plus, Sparkles, Trophy } from 'lucide-react'
+import { Plus, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -57,30 +57,6 @@ export default async function TorneosPage() {
           ) : undefined
         }
       />
-
-      {total === 0 && (
-        // Banner Próximamente: solo tiene sentido si todavía no hay torneos,
-        // si no se autocontradice con la lista/estado de abajo.
-        <div className="card-entrance relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-linear-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-6 sm:p-8 dark:from-emerald-500/15 dark:via-teal-500/10" style={{ animationDelay: '80ms' }}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                Próximamente
-              </div>
-              <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                Módulo de Torneos
-              </h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Muy pronto vas a poder crear torneos, administrar equipos, armar el fixture automático y compartir la tabla de posiciones con los jugadores.
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-500/20">
-              <Trophy className="h-10 w-10 text-emerald-500" />
-            </div>
-          </div>
-        </div>
-      )}
 
       {total === 0 ? (
         <EmptyState

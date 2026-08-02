@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { formatArs } from '@/lib/format'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
 import {
@@ -35,6 +36,8 @@ export function ChangePlanSection({
 }: Props) {
   const [targetPlanId, setTargetPlanId] = useState('')
   const [planFeedback, setPlanFeedback] = useState<Feedback>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const targetPlan = plans.find((p) => p.id === targetPlanId)
 
   return (
     <SectionCard
@@ -69,9 +72,7 @@ export function ChangePlanSection({
             <button
               type="button"
               disabled={pending || targetPlanId === ''}
-              onClick={() =>
-                run(() => action({ tenantId, targetPlanId }), setPlanFeedback)
-              }
+              onClick={() => setConfirmOpen(true)}
               className={primaryBtn}
             >
               Cambiar plan
@@ -80,6 +81,23 @@ export function ChangePlanSection({
           <FeedbackText feedback={planFeedback} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Cambiar plan sin cobro"
+        consequences={[
+          targetPlan
+            ? `Pasa a ${targetPlan.name} (${formatArs(targetPlan.priceMonthly)}/mes) sin proración.`
+            : 'Cambia de plan sin proración.',
+          'Si hay suscripción MP activa, el monto recurrente se actualiza para el próximo ciclo.',
+        ]}
+        confirmLabel="Confirmar cambio"
+        cancelLabel="Cancelar"
+        onConfirm={async () => {
+          run(() => action({ tenantId, targetPlanId }), setPlanFeedback)
+        }}
+      />
     </SectionCard>
   )
 }

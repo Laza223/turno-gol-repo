@@ -1,4 +1,5 @@
 import type { DailyAmount, NoShowMetric } from '@/modules/metrics/metrics.service'
+export { formatArs as formatARS } from '@/lib/format'
 
 // Helpers puros del dashboard de métricas (agregación client-side y copys de
 // tendencia). Sin imports de React ni recharts: unit-testeables en aislamiento.
@@ -99,13 +100,3 @@ export function relativeTimeEs(iso: string, nowMs: number): string {
   return days === 1 ? 'hace 1 día' : `hace ${days} días`
 }
 
-/** Formato moneda es-AR desde centavos, sin decimales (igual que /reportes). */
-const ARS_FORMATTER = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  minimumFractionDigits: 0,
-})
-
-export function formatARS(cents: number): string {
-  return ARS_FORMATTER.format(cents / 100)
-}

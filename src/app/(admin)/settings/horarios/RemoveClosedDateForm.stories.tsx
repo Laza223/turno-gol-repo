@@ -41,6 +41,24 @@ export const Default: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
 }
 
+/** Con `addAction` cableada, el toast de éxito ofrece "Deshacer" (§6.2 clase A). */
+export const ConDeshacer: Story = {
+  args: {
+    action: fn(async () => ({ success: true as const })),
+    addAction: fn(async () => ({ success: true as const })),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Quitar' }))
+
+    const body = within(canvasElement.ownerDocument.body)
+    const undoButton = await body.findByRole('button', { name: 'Deshacer' })
+    await userEvent.click(undoButton)
+
+    await expect(args.addAction).toHaveBeenCalled()
+  },
+}
+
 export const ErrorDelServidor: Story = {
   args: {
     action: fn(async () => ({ success: false as const, error: 'No se pudo quitar el día.' })),

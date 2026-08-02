@@ -86,7 +86,10 @@ async function fillFormAndSubmit() {
   fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), {
     target: { value: '1199887766' },
   })
-  fireEvent.change(form.querySelector('input[name="pricePerSession"]') as HTMLInputElement, {
+  // Precio por turno ahora es un MoneyInput (input type="text", sin `name`
+  // propio — el hidden mirror no aplica acá porque el campo es controlado):
+  // se ubica por label, no por querySelector(name=...).
+  fireEvent.change(screen.getByLabelText(/Precio por turno/i), {
     target: { value: '5000' },
   })
 
@@ -119,7 +122,7 @@ describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
     fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), {
       target: { value: '1199887766' },
     })
-    fireEvent.change(form.querySelector('input[name="pricePerSession"]') as HTMLInputElement, {
+    fireEvent.change(screen.getByLabelText(/Precio por turno/i), {
       target: { value: '5000' },
     })
     fireEvent.submit(form)
@@ -300,7 +303,8 @@ describe('AbonadoForm — preview phase', () => {
     expect((fd as FormData).get('contactName')).toBe('Grupo Test')
     // PhoneInput antepone el prefijo del país seleccionado (default Argentina).
     expect((fd as FormData).get('contactPhone')).toBe('+54 1199887766')
-    expect((fd as FormData).get('pricePerSession')).toBe('5000')
+    // MoneyInput manda CENTAVOS: "5000" tipeados (pesos) → 500000 centavos.
+    expect((fd as FormData).get('pricePerSessionCents')).toBe('500000')
     // startsOn viene de "Hoy" (DatePicker) — no se controla la fecha exacta,
     // solo que el formato sobrevive a la reconstrucción de FormData.
     expect((fd as FormData).get('startsOn')).toMatch(/^\d{4}-\d{2}-\d{2}$/)

@@ -10,7 +10,7 @@ import type {
   Slot,
 } from '@/modules/tenants/public.service'
 import { Skeleton } from '@/components/ui/skeleton'
-import { capitalizeFirst } from '@/lib/format'
+import { capitalizeFirst, formatArs } from '@/lib/format'
 import WeeklyAvailabilityModal from './WeeklyAvailabilityModal'
 
 type Props = {
@@ -22,12 +22,6 @@ const DATE_ES_FORMATTER = new Intl.DateTimeFormat('es-AR', {
   day: 'numeric',
   month: 'long',
   timeZone: 'UTC',
-})
-
-const ARS_PRICE_FORMATTER = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
 })
 
 function formatDateES(dateStr: string): string {
@@ -90,7 +84,7 @@ function SlotCell({
     )
   }
 
-  const priceFormatted = slot.price ? ARS_PRICE_FORMATTER.format(slot.price / 100) : null
+  const priceFormatted = slot.price ? formatArs(slot.price) : null
 
   // Precio visible en todo slot futuro: el jugador ve la estructura de
   // precios del día aunque el turno esté tomado.

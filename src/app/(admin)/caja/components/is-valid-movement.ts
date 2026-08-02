@@ -4,8 +4,7 @@
 // botón deshabilitado ese `setError` es hoy inalcanzable desde la UI (Enter
 // tampoco dispara el submit implícito si el único submit está disabled);
 // queda solo como red si esta función diverge del submit en el futuro.
-export function isValidMovement(amountPesos: string, description: string): boolean {
-  const pesos = Number(amountPesos)
-  if (!Number.isFinite(pesos) || pesos <= 0) return false
+export function isValidMovement(amountCents: number | null, description: string): boolean {
+  if (amountCents == null || amountCents <= 0) return false
   return description.trim().length >= 1
 }

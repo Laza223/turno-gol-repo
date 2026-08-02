@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import {
   Toast,
+  ToastAction,
   ToastClose,
   ToastDescription,
   ToastProvider,
@@ -37,12 +38,23 @@ export function Toaster() {
           ) : t.variant === 'destructive' ? (
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           ) : null}
-          <div className="grid gap-1">
+          <div className="grid flex-1 gap-1">
             {t.title ? <ToastTitle>{t.title}</ToastTitle> : null}
             {t.description ? (
               <ToastDescription>{t.description}</ToastDescription>
             ) : null}
           </div>
+          {t.action ? (
+            <ToastAction
+              altText={t.action.label}
+              onClick={() => {
+                t.action?.onClick()
+                dismiss(t.id)
+              }}
+            >
+              {t.action.label}
+            </ToastAction>
+          ) : null}
           <ToastClose />
         </Toast>
       ))}

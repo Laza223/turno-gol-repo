@@ -177,17 +177,42 @@ export const CompletarAbreElDialogoDeCobro: Story = {
   },
 }
 
-/** "Ausente" pide un segundo click de confirmación inline (sin modal, con auto-desarme a los 4s). */
-export const AusenteRequiereDobleClick: Story = {
+/**
+ * "Ausente" abre el mismo ConfirmDialog con consecuencias en las dos
+ * superficies (lista y detalle, visión v2 §6.2) — nunca ejecuta al primer
+ * click, ni siquiera desde el menú mobile (🔴 auditoría 2026-08-01 §4.5).
+ */
+export const AusenteAbreConfirmDialogConConsecuencias: Story = {
   args: { booking: CONFIRMADA_SENA_MP },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Ausente' }))
-    await expect(canvas.getByRole('button', { name: '¿Confirmar ausente?' })).toBeVisible()
     await expect(args.markNoShowAction).not.toHaveBeenCalled()
-    await userEvent.click(canvas.getByRole('button', { name: '¿Confirmar ausente?' }))
+
+    const body = within(document.body)
+    await body.findByRole('heading', { name: 'Marcar como ausente' })
+    await expect(body.getByText('La seña pagada queda para el complejo.')).toBeVisible()
+    await expect(body.getByText(/queda bloqueado 14 días/)).toBeVisible()
+
+    await userEvent.click(body.getByRole('button', { name: 'Marcar ausente' }))
     await waitFor(() => expect(args.markNoShowAction).toHaveBeenCalledWith(CONFIRMADA_SENA_MP.id))
     await closeToast('Marcada como ausente')
+  },
+}
+
+/** Con `revertNoShowAction` cableada, el toast de éxito ofrece "Deshacer" (§6.2 clase A). */
+export const AusenteConfirmadoOfreceDeshacer: Story = {
+  args: { booking: CONFIRMADA_SENA_MP, revertNoShowAction: fn(async () => SUCCESS) },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Ausente' }))
+    const body = within(document.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Marcar ausente' }))
+
+    await waitFor(() => expect(args.markNoShowAction).toHaveBeenCalled())
+    const undoButton = await body.findByRole('button', { name: 'Deshacer' })
+    await userEvent.click(undoButton)
+    await waitFor(() => expect(args.revertNoShowAction).toHaveBeenCalledWith(CONFIRMADA_SENA_MP.id))
   },
 }
 

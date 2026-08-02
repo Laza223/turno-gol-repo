@@ -132,6 +132,7 @@ export function JugadorProfileView({
 
       <BanPlayerControls
         playerId={profile.playerId}
+        playerName={profile.name}
         ban={ban}
         banPlayerAction={banPlayerAction}
         liftPlayerBanAction={liftPlayerBanAction}

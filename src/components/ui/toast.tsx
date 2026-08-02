@@ -69,6 +69,21 @@ const Toast = React.forwardRef<
 ))
 Toast.displayName = ToastPrimitives.Root.displayName
 
+const ToastAction = React.forwardRef<
+  React.ElementRef<typeof ToastPrimitives.Action>,
+  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
+>(({ className, ...props }, ref) => (
+  <ToastPrimitives.Action
+    ref={ref}
+    className={cn(
+      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-current/30 bg-transparent px-3 text-sm font-semibold transition-colors hover:bg-current/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+      className,
+    )}
+    {...props}
+  />
+))
+ToastAction.displayName = ToastPrimitives.Action.displayName
+
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
@@ -121,5 +136,6 @@ export {
   Toast,
   ToastTitle,
   ToastDescription,
+  ToastAction,
   ToastClose,
 }

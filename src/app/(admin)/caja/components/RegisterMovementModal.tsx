@@ -3,12 +3,15 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { chipClass } from '../caja-lib'
 import type { CashFlowActionResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { isValidMovement } from './is-valid-movement'
 import { toast } from '@/hooks/use-toast'
+import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
+import { MoneyInput } from '@/components/ui/money-input'
 import type { CashFlowCategory, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
 /**
@@ -49,13 +52,6 @@ const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
   ],
 }
 
-const METHODS = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-  { value: 'other', label: 'Otro' },
-] as const
-
 export function RegisterMovementModal({
   open,
   onClose,
@@ -76,7 +72,7 @@ export function RegisterMovementModal({
   const [type, setType] = useState<CfType>('income')
   const [category, setCategory] = useState('booking')
   const [method, setMethod] = useState('cash')
-  const [amountPesos, setAmountPesos] = useState('')
+  const [amountCents, setAmountCents] = useState<number | null>(null)
   const [description, setDescription] = useState('')
   // Fix #55: UUID generado una sola vez por apertura del modal.
   // El server hace ON CONFLICT DO NOTHING con esta clave para ignorar reenvíos.
@@ -84,11 +80,11 @@ export function RegisterMovementModal({
 
   // Fase 4 UX: el botón "Guardar" arranca deshabilitado con campos vacíos, en
   // vez de recién avisar el error al clickear.
-  const isValid = isValidMovement(amountPesos, description)
+  const isValid = isValidMovement(amountCents, description)
 
   function reset() {
     setType('income'); setCategory('booking'); setMethod('cash')
-    setAmountPesos(''); setDescription(''); setError(null)
+    setAmountCents(null); setDescription(''); setError(null)
     setIdempotencyKey(crypto.randomUUID())
   }
 
@@ -102,17 +98,15 @@ export function RegisterMovementModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const pesos = Number(amountPesos)
-    if (!Number.isFinite(pesos) || pesos <= 0) { setError('Ingresá un monto válido mayor a 0.'); return }
+    if (amountCents == null || amountCents <= 0) { setError('Ingresá un monto válido mayor a 0.'); return }
     if (description.trim().length < 1) { setError('Ingresá una descripción.'); return }
-    const amount = Math.round(pesos * 100)
     startTransition(async () => {
       try {
         const res = await createCashFlowAction({
           type,
           category: category as CashFlowCategory,
           method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
-          amount,
+          amount: amountCents,
           description: description.trim(),
           occurredAt: occurredAtForDate(date, cutoffMins),
           clientIdempotencyKey: idempotencyKey,
@@ -186,7 +180,7 @@ export function RegisterMovementModal({
               <fieldset>
                 <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Método de pago</legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {METHODS.map((m) => (
+                  {PAYMENT_METHOD_OPTIONS.map((m) => (
                     <button
                       key={m.value}
                       type="button"
@@ -203,12 +197,11 @@ export function RegisterMovementModal({
 
               <div className="space-y-1">
                 <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">Monto (pesos)</label>
-                <input id="cf-amount" type="number" min="0" step="0.01" value={amountPesos}
-                  onChange={(e) => setAmountPesos(e.target.value)}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder="0.00"
-                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm tabular-nums focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring" />
+                <MoneyInput
+                  id="cf-amount"
+                  valueCents={amountCents}
+                  onValueChange={setAmountCents}
+                />
               </div>
 
               <div className="space-y-1">
@@ -225,9 +218,9 @@ export function RegisterMovementModal({
           <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
             <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
               className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>
-            <button type="submit" disabled={isPending || !isValid}
-              className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors">
-              {isPending ? 'Guardando…' : 'Guardar'}</button>
+            <Button type="submit" disabled={!isValid} isLoading={isPending} className="px-5">
+              {isPending ? 'Guardando…' : 'Guardar'}
+            </Button>
           </div>
         </form>
       </DialogContent>

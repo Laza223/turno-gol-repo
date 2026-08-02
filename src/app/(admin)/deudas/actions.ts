@@ -13,9 +13,6 @@ import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { formatArs } from '@/lib/format'
 import { getBookingCharges } from '../reservas/queries'
 
-import { banPlayerInputSchema } from '@/modules/bans/ban.schema'
-import { banPlayerManually, resolveManualBanUntil } from '@/modules/bans/ban.service'
-
 const chargeLineSchema = z.object({
   amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
@@ -30,39 +27,6 @@ const chargeDebtSchema = z.object({
 export type ChargeDebtInput = z.input<typeof chargeDebtSchema>
 
 export type ChargeDebtResult = { success: true } | { success: false; error: string }
-
-export type BanPlayerInput = z.input<typeof banPlayerInputSchema>
-export type BanPlayerResult = { success: true } | { success: false; error: string }
-
-export async function banPlayerAction(input: BanPlayerInput): Promise<BanPlayerResult> {
-  const parsed = banPlayerInputSchema.safeParse(input)
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
-  }
-  const auth = await requireOperatorStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { user, tenant } = auth
-
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { success: false, error: limited }
-
-  const { playerId, reason, duration } = parsed.data
-
-  try {
-    await withTenantContext(tenant.id, async (tx) => {
-      const until = resolveManualBanUntil(duration, new Date())
-      await banPlayerManually(tenant.id, playerId, user.staffUserId, reason, until, tx)
-    })
-
-    revalidatePath('/deudas')
-    revalidatePath('/jugadores')
-    revalidatePath(`/jugadores/${playerId}`)
-    return { success: true }
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Error al sancionar al jugador.'
-    return { success: false, error: errorMsg }
-  }
-}
 
 export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDebtResult> {
   const parsed = chargeDebtSchema.safeParse(input)

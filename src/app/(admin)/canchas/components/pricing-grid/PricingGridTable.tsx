@@ -1,6 +1,7 @@
 'use client'
 
 import { formatArs } from '@/lib/format'
+import { MoneyInput } from '@/components/ui/money-input'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import {
   DAY_KEYS,
@@ -20,8 +21,8 @@ type Props = {
   isDark: boolean
   selected: Set<string>
   editing: string | null
-  editValue: string
-  onEditValueChange: (value: string) => void
+  editValueCents: number | null
+  onEditValueChange: (cents: number | null) => void
   onCommit: () => void
   onCancelEdit: () => void
   onPointerDown: (e: React.PointerEvent, key: string) => void
@@ -39,7 +40,7 @@ export function PricingGridTable({
   isDark,
   selected,
   editing,
-  editValue,
+  editValueCents,
   onEditValueChange,
   onCommit,
   onCancelEdit,
@@ -102,13 +103,7 @@ export function PricingGridTable({
                 return (
                   <td key={day} className="border-l border-border p-0.5">
                     {isEditing ? (
-                      <input
-                        autoFocus
-                        type="text"
-                        inputMode="numeric"
-                        value={editValue}
-                        onChange={(e) => onEditValueChange(e.target.value)}
-                        onBlur={onCommit}
+                      <div
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault()
@@ -118,9 +113,17 @@ export function PricingGridTable({
                             onCancelEdit()
                           }
                         }}
-                        aria-label={`Precio ${DAY_LABELS[day]} ${hourLabel(hour)}`}
-                        className="h-11 md:h-8 w-full rounded-md border-2 border-emerald-600 bg-background text-foreground px-1 text-center text-xs tabular-nums focus-visible:outline-hidden"
-                      />
+                        onBlur={onCommit}
+                      >
+                        <MoneyInput
+                          autoFocus
+                          valueCents={editValueCents}
+                          onValueChange={onEditValueChange}
+                          showWords={false}
+                          aria-label={`Precio ${DAY_LABELS[day]} ${hourLabel(hour)}`}
+                          className="h-11 md:h-8 w-full rounded-md border-2 border-emerald-600 bg-background text-xs"
+                        />
+                      </div>
                     ) : (
                       <button
                         type="button"

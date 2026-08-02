@@ -35,7 +35,14 @@ const schema = z
     // reactivate dialog, which renders the abonado row's stored time directly).
     timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
     timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
-    pricePerSession: z.coerce.number().positive('El precio por sesión es requerido'),
+    // El cliente (AbonadoForm/MoneyInput) ya manda CENTAVOS en este campo, no
+    // pesos — z.coerce.number() porque FormData siempre entrega strings. El
+    // parser dual pesos-string + Math.round(*100) que había acá antes era el
+    // bug de auditoría §4.4 ("$25" en vez de "$25.000" via Number("25.000") === 25).
+    pricePerSessionCents: z.coerce
+      .number()
+      .int()
+      .positive('El precio por sesión es requerido'),
     startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
     paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
     notes: z.string().trim().max(1000).optional(),
@@ -145,7 +152,9 @@ export async function submitNewAbonado(
     dayOfWeek: d.dayOfWeek,
     timeStart: d.timeStart,
     timeEnd: d.timeEnd,
-    pricePerSession: Math.round(d.pricePerSession * 100),
+    // Ya viene en centavos (ver el comentario del schema) — CreateAbonadoInput
+    // usa `pricePerSession` como nombre de campo, pero su unidad es centavos.
+    pricePerSession: d.pricePerSessionCents,
     startsOn: d.startsOn,
     paymentMethod: d.paymentMethod,
     notes: d.notes,

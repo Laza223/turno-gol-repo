@@ -16,10 +16,9 @@ import {
   expandRulesToGrid,
   getOperativeHours,
   hourLabel,
-  parsePesosToCents,
 } from '@/modules/courts/pricing-grid'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
 import { PricingGrid } from './PricingGrid'
 
@@ -58,11 +57,11 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
 
   // Plantilla
   const [mode, setMode] = useState<TemplateMode>('uniform')
-  const [uniformPrice, setUniformPrice] = useState('')
-  const [weekPrice, setWeekPrice] = useState('')
-  const [weekendPrice, setWeekendPrice] = useState('')
-  const [dayPrice, setDayPrice] = useState('')
-  const [nightPrice, setNightPrice] = useState('')
+  const [uniformPriceCents, setUniformPriceCents] = useState<number | null>(null)
+  const [weekPriceCents, setWeekPriceCents] = useState<number | null>(null)
+  const [weekendPriceCents, setWeekendPriceCents] = useState<number | null>(null)
+  const [dayPriceCents, setDayPriceCents] = useState<number | null>(null)
+  const [nightPriceCents, setNightPriceCents] = useState<number | null>(null)
   const cutOptions = useMemo(() => hours.slice(1), [hours])
   const [cutHour, setCutHour] = useState<number>(() =>
     cutOptions.includes(18) ? 18 : (cutOptions[Math.floor(cutOptions.length / 2)] ?? 18),
@@ -84,22 +83,17 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
 
   const template: PricingTemplate | null = useMemo(() => {
     if (mode === 'uniform') {
-      const price = parsePesosToCents(uniformPrice)
-      return price != null ? { mode, price } : null
+      return uniformPriceCents != null ? { mode, price: uniformPriceCents } : null
     }
     if (mode === 'weekSplit') {
-      const week = parsePesosToCents(weekPrice)
-      const weekend = parsePesosToCents(weekendPrice)
-      return week != null && weekend != null
-        ? { mode, weekPrice: week, weekendPrice: weekend }
+      return weekPriceCents != null && weekendPriceCents != null
+        ? { mode, weekPrice: weekPriceCents, weekendPrice: weekendPriceCents }
         : null
     }
-    const day = parsePesosToCents(dayPrice)
-    const night = parsePesosToCents(nightPrice)
-    return day != null && night != null
-      ? { mode, cutHour, dayPrice: day, nightPrice: night }
+    return dayPriceCents != null && nightPriceCents != null
+      ? { mode, cutHour, dayPrice: dayPriceCents, nightPrice: nightPriceCents }
       : null
-  }, [mode, uniformPrice, weekPrice, weekendPrice, dayPrice, nightPrice, cutHour])
+  }, [mode, uniformPriceCents, weekPriceCents, weekendPriceCents, dayPriceCents, nightPriceCents, cutHour])
 
   function applyTemplate() {
     if (!template) return
@@ -157,12 +151,11 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
           {mode === 'uniform' && (
             <div className="space-y-1.5">
               <Label htmlFor="tpl-uniform">Precio por turno</Label>
-              <Input
+              <MoneyInput
                 id="tpl-uniform"
-                inputMode="numeric"
                 placeholder="Ej: 20.000"
-                value={uniformPrice}
-                onChange={(e) => setUniformPrice(e.target.value)}
+                valueCents={uniformPriceCents}
+                onValueChange={setUniformPriceCents}
                 className="w-32"
               />
             </div>
@@ -172,23 +165,21 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
             <>
               <div className="space-y-1.5">
                 <Label htmlFor="tpl-week">Lun a Jue</Label>
-                <Input
+                <MoneyInput
                   id="tpl-week"
-                  inputMode="numeric"
                   placeholder="Ej: 16.000"
-                  value={weekPrice}
-                  onChange={(e) => setWeekPrice(e.target.value)}
+                  valueCents={weekPriceCents}
+                  onValueChange={setWeekPriceCents}
                   className="w-32"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="tpl-weekend">Vie a Dom</Label>
-                <Input
+                <MoneyInput
                   id="tpl-weekend"
-                  inputMode="numeric"
                   placeholder="Ej: 22.000"
-                  value={weekendPrice}
-                  onChange={(e) => setWeekendPrice(e.target.value)}
+                  valueCents={weekendPriceCents}
+                  onValueChange={setWeekendPriceCents}
                   className="w-32"
                 />
               </div>
@@ -214,23 +205,21 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="tpl-day">Precio de día</Label>
-                <Input
+                <MoneyInput
                   id="tpl-day"
-                  inputMode="numeric"
                   placeholder="Ej: 16.000"
-                  value={dayPrice}
-                  onChange={(e) => setDayPrice(e.target.value)}
+                  valueCents={dayPriceCents}
+                  onValueChange={setDayPriceCents}
                   className="w-32"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="tpl-night">Precio de noche</Label>
-                <Input
+                <MoneyInput
                   id="tpl-night"
-                  inputMode="numeric"
                   placeholder="Ej: 22.000"
-                  value={nightPrice}
-                  onChange={(e) => setNightPrice(e.target.value)}
+                  valueCents={nightPriceCents}
+                  onValueChange={setNightPriceCents}
                   className="w-32"
                 />
               </div>

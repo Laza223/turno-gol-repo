@@ -8,11 +8,16 @@ import { cleanup } from '@testing-library/react'
 // otro archivo lo haya evaluado antes en el mismo worker (no-determinístico
 // bajo singleThread) — flake real detectado con caja-tabs.test.tsx aislado.
 import '@testing-library/jest-dom/vitest'
+import { installZodLocale } from '@/shared/validation/zod-locale'
 
 const envTest = path.resolve(process.cwd(), '.env.test')
 if (existsSync(envTest)) {
   config({ path: envTest, override: true })
 }
+
+// instrumentation.ts (que hace esto en runtime) no lo ejecuta Vitest — sin esto
+// los tests verían mensajes Zod en inglés mientras prod ya está en español.
+installZodLocale()
 
 // Auto-cleanup DOM after every test to prevent cross-file pollution under
 // singleThread mode. cleanup() is a no-op when the test environment has no

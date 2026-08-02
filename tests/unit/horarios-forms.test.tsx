@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import type { HorariosActionResult } from '@/app/(admin)/settings/horarios/actions'
 
+// RemoveClosedDateForm usa useRouter() para refrescar tras el Deshacer (§6.2 clase A).
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}))
+
 // useActionState/useFormStatus son undefined en vitest: mock para testear la
 // presentacion del feedback (#19).
 //

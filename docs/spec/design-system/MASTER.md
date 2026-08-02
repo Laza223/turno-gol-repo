@@ -4,6 +4,10 @@
 > Al construir una página específica, revisá primero `design-system/pages/[page].md`:
 > si existe, sus reglas **overridean** este archivo en lo que definan. Para todo lo demás, rige este MASTER.
 >
+> Para INTERACCIÓN (cómo se pide plata, cómo se confirma/deshace una acción, plantillas de vacío
+> y error) la fuente de verdad es `design-system/gramatica-interaccion.md` (Fase 0, 2026-08-01) —
+> este documento manda en color/tipografía/densidad, aquel manda en comportamiento.
+>
 > ⚠️ Precedencia sobre overrides viejos: `pages/player-area.md` §0–§1 ("prohibido header oscuro",
 > "cabecera siempre clara") quedó **superado** por el sistema theme-adaptive de este MASTER (§2, §4).
 > El resto de ese archivo (PortalHeader, AccountMenu, bottom-nav, hub Cuenta) sigue vigente.

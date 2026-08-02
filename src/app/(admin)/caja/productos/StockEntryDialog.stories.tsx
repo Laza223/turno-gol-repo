@@ -43,7 +43,7 @@ export const Reposicion: Story = {
     await userEvent.type(dialog.getByLabelText('Packs'), '4')
     await userEvent.clear(dialog.getByLabelText('Unidades por pack'))
     await userEvent.type(dialog.getByLabelText('Unidades por pack'), '6')
-    await expect(dialog.getByText('= 24 unidades')).toBeVisible()
+    await expect(dialog.getByText('Total a ingresar: 24 unidades')).toBeVisible()
 
     await userEvent.click(dialog.getByRole('button', { name: /registrar reposición/i }))
     await waitFor(() =>
@@ -91,7 +91,7 @@ export const PagaloDeLaCaja: Story = {
     await userEvent.click(checkbox)
 
     // 12 unidades × $800 = $9.600.
-    await expect(dialog.getByText(/registra el gasto de.*9\.600/i)).toBeVisible()
+    await expect(dialog.getByText(/registra gasto de.*9\.600/i)).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Efectivo' })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.click(dialog.getByRole('button', { name: 'Transferencia' }))
 

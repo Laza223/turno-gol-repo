@@ -1,7 +1,8 @@
 import { Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
-import { getStreetMoney } from '@/modules/cashflow/street-money.service'
+import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
+import { track } from '@/shared/observability/breadcrumbs'
 import { CajaTabs } from '../components/CajaTabs'
 import { requireCajaContext } from '../queries'
 import { StreetMoneyList } from './StreetMoneyList'
@@ -18,6 +19,10 @@ export default async function CajaDeudasPage() {
   const { tenant } = await requireCajaContext()
 
   const rows = await withTenantContext(tenant.id, (tx) => getStreetMoney(tenant.id, tx))
+  // Proxy "plata en la calle: tendencia ↓ por tenant" (§11) — misma fuente
+  // (getStreetMoney) que el número del encabezado de /caja, así que el dato
+  // instrumentado nunca puede divergir del que ve la pantalla.
+  track.cashflow('street_money.viewed', { tenantId: tenant.id, totalCents: sumStreetMoney(rows) })
 
   return (
     <div className="space-y-6">

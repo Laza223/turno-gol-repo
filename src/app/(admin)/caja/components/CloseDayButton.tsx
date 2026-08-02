@@ -10,6 +10,7 @@ import { formatArsContable } from '@/lib/format'
 import { mediumDateLabel } from '../caja-lib'
 import type { CloseDayActionResult } from '../actions'
 import { toast } from '@/hooks/use-toast'
+import { track } from '@/shared/observability/breadcrumbs'
 
 /**
  * closeDayAction llega por PROP: '../actions' es `'use server'` y arrastra
@@ -24,6 +25,7 @@ export type CloseDayAction = (
 
 export function CloseDayButton({
   date,
+  tenantId,
   totalIncome,
   totalExpense,
   balance,
@@ -33,6 +35,8 @@ export function CloseDayButton({
   closeDayAction,
 }: {
   date: string
+  /** Proxy de medición §11 (contrato, criterio #6): identifica al tenant en los breadcrumbs de duración/diferencia del cierre. */
+  tenantId: string
   totalIncome: number
   totalExpense: number
   balance: number
@@ -49,6 +53,8 @@ export function CloseDayButton({
   const [open, setOpen] = useState(false)
   const [declaredCentsState, setDeclaredCentsState] = useState<number | null>(null)
   const [note, setNote] = useState('')
+  // Proxy "cierre ≤ 90s" (§11): arranca al abrir el diálogo, se lee al confirmar.
+  const [openedAtMs, setOpenedAtMs] = useState<number | null>(null)
 
   // null (campo nunca tipeado) = "no declarado", misma semántica que antes tenía
   // el string vacío.
@@ -67,6 +73,11 @@ export function CloseDayButton({
       const res = await closeDayAction(date, declaredCents, note.trim() || undefined)
       if (res.success) {
         toast({ title: 'Caja cerrada', description: 'El resumen del día quedó guardado.', variant: 'success' })
+        track.cashflow('close.confirmed', {
+          tenantId,
+          durationMs: openedAtMs != null ? Date.now() - openedAtMs : undefined,
+          diffCents: diff ?? 0,
+        })
         router.refresh()
       }
       return res
@@ -83,7 +94,13 @@ export function CloseDayButton({
     <>
       <button
         type="button"
-        onClick={() => { setDeclaredCentsState(null); setNote(''); setOpen(true) }}
+        onClick={() => {
+          setDeclaredCentsState(null)
+          setNote('')
+          setOpen(true)
+          setOpenedAtMs(Date.now())
+          track.cashflow('close.opened', { tenantId })
+        }}
         className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
       >
         <Lock className="h-4 w-4" aria-hidden="true" />

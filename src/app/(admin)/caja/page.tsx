@@ -6,6 +6,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
 import { getDayOpen } from '@/modules/cashflow/cash-open.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
+import { track } from '@/shared/observability/breadcrumbs'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
@@ -47,6 +48,8 @@ export default async function CajaPage(props: {
 
   const ingresos = summary.totalIncome + summary.totalAdjustments
   const streetMoneyCents = sumStreetMoney(streetMoney)
+  // Proxy "plata en la calle: tendencia ↓ por tenant" (§11).
+  track.cashflow('street_money.viewed', { tenantId: tenant.id, totalCents: streetMoneyCents })
   const methods = methodBreakdown(summary.byMethod)
   const isToday = date === today
   // Fondo inicial (si se abrió la caja) + neto efectivo del día: la referencia
@@ -92,6 +95,7 @@ export default async function CajaPage(props: {
             </nav>
             <CajaActions
               date={date}
+              tenantId={tenant.id}
               cutoffMins={cutoffMins}
               totalIncome={ingresos}
               totalExpense={summary.totalExpense}

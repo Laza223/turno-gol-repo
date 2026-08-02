@@ -15,6 +15,7 @@ const RegisterMovementModal = dynamic(
 // → outline; su peso lo pone el ritual (CierreCard), no el botón.
 export function CajaActions({
   date,
+  tenantId,
   cutoffMins,
   totalIncome,
   totalExpense,
@@ -27,6 +28,8 @@ export function CajaActions({
   closeDayAction,
 }: {
   date: string
+  /** Proxy de medición §11: pasa a CloseDayButton para los breadcrumbs de cierre. */
+  tenantId: string
   /** Día operativo (ver operating-day.ts): closeDayAction/occurredAtForDate lo necesitan. */
   cutoffMins: number
   totalIncome: number
@@ -54,6 +57,7 @@ export function CajaActions({
       </button>
       <CloseDayButton
         date={date}
+        tenantId={tenantId}
         totalIncome={totalIncome}
         totalExpense={totalExpense}
         balance={balance}

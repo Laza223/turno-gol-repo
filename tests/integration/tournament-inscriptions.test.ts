@@ -207,6 +207,70 @@ describe('registerInscriptionPayment', () => {
       .toBe(1)
   })
 
+  /** Método mixto (D2, Fase 1): una sola llamada, varias líneas de {monto, método}. */
+  it('acepta método mixto: una línea en efectivo y otra en MercadoPago, en el mismo cobro', async () => {
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 1 })
+
+    const cashFlows = await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        {
+          teamId: teamIds[0]!,
+          charges: [
+            { amount: 3_000_000, method: 'cash' },
+            { amount: 1_500_000, method: 'mercadopago' },
+          ],
+        },
+        tx,
+      ),
+    )
+
+    expect(cashFlows).toHaveLength(2)
+    expect(cashFlows.map((c) => c.method).sort()).toEqual(['cash', 'mercadopago'])
+    expect(cashFlows.reduce((s, c) => s + c.amount, 0)).toBe(4_500_000)
+
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listInscriptionStatus(tenant.id, tournamentId, tx),
+    )
+    expect(rows[0]!.paid).toBe(4_500_000)
+    expect(rows[0]!.payments).toBe(2)
+  })
+
+  /**
+   * Misma disciplina de locks que addBookingChargeAction (ENS-3): dos cobros
+   * concurrentes que INDIVIDUALMENTE entran bajo lo pendiente pero JUNTOS lo
+   * superan — el FOR UPDATE serializa, uno gana y el otro se rechaza. El
+   * equipo nunca queda sobre-cobrado, pase lo que pase con el orden real.
+   */
+  it('dos cobros concurrentes que juntos superan lo pendiente: uno gana, el otro se rechaza', async () => {
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 1, fee: 5_000_000 })
+
+    const attempt = () =>
+      withTenantContext(tenant.id, (tx) =>
+        registerInscriptionPayment(
+          tenant.id,
+          staff.id,
+          { teamId: teamIds[0]!, charges: [{ amount: 3_000_000, method: 'cash' }] },
+          tx,
+        ),
+      )
+
+    const [r1, r2] = await Promise.allSettled([attempt(), attempt()])
+
+    const statuses = [r1.status, r2.status].sort()
+    expect(statuses).toEqual(['fulfilled', 'rejected'])
+    const rejected = (r1.status === 'rejected' ? r1 : r2) as PromiseRejectedResult
+    expect(rejected.reason).toBeInstanceOf(InscriptionOverpaidError)
+
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listInscriptionStatus(tenant.id, tournamentId, tx),
+    )
+    // Solo el ganador quedó registrado: nunca los 6.000.000 de ambos intentos.
+    expect(rows[0]!.paid).toBe(3_000_000)
+    expect(rows[0]!.payments).toBe(1)
+  })
+
   it('rechaza cobrarle a un equipo sin arancel', async () => {
     const { tenant, staff, teamIds } = await setup({ teams: 1, fee: 0 })
 

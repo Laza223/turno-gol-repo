@@ -100,6 +100,11 @@ export function CloseDayButton({
         onConfirm={onConfirm}
       >
         <div className="space-y-3">
+          {/* Cierre guiado (criterio de salida #4 del contrato): el esperado va
+              PRE-CALCULADO y visible antes de que el usuario cuente nada. */}
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            1. Esperado — ya calculado
+          </p>
           <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ingresos</span>
@@ -134,6 +139,9 @@ export function CloseDayButton({
               </span>
             </div>
           </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            2. Contá e ingresá lo real
+          </p>
           <div className="space-y-1">
             <label htmlFor="declared" className="text-xs font-medium text-foreground">Efectivo contado (opcional, pesos)</label>
             <MoneyInput
@@ -147,7 +155,9 @@ export function CloseDayButton({
             <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
               {/* La dirección (falta/sobra) es lo que el que cierra necesita saber
                   ANTES de confirmar un cierre inmutable — mismo criterio que el
-                  recibo ("sobraron"/"faltaron" de closeView). */}
+                  recibo ("sobraron"/"faltaron" de closeView). La diferencia se
+                  ve al instante (misma tanda de digitación), no al día
+                  siguiente — criterio de salida #4 del contrato. */}
               Diferencia de {formatArsContable(Math.abs(diff))} con el efectivo esperado:{' '}
               {diff < 0 ? 'falta' : 'sobra'} plata. La nota es obligatoria.
             </div>
@@ -159,6 +169,9 @@ export function CloseDayButton({
             <textarea id="close-note" value={note} onChange={(e) => setNote(e.target.value)} rows={2}
               className="w-full rounded-md border border-border px-3 py-2 text-base md:text-sm" />
           </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            3. Confirmar
+          </p>
         </div>
       </ConfirmDialog>
     </>

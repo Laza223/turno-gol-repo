@@ -43,39 +43,36 @@ export const Idle: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
 }
 
-/** Confirma el window.confirm y dispara la action — que nunca "vuelve" en éxito real. */
+/**
+ * Confirma en el ConfirmDialog (reemplazó `window.confirm()` nativo, 🔴
+ * auditoría 2026-08-01 §4.7/§8) y dispara la action — que nunca "vuelve" en
+ * éxito real (redirige del lado del servidor).
+ */
 export const ConfirmaYEntra: Story = {
   args: { action: fn(async () => new Promise<never>(() => {})) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const originalConfirm = window.confirm
-    window.confirm = () => true
-    try {
-      await userEvent.click(canvas.getByRole('button', { name: /entrar como este complejo/i }))
-      await expect(await canvas.findByRole('button', { name: /entrando…/i })).toBeDisabled()
-    } finally {
-      window.confirm = originalConfirm
-    }
+    await userEvent.click(canvas.getByRole('button', { name: /entrar como este complejo/i }))
+    const body = within(canvasElement.ownerDocument.body)
+    await body.findByRole('heading', { name: /entrar como "complejo fénix"/i })
+    await userEvent.click(body.getByRole('button', { name: 'Entrar' }))
+    await expect(await body.findByRole('button', { name: 'Procesando…' })).toBeDisabled()
   },
 }
 
-/** Cancela el window.confirm: no dispara la action, el botón sigue idle. */
+/** Cancela el diálogo: no dispara la action. */
 export const CancelaLaConfirmacion: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const originalConfirm = window.confirm
-    window.confirm = () => false
-    try {
-      await userEvent.click(canvas.getByRole('button', { name: /entrar como este complejo/i }))
-      await expect(args.action).not.toHaveBeenCalled()
-    } finally {
-      window.confirm = originalConfirm
-    }
+    await userEvent.click(canvas.getByRole('button', { name: /entrar como este complejo/i }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Cancelar' }))
+    await expect(args.action).not.toHaveBeenCalled()
   },
 }
 
-/** El complejo no tiene admin activo para delegar la impersonación: error inline. */
+/** El complejo no tiene admin activo para delegar la impersonación: error inline en el diálogo. */
 export const SinAdminActivo: Story = {
   args: {
     action: fn(async () => ({
@@ -85,13 +82,9 @@ export const SinAdminActivo: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const originalConfirm = window.confirm
-    window.confirm = () => true
-    try {
-      await userEvent.click(canvas.getByRole('button', { name: /entrar como este complejo/i }))
-      await expect(await canvas.findByText(/no tiene un administrador activo/i)).toBeInTheDocument()
-    } finally {
-      window.confirm = originalConfirm
-    }
+    await userEvent.click(canvas.getByRole('button', { name: /entrar como este complejo/i }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Entrar' }))
+    await expect(await body.findByText(/no tiene un administrador activo/i)).toBeInTheDocument()
   },
 }

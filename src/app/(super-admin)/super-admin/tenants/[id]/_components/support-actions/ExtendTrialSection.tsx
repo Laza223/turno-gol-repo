@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
 import { inputCls, primaryBtn, type Feedback, type RunAction, type SupportAction } from './constants'
@@ -17,6 +18,7 @@ type Props = {
 export function ExtendTrialSection({ tenantId, isTrialing, pending, run, action }: Props) {
   const [trialDays, setTrialDays] = useState(7)
   const [trialFeedback, setTrialFeedback] = useState<Feedback>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   return (
     <SectionCard
@@ -45,9 +47,7 @@ export function ExtendTrialSection({ tenantId, isTrialing, pending, run, action 
             <button
               type="button"
               disabled={pending}
-              onClick={() =>
-                run(() => action({ tenantId, days: trialDays }), setTrialFeedback)
-              }
+              onClick={() => setConfirmOpen(true)}
               className={primaryBtn}
             >
               Extender trial
@@ -56,6 +56,18 @@ export function ExtendTrialSection({ tenantId, isTrialing, pending, run, action 
           <FeedbackText feedback={trialFeedback} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Extender trial"
+        description={`Se corre el fin del trial ${trialDays} día(s) desde hoy o desde el fin actual, lo que sea más tarde.`}
+        confirmLabel="Extender"
+        cancelLabel="Cancelar"
+        onConfirm={async () => {
+          run(() => action({ tenantId, days: trialDays }), setTrialFeedback)
+        }}
+      />
     </SectionCard>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
 import { inputCls, primaryBtn, type Feedback, type RunAction, type SupportAction } from './constants'
@@ -16,6 +17,7 @@ type Props = {
 export function ResetPasswordSection({ tenantId, pending, run, action }: Props) {
   const [resetEmail, setResetEmail] = useState('')
   const [resetFeedback, setResetFeedback] = useState<Feedback>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   return (
     <SectionCard
@@ -39,12 +41,7 @@ export function ResetPasswordSection({ tenantId, pending, run, action }: Props) 
           <button
             type="button"
             disabled={pending || resetEmail.trim() === ''}
-            onClick={() =>
-              run(
-                () => action({ tenantId, email: resetEmail.trim() }),
-                setResetFeedback,
-              )
-            }
+            onClick={() => setConfirmOpen(true)}
             className={primaryBtn}
           >
             Resetear contraseña
@@ -52,6 +49,21 @@ export function ResetPasswordSection({ tenantId, pending, run, action }: Props) 
         </div>
         <FeedbackText feedback={resetFeedback} />
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Resetear contraseña de staff"
+        consequences={[
+          `Se genera una contraseña temporal para ${resetEmail.trim() || 'este email'}.`,
+          'El titular entra con la temporal y el sistema lo obliga a cambiarla.',
+        ]}
+        confirmLabel="Confirmar reseteo"
+        cancelLabel="Cancelar"
+        onConfirm={async () => {
+          run(() => action({ tenantId, email: resetEmail.trim() }), setResetFeedback)
+        }}
+      />
     </SectionCard>
   )
 }

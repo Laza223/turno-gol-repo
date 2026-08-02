@@ -63,6 +63,28 @@ export const Destructivo: Story = {
   ),
 }
 
+/** `consequences`: lista de consecuencias concretas, en vez de armar el `<ul>` a mano en `description`. */
+export const ConConsecuencias: Story = {
+  render: () => (
+    <ConfirmDialogDemo
+      title="Marcar como ausente"
+      variant="destructive"
+      confirmLabel="Marcar ausente"
+      consequences={[
+        'La seña pagada ($8.000) queda para el complejo.',
+        'Si es su 2ª ausencia en 90 días, queda bloqueado 14 días para reservar online.',
+        'Podés deshacerlo hasta 24hs después.',
+      ]}
+      onConfirm={fn(async () => ({ success: true }))}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(body.getByText(/queda para el complejo/)).toBeInTheDocument()
+    await expect(body.getByText(/bloqueado 14 días/)).toBeInTheDocument()
+  },
+}
+
 /** Type-to-confirm: el botón queda deshabilitado hasta que el texto coincida exacto. */
 export const ConFraseDeConfirmacion: Story = {
   render: () => (

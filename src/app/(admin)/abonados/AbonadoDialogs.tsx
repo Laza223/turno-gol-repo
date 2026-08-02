@@ -54,14 +54,11 @@ export function AbonadoDialogs({
         open={dialog === 'pause'}
         onOpenChange={(open) => { if (!open) onClose() }}
         title="Pausar turno fijo"
-        description={
-          <div className="space-y-2">
-            <p>
-              Eliminará todas las reservas futuras de este turno fijo. Podés reactivar después.
-            </p>
-          </div>
-        }
-        variant="default"
+        consequences={[
+          'Elimina todas las reservas futuras de este turno fijo.',
+          'Podés reactivarlo después, pero las horas liberadas mientras tanto pueden ocuparse.',
+        ]}
+        variant="destructive"
         confirmLabel="Pausar"
         cancelLabel="Volver"
         onConfirm={onConfirmPause}

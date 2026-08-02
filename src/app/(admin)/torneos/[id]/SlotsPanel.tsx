@@ -5,6 +5,9 @@ import { useMemo, useState, useTransition } from 'react'
 import { AlertTriangle, CalendarClock, Check, Trash2 } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { toast } from '@/hooks/use-toast'
 import type { SlotConflict, TournamentSlotRow } from '@/modules/tournaments/tournament.types'
 import type { ReserveSlotsActionResult, TournamentActionResult } from '../actions'
 import { formatDate, summarizeSlots } from '../torneos-lib'
@@ -67,6 +70,12 @@ export function SlotsPanel({
   const [weeks, setWeeks] = useState('1')
   const [timeStart, setTimeStart] = useState('14:00')
   const [timeEnd, setTimeEnd] = useState('18:00')
+  const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false)
+
+  const releasingCount = useMemo(
+    () => slots.filter((s) => s.date >= todayIso()).length,
+    [slots],
+  )
 
   const dates = useMemo(
     () => weeklyDates(firstDate, Math.max(1, Number(weeks) || 1)),
@@ -105,18 +114,19 @@ export function SlotsPanel({
     })
   }
 
-  function handleRelease(fromDate: string) {
-    setError(null)
+  async function confirmRelease(): Promise<{ success: boolean; error?: string }> {
     setConflicts(null)
     setReserved(null)
-    startTransition(async () => {
-      const result = await releaseAction({ tournamentId, fromDate })
-      if (!result.success) {
-        setError(result.error)
-        return
-      }
+    const result = await releaseAction({ tournamentId, fromDate: todayIso() })
+    if (result.success) {
+      toast({
+        title: 'Horarios liberados',
+        description: `${releasingCount} ${releasingCount === 1 ? 'hora queda libre' : 'horas quedan libres'} para reservar online.`,
+        variant: 'success',
+      })
       router.refresh()
-    })
+    }
+    return result
   }
 
   return (
@@ -281,7 +291,7 @@ export function SlotsPanel({
           {slots.length > 0 && (
             <button
               type="button"
-              onClick={() => handleRelease(todayIso())}
+              onClick={() => setReleaseConfirmOpen(true)}
               disabled={pending}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
@@ -292,9 +302,7 @@ export function SlotsPanel({
         </div>
 
         {slots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Todavía no reservaste ningún horario para este torneo.
-          </p>
+          <EmptyState title="Todavía no reservaste ningún horario para este torneo." className="py-6" />
         ) : (
           <ul className="divide-y divide-border text-sm">
             {slots.slice(0, 40).map((s) => (
@@ -315,6 +323,20 @@ export function SlotsPanel({
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={releaseConfirmOpen}
+        onOpenChange={setReleaseConfirmOpen}
+        title="Liberar horarios de hoy en adelante"
+        consequences={[
+          `${releasingCount} ${releasingCount === 1 ? 'hora queda' : 'horas quedan'} libres para que cualquiera las reserve online.`,
+          'No se puede deshacer: para recuperarlas hay que volver a tomarlas (y podrían estar ocupadas).',
+        ]}
+        variant="destructive"
+        confirmLabel="Liberar horarios"
+        cancelLabel="Volver"
+        onConfirm={confirmRelease}
+      />
     </section>
   )
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Lock } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { MoneyInput } from '@/components/ui/money-input'
 import { formatArsContable } from '@/lib/format'
 import { mediumDateLabel } from '../caja-lib'
 import type { CloseDayActionResult } from '../actions'
@@ -46,20 +47,19 @@ export function CloseDayButton({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [declaredPesos, setDeclaredPesos] = useState('')
+  const [declaredCentsState, setDeclaredCentsState] = useState<number | null>(null)
   const [note, setNote] = useState('')
 
-  const declaredCents = declaredPesos.trim() === '' ? undefined : Math.round(Number(declaredPesos) * 100)
+  // null (campo nunca tipeado) = "no declarado", misma semántica que antes tenía
+  // el string vacío.
+  const declaredCents = declaredCentsState ?? undefined
   // Migr. 049: la comparación del arqueo pasa de "saldo neto de la caja" a
   // "efectivo esperado" (fondo inicial + neto cash) — el saldo mezcla métodos
   // de pago que no están en el cajón físico.
-  const diff = declaredCents === undefined || !Number.isFinite(declaredCents) ? null : declaredCents - expectedCash
+  const diff = declaredCents === undefined ? null : declaredCents - expectedCash
   const noteRequired = diff !== null && diff !== 0
 
   async function onConfirm(): Promise<{ success: boolean; error?: string }> {
-    if (declaredPesos.trim() !== '' && (declaredCents === undefined || !Number.isFinite(declaredCents))) {
-      return { success: false, error: 'Efectivo declarado inválido.' }
-    }
     if (noteRequired && note.trim().length < 1) {
       return { success: false, error: 'Hay diferencia: la nota es obligatoria.' }
     }
@@ -83,7 +83,7 @@ export function CloseDayButton({
     <>
       <button
         type="button"
-        onClick={() => { setDeclaredPesos(''); setNote(''); setOpen(true) }}
+        onClick={() => { setDeclaredCentsState(null); setNote(''); setOpen(true) }}
         className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
       >
         <Lock className="h-4 w-4" aria-hidden="true" />
@@ -136,11 +136,12 @@ export function CloseDayButton({
           </div>
           <div className="space-y-1">
             <label htmlFor="declared" className="text-xs font-medium text-foreground">Efectivo contado (opcional, pesos)</label>
-            <input id="declared" type="number" min="0" step="0.01" value={declaredPesos}
-              onChange={(e) => setDeclaredPesos(e.target.value)}
-              inputMode="decimal"
-              autoComplete="off"
-              className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-base md:text-sm tabular-nums" />
+            <MoneyInput
+              id="declared"
+              minCents={0}
+              valueCents={declaredCentsState}
+              onValueChange={setDeclaredCentsState}
+            />
           </div>
           {diff !== null && diff !== 0 && (
             <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">

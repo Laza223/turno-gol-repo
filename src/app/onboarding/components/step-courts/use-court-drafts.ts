@@ -23,7 +23,7 @@ export function useCourtDrafts(existingCourts: CourtRow[]) {
             format: 5,
             surfaceType: 'synthetic_grass',
             isCovered: false,
-            price: '',
+            priceCents: null,
             photos: [],
           },
         ],
@@ -64,7 +64,7 @@ export function useCourtDrafts(existingCourts: CourtRow[]) {
         format: last?.format ?? 5,
         surfaceType: last?.surfaceType ?? 'synthetic_grass',
         isCovered: last?.isCovered ?? false,
-        price: last?.price ?? '',
+        priceCents: last?.priceCents ?? null,
         photos: [],
       },
     ])

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { LogIn } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { SupportActionResult } from '../actions'
 
 /**
@@ -17,6 +18,10 @@ export type StartImpersonationAction = (tenantId: string) => Promise<SupportActi
  * "Entrar como este complejo" (spec §6). Dispara `action`, que setea la
  * cookie de impersonación y redirige a /dashboard. En éxito la action
  * redirige (no vuelve); solo manejamos el error.
+ *
+ * `ConfirmDialog` reemplaza `window.confirm()` nativo (🔴 auditoría
+ * 2026-08-01 §4.7/§8: era la acción más sensible del panel con la
+ * confirmación más débil) — misma gramática que el resto de la plataforma.
  */
 export function ImpersonateButton({
   tenantId,
@@ -27,41 +32,41 @@ export function ImpersonateButton({
   tenantName: string
   action: StartImpersonationAction
 }) {
-  const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
 
-  function handleClick() {
-    if (
-      !window.confirm(
-        `Vas a entrar al panel de "${tenantName}" como soporte. Todas tus acciones quedarán auditadas a tu nombre de super admin. ¿Continuar?`,
-      )
-    ) {
-      return
-    }
-    setError(null)
-    startTransition(async () => {
-      const res = await action(tenantId)
-      // Si la action redirigió, este código no corre. Solo llega acá en error.
-      if (res && !res.success) setError(res.error)
-    })
+  async function handleConfirm(): Promise<{ success: boolean; error?: string } | void> {
+    const res = await action(tenantId)
+    // Si la action redirigió, este código no corre. Solo llega acá en error.
+    if (res && !res.success) return { success: false, error: res.error }
   }
 
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onClick={handleClick}
-        disabled={pending}
+        onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2 rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <LogIn className="h-4 w-4" aria-hidden="true" />
-        {pending ? 'Entrando…' : 'Entrar como este complejo'}
+        Entrar como este complejo
       </button>
       <p className="text-xs text-muted-foreground">
         Abre el panel del complejo como soporte. Un banner rojo te recordará que
         estás impersonando; toda acción se audita como super admin.
       </p>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Entrar como "${tenantName}"`}
+        consequences={[
+          'Vas a operar el panel del complejo como si fueras su staff.',
+          'Todas tus acciones quedan auditadas a tu nombre de super admin.',
+        ]}
+        confirmLabel="Entrar"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirm}
+      />
     </div>
   )
 }

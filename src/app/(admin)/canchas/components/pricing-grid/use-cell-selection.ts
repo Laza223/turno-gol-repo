@@ -6,7 +6,6 @@ import {
   DAY_KEYS,
   type PriceGrid,
   isHourActive,
-  parsePesosToCents,
 } from '@/modules/courts/pricing-grid'
 import { cellKey, parseCellKey } from './cell-utils'
 
@@ -27,10 +26,10 @@ export function useCellSelection({ openingHours, grid, onGridChange }: Params) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [anchor, setAnchor] = useState<string | null>(null)
   const [selectMode, setSelectMode] = useState(false)
-  const [bulkValue, setBulkValue] = useState('')
+  const [bulkValueCents, setBulkValueCents] = useState<number | null>(null)
 
   const [editing, setEditing] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
+  const [editValueCents, setEditValueCents] = useState<number | null>(null)
 
   const draggingRef = useRef(false)
   const dragMovedRef = useRef(false)
@@ -80,12 +79,12 @@ export function useCellSelection({ openingHours, grid, onGridChange }: Params) {
     const { day, hour } = parseCellKey(key)
     const cur = grid[day]?.[hour]
     setEditing(key)
-    setEditValue(cur != null ? String(Math.round(cur / 100)) : '')
+    setEditValueCents(cur ?? null)
   }
 
   function commitEditor() {
     if (!editing) return
-    setCells([editing], parsePesosToCents(editValue))
+    setCells([editing], editValueCents)
     setEditing(null)
   }
 
@@ -125,9 +124,8 @@ export function useCellSelection({ openingHours, grid, onGridChange }: Params) {
   }
 
   function applyBulk() {
-    const cents = parsePesosToCents(bulkValue)
-    if (cents == null) return
-    setCells(Array.from(selected), cents)
+    if (bulkValueCents == null) return
+    setCells(Array.from(selected), bulkValueCents)
   }
 
   function clearSelectionPrices() {
@@ -141,16 +139,16 @@ export function useCellSelection({ openingHours, grid, onGridChange }: Params) {
   }
 
   const showBulkBar = selectMode || selected.size >= 2
-  const canApplyBulk = parsePesosToCents(bulkValue) != null
+  const canApplyBulk = bulkValueCents != null
 
   return {
     selected,
     selectMode,
-    bulkValue,
-    setBulkValue,
+    bulkValueCents,
+    setBulkValueCents,
     editing,
-    editValue,
-    setEditValue,
+    editValueCents,
+    setEditValueCents,
     setEditing,
     showBulkBar,
     canApplyBulk,

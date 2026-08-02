@@ -9,6 +9,10 @@ export type ConfirmDialogProps = {
   onOpenChange: (open: boolean) => void
   title: string
   description?: React.ReactNode
+  /** Lista de consecuencias concretas (con montos/plazos reales, no genéricas —
+   *  visión v2 §6.2: "una confirmación que no informa entrena el click ciego").
+   *  Reemplaza el `<ul><li>` que cada caller armaba a mano dentro de `description`. */
+  consequences?: string[]
   /** Campos extra (motivo, radios de reembolso, etc.) entre la descripción y el footer. El padre controla su estado. */
   children?: React.ReactNode
   confirmLabel?: string
@@ -26,6 +30,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
+  consequences,
   children,
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
@@ -83,6 +88,13 @@ export function ConfirmDialog({
         </DialogHeader>
         {description ? (
           <div className="text-sm leading-relaxed text-muted-foreground">{description}</div>
+        ) : null}
+        {consequences && consequences.length > 0 ? (
+          <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed text-muted-foreground">
+            {consequences.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
         ) : null}
         {children}
         {confirmationPhrase ? (

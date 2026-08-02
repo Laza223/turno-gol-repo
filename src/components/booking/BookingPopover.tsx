@@ -3,23 +3,8 @@
 import { Banknote, CalendarClock, User } from 'lucide-react'
 import { bookingDisplayName } from './BookingCard'
 import type { GridBooking } from '@/lib/booking/grid-cells'
-
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
-  other: 'Otro',
-}
-
-const ARS_FORMATTER = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
-})
-
-function formatArs(cents: number): string {
-  return ARS_FORMATTER.format(cents / 100)
-}
+import { formatArs } from '@/lib/format'
+import { METHOD_LABELS } from '@/lib/payment-method'
 
 function depositLabel(booking: GridBooking): string {
   const amount = booking.depositAmount ?? 0
@@ -81,7 +66,7 @@ export function BookingPopover({ booking, courtName }: Props) {
               Pago
             </dt>
             <dd className="font-medium text-popover-foreground">
-              {booking.paymentMethod ? PAYMENT_LABELS[booking.paymentMethod] : '—'}
+              {booking.paymentMethod ? METHOD_LABELS[booking.paymentMethod] : '—'}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-2">

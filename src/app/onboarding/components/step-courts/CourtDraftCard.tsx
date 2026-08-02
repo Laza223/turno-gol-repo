@@ -4,7 +4,10 @@ import { ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ImageUploader } from '@/components/ui/image-uploader'
+import { MoneyInput } from '@/components/ui/money-input'
+import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { formatArs } from '@/lib/format'
 import { fieldClass, labelClass } from '../wizard-styles'
 import { FORMATS, SURFACE_OPTIONS, type Draft, type SurfaceType } from './constants'
 import type { UploadPhotoActionResult, WizardActionResult } from '../../actions'
@@ -62,9 +65,9 @@ export function CourtDraftCard({
                 {draft.name || 'Cancha sin nombre'}
               </span>
               {!isExpanded && (
-                draft.price ? (
+                draft.priceCents != null ? (
                   <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
-                    $ {draft.price}
+                    {formatArs(draft.priceCents)}
                   </span>
                 ) : (
                   <span className="text-xs font-medium text-red-600 dark:text-red-400">
@@ -194,23 +197,13 @@ export function CourtDraftCard({
               <label htmlFor={`court-price-${draft.key}`} className={labelClass}>
                 Precio por turno <span className="text-red-500 dark:text-red-400">*</span>
               </label>
-              <div className="relative">
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-muted-foreground"
-                >
-                  $
-                </span>
-                <input
-                  id={`court-price-${draft.key}`}
-                  inputMode="numeric"
-                  value={draft.price}
-                  onChange={(e) => onUpdate(draft.key, { price: e.target.value })}
-                  placeholder="Ej: 20.000"
-                  required
-                  className={`${fieldClass} pl-7`}
-                />
-              </div>
+              <MoneyInput
+                id={`court-price-${draft.key}`}
+                valueCents={draft.priceCents}
+                onValueChange={(cents) => onUpdate(draft.key, { priceCents: cents })}
+                placeholder="Ej: 20.000"
+                required
+              />
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Por turno de 1 hora, igual toda la semana. Después podés poner
                 precio por franja desde Canchas.
@@ -246,7 +239,7 @@ export function CourtDraftCard({
                 if (res.success) {
                   onUpdate(draft.key, { photos: [...draft.photos, res.url] })
                 } else {
-                  alert(res.error)
+                  toast({ title: 'No se pudo subir la foto', description: res.error, variant: 'destructive' })
                 }
               }}
               onRemove={async (url) => {
@@ -254,7 +247,7 @@ export function CourtDraftCard({
                 if (res.success) {
                   onUpdate(draft.key, { photos: draft.photos.filter((p) => p !== url) })
                 } else {
-                  alert(res.error)
+                  toast({ title: 'No se pudo borrar la foto', description: res.error, variant: 'destructive' })
                 }
               }}
               max={1}

@@ -86,7 +86,7 @@ describe('submitNewAbonado — timeEnd > timeStart (#33)', () => {
     fd.set('dayOfWeek', '1')
     fd.set('timeStart', '10:00')
     fd.set('timeEnd', '09:00')
-    fd.set('pricePerSession', '100')
+    fd.set('pricePerSessionCents', '10000')
     fd.set('startsOn', '2026-06-15')
     fd.set('paymentMethod', 'cash')
     const res = await submitNewAbonado({ status: 'idle' }, fd)

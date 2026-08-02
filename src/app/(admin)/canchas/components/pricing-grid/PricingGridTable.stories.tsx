@@ -32,7 +32,7 @@ const meta = {
     isDark: false,
     selected: new Set<string>(),
     editing: null,
-    editValue: '',
+    editValueCents: null,
     onEditValueChange: fn(),
     onCommit: fn(),
     onCancelEdit: fn(),
@@ -77,10 +77,10 @@ export const CeldaSeleccionada: Story = {
 export const CeldaEnEdicion: Story = {
   args: {
     editing: cellKey('mon', 9),
-    editValue: '9000',
+    editValueCents: 900000,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText('Precio Lun 09:00')).toHaveValue('9000')
+    await expect(canvas.getByLabelText('Precio Lun 09:00')).toHaveValue('9.000')
   },
 }

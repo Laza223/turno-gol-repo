@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { formatArs, formatDateLong, formatTime } from '@/lib/format'
+import { METHOD_LABELS } from '@/lib/payment-method'
 import { reservaStatusVisual, ReservaStatusBadge } from '../status-visual'
 import type { ReservaDetail } from '../queries'
 
@@ -8,13 +9,6 @@ const DEPOSIT_LABEL: Record<string, string> = {
   captured: 'pagada',
   pending: 'pendiente',
   refunded: 'reembolsada',
-}
-
-const METHOD_LABEL: Record<string, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
-  other: 'Otro',
 }
 
 /**
@@ -40,7 +34,12 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
         ? `${formatArs(booking.depositAmount)} (${DEPOSIT_LABEL[booking.depositStatus] ?? booking.depositStatus})`
         : 'Sin seña',
     ],
-    ['Método de pago', booking.paymentMethod ? (METHOD_LABEL[booking.paymentMethod] ?? booking.paymentMethod) : '—'],
+    [
+      'Método de pago',
+      booking.paymentMethod
+        ? ((METHOD_LABELS as Record<string, string>)[booking.paymentMethod] ?? booking.paymentMethod)
+        : '—',
+    ],
   ]
 
   return (

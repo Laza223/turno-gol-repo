@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Wallet } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { MoneyInput } from '@/components/ui/money-input'
 import { formatArsContable } from '@/lib/format'
 import { mediumDateLabel } from '../caja-lib'
 import { toast } from '@/hooks/use-toast'
@@ -42,13 +43,13 @@ export function OpenDayCard({
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [openingPesos, setOpeningPesos] = useState('')
+  const [openingCentsState, setOpeningCentsState] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   function openDialog() {
-    // Precargado con lo ya guardado (flujo "Corregir"); vacío en la primera apertura.
-    setOpeningPesos(open ? String(open.openingCash / 100) : '')
+    // Precargado con lo ya guardado (flujo "Corregir"); null (vacío) en la primera apertura.
+    setOpeningCentsState(open?.openingCash ?? null)
     setNote(open?.note ?? '')
     setError(null)
     setDialogOpen(true)
@@ -62,13 +63,13 @@ export function OpenDayCard({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const pesos = Number(openingPesos)
-    // Acepta 0 a propósito (caja sin fondo declarado sigue siendo una apertura válida).
-    if (openingPesos.trim() === '' || !Number.isFinite(pesos) || pesos < 0) {
+    // Acepta 0 a propósito (caja sin fondo declarado sigue siendo una apertura válida);
+    // null (campo nunca tipeado) es lo único inválido.
+    if (openingCentsState == null) {
       setError('Ingresá un monto válido (puede ser 0).')
       return
     }
-    const openingCash = Math.round(pesos * 100)
+    const openingCash = openingCentsState
     startTransition(async () => {
       try {
         const res = await openDayAction({ date, openingCash, note: note.trim() || undefined })
@@ -139,16 +140,10 @@ export function OpenDayCard({
               <label htmlFor="opening-cash" className="text-xs font-medium text-foreground">
                 Fondo inicial (pesos)
               </label>
-              <input
+              <MoneyInput
                 id="opening-cash"
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                autoComplete="off"
-                value={openingPesos}
-                onChange={(e) => setOpeningPesos(e.target.value)}
-                className="h-11 w-full rounded-md border border-border px-3 text-sm tabular-nums md:h-10"
+                valueCents={openingCentsState}
+                onValueChange={setOpeningCentsState}
               />
             </div>
             <div className="space-y-1">

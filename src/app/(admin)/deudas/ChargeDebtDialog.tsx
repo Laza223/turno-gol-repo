@@ -3,24 +3,22 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { MoneyInput } from '@/components/ui/money-input'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 import { chargeDebtAction, type ChargeDebtResult } from './actions'
 import type { DebtRow } from './queries'
 
-const METHOD_OPTIONS = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-  { value: 'other', label: 'Otro' },
-] as const
+const METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS
 
-type Method = (typeof METHOD_OPTIONS)[number]['value']
+type Method = MethodKey
 
 type ChargeLine = {
   id: string
-  amountPesos: string
+  amountCents: number | null
   method: Method
 }
 
@@ -42,11 +40,11 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
   if (debt && debt.id !== lastDebtId) {
     setLastDebtId(debt.id)
     setError(null)
-    const initialAmount = Math.max(0, Math.round(debt.pending / 100))
+    const initialAmount = Math.max(0, debt.pending)
     setCharges([
       {
         id: crypto.randomUUID(),
-        amountPesos: initialAmount > 0 ? String(initialAmount) : '',
+        amountCents: initialAmount > 0 ? initialAmount : null,
         method: 'cash',
       },
     ])
@@ -63,7 +61,7 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
   function addChargeLine() {
     setCharges((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), amountPesos: '', method: 'transfer' },
+      { id: crypto.randomUUID(), amountCents: null, method: 'transfer' },
     ])
   }
 
@@ -71,9 +69,9 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
     setCharges((prev) => prev.filter((c) => c.id !== id))
   }
 
-  function updateCharge(id: string, field: 'amountPesos' | 'method', value: string) {
+  function updateCharge(id: string, patch: Partial<Pick<ChargeLine, 'amountCents' | 'method'>>) {
     setCharges((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
+      prev.map((c) => (c.id === id ? { ...c, ...patch } : c)),
     )
   }
 
@@ -81,15 +79,14 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
     setCharges([
       {
         id: crypto.randomUUID(),
-        amountPesos: String(Math.round(debt!.pending / 100)),
+        amountCents: debt!.pending,
         method: 'cash',
       },
     ])
   }
 
   const totalChargingCents = charges.reduce((acc, c) => {
-    const pesos = Number(c.amountPesos)
-    return acc + (Number.isFinite(pesos) && pesos > 0 ? Math.round(pesos * 100) : 0)
+    return acc + (c.amountCents != null && c.amountCents > 0 ? c.amountCents : 0)
   }, 0)
 
   const remainingDebtAfterCharge = Math.max(0, debt.pending - totalChargingCents)
@@ -99,12 +96,11 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
 
     const parsedCharges: { amount: number; method: Method }[] = []
     for (const c of charges) {
-      const pesos = Number(c.amountPesos)
-      if (!Number.isFinite(pesos) || pesos <= 0) {
+      if (c.amountCents == null || c.amountCents <= 0) {
         setError('Todos los cobros deben tener un monto mayor a $0.')
         return
       }
-      parsedCharges.push({ amount: Math.round(pesos * 100), method: c.method })
+      parsedCharges.push({ amount: c.amountCents, method: c.method })
     }
 
     if (parsedCharges.length === 0) {
@@ -208,24 +204,17 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
               <div className="space-y-2">
                 {charges.map((line) => (
                   <div key={line.id} className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        $
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        inputMode="decimal"
+                    <div className="flex-1">
+                      <MoneyInput
+                        valueCents={line.amountCents}
+                        onValueChange={(cents) => updateCharge(line.id, { amountCents: cents })}
+                        minCents={1}
                         placeholder="Monto"
-                        value={line.amountPesos}
-                        onChange={(e) => updateCharge(line.id, 'amountPesos', e.target.value)}
-                        className="w-full h-10 rounded-lg border border-input bg-background pl-7 pr-3 text-base md:text-sm font-medium tabular-nums focus:outline-hidden focus:ring-2 focus:ring-ring"
                       />
                     </div>
                     <select
                       value={line.method}
-                      onChange={(e) => updateCharge(line.id, 'method', e.target.value as Method)}
+                      onChange={(e) => updateCharge(line.id, { method: e.target.value as Method })}
                       className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                     >
                       {METHOD_OPTIONS.map((m) => (
@@ -291,14 +280,9 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={isPending}
-              className="h-10 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold text-white shadow-xs transition-colors disabled:opacity-50"
-            >
+            <Button type="button" onClick={submit} isLoading={isPending} className="px-5">
               {isPending ? 'Registrando...' : 'Registrar pago de deuda'}
-            </button>
+            </Button>
           </div>
         </div>
       </DialogContent>

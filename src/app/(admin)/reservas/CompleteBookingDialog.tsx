@@ -3,24 +3,22 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, MessageCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { MoneyInput } from '@/components/ui/money-input'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import type { CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
 
-const METHOD_OPTIONS = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-  { value: 'other', label: 'Otro' },
-] as const
+const METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS
 
-type Method = (typeof METHOD_OPTIONS)[number]['value']
+type Method = MethodKey
 
 type ChargeLine = {
   id: string
-  amountPesos: string
+  amountCents: number | null
   method: Method
 }
 
@@ -88,7 +86,7 @@ export default function CompleteBookingDialog({
     if (summary.pending > 0) {
       setCharges([{
         id: crypto.randomUUID(),
-        amountPesos: String(Math.round(summary.pending / 100)),
+        amountCents: summary.pending,
         method: 'cash',
       }])
     } else {
@@ -106,8 +104,7 @@ export default function CompleteBookingDialog({
   })
 
   const totalChargingCents = charges.reduce((sum, c) => {
-    const pesos = Number(c.amountPesos)
-    return sum + (Number.isFinite(pesos) && pesos > 0 ? Math.round(pesos * 100) : 0)
+    return sum + (c.amountCents != null && c.amountCents > 0 ? c.amountCents : 0)
   }, 0)
 
   const remainingAfterCharge = Math.max(0, summary.pending - totalChargingCents)
@@ -119,7 +116,7 @@ export default function CompleteBookingDialog({
   function addChargeLine() {
     setCharges((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), amountPesos: '', method: 'cash' },
+      { id: crypto.randomUUID(), amountCents: null, method: 'cash' },
     ])
   }
 
@@ -135,7 +132,7 @@ export default function CompleteBookingDialog({
     if (summary.pending <= 0) return
     setCharges([{
       id: crypto.randomUUID(),
-      amountPesos: String(Math.round(summary.pending / 100)),
+      amountCents: summary.pending,
       method: 'cash',
     }])
   }
@@ -154,12 +151,11 @@ export default function CompleteBookingDialog({
     // Validate charge amounts
     const parsedCharges: { amount: number; method: Method }[] = []
     for (const c of charges) {
-      const pesos = Number(c.amountPesos)
-      if (!Number.isFinite(pesos) || pesos <= 0) {
+      if (c.amountCents == null || c.amountCents <= 0) {
         setError('Todos los cobros deben tener un monto mayor a $0.')
         return
       }
-      parsedCharges.push({ amount: Math.round(pesos * 100), method: c.method })
+      parsedCharges.push({ amount: c.amountCents, method: c.method })
     }
 
     const totalCents = parsedCharges.reduce((s, c) => s + c.amount, 0)
@@ -267,18 +263,12 @@ export default function CompleteBookingDialog({
                         {idx === 0 && (
                           <span className="text-xs font-medium text-muted-foreground">Monto</span>
                         )}
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            min={1}
-                            value={c.amountPesos}
-                            onChange={(e) => updateChargeLine(c.id, { amountPesos: e.target.value })}
-                            placeholder="0"
-                            className="h-10 w-full rounded-lg border border-border bg-background pl-7 pr-3 text-sm tabular-nums shadow-xs focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
-                          />
-                        </div>
+                        <MoneyInput
+                          valueCents={c.amountCents}
+                          onValueChange={(cents) => updateChargeLine(c.id, { amountCents: cents })}
+                          minCents={1}
+                          placeholder="0"
+                        />
                       </div>
                       <div className="flex-1 space-y-1">
                         {idx === 0 && (
@@ -385,12 +375,7 @@ export default function CompleteBookingDialog({
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={submit}
-              className="h-10 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold text-white transition-colors disabled:opacity-60"
-            >
+            <Button type="button" isLoading={isPending} onClick={submit} className="px-5">
               {isPending
                 ? 'Procesando…'
                 : hasDebt
@@ -398,7 +383,7 @@ export default function CompleteBookingDialog({
                   : charges.length > 0
                     ? 'Completar y cobrar'
                     : 'Completar sin cobrar'}
-            </button>
+            </Button>
           </div>
         </div>
       </DialogContent>

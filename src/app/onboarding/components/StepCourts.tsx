@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { parsePesosToCents } from '@/modules/courts/pricing-grid'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { WizardActionResult, WizardCourtDraftInput } from '../actions'
 import {
@@ -62,8 +61,7 @@ export function StepCourts({
         expand(d.key)
         return
       }
-      const priceCents = parsePesosToCents(d.price)
-      if (priceCents == null || priceCents <= 0) {
+      if (d.priceCents == null || d.priceCents <= 0) {
         setError(`Cargá el precio por turno de ${d.name.trim() || 'cada cancha'}.`)
         expand(d.key)
         return
@@ -73,7 +71,7 @@ export function StepCourts({
         format: d.format,
         surfaceType: d.surfaceType,
         isCovered: d.isCovered,
-        priceCents,
+        priceCents: d.priceCents,
       })
     }
 

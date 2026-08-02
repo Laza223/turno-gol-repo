@@ -7,6 +7,9 @@ import type { TeamInscriptionStatus } from '@/modules/tournaments/tournament.typ
 import { METHOD_LABELS, type MethodKey, chipClass } from '../../../caja/caja-lib'
 import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../../torneos-lib'
 import { formatArs } from '@/lib/format'
+import { EmptyState } from '@/components/ui/empty-state'
+import { MoneyInput } from '@/components/ui/money-input'
+import { toast } from '@/hooks/use-toast'
 import type { TournamentActionResult } from '../../actions'
 
 export type RegisterPaymentAction = (input: unknown) => Promise<TournamentActionResult>
@@ -25,7 +28,7 @@ export function InscripcionesPanel({
   const [error, setError] = useState<string | null>(null)
   /** Equipo con el formulario de cobro abierto. Uno por vez. */
   const [openTeamId, setOpenTeamId] = useState<string | null>(null)
-  const [amount, setAmount] = useState('')
+  const [amountCents, setAmountCents] = useState<number | null>(null)
   const [method, setMethod] = useState<MethodKey>('cash')
   /**
    * Se genera al ABRIR el formulario, no al enviarlo: si se regenerara por
@@ -47,23 +50,26 @@ export function InscripcionesPanel({
     setError(null)
     setOpenTeamId(row.teamId)
     // Pre-cargado con lo que falta: el caso normal es cobrar todo el saldo.
-    setAmount(String(Math.round(row.pending / 100)))
+    // row.pending ya está en centavos — antes se convertía a pesos para el
+    // input de texto y de vuelta a centavos al enviar, un round-trip que
+    // podía perder centavos por redondeo (mismo patrón que el hallazgo de
+    // auditoría §4.4). MoneyInput trabaja en centavos nativamente.
+    setAmountCents(row.pending > 0 ? row.pending : null)
     setMethod('cash')
     setIdempotencyKey(crypto.randomUUID())
   }
 
-  function handleSubmit(e: React.FormEvent, teamId: string) {
+  function handleSubmit(e: React.FormEvent, teamId: string, teamName: string) {
     e.preventDefault()
     setError(null)
-    const pesos = Number(amount)
-    if (!Number.isFinite(pesos) || pesos <= 0) {
+    if (amountCents == null || amountCents <= 0) {
       setError('El monto tiene que ser mayor a cero.')
       return
     }
     startTransition(async () => {
       const result = await registerAction({
         teamId,
-        amount: Math.round(pesos * 100),
+        amount: amountCents,
         method,
         clientIdempotencyKey: idempotencyKey,
       })
@@ -71,8 +77,9 @@ export function InscripcionesPanel({
         setError(result.error)
         return
       }
+      toast({ title: 'Cobro registrado', description: `${teamName} · ${formatArs(amountCents)}`, variant: 'success' })
       setOpenTeamId(null)
-      setAmount('')
+      setAmountCents(null)
       router.refresh()
     })
   }
@@ -98,12 +105,7 @@ export function InscripcionesPanel({
       )}
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-8 text-center">
-          <Users className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">
-            Todavía no hay equipos anotados.
-          </p>
-        </div>
+        <EmptyState icon={Users} title="Todavía no hay equipos anotados." />
       ) : (
         <>
           <ul className="divide-y divide-border">
@@ -160,7 +162,7 @@ export function InscripcionesPanel({
 
                   {openTeamId === row.teamId && (
                     <form
-                      onSubmit={(e) => handleSubmit(e, row.teamId)}
+                      onSubmit={(e) => handleSubmit(e, row.teamId, row.teamName)}
                       className="mt-3 grid gap-3 rounded-lg border border-border bg-background p-3 sm:grid-cols-[160px_1fr_auto]"
                     >
                       <div className="space-y-1.5">
@@ -170,13 +172,11 @@ export function InscripcionesPanel({
                         >
                           Monto
                         </label>
-                        <input
+                        <MoneyInput
                           id={`monto-${row.teamId}`}
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          inputMode="numeric"
+                          valueCents={amountCents}
+                          onValueChange={setAmountCents}
                           required
-                          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm tabular-nums outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                         />
                       </div>
                       <fieldset className="space-y-1.5">

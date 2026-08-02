@@ -1,14 +1,15 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { MoneyInput } from '@/components/ui/money-input'
 
 type Props = {
   selectMode: boolean
   onToggleSelectMode: () => void
   selectedCount: number
   showBulkBar: boolean
-  bulkValue: string
-  onBulkValueChange: (value: string) => void
+  bulkValueCents: number | null
+  onBulkValueChange: (cents: number | null) => void
   onApplyBulk: () => void
   onClearSelection: () => void
   canApplyBulk: boolean
@@ -20,7 +21,7 @@ export function PricingGridToolbar({
   onToggleSelectMode,
   selectedCount,
   showBulkBar,
-  bulkValue,
+  bulkValueCents,
   onBulkValueChange,
   onApplyBulk,
   onClearSelection,
@@ -42,22 +43,21 @@ export function PricingGridToolbar({
           <span className="text-xs font-medium text-muted-foreground">
             {selectedCount} celda{selectedCount === 1 ? '' : 's'}
           </span>
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-muted-foreground">$</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={bulkValue}
-              onChange={(e) => onBulkValueChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  onApplyBulk()
-                }
-              }}
+          <div
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                onApplyBulk()
+              }
+            }}
+          >
+            <MoneyInput
+              valueCents={bulkValueCents}
+              onValueChange={onBulkValueChange}
               placeholder="35.000"
               aria-label="Precio para las celdas seleccionadas"
-              className="h-11 md:h-9 w-24 rounded-md border border-border px-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+              showWords={false}
+              className="h-11 md:h-9 w-24"
             />
           </div>
           <Button

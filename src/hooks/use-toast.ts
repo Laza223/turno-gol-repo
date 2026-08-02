@@ -5,6 +5,11 @@ import type { ToastProps } from '@/components/ui/toast'
 
 export type ToastVariant = NonNullable<ToastProps['variant']>
 
+export type ToastAction = {
+  label: string
+  onClick: () => void
+}
+
 export type ToastItem = {
   id: string
   title?: string
@@ -13,6 +18,8 @@ export type ToastItem = {
   /** ms before auto-dismiss. Errors persist (very long) per design-system §6. */
   duration: number
   open: boolean
+  /** "Deshacer" (§6.2 matriz deshacer-vs-confirmar, clase A: reversible barato). */
+  action?: ToastAction
 }
 
 export type ToastInput = {
@@ -20,6 +27,7 @@ export type ToastInput = {
   description?: string
   variant?: ToastVariant
   duration?: number
+  action?: ToastAction
 }
 
 const DEFAULT_DURATIONS: Record<ToastVariant, number> = {
@@ -27,6 +35,9 @@ const DEFAULT_DURATIONS: Record<ToastVariant, number> = {
   success: 4000,
   destructive: 1_000_000, // persist until dismissed (errors)
 }
+
+/** Con acción de Deshacer, 4s no alcanza para leer + decidir + clickear. */
+const ACTION_DURATION = 10_000
 
 let counter = 0
 let toasts: ToastItem[] = []
@@ -54,8 +65,9 @@ export function toast(input: ToastInput): { id: string; dismiss: () => void } {
     title: input.title,
     description: input.description,
     variant,
-    duration: input.duration ?? DEFAULT_DURATIONS[variant],
+    duration: input.duration ?? (input.action ? ACTION_DURATION : DEFAULT_DURATIONS[variant]),
     open: true,
+    action: input.action,
   }
   toasts = [item, ...toasts].slice(0, 4)
   emit()

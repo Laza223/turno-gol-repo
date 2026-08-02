@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { SuspensionRow } from '@/modules/tournaments/standings/suspensions'
 import { SUSPENSION_REASON_LABELS, suspensionBadgeClass } from '../../torneos-lib'
 
@@ -17,11 +18,7 @@ export function SuspendidosPanel({ rows }: { rows: SuspendidoView[] }) {
   const pending = rows.filter((r) => r.pendingMatches > 0)
 
   if (pending.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card px-4 py-6 text-center">
-        <p className="text-sm text-muted-foreground">No hay jugadores suspendidos.</p>
-      </div>
-    )
+    return <EmptyState title="No hay jugadores suspendidos." className="py-6" />
   }
 
   return (

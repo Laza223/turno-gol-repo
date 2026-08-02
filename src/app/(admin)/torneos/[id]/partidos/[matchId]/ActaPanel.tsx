@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { AlertTriangle, Ban, Plus, Trash2 } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { toast } from '@/hooks/use-toast'
 import type {
   TournamentEventType,
   TournamentMatchEventView,
@@ -68,12 +71,14 @@ export function ActaPanel({
   const [eventPlayerId, setEventPlayerId] = useState('')
   const [eventType, setEventType] = useState<TournamentEventType>('goal')
   const [minute, setMinute] = useState('')
+  const [walkoverConfirm, setWalkoverConfirm] = useState<{ teamId: string; teamName: string } | null>(null)
+  const [clearResultConfirmOpen, setClearResultConfirmOpen] = useState(false)
 
   const isKnockout = stageKind === 'knockout'
   const isDraw = homeScore === awayScore
   const undefinedTeams = match.homeTeamId === null || match.awayTeamId === null
 
-  const run = (fn: () => Promise<TournamentActionResult>) => {
+  const run = (fn: () => Promise<TournamentActionResult>, successTitle?: string) => {
     setError(null)
     startTransition(async () => {
       const res = await fn()
@@ -81,6 +86,56 @@ export function ActaPanel({
         setError(res.error)
         return
       }
+      if (successTitle) toast({ title: successTitle, variant: 'success' })
+      router.refresh()
+    })
+  }
+
+  async function confirmWalkover(): Promise<{ success: boolean; error?: string }> {
+    if (!walkoverConfirm) return { success: false, error: 'No hay equipo seleccionado.' }
+    const res = await walkoverAction({ matchId: match.id, winnerTeamId: walkoverConfirm.teamId })
+    if (res.success) {
+      toast({ title: 'Walkover cargado', description: `Ganó ${walkoverConfirm.teamName}`, variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
+  async function confirmClearResult(): Promise<{ success: boolean; error?: string }> {
+    const res = await clearResultAction({ matchId: match.id })
+    if (res.success) {
+      toast({ title: 'Resultado borrado', variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
+  function undoDeleteEvent(ev: TournamentMatchEventView) {
+    run(() =>
+      addEventAction({
+        matchId: match.id,
+        teamId: ev.teamId,
+        teamPlayerId: ev.teamPlayerId,
+        type: ev.type,
+        minute: ev.minute,
+      }),
+    )
+  }
+
+  function handleDeleteEvent(ev: TournamentMatchEventView) {
+    setError(null)
+    startTransition(async () => {
+      const res = await deleteEventAction({ eventId: ev.id })
+      if (!res.success) {
+        setError(res.error)
+        return
+      }
+      toast({
+        title: `${EVENT_TYPE_LABELS[ev.type]} borrado`,
+        description: ev.playerName ?? undefined,
+        variant: 'success',
+        action: { label: 'Deshacer', onClick: () => undoDeleteEvent(ev) },
+      })
       router.refresh()
     })
   }
@@ -188,14 +243,16 @@ export function ActaPanel({
             type="button"
             disabled={pending || undefinedTeams}
             onClick={() =>
-              run(() =>
-                saveResultAction({
-                  matchId: match.id,
-                  homeScore: Number(homeScore),
-                  awayScore: Number(awayScore),
-                  homePenalties: homePenalties === '' ? null : Number(homePenalties),
-                  awayPenalties: awayPenalties === '' ? null : Number(awayPenalties),
-                }),
+              run(
+                () =>
+                  saveResultAction({
+                    matchId: match.id,
+                    homeScore: Number(homeScore),
+                    awayScore: Number(awayScore),
+                    homePenalties: homePenalties === '' ? null : Number(homePenalties),
+                    awayPenalties: awayPenalties === '' ? null : Number(awayPenalties),
+                  }),
+                'Resultado guardado',
               )
             }
             className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
@@ -208,9 +265,7 @@ export function ActaPanel({
               key={r.teamId}
               type="button"
               disabled={pending || undefinedTeams}
-              onClick={() =>
-                run(() => walkoverAction({ matchId: match.id, winnerTeamId: r.teamId }))
-              }
+              onClick={() => setWalkoverConfirm({ teamId: r.teamId, teamName: r.teamName })}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
               <Ban className="h-3.5 w-3.5" aria-hidden="true" />
@@ -222,7 +277,7 @@ export function ActaPanel({
             <button
               type="button"
               disabled={pending}
-              onClick={() => run(() => clearResultAction({ matchId: match.id }))}
+              onClick={() => setClearResultConfirmOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -249,9 +304,7 @@ export function ActaPanel({
         </div>
 
         {events.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-            Todavía no hay goles ni tarjetas cargados.
-          </p>
+          <EmptyState title="Todavía no hay goles ni tarjetas cargados." className="py-6" />
         ) : (
           <ul className="divide-y divide-border">
             {events.map((ev) => (
@@ -274,7 +327,7 @@ export function ActaPanel({
                   type="button"
                   aria-label={`Borrar ${EVENT_TYPE_LABELS[ev.type].toLowerCase()} de ${ev.playerName ?? 'sin autor'}`}
                   disabled={pending}
-                  onClick={() => run(() => deleteEventAction({ eventId: ev.id }))}
+                  onClick={() => handleDeleteEvent(ev)}
                   className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -345,14 +398,16 @@ export function ActaPanel({
             type="button"
             disabled={pending || eventTeamId === '' || undefinedTeams}
             onClick={() =>
-              run(() =>
-                addEventAction({
-                  matchId: match.id,
-                  teamId: eventTeamId,
-                  teamPlayerId: eventPlayerId === '' ? null : eventPlayerId,
-                  type: eventType,
-                  minute: minute === '' ? null : Number(minute),
-                }),
+              run(
+                () =>
+                  addEventAction({
+                    matchId: match.id,
+                    teamId: eventTeamId,
+                    teamPlayerId: eventPlayerId === '' ? null : eventPlayerId,
+                    type: eventType,
+                    minute: minute === '' ? null : Number(minute),
+                  }),
+                `${EVENT_TYPE_LABELS[eventType]} agregado`,
               )
             }
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
@@ -362,6 +417,38 @@ export function ActaPanel({
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={walkoverConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open) setWalkoverConfirm(null)
+        }}
+        title="Cargar walkover"
+        description={walkoverConfirm ? `Ganó ${walkoverConfirm.teamName} por no presentación.` : undefined}
+        consequences={[
+          'El resultado queda definido por no presentación, no por marcador.',
+          'Se puede corregir después borrando el resultado.',
+        ]}
+        variant="destructive"
+        confirmLabel="Cargar walkover"
+        cancelLabel="Volver"
+        onConfirm={confirmWalkover}
+      />
+
+      <ConfirmDialog
+        open={clearResultConfirmOpen}
+        onOpenChange={setClearResultConfirmOpen}
+        title="Borrar el resultado"
+        consequences={[
+          'La tabla de posiciones y los goleadores se recalculan sin este partido.',
+          'El acta (goles y tarjetas) no se borra, solo el marcador.',
+          ...(isKnockout ? ['Si este partido alimentaba la siguiente llave, ese equipo vuelve a "A definir".'] : []),
+        ]}
+        variant="destructive"
+        confirmLabel="Borrar resultado"
+        cancelLabel="Volver"
+        onConfirm={confirmClearResult}
+      />
     </div>
   )
 }

@@ -9,16 +9,16 @@ import { PricingGridToolbar } from './PricingGridToolbar'
 // resetea antes del siguiente, y userEvent.type termina emitiendo solo el
 // último carácter. Un wrapper con estado local reproduce el dueño real.
 function ControlledToolbar(
-  props: Omit<React.ComponentProps<typeof PricingGridToolbar>, 'bulkValue' | 'onBulkValueChange'> & {
-    bulkValue: string
-    onBulkValueChange: (value: string) => void
+  props: Omit<React.ComponentProps<typeof PricingGridToolbar>, 'bulkValueCents' | 'onBulkValueChange'> & {
+    bulkValueCents: number | null
+    onBulkValueChange: (cents: number | null) => void
   },
 ) {
-  const [value, setValue] = useState(props.bulkValue)
+  const [value, setValue] = useState(props.bulkValueCents)
   return (
     <PricingGridToolbar
       {...props}
-      bulkValue={value}
+      bulkValueCents={value}
       onBulkValueChange={(v) => {
         setValue(v)
         props.onBulkValueChange(v)
@@ -36,7 +36,7 @@ const meta = {
     onToggleSelectMode: fn(),
     selectedCount: 0,
     showBulkBar: false,
-    bulkValue: '',
+    bulkValueCents: null,
     onBulkValueChange: fn(),
     onApplyBulk: fn(),
     onClearSelection: fn(),
@@ -78,7 +78,7 @@ export const ConSeleccionYPrecio: Story = {
     await expect(canvas.getByRole('button', { name: 'Asignar precio' })).toBeDisabled()
 
     await userEvent.type(canvas.getByLabelText('Precio para las celdas seleccionadas'), '35000')
-    await expect(args.onBulkValueChange).toHaveBeenLastCalledWith('35000')
+    await expect(args.onBulkValueChange).toHaveBeenLastCalledWith(3500000)
   },
 }
 
@@ -88,7 +88,7 @@ export const ListoParaAsignar: Story = {
     selectMode: true,
     showBulkBar: true,
     selectedCount: 3,
-    bulkValue: '35.000',
+    bulkValueCents: 3500000,
     canApplyBulk: true,
   },
   play: async ({ args, canvasElement }) => {

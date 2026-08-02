@@ -113,8 +113,7 @@ export function StreetMoneyChargeDialog({
                 })
               : await registerInscriptionPaymentAction({
                   teamId: row.refId,
-                  amount: parsedCharges[0]!.amount,
-                  method: parsedCharges[0]!.method,
+                  charges: parsedCharges,
                   clientIdempotencyKey: idempotencyKey,
                 })
         if (res.success) {
@@ -151,7 +150,6 @@ export function StreetMoneyChargeDialog({
           <SplitPaymentFields
             lines={lines}
             onChange={setLines}
-            maxLines={row.origin === 'tournament' ? 1 : 5}
             quickAllCashCents={row.pendingCents}
             disabled={isPending}
             methodOptions={row.origin === 'canteen_tab' ? CANTEEN_METHOD_OPTIONS : undefined}

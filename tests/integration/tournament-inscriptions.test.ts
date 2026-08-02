@@ -92,7 +92,7 @@ describe('arancel por equipo (snapshot)', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, amount: FEE, method: 'cash' },
+        { teamId: teamIds[0]!, charges: [{ amount: FEE, method: 'cash' }] },
         tx,
       ),
     )
@@ -139,18 +139,18 @@ describe('registerInscriptionPayment', () => {
     const sql = getSql()
     const { tenant, staff, teamIds } = await setup({ teams: 1 })
 
-    const payment = await withTenantContext(tenant.id, (tx) =>
+    const [payment] = await withTenantContext(tenant.id, (tx) =>
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, amount: FEE, method: 'cash' },
+        { teamId: teamIds[0]!, charges: [{ amount: FEE, method: 'cash' }] },
         tx,
       ),
     )
 
     const rows = await sql<
       { category: string; amount: number; tournament_team_id: string; description: string }[]
-    >`SELECT category, amount, tournament_team_id, description FROM cash_flows WHERE id = ${payment.id}`
+    >`SELECT category, amount, tournament_team_id, description FROM cash_flows WHERE id = ${payment!.id}`
     expect(rows[0]!.category).toBe('tournament')
     expect(rows[0]!.amount).toBe(FEE)
     expect(rows[0]!.tournament_team_id).toBe(teamIds[0])
@@ -165,7 +165,7 @@ describe('registerInscriptionPayment', () => {
         registerInscriptionPayment(
           tenant.id,
           staff.id,
-          { teamId: teamIds[0]!, amount, method: 'cash' },
+          { teamId: teamIds[0]!, charges: [{ amount, method: 'cash' }] },
           tx,
         ),
       )
@@ -187,7 +187,7 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, amount: 4_000_000, method: 'cash' },
+        { teamId: teamIds[0]!, charges: [{ amount: 4_000_000, method: 'cash' }] },
         tx,
       ),
     )
@@ -197,7 +197,7 @@ describe('registerInscriptionPayment', () => {
         registerInscriptionPayment(
           tenant.id,
           staff.id,
-          { teamId: teamIds[0]!, amount: 1_000_000, method: 'cash' },
+          { teamId: teamIds[0]!, charges: [{ amount: 1_000_000, method: 'cash' }] },
           tx,
         ),
       ),
@@ -215,7 +215,7 @@ describe('registerInscriptionPayment', () => {
         registerInscriptionPayment(
           tenant.id,
           staff.id,
-          { teamId: teamIds[0]!, amount: 100_000, method: 'cash' },
+          { teamId: teamIds[0]!, charges: [{ amount: 100_000, method: 'cash' }] },
           tx,
         ),
       ),
@@ -231,7 +231,7 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, amount: 2_000_000, method: 'cash', clientIdempotencyKey: key },
+        { teamId: teamIds[0]!, charges: [{ amount: 2_000_000, method: 'cash' }], clientIdempotencyKey: key },
         tx,
       ),
     )
@@ -239,12 +239,12 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, amount: 2_000_000, method: 'cash', clientIdempotencyKey: key },
+        { teamId: teamIds[0]!, charges: [{ amount: 2_000_000, method: 'cash' }], clientIdempotencyKey: key },
         tx,
       ),
     )
 
-    expect(second.id).toBe(first.id)
+    expect(second[0]!.id).toBe(first[0]!.id)
     expect(await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)))
       .toBe(1)
   })
@@ -261,7 +261,7 @@ describe('registerInscriptionPayment', () => {
         registerInscriptionPayment(
           tenant.id,
           staff.id,
-          { teamId: teamIds[0]!, amount: 1_000_000, method: 'cash' },
+          { teamId: teamIds[0]!, charges: [{ amount: 1_000_000, method: 'cash' }] },
           tx,
         ),
       ),
@@ -277,7 +277,7 @@ describe('registerInscriptionPayment', () => {
         registerInscriptionPayment(
           a.tenant.id,
           a.staff.id,
-          { teamId: b.teamIds[0]!, amount: 1_000_000, method: 'cash' },
+          { teamId: b.teamIds[0]!, charges: [{ amount: 1_000_000, method: 'cash' }] },
           tx,
         ),
       ),
@@ -297,7 +297,7 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, amount: 1_000_000, method: 'transfer', note: 'Seña' },
+        { teamId: teamIds[0]!, charges: [{ amount: 1_000_000, method: 'transfer' }], note: 'Seña' },
         tx,
       ),
     )
@@ -305,7 +305,7 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[1]!, amount: 500_000, method: 'cash' },
+        { teamId: teamIds[1]!, charges: [{ amount: 500_000, method: 'cash' }] },
         tx,
       ),
     )
@@ -349,7 +349,7 @@ describe('guards de borrado', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, amount: 1_000_000, method: 'cash' },
+        { teamId: teamIds[0]!, charges: [{ amount: 1_000_000, method: 'cash' }] },
         tx,
       ),
     )
@@ -366,7 +366,7 @@ describe('guards de borrado', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[1]!, amount: 1_000_000, method: 'cash' },
+        { teamId: teamIds[1]!, charges: [{ amount: 1_000_000, method: 'cash' }] },
         tx,
       ),
     )

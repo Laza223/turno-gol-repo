@@ -11,7 +11,7 @@
  */
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 import { getTeam } from './tournament-team.service'
 import {
@@ -180,7 +180,9 @@ export async function countTeamPayments(
 }
 
 /**
- * Registra un cobro de inscripción.
+ * Registra un cobro de inscripción — método mixto (D2, Fase 1): 1-5 líneas
+ * de {monto, método} que suman como máximo lo pendiente (pago parcial
+ * permitido, a diferencia de un fiado de cantina).
  *
  * Réplica exacta del camino de `addBookingChargeAction` (reservas/actions.ts),
  * que es donde este repo ya pagó el precio de aprender:
@@ -189,24 +191,27 @@ export async function countTeamPayments(
  *      lock, dos cobros concurrentes leen el mismo pendiente y los dos pasan
  *      la validación (ENS-3: un turno de $10.000 aceptó 2×$8.000).
  *   2. Orden de locks: fila del equipo SIEMPRE antes del advisory lock diario
- *      que toma `createCashFlow` → `assertDayOpen`. Ningún caller invierte ese
- *      orden; invertirlo acá sería un deadlock.
+ *      que toma `createCashFlow` → `assertDayOpen` (dentro de `chargeSplitPayment`).
+ *      Ningún caller invierte ese orden; invertirlo acá sería un deadlock.
  *   3. Un reintento con la MISMA `clientIdempotencyKey` ya insertada no
  *      re-valida el pendiente: ese cobro ya se aceptó, y volver a compararlo
- *      contra un pendiente que él mismo bajó lo rechazaría por error.
+ *      contra un pendiente que él mismo bajó lo rechazaría por error. Se
+ *      chequea la key de la PRIMER línea (`${key}-0`, ver chargeSplitPayment)
+ *      como proxy de "este lote ya se procesó entero" — un reintento reenvía
+ *      el mismo array de `charges` en el mismo orden.
  */
 export async function registerInscriptionPayment(
   tenantId: string,
   staffUserId: string,
   input: RegisterInscriptionPaymentInput,
   tx: DbTx,
-): Promise<InscriptionPaymentRow> {
+): Promise<InscriptionPaymentRow[]> {
   const team = await getTeam(tenantId, input.teamId, tx)
 
   let alreadyRegistered = false
   if (input.clientIdempotencyKey) {
     const dup = await tx.execute(sql`
-      SELECT 1 FROM cash_flows WHERE client_idempotency_key = ${input.clientIdempotencyKey} LIMIT 1
+      SELECT 1 FROM cash_flows WHERE client_idempotency_key = ${`${input.clientIdempotencyKey}-0`} LIMIT 1
     `)
     alreadyRegistered = (dup as unknown[]).length > 0
   }
@@ -223,36 +228,35 @@ export async function registerInscriptionPayment(
 
     const paid = await sumTeamPayments(tenantId, input.teamId, tx)
     const pending = pendingFor(team.inscriptionFee, paid)
-    if (input.amount > pending) {
+    const totalCharging = input.charges.reduce((sum, c) => sum + c.amount, 0)
+    if (totalCharging > pending) {
       throw new InscriptionOverpaidError(team.name, pending)
     }
   }
 
-  const cashFlow = await createCashFlow(
+  const description = input.note?.trim() ? input.note.trim() : `Inscripción — ${team.name}`
+  const cashFlows = await chargeSplitPayment(
     tenantId,
     staffUserId,
-    {
+    input.charges,
+    () => ({
       type: 'income',
       category: 'tournament',
-      amount: input.amount,
-      method: input.method,
-      description: input.note?.trim()
-        ? input.note.trim()
-        : `Inscripción — ${team.name}`,
+      description,
       tournamentTeamId: input.teamId,
-      clientIdempotencyKey: input.clientIdempotencyKey,
-    },
+    }),
+    input.clientIdempotencyKey,
     tx,
   )
 
-  return {
+  return cashFlows.map((cashFlow) => ({
     id: cashFlow.id,
     teamId: input.teamId,
     amount: cashFlow.amount,
     method: cashFlow.method,
     description: cashFlow.description,
     occurredAt: cashFlow.occurredAt,
-  }
+  }))
 }
 
 async function sumTeamPayments(

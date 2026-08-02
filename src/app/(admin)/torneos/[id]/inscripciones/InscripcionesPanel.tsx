@@ -4,17 +4,14 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { AlertTriangle, CircleCheck, Users, Wallet } from 'lucide-react'
 import type { TeamInscriptionStatus } from '@/modules/tournaments/tournament.types'
-import { METHOD_LABELS, type MethodKey, chipClass } from '../../../caja/caja-lib'
+import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../../torneos-lib'
 import { formatArs } from '@/lib/format'
 import { EmptyState } from '@/components/ui/empty-state'
-import { MoneyInput } from '@/components/ui/money-input'
 import { toast } from '@/hooks/use-toast'
 import type { TournamentActionResult } from '../../actions'
 
 export type RegisterPaymentAction = (input: unknown) => Promise<TournamentActionResult>
-
-const METHODS: MethodKey[] = ['cash', 'transfer', 'mercadopago', 'other']
 
 export function InscripcionesPanel({
   rows,
@@ -28,8 +25,8 @@ export function InscripcionesPanel({
   const [error, setError] = useState<string | null>(null)
   /** Equipo con el formulario de cobro abierto. Uno por vez. */
   const [openTeamId, setOpenTeamId] = useState<string | null>(null)
-  const [amountCents, setAmountCents] = useState<number | null>(null)
-  const [method, setMethod] = useState<MethodKey>('cash')
+  /** Método mixto (D2, Fase 1): 1-5 líneas de {monto, método}. */
+  const [lines, setLines] = useState<ChargeLine[]>([])
   /**
    * Se genera al ABRIR el formulario, no al enviarlo: si se regenerara por
    * submit, un doble-tap mandaría dos claves distintas y el ON CONFLICT del
@@ -54,32 +51,41 @@ export function InscripcionesPanel({
     // input de texto y de vuelta a centavos al enviar, un round-trip que
     // podía perder centavos por redondeo (mismo patrón que el hallazgo de
     // auditoría §4.4). MoneyInput trabaja en centavos nativamente.
-    setAmountCents(row.pending > 0 ? row.pending : null)
-    setMethod('cash')
+    setLines([newChargeLine(row.pending > 0 ? row.pending : null, 'cash')])
     setIdempotencyKey(crypto.randomUUID())
   }
 
-  function handleSubmit(e: React.FormEvent, teamId: string, teamName: string) {
+  function handleSubmit(e: React.FormEvent, teamId: string, teamName: string, pendingAmount: number) {
     e.preventDefault()
     setError(null)
-    if (amountCents == null || amountCents <= 0) {
-      setError('El monto tiene que ser mayor a cero.')
+
+    const charges: { amount: number; method: ChargeLine['method'] }[] = []
+    for (const l of lines) {
+      if (l.amountCents == null || l.amountCents <= 0) {
+        setError('Todos los cobros deben tener un monto mayor a $0.')
+        return
+      }
+      charges.push({ amount: l.amountCents, method: l.method })
+    }
+    const totalCents = charges.reduce((s, c) => s + c.amount, 0)
+    if (totalCents > pendingAmount) {
+      setError(`El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(pendingAmount)}).`)
       return
     }
+
     startTransition(async () => {
       const result = await registerAction({
         teamId,
-        amount: amountCents,
-        method,
+        charges,
         clientIdempotencyKey: idempotencyKey,
       })
       if (!result.success) {
         setError(result.error)
         return
       }
-      toast({ title: 'Cobro registrado', description: `${teamName} · ${formatArs(amountCents)}`, variant: 'success' })
+      toast({ title: 'Cobro registrado', description: `${teamName} · ${formatArs(totalCents)}`, variant: 'success' })
       setOpenTeamId(null)
-      setAmountCents(null)
+      setLines([])
       router.refresh()
     })
   }
@@ -162,50 +168,22 @@ export function InscripcionesPanel({
 
                   {openTeamId === row.teamId && (
                     <form
-                      onSubmit={(e) => handleSubmit(e, row.teamId, row.teamName)}
-                      className="mt-3 grid gap-3 rounded-lg border border-border bg-background p-3 sm:grid-cols-[160px_1fr_auto]"
+                      onSubmit={(e) => handleSubmit(e, row.teamId, row.teamName, row.pending)}
+                      className="mt-3 space-y-3 rounded-lg border border-border bg-background p-3"
                     >
-                      <div className="space-y-1.5">
-                        <label
-                          htmlFor={`monto-${row.teamId}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Monto
-                        </label>
-                        <MoneyInput
-                          id={`monto-${row.teamId}`}
-                          valueCents={amountCents}
-                          onValueChange={setAmountCents}
-                          required
-                        />
-                      </div>
-                      <fieldset className="space-y-1.5">
-                        <legend className="text-xs font-medium text-muted-foreground">
-                          Método
-                        </legend>
-                        <div className="flex flex-wrap gap-1.5">
-                          {METHODS.map((m) => (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => setMethod(m)}
-                              aria-pressed={method === m}
-                              className={chipClass(method === m)}
-                            >
-                              {METHOD_LABELS[m]}
-                            </button>
-                          ))}
-                        </div>
-                      </fieldset>
-                      <div className="flex items-end">
-                        <button
-                          type="submit"
-                          disabled={pending}
-                          className="inline-flex h-[38px] w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 sm:w-auto"
-                        >
-                          Registrar cobro
-                        </button>
-                      </div>
+                      <SplitPaymentFields
+                        lines={lines}
+                        onChange={setLines}
+                        quickAllCashCents={row.pending}
+                        disabled={pending}
+                      />
+                      <button
+                        type="submit"
+                        disabled={pending}
+                        className="inline-flex h-[38px] w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 sm:w-auto"
+                      >
+                        Registrar cobro
+                      </button>
                     </form>
                   )}
                 </li>

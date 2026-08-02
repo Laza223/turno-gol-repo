@@ -245,7 +245,7 @@ describe('canteen report — getCanteenTotalsByMethod', () => {
 
     // Saldar el fiado en MercadoPago: ahora sí entra a la caja, bajo ESE método.
     await withTenantContext(tenant.id, (tx) =>
-      settleTab(tenant.id, staff.id, { tabId: tab.id, method: 'mercadopago', clientIdempotencyKey: crypto.randomUUID() }, tx),
+      settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'mercadopago' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
     )
 
     const afterSettle = await withTenantContext(tenant.id, (tx) => getCanteenTotalsByMethod(tenant.id, tx, last7(), 0))
@@ -293,7 +293,7 @@ describe('canteen report — getCanteenDailyTotals', () => {
     )
     // Saldar el fiado HOY (el cash_flow del cobro se registra con occurred_at = ahora).
     await withTenantContext(tenant.id, (tx) =>
-      settleTab(tenant.id, staff.id, { tabId: tab.id, method: 'cash', clientIdempotencyKey: crypto.randomUUID() }, tx),
+      settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
     )
 
     const daily = await withTenantContext(tenant.id, (tx) => getCanteenDailyTotals(tenant.id, tx, last7(), 0))

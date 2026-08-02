@@ -11,21 +11,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { capitalizeFirst } from '@/lib/format'
+import { capitalizeFirst, formatArs } from '@/lib/format'
 
 const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
 const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-const ARS_FORMATTER = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
 
 function formatDayTab(dateStr: string): { dow: string; dm: string } {
   const dt = new Date(dateStr + 'T12:00:00Z')
   const dow = DOW_FORMATTER.format(dt)
   const dm = DAY_MONTH_FORMATTER.format(dt)
   return { dow: capitalizeFirst(dow), dm }
-}
-
-function formatARS(cents: number): string {
-  return ARS_FORMATTER.format(cents / 100)
 }
 
 function addDaysStr(dateStr: string, n: number): string {
@@ -182,7 +177,7 @@ export default function WeeklyAvailabilityModal({
                     aria-pressed={isActive}
                     className={`flex min-w-[68px] flex-1 snap-start flex-col items-center rounded-xl border px-3 py-2 text-xs transition-all cursor-pointer ${
                       isActive
-                        ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs dark:bg-emerald-600 dark:text-white'
+                        ? 'border-primary bg-primary text-primary-foreground shadow-xs'
                         : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                     }`}
                   >
@@ -224,12 +219,12 @@ export default function WeeklyAvailabilityModal({
                                   key={s.time}
                                   href={`/${tenant.slug}/reservar?court=${court.id}&date=${activeDay.date}&time=${s.time}&dur=${s.duration}`}
                                   onClick={onClose}
-                                  className="flex min-h-10 flex-col items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/30 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white transition-all active:scale-[0.98]"
+                                  className="flex min-h-10 flex-col items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/30 hover:bg-primary hover:text-primary-foreground transition-all active:scale-[0.98]"
                                 >
                                   <span className="tabular-nums">{s.time}</span>
                                   {s.price && (
                                     <span className="text-[10px] tabular-nums opacity-90">
-                                      {formatARS(s.price)}
+                                      {formatArs(s.price)}
                                     </span>
                                   )}
                                 </Link>

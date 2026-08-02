@@ -52,8 +52,8 @@ export function PricingGrid({ openingHours, grid, onGridChange }: Props) {
         onToggleSelectMode={sel.toggleSelectMode}
         selectedCount={sel.selected.size}
         showBulkBar={sel.showBulkBar}
-        bulkValue={sel.bulkValue}
-        onBulkValueChange={sel.setBulkValue}
+        bulkValueCents={sel.bulkValueCents}
+        onBulkValueChange={sel.setBulkValueCents}
         onApplyBulk={sel.applyBulk}
         onClearSelection={sel.clearSelectionPrices}
         canApplyBulk={sel.canApplyBulk}
@@ -68,8 +68,8 @@ export function PricingGrid({ openingHours, grid, onGridChange }: Props) {
         isDark={isDark}
         selected={sel.selected}
         editing={sel.editing}
-        editValue={sel.editValue}
-        onEditValueChange={sel.setEditValue}
+        editValueCents={sel.editValueCents}
+        onEditValueChange={sel.setEditValueCents}
         onCommit={sel.commitEditor}
         onCancelEdit={() => sel.setEditing(null)}
         onPointerDown={sel.handlePointerDown}

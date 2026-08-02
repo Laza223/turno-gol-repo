@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { MoneyInput } from '@/components/ui/money-input'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -260,23 +261,25 @@ export function BookingFormModal({
     const guestPhone = playerId ? '' : ((fd.get('guestPhone') as string) ?? '').trim()
     const notesInternal = ((fd.get('notesInternal') as string) ?? '').trim()
 
-    const priceOverridePesosRaw = ((fd.get('priceOverridePesos') as string) ?? '').trim()
-    const priceOverridePesosNum = Number(priceOverridePesosRaw)
+    // MoneyInput ya entrega el valor en CENTAVOS via el hidden input (name=) —
+    // fd.get acá NO son pesos, así que no hay que volver a multiplicar por 100.
+    const priceOverrideRaw = ((fd.get('priceOverridePesos') as string) ?? '').trim()
+    const priceOverrideCents = priceOverrideRaw === '' ? undefined : Number(priceOverrideRaw)
     const priceOverride =
-      priceOverridePesosRaw && Number.isFinite(priceOverridePesosNum) && priceOverridePesosNum >= 0
-        ? Math.round(priceOverridePesosNum * 100)
+      priceOverrideCents !== undefined && Number.isFinite(priceOverrideCents) && priceOverrideCents >= 0
+        ? priceOverrideCents
         : undefined
 
     // La seña solo aplica a reservas de cliente (no a bloqueos internos): los
     // tres campos (method/amount/status) viajan juntos o no viaja ninguno.
-    const depositAmountPesosRaw =
+    const depositAmountRaw =
       !isInternalBlock && depositMethod
         ? ((fd.get('depositAmountPesos') as string) ?? '').trim()
         : ''
-    const depositAmountPesosNum = Number(depositAmountPesosRaw)
+    const depositAmountCents = depositAmountRaw === '' ? undefined : Number(depositAmountRaw)
     const depositAmount =
-      depositAmountPesosRaw && Number.isFinite(depositAmountPesosNum) && depositAmountPesosNum > 0
-        ? Math.round(depositAmountPesosNum * 100)
+      depositAmountCents !== undefined && Number.isFinite(depositAmountCents) && depositAmountCents > 0
+        ? depositAmountCents
         : undefined
 
     const common = {
@@ -713,19 +716,12 @@ export function BookingFormModal({
                       <span>Precio del turno</span>
                       <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
                     </Label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                      <input
-                        id="priceOverridePesos"
-                        name="priceOverridePesos"
-                        type="number"
-                        min="0"
-                        step="1"
-                        inputMode="decimal"
-                        placeholder="Precio de la grilla"
-                        className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-colors focus:border-emerald-500 focus:outline-hidden"
-                      />
-                    </div>
+                    <MoneyInput
+                      id="priceOverridePesos"
+                      name="priceOverridePesos"
+                      minCents={0}
+                      placeholder="Precio de la grilla"
+                    />
                   </div>
 
                   {!isInternalBlock && (
@@ -754,19 +750,12 @@ export function BookingFormModal({
                       <Label htmlFor="depositAmountPesos" className="text-sm font-medium text-foreground">
                         Monto de la seña
                       </Label>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                        <input
-                          id="depositAmountPesos"
-                          name="depositAmountPesos"
-                          type="number"
-                          min="1"
-                          step="1"
-                          inputMode="decimal"
-                          placeholder="Monto"
-                          className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 pl-7 pr-3.5 py-2.5 text-sm font-medium tabular-nums text-foreground transition-colors focus:border-emerald-500 focus:outline-hidden"
-                        />
-                      </div>
+                      <MoneyInput
+                        id="depositAmountPesos"
+                        name="depositAmountPesos"
+                        minCents={1}
+                        placeholder="Monto"
+                      />
                     </div>
                   )}
 
@@ -814,8 +803,9 @@ export function BookingFormModal({
               </Button>
               <Button
                 type="submit"
-                disabled={isPending || isCourtOffline}
-                className="rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                isLoading={isPending}
+                disabled={isCourtOffline}
+                className="rounded-xl font-semibold"
               >
                 {isPending ? 'Guardando…' : 'Confirmar'}
               </Button>

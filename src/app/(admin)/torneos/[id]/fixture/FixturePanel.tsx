@@ -4,8 +4,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import { AlertTriangle, CalendarPlus, Trash2, Trophy } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
+import { toast } from '@/hooks/use-toast'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import type {
   TournamentFormat,
@@ -65,6 +67,9 @@ export function FixturePanel({
   const [groupsCount, setGroupsCount] = useState('2')
   const [advance, setAdvance] = useState('2')
   const [thirdPlace, setThirdPlace] = useState(false)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+
+  const matchesWithResult = matches.filter((m) => m.status !== 'scheduled').length
 
   const stageById = useMemo(
     () => new Map(stages.map((s) => [s.id, s])),
@@ -128,17 +133,14 @@ export function FixturePanel({
     })
   }
 
-  function handleClear() {
-    setError(null)
+  async function confirmClear(): Promise<{ success: boolean; error?: string }> {
     setNotice(null)
-    startTransition(async () => {
-      const result = await clearAction({ tournamentId })
-      if (!result.success) {
-        setError(result.error)
-        return
-      }
+    const result = await clearAction({ tournamentId })
+    if (result.success) {
+      toast({ title: 'Fixture borrado', variant: 'success' })
       router.refresh()
-    })
+    }
+    return result
   }
 
   /**
@@ -271,7 +273,7 @@ export function FixturePanel({
         </p>
         <button
           type="button"
-          onClick={handleClear}
+          onClick={() => setClearConfirmOpen(true)}
           disabled={pending}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
         >
@@ -281,6 +283,23 @@ export function FixturePanel({
       </div>
 
       {feedback}
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        onOpenChange={setClearConfirmOpen}
+        title="Borrar el fixture"
+        consequences={[
+          `Se borran los ${matches.length} partidos del calendario.`,
+          ...(matchesWithResult > 0
+            ? [`Se pierden los ${matchesWithResult} resultados ya cargados.`]
+            : []),
+          'No se puede deshacer: hay que generar el fixture de nuevo.',
+        ]}
+        variant="destructive"
+        confirmLabel="Borrar fixture"
+        cancelLabel="Volver"
+        onConfirm={confirmClear}
+      />
 
       {grouped.map((group) => (
         <ResponsiveList

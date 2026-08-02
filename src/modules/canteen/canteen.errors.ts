@@ -64,3 +64,18 @@ export class TabNotOpenError extends Error {
     this.name = 'TabNotOpenError'
   }
 }
+
+/**
+ * Fiados no admiten pago parcial (a diferencia de turnos/inscripciones): el
+ * ticket se saldó cuando se entregó, así que las líneas de cobro (D2, método
+ * mixto) tienen que sumar EXACTO el total del ticket, ni más ni menos.
+ */
+export class TabChargeMismatchError extends Error {
+  constructor(
+    public readonly expected: number,
+    public readonly received: number,
+  ) {
+    super(`Charges must sum exactly ${expected} for this tab (got ${received}).`)
+    this.name = 'TabChargeMismatchError'
+  }
+}

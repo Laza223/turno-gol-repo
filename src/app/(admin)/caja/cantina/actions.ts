@@ -17,9 +17,11 @@ import {
   InsufficientStockError,
   ProductInactiveError,
   ProductNotFoundError,
+  TabChargeMismatchError,
   TabNotFoundError,
   TabNotOpenError,
 } from '@/modules/canteen/canteen.errors'
+import { formatArs } from '@/lib/format'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
 export type SellTicketActionResult =
@@ -62,6 +64,9 @@ function mapCanteenError(err: unknown): string | null {
   if (err instanceof EmptyTicketError) return 'El ticket está vacío.'
   if (err instanceof TabNotFoundError) return 'Ese fiado ya no existe.'
   if (err instanceof TabNotOpenError) return 'Ese fiado ya fue cobrado o anulado.'
+  if (err instanceof TabChargeMismatchError) {
+    return `Los cobros tienen que sumar exacto ${formatArs(err.expected)} (ingresaste ${formatArs(err.received)}).`
+  }
   return null
 }
 

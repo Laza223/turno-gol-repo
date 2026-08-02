@@ -7,6 +7,9 @@ export async function register() {
     // Sentry v8+: las configs de server/edge dejaron de auto-cargarse por
     // convención de nombre. Hay que importarlas explícitamente desde register().
     await import('./sentry.server.config')
+
+    const { installZodLocale } = await import('./src/shared/validation/zod-locale')
+    installZodLocale()
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {

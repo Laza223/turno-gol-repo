@@ -4,16 +4,23 @@ import { useFormStatus } from 'react-dom'
 import { ShieldCheck } from 'lucide-react'
 import type { createBookingAndCheckout } from '../actions'
 import PaymentMethodSelector, { type PayMethod } from './PaymentMethodSelector'
-import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
+import { Button } from '@/components/ui/button'
 
 function Inner({ depositAmount }: { depositAmount: number }) {
   const { pending } = useFormStatus()
   return (
-    <button type="submit" disabled={pending} className="inline-flex h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] disabled:scale-100 disabled:opacity-60 whitespace-nowrap">
-      {pending ? <><TgBallSpinner size="xs" className="mr-1" aria-hidden /> Procesando…</> : (
+    <Button
+      type="submit"
+      disabled={pending}
+      isLoading={pending}
+      // h-[58px] repetido en md: — el size="default" de <Button> trae md:h-10, que
+      // twMerge no deduplica contra un h-[58px] sin prefijo (breakpoints distintos).
+      className="h-[58px] md:h-[58px] w-full gap-2 rounded-xl text-base font-bold"
+    >
+      {pending ? 'Procesando…' : (
         <><ShieldCheck className="h-4 w-4" aria-hidden /> {depositAmount > 0 ? 'Pagar seña y reservar' : 'Confirmar reserva'}</>
       )}
-    </button>
+    </Button>
   )
 }
 

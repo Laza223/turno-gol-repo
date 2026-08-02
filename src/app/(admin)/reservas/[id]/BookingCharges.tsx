@@ -6,6 +6,8 @@ import { ArrowRightLeft, Banknote, Check, ChevronDown, Coins, CreditCard } from 
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { METHOD_LABELS } from '@/lib/payment-method'
+import { MoneyInput } from '@/components/ui/money-input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { BookingChargeRow } from '../queries'
@@ -53,13 +55,6 @@ const PAYMENT_METHODS = [
   },
 ] as const
 
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
-  other: 'Otro',
-}
-
 const DEPOSIT_STATUS_LABELS: Record<string, string> = {
   pending: 'pendiente',
   refunded: 'reembolsada',
@@ -79,7 +74,7 @@ export default function BookingCharges({
   const [pending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [amountPesos, setAmountPesos] = useState('')
+  const [amountCents, setAmountCents] = useState<number | null>(null)
   const [method, setMethod] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>('cash')
   const [isMethodOpen, setIsMethodOpen] = useState(false)
 
@@ -96,7 +91,7 @@ export default function BookingCharges({
   const isPaidInFull = pendingAmount === 0
 
   const [chargeMode, setChargeMode] = useState<'single' | 'split'>('single')
-  const [splitAmount1, setSplitAmount1] = useState('')
+  const [splitCents1, setSplitCents1] = useState<number | null>(null)
   const [splitMethod1, setSplitMethod1] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>('cash')
   const [splitMethod2, setSplitMethod2] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>('transfer')
   const [isMethod1Open, setIsMethod1Open] = useState(false)
@@ -105,41 +100,39 @@ export default function BookingCharges({
   function openForm() {
     setError(null)
     setChargeMode('single')
-    const totalPesos = pendingAmount > 0 ? Math.round(pendingAmount / 100) : 0
-    setAmountPesos(totalPesos > 0 ? String(totalPesos) : '')
+    setAmountCents(pendingAmount > 0 ? pendingAmount : null)
     setMethod('cash')
 
     // Defaults para cobro dividido (50% en Pago 1, resto en Pago 2)
-    const halfPesos = totalPesos > 0 ? Math.round(totalPesos / 2) : 0
-    setSplitAmount1(halfPesos > 0 ? String(halfPesos) : '')
+    const halfCents = pendingAmount > 0 ? Math.round(pendingAmount / 2) : 0
+    setSplitCents1(halfCents > 0 ? halfCents : null)
     setSplitMethod1('cash')
     setSplitMethod2('transfer')
     setOpen(true)
   }
 
-  const splitPesos1 = Number(splitAmount1) || 0
-  const totalPendingPesos = Math.round(pendingAmount / 100)
-  const splitPesos2 = Math.max(0, totalPendingPesos - splitPesos1)
+  const splitCents1Value = splitCents1 ?? 0
+  const splitCents2Value = Math.max(0, pendingAmount - splitCents1Value)
 
   function onSubmit() {
     setError(null)
 
     if (chargeMode === 'split') {
-      if (!Number.isFinite(splitPesos1) || splitPesos1 <= 0) {
+      if (splitCents1 == null || splitCents1 <= 0) {
         setError('Ingresá un monto mayor a $0 para el primer cobro.')
         return
       }
-      if (splitPesos1 >= totalPendingPesos) {
+      if (splitCents1 >= pendingAmount) {
         setError('El primer pago no puede ser igual o mayor al total en un pago dividido.')
         return
       }
-      if (splitPesos2 <= 0) {
+      if (splitCents2Value <= 0) {
         setError('El segundo pago debe ser mayor a $0.')
         return
       }
 
-      const amount1 = Math.round(splitPesos1 * 100)
-      const amount2 = Math.round(splitPesos2 * 100)
+      const amount1 = splitCents1
+      const amount2 = splitCents2Value
 
       startTransition(async () => {
         const key1 = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
@@ -178,19 +171,18 @@ export default function BookingCharges({
           variant: 'success',
         })
         setOpen(false)
-        setAmountPesos('')
+        setAmountCents(null)
         router.refresh()
       })
       return
     }
 
     // Modo individual ('single')
-    const pesos = Number(amountPesos)
-    if (!Number.isFinite(pesos) || pesos <= 0) {
+    if (amountCents == null || amountCents <= 0) {
       setError('Ingresá un monto mayor a 0.')
       return
     }
-    const amount = Math.round(pesos * 100)
+    const amount = amountCents
     if (amount > pendingAmount) {
       setError(`El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pendingAmount)}).`)
       return
@@ -203,7 +195,7 @@ export default function BookingCharges({
       if (res.success) {
         toast({ title: 'Cobro registrado', variant: 'success' })
         setOpen(false)
-        setAmountPesos('')
+        setAmountCents(null)
         router.refresh()
       } else {
         setError(res.error)
@@ -238,7 +230,7 @@ export default function BookingCharges({
         {charges.map((c) => (
           <div key={c.id} className="flex items-center justify-between">
             <dt className="text-muted-foreground">
-              Cobro · {METHOD_LABELS[c.method] ?? c.method}
+              Cobro · {(METHOD_LABELS as Record<string, string>)[c.method] ?? c.method}
               {c.description && c.description !== 'Cobro de turno' ? ` · ${c.description}` : ''}
             </dt>
             <dd className="text-foreground">{formatArs(c.amount)}</dd>
@@ -315,9 +307,7 @@ export default function BookingCharges({
                     <div className="flex items-center gap-1.5 text-xs">
                       <button
                         type="button"
-                        onClick={() =>
-                          setAmountPesos(String(Math.round(pendingAmount / 2 / 100)))
-                        }
+                        onClick={() => setAmountCents(Math.round(pendingAmount / 2))}
                         className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px]"
                       >
                         50%
@@ -325,22 +315,19 @@ export default function BookingCharges({
                       <span className="text-muted-foreground">•</span>
                       <button
                         type="button"
-                        onClick={() => setAmountPesos(String(Math.round(pendingAmount / 100)))}
+                        onClick={() => setAmountCents(pendingAmount)}
                         className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px]"
                       >
                         Total
                       </button>
                     </div>
                   </div>
-                  <input
+                  <MoneyInput
                     id="charge-amount"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={Math.round(pendingAmount / 100)}
-                    value={amountPesos}
-                    onChange={(e) => setAmountPesos(e.target.value)}
-                    className="h-11 md:h-9 w-full rounded-md border border-border bg-background text-foreground px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    minCents={1}
+                    maxCents={pendingAmount}
+                    valueCents={amountCents}
+                    onValueChange={setAmountCents}
                   />
                   <p className="text-xs text-muted-foreground">
                     Máximo cobrable: {formatArs(pendingAmount)}
@@ -441,15 +428,12 @@ export default function BookingCharges({
                     <label htmlFor="split-amount-1" className="text-xs font-medium text-foreground">
                       Monto 1 (ARS)
                     </label>
-                    <input
+                    <MoneyInput
                       id="split-amount-1"
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={totalPendingPesos - 1}
-                      value={splitAmount1}
-                      onChange={(e) => setSplitAmount1(e.target.value)}
-                      className="h-9 w-full rounded-md border border-border bg-background text-foreground px-3 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      minCents={1}
+                      maxCents={pendingAmount - 1}
+                      valueCents={splitCents1}
+                      onValueChange={setSplitCents1}
                     />
                   </div>
                   <div className="space-y-1">
@@ -509,13 +493,10 @@ export default function BookingCharges({
                     <label htmlFor="split-amount-2" className="text-xs font-medium text-foreground">
                       Monto 2 (ARS)
                     </label>
-                    <input
+                    <MoneyInput
                       id="split-amount-2"
-                      type="number"
-                      readOnly
+                      valueCents={splitCents2Value}
                       disabled
-                      value={splitPesos2}
-                      className="h-9 w-full rounded-md border border-border bg-muted/60 text-foreground px-3 text-sm cursor-not-allowed opacity-80"
                     />
                   </div>
                   <div className="space-y-1">
@@ -569,8 +550,8 @@ export default function BookingCharges({
               </div>
 
               <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                <span>Resumen: {formatArs(splitPesos1 * 100)} ({METHOD_LABELS[splitMethod1]}) + {formatArs(splitPesos2 * 100)} ({METHOD_LABELS[splitMethod2]})</span>
-                <span className="font-semibold">Total: {formatArs((splitPesos1 + splitPesos2) * 100)}</span>
+                <span>Resumen: {formatArs(splitCents1Value)} ({METHOD_LABELS[splitMethod1]}) + {formatArs(splitCents2Value)} ({METHOD_LABELS[splitMethod2]})</span>
+                <span className="font-semibold">Total: {formatArs(splitCents1Value + splitCents2Value)}</span>
               </div>
             </div>
           )}

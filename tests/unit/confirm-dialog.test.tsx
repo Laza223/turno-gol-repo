@@ -127,4 +127,22 @@ describe('ConfirmDialog', () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
+
+  it('consequences renderiza cada ítem en una lista, sin que el caller arme el <ul> a mano', async () => {
+    render(
+      <ConfirmDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        title="Marcar como ausente"
+        consequences={[
+          'La seña pagada queda para el complejo.',
+          'Queda bloqueado 14 días para reservar online.',
+        ]}
+        onConfirm={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+
+    expect(screen.getByText('La seña pagada queda para el complejo.')).toBeTruthy()
+    expect(screen.getByText('Queda bloqueado 14 días para reservar online.')).toBeTruthy()
+  })
 })

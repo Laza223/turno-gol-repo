@@ -2,27 +2,16 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import type { MethodKey } from '@/lib/payment-method'
 import { chargeDebtAction, type ChargeDebtResult } from './actions'
 import type { DebtRow } from './queries'
 
-const METHOD_OPTIONS = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-  { value: 'other', label: 'Otro' },
-] as const
-
-type Method = (typeof METHOD_OPTIONS)[number]['value']
-
-type ChargeLine = {
-  id: string
-  amountPesos: string
-  method: Method
-}
+type Method = MethodKey
 
 type Props = {
   debt: DebtRow | null
@@ -42,14 +31,8 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
   if (debt && debt.id !== lastDebtId) {
     setLastDebtId(debt.id)
     setError(null)
-    const initialAmount = Math.max(0, Math.round(debt.pending / 100))
-    setCharges([
-      {
-        id: crypto.randomUUID(),
-        amountPesos: initialAmount > 0 ? String(initialAmount) : '',
-        method: 'cash',
-      },
-    ])
+    const initialAmount = Math.max(0, debt.pending)
+    setCharges([newChargeLine(initialAmount > 0 ? initialAmount : null, 'cash')])
   }
 
   if (!debt) return null
@@ -60,36 +43,8 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
     onClose()
   }
 
-  function addChargeLine() {
-    setCharges((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), amountPesos: '', method: 'transfer' },
-    ])
-  }
-
-  function removeChargeLine(id: string) {
-    setCharges((prev) => prev.filter((c) => c.id !== id))
-  }
-
-  function updateCharge(id: string, field: 'amountPesos' | 'method', value: string) {
-    setCharges((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
-    )
-  }
-
-  function quickAllCash() {
-    setCharges([
-      {
-        id: crypto.randomUUID(),
-        amountPesos: String(Math.round(debt!.pending / 100)),
-        method: 'cash',
-      },
-    ])
-  }
-
   const totalChargingCents = charges.reduce((acc, c) => {
-    const pesos = Number(c.amountPesos)
-    return acc + (Number.isFinite(pesos) && pesos > 0 ? Math.round(pesos * 100) : 0)
+    return acc + (c.amountCents != null && c.amountCents > 0 ? c.amountCents : 0)
   }, 0)
 
   const remainingDebtAfterCharge = Math.max(0, debt.pending - totalChargingCents)
@@ -99,12 +54,11 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
 
     const parsedCharges: { amount: number; method: Method }[] = []
     for (const c of charges) {
-      const pesos = Number(c.amountPesos)
-      if (!Number.isFinite(pesos) || pesos <= 0) {
+      if (c.amountCents == null || c.amountCents <= 0) {
         setError('Todos los cobros deben tener un monto mayor a $0.')
         return
       }
-      parsedCharges.push({ amount: Math.round(pesos * 100), method: c.method })
+      parsedCharges.push({ amount: c.amountCents, method: c.method })
     }
 
     if (parsedCharges.length === 0) {
@@ -197,66 +151,12 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
                 Registrar cobro de deuda
               </h4>
 
-              <button
-                type="button"
-                onClick={quickAllCash}
-                className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-              >
-                Saldar todo en efectivo — {formatArs(debt.pending)}
-              </button>
-
-              <div className="space-y-2">
-                {charges.map((line) => (
-                  <div key={line.id} className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        $
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        inputMode="decimal"
-                        placeholder="Monto"
-                        value={line.amountPesos}
-                        onChange={(e) => updateCharge(line.id, 'amountPesos', e.target.value)}
-                        className="w-full h-10 rounded-lg border border-input bg-background pl-7 pr-3 text-base md:text-sm font-medium tabular-nums focus:outline-hidden focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                    <select
-                      value={line.method}
-                      onChange={(e) => updateCharge(line.id, 'method', e.target.value as Method)}
-                      className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
-                    >
-                      {METHOD_OPTIONS.map((m) => (
-                        <option key={m.value} value={m.value} className="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100">
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                    {charges.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeChargeLine(line.id)}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        aria-label="Eliminar cobro"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {charges.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={addChargeLine}
-                    className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1 md:min-h-0"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Agregar pago dividido
-                  </button>
-                )}
-              </div>
+              <SplitPaymentFields
+                lines={charges}
+                onChange={setCharges}
+                quickAllCashCents={debt.pending}
+                disabled={isPending}
+              />
             </div>
           </div>
 
@@ -291,14 +191,9 @@ export function ChargeDebtDialog({ debt, onClose, onSuccess }: Props) {
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={isPending}
-              className="h-10 px-5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold text-white shadow-xs transition-colors disabled:opacity-50"
-            >
+            <Button type="button" onClick={submit} isLoading={isPending} className="px-5">
               {isPending ? 'Registrando...' : 'Registrar pago de deuda'}
-            </button>
+            </Button>
           </div>
         </div>
       </DialogContent>

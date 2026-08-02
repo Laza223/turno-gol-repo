@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { MoneyInput } from '@/components/ui/money-input'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { chipClass } from '../caja-lib'
@@ -55,7 +57,7 @@ export function StockEntryDialog({
   const [error, setError] = useState<string | null>(null)
   const [packs, setPacks] = useState('1')
   const [unitsPerPack, setUnitsPerPack] = useState('1')
-  const [unitCostPesos, setUnitCostPesos] = useState('')
+  const [unitCostCents, setUnitCostCents] = useState<number | null>(null)
   const [updateCost, setUpdateCost] = useState(false)
   const [payFromCash, setPayFromCash] = useState(false)
   const [expenseMethod, setExpenseMethod] = useState<ExpenseMethod>('cash')
@@ -67,7 +69,7 @@ export function StockEntryDialog({
     setLastProductId(product.id)
     setPacks('1')
     setUnitsPerPack('1')
-    setUnitCostPesos('')
+    setUnitCostCents(null)
     setUpdateCost(false)
     setPayFromCash(false)
     setExpenseMethod('cash')
@@ -86,8 +88,7 @@ export function StockEntryDialog({
   // "Pagalo de la caja" solo puede ofrecerse con un costo > 0 cargado. Si el
   // costo se borra (o queda en 0) mientras el checkbox estaba tildado, se
   // destilda automáticamente en vez de someter un expense fantasma.
-  const unitCostNum = Number(unitCostPesos)
-  const hasValidCost = unitCostPesos.trim() !== '' && Number.isFinite(unitCostNum) && unitCostNum > 0
+  const hasValidCost = unitCostCents != null && unitCostCents > 0
   if (!hasValidCost && payFromCash) {
     setPayFromCash(false)
   }
@@ -112,15 +113,7 @@ export function StockEntryDialog({
       return
     }
 
-    let unitCost: number | null = null
-    if (unitCostPesos.trim() !== '') {
-      const costNum = Number(unitCostPesos)
-      if (!Number.isFinite(costNum) || costNum < 0) {
-        setError('Costo por unidad inválido.')
-        return
-      }
-      unitCost = Math.round(costNum * 100)
-    }
+    const unitCost = unitCostCents
 
     startTransition(async () => {
       try {
@@ -222,20 +215,15 @@ export function StockEntryDialog({
 
               <div className="space-y-1">
                 <Label htmlFor="se-cost">Costo por unidad (pesos, opcional)</Label>
-                <Input
+                <MoneyInput
                   id="se-cost"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={unitCostPesos}
-                  onChange={(e) => setUnitCostPesos(e.target.value)}
+                  valueCents={unitCostCents}
+                  onValueChange={setUnitCostCents}
                   disabled={isPending}
-                  className="h-10 rounded-lg tabular-nums"
                 />
               </div>
 
-              {unitCostPesos.trim() !== '' && (
+              {unitCostCents != null && (
                 <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
                   <input
                     type="checkbox"
@@ -278,7 +266,7 @@ export function StockEntryDialog({
                         ))}
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Registra gasto de {formatArs(totalUnits * Math.round(unitCostNum * 100))} en la caja.
+                        Registra gasto de {formatArs(totalUnits * (unitCostCents ?? 0))} en la caja.
                       </p>
                     </div>
                   )}
@@ -298,14 +286,9 @@ export function StockEntryDialog({
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={isPending}
-              className="h-10 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
-            >
+            <Button type="button" onClick={submit} isLoading={isPending} className="px-5">
               {isPending ? 'Registrando…' : 'Registrar reposición'}
-            </button>
+            </Button>
           </div>
         </div>
       </DialogContent>

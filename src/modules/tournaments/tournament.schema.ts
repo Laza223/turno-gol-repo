@@ -315,13 +315,18 @@ export const searchPlayersForCaptainSchema = z.object({
   query: z.string().trim().max(120),
 })
 
-export const registerInscriptionPaymentSchema = z.object({
-  teamId: uuid,
-  // moneyCents acepta 0; un cobro de $0 no es un cobro.
+// Método mixto (D2, Fase 1): 1-5 líneas de {monto, método}.
+// moneyCents acepta 0; un cobro de $0 no es un cobro.
+const inscriptionChargeSchema = z.object({
   amount: moneyCents.refine((v) => v > 0, 'El monto tiene que ser mayor a cero.'),
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other'], {
     message: 'Método de pago inválido.',
   }),
+})
+
+export const registerInscriptionPaymentSchema = z.object({
+  teamId: uuid,
+  charges: z.array(inscriptionChargeSchema).min(1, 'Ingresá al menos un cobro.').max(5),
   note: boundedText(300).nullable().optional(),
   // Cruce #10: sin la clave en el schema, z.object() la strippea y el
   // ON CONFLICT del service nunca corre → doble-tap = cobro duplicado.

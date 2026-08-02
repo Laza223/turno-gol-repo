@@ -17,6 +17,11 @@ import type { PricingRule } from './court.types'
 export { DAY_KEYS, DAY_LABELS }
 export type { DayKey }
 
+// parsePesosToCents vive en src/lib/money.ts (fuente única de parseo de plata,
+// compartida con MoneyInput). Re-exportado acá para no romper los call sites
+// e imports históricos de este módulo.
+export { parsePesosToCents } from '@/lib/money'
+
 // grid[day][hour] = precio en centavos. Clave ausente = celda vacía (sin precio).
 export type PriceGrid = Record<DayKey, Record<number, number>>
 
@@ -162,13 +167,6 @@ export function compressGridToRules(
   return Array.from(groups.values())
     .sort((a, b) => toMins(a.from) - toMins(b.from) || toMins(a.to) - toMins(b.to) || a.price - b.price)
     .map((g) => ({ days: g.days, from: g.from, to: g.to, price: g.price }))
-}
-
-/** "35.000" / "35000" / "$35.000" → 3500000 centavos. null si no hay dígitos. */
-export function parsePesosToCents(input: string): number | null {
-  const digits = input.replace(/[^\d]/g, '')
-  if (digits === '') return null
-  return Number(digits) * 100
 }
 
 // ---------------------------------------------------------------------------

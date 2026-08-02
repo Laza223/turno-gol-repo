@@ -3,20 +3,16 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { WeeklyAvailabilityResponse } from '@/modules/tenants/public.service'
+import { formatArs } from '@/lib/format'
 
 const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
 const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-const ARS_FORMATTER = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
 
 function formatDayTab(dateStr: string): { dow: string; dm: string } {
   const dt = new Date(dateStr + 'T12:00:00Z')
   const dow = DOW_FORMATTER.format(dt)
   const dm = DAY_MONTH_FORMATTER.format(dt)
   return { dow, dm }
-}
-
-function formatARS(cents: number): string {
-  return ARS_FORMATTER.format(cents / 100)
 }
 
 export default function WeeklyAvailability({ slug, week }: { slug: string; week: WeeklyAvailabilityResponse }) {
@@ -67,7 +63,7 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
                       >
                         <span className="tabular-nums">{s.time}</span>
                         {/* text-green-600 sobre bg-green-50 mide 3.14:1 — bajo AA. text-green-700 (igual que el resto del link) da 4.79:1. */}
-                        {s.price && <span className="text-[10px] text-green-700 dark:text-emerald-400 tabular-nums">{formatARS(s.price)}</span>}
+                        {s.price && <span className="text-[10px] text-green-700 dark:text-emerald-400 tabular-nums">{formatArs(s.price)}</span>}
                       </Link>
                     ))}
                   </div>

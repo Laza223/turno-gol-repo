@@ -63,6 +63,25 @@ export default tseslint.config(
       // navegación completa del browser. Con <Link> el redirect a MercadoPago no
       // arrancaría nunca.
       '@next/next/no-html-link-for-pages': 'off',
+
+      // Fase 0 (visión v2 §6.1, jerarquía única de acciones): `bg-emerald-600`
+      // con texto blanco fallaba WCAG AA en dark (emerald-600/slate-950 no es
+      // el par pineado; `--primary` dark ES emerald-500+slate-950). Los 15
+      // sitios que lo tenían migraron a `bg-primary`/`<Button>` — esto evita que
+      // vuelva. Dos selectores: strings normales Y template literals (backtick).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/bg-emerald-600/]',
+          message:
+            'bg-emerald-600 con texto blanco falla WCAG AA en dark mode (el token --primary dark es emerald-500+slate-950, no emerald-600+white). Usá <Button> o las clases bg-primary/text-primary-foreground.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/bg-emerald-600/]',
+          message:
+            'bg-emerald-600 con texto blanco falla WCAG AA en dark mode (el token --primary dark es emerald-500+slate-950, no emerald-600+white). Usá <Button> o las clases bg-primary/text-primary-foreground.',
+        },
+      ],
     },
   },
 

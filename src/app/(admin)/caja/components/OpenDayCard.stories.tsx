@@ -104,7 +104,7 @@ export const ConApertura: Story = {
     // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
     // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
     await waitFor(() => expect(body.getByRole('heading', { name: /Corregir fondo del/ })).toBeVisible())
-    await waitFor(() => expect(dialog.getByLabelText(/fondo inicial/i)).toHaveValue(5000))
+    await waitFor(() => expect(dialog.getByLabelText(/fondo inicial/i)).toHaveValue('5.000'))
     await expect(dialog.getByLabelText(/nota/i)).toHaveValue('Vuelto del día anterior')
 
     await userEvent.clear(dialog.getByLabelText(/fondo inicial/i))

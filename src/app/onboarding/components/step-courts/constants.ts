@@ -18,8 +18,8 @@ export type Draft = {
   format: number
   surfaceType: SurfaceType
   isCovered: boolean
-  /** Pesos como texto del input; se convierte a centavos al enviar. */
-  price: string
+  /** Precio por turno en centavos (MoneyInput ya entrega/recibe cents). */
+  priceCents: number | null
   photos: string[]
 }
 

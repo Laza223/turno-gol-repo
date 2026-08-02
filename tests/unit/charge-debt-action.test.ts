@@ -14,7 +14,7 @@ vi.mock('@/modules/staff/guards', () => ({
 }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn() }))
-vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
+vi.mock('@/modules/cashflow/cashflow.service', () => ({ chargeSplitPayment: vi.fn() }))
 vi.mock('@/modules/bans/ban.service', () => ({
   banPlayerManually: vi.fn(),
   resolveManualBanUntil: vi.fn(),
@@ -24,7 +24,7 @@ import { chargeDebtAction } from '@/app/(admin)/deudas/actions'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
 
 const BOOKING_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -79,7 +79,7 @@ describe('chargeDebtAction', () => {
       charges: [{ amount: 20_000_00, method: 'cash' }],
     })
     expect(res.success).toBe(false)
-    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+    expect(vi.mocked(chargeSplitPayment)).not.toHaveBeenCalled()
   })
 
   it('rechaza una reserva inexistente', async () => {
@@ -89,7 +89,7 @@ describe('chargeDebtAction', () => {
       charges: [{ amount: 20_000_00, method: 'cash' }],
     })
     expect(res.success).toBe(false)
-    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+    expect(vi.mocked(chargeSplitPayment)).not.toHaveBeenCalled()
   })
 
   it('rechaza un cobro total que supera el saldo pendiente', async () => {
@@ -106,7 +106,7 @@ describe('chargeDebtAction', () => {
     if (!res.success) {
       expect(res.error).toMatch(/supera lo pendiente/i)
     }
-    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+    expect(vi.mocked(chargeSplitPayment)).not.toHaveBeenCalled()
   })
 
   it('acepta y registra un cobro dentro del saldo pendiente', async () => {
@@ -115,7 +115,7 @@ describe('chargeDebtAction', () => {
       [],
       [],
     ])
-    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-1' } as never)
+    vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-1' }] as never)
 
     const res = await chargeDebtAction({
       bookingId: BOOKING_ID,
@@ -123,17 +123,21 @@ describe('chargeDebtAction', () => {
     })
 
     expect(res.success).toBe(true)
-    expect(vi.mocked(createCashFlow)).toHaveBeenCalledWith(
+    expect(vi.mocked(chargeSplitPayment)).toHaveBeenCalledWith(
       'tenant-1',
       'staff-1',
+      [{ amount: 100_00, method: 'cash' }],
+      expect.any(Function),
+      undefined,
+      expect.anything(),
+    )
+    const build = vi.mocked(chargeSplitPayment).mock.calls[0]![3]
+    expect(build({ amount: 100_00, method: 'cash' }, 0)).toEqual(
       expect.objectContaining({
         type: 'income',
         category: 'booking',
-        amount: 100_00,
-        method: 'cash',
         bookingId: BOOKING_ID,
       }),
-      expect.anything(),
     )
   })
 
@@ -147,7 +151,7 @@ describe('chargeDebtAction', () => {
       [], // FOR UPDATE lock del booking
       [], // getBookingCharges: sin cobros previos
     ])
-    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-locked' } as never)
+    vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-locked' }] as never)
 
     const res = await chargeDebtAction({
       bookingId: BOOKING_ID,

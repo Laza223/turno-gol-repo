@@ -5,12 +5,16 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { chipClass, METHOD_OPTIONS, type SaleMethod as SettleMethod } from '../caja-lib'
+import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { relativeTimeEs } from '@/app/(admin)/metricas/dashboard-helpers'
 import { formatArs } from '@/lib/format'
+import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenTabRow } from '@/modules/canteen/canteen.types'
 import type { CancelTabActionResult, SettleTabActionResult } from './actions'
+
+// Fiados no admiten 'other' (canteen.types.ts: CanteenSaleMethod excluye 'other').
+const CANTEEN_METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS.filter((m) => m.value !== 'other')
 
 /**
  * settleTabAction/cancelTabAction llegan por PROP: './actions' es
@@ -19,7 +23,7 @@ import type { CancelTabActionResult, SettleTabActionResult } from './actions'
  */
 export type SettleTabAction = (input: {
   tabId: string
-  method: 'cash' | 'transfer' | 'mercadopago'
+  charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[]
   clientIdempotencyKey: string
 }) => Promise<SettleTabActionResult>
 
@@ -131,15 +135,17 @@ function SettleTabDialog({
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [method, setMethod] = useState<SettleMethod>('cash')
+  const [lines, setLines] = useState<ChargeLine[]>([])
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   // Se re-inicializa por fiado (mismo patrón que StockExitDialog): la key de
-  // idempotencia es propia de cada apertura del diálogo.
+  // idempotencia es propia de cada apertura del diálogo. Precarga una línea
+  // con el total del ticket en efectivo — el atajo "Pagar todo en efectivo"
+  // de SplitPaymentFields reproduce ese mismo estado inicial.
   const [lastTabId, setLastTabId] = useState<string | null>(null)
   if (tab && tab.id !== lastTabId) {
     setLastTabId(tab.id)
-    setMethod('cash')
+    setLines([newChargeLine(tab.totalAmount, 'cash')])
     setError(null)
     setIdempotencyKey(crypto.randomUUID())
   }
@@ -155,11 +161,31 @@ function SettleTabDialog({
   function submit() {
     if (!tab) return
     setError(null)
+
+    const charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[] = []
+    for (const l of lines) {
+      if (l.amountCents == null || l.amountCents <= 0) {
+        setError('Todos los cobros deben tener un monto mayor a $0.')
+        return
+      }
+      // Fiados no admiten 'other' (mismo criterio que la venta actual, canteen.types.ts).
+      if (l.method === 'other') {
+        setError('Elegí efectivo, transferencia o MercadoPago.')
+        return
+      }
+      charges.push({ amount: l.amountCents, method: l.method })
+    }
+    const totalCents = charges.reduce((s, c) => s + c.amount, 0)
+    if (totalCents !== tab.totalAmount) {
+      setError(`Los cobros tienen que sumar exacto ${formatArs(tab.totalAmount)} (ingresaste ${formatArs(totalCents)}).`)
+      return
+    }
+
     startTransition(async () => {
       try {
         const res = await settleTabAction({
           tabId: tab.id,
-          method,
+          charges,
           clientIdempotencyKey: idempotencyKey,
         })
         if (res.success) {
@@ -183,23 +209,13 @@ function SettleTabDialog({
           <DialogTitle>Cobrar fiado — {tab?.debtorName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <fieldset>
-            <legend className="mb-1.5 text-xs font-medium text-foreground">Método de pago</legend>
-            <div className="grid grid-cols-3 gap-2">
-              {METHOD_OPTIONS.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMethod(m.value)}
-                  disabled={isPending || settleDisabled}
-                  aria-pressed={method === m.value}
-                  className={chipClass(method === m.value)}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+          <SplitPaymentFields
+            lines={lines}
+            onChange={setLines}
+            quickAllCashCents={tab?.totalAmount}
+            disabled={isPending || settleDisabled}
+            methodOptions={CANTEEN_METHOD_OPTIONS}
+          />
           {settleDisabled && (
             <p className="text-xs text-muted-foreground">
               Caja cerrada — el cobro se habilita cuando la caja esté abierta.

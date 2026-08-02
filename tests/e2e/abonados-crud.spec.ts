@@ -216,7 +216,9 @@ test.describe('Abonados CRUD', () => {
       // #contactPhone = el input tel VISIBLE del PhoneInput; input[name=contactPhone]
       // es el hidden que arma el valor internacional (+54 …) y no es fillable.
       await page.fill('#contactPhone', contactPhone)
-      await page.fill('input[name="pricePerSession"]', '5000')
+      // Precio por turno es un MoneyInput (input type="text" sin `name` propio,
+      // ubicado por label) desde el fix del hallazgo de auditoría §4.4.
+      await page.getByLabel('Precio por turno (pesos)').fill('5000')
       await pickDate(page, startsOn)
 
       await page.getByRole('button', { name: 'Continuar' }).click()
@@ -270,7 +272,9 @@ test.describe('Abonados CRUD', () => {
       await selectCombobox(page, 'timeEnd', '15:00')
       await page.fill('input[name="contactName"]', 'E2E Conflict')
       await page.fill('#contactPhone', contactPhone)
-      await page.fill('input[name="pricePerSession"]', '5000')
+      // Precio por turno es un MoneyInput (input type="text" sin `name` propio,
+      // ubicado por label) desde el fix del hallazgo de auditoría §4.4.
+      await page.getByLabel('Precio por turno (pesos)').fill('5000')
       await pickDate(page, startsOn)
 
       await page.getByRole('button', { name: 'Continuar' }).click()

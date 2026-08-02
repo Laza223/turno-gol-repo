@@ -1,159 +1,48 @@
 'use client'
 
-import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ShieldAlert } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { BanPlayerDialog } from '@/components/admin/BanPlayerDialog'
 import { toast } from '@/hooks/use-toast'
-import { banPlayerAction } from './actions'
-import type { ManualBanDuration } from '@/modules/bans/ban.schema'
+import { banPlayerAction } from '@/app/(admin)/jugadores/actions'
 
 type Props = {
-  player: {
-    id: string
-    name: string
-  } | null
+  player: { id: string; name: string } | null
   onClose: () => void
   onSuccess?: () => void
 }
 
-const DURATION_OPTIONS: { value: ManualBanDuration; label: string }[] = [
-  { value: '7d', label: '7 días' },
-  { value: '30d', label: '30 días' },
-  { value: 'indefinite', label: 'Permanente (Indefinido)' },
-]
-
+/**
+ * Adaptador fino sobre `BanPlayerDialog` (compartido con
+ * `/jugadores/[playerId]/BanPlayerControls.tsx`) — antes este archivo tenía
+ * su propio diálogo con una Server Action que NO auditaba y precargaba
+ * "Deuda incobrable de reserva" + 30 días (🔴 auditoría 2026-08-01 §4.11,
+ * reintroducía el modelo no-show=deuda revertido el 2026-07-11). Unificado
+ * 2026-08-01: misma action (`jugadores/actions.ts`, audita siempre), mismos
+ * defaults (motivo vacío + 7 días).
+ *
+ * `key={player.id}`: sin esto, cambiar de jugador sin cerrar el diálogo de
+ * por medio dejaría el motivo/duración tipeados para el jugador anterior.
+ */
 export function ManualBanDialog({ player, onClose, onSuccess }: Props) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-
-  const [lastPlayerId, setLastPlayerId] = useState<string | null>(null)
-  const [reason, setReason] = useState('')
-  const [duration, setDuration] = useState<ManualBanDuration>('30d')
-
-  if (player && player.id !== lastPlayerId) {
-    setLastPlayerId(player.id)
-    setError(null)
-    setReason('Deuda incobrable de reserva')
-    setDuration('30d')
-  }
-
   if (!player) return null
 
-  function handleClose() {
-    setError(null)
-    setLastPlayerId(null)
-    onClose()
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!player) return
-    if (!reason.trim()) {
-      setError('Debes especificar un motivo para la sanción.')
-      return
-    }
-
-    const targetPlayer = player
-
-    setError(null)
-    startTransition(async () => {
-      const res = await banPlayerAction({
-        playerId: targetPlayer.id,
-        reason: reason.trim(),
-        duration,
-      })
-
-      if (!res.success) {
-        setError(res.error)
-        return
-      }
-
-      toast({
-        title: 'Jugador sancionado',
-        description: `Se aplicó el baneo a ${targetPlayer.name} correctamente.`,
-      })
-
-      router.refresh()
-      handleClose()
-      onSuccess?.()
-    })
-  }
-
   return (
-    <Dialog open={!!player} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <ShieldAlert className="h-6 w-6" />
-            <DialogTitle className="text-xl font-bold text-foreground">
-              Sancionar Jugador
-            </DialogTitle>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Se bloqueará la capacidad de reservar online para{' '}
-            <strong className="text-foreground">{player.name}</strong> en este complejo.
-          </p>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Motivo del Bloqueo
-            </label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Ej: Deuda pendiente incobrable de $5.000"
-              rows={3}
-              className="w-full rounded-lg border border-input bg-background p-2.5 text-sm text-foreground shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Duración de la Sanción
-            </label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(e.target.value as ManualBanDuration)}
-              className="w-full rounded-lg border border-input bg-background p-2.5 text-sm text-foreground shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-            >
-              {DURATION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isPending}
-              className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-red-700 disabled:opacity-50 dark:bg-red-600 dark:hover:bg-red-500"
-            >
-              {isPending ? 'Sancionando...' : 'Aplicar Sanción'}
-            </button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <BanPlayerDialog
+      key={player.id}
+      open={true}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      playerId={player.id}
+      playerName={player.name}
+      banPlayerAction={banPlayerAction}
+      onBanned={() => {
+        toast({ title: 'Jugador bloqueado', description: player.name, variant: 'success' })
+        router.refresh()
+        onClose()
+        onSuccess?.()
+      }}
+    />
   )
 }

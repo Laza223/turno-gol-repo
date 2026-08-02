@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 const refreshMock = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -24,6 +24,7 @@ import { hasQuickActions } from '@/app/(admin)/reservas/quick-actions-helpers'
 const confirmDepositMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
 const completeMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
 const noShowMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
+const revertNoShowMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
 const cancelMock = vi.fn(async () => ({ success: true as const, booking: {} as never }))
 // Fix chargesTotal real (revisión adversarial): lectura de cobros previos que
 // QuickActions fetchea ANTES de abrir CompleteBookingDialog. Default sin
@@ -197,14 +198,69 @@ describe('QuickActions — confirmed', () => {
     expect(getBookingChargesMock).not.toHaveBeenCalled()
   })
 
-  it('Ausente pide confirmación en dos pasos (sin modal)', async () => {
+  it('Ausente abre ConfirmDialog con las consecuencias — no ejecuta al primer click', async () => {
     render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Ausente' }))
     expect(noShowMock).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: '¿Confirmar ausente?' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('La seña pagada queda para el complejo.')).toBeTruthy()
+    expect(within(dialog).getByText(/queda bloqueado 14 días/)).toBeTruthy()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar ausente' }))
     await waitFor(() => expect(noShowMock).toHaveBeenCalledWith('b1'))
+  })
+
+  it('el menú contextual mobile de Ausente también pasa por el mismo ConfirmDialog (unificado, 🔴 §4.5)', async () => {
+    render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
+
+    // Radix DropdownMenu: el pointerdown real de un mouse no se simula bien en
+    // happy-dom (mismo patrón que staff-actions-role-menu.test.tsx) — abre con teclado.
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Acciones para Juan · 14:00' }), { key: 'Enter' })
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Marcar ausente' }))
+    expect(noShowMock).not.toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar ausente' }))
+    await waitFor(() => expect(noShowMock).toHaveBeenCalledWith('b1'))
+  })
+
+  it('al confirmar, el toast de éxito ofrece "Deshacer" (revertNoShowAction)', async () => {
+    render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} revertNoShowAction={revertNoShowMock} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ausente' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar ausente' }))
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Marcada como ausente',
+          action: expect.objectContaining({ label: 'Deshacer' }),
+        }),
+      ),
+    )
+
+    const call = toastMock.mock.calls.find((c) => c[0]?.title === 'Marcada como ausente')
+    await act(async () => {
+      call?.[0]?.action?.onClick()
+    })
+    await waitFor(() => expect(revertNoShowMock).toHaveBeenCalledWith('b1'))
+  })
+
+  it('sin revertNoShowAction (prop opcional), el toast de éxito NO ofrece Deshacer', async () => {
+    render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ausente' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar ausente' }))
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Marcada como ausente' })),
+    )
+    const call = toastMock.mock.calls.find((c) => c[0]?.title === 'Marcada como ausente')
+    expect(call?.[0]?.action).toBeUndefined()
   })
 
   it('Cancelar abre diálogo, exige elegir quién cancela y motivo de 3+ caracteres', async () => {

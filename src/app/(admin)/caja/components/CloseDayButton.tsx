@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Lock } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { MoneyInput } from '@/components/ui/money-input'
 import { formatArsContable } from '@/lib/format'
 import { mediumDateLabel } from '../caja-lib'
 import type { CloseDayActionResult } from '../actions'
 import { toast } from '@/hooks/use-toast'
+import { track } from '@/shared/observability/breadcrumbs'
 
 /**
  * closeDayAction llega por PROP: '../actions' es `'use server'` y arrastra
@@ -23,6 +25,7 @@ export type CloseDayAction = (
 
 export function CloseDayButton({
   date,
+  tenantId,
   totalIncome,
   totalExpense,
   balance,
@@ -32,6 +35,8 @@ export function CloseDayButton({
   closeDayAction,
 }: {
   date: string
+  /** Proxy de medición §11 (contrato, criterio #6): identifica al tenant en los breadcrumbs de duración/diferencia del cierre. */
+  tenantId: string
   totalIncome: number
   totalExpense: number
   balance: number
@@ -46,20 +51,21 @@ export function CloseDayButton({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [declaredPesos, setDeclaredPesos] = useState('')
+  const [declaredCentsState, setDeclaredCentsState] = useState<number | null>(null)
   const [note, setNote] = useState('')
+  // Proxy "cierre ≤ 90s" (§11): arranca al abrir el diálogo, se lee al confirmar.
+  const [openedAtMs, setOpenedAtMs] = useState<number | null>(null)
 
-  const declaredCents = declaredPesos.trim() === '' ? undefined : Math.round(Number(declaredPesos) * 100)
+  // null (campo nunca tipeado) = "no declarado", misma semántica que antes tenía
+  // el string vacío.
+  const declaredCents = declaredCentsState ?? undefined
   // Migr. 049: la comparación del arqueo pasa de "saldo neto de la caja" a
   // "efectivo esperado" (fondo inicial + neto cash) — el saldo mezcla métodos
   // de pago que no están en el cajón físico.
-  const diff = declaredCents === undefined || !Number.isFinite(declaredCents) ? null : declaredCents - expectedCash
+  const diff = declaredCents === undefined ? null : declaredCents - expectedCash
   const noteRequired = diff !== null && diff !== 0
 
   async function onConfirm(): Promise<{ success: boolean; error?: string }> {
-    if (declaredPesos.trim() !== '' && (declaredCents === undefined || !Number.isFinite(declaredCents))) {
-      return { success: false, error: 'Efectivo declarado inválido.' }
-    }
     if (noteRequired && note.trim().length < 1) {
       return { success: false, error: 'Hay diferencia: la nota es obligatoria.' }
     }
@@ -67,6 +73,11 @@ export function CloseDayButton({
       const res = await closeDayAction(date, declaredCents, note.trim() || undefined)
       if (res.success) {
         toast({ title: 'Caja cerrada', description: 'El resumen del día quedó guardado.', variant: 'success' })
+        track.cashflow('close.confirmed', {
+          tenantId,
+          durationMs: openedAtMs != null ? Date.now() - openedAtMs : undefined,
+          diffCents: diff ?? 0,
+        })
         router.refresh()
       }
       return res
@@ -83,7 +94,13 @@ export function CloseDayButton({
     <>
       <button
         type="button"
-        onClick={() => { setDeclaredPesos(''); setNote(''); setOpen(true) }}
+        onClick={() => {
+          setDeclaredCentsState(null)
+          setNote('')
+          setOpen(true)
+          setOpenedAtMs(Date.now())
+          track.cashflow('close.opened', { tenantId })
+        }}
         className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
       >
         <Lock className="h-4 w-4" aria-hidden="true" />
@@ -100,6 +117,11 @@ export function CloseDayButton({
         onConfirm={onConfirm}
       >
         <div className="space-y-3">
+          {/* Cierre guiado (criterio de salida #4 del contrato): el esperado va
+              PRE-CALCULADO y visible antes de que el usuario cuente nada. */}
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            1. Esperado — ya calculado
+          </p>
           <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ingresos</span>
@@ -134,19 +156,25 @@ export function CloseDayButton({
               </span>
             </div>
           </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            2. Contá e ingresá lo real
+          </p>
           <div className="space-y-1">
             <label htmlFor="declared" className="text-xs font-medium text-foreground">Efectivo contado (opcional, pesos)</label>
-            <input id="declared" type="number" min="0" step="0.01" value={declaredPesos}
-              onChange={(e) => setDeclaredPesos(e.target.value)}
-              inputMode="decimal"
-              autoComplete="off"
-              className="h-11 md:h-10 w-full rounded-md border border-border px-3 text-base md:text-sm tabular-nums" />
+            <MoneyInput
+              id="declared"
+              minCents={0}
+              valueCents={declaredCentsState}
+              onValueChange={setDeclaredCentsState}
+            />
           </div>
           {diff !== null && diff !== 0 && (
             <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
               {/* La dirección (falta/sobra) es lo que el que cierra necesita saber
                   ANTES de confirmar un cierre inmutable — mismo criterio que el
-                  recibo ("sobraron"/"faltaron" de closeView). */}
+                  recibo ("sobraron"/"faltaron" de closeView). La diferencia se
+                  ve al instante (misma tanda de digitación), no al día
+                  siguiente — criterio de salida #4 del contrato. */}
               Diferencia de {formatArsContable(Math.abs(diff))} con el efectivo esperado:{' '}
               {diff < 0 ? 'falta' : 'sobra'} plata. La nota es obligatoria.
             </div>
@@ -158,6 +186,9 @@ export function CloseDayButton({
             <textarea id="close-note" value={note} onChange={(e) => setNote(e.target.value)} rows={2}
               className="w-full rounded-md border border-border px-3 py-2 text-base md:text-sm" />
           </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            3. Confirmar
+          </p>
         </div>
       </ConfirmDialog>
     </>

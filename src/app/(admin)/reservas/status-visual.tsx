@@ -1,4 +1,4 @@
-import { Ban, CheckCheck, Clock, HandCoins, UserX, XCircle, type LucideIcon } from 'lucide-react'
+import { Ban, CheckCheck, Clock, HandCoins, HelpCircle, UserX, XCircle, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type ReservaStatusVisual = {
@@ -80,7 +80,17 @@ const BLOCK_VISUAL: ReservaStatusVisual = {
   badge: NEUTRAL_BADGE,
 }
 
-const FALLBACK_VISUAL = STATUS_VISUALS.completed!
+/**
+ * Un status sin entrada en el mapa NUNCA debe leerse como "Jugada" (§6.2 —
+ * fricción proporcional al daño no aplica si el color miente sobre el cobro).
+ * Neutro explícito: mismo patrón que BLOCK_VISUAL, distinto ícono.
+ */
+const FALLBACK_VISUAL: ReservaStatusVisual = {
+  icon: HelpCircle,
+  label: 'Estado desconocido',
+  accent: 'bg-muted-foreground',
+  badge: NEUTRAL_BADGE,
+}
 
 /** Estado visual de una reserva/bloqueo: color + ícono + texto siempre juntos (§2.6). */
 export function reservaStatusVisual(booking: { status: string; type: string }): ReservaStatusVisual {

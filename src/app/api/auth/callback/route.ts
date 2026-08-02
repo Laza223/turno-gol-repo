@@ -59,6 +59,10 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   if (error || !data?.user) {
     logger.error('Supabase verifyOtp error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
     track.auth('auth.exchange_failed', {})
+    // otp_expired cubre tanto "venció por tiempo" como "ya fue consumido" (GoTrue
+    // no distingue los dos casos con códigos separados) — mismo patrón que
+    // reset-password/actions.ts:50 (error.code === 'same_password').
+    if (error?.code === 'otp_expired') return redirectVerifyError(req, 'expired')
     return redirectVerifyError(req, 'exchange_failed')
   }
   const user = data.user

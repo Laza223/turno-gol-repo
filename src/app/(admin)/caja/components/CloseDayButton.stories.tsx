@@ -11,6 +11,7 @@ const meta = {
   parameters: { layout: 'centered' },
   args: {
     date: artDateString(),
+    tenantId: 't-1',
     totalIncome: 4500000,
     totalExpense: 800000,
     balance: 3700000,

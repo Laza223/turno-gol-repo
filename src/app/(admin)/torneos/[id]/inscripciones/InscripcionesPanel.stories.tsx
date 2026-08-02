@@ -45,17 +45,14 @@ export const PagadoNoSeCobra: Story = {
   },
 }
 
-/** El formulario se abre con el saldo pendiente ya cargado. */
+/** El formulario se abre con el saldo pendiente ya cargado, en efectivo por default. */
 export const FormularioPrecargado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getAllByRole('button', { name: /cobrar/i })[1]!)
-    // $25.000 pendientes → 25000 en el input (pesos, no centavos).
-    await expect(await canvas.findByLabelText('Monto')).toHaveValue('25000')
-    await expect(canvas.getByRole('button', { name: 'Efectivo' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    // $25.000 pendientes → "25.000" en el input (SplitPaymentFields, sin label asociado: placeholder "Monto").
+    await expect(await canvas.findByPlaceholderText('Monto')).toHaveValue('25.000')
+    await expect(canvas.getByRole('combobox')).toHaveValue('cash')
   },
 }
 

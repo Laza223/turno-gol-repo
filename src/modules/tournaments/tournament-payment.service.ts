@@ -11,7 +11,7 @@
  */
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 import { getTeam } from './tournament-team.service'
 import {
@@ -79,6 +79,64 @@ export async function listInscriptionStatus(
   }))
 }
 
+/**
+ * Equipos con cuota de inscripción impaga, de TODOS los torneos del tenant —
+ * a diferencia de `listInscriptionStatus` (por torneo), esta es la fuente del
+ * origen "torneos" de street-money.service.ts (Fase 1, "Plata en la calle").
+ * Mismo criterio de `pendingFor`; solo trae equipos con `pending > 0`.
+ */
+export async function listTenantInscriptionDebts(
+  tenantId: string,
+  tx: DbTx,
+): Promise<Array<TeamInscriptionStatus & { tournamentId: string; tournamentName: string; createdAt: Date }>> {
+  const rows = (await tx.execute(sql`
+    SELECT t.id                             AS "teamId",
+           t.name                           AS "teamName",
+           t.status                         AS "teamStatus",
+           t.inscription_fee                AS fee,
+           t.tournament_id                  AS "tournamentId",
+           t.created_at                     AS "createdAt",
+           tr.name                          AS "tournamentName",
+           COALESCE(SUM(cf.amount), 0)::int AS paid,
+           count(cf.id)::int                AS payments,
+           max(cf.occurred_at)              AS "lastPaidAt"
+    FROM tournament_teams t
+    JOIN tournaments tr ON tr.id = t.tournament_id
+    LEFT JOIN cash_flows cf
+      ON cf.tournament_team_id = t.id
+     AND cf.tenant_id = t.tenant_id
+    WHERE t.tenant_id = ${tenantId}
+    GROUP BY t.id, t.name, t.status, t.inscription_fee, t.tournament_id, t.created_at, tr.name
+    HAVING t.inscription_fee - COALESCE(SUM(cf.amount), 0) > 0
+    ORDER BY t.name
+  `)) as unknown as Array<{
+    teamId: string
+    teamName: string
+    teamStatus: TeamInscriptionStatus['teamStatus']
+    fee: number
+    tournamentId: string
+    tournamentName: string
+    createdAt: string
+    paid: number
+    payments: number
+    lastPaidAt: string | null
+  }>
+
+  return rows.map((r) => ({
+    teamId: r.teamId,
+    teamName: r.teamName,
+    teamStatus: r.teamStatus,
+    fee: r.fee,
+    tournamentId: r.tournamentId,
+    tournamentName: r.tournamentName,
+    createdAt: new Date(r.createdAt),
+    paid: r.paid,
+    pending: pendingFor(r.fee, r.paid),
+    payments: r.payments,
+    lastPaidAt: r.lastPaidAt ? new Date(r.lastPaidAt) : null,
+  }))
+}
+
 /** Los movimientos de un equipo, del más nuevo al más viejo. */
 export async function listTeamPayments(
   tenantId: string,
@@ -122,7 +180,9 @@ export async function countTeamPayments(
 }
 
 /**
- * Registra un cobro de inscripción.
+ * Registra un cobro de inscripción — método mixto (D2, Fase 1): 1-5 líneas
+ * de {monto, método} que suman como máximo lo pendiente (pago parcial
+ * permitido, a diferencia de un fiado de cantina).
  *
  * Réplica exacta del camino de `addBookingChargeAction` (reservas/actions.ts),
  * que es donde este repo ya pagó el precio de aprender:
@@ -131,70 +191,91 @@ export async function countTeamPayments(
  *      lock, dos cobros concurrentes leen el mismo pendiente y los dos pasan
  *      la validación (ENS-3: un turno de $10.000 aceptó 2×$8.000).
  *   2. Orden de locks: fila del equipo SIEMPRE antes del advisory lock diario
- *      que toma `createCashFlow` → `assertDayOpen`. Ningún caller invierte ese
- *      orden; invertirlo acá sería un deadlock.
- *   3. Un reintento con la MISMA `clientIdempotencyKey` ya insertada no
- *      re-valida el pendiente: ese cobro ya se aceptó, y volver a compararlo
- *      contra un pendiente que él mismo bajó lo rechazaría por error.
+ *      que toma `createCashFlow` → `assertDayOpen` (dentro de `chargeSplitPayment`).
+ *      Ningún caller invierte ese orden; invertirlo acá sería un deadlock.
+ *   3. Un reintento con la MISMA `clientIdempotencyKey` no re-valida las
+ *      líneas que YA están commiteadas (ese cobro ya se aceptó, y volver a
+ *      compararlo contra un pendiente que él mismo bajó lo rechazaría por
+ *      error) — pero SÍ valida cualquier línea nueva que el reintento sume
+ *      al array. No hay atajo por "la línea 0 ya existe → me salteo todo":
+ *      eso permitía que un reintento que MUTA el array (reusa la key pero
+ *      agrega líneas) colara plata sin pasar por el `FOR UPDATE` ni por
+ *      `InscriptionOverpaidError` — caza-bugs de la revisión adversarial de
+ *      Fase 1 T7, con escenario de sobre-cobro reproducido paso a paso.
  */
 export async function registerInscriptionPayment(
   tenantId: string,
   staffUserId: string,
   input: RegisterInscriptionPaymentInput,
   tx: DbTx,
-): Promise<InscriptionPaymentRow> {
+): Promise<InscriptionPaymentRow[]> {
   const team = await getTeam(tenantId, input.teamId, tx)
 
-  let alreadyRegistered = false
-  if (input.clientIdempotencyKey) {
-    const dup = await tx.execute(sql`
-      SELECT 1 FROM cash_flows WHERE client_idempotency_key = ${input.clientIdempotencyKey} LIMIT 1
-    `)
-    alreadyRegistered = (dup as unknown[]).length > 0
+  // Arancel en cero = torneo gratis (o equipo con beca): no hay nada que
+  // cobrar. Sin esto, CUALQUIER monto sería un sobrepago y el error diría
+  // algo incomprensible ("supera lo pendiente de $0").
+  if (team.inscriptionFee <= 0) throw new TeamHasNoFeeError(team.name)
+
+  await tx.execute(
+    sql`SELECT id FROM tournament_teams WHERE id = ${input.teamId} FOR UPDATE`,
+  )
+
+  const lineKeys = input.clientIdempotencyKey
+    ? input.charges.map((_, i) => `${input.clientIdempotencyKey}-${i}`)
+    : []
+  const alreadyChargedKeys = new Set(
+    lineKeys.length === 0
+      ? []
+      : (
+          (await tx.execute(sql`
+            SELECT client_idempotency_key AS key FROM cash_flows
+            WHERE tenant_id = ${tenantId}
+              AND client_idempotency_key = ANY(ARRAY[${sql.join(
+                lineKeys.map((k) => sql`${k}`),
+                sql`, `,
+              )}])
+          `)) as unknown as Array<{ key: string }>
+        ).map((r) => r.key),
+  )
+
+  const paid = await sumTeamPayments(tenantId, input.teamId, tx)
+  const pending = pendingFor(team.inscriptionFee, paid)
+  // Solo cuenta contra `pending` lo que todavía NO está commiteado: una línea
+  // cuya key ya existe es un no-op garantizado por el ON CONFLICT de
+  // chargeSplitPayment, así que no debe sumar de nuevo (rechazaría un
+  // reintento legítimo). Lo que SÍ es nuevo (índice sin key previa) se valida
+  // siempre, sea la primera vez o la línea agregada en un reintento mutado.
+  const newCharging = input.charges.reduce((sum, c, i) => {
+    const key = lineKeys[i]
+    return key !== undefined && alreadyChargedKeys.has(key) ? sum : sum + c.amount
+  }, 0)
+  if (newCharging > pending) {
+    throw new InscriptionOverpaidError(team.name, pending)
   }
 
-  if (!alreadyRegistered) {
-    // Arancel en cero = torneo gratis (o equipo con beca): no hay nada que
-    // cobrar. Sin esto, CUALQUIER monto sería un sobrepago y el error diría
-    // algo incomprensible ("supera lo pendiente de $0").
-    if (team.inscriptionFee <= 0) throw new TeamHasNoFeeError(team.name)
-
-    await tx.execute(
-      sql`SELECT id FROM tournament_teams WHERE id = ${input.teamId} FOR UPDATE`,
-    )
-
-    const paid = await sumTeamPayments(tenantId, input.teamId, tx)
-    const pending = pendingFor(team.inscriptionFee, paid)
-    if (input.amount > pending) {
-      throw new InscriptionOverpaidError(team.name, pending)
-    }
-  }
-
-  const cashFlow = await createCashFlow(
+  const description = input.note?.trim() ? input.note.trim() : `Inscripción — ${team.name}`
+  const cashFlows = await chargeSplitPayment(
     tenantId,
     staffUserId,
-    {
+    input.charges,
+    () => ({
       type: 'income',
       category: 'tournament',
-      amount: input.amount,
-      method: input.method,
-      description: input.note?.trim()
-        ? input.note.trim()
-        : `Inscripción — ${team.name}`,
+      description,
       tournamentTeamId: input.teamId,
-      clientIdempotencyKey: input.clientIdempotencyKey,
-    },
+    }),
+    input.clientIdempotencyKey,
     tx,
   )
 
-  return {
+  return cashFlows.map((cashFlow) => ({
     id: cashFlow.id,
     teamId: input.teamId,
     amount: cashFlow.amount,
     method: cashFlow.method,
     description: cashFlow.description,
     occurredAt: cashFlow.occurredAt,
-  }
+  }))
 }
 
 async function sumTeamPayments(

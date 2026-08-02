@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { AlertTriangle, CalendarDays, Trophy, Users } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
+import { MoneyInput } from '@/components/ui/money-input'
 import type { TournamentActionResult } from '../actions'
 import { FORMAT_LABELS } from '../torneos-lib'
 
@@ -57,19 +58,16 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
   const [startsOn, setStartsOn] = useState(todayIso())
   const [endsOn, setEndsOn] = useState('')
   const [maxTeams, setMaxTeams] = useState('')
-  const [inscriptionFee, setInscriptionFee] = useState('')
+  // Default 0 (no null) replica el comportamiento previo: campo opcional,
+  // string vacío == sin inscripción == fee 0.
+  const [inscriptionFeeCents, setInscriptionFeeCents] = useState<number | null>(0)
   const [matchDuration, setMatchDuration] = useState('60')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
 
-    const fee = inscriptionFee.trim() === '' ? 0 : Number(inscriptionFee)
     const teams = maxTeams.trim() === '' ? null : Number(maxTeams)
-    if (Number.isNaN(fee) || fee < 0) {
-      setError('La inscripción tiene que ser un número válido.')
-      return
-    }
     if (teams !== null && (Number.isNaN(teams) || teams < 2)) {
       setError('El cupo tiene que ser de al menos 2 equipos.')
       return
@@ -82,8 +80,8 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
         startsOn,
         endsOn: endsOn === '' ? null : endsOn,
         maxTeams: teams,
-        // El input está en pesos y la DB guarda centavos (regla del repo).
-        inscriptionFee: Math.round(fee * 100),
+        // MoneyInput ya entrega centavos — sin el Number/Math.round del medio.
+        inscriptionFee: inscriptionFeeCents ?? 0,
         matchDurationMinutes: Number(matchDuration),
       })
       if (!result.success) {
@@ -194,25 +192,12 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
             <label htmlFor="torneo-inscripcion" className="text-sm font-medium text-foreground">
               Inscripción por equipo
             </label>
-            <div className="relative">
-              <span
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
-                aria-hidden="true"
-              >
-                $
-              </span>
-              <input
-                id="torneo-inscripcion"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1000}
-                value={inscriptionFee}
-                onChange={(e) => setInscriptionFee(e.target.value)}
-                placeholder="0"
-                className="w-full rounded-lg border border-border bg-background py-2 pl-7 pr-3 text-sm tabular-nums outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
+            <MoneyInput
+              id="torneo-inscripcion"
+              valueCents={inscriptionFeeCents}
+              onValueChange={setInscriptionFeeCents}
+              placeholder="0"
+            />
           </div>
         </div>
       </div>

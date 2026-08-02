@@ -23,6 +23,7 @@ import {
   completeAndChargeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
+  revertNoShowAction,
 } from './actions'
 import { getBookingChargesAction } from './charges-actions'
 
@@ -31,6 +32,7 @@ const QUICK_ACTIONS = {
   completeAndChargeBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
+  revertNoShowAction,
   getBookingChargesAction,
 }
 

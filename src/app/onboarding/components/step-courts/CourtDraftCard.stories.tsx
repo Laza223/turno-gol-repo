@@ -13,7 +13,7 @@ const draft = (overrides: Partial<Draft> = {}): Draft => ({
   format: 5,
   surfaceType: 'synthetic_grass',
   isCovered: false,
-  price: '20.000',
+  priceCents: 2000000,
   photos: [],
   ...overrides,
 })
@@ -59,7 +59,7 @@ export const Colapsado: Story = {
 
 /** Sin precio cargado: la fila-resumen avisa "(falta precio)" en vez del monto. */
 export const PrecioVacio: Story = {
-  args: { draft: draft({ price: '' }), isExpanded: false },
+  args: { draft: draft({ priceCents: null }), isExpanded: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('(falta precio)')).toBeInTheDocument()

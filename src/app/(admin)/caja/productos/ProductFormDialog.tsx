@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { MoneyInput } from '@/components/ui/money-input'
 import { chipClass } from '../caja-lib'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
@@ -48,8 +50,8 @@ export function ProductFormDialog({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [pricePesos, setPricePesos] = useState('')
-  const [costPesos, setCostPesos] = useState('')
+  const [priceCents, setPriceCents] = useState<number | null>(null)
+  const [costCents, setCostCents] = useState<number | null>(null)
   const [trackStock, setTrackStock] = useState(false)
   const [stock, setStock] = useState('')
   const [minStock, setMinStock] = useState('')
@@ -61,8 +63,8 @@ export function ProductFormDialog({
   if (open && key !== lastKey) {
     setLastKey(key)
     setName(product?.name ?? '')
-    setPricePesos(product ? String(product.price / 100) : '')
-    setCostPesos(product?.cost != null ? String(product.cost / 100) : '')
+    setPriceCents(product ? product.price : null)
+    setCostCents(product?.cost ?? null)
     setTrackStock(product ? product.stock != null : false)
     setStock(product?.stock != null ? String(product.stock) : '')
     setMinStock(product?.minStock != null ? String(product.minStock) : '')
@@ -92,22 +94,12 @@ export function ProductFormDialog({
       setError('Ingresá un nombre.')
       return
     }
-    const pesos = Number(pricePesos)
-    if (!Number.isFinite(pesos) || pesos <= 0) {
+    if (priceCents == null || priceCents <= 0) {
       setError('Ingresá un precio válido mayor a 0.')
       return
     }
-    const price = Math.round(pesos * 100)
-
-    let cost: number | null = null
-    if (costPesos.trim() !== '') {
-      const costNum = Number(costPesos)
-      if (!Number.isFinite(costNum) || costNum < 0) {
-        setError('Costo inválido.')
-        return
-      }
-      cost = Math.round(costNum * 100)
-    }
+    const price = priceCents
+    const cost = costCents
 
     let minStockValue: number | null = null
     if (trackStock && minStock.trim() !== '') {
@@ -209,30 +201,20 @@ export function ProductFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="pf-price">Precio (pesos)</Label>
-                  <Input
+                  <MoneyInput
                     id="pf-price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={pricePesos}
-                    onChange={(e) => setPricePesos(e.target.value)}
+                    valueCents={priceCents}
+                    onValueChange={setPriceCents}
                     disabled={isPending}
-                    className="h-10 rounded-lg tabular-nums"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="pf-cost">Costo (opcional)</Label>
-                  <Input
+                  <MoneyInput
                     id="pf-cost"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={costPesos}
-                    onChange={(e) => setCostPesos(e.target.value)}
+                    valueCents={costCents}
+                    onValueChange={setCostCents}
                     disabled={isPending}
-                    className="h-10 rounded-lg tabular-nums"
                   />
                 </div>
               </div>
@@ -320,14 +302,9 @@ export function ProductFormDialog({
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={submit}
-              className="h-10 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
-            >
+            <Button type="button" isLoading={isPending} onClick={submit} className="px-5">
               {isPending ? 'Guardando…' : 'Guardar'}
-            </button>
+            </Button>
           </div>
         </div>
       </DialogContent>

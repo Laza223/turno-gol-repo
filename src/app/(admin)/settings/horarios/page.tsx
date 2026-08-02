@@ -45,7 +45,7 @@ export default async function HorariosPage() {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
                   </span>
-                  <RemoveClosedDateForm date={date} action={removeClosedDateAction} />
+                  <RemoveClosedDateForm date={date} action={removeClosedDateAction} addAction={addClosedDateAction} />
                 </li>
               ))}
             </ul>

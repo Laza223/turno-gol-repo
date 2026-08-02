@@ -5,9 +5,12 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
 import { getDayOpen } from '@/modules/cashflow/cash-open.service'
+import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
+import { track } from '@/shared/observability/breadcrumbs'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { CajaActions } from './components/CajaActions'
 import { CajaCierreHint } from './components/CajaCierreHint'
+import { CajaHeaderStats } from './components/CajaHeaderStats'
 import { CajaTabs } from './components/CajaTabs'
 import { CierreCard } from './components/CierreCard'
 import { OpenDayCard } from './components/OpenDayCard'
@@ -33,16 +36,20 @@ export default async function CajaPage(props: {
   // reventaba el cast SQL ::date y addDays(); degradar a hoy (día operativo) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
-  const { summary, cashFlows, open } = await withTenantContext(tenant.id, async (tx) => {
-    const [s, cf, o] = await Promise.all([
+  const { summary, cashFlows, open, streetMoney } = await withTenantContext(tenant.id, async (tx) => {
+    const [s, cf, o, sm] = await Promise.all([
       getDaySummary(tenant.id, date, cutoffMins, tx),
       getCashFlows(tenant.id, date, cutoffMins, tx),
       getDayOpen(tenant.id, date, tx),
+      getStreetMoney(tenant.id, tx),
     ])
-    return { summary: s, cashFlows: cf, open: o }
+    return { summary: s, cashFlows: cf, open: o, streetMoney: sm }
   })
 
   const ingresos = summary.totalIncome + summary.totalAdjustments
+  const streetMoneyCents = sumStreetMoney(streetMoney)
+  // Proxy "plata en la calle: tendencia ↓ por tenant" (§11).
+  track.cashflow('street_money.viewed', { tenantId: tenant.id, totalCents: streetMoneyCents })
   const methods = methodBreakdown(summary.byMethod)
   const isToday = date === today
   // Fondo inicial (si se abrió la caja) + neto efectivo del día: la referencia
@@ -88,6 +95,7 @@ export default async function CajaPage(props: {
             </nav>
             <CajaActions
               date={date}
+              tenantId={tenant.id}
               cutoffMins={cutoffMins}
               totalIncome={ingresos}
               totalExpense={summary.totalExpense}
@@ -105,6 +113,17 @@ export default async function CajaPage(props: {
 
       <div className="card-entrance">
         <CajaTabs active="/caja" />
+      </div>
+
+      {/* Encabezado perpetuo (Fase 1, criterio #1): siempre visible, día abierto o cerrado. */}
+      <div className="card-entrance" style={{ animationDelay: '40ms' }}>
+        <CajaHeaderStats
+          collectedTodayCents={ingresos}
+          streetMoneyCents={streetMoneyCents}
+          isClosed={summary.isClosed}
+          openedAt={open?.openedAt ?? null}
+          closedAt={summary.close?.closedAt ?? null}
+        />
       </div>
 
       {!summary.isClosed && (

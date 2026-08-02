@@ -1,9 +1,16 @@
 import Link from 'next/link'
 import { XCircle } from 'lucide-react'
+import { SubmitButton } from '@/components/ui/submit-button'
 import type { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 
+// md:h-12 explícito: sin esto, el `size="default"` de <Button> (vía SubmitButton)
+// deja un `md:h-10` que gana en desktop por especificidad de breakpoint —
+// twMerge no lo deduplica al no compartir el mismo prefijo responsive.
+// bg-primary/text-primary-foreground (no un gradiente emerald crudo): "Reintentar
+// pago" es una acción de plata real y debe vivir en la jerarquía única (§2 de
+// gramatica-interaccion.md), igual que "Ver mis reservas"/"Reservar de nuevo".
 const ctaClass =
-  'inline-flex h-12 items-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] whitespace-nowrap'
+  'inline-flex h-12 md:h-12 items-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground shadow-md shadow-primary/20 transition-all duration-200 hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 active:scale-[0.97] whitespace-nowrap'
 
 /** Sin reserva (inexistente, purgada, o de otro jugador via RLS): estado neutro, sin afirmar que el pago falló. */
 export function BookingErrorNotFound() {
@@ -49,9 +56,9 @@ export function BookingErrorCard({
       {withinWindow ? (
         <form action={retryAction} className="mt-8">
           <input type="hidden" name="bookingId" value={bookingId} />
-          <button type="submit" className={ctaClass}>
+          <SubmitButton className={ctaClass} pendingLabel="Reintentando…">
             Reintentar pago
-          </button>
+          </SubmitButton>
         </form>
       ) : (
         <Link href={tenantSlug ? `/${tenantSlug}` : '/'} className={`mt-8 ${ctaClass}`}>

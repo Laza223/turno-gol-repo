@@ -58,11 +58,16 @@ export const SelectorSinElPlanActual: Story = {
   },
 }
 
+/** Confirma en el ConfirmDialog (§6.2) antes de cambiar — no ejecuta al primer click. */
 export const CambiadoOk: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await userEvent.selectOptions(canvas.getByLabelText('Plan destino'), plans[2]!.id)
     await userEvent.click(canvas.getByRole('button', { name: 'Cambiar plan' }))
+    await expect(args.action).not.toHaveBeenCalled()
+
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Confirmar cambio' }))
     await expect(await canvas.findByText('Plan cambiado sin cobro.')).toBeInTheDocument()
   },
 }
@@ -73,6 +78,8 @@ export const PlanInexistente: Story = {
     const canvas = within(canvasElement)
     await userEvent.selectOptions(canvas.getByLabelText('Plan destino'), plans[1]!.id)
     await userEvent.click(canvas.getByRole('button', { name: 'Cambiar plan' }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Confirmar cambio' }))
     await expect(await canvas.findByText(/inexistente o inactivo/i)).toBeInTheDocument()
   },
 }

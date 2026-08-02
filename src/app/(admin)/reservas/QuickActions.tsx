@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs } from '@/lib/format'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +65,18 @@ const DEPOSIT_METHOD_LABELS: Record<DepositMethod, string> = {
 }
 
 /**
+ * Mismo texto en las 3 superficies donde se puede marcar ausente (lista
+ * desktop/mobile acá, detalle en BookingActions.tsx) — la matriz
+ * deshacer-vs-confirmar (visión v2 §6.2) es una sola gramática, no una por
+ * pantalla.
+ */
+const NO_SHOW_CONSEQUENCES = [
+  'La seña pagada queda para el complejo.',
+  'Si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online.',
+  'No se puede deshacer pasadas 24hs.',
+]
+
+/**
  * Firma de las Server Actions que consume QuickActions. Se agrupan en un
  * solo tipo para que BookingListItem las reciba y reenvíe de un solo prop.
  *
@@ -81,6 +94,12 @@ export type BookingQuickActions = {
   confirmDepositPaymentAction: ConfirmDepositFn
   markNoShowAction: SimpleBookingFn
   completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
+  /**
+   * Inversa de `markNoShowAction` (ventana de 24hs, ver BookingActions.tsx).
+   * Opcional (mismo criterio que `getBookingChargesAction`): sin ella
+   * (stories/tests viejas) el toast de éxito no ofrece "Deshacer".
+   */
+  revertNoShowAction?: SimpleBookingFn
   /**
    * Lectura de los cobros de mostrador ya registrados del turno (sin la
    * seña), para que el diálogo de "Completada" abierto desde la LISTA arranque
@@ -125,12 +144,13 @@ export function QuickActions({
   cancelBookingAction,
   confirmDepositPaymentAction,
   markNoShowAction,
+  revertNoShowAction,
   completeAndChargeBookingAction,
   getBookingChargesAction,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [noShowArmed, setNoShowArmed] = useState(false)
+  const [noShowOpen, setNoShowOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
   const [reason, setReason] = useState('')
@@ -138,13 +158,6 @@ export function QuickActions({
   const [chargesTotal, setChargesTotal] = useState(0)
   const [confirmDepositOpen, setConfirmDepositOpen] = useState(false)
   const [depositMethod, setDepositMethod] = useState<DepositMethod>('cash')
-  const disarmRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (disarmRef.current) clearTimeout(disarmRef.current)
-    }
-  }, [])
 
   if (!hasQuickActions(booking)) return null
 
@@ -167,16 +180,23 @@ export function QuickActions({
     })
   }
 
-  function onNoShowClick() {
-    if (!noShowArmed) {
-      setNoShowArmed(true)
-      if (disarmRef.current) clearTimeout(disarmRef.current)
-      disarmRef.current = setTimeout(() => setNoShowArmed(false), 4000)
-      return
+  function onUndoNoShow() {
+    if (!revertNoShowAction) return
+    run(() => revertNoShowAction(booking.id), 'Ausencia deshecha')
+  }
+
+  async function onConfirmNoShow(): Promise<{ success: boolean; error?: string }> {
+    const res = await markNoShowAction(booking.id)
+    if (res.success) {
+      toast({
+        title: 'Marcada como ausente',
+        description: label,
+        variant: 'success',
+        action: revertNoShowAction ? { label: 'Deshacer', onClick: onUndoNoShow } : undefined,
+      })
+      router.refresh()
     }
-    if (disarmRef.current) clearTimeout(disarmRef.current)
-    setNoShowArmed(false)
-    run(() => markNoShowAction(booking.id), 'Marcada como ausente')
+    return res
   }
 
   /**
@@ -307,16 +327,10 @@ export function QuickActions({
             <button
               type="button"
               disabled={pending}
-              onClick={onNoShowClick}
-              aria-live="polite"
-              className={cn(
-                inlineBtn,
-                noShowArmed
-                  ? 'bg-destructive text-white hover:bg-destructive/90'
-                  : 'border border-border bg-card text-foreground hover:bg-accent',
-              )}
+              onClick={() => setNoShowOpen(true)}
+              className={cn(inlineBtn, 'border border-border bg-card text-foreground hover:bg-accent')}
             >
-              {noShowArmed ? '¿Confirmar ausente?' : 'Ausente'}
+              Ausente
             </button>
             <button
               type="button"
@@ -362,9 +376,7 @@ export function QuickActions({
                 >
                   Marcar completada
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => run(() => markNoShowAction(booking.id), 'Marcada como ausente')}
-                >
+                <DropdownMenuItem onSelect={() => setNoShowOpen(true)}>
                   Marcar ausente
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={openCancel} className="text-red-600 dark:text-red-400 focus:text-red-700">
@@ -385,21 +397,32 @@ export function QuickActions({
         cancelLabel="Volver"
         onConfirm={onConfirmDeposit}
       >
-        <fieldset className="space-y-1">
+        <fieldset className="space-y-1.5">
           <legend className="text-xs font-medium text-foreground">¿Cómo se cobró la seña?</legend>
-          {(['cash', 'transfer', 'other'] as const).map((m) => (
-            <label key={m} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name={`deposit-method-${booking.id}`}
-                checked={depositMethod === m}
-                onChange={() => setDepositMethod(m)}
-              />
-              {DEPOSIT_METHOD_LABELS[m]}
-            </label>
-          ))}
+          <RadioChipGroup
+            value={depositMethod}
+            onValueChange={(v) => setDepositMethod(v as DepositMethod)}
+          >
+            {(['cash', 'transfer', 'other'] as const).map((m) => (
+              <RadioChip key={m} value={m}>
+                {DEPOSIT_METHOD_LABELS[m]}
+              </RadioChip>
+            ))}
+          </RadioChipGroup>
         </fieldset>
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={noShowOpen}
+        onOpenChange={setNoShowOpen}
+        title="Marcar como ausente"
+        description={`${label}. Se registrará que el jugador no se presentó.`}
+        consequences={NO_SHOW_CONSEQUENCES}
+        variant="destructive"
+        confirmLabel="Marcar ausente"
+        cancelLabel="Volver"
+        onConfirm={onConfirmNoShow}
+      />
 
       <ConfirmDialog
         open={cancelOpen}
@@ -412,34 +435,24 @@ export function QuickActions({
         onConfirm={onConfirmCancel}
       >
         <div className="space-y-3">
-          <fieldset className="space-y-1">
+          <fieldset className="space-y-1.5">
             <legend className="text-xs font-medium text-foreground">¿Quién cancela?</legend>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
-                name={`cancel-type-${booking.id}`}
-                className="mt-0.5"
-                checked={cancelType === 'complejo'}
-                onChange={() => setCancelType('complejo')}
-              />
-              <span>
-                <span className="font-medium">El complejo necesita cancelar</span>
-                <span className="block text-xs text-muted-foreground">Rotura, mantenimiento o error. Reembolso automático.</span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
-                name={`cancel-type-${booking.id}`}
-                className="mt-0.5"
-                checked={cancelType === 'jugador'}
-                onChange={() => setCancelType('jugador')}
-              />
-              <span>
-                <span className="font-medium">El jugador pidió cancelar</span>
-                <span className="block text-xs text-muted-foreground">Se aplica la política de cancelación del complejo.</span>
-              </span>
-            </label>
+            <RadioChipGroup
+              // '' (nunca undefined): RadioGroup debe ser controlado desde el
+              // primer render — pasar undefined al no haber selección todavía
+              // lo arranca "uncontrolled" y React tira warning al pasar a
+              // 'complejo'/'jugador'. '' no matchea ningún <RadioChip value>,
+              // así que el efecto visual (nada seleccionado) es el mismo.
+              value={cancelType ?? ''}
+              onValueChange={(v) => setCancelType(v as 'complejo' | 'jugador')}
+            >
+              <RadioChip value="complejo" description="Rotura, mantenimiento o error. Reembolso automático.">
+                El complejo necesita cancelar
+              </RadioChip>
+              <RadioChip value="jugador" description="Se aplica la política de cancelación del complejo.">
+                El jugador pidió cancelar
+              </RadioChip>
+            </RadioChipGroup>
           </fieldset>
           {refundWarning && (
             <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">

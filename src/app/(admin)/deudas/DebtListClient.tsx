@@ -182,7 +182,7 @@ export function DebtListClient({ debts }: { debts: DebtRow[] }) {
                           href={whatsappUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 h-11 md:h-9 px-3 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+                          className="inline-flex items-center gap-1.5 h-11 md:h-9 px-3 text-xs font-semibold rounded-lg bg-primary text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
                           WhatsApp

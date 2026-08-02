@@ -161,9 +161,9 @@ export function StockEntryDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Columna Izquierda: Cantidades e ingreso */}
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Detalle de unidades
-              </h4>
+              </h3>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -216,9 +216,9 @@ export function StockEntryDialog({
 
             {/* Columna Derecha: Costos y pago de caja */}
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Costo y pago
-              </h4>
+              </h3>
 
               <div className="space-y-1">
                 <Label htmlFor="se-cost">Costo por unidad (pesos, opcional)</Label>
@@ -302,7 +302,7 @@ export function StockEntryDialog({
               type="button"
               onClick={submit}
               disabled={isPending}
-              className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
+              className="h-10 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
             >
               {isPending ? 'Registrando…' : 'Registrar reposición'}
             </button>

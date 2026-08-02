@@ -324,7 +324,7 @@ export function ProductFormDialog({
               type="button"
               disabled={isPending}
               onClick={submit}
-              className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
+              className="h-10 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-5 text-sm font-semibold disabled:opacity-60 transition-colors"
             >
               {isPending ? 'Guardando…' : 'Guardar'}
             </button>

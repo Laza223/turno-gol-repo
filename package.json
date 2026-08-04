@@ -163,13 +163,13 @@
     "overrides": {
       "react": "$react",
       "react-dom": "$react-dom",
-      "fast-uri": ">=3.1.4",
+      "fast-uri": ">=4.1.2",
       "sharp": ">=0.35.0",
       "cookie@<0.7.0": "^0.7.0",
       "postcss@<8.5.10": "^8.5.10",
       "mercadopago>uuid": "^11.1.1",
       "pg-boss>uuid": "^11.1.1",
-      "brace-expansion@5": "^5.0.8"
+      "brace-expansion@5": "^5.0.9"
     },
     "onlyBuiltDependencies": [
       "@sentry/cli",

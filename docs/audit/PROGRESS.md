@@ -902,4 +902,12 @@ Contrato: `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3, Fase 2. Evolu
 
 **Gate final (T0-T8):** typecheck ✅ / lint 0 errores, 44 warnings preexistentes (uno menos que Fase 1: se borró código muerto) ✅ / unit 297 archivos, 2377 tests ✅ / integration 122 archivos, 966 tests ✅ / isolation 162/162 ✅ / e2e chromium: `hoy-screen.spec.ts` (3/3), `critical-flows/*` (4/4), `admin-login.spec.ts` (6/6), `theme-toggle.spec.ts` (2/2), `onboarding.spec.ts` (8/8, incluye el tour de coachmarks arreglado por PR #98), `first-booking-aha.spec.ts` (1/1), `TG-HP-226.spec.ts` (falla, pero confirmado con `git stash` que es un bug preexistente NO relacionado — el usuario recién invitado queda en `/reset-password`, ajeno al guard D5 — reportado aparte), `reservas-crud.spec.ts` (2 fallos preexistentes confirmados corriendo el spec solo, sin relación a esta sesión — mismo flake documentado en memoria del proyecto).
 
+**PR:** [#101](https://github.com/Laza223/turno-gol-repo/pull/101) (rama `feat/fase2-hoy-home-admin`), CI corriendo al momento de abrir.
+
+## Fase 3 — BLOQUEADA (no arranca sola)
+
+Entrada del contrato (`decisiones-de-fase-v2.md:111`): **(1)** máquina de estados del slot documentada cubriendo TODAS las combinaciones reales de reserva+seña+cancelación (no solo los 6 estados felices) — no existe el doc; **(2)** prototipo navegable mostrado a ≥3 dueños/encargados prospecto — no hecho, es venta. Regla anti-túnel (§3): tampoco Fase 2 cerró del todo — su propio criterio de salida #4 ("demo comercial usada en ≥1 reunión real") sigue pendiente, es tarea de Lazar, no de código.
+
+**Próximo paso ofrecido, pendiente de que Lazar lo pida:** redactar el borrador de la máquina de estados del slot (leyendo `bookings`/`deposit_status`/cancelaciones reales) como insumo técnico del gate — no reemplaza el prototipo ni la validación con prospectos, que siguen siendo responsabilidad de Lazar.
+
 ## Fase 2 — CERRADA (2026-08-04)

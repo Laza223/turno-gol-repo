@@ -18,6 +18,7 @@ import { renderSubscriptionCanceled, type SubscriptionCanceledData } from './sub
 import { renderSubscriptionSuspended, type SubscriptionSuspendedData } from './subscription-suspended'
 import { renderSubscriptionBlocked, type SubscriptionBlockedData } from './subscription-blocked'
 import { renderTenantDeletionWarning, type TenantDeletionWarningData } from './tenant-deletion-warning'
+import { renderDailySummary, type DailySummaryData } from './daily-summary'
 
 export {
   renderBookingConfirmed,
@@ -53,6 +54,7 @@ type TemplateDataMap = {
   subscription_suspended: SubscriptionSuspendedData
   subscription_blocked: SubscriptionBlockedData
   tenant_deletion_warning: TenantDeletionWarningData
+  daily_summary: DailySummaryData
 }
 
 export type TemplateName = keyof TemplateDataMap
@@ -76,6 +78,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   subscription_suspended: renderSubscriptionSuspended,
   subscription_blocked: renderSubscriptionBlocked,
   tenant_deletion_warning: renderTenantDeletionWarning,
+  daily_summary: renderDailySummary,
 }
 
 export function renderTemplate(name: TemplateName, data: unknown): EmailContent {

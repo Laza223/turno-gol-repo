@@ -1,192 +1,172 @@
-# Inicio (dashboard admin) — spec de vista
+# Hoy (dashboard admin) — spec de vista
 
-> Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de `/dashboard`
-> (label de nav: **Inicio**). Hermana de `pages/grilla.md` (2026-07-02): mismos tokens, misma
-> paleta de estados §2.6, mismo vocabulario §8.5.
+> Complementa a `MASTER.md` v2 (ley general) y a `gramatica-interaccion.md` (Fase 0). Acá viven
+> las decisiones específicas de `/dashboard` (label de nav: **Hoy**, renombrado en Fase 2 desde
+> "Inicio"). Reemplaza la versión anterior de este documento (pre-Fase 2, 4 KPIs + "Próximos
+> turnos") — contrato de ejecución: `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3 Fase 2,
+> taxonomía de alertas: `docs/decisions/2026-08-02-taxonomia-alertas-hoy.md`.
 
 ## §0 Objetivo y principio de lectura
 
-**El admin sabe TODO en 3 segundos**: plata, turnos, pendientes y quién viene. Es la primera
-pantalla al entrar cada día — se diseña para el barrido en F de Marcelo (55 años, celular en la
-barra):
+**El admin responde "¿está todo bien?" en 5 segundos.** Es la primera pantalla al entrar cada
+día — se diseña para que Marcelo la abra a las 23:40 desde el sillón, la lea en 8 segundos y baje
+la ansiedad en vez de subirla (visión v2 §4.1). Tres bloques, ni uno más:
 
-1. **Fila de KPIs** → ¿cuánta plata hay? ¿cuántos turnos vendí? ¿qué me deben?
-2. **Próximos turnos** → ¿quién viene ahora / en la próxima hora?
-3. Lo pendiente **accionable** salta (Von Restorff §9): "Esperando seña" en warning es lo único
-   que Rodrigo debe perseguir.
+1. **Los 3 números** → cobrado hoy (con comparación honesta vs. mismo día de la semana pasada,
+   nunca "ayer"), turnos de hoy, plata en la calle.
+2. **"Necesita tu atención"** → SOLO las 3 anomalías v1 de la taxonomía cerrada, cada una con su
+   acción al lado. Vacío = el premio: "Nada pendiente. Todo cobrado y cerrado."
+3. **"Mientras no estabas"** → el feed de lo que pasó sin él (reservas online, cancelaciones,
+   señas acreditadas).
 
-Anti-objetivo: NO es Reportes. Nada de gráficos, tendencias mensuales ni comparativas largas acá —
-eso vive en `/reportes` y `/metricas`. Inicio responde HOY.
+Anti-objetivo explícito (contrato): **cero gráficos**. Un gráfico es una herramienta de análisis;
+Hoy es un parte de situación. El análisis vive en `/analiticas`. Tampoco es una pantalla de
+hacer — no hay accesos rápidos de reservar/vender cantina acá (esos viven en Grilla/Caja); la
+única acción visible es la que cada alerta de "Necesita tu atención" pide.
 
 ## §1 Anatomía
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ [icon] Inicio                              [Ir a la grilla]  │  PageHeader (banda premium)
-│        mié 2 de julio                                        │  fecha §8.3 formato medio
+│ [icon] Hoy                                                    │  PageHeader (banda premium)
+│        mié 2 de julio                                        │  fecha §8.3 formato medio, sin acciones
 ├──────────────────────────────────────────────────────────────┤
 │ ⚙ Configuración · 5 de 7  ▓▓▓▓▓░░  · pendientes accionables  │  solo si falta setup (§4)
-├──────────────┬──────────────┬──────────────┬─────────────────┤
-│ Caja de hoy  │ Turnos hoy   │ Esperando    │ Jugadores       │  4 KPIs (§2)
-│ $ 45.000     │ 8 de 24      │ seña: 2      │ bloqueados: 2   │  2×2 mobile / 4 cols lg
-│ Ingresos …   │ 33% ocupación│ $ 24.000 …   │ con softban     │
-├──────────────┴──────────────┴──────────────┴─────────────────┤
-│ Próximos turnos                                 Ver grilla → │  (§3)
-│ 18:00  Tomás García      · Cancha 1   [Señada]      $ 25.000 │
-│ en 40′                                                       │
-│ 19:00  Rodrigo Paz       · Cancha 2   [Esperando…]  $ 25.000 │
-│ …                                                            │
+├──────────────┬──────────────┬─────────────────────────────────┤
+│ Cobrado hoy  │ Turnos hoy   │ Plata en la calle              │  3 números (§2)
+│ $ 184.500    │ 9 de 12      │ $ 42.000                       │  2 col mobile / 3 cols lg
+│ ↑ 12% vs sem.│ 75% ocupación│ Pendiente de cobro              │
+├──────────────┴──────────────┴─────────────────────────────────┤
+│ Necesita tu atención                                          │  (§3) — o el vacío-premio
+│ ⚠ Tomás García · Cancha 1 20:00-21:00 · $16.000    [Cobrar]   │
+│ ⚠ Seña rechazada · Ana López · Cancha 2            [Ver res.] │
+│ ⚠ La caja de ayer sigue sin cerrar          [Cerrar caja]     │
+├────────────────────────────────────────────────────────────────┤
+│ Mientras no estabas                                            │  (§4)
+│ 📅 Reserva online — Cancha 1 20:00-21:00      21:30  T.García │
+│ 💰 Seña acreditada — $ 7.500                  20:10  R.Paz    │
+│ ✕ Cancelación — Cancha 1 22:00-23:00          18:00  A.López  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 Root: `space-y-6` dentro del `<main>` del shell (que ya da `max-w-7xl px-4 py-8`). Sin `<main>`
 propio (el shell ya lo es).
 
-- **PageHeader**: título "Inicio", subtitle = fecha de hoy formato **medio** §8.3
-  (`"mié 2 de julio"` — nunca "miércoles, 1 de julio" con coma ni ISO). Action: link
-  **"Ir a la grilla"** — `bg-primary text-primary-foreground hover:bg-primary/90` (token AA dual,
-  NO el primitive `Button` que sigue hardcodeado — P0.1). Es el paso siguiente natural de la vista
-  (Fitts: el CTA del día, grande y arriba).
-- Se elimina el `<h2>Hoy</h2>`: la fecha ya está en el header y cada KPI dice "hoy" en su label.
-  Título de sección redundante = una línea menos antes del dato.
+- **PageHeader**: título "Hoy" (renombrado de "Inicio" en Fase 2 — el nombre del concepto de
+  producto y el label de nav ya coinciden, sin esperar el "test de vocabulario" del pase crítico
+  §4.9 porque el contrato lo pidió así para la demo comercial), subtitle = fecha de hoy formato
+  **medio** §8.3 (`"mié 2 de julio"`). **Sin acciones en el header** (cambio respecto a la v1):
+  Hoy "no es una pantalla de hacer" (contrato §4.1) — reservar y vender cantina se sacaron de acá,
+  siguen existiendo en Grilla/Caja tal cual.
 
-## §2 KPIs — mapa canónico
+## §2 Los 3 números — mapa canónico
 
-Cuatro cards, ni una más (Miller §9: plata / turnos / pendiente / bloqueos). Primitiva: `StatCard`
-vía `MetricCard` (que ahora acepta `accent`, `sub`, `href`). **Cada card entera es un link**
-(Fitts): envuelta en `<Link>` con `aria-label` descriptivo; `card-premium-interactive` ya da el
-hover-lift.
+Tres cards, ni una más (el contrato es explícito: "tres cifras, tipografía enorme, cero
+decoración"). Primitiva: `StatCard` vía `MetricCard`. Cada card entera es un link (Fitts).
 
-Orden fijo (serial position §9: la plata primero):
-
-| # | Card | Valor (`font-display tabular-nums`) | Sub | Accent/Ícono | Link | Semántica §2.5 |
-|---|---|---|---|---|---|---|
-| 1 | **Caja de hoy** | saldo neto del día, `formatArs`. Negativo: `−$ 1.500` en `text-red-700 dark:text-red-400` (signo + color, nunca color solo) | `Ingresos $ X · Egresos $ Y` | `emerald` / `Banknote` | `/caja` | success = entra |
-| 2 | **Turnos hoy** | `8 de 24` (horas reservadas de horas disponibles). Día cerrado: `Cerrado` | `33% de ocupación` (+ ` · 2 bloqueados` si hay) | `slate` (neutro, NUEVO) / `CalendarCheck` | `/grilla` | neutro — no gasta un hue del semáforo |
-| 3 | **Esperando seña** | cantidad de reservas `pending_payment` de hoy | `$ X en señas por acreditar` · si 0: `Sin pendientes` | `amber` / `Clock` | `/reservas?status=pending_payment` | warning = pendiente |
-| 4 | **Jugadores bloqueados** | `COUNT` de bans vigentes en `tenant_player_bans` (softban por no-show + bans manuales) | `2 con bloqueo activo` · si 0: `Nadie bloqueado` | `red` (NUEVO) / `UserX` | `/jugadores` | destructive = bloqueo |
+| # | Card | Valor | Sub | Accent/Ícono | Link |
+|---|---|---|---|---|---|
+| 1 | **Cobrado hoy** | `formatArs(numbers.collectedTodayCents)` | comparación honesta: `↑/↓ N% vs. semana pasada` o "Igual que la semana pasada" o "Sin dato de la semana pasada" (primera semana del tenant) | `emerald` / `Banknote` | `/caja` |
+| 2 | **Turnos de hoy** | `9 de 12` (ocupadas de disponibles). Día cerrado: `Cerrado`. 0 disponibles con oferta real: solo el numerador (evita "N de 0" / "0%" engañoso) | `75% de ocupación` (+ ` · N bloqueados` si hay) | `slate` (neutro) / `Clock` | `/grilla` |
+| 3 | **Plata en la calle** | `formatArs(numbers.streetMoneyCents)` — MISMA fuente que `/caja` y `/caja/deudas` (`getStreetMoney`, Fase 1); nunca se recalcula acá | "Pendiente de cobro" o "Nada pendiente" | `amber` si > 0, si no `emerald` / `Banknote` | `/caja/deudas` |
 
 Reglas:
 
-- **"Revenue" muere** (§8.1). Y no se reemplaza 1:1: "ingresos proyectados" (Σ price_snapshot de
-  reservas del día) era un número mentiroso — mezclaba plata cobrada con plata prometida. El KPI
-  de plata es **la caja real** (`getDaySummary`, la misma fuente que `/caja`): si el dashboard y
-  la caja dicen números distintos, el admin deja de confiar en los dos.
-- **"Abonados activos" sale del dashboard**: no cambia día a día ni exige acción hoy. Vive en
-  `/abonados`. Un KPI que siempre dice lo mismo es ruido que compite con los que sí importan.
-- Los bloqueos son **acumulados** (no "hoy") — el label no dice "hoy" a propósito.
-- Accents de `StatCard`: se agregan `red` y `slate` al mapa existente (mismo patrón alpha
-  `bg-*-500/10 text-*-600 ring-*-500/20` + variantes dark). Los 4 hues del semáforo §2.5 solo se
-  usan con su significado; por eso Turnos usa `slate` y no un verde decorativo.
-- Sin delta "vs ayer" en Caja: a las 10:00 el día en curso siempre pierde contra un día terminado
-  — flecha roja mentirosa toda la mañana. La comparativa vive en `/caja` (donde hay contexto).
+- **Comparación semanal, no diaria**: el negocio es semanal (mismo día de la semana pasada, nunca
+  "ayer" — comparar un miércoles contra un martes es ruido). `compareToLastWeek`
+  (`src/modules/home/home.lib.ts`) es la función pura que decide dirección/porcentaje; sin dato de
+  la semana pasada (`sameWeekdayLastWeekCents === 0`) no se inventa un porcentaje.
+- **Fuente única**: "Plata en la calle" viene de `getStreetMoney`/`sumStreetMoney` (Fase 1) — el
+  mismo número en Hoy, en el encabezado de Caja y en `/caja/deudas`, garantizado por diseño
+  (`getHoyData` la llama una sola vez y deriva todo lo demás de ese mismo array).
+- Sin delta "vs ayer" en ninguna de las 3 — el negocio es semanal, no diario (ver arriba).
 
-## §3 Próximos turnos
+## §3 "Necesita tu atención" — taxonomía cerrada
 
-Card `card-premium rounded-2xl`. Header: `h2` "Próximos turnos" (`text-base font-semibold`) +
-link "Ver grilla →" (`text-sm font-semibold text-emerald-700 dark:text-emerald-400`).
+Fuente de verdad: `docs/decisions/2026-08-02-taxonomia-alertas-hoy.md`. Exactamente 3 eventos v1,
+en este orden de prioridad (P1→P3), y dentro de cada prioridad por antigüedad ascendente:
 
-**Qué lista**: reservas de HOY (día ART) con `type ≠ 'block'`, estado `confirmed` o
-`pending_payment`, cuyo fin normalizado al día operativo es posterior a ahora (incluye la que está
-**en curso**). Orden por comienzo normalizado (madrugada operativa al final, igual que la grilla).
-Máximo **6 filas** + footer "N turnos más — ver grilla →" si desborda.
+1. **Turno terminado sin cobrar** — inmediato (sin ventana de gracia). "Cobrar $X" → `/reservas/[id]`.
+2. **Seña que falló** — inmediato. "Ver reserva" → `/reservas/[id]`.
+3. **Caja de ayer sin cerrar** — solo T-1, binario. "Cerrar caja de ayer" → `/caja`.
 
-Fila (entera clickeable → `/reservas/[id]`, `divide-y divide-border`):
+Componente: `src/components/dashboard/NeedsAttention.tsx`. Cada fila: ícono ámbar + descripción +
+botón de acción (`buttonVariants` default — jerarquía única de Fase 0, nunca un botón custom).
 
-| Zona | Contenido | Clases |
-|---|---|---|
-| Hora | `18:00` + debajo relativo §8.3: `ahora` (en curso) / `en 40 min` (≤ 60 min) / nada | hora `font-display text-lg font-bold tabular-nums`; relativo `text-xs font-medium text-emerald-700 dark:text-emerald-400` |
-| Quién | nombre (guest o jugador; fallback "Sin nombre") + `Cancha 1 · 18:00–19:00` | nombre `text-sm font-medium text-foreground truncate`; detalle `text-xs text-muted-foreground tabular-nums` |
-| Estado | badge §2.6/§8.5 (mismo mapa que la grilla): Esperando seña (`Clock`, warning) / Señada (`CheckCircle2`, success) / Abonado (`Repeat`, info) / Confirmada (`HandCoins`, info) | pill `text-xs font-medium` con tinte alpha del token + texto en escala AA (amber-800/emerald-800/blue-800 light · *-300 dark) |
-| Monto | `formatArs(priceSnapshot)` | `text-sm font-semibold tabular-nums text-foreground` |
+**Vacío = el premio** (contrato, verbatim, nunca parafraseado): *"Nada pendiente. Todo cobrado y
+cerrado."* — vía `EmptyState` con ícono `CheckCircle2`. Una cuarta alerta NO se agrega sin pasar
+primero por el documento de taxonomía (evita degenerar en bandeja de notificaciones, el objetivo
+explícito de la Fase 2).
 
-El relativo responde "quién viene en la próxima hora" sin que el admin calcule: la primera fila
-casi siempre lleva `ahora` o `en X min`. No se agrega ring ni highlight extra — el distinto de la
-vista sigue siendo "Esperando seña" (Von Restorff, uno solo).
+## §4 "Mientras no estabas"
 
-**Estados vacíos** (§7.2, didácticos):
+Feed de lo que pasó sin el admin — momento-magia del producto ("el sistema vendió por vos"):
 
-| Caso | Copy | Extra |
-|---|---|---|
-| Hoy sin reservas | "Todavía no hay reservas para hoy." | CTA link "Cargar la primera desde la grilla" |
-| Hubo, pero no quedan | "No quedan turnos por jugar hoy — se jugaron N." | link "Ver el día en la grilla" |
-| Día cerrado (closed_dates o sin horario) | "Hoy el complejo está cerrado." | — |
+- **Reserva online entrante**: `bookings` creadas sin staff (`created_by_staff IS NULL`) hoy.
+- **Cancelación**: `canceled_by IN ('player','system')` hoy (excluye lo que el propio staff
+  canceló — no hace falta avisarle de su propia acción).
+- **Seña acreditada**: `payments` tipo `deposit`, `status='approved'`, `processed_at` hoy.
 
-## §4 Checklist de configuración — compacta
+Orden: más reciente primero (es un feed de lectura, no una cola a resolver — a diferencia de
+"Necesita tu atención", que ordena por prioridad). Componente:
+`src/components/dashboard/WhileYouWereAway.tsx`. Vacío: "Nada nuevo desde la última vez." (copy
+liviano, sin la carga simbólica del vacío-premio de §3 — acá no haber pasado nada no es un logro,
+es solo información).
 
-Problema v1: la lista completa de 7 pasos (~340px) empujaba los KPIs bajo el fold aun con 4 tildados.
-Rediseño **Zeigarnik puro**: lo pendiente visible y accionable, lo hecho plegado.
+## §5 Checklist de configuración — sin cambios de Fase 2
 
-- Header (una fila): "Configuración del complejo" + `5 de 7` + barra de progreso (existente).
-- Cuerpo: **solo los pasos pendientes**, cada uno con su CTA actual (Configurar → href,
-  Copiar link, hint de primera reserva).
-- Los completados se pliegan a una fila-toggle: `"5 pasos completados"` + chevron
-  (`aria-expanded`); expandir muestra la lista tachada actual.
-- 7/7 → banner verde "¡Tu complejo está 100% listo!" (existente). Cuando además
-  `onboarding_completed && public_link_shared` → **no se renderiza nada** (regla existente de la
-  page, se mantiene).
-- Posición: entre el header y los KPIs. Con el pliegue, el peor caso realista (3 pendientes)
-  mide ~180px y no entierra la plata.
+Se mantiene tal cual (Zeigarnik: pendientes visibles, completados plegados) — ver historial
+pre-Fase 2 de este documento en git. Fase 2 no lo tocó.
 
-Contratos de test: el botón "Copiar link" sigue visible sin expandir mientras
-`publicLinkShared=false` (es un pendiente). El ítem completado "Primera reserva online recibida"
-queda bajo el toggle — el e2e del Aha Moment expande "N pasos completados" antes de asertar.
+## §6 Copy (§8 de MASTER.md es normativa)
 
-## §5 Copy (§8 es normativa)
+- "Inicio" → **"Hoy"** (nav y `PageHeader`, Fase 2).
+- Plata SIEMPRE `formatArs`. Fecha del header formato medio §8.3; ISO prohibido cara al usuario.
+- El vacío de "Necesita tu atención" es TEXTO EXACTO del contrato — no parafrasear ni "mejorar".
+- Voseo verbo-primero en acciones ("Cobrar $X", "Cerrar caja de ayer", "Ver reserva").
 
-- "Revenue hoy" → **"Caja de hoy"**. "Dashboard" → **"Inicio"** (ya en nav).
-- Plata SIEMPRE `formatArs` de `src/lib/format.ts` (fuente única §8.2 — el dashboard deja de
-  tener su propio `formatARS` local; P0.2 del MASTER avanza vista por vista).
-- Fecha del header formato medio §8.3; ISO prohibido cara al usuario.
-- Estados con vocabulario §8.5 exacto: "Esperando seña", "Confirmada", "Señada", "Abonado".
-- Voseo verbo-primero en vacíos y CTAs ("Cargar la primera desde la grilla").
+## §7 Layout y responsive
 
-## §6 Layout y responsive
-
-- KPIs: `grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4`. En 375px quedan 2×2 arriba del fold
-  junto al header — el barrido de 3 segundos sobrevive en mobile.
-- Próximos turnos: filas de una línea con `min-h-[44px]` táctil; el monto se oculta en `<sm`
-  si no entra (`hidden xs:block` no existe — usar `hidden sm:block` en el monto y dejarlo en el
-  detalle de la fila si hace falta). Nombre con `truncate` + `min-w-0`.
+- Los 3 números: `grid grid-cols-2 gap-3 lg:grid-cols-3`. En 375px, "Cobrado hoy" ocupa las 2
+  columnas (es el número que domina — serial position, la plata primero); los otros dos van 1 y 1
+  debajo.
+- "Necesita tu atención"/"Mientras no estabas": filas de una línea con `min-h-11` táctil; en
+  mobile el botón de acción baja a una segunda línea (`flex-col sm:flex-row`).
 - Sin scroll horizontal en ningún viewport.
 
-## §7 Motion
+## §8 Motion
 
-- **Se elimina `Reveal`** (entrada escalonada 0/80/160ms): el objetivo es leer el dato en 3
-  segundos, no verlo aparecer. Presupuesto admin §5.2: el dato primero. El único motion es el
-  hover-lift heredado de `card-premium-interactive` (≤200ms) y la barra de progreso del checklist.
-- Nada de pulsos ni Realtime acá (v1: Realtime es solo de la grilla).
+- Hover-lift heredado de `card-premium-interactive`/`card-entrance` (≤200ms), igual que el resto
+  del admin. Nada de pulsos ni Realtime (v1: Realtime es solo de la grilla) — Hoy es
+  server-render por request, refrescar = volver a entrar.
 
-## §8 Accesibilidad
+## §9 Accesibilidad
 
-- Cards-link con `aria-label` completo: `"Caja de hoy: $ 45.000 — ver caja"`.
-- `tabular-nums` en todo número (§3 tipografía).
-- Color nunca solo: deudas/negativos llevan signo y texto; badges llevan ícono + label.
-- El toggle de completados del checklist: `<button aria-expanded>`.
+- Cards-link con `aria-label` (heredado de `MetricCard`).
+- `tabular-nums` en todo número.
+- Color nunca solo: las alertas llevan ícono + texto, no solo un tinte ámbar.
 - Focus visible en todas las filas/links (ring token, heredado).
 
-## §9 Datos (server, sin client fetch)
+## §10 Datos (server, sin client fetch)
 
-- Fuente única de "hoy": `todayART()` (`shared/time/art-date`). El día de caja y el de reservas
-  usan la MISMA fecha (coherencia entre KPI 1 y `/caja`).
-- `getDashboardData(tenantId)` — un `withTenantContext`, en paralelo:
-  - `getDaySummary` + reservas de hoy (join court name + player) + `COUNT` de bans vigentes en
-    `tenant_player_bans` + canchas (para nombre/online).
-  - Ocupación derivada con helpers puros (`dashboard-lib.ts`, unit-testeados):
-    horas reservadas (no-block, estados activos) / (slots del día × canchas online − horas
-    bloqueadas). Slots del día = `generateTimeSlots(open, close, closesNextDay)` del día ART
-    (`DAY_KEYS`), respetando `closed_dates`.
-  - Próximos: normalización al día operativo (minutos < apertura → +1440 con `closesNextDay`),
-    así la madrugada ordena al final y `'24:00'` compara bien.
-- `getChecklistState` se mantiene tal cual.
+- **Fuente única de agregación**: `getHoyData(tenantId, tx, opts)`
+  (`src/modules/home/home.service.ts`) — un solo `withTenantContext`, agrega en paralelo:
+  `getDaySummary` ×2 (hoy y hace 7 días, para la comparación semanal), `getStreetMoney` (Fase 1,
+  una sola vez), ocupación (reusa `daySlotsFor`/`occupancyForDay` de `day-bookings.ts`),
+  `getDailyClose`/`getDayOpen` de ayer (alerta #3), y 2 queries nuevas (seña fallida hoy,
+  reservas/cancelaciones/señas del feed).
+- `date` = día operativo (`operatingDateOf`/`nightCutoffMins`, mismo criterio que el resto del
+  admin — nunca UTC calendario puro).
+- `getChecklistState` se mantiene tal cual (sin cambios de Fase 2).
 - Nada de Realtime/polling: server-render por request. Refrescar = volver a entrar (patrón v1).
 
-## §10 Deuda conocida / fuera de scope
+## §11 Deuda conocida / fuera de scope
 
-1. **Madrugada operativa**: a las 00:30 el dashboard muestra el día calendario nuevo, no la noche
-   operativa en curso (mismo edge documentado en `grilla.md` §14 — se resuelven juntos).
-2. Los KPIs no se auto-refrescan (sin Realtime en dashboard v1). Si algún día duele, el push de
-   reserva online ya avisa.
-3. Gráfico de barras semanal / tendencias: pertenece a Reportes (§0 anti-objetivo).
-4. `StatCard` sigue con clases raw de paleta (no tokens semánticos) — coherente con su estado
-   actual; se tokeniza cuando toque el barrido P0.1/P0.2.
+1. **Madrugada operativa**: a las 00:30 la pantalla muestra el día operativo en curso, no un
+   corte de medianoche calendario — comportamiento correcto, mencionado acá para que no se lea
+   como bug (mismo criterio que `grilla.md`).
+2. Sin auto-refresh (sin Realtime en Hoy v1).
+3. **Resumen diario (D8)**: push/email fuera de esta pantalla — ver worker
+   `src/shared/jobs/workers/daily-summary.worker.ts` y `/settings/avisos` (opt-in de email).
+4. `StatCard` sigue con clases raw de paleta (no tokens semánticos) — deuda heredada de F1,
+   sin cambios acá.

@@ -44,7 +44,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Inicio' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Hoy', requiresAdmin: true },
   { href: '/grilla', icon: CalendarDays, label: 'Grilla', tourId: 'tour-grilla' },
   { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
   { href: '/abonados', icon: Users, label: 'Turnos fijos' },
@@ -80,7 +80,10 @@ function SidebarContent({
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 py-5 border-b border-border">
         <div className="flex items-center justify-between w-full">
-          <Link href="/dashboard" className="block outline-hidden rounded-sm">
+          <Link
+            href={staffRole === 'admin' ? '/dashboard' : '/grilla'}
+            className="block outline-hidden rounded-sm"
+          >
             <Logo variant="horizontal" textClassName="text-foreground" />
           </Link>
           {isMobile && (

@@ -7,6 +7,7 @@ const SETTINGS_TABS = [
   { href: '/settings/canchas', label: 'Canchas' },
   { href: '/settings/equipo', label: 'Equipo' },
   { href: '/settings/facturacion', label: 'Facturación' },
+  { href: '/settings/avisos', label: 'Avisos' },
 ]
 
 /** Tab bar única de /settings (antes duplicada en las 4 páginas). */

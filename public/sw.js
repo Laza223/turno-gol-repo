@@ -58,14 +58,24 @@ self.addEventListener('push', (event) => {
         courtName: payload.courtName,
         dateLabel: payload.dateLabel,
         timeLabel: payload.timeLabel,
+        summaryLabel: payload.summaryLabel,
         url: payload.url,
         type: payload.type,
       })
     })
     bc.close()
     if (acked) return
-    const title = payload.courtName ? `Nueva reserva — ${payload.courtName}` : 'Nueva reserva'
-    const body = [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
+    // daily_summary (D8, Fase 2): resumen diario, no una reserva nueva —
+    // title/body propios, si no cae en el fallback "Nueva reserva" incorrecto.
+    const isDailySummary = payload.type === 'daily_summary'
+    const title = isDailySummary
+      ? 'Resumen de ayer'
+      : payload.courtName
+        ? `Nueva reserva — ${payload.courtName}`
+        : 'Nueva reserva'
+    const body = isDailySummary
+      ? payload.summaryLabel || ''
+      : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
     const url = payload.url || '/grilla'
     await self.registration.showNotification(title, {
       body,

@@ -21,6 +21,7 @@ type WorkerFixtures = {
   playerStorageState: string
   freshAdminStorageState: string
   secondAdminStorageState: string
+  managerStorageState: string
 }
 
 export const test = base.extend<NonNullable<unknown>, WorkerFixtures>({
@@ -45,6 +46,12 @@ export const test = base.extend<NonNullable<unknown>, WorkerFixtures>({
   secondAdminStorageState: [
     async ({}, use) => {
       await use(loadStorageState('admin-2'))
+    },
+    { scope: 'worker' },
+  ],
+  managerStorageState: [
+    async ({}, use) => {
+      await use(loadStorageState('manager'))
     },
     { scope: 'worker' },
   ],

@@ -32,9 +32,11 @@ type Story = StoryObj<typeof meta>
 
 export const RutaDashboard: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
+  // requiresAdmin (D5: "Hoy" es solo del admin) — sin staffRole='admin' el ítem no renderiza.
+  args: { staffRole: 'admin' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByRole('link', { name: 'Inicio' })[0]).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getAllByRole('link', { name: 'Hoy' })[0]).toHaveAttribute('aria-current', 'page')
   },
 }
 
@@ -43,6 +45,17 @@ export const RutaGrilla: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toHaveAttribute('aria-current', 'page')
+  },
+}
+
+/** D5: el manager no tiene "Hoy" — el ítem no debe aparecer en su nav. */
+export const RolManager: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/grilla' } } },
+  args: { staffRole: 'manager' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('link', { name: 'Hoy' })).not.toBeInTheDocument()
+    await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toBeInTheDocument()
   },
 }
 

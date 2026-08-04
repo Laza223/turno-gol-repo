@@ -43,8 +43,8 @@ type Slot = {
   timeStart: string
   durationMins: 60 | 120
   /**
-   * Estado de la cancha preseleccionada (BookingGrid/QuickBookingButton la
-   * traen de CourtRow — ver settings/canchas). Opcional: sin este dato
+   * Estado de la cancha preseleccionada (BookingGrid la trae de CourtRow —
+   * ver settings/canchas). Opcional: sin este dato
    * (stories/tests viejas, u otro caller que no lo cablea) el modal no
    * bloquea el submit — mismo criterio "fail open" que checkAvailabilityAction.
    */

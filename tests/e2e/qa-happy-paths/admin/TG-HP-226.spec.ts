@@ -79,6 +79,16 @@ test.describe('TG-HP-226 — Equipo: invitar Encargado + gate solo-admin', () =>
       await suppressPushPrompt(managerContext)
       const managerPage = await managerContext.newPage()
 
+      // inviteUserByEmail deja force_password_change=true (staff/actions.ts:241):
+      // (admin)/layout.tsx:59 fuerza /reset-password en CUALQUIER ruta admin antes
+      // que requireAdminStaff corra — sin este paso el redirect a /reset-password
+      // tapa el gate de rol que este test quiere probar (ver TG-HP-312).
+      await managerPage.goto('/reset-password')
+      await managerPage.fill('#password', 'QaHp226Reset!')
+      await managerPage.fill('#confirmPassword', 'QaHp226Reset!')
+      await managerPage.getByRole('button', { name: 'Guardar contraseña' }).click()
+      await expect(managerPage).toHaveURL(/\/dashboard/, { timeout: 15_000 })
+
       await managerPage.goto('/settings/equipo')
       await expect(managerPage).toHaveURL(/\/dashboard/, { timeout: 15_000 })
 

@@ -1,4 +1,4 @@
-event.notification.data.url) || '/grilla'payload.url || '/grilla'/* TurnoGol Push Service Worker (Fase F9)
+/* TurnoGol Push Service Worker (Fase F9)
  *
  * Scope: registered with { scope: '/' } from PushNotificationManager. NO puede
  * ser '/admin/': `(admin)` es un route group de Next y no aparece en la URL, así

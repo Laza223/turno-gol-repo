@@ -27,3 +27,4 @@ export const Perfil: Story = { args: { active: '/settings/perfil' } }
 export const Reservas: Story = { args: { active: '/settings/reservas' } }
 export const Horarios: Story = { args: { active: '/settings/horarios' } }
 export const Facturacion: Story = { args: { active: '/settings/facturacion' } }
+export const Avisos: Story = { args: { active: '/settings/avisos' } }

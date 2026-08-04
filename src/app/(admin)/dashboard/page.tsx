@@ -1,34 +1,22 @@
 import { redirect } from 'next/navigation'
-import {
-  Banknote,
-  CalendarCheck,
-  Clock,
-  LayoutDashboard,
-  ShoppingBag,
-} from 'lucide-react'
+import { Banknote, Clock, LayoutDashboard } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
-import { getDailyClose } from '@/modules/cashflow/daily-close.service'
-import { listProducts } from '@/modules/canteen/canteen.service'
-import { listCourts } from '@/modules/courts/court.service'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
+import { daySlotsFor } from '@/lib/dashboard/day-bookings'
+import { getHoyData } from '@/modules/home/home.service'
+import { compareToLastWeek } from '@/modules/home/home.lib'
 import { MetricCard } from '@/components/dashboard/metric-card'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
-import { UpcomingBookings } from '@/components/dashboard/upcoming-bookings'
-import { DashboardCanteenButton } from '@/components/dashboard/DashboardCanteenButton'
-import { QuickBookingButton } from '@/components/booking/QuickBookingButton'
+import { WhileYouWereAway } from '@/components/dashboard/WhileYouWereAway'
+import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
-import { getDashboardData, getChecklistState } from './queries'
+import { getChecklistState } from './queries'
 import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
-import { sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
-import {
-  createBookingAction,
-  checkSlotAvailabilityAction,
-  searchBookingPlayersAction,
-} from '@/app/(admin)/reservas/actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -42,6 +30,14 @@ function todayMediumArt(): string {
   return `${weekday} ${day} de ${month}`
 }
 
+function comparisonSub(collectedCents: number, lastWeekCents: number): string {
+  const cmp = compareToLastWeek(collectedCents, lastWeekCents)
+  if (cmp.deltaPct === null) return 'Sin dato de la semana pasada'
+  if (cmp.direction === 'flat') return 'Igual que la semana pasada'
+  const pct = Math.abs(Math.round(cmp.deltaPct))
+  return cmp.direction === 'up' ? `↑ ${pct}% vs. semana pasada` : `↓ ${pct}% vs. semana pasada`
+}
+
 export default async function DashboardPage() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
@@ -49,24 +45,31 @@ export default async function DashboardPage() {
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/login')
 
-  const [data, checklistState, products, courts, staffRole] = await Promise.all([
-    getDashboardData({
-      id: tenant.id,
-      openingHours: tenant.openingHours,
-      closedDates: tenant.closedDates,
-      closesNextDay: tenant.closesNextDay,
-    }),
-    getChecklistState(tenant.id, tenant.settings, !!tenant.mpConnectedAt),
-    withTenantContext(tenant.id, (tx) => listProducts(tenant.id, tx)),
-    withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx)),
-    getStaffRole(tenant.id, user.staffUserId),
-  ])
+  const staffRole = await getStaffRole(tenant.id, user.staffUserId)
 
-  // Mismo criterio que /caja/cantina: caja del día cerrada → venta rápida
-  // deshabilitada (bug: este botón no lo chequeaba y dejaba armar el ticket
-  // entero antes de que el servidor lo rechace).
-  const dailyClose = await withTenantContext(tenant.id, (tx) => getDailyClose(tenant.id, data.date, tx))
-  const saleDisabled = dailyClose !== null
+  // D5 (docs/planning/2026-08-01-decisiones-de-fase-v2.md): "Hoy" es solo del
+  // admin — no existe versión manager. Mismo patrón que requireAdminStaff
+  // (guards.ts:124), destino invertido: acá rebota A la grilla en vez de
+  // rebotar DESDE ella. Los 9 call-sites que hacen redirect('/dashboard')
+  // genérico (login, onboarding, etc.) siguen aterrizando acá sin tocarlos —
+  // el rebote ocurre en el primer render de esta página.
+  if (staffRole !== 'admin') redirect('/grilla')
+
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const date = operatingDateOf(new Date(), cutoffMins)
+
+  const [data, checklistState] = await Promise.all([
+    withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, {
+        date,
+        cutoffMins,
+        openingHours: tenant.openingHours,
+        closedDates: tenant.closedDates,
+        closesNextDay: tenant.closesNextDay,
+      }),
+    ),
+    getChecklistState(tenant.id, tenant.settings, !!tenant.mpConnectedAt),
+  ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
   // podía dar "por terminado" el onboarding con canchas/horarios sin cargar).
@@ -76,53 +79,35 @@ export default async function DashboardPage() {
     tenant.settings.onboarding_completed === true && !tenant.settings.admin_tour_seen_at
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const { caja, occupancy, pendingDeposits, canteenSales } = data
+  const { numbers, whileYouWereAway, needsAttention } = data
 
-  const cajaValue =
-    caja.balanceCents < 0 ? (
-      <span className="text-red-700 dark:text-red-400">−{formatArs(-caja.balanceCents)}</span>
-    ) : (
-      formatArs(caja.balanceCents)
-    )
-
-  // Bug: con 0 canchas online (o todo bloqueado) el denominador da 0 pero el
-  // numerador puede seguir contando reservas reales — evitamos el "N de 0"
-  // literal y el "0% de ocupación" engañoso mostrando solo el numerador.
-  const noAvailability = !data.dayIsClosed && occupancy.available === 0
-  const turnosValue = data.dayIsClosed
+  // Bug preexistente (heredado de /dashboard v1): con 0 canchas online (o todo
+  // bloqueado) el denominador da 0 pero el numerador puede seguir contando
+  // reservas reales — evitamos el "N de 0" literal y el "0% de ocupación"
+  // engañoso mostrando solo el numerador. dayIsClosed se recalcula acá (pura,
+  // sin DB) porque getHoyData no distingue "día cerrado" de "0 disponible".
+  const dayIsClosed =
+    daySlotsFor(date, tenant.openingHours, tenant.closedDates ?? [], tenant.closesNextDay).length === 0
+  const noAvailability = !dayIsClosed && numbers.occupancy.available === 0
+  const turnosValue = dayIsClosed
     ? 'Cerrado'
     : noAvailability
-      ? `${occupancy.occupied}`
-      : `${occupancy.occupied} de ${occupancy.available}`
-  const turnosSub = data.dayIsClosed
+      ? `${numbers.occupancy.occupied}`
+      : `${numbers.occupancy.occupied} de ${numbers.occupancy.available}`
+  const turnosSub = dayIsClosed
     ? 'Sin horarios para hoy'
     : noAvailability
       ? 'Sin turnos disponibles hoy'
-      : `${occupancy.pct}% de ocupación${occupancy.blocked > 0 ? ` · ${occupancy.blocked} bloqueados` : ''}`
+      : `${numbers.occupancy.pct}% de ocupación${numbers.occupancy.blocked > 0 ? ` · ${numbers.occupancy.blocked} bloqueados` : ''}`
 
   return (
     <div className="space-y-6">
       {showTour && <DashboardTour action={markTourSeenAction} />}
 
       <PageHeader
-        title="Inicio"
+        title="Hoy"
         subtitle={todayMediumArt()}
         icon={<LayoutDashboard className="h-6 w-6" aria-hidden="true" />}
-        actions={
-          <div className="flex items-center gap-2">
-            <QuickBookingButton
-              courts={courts}
-              createBookingAction={createBookingAction}
-              checkSlotAvailabilityAction={checkSlotAvailabilityAction}
-              searchPlayersAction={searchBookingPlayersAction}
-            />
-            <DashboardCanteenButton
-              products={products}
-              sellTicketAction={sellTicketAction}
-              saleDisabled={saleDisabled}
-            />
-          </div>
-        }
       />
 
       {showChecklist && (
@@ -132,27 +117,16 @@ export default async function DashboardPage() {
           appUrl={appUrl}
           action={markPublicLinkSharedAction}
           onDismiss={markChecklistDismissedAction}
-          staffRole={staffRole ?? 'manager'}
+          staffRole={staffRole}
         />
       )}
-
-      <div className="card-entrance" style={{ animationDelay: '240ms' }}>
-        <UpcomingBookings
-          upcoming={data.upcoming}
-          playedToday={data.playedToday}
-          dayIsClosed={data.dayIsClosed}
-          nowHhmm={data.nowHhmm}
-          openHhmm={data.openHhmm}
-          closesNextDay={data.closesNextDay}
-        />
-      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <div className="card-entrance order-first col-span-2 lg:order-0 lg:col-span-1">
           <MetricCard
-            label="Caja del día"
-            value={cajaValue}
-            sub={`Ingresos: ${formatArs(caja.incomeCents)} · Egresos: ${formatArs(caja.expenseCents)}`}
+            label="Cobrado hoy"
+            value={formatArs(numbers.collectedTodayCents)}
+            sub={comparisonSub(numbers.collectedTodayCents, numbers.collectedSameWeekdayLastWeekCents)}
             icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
             href="/caja"
           />
@@ -163,40 +137,29 @@ export default async function DashboardPage() {
             value={turnosValue}
             sub={turnosSub}
             icon={<Clock className="h-4 w-4" aria-hidden="true" />}
+            accent="slate"
             href="/grilla"
           />
         </div>
         <div className="card-entrance" style={{ animationDelay: '160ms' }}>
           <MetricCard
-            label="Ventas de cantina"
-            value={formatArs(canteenSales.amountCents)}
-            sub={`${canteenSales.count} ${canteenSales.count === 1 ? 'venta' : 'ventas'} hoy`}
-            icon={<ShoppingBag className="h-4 w-4" aria-hidden="true" />}
-            href="/caja/cantina"
+            label="Plata en la calle"
+            value={formatArs(numbers.streetMoneyCents)}
+            sub={numbers.streetMoneyCents > 0 ? 'Pendiente de cobro' : 'Nada pendiente'}
+            icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
+            accent={numbers.streetMoneyCents > 0 ? 'amber' : 'emerald'}
+            href="/caja/deudas"
           />
         </div>
       </div>
 
-      {pendingDeposits.count > 0 && (
-        <div className="card-entrance rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10" style={{ animationDelay: '320ms' }}>
-          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
-            <CalendarCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">
-                {pendingDeposits.count}{' '}
-                {pendingDeposits.count === 1 ? 'seña pendiente' : 'señas pendientes'} de confirmación
-              </p>
-              <p className="text-xs">
-                Total:{' '}
-                <span className="font-semibold tabular-nums">
-                  {formatArs(pendingDeposits.amountCents)}
-                </span>
-                . Confirmá los pagos desde la lista de reservas.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="card-entrance" style={{ animationDelay: '240ms' }}>
+        <NeedsAttention items={needsAttention} />
+      </div>
+
+      <div className="card-entrance" style={{ animationDelay: '320ms' }}>
+        <WhileYouWereAway items={whileYouWereAway} />
+      </div>
     </div>
   )
 }

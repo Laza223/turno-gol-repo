@@ -40,6 +40,9 @@ export type TenantSettings = {
   admin_tour_seen_at?: string
   /** ISO timestamp: cuándo el admin descartó manualmente la checklist de onboarding. */
   checklist_dismissed_at?: string
+  /** D8 (Fase 2, resumen diario): opt-in explícito, default false — el push
+   *  al admin con PWA es el default gratis, el email tiene costo por tenant×día. */
+  daily_summary_email_opt_in?: boolean
 }
 
 export type CreateTenantInput = {
@@ -80,6 +83,7 @@ export type UpdateTenantSettingsInput = Partial<
     | 'allow_online_booking'
     | 'booking_advance_days'
     | 'auto_complete_minutes'
+    | 'daily_summary_email_opt_in'
   >
 >
 

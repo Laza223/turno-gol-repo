@@ -378,7 +378,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     // Dashboard
     await adminPage.goto('/dashboard')
-    await expect(adminPage.getByRole('heading', { name: 'Inicio' })).toBeVisible()
+    await expect(adminPage.getByRole('heading', { name: 'Hoy' })).toBeVisible()
     await takeShot(adminPage, 'admin', 'dashboard')
 
     // Grilla

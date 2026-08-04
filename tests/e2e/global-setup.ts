@@ -11,6 +11,7 @@ const STORAGE_STATES = {
   player: 'e2e-player@turnogol.test',
   'admin-fresh': 'e2e-admin-fresh@turnogol.test',
   'admin-2': 'e2e-admin-2@turnogol.test',
+  manager: 'e2e-manager@turnogol.test',
 } as const
 
 async function waitForHealth(url: string, timeoutMs = 60_000): Promise<void> {

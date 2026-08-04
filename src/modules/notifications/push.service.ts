@@ -56,14 +56,19 @@ export async function notifyAdminPush(
   const boss = await getBoss()
   await Promise.all(
     subs.map((sub) => {
-      // F3 (hallazgo D4): dedupeKey determinística SOLO para booking
-      // confirmado (el único caller de producción de notifyAdminPush hoy —
-      // ver notifyAdminBookingConfirmed más abajo). Otros tipos de payload
-      // quedan sin dedupeKey: comportamiento viejo, at-least-once sin guard.
+      // F3 (hallazgo D4) + Fase 2 (revisión adversarial, daily_summary):
+      // dedupeKey determinística para los 2 casos donde un retry de pg-boss
+      // (retryLimit=3 en PUSH_SEND_SEND_OPTIONS) puede reintregar el job
+      // push-send tras un fallo post-envío — sin ella, push.worker.ts no
+      // reclama nada en push_send_log y reenvía el mismo push visible al
+      // admin. Otros tipos de payload quedan sin dedupeKey: comportamiento
+      // viejo, at-least-once sin guard.
       const dedupeKey =
         payload.type === 'booking.confirmed_online' && payload.bookingId
           ? `push:booking-confirmed:${payload.bookingId}:${sub.id}`
-          : undefined
+          : payload.type === 'daily_summary' && payload.date
+            ? `push:daily-summary:${tenantId}:${payload.date}:${sub.id}`
+            : undefined
       const data: PushSendJobData = {
         subscription_id: sub.id,
         payload,

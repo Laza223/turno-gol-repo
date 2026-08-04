@@ -18,6 +18,7 @@ export const QUEUE_RECONCILE_PENDING_PAYMENTS = 'reconcile-pending-payments'
 export const QUEUE_RETRY_PENDING_REFUNDS = 'retry-pending-refunds'
 export const QUEUE_HEALTH_PING = 'health-ping'
 export const QUEUE_RECONCILE_ACCOUNTING_DRIFT = 'reconcile-accounting-drift'
+export const QUEUE_DAILY_SUMMARY = 'daily-summary'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 
@@ -61,6 +62,10 @@ export type PushSendJobData = {
     dateLabel?: string
     timeLabel?: string
     url?: string
+    /** daily_summary (D8): día operativo que resume (YYYY-MM-DD) — insumo de la dedupeKey. */
+    date?: string
+    /** daily_summary (D8): copy pre-armado del resumen ("Ayer: $X · N/M · caja..."). */
+    summaryLabel?: string
     [k: string]: unknown
   }
   // F3 (hallazgo D4): clave determinística de idempotencia. Si viene, el

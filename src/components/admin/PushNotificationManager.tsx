@@ -135,6 +135,7 @@ export function PushNotificationManager() {
         courtName?: string
         dateLabel?: string
         timeLabel?: string
+        summaryLabel?: string
         url?: string
         type?: string
       }
@@ -145,11 +146,17 @@ export function PushNotificationManager() {
       bc.postMessage({ id: data.id, ack: true })
       // Render payload-specific toast: title=courtName, description=date+time.
       // SW broadcasts include courtName/dateLabel/timeLabel from the push payload.
-      const title = data.courtName
-        ? `Nueva reserva — ${data.courtName}`
-        : 'Nueva reserva'
-      const description = [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ')
-        || 'Tenés una nueva reserva confirmada en la grilla.'
+      // daily_summary (D8, Fase 2): resumen diario, no una reserva nueva.
+      const isDailySummary = data.type === 'daily_summary'
+      const title = isDailySummary
+        ? 'Resumen de ayer'
+        : data.courtName
+          ? `Nueva reserva — ${data.courtName}`
+          : 'Nueva reserva'
+      const description = isDailySummary
+        ? data.summaryLabel || ''
+        : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ')
+          || 'Tenés una nueva reserva confirmada en la grilla.'
       toast({
         title,
         description,

@@ -37,6 +37,11 @@ const E2E = {
   secondAdminEmail: 'e2e-admin-2@turnogol.test',
   secondAdminAuthUserId: '00000000-0000-4000-8000-000000000006',
   secondStaffUserId: '00000000-0000-4000-8000-000000000007',
+  // Rol Encargado (manager), mismo tenant que el admin 1 — Fase 2 (D5): "Hoy"
+  // es solo-admin, el manager rebota a /grilla. Ver tests/e2e/hoy-screen.spec.ts.
+  managerEmail: 'e2e-manager@turnogol.test',
+  managerAuthUserId: '00000000-0000-4000-8000-000000000008',
+  managerStaffUserId: '00000000-0000-4000-8000-000000000009',
   depositTenantId: '00000000-0000-4000-8000-000000000030',
   depositTenantSlug: 'e2e-complejo-sena',
   depositTenantName: 'E2E Complejo Seña',
@@ -127,6 +132,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.freshStaffUserId} OR email = ${E2E.freshAdminEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.secondStaffUserId} OR email = ${E2E.secondAdminEmail}`
+  await sql`DELETE FROM staff_users WHERE id = ${E2E.managerStaffUserId} OR email = ${E2E.managerEmail}`
 }
 
 async function cleanupAuthUsers(): Promise<void> {
@@ -136,7 +142,13 @@ async function cleanupAuthUsers(): Promise<void> {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY required')
   }
   const supabase = createClient(url, key, { auth: { persistSession: false } })
-  for (const id of [E2E.adminAuthUserId, E2E.playerAuthUserId, E2E.freshAdminAuthUserId, E2E.secondAdminAuthUserId]) {
+  for (const id of [
+    E2E.adminAuthUserId,
+    E2E.playerAuthUserId,
+    E2E.freshAdminAuthUserId,
+    E2E.secondAdminAuthUserId,
+    E2E.managerAuthUserId,
+  ]) {
     const { error } = await supabase.auth.admin.deleteUser(id)
     if (error && !/not found/i.test(error.message)) {
       throw error
@@ -276,6 +288,14 @@ async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
     VALUES (${E2E.tenantId}, ${E2E.secondStaffUserId}, 'admin')
   `
   await sql`
+    INSERT INTO staff_users (id, email, first_name, last_name)
+    VALUES (${E2E.managerStaffUserId}, ${E2E.managerEmail}, ${'E2E'}, ${'Manager'})
+  `
+  await sql`
+    INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role)
+    VALUES (${E2E.tenantId}, ${E2E.managerStaffUserId}, 'manager')
+  `
+  await sql`
     INSERT INTO players (id, email, first_name, last_name, status, agreed_to_terms_at, terms_version)
     VALUES (${E2E.playerId}, ${E2E.playerEmail}, ${'E2E'}, ${'Player'}, 'active', NOW(), 'v1')
   `
@@ -373,6 +393,24 @@ async function seedAuthUsers(): Promise<void> {
     })
     if (error) throw error
   }
+  // Manager (Encargado) auth user — same tenant as admin 1, para D5 (Fase 2:
+  // "Hoy" es solo-admin) y en general cualquier E2E que necesite el rol
+  // no-admin. El claim `role` del JWT nunca se confía (getStaffRole re-lee de
+  // tenant_staff_members), pero extractAuthUser sí necesita tenant_id/staff_user_id acá.
+  {
+    const { error } = await supabase.auth.admin.createUser({
+      id: E2E.managerAuthUserId,
+      email: E2E.managerEmail,
+      email_confirm: true,
+      password: E2E_TEST_PASSWORD,
+      app_metadata: {
+        tenant_id: E2E.tenantId,
+        role: 'manager',
+        staff_user_id: E2E.managerStaffUserId,
+      },
+    })
+    if (error) throw error
+  }
 }
 
 async function main(): Promise<void> {
@@ -393,6 +431,7 @@ async function main(): Promise<void> {
     console.log(`  player: ${E2E.playerEmail} (auth ${E2E.playerAuthUserId})`)
     console.log(`  freshAdmin: ${E2E.freshAdminEmail} (auth ${E2E.freshAdminAuthUserId})`)
     console.log(`  admin2: ${E2E.secondAdminEmail} (auth ${E2E.secondAdminAuthUserId})`)
+    console.log(`  manager: ${E2E.managerEmail} (auth ${E2E.managerAuthUserId})`)
   } finally {
     await sql.end()
   }

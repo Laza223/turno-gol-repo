@@ -248,7 +248,23 @@ export type BookingBadgeVisual = {
   tone: StatusTone
   /** Barra de acento sólida (tira lateral del ítem). */
   accent: string
+  /**
+   * El turno terminó sin cobrar. En el listado esto NO reemplaza al label: es
+   * un flag para pintar un indicador APARTE, al lado del badge de estado.
+   */
+  unpaid: boolean
 }
+
+/**
+ * La píldora de plata del listado y del detalle. Sale de la MISMA fila de
+ * `SLOT_STATES` que pinta la alarma de la grilla, así que las dos superficies
+ * no pueden decir cosas distintas de la misma situación.
+ */
+export const UNPAID_ALARM_BADGE = {
+  label: SLOT_STATES.unpaid_alarm.label,
+  icon: SLOT_STATES.unpaid_alarm.icon,
+  tone: SLOT_STATES.unpaid_alarm.tone,
+} as const
 
 /**
  * El listado NO distingue "Señada" de "Confirmada": el detalle de la seña ya
@@ -256,30 +272,43 @@ export type BookingBadgeVisual = {
  * peso al dato que sí importa ahí. La grilla sí las distingue porque el color
  * es lo único que tiene. Esta divergencia es deliberada — no aplanarla.
  *
- * La alarma "Sin cobrar" NO viaja hoy al listado de /reservas, y no por olvido:
- * `ReservaListRow` no trae `pending`/`totalPaid`, así que esta función degrada
- * al estado del turno. Es deliberado — en la grilla la alarma REEMPLAZA al
- * label, y en un listado cuyo trabajo es mostrar el estado de cada reserva eso
- * colapsaría "Jugada" y "Ausente" en un mismo "Sin cobrar" y perdería
- * información. El contrato de Fase 3 acota la alarma a la grilla (§3, criterio
- * de salida #1).
+ * La alarma de plata viaja al listado como **flag** (`unpaid`), NUNCA como
+ * label. La diferencia es el contrato entero de esta función:
  *
- * REQUIERE INPUT (T7): el detalle de /reservas hoy puede mostrar el badge
- * "Jugada" arriba y "Saldo pendiente: $X" en la sección de Cobros más abajo.
- * No es una regresión (es anterior a Fase 3), pero es una contradicción visible
- * en la misma pantalla. Si se decide unificarlo, hay que decidir ANTES si el
- * badge del listado pasa a hablar de plata o si se agrega un indicador aparte.
+ * - En la grilla la alarma REEMPLAZA al label, porque una celda tiene lugar
+ *   para una sola palabra y ahí lo urgente es la plata.
+ * - En un listado cuyo trabajo es mostrar el estado de cada reserva, reemplazar
+ *   colapsaría "Jugada" y "Ausente" en un mismo "Sin cobrar" y la columna de
+ *   estado dejaría de decir el estado. Por eso el badge sigue diciendo el
+ *   estado del turno y la plata va en una píldora al lado (`UNPAID_ALARM_BADGE`).
+ *
+ * El `accent` sí toma el tono de alarma cuando `unpaid`: MASTER §2.6 asigna el
+ * COLOR al estado de la plata y el ícono+label a qué es la cosa. Una tira verde
+ * al lado de una píldora roja rompería esa partición.
+ *
+ * Esto cierra el REQUIERE INPUT de T7 (el detalle mostraba el badge "Jugada"
+ * arriba y "Saldo pendiente: $X" en Cobros más abajo, contradiciéndose en la
+ * misma pantalla). Decisión del dueño, 2026-08-05: indicador aparte, el badge
+ * de estado no cambia.
  */
 export function bookingBadgeVisual(facts: SlotFacts): BookingBadgeVisual {
   const raw = slotStateKey(facts)
-  const key: SlotStateKey = raw === 'deposit_paid' ? 'confirmed' : raw
+  const unpaid = raw === 'unpaid_alarm'
+  // Con alarma, el estado real se recupera re-preguntando SIN los datos de
+  // plata: `isUnpaidAlarm` degrada a false con `pending`/`totalPaid` nulos, así
+  // que esto devuelve el key que `slotStateKey` habría dado sin alarma. Evita
+  // duplicar la tabla de prioridades y deja intacta la función que pinta la
+  // grilla.
+  const base = unpaid ? slotStateKey({ ...facts, pending: null, totalPaid: null }) : raw
+  const key: SlotStateKey = base === 'deposit_paid' ? 'confirmed' : base
   const meta = SLOT_STATES[key]
   return {
     key,
     label: meta.label,
     icon: meta.icon,
     tone: meta.tone,
-    accent: TONE_ACCENT[meta.tone],
+    accent: unpaid ? TONE_ACCENT[UNPAID_ALARM_BADGE.tone] : TONE_ACCENT[meta.tone],
+    unpaid,
   }
 }
 

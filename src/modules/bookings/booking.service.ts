@@ -45,6 +45,11 @@ import {
 import { physicalRange } from '@/shared/time/physical-range'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rowToBookingRow } from './booking.mappers'
+import { depositCashFlowDescription } from './booking.charges'
+import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
+import { formatArs } from '@/modules/payments/payment.service'
+import { captureMessage } from '@/lib/sentry'
 import { calcDepositCents } from './deposit'
 import { assertTransition } from './booking.state-machine'
 import { transitionFromPendingPayment } from './booking.concurrency'
@@ -55,6 +60,7 @@ import type {
   BookingStatus,
   CreateManualBookingInput,
   CreateOnlineBookingInput,
+  PaymentMethodValue,
   TransitionResult,
 } from './booking.types'
 import { track, withSpan } from '@/shared/observability'
@@ -267,6 +273,27 @@ export async function createManualBooking(
       .returning()
 
     const created = rowToBookingRow(inserted[0]!)
+
+    // La seña que el staff ya cobró en el mostrador tiene que entrar a Caja.
+    // `depositIsCounted` es EL MISMO predicado que `summarizeBookingCharges`
+    // usa para `depositCounted` (booking.charges.ts): la invariante es
+    // "existe fila en cash_flows ⟺ el resumen del turno cuenta la seña".
+    // Con cualquier otro criterio, Caja y el detalle del turno divergen.
+    const depositIsCounted = depositStatus === 'paid' || depositStatus === 'captured'
+    if (depositIsCounted && depositAmount > 0 && input.depositMethod) {
+      await recordManualBookingDepositCashFlow(
+        created,
+        // `input.depositMethod`, NUNCA `created.paymentMethod`: para
+        // 'mercadopago' la columna se persiste NULL (lo exige
+        // chk_booking_payment_consistency, ver arriba) y `cash_flows.method` es
+        // NOT NULL. Acá vive el único rastro del medio real.
+        input.depositMethod,
+        input.staffUserId,
+        tenantId,
+        tx,
+      )
+    }
+
     await invalidateCourtDateSlots(input.courtId, input.date)
     track.booking('booking.manual.create.success', {
       bookingId: created.id,
@@ -278,6 +305,99 @@ export async function createManualBooking(
   } catch (err) {
     if (isExclusionViolation(err)) throw new SlotTakenError()
     throw err
+  }
+}
+
+/**
+ * Inserta el cash_flow de ingreso por la seña que el staff YA cobró al dar de
+ * alta la reserva en el mostrador. Tercer emisor del mismo movimiento, hermano
+ * de `recordManualDepositCashFlow` (confirmar una seña pendiente) y
+ * `recordDepositCashFlow` (webhook de MP), los dos en payment.service.ts.
+ *
+ * Se duplica el patrón en vez de compartir código, por las mismas razones que
+ * ya documenta `recordManualDepositCashFlow`, más una propia: allá el tipo del
+ * método es `ManualDepositMethod`, que excluye 'mercadopago' A PROPÓSITO (esa
+ * seña la confirma el webhook). Acá hace falta el `PaymentMethodValue`
+ * completo: el staff puede cobrar de mostrador con el QR de MP y anotar la
+ * reserva a mano. Unificar obligaría a ensanchar ese tipo y desarmaría el guard
+ * que impide que `confirmDepositPaymentAction` acepte 'mercadopago'.
+ *
+ * OJO — el catch de acá abajo es PARCIAL, no un cinturón de seguridad. Solo
+ * `DayAlreadyClosedError` es realmente atrapable porque lo tira `assertDayOpen`
+ * en JS, ANTES de mandar SQL. Cualquier violación de constraint (amount > 0,
+ * method NOT NULL) aborta la transacción entera en Postgres: el captureMessage
+ * corre igual, pero el COMMIT falla después y la reserva se pierde. Los guards
+ * del caller (`depositAmount > 0`, `input.depositMethod` presente) NO son
+ * redundancia defensiva: son la única razón por la que "una seña mal formada
+ * nunca te hace perder la reserva" es cierto.
+ *
+ * `occurredAt` queda en "ahora" (default de `createCashFlow`), no en
+ * `input.date`: una reserva cargada hoy para el sábado imputa la plata a HOY,
+ * que es cuando el staff la cobró de verdad. Contraintuitivo pero correcto —
+ * la caja del sábado no puede recibir plata que entró el miércoles.
+ */
+async function recordManualBookingDepositCashFlow(
+  booking: BookingRow,
+  method: PaymentMethodValue,
+  staffUserId: string,
+  tenantId: string,
+  tx: DbTx,
+): Promise<void> {
+  try {
+    await createCashFlow(
+      tenantId,
+      staffUserId,
+      {
+        type: 'income',
+        category: 'booking',
+        amount: booking.depositAmount,
+        method,
+        // El literal EXACTO: `getBookingCharges` y `sumBookingChargesByBooking`
+        // excluyen esta fila por match de string para no contar la seña dos
+        // veces (una por `depositCounted`, otra por los cobros de mostrador).
+        // Cualquier otra descripción infla el "cobrado" del turno y desactiva
+        // la alarma "Sin cobrar" de la grilla.
+        description: depositCashFlowDescription(booking.id),
+        bookingId: booking.id,
+      },
+      tx,
+    )
+  } catch (err) {
+    if (err instanceof DayAlreadyClosedError) {
+      captureMessage('manual booking deposit cash_flow skipped: cash register already closed', {
+        level: 'warning',
+        extra: { bookingId: booking.id, tenantId, method },
+      })
+      // Los ids se descartan a propósito: el sweep por cron de send-email
+      // levanta las notificaciones en `queued`, igual que hace
+      // `createOnlineBooking` acá abajo. Despacharlas post-commit sería
+      // latencia, no corrección, y obligaría a cambiar el tipo de retorno de
+      // `createManualBooking` (que 6+ tests y `bookingResponseSchema`
+      // —z.strictObject— dan por fijo).
+      await enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_deposit_after_close',
+          content: {
+            bookingId: booking.id,
+            amountArs: formatArs(booking.depositAmount),
+            method,
+          },
+          triggerEvent: 'payment.deposit_after_close',
+        },
+        tx,
+      )
+      return
+    }
+    captureMessage('manual booking deposit cash_flow skipped: unexpected error recording it', {
+      level: 'warning',
+      extra: {
+        bookingId: booking.id,
+        tenantId,
+        method,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
   }
 }
 

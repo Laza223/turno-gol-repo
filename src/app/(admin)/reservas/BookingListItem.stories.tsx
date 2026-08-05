@@ -45,11 +45,13 @@ function ariaLabelFor(b: ReservaListRow): string {
   const isBlock = b.type === 'block'
   const name = isBlock ? 'Bloqueo' : (b.playerName ?? b.guestName ?? 'Sin nombre')
   const isAbonado = !isBlock && b.type === 'fixed'
+  const visual = reservaStatusVisual(b)
   return [
     `Reserva ${b.timeStart}–${b.timeEnd}`,
     b.courtName,
     name,
-    reservaStatusVisual(b).label,
+    visual.label,
+    visual.unpaid ? 'sin cobrar' : null,
     isAbonado ? 'abonado' : null,
   ]
     .filter(Boolean)
@@ -78,6 +80,31 @@ const ROW_AUSENTE = row({
   depositStatus: 'captured',
   timeStart: '20:00',
   timeEnd: '21:00',
+})
+// Jugada con saldo: el servicio se prestó y falta plata → alarma.
+const ROW_JUGADA_SIN_COBRAR = row({
+  id: uid(1015),
+  status: 'completed',
+  depositStatus: 'not_required',
+  depositAmount: 0,
+  paymentMethod: null,
+  timeStart: '13:00',
+  timeEnd: '14:00',
+  pending: 1_500_000,
+  totalPaid: 0,
+})
+// Ausente sin un peso cobrado (sin seña que capturar) → alarma. Con la seña
+// capturada NO alarmaría: en un no-show la seña es lo único cobrable.
+const ROW_AUSENTE_SIN_COBRAR = row({
+  id: uid(1016),
+  status: 'no_show',
+  depositStatus: 'not_required',
+  depositAmount: 0,
+  paymentMethod: null,
+  timeStart: '21:00',
+  timeEnd: '22:00',
+  pending: 1_500_000,
+  totalPaid: 0,
 })
 const ROW_CANCELADA_REEMBOLSADA = row({
   id: uid(1007),
@@ -236,6 +263,36 @@ export const Ausente: Story = {
   },
 }
 
+/**
+ * El caso que cierra la contradicción del detalle: el badge sigue diciendo
+ * "Jugada" (el estado del turno) y al lado aparece "Sin cobrar" (la plata). Si
+ * la alarma pisara el label —como sí hace en la grilla, donde una celda tiene
+ * lugar para una sola palabra— "Jugada" y "Ausente" colapsarían en el mismo
+ * texto y la columna de estado dejaría de servir.
+ */
+export const JugadaSinCobrar: Story = {
+  args: { booking: ROW_JUGADA_SIN_COBRAR },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Jugada')).toBeVisible()
+    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+    // El aria-label del Link estirado es lo único que escucha un lector de
+    // pantalla navegando por links: la plata tiene que estar ahí adentro.
+    await expect(
+      canvas.getByRole('link', { name: ariaLabelFor(ROW_JUGADA_SIN_COBRAR) }),
+    ).toBeVisible()
+  },
+}
+
+export const AusenteSinCobrar: Story = {
+  args: { booking: ROW_AUSENTE_SIN_COBRAR },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Ausente')).toBeVisible()
+    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+  },
+}
+
 /** Una reserva ya cancelada no puede cancelarse de nuevo: sin acciones rápidas. */
 export const CanceladaConReembolso: Story = {
   args: { booking: ROW_CANCELADA_REEMBOLSADA },
@@ -271,13 +328,15 @@ export const BloqueoAdministrativo: Story = {
   args: { booking: ROW_BLOQUEO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // El aria-label ya prueba "Bloqueo" como nombre Y como estado (BLOCK_VISUAL.label
-    // cubre las dos cosas): getByText('Bloqueo') sería ambiguo, aparece en el nombre
-    // Y en el badge de estado a la vez.
+    // El nombre del cliente y el badge de estado NO dicen lo mismo: la fila se
+    // llama "Bloqueo" y el estado es "Bloqueado". La story esperaba dos
+    // "Bloqueo" de cuando el label del badge era esa misma palabra; Fase 3 lo
+    // renombró en `SLOT_STATES.block` y quedó desalineada.
     await expect(
       canvas.getByRole('article', { name: ariaLabelFor(ROW_BLOQUEO) })
     ).toBeInTheDocument()
-    await expect(canvas.getAllByText('Bloqueo')).toHaveLength(2)
+    await expect(canvas.getByText('Bloqueo')).toBeVisible()
+    await expect(canvas.getByText('Bloqueado')).toBeVisible()
     // Sin importar el status, un bloqueo administrativo nunca ofrece acciones de reserva.
     await expect(canvas.queryByRole('button')).toBeNull()
   },

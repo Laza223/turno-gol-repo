@@ -1071,3 +1071,103 @@ React Doctor pasó de **84/100 (2 errores, 6 warnings)** a **88/100 (0 errores, 
 ## Fase 3 — CERRADA (2026-08-05)
 
 **Gate T0–T5:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline que Fase 2: los 2 que introduje —`setState` síncrono en efecto— se arreglaron montando los diálogos solo cuando se abren) ✅ / unit 299 archivos, 2419 tests ✅ / integration 126 archivos, 1002 tests ✅ / isolation 162/162 ✅. E2E no corrido en esa tanda (sí en T6).
+
+---
+
+## E1 — La seña de mostrador entra a Caja (2026-08-05)
+
+**El bug.** `createManualBooking` (`booking.service.ts`) insertaba la reserva con `deposit_status='paid'` y el monto, pero NUNCA creaba la fila en `cash_flows`. La otra puerta al mismo estado —`confirmManualDepositPayment`, cuando el staff confirma una seña que estaba pendiente— sí la creaba, vía `recordManualDepositCashFlow` (`payment.service.ts:564`). Como `expectedCash = openingCash + cashNet` (`daily-close.service.ts:95`) sale de `cash_flows`, el encargado contaba MÁS efectivo del esperado y `daily_cash_closes.diff_amount` archivaba un sobrante fantasma — irrecuperable, porque el cierre es historia contable y no una vista.
+
+Preexistente, pero los chips de seña del popover de Fase 3 lo volvieron el camino principal de cobro en el mostrador. A nivel turno la cuenta siempre estuvo bien (`booking.debts.ts:77` cuenta la seña pagada como cobrada): el agujero era solo Caja.
+
+**Barrido de clase.** Los caminos que ponen `deposit_status='paid'` son tres: `createManualBooking` (el roto), el webhook de MP (`recordDepositCashFlow` ✅) y `confirmManualDepositPayment` (✅). Verificado que abonados (`abonado.service.ts:133`, worker de slots), torneos (`tournament-slots.service.ts:148`) y las cancelaciones/no-show nacen o quedan en `not_required` / solo mueven `paid → refunded|captured`. No hay un cuarto.
+
+**El fix.** Helper privado `recordManualBookingDepositCashFlow` en `booking.service.ts`, duplicando deliberadamente el patrón de `recordManualDepositCashFlow` en vez de extraerlo: allá el tipo del método es `ManualDepositMethod`, que excluye `'mercadopago'` A PROPÓSITO (esa seña la confirma el webhook), y acá hace falta el `PaymentMethodValue` completo porque el staff puede cobrar con el QR de MP y anotar la reserva a mano. Unificar habría obligado a ensanchar ese tipo y desarmado el guard que impide que `confirmDepositPaymentAction` acepte `'mercadopago'`. El repo ya había tomado y documentado esta misma decisión en `payment.service.ts:560-562`.
+
+Tres guards, cada uno con su razón:
+- `depositIsCounted` (`paid` o `captured`) es EL MISMO predicado que `summarizeBookingCharges` usa para `depositCounted`. La invariante que queda escrita: **existe fila en `cash_flows` ⟺ el resumen del turno cuenta la seña**. Con cualquier otro criterio, Caja y el detalle del turno divergen. Y una seña `pending` es una promesa, no un ingreso: si entrara, el cierre esperaría efectivo que nadie puso en el cajón — el bug espejo.
+- `depositAmount > 0`: `chk_cashflow_amount_positive` rechaza 0, y el schema admite `paid` sin monto.
+- `input.depositMethod` presente: `cash_flows.method` es NOT NULL.
+
+🔴 **El método sale de `input.depositMethod`, NUNCA de `created.paymentMethod`.** Para `'mercadopago'` la columna se persiste NULL (lo exige `chk_booking_payment_consistency`: `payment_id NOT NULL` para ese método, y en el alta manual no hay fila `payments`), así que `created.paymentMethod` sería `null` → violación de NOT NULL → **reserva perdida**. `input.depositMethod` es el único rastro del medio real. Tampoco se toca `paymentMethod`: `reconciliation.service.ts:255` filtra INV4 por `payment_method='mercadopago'` y persistirlo generaría findings permanentes.
+
+⚠️ **El catch es PARCIAL y quedó documentado en el helper.** Solo `DayAlreadyClosedError` es realmente atrapable, porque `assertDayOpen` lo tira en JS ANTES de mandar SQL. Cualquier violación de constraint aborta la transacción entera en Postgres: el `captureMessage` corre igual, pero el COMMIT falla y la reserva se pierde — lo demostró la ruptura R4. Los guards del caller **no son redundancia defensiva: son la única razón** por la que "una seña mal formada nunca te hace perder la reserva" es cierto. El comentario gemelo de `payment.service.ts:556-562` promete más de lo que puede cumplir; no se propagó esa mentira.
+
+**Corrección de clase encontrada leyendo el template.** `admin_deposit_after_close` tenía **"por Mercado Pago" hardcodeado** en el cuerpo del mail. El template nació con un solo emisor (el webhook) y cuando se sumaron los cobros de mostrador pasó a mentir: mandaba al dueño a buscar en el panel de MP una plata que estaba en el cajón. Ese mail es exactamente el que se usa para registrar el movimiento a mano al día siguiente. Ahora `method` es un campo opcional del template con frase propia por medio (`en efectivo` / `por transferencia` / `por Mercado Pago` / `por otro medio`); ausente degrada a Mercado Pago (contrato viejo, para las notificaciones ya encoladas). Los TRES emisores lo pasan. Arregla también el camino preexistente de `confirmManualDepositPayment`, que venía mintiendo desde que existe.
+
+**Idempotencia: garantía indirecta, testeada en vez de duplicada.** El alta manual nace `status='confirmed'` y `confirmManualDepositPayment` exige `pending_payment` vía `transitionFromPendingPayment`, así que el doble cash_flow es estructuralmente imposible. No hay UNIQUE ni idempotency key que lo frene — solo la máquina de estados. Se decidió NO agregar un guard nuevo (sería una segunda fuente de verdad sobre la máquina de estados) y dejar un test que se pone rojo si algún día el alta manual pudiera nacer `pending_payment`.
+
+**Tests nuevos:** `tests/integration/manual-booking-deposit-cashflow.test.ts` (10 casos: efectivo, mercadopago con `payment_method` NULL, transferencia que no mueve el efectivo esperado, no-doble-conteo contra `getBookingCharges`, monto 0, seña `pending`, sin seña, caja ya cerrada con notificación encolada, **el cierre cuadrando con diff 0**, y el no-doble-cobro). `tests/unit/admin-deposit-after-close-template.test.ts` (5 casos; el template no tenía ni uno).
+
+El unit test que el plan pedía para `createManualBooking` se descartó: habría sido puro mock de la cadena de drizzle (insert + `tx.execute` del overlap + el lock de courts) y la integración lo cubre estrictamente mejor. Se cambió por el del template, que no tenía cobertura y cuesta cero mocks.
+
+**7 rupturas controladas ejecutadas** (neutralizar → confirmar el test nombrado en rojo → restaurar → verde):
+
+| # | Neutralización | Cayó |
+|---|---|---|
+| R1 | Borrar la llamada al helper | 6 tests, incl. "el cierre del día cuadra" |
+| R2 | Descripción → `'Seña'` a secas | "descripción canónica" + "no infla el cobrado" |
+| R3 | `input.depositMethod` → `created.paymentMethod` | "mercadopago" — `null value in column "method"`, y se lleva puesta la reserva |
+| R4 | Sacar guard `depositAmount > 0` | "monto 0" — `chk_cashflow_amount_positive`, ídem se lleva la reserva |
+| R5 | Sacar guard `depositIsCounted` | "seña PENDIENTE no toca Caja" |
+| R6 | Sacar el catch de `DayAlreadyClosedError` | "caja ya cerrada" |
+| R7 | `category:'booking'` → `'other'` | "descripción canónica" |
+
+R5 destapó un hueco propio: ningún test cubría una seña `pending`, así que la ruptura no habría fallado. Se agregó el caso ANTES de romper.
+
+**Gate:** typecheck ✅ (0 errores de código; los que salen son de `.next/dev/types/routes.d.ts`, artefacto generado corrupto por un dev server matado a mitad — CI lo regenera) / lint 0 errores, 44 warnings (mismo baseline) ✅ / unit 301 archivos, **2449 tests** ✅ / integration 127 archivos, **1016 tests** ✅ / isolation **162/162** ✅.
+
+Sin verificación en la app: el cambio es 100% de capa de servicio y no toca una línea de UI (`verificacion-ux` explícitamente no aplica a lógica sin UI). Se confirmó estáticamente que el popover manda el payload que el fix consume (`QuickBookingForm.tsx:217-228`: `{depositMethod, depositAmount, depositStatus:'paid'}`), y el test de integración prueba la aritmética del cierre punta a punta contra una DB real.
+
+---
+
+## E3 — Píldora de plata separada del badge en /reservas (2026-08-05)
+
+**La contradicción.** El detalle de una reserva mostraba el badge "Jugada" en verde arriba y "Saldo pendiente: $X" en la sección de Cobros veinte centímetros más abajo, en la misma pantalla. `ReservaListRow` nunca traía `pending`/`totalPaid`, así que `bookingBadgeVisual` degradaba al estado del turno. Anterior a Fase 3; el REQUIERE INPUT quedó anotado en `slot-visual.ts:267` durante T7 porque **el fix ingenuo estaba prohibido**: en la grilla la alarma REEMPLAZA al label, y aplicar eso al listado colapsaba "Jugada" y "Ausente" en un mismo "Sin cobrar", dejando a la columna de estado sin decir el estado.
+
+**Decisión del dueño (2026-08-05): indicador APARTE.** El badge de estado no cambia; se agrega una píldora "Sin cobrar" al lado, solo cuando hay saldo.
+
+**La forma del cambio.** `BookingBadgeVisual` gana `unpaid: boolean` y `bookingBadgeVisual` recupera el estado real re-preguntando **sin** los datos de plata:
+```ts
+const unpaid = raw === 'unpaid_alarm'
+const base = unpaid ? slotStateKey({ ...facts, pending: null, totalPaid: null }) : raw
+```
+`isUnpaidAlarm` degrada a false con los dos nulos, así que devuelve exactamente el key que `slotStateKey` habría dado sin alarma. **No se toca `slotStateKey` ni `isUnpaidAlarm`**: la grilla queda literalmente intacta (hay un test que lo prueba). La alternativa —refactorizar `slotStateKey` para devolver `{base, alarm}`— habría movido la superficie que Fase 3 acaba de estabilizar.
+
+La píldora sale de `UNPAID_ALARM_BADGE`, derivado de la MISMA fila de `SLOT_STATES` que pinta la alarma de la grilla: las dos superficies no pueden desincronizarse. Y no es un componente nuevo — es el mismo `StatusBadge` con otro visual, así que hereda los tokens de tono ya verificados en contraste.
+
+**Dos decisiones de diseño que el plan dejó abiertas:**
+- **El `accent` SÍ toma el tono de alarma.** MASTER §2.6 asigna el COLOR al estado de la plata y el ícono+label a qué es la cosa: una tira verde al lado de una píldora roja rompería esa partición.
+- **La píldora SÍ entra al `aria-label`.** La fila entera es un `<Link>` estirado con ese mismo `aria-label` (`BookingListItem.tsx:105,152`): quien navega por links con lector de pantalla escucha SOLO ese string, y dejar la plata afuera se la escondería justo a quien no puede ver la píldora roja. En la vista compacta la píldora va **sin** el `hidden sm:inline-flex` del badge: en mobile se oculta el estado por espacio, pero la alarma de plata es exactamente lo que no puede esconderse.
+
+**Costo de queries.** El listado filtra por estado terminal antes de pedir los cobros (`isUnpaidAlarm` solo dispara en `completed`/`no_show`), y `sumBookingChargesByBooking` corta antes de tocar la DB con la lista vacía → **en el scope 'proximas' la página sigue costando 2 queries, no 3**. El detalle cuesta **cero queries nuevas**: `getBookingCharges` ya venía en el mismo `withTenantContext`.
+
+**Contradicción documental cerrada.** El comentario de `slot-visual.ts:253-272` decía "la alarma NO viaja al listado, es deliberado" mientras `tests/unit/slot-visual.test.ts:152` asertaba `label === 'Sin cobrar'`. Las dos cosas eran ciertas de distinto sujeto (la función sí, el wiring no) y juntas eran ruido. Ahora hay una sola verdad escrita: **la alarma viaja como flag, nunca como label**.
+
+**Tests:** `slot-visual.test.ts` pasó de 23 a 29 casos — se invirtió el de `:152` y se agregaron ausente-sin-cobrar, ausente-con-seña-capturada (NO alarma), degradación sin datos de plata, el colapso `deposit_paid→confirmed` por el camino nuevo, y **el que prueba que la grilla no se movió** (`gridSlotVisual` sigue devolviendo `unpaid_alarm`/"Sin cobrar"). Stories nuevas en las tres superficies que no tenían ninguna cobertura de la alarma: `status-visual` (3, con control negativo), `BookingListItem` (2, una asertando el `aria-label` completo) y `BookingDetailCard` (2, con el control negativo "Jugada cobrada").
+
+**Cerrado de paso (grupo C3 del esfuerzo de Storybook):** `BookingListItem > Bloqueo Administrativo` esperaba dos veces el texto "Bloqueo" — el badge decía esa palabra hasta que Fase 3 lo renombró a "Bloqueado" en `SLOT_STATES`. La story se alineó al componente (nombre "Bloqueo" + estado "Bloqueado", uno cada uno).
+
+**5 rupturas controladas, y una limitación honesta:**
+
+| # | Neutralización | Cayó |
+|---|---|---|
+| R2 | `key: raw` (que la alarma pise el label) | los 2 unit de "el badge sigue diciendo Jugada/Ausente" |
+| R3 | Sacar `unpaid` del `aria-label` | story `BookingListItem > Jugada Sin Cobrar` |
+| R4 | `accent` siempre por tono base | unit del accent destructivo |
+
+R1 y R5 (wiring de la página) **no los cubre ninguna story ni unit test** — son Server Components. Se verificaron corriendo la app, que es donde ese wiring existe.
+
+**Verificación en la app real** (dev server + Playwright headless contra ese mismo server; la pane del navegador embebido volvió a no compositar, rects en 0×0):
+- Listado, jugada con saldo: `Jugada` + `Sin cobrar`, `aria-label = "Reserva 08:00–09:00, Cancha E2E 1, Deudor Jugada, Jugada, sin cobrar"`.
+- Listado, ausente sin cobrar: `Ausente` + `Sin cobrar` — **los dos estados se siguen distinguiendo**, que era el punto entero.
+- Listado, jugada COBRADA (control negativo): `Jugada` sola, sin píldora.
+- Detalle: el `<dd>` de Estado dice `Jugada Sin cobrar` y abajo `Saldo pendiente: $ 15.000` — ya no se contradice. El control negativo dice `Jugada` + `Pagado completo`.
+- Grilla: 4 celdas `Sin cobrar` reemplazando el label. Intacta.
+- Datos de prueba limpiados al terminar.
+
+**E2E: cero fallos nuevos, probado con control.** La primera corrida dio 8 rojos, pero eran **datos locales sucios** (cash_flows huérfanos de corridas previas rompiendo los `DELETE` de cleanup por FK, en cascada). Con seed limpio: **2 rojos en la rama** (`reservas-crud:97` y `:338`) contra **4 en `main`** con el mismo seed, incluyendo esos mismos dos. O sea son preexistentes y `main` está peor. ⚠️ **El par documentado de fallos preexistentes de `reservas-crud` está desactualizado**: eran `:145` (cancelar con seña) y `:225` (orden de validación); hoy el spec entero es flaky local — entre corridas de `main` falló 4/5 y 7/8. Vale un esfuerzo propio.
+
+**Gate:** typecheck ✅ (0 errores de código) / lint 0 errores, 44 warnings ✅ / unit 301 archivos, **2454 tests** ✅ / integration 127 archivos, **1016 tests** ✅ / storybook de los 3 archivos tocados ✅ (queda 1 rojo en `BookingListItem.stories.tsx` que es el `heading-order` de `CompleteBookingDialog`, grupo A4 del esfuerzo de Storybook).
+
+**Fallo propio encontrado y arreglado:** `tests/unit/reservas-page-render.test.tsx` y `reservas-status-filter.test.ts` mockean `@/app/(admin)/reservas/queries` con un objeto literal, así que el import nuevo de `sumBookingChargesByBooking` en la page los rompió a los 14. Se agregó el export al mock (Map vacío, el mismo early-return de la implementación real sin ids).

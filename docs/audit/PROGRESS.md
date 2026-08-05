@@ -1062,6 +1062,12 @@ Una sesión de abonado es `type='fixed'` + `status='confirmed'`, y su `price_sna
 
 **PR:** [#102](https://github.com/Laza223/turno-gol-repo/pull/102) (rama `feat/fase3-grilla`), commit `df9df32`.
 
+**Post-PR — CI y react-doctor (commit `3829716`):** el único check rojo fue E2E, con 1 fallo de 19. El primer spec que toca `/grilla` en CI clickeaba la celda ANTES de que React hidratara: el `<button>` viene en el HTML del SSR, Playwright lo ve y lo clickea, pero el handler todavía no está atado y el click es un no-op silencioso. `waitUntil: 'networkidle'` alcanzaba cuando la celda sólo abría el modal; desde Fase 3 la grilla carga chunks extra y el arranque en frío pierde la carrera. **No era flake**: falló 3 de 3 en CI (intento + 2 retries) y 0 de 3 local. Fix: helper `openQuickBookingPopover` (`tests/e2e/_helpers/grid.ts`) que reintenta el click completo con `expect.toPass`, usado por los tres specs que abren la grilla.
+
+React Doctor pasó de **84/100 (2 errores, 6 warnings)** a **88/100 (0 errores, 4 warnings)**: `reset(() => setCourtId(v))` se leía como un state updater con efectos adentro (no lo era —`reset` era un helper propio— pero la ambigüedad se sacó con dos handlers explícitos), `.filter().map()` de `listRescheduleSlotsAction` pasó a una sola pasada, y el guard de cancelación del efecto de `QuickBookingForm` ahora corta antes de tocar estado.
+
+**Deuda anotada, no atendida a propósito:** `no-giant-component` en `BookingGrid`, `BookingSlotPanel` y `QuickBookingForm` (>300 líneas). Partirlos es un refactor de forma sobre código que acaba de pasar el gate completo — reabre riesgo sin cambiar comportamiento. Y `no-autofocus` en el popover de alta: se mantiene con fundamento, la regla apunta a la carga de página y acá el foco entra a un popover que el admin abrió con un click, que es el comportamiento correcto (WAI-ARIA) y lo que sostiene el criterio de "alta ≤10 s".
+
 ## Fase 3 — CERRADA (2026-08-05)
 
 **Gate T0–T5:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline que Fase 2: los 2 que introduje —`setState` síncrono en efecto— se arreglaron montando los diálogos solo cuando se abren) ✅ / unit 299 archivos, 2419 tests ✅ / integration 126 archivos, 1002 tests ✅ / isolation 162/162 ✅. E2E no corrido en esa tanda (sí en T6).

@@ -1056,6 +1056,12 @@ Una sesión de abonado es `type='fixed'` + `status='confirmed'`, y su `price_sna
 
 **Gate T6:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline) ✅ / unit 300 archivos, 2443 tests ✅ / integration 126 archivos, 1002 tests ✅ / isolation 162/162 ✅ / e2e chromium `admin-create-booking-ui` + `TG-HP-208` + `TG-HP-209`: **4/4** ✅ (incluye el test nuevo del camino corto: 2 campos + Enter → confirmed en DB).
 
-**Sigue abierto (T7):** revisión adversarial con contexto fresco (`sonnet-adversarial-reviewer`) y gate final (`sonnet-release-verifier`). `src/components/booking/BookingPopover.tsx` sigue sin consumidores — no se borró, la regla del repo es preguntar antes de eliminar código.
+**Gate final de Fase 3:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline que Fase 2) ✅ / unit 2444 ✅ / integration 1006 ✅ / isolation 162/162 ✅ / e2e chromium `admin-create-booking-ui` 2/2 + `TG-HP-208` + `TG-HP-209` ✅; `reservas-crud` con los MISMOS 2 fallos preexistentes que ya documentó Fase 2 ✅ / Storybook: los 7 tests de esta rama pasaron de rojo a verde, y los 27 archivos que siguen fallando no son de esta rama (cruzado contra `git status`).
+
+**Decisiones de Lazar al cierre:** reprogramar una sesión de abonado queda BLOQUEADO; `BookingPopover.tsx` + su story se BORRARON (código muerto, el panel lateral lo reemplazó en T4); la deuda de Storybook queda anotada como esfuerzo aparte.
+
+**PR:** [#102](https://github.com/Laza223/turno-gol-repo/pull/102) (rama `feat/fase3-grilla`), commit `df9df32`.
+
+## Fase 3 — CERRADA (2026-08-05)
 
 **Gate T0–T5:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline que Fase 2: los 2 que introduje —`setState` síncrono en efecto— se arreglaron montando los diálogos solo cuando se abren) ✅ / unit 299 archivos, 2419 tests ✅ / integration 126 archivos, 1002 tests ✅ / isolation 162/162 ✅. E2E no corrido en esa tanda (sí en T6).

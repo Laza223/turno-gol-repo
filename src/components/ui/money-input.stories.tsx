@@ -26,7 +26,19 @@ const meta = {
   component: MoneyInput,
   parameters: { layout: 'centered' },
   args: { id: 'monto' },
-  decorators: [(Story) => <div className="w-72"><Story /></div>],
+  // El componente no trae label propio a propósito: en la app cada caller monta
+  // su `<Label htmlFor>`. Sin uno acá el único nombre accesible sería el
+  // placeholder y axe marca `label-title-only` en las 8 stories.
+  decorators: [
+    (Story) => (
+      <div className="w-72 space-y-1.5">
+        <label htmlFor="monto" className="text-sm font-medium text-foreground">
+          Monto
+        </label>
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof MoneyInput>
 
 export default meta

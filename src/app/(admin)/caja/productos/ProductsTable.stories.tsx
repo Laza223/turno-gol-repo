@@ -74,6 +74,12 @@ export const AbreReposicion: Story = {
     const menuButtons = canvas.getAllByRole('button', { name: /Opciones para/i })
     await userEvent.click(menuButtons[0]!)
     await userEvent.click(await body.findByRole('menuitem', { name: 'Reponer' }))
-    await expect(await body.findByRole('dialog')).toBeVisible()
+    // `findByRole` resuelve apenas el nodo EXISTE, no cuando está visible: el
+    // diálogo entra con `data-[state=open]:animate-in fade-in-0` y aunque
+    // `prefers-reduced-motion` la baje a 0.01ms (globals.css), la opacidad
+    // recién llega a 1 en el frame siguiente. Un assert síncrono le gana la
+    // carrera bajo la suite completa y lee opacity 0.
+    const dialogEl = await body.findByRole('dialog')
+    await waitFor(() => expect(dialogEl).toBeVisible())
   },
 }

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { LoginCard, type LoginAction, type ResendConfirmationAction } from './LoginCard'
 
 type LoginState = Awaited<ReturnType<LoginAction>>
@@ -99,15 +100,21 @@ export const PasswordVisible: Story = {
   },
 }
 
+const ingresando = pendingAction<LoginState>({ status: 'idle' })
+
 export const Ingresando: Story = {
   args: {
-    loginAction: fn((): Promise<LoginState> => new Promise(() => {})),
+    loginAction: fn(ingresando.action),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText('Email'), 'marcelo@complejo.com')
     await userEvent.type(canvas.getByLabelText('Contraseña'), 'unapassword123')
-    await userEvent.click(canvas.getByRole('button', { name: 'Ingresar' }))
+    const submit = canvas.getByRole('button', { name: 'Ingresar' })
+    await userEvent.click(submit)
     await expect(await canvas.findByText('Ingresando…')).toBeInTheDocument()
+    // Liberar la transición: una promesa que nunca resuelve queda colgada en el
+    // scheduler de React y contamina la story siguiente del archivo.
+    await ingresando.release(submit)
   },
 }

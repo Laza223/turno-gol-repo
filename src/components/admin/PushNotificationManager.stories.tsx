@@ -98,7 +98,10 @@ export const SinSuscribir: Story = {
     await expect(button).toBeVisible()
     await expect(button).not.toBeDisabled()
     await expect(canvas.getByRole('button', { name: 'Cerrar' })).toBeVisible()
-    await expect(getRegistrationSpy).toHaveBeenCalledWith('/admin/')
+    // Scope '/' (no '/admin/'): `(admin)` es un route group de Next, no aparece
+    // en la URL — ver el comment de SW_SCOPE en PushNotificationManager.tsx y
+    // el fix adb1729 ("el destino de las notificaciones apuntaba a un 404").
+    await expect(getRegistrationSpy).toHaveBeenCalledWith('/')
   },
 }
 
@@ -184,7 +187,8 @@ export const YaSuscripto: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(getRegistrationSpy).toHaveBeenCalledWith('/admin/')
+    // Scope '/' (no '/admin/'): ver comment en la story SinSuscribir.
+    await expect(getRegistrationSpy).toHaveBeenCalledWith('/')
     await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
     // Scopeado al botón del propio componente (no `queryByRole('button')` a
     // secas): el `<Toaster />` global del preview puede tener un toast ajeno

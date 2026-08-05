@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expectGone } from '@/test/expect-gone'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { artDateString, daysFromNow, hoursFromNow } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
@@ -102,9 +103,15 @@ export const AusenteDentroDeLa24hSePuedeDeshacer: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Deshacer ausente' }))
 
     await waitFor(() => expect(args.revertNoShowAction).toHaveBeenCalledWith(BOOKING_ID))
-    await waitForElementToBeRemoved(dialogEl)
-    await expect(await body.findByText('Ausencia deshecha')).toBeVisible()
+    await expectGone(dialogEl)
+    const toastText = await body.findByText('Ausencia deshecha')
+    await expect(toastText).toBeVisible()
     await expect(getRouter().refresh).toHaveBeenCalled()
+    // El toast (variant success, 4s de duración) sobrevive al cambio de story:
+    // cerrarlo acá evita que "Ausente Pasadas Las 24h No Ofrece Nada" (que
+    // asertea CERO botones) lo agarre a mitad de la animación de salida.
+    await userEvent.click(body.getByRole('button', { name: 'Cerrar' }))
+    await expectGone(() => body.queryByText('Ausencia deshecha'))
   },
 }
 
@@ -150,7 +157,7 @@ export const MarcarAusenteConfirmado: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Marcar ausente' }))
 
     await waitFor(() => expect(args.markNoShowAction).toHaveBeenCalledWith(BOOKING_ID))
-    await waitForElementToBeRemoved(dialogEl)
+    await expectGone(dialogEl)
     await expect(await body.findByText('Marcada como ausente')).toBeVisible()
     await expect(getRouter().refresh).toHaveBeenCalled()
   },
@@ -181,7 +188,7 @@ export const CancelarComplejoReembolsoAutomatico: Story = {
         'complejo',
       ),
     )
-    await waitForElementToBeRemoved(dialogEl)
+    await expectGone(dialogEl)
     await expect(await body.findByText('Reserva cancelada')).toBeVisible()
   },
 }

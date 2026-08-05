@@ -59,7 +59,11 @@ export function SplitPaymentFields({
           type="button"
           onClick={quickAllCash}
           disabled={disabled}
-          className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-60"
+          // emerald-800, no emerald-700: a 12px sobre el fondo atenuado de los
+          // contenedores que montan este control (#e2e7ee) el 700 da 4.41:1 y
+          // el 800 da 6.2:1. Sobre blanco puro el 700 pasaría (4.57:1) — el
+          // fondo tintado es lo que lo tira abajo del umbral.
+          className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-60"
         >
           Pagar todo en efectivo — {formatArs(quickAllCashCents)}
         </button>
@@ -114,7 +118,10 @@ export function SplitPaymentFields({
           type="button"
           onClick={add}
           disabled={disabled}
-          className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline pt-1 md:min-h-0 disabled:opacity-60"
+          // `text-primary` en claro ES emerald-700 (--primary), así que a 12px
+          // sobre el fondo atenuado daba 4.47:1. Mismo criterio que el atajo de
+          // arriba: un tono más oscuro en claro, emerald-400 en oscuro.
+          className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:underline pt-1 md:min-h-0 disabled:opacity-60"
         >
           <Plus className="h-3.5 w-3.5" /> Agregar pago dividido
         </button>

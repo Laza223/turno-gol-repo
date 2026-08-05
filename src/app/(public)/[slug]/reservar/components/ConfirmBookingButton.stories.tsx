@@ -34,23 +34,39 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Con seña: el CTA pide pagarla vía MercadoPago antes de confirmar. */
+/**
+ * Con seña: el CTA pide pagarla vía MercadoPago antes de confirmar. La copy
+ * `/te llevamos a mercadopago/i` de esta story nunca existió en
+ * `ConfirmBookingButton`/`PaymentMethodSelector` (confirmado con `git log -S`:
+ * ese texto solo aparece en `StepPayments.tsx`, el wizard de onboarding del
+ * ADMIN conectando su cuenta de MP — un flujo distinto). El hint real para
+ * `depositOnly` (un solo método = mercadopago) es el que arma
+ * `PaymentMethodSelector`.
+ */
 export const ConSena: Story = {
   args: { depositAmount: 450000, payMethods: ['mercadopago'], action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: /pagar seña y reservar/i })).toBeInTheDocument()
-    await expect(canvas.getByText(/te llevamos a mercadopago/i)).toBeInTheDocument()
+    await expect(canvas.getByText('Este complejo pide seña online para confirmar la reserva.')).toBeInTheDocument()
+    await expect(canvas.getByText('Pagás la seña online ahora')).toBeInTheDocument()
   },
 }
 
-/** Sin seña: el complejo acepta efectivo/transferencia, la reserva queda confirmada al instante. */
+/**
+ * Sin seña: el complejo acepta efectivo/transferencia, la reserva queda
+ * confirmada al instante. Mismo caso que `ConSena`: `/queda confirmado al
+ * instante/i` no existe en ningún lado del árbol de este componente — no hay
+ * copy de "instantáneo" en la app. La señal real de "sin pago online" son las
+ * descripciones de cada método en `PaymentMethodSelector`.
+ */
 export const SinSena: Story = {
   args: { depositAmount: 0, payMethods: ['cash', 'transfer'], action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: /^confirmar reserva$/i })).toBeInTheDocument()
-    await expect(canvas.getByText(/queda confirmado al instante/i)).toBeInTheDocument()
+    await expect(canvas.getByText('Pagás al llegar al complejo')).toBeInTheDocument()
+    await expect(canvas.getByText('Coordinás los datos con el complejo')).toBeInTheDocument()
   },
 }
 

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expectGone } from '@/test/expect-gone'
 import { abonado, abonadoCanceled, abonadoPaused, abonados } from '@/test/fixtures'
 import { AbonadosList } from './AbonadosList'
 
@@ -46,7 +47,7 @@ export const ListaVacia: Story = {
   args: { abonados: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Sin abonados registrados')).toBeVisible()
+    await expect(canvas.getByText('Sin turnos fijos registrados')).toBeVisible()
   },
 }
 
@@ -54,7 +55,7 @@ export const ListaVaciaConFiltro: Story = {
   args: { abonados: [], filterLabel: 'pausados' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Sin abonados pausados')).toBeVisible()
+    await expect(canvas.getByText('Sin turnos fijos pausados')).toBeVisible()
   },
 }
 
@@ -73,7 +74,7 @@ export const PausarAbonado: Story = {
     // entra por next/dynamic: timeout largo para no flakear bajo carga (batería
     // completa de stories, chunk más lento de cargar).
     const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
-    await waitFor(() => expect(dialog.getByRole('heading', { name: 'Pausar abonado' })).toBeVisible())
+    await waitFor(() => expect(dialog.getByRole('heading', { name: 'Pausar turno fijo' })).toBeVisible())
     await userEvent.click(dialog.getByRole('button', { name: 'Pausar' }))
 
     await expect(args.pauseAction).toHaveBeenCalledWith(abonado().id)
@@ -83,7 +84,7 @@ export const PausarAbonado: Story = {
     // cerrarlo acá evita que la siguiente story lo agarre a mitad de la
     // animación de salida (color transitorio => falso positivo de axe).
     await userEvent.click(body.getByRole('button', { name: 'Cerrar' }))
-    await waitForElementToBeRemoved(() => body.queryByText('Abonado pausado correctamente.'))
+    await expectGone(() => body.queryByText('Abonado pausado correctamente.'))
   },
 }
 
@@ -124,7 +125,7 @@ export const CancelarRequierePhrase: Story = {
     const body = within(canvasElement.ownerDocument.body)
 
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
-    const confirmBtn = await body.findByRole('button', { name: 'Cancelar abonado' })
+    const confirmBtn = await body.findByRole('button', { name: 'Cancelar turno fijo' })
     await expect(confirmBtn).toBeDisabled()
 
     await userEvent.type(body.getByLabelText(/escribí/i), 'CANCELAR')

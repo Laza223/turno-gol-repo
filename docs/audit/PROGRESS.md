@@ -1202,3 +1202,50 @@ El mecanismo real, aislado con evidencia: `ForgotPasswordCard > Error` **pasa so
 **76 → 70 rojos / 27 → 24 archivos** (medido con la suite completa; el total subió a 1024 tests por las stories nuevas de E3).
 
 **Pendiente:** grupo A (23 tests, 4 de ellos bugs de a11y de producción: contraste 3.93:1 en `admin-sidebar` por el visual upgrade #93, dos `<select>` sin nombre en `BookingFormModal`, `heading-order` en `CompleteBookingDialog`, contraste en `InscripcionesPanel`) · B (14, copy drift, mecánico) · C1/C2 (10, queries ambiguas) · D (11, contratos viejos — uno de ellos, `BookingActions > Ausente Pasadas Las 24H`, **NO es bug de story: cambió la regla de negocio y hay que escalarlo**) · F (9, diálogos con `open` estático) · los 6 archivos latentes del patrón de E · 2 flakes genuinos · y el cableado del job en CI, que va **último** y solo tras 3 corridas completas verdes seguidas.
+
+### Cierre (2026-08-05) — 66 → 0, y qué de ese diagnóstico estaba mal
+
+Re-medición sobre la rama rebasada antes de tocar nada: **66 rojos / 23 archivos sobre 1024** (no 70/24 — la diferencia eran flakes que no reprodujeron).
+
+**Cuatro correcciones al diagnóstico de arriba, todas encontradas con la evidencia de axe en la mano, no leyendo código:**
+
+1. **El grupo A eran 9 bugs de a11y de producción, no 4.** Los que faltaban: `aria-allowed-attr` (`aria-expanded` en un textbox que nunca declaró `role="combobox"`), `aria-dialog-name` en los dos popovers de horario, y tres contrastes más (chips de horario, alerta de error, avisos amber) — todos en `BookingFormModal`.
+2. **Los dos contrastes "de `InscripcionesPanel`" no viven ahí**: son `SplitPaymentFields.tsx`, el control de cobro compartido que además montan `CompleteBookingDialog` y `BookingSlotPanel`. Buscarlos en el archivo de la story es lo que había hecho fallar la localización estática. Un fix, tres pantallas.
+3. **`money-input` (8 rojos, el archivo entero) NO era bug de producción.** La story renderiza el input sin `<Label>` y axe marca `label-title-only`. El componente no trae label propio a propósito: cada caller monta el suyo. Se arregló la story.
+4. **`BookingActions > Ausente Pasadas Las 24H` no era cambio de regla de negocio** (la nota de arriba se escaló de más). Era contaminación: la story ANTERIOR del archivo dejaba abierto su toast de "Ausencia deshecha", y ésta asserta que no hay ningún botón. Cerrar el toast en la story previa la puso en verde sin tocar el guard de 24h, que sigue existiendo en los dos lados.
+
+**El idiom de contraste ya estaba escrito en el repo** (`src/components/ui/error-state.tsx:42-49`: "un tono más oscuro en claro, el token original en oscuro"). Se siguió en vez de inventar otro: `text-emerald-700`→`800`, `text-amber-700`→`800`, `text-destructive`→`text-red-700 dark:text-destructive`. **No se tocó `globals.css`**: los tokens están calibrados contra blanco y pasan; lo que falla es texto saturado sobre su propio tinte translúcido en superficie clara, que es un problema del sitio de uso, no del token.
+
+**Un bug de librería, no de story** (`CourtList`): `waitForElementToBeRemoved` resuelve la raíz de búsqueda UNA sola vez, al invocarla. Sobre un nieto (`toastText`), si el `<li>` ya se desprendió del `<ol>`, la raíz capturada es el `<li>` huérfano y `contains()` da `true` para siempre → cuelga los 15s completos. Sobre el `<li>` mismo, si ya se fue, tira "already removed". Entre las dos formas **no queda ventana** bajo la suite completa. El reemplazo es `waitFor` + `queryBy`, que tolera los dos órdenes. Explica una familia de "flakes de toast bajo carga" que se venía atribuyendo a CPU.
+
+**Los 2 rojos que sobrevivieron a los fixes por archivo** son exactamente el argumento de por qué la suite completa manda: los dos pasaban en aislado. `AbonadoForm > Error De Preview` fallaba con "Unable to find button Continuar" y un dump de roles casi vacío — el popover del DatePicker seguía montado y Radix marcaba el resto del árbol con `aria-hidden`. En aislado la ventana es de milisegundos.
+
+**Lo que se decidió NO hacer:** migrar a `pendingAction` los archivos donde la story colgada quedó ÚLTIMA. Son seguros hoy por posición, no por diseño; el inventario real (15 archivos, no 10) quedó en el docstring del helper, junto con el falso amigo de `StepIdentity.stories.tsx` (declara una variable local con ese nombre sin importar el helper, así que un grep lo cuenta como migrado).
+
+### La parte cara: llegar a 0 no fue arreglar 66 tests, fue estabilizar la suite
+
+Con los 66 cerrados archivo por archivo, la suite completa dio **2 rojos**. La corrida siguiente, sin tocar una línea, dio **6 rojos DISTINTOS**. Ese es el dato que importa: los archivos sueltos daban verde y la suite completa no, en ambas direcciones.
+
+Las 8 fallas acumuladas eran **dos clases**, no ocho problemas:
+
+**Clase 1 — `waitForElementToBeRemoved` (18 usos, 7 archivos).** No sirve para esperar que algo desaparezca, y falla en las dos direcciones opuestas:
+- llega tarde → tira `"element is already removed"` (hace un chequeo de existencia al entrar);
+- llega temprano sobre un DESCENDIENTE → cuelga hasta el timeout completo, porque resuelve la raíz de búsqueda una sola vez al invocarla caminando `parentElement`. Si el contenedor ya se desprendió, la raíz capturada es ese contenedor huérfano y `contenedor.contains(nieto)` sigue dando `true` para siempre sobre el subárbol intacto.
+
+Entre las dos formas no queda ventana. Reemplazadas por `expectGone` (`src/test/expect-gone.ts`), que chequea `isConnected`: no camina el árbol y tolera los dos órdenes. Esto explica de paso una familia de "flakes de toast bajo carga" que se venía atribuyendo a CPU y no lo era.
+
+**Clase 2 — `toBeVisible()` síncrono sobre un nodo recién montado.** `findByRole` resuelve cuando el nodo EXISTE, no cuando se ve; el elemento entra con `data-[state=open]:animate-in fade-in-0` y el primer frame tiene `opacity: 0`. Bajo la suite completa la ventana se ensancha lo suficiente para perder la carrera. Se envolvieron en `waitFor` los sitios que fallaron.
+
+**Se evaluó y se DESCARTÓ el atajo global** de meter `animation: none !important` bajo `prefers-reduced-motion` para matar la clase 2 de raíz: `globals.css:889` usa `animation: card-fade-in 0.4s both`, y con `fill-mode: both` el elemento se queda en `opacity: 0` hasta que la animación TERMINA. Por eso el bloque de reduced-motion existente tiene que escribir `animation: none` **y** `opacity: 1` juntos (`globals.css:950`). Un `animation: none` a secas sobre todo el árbol dejaría invisible a todo lo que entra con fill-mode. Los 399 `toBeVisible()` de las stories tampoco se barrieron en masa: la mayoría son asserts de render inicial, sin animación de por medio, y tocarlos sería churn sin señal.
+
+Además, `AbonadoForm`: el botón de submit dice **"Procesando..."** mientras la preview está en vuelo (`AbonadoForm.tsx:655`), así que `getByRole({name:'Continuar'})` no lo encuentra en esa ventana. Pasado a `findByRole` en los 6 usos del archivo.
+
+**Corridas completas: 2 → 6 → 1 → 0 → 0 → 0.** Las tres últimas, 1024/1024, sin tocar nada entre medio.
+
+### El gate
+
+Job `stories` en `ci.yml`, **BLOQUEANTE y sin `continue-on-error`**, en paralelo con unit/integration. Razón escrita en el propio workflow: esta suite es el único lugar del repo que mide contraste — `tests/e2e/a11y/admin.spec.ts:27` corre axe con `disableRules: ['color-contrast']`, y su comentario aclara que la regla queda apagada porque los CTAs viven dentro de modales que esa prueba nunca abre. Las stories sí los abren en el `play`.
+
+**Cero retries**, también a propósito: la contaminación entre stories es determinística en la corrida completa y desaparece al reintentar — un retry esconde exactamente la clase de bug que este gate existe para atrapar.
+
+⚠️ **Falta un paso que NO se puede hacer desde el repo:** marcar `Stories (BLOCKING)` como *required status check* en la protección de rama de `main`. Sin eso el job corre y se ve rojo, pero no impide el merge.

@@ -391,7 +391,12 @@ export function BookingFormModal({
                       Horario de inicio
                     </Label>
 
+                    {/* El <Label> de arriba apunta al BOTÓN del Popover, no a este
+                        select, que es el campo real del form y sigue en el árbol de
+                        accesibilidad (sr-only oculta a la vista, no al lector).
+                        Sin nombre propio axe lo marca `select-name`. */}
                     <select
+                      aria-label="Horario de inicio"
                       id="timeStart"
                       name="timeStart"
                       value={timeStart}
@@ -428,7 +433,9 @@ export function BookingFormModal({
                           <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isTimeStartOpen && "rotate-180")} />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-44 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
+                      {/* Radix le pone role="dialog" al contenido del popover, y
+                          un dialog sin nombre accesible es `aria-dialog-name`. */}
+                      <PopoverContent aria-label="Horarios de inicio" align="start" className="w-44 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
                         {startTimes.map((t) => {
                           const isSelected = timeStart === t
                           return (
@@ -447,7 +454,7 @@ export function BookingFormModal({
                               className={cn(
                                 'flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors cursor-pointer text-left',
                                 isSelected
-                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
+                                  ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-semibold'
                                   : 'hover:bg-accent text-foreground'
                               )}
                             >
@@ -473,6 +480,7 @@ export function BookingFormModal({
                     </Label>
 
                     <select
+                      aria-label="Duración del turno"
                       id="duration"
                       name="duration"
                       value={duration}
@@ -505,7 +513,7 @@ export function BookingFormModal({
                             <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isTimeEndOpen && "rotate-180")} />
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent align="end" className="w-48 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
+                        <PopoverContent aria-label="Horarios de fin" align="end" className="w-48 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
                           {endOptions.map((opt) => {
                             const isSelected = duration === opt.durationMins
                             return (
@@ -519,7 +527,7 @@ export function BookingFormModal({
                                 className={cn(
                                   'flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors cursor-pointer text-left',
                                   isSelected
-                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
+                                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-semibold'
                                     : 'hover:bg-accent text-foreground'
                                 )}
                               >
@@ -571,8 +579,17 @@ export function BookingFormModal({
                         setTimeout(() => setPlayerSearchOpen(false), 150)
                       }}
                       placeholder="Buscar por nombre o email..."
+                      // `aria-expanded`/`aria-autocomplete` NO están permitidos en
+                      // un textbox pelado (axe: aria-allowed-attr) — el control es
+                      // un combobox y hay que declararlo. `aria-controls` solo
+                      // cuando la lista existe: apuntar a un id inexistente es otra
+                      // violación (aria-valid-attr-value).
+                      role="combobox"
                       aria-expanded={playerSearchOpen}
                       aria-autocomplete="list"
+                      aria-controls={
+                        playerSearchOpen && playerResults.length > 0 ? 'playerSearchResults' : undefined
+                      }
                       className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-colors focus:border-emerald-500"
                     />
                     {playerId && (
@@ -589,11 +606,21 @@ export function BookingFormModal({
                       </p>
                     )}
                     {playerSearchOpen && playerResults.length > 0 && (
-                      <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border/90 bg-popover text-popover-foreground shadow-xl backdrop-blur-xl p-1 space-y-0.5">
+                      <ul
+                        id="playerSearchResults"
+                        role="listbox"
+                        aria-label="Jugadores encontrados"
+                        className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border/90 bg-popover text-popover-foreground shadow-xl backdrop-blur-xl p-1 space-y-0.5"
+                      >
                         {playerResults.map((p) => (
-                          <li key={p.id}>
+                          // `role="none"` en el li y `role="option"` en el botón: un
+                          // listbox exige hijos option, y meter un botón DENTRO de
+                          // un option sería un control anidado. El botón ES la opción.
+                          <li key={p.id} role="none">
                             <button
                               type="button"
+                              role="option"
+                              aria-selected={false}
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => selectPlayer(p)}
                               className="flex w-full flex-col items-start rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer hover:bg-accent"
@@ -647,7 +674,7 @@ export function BookingFormModal({
                           className={cn(
                             'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all duration-150 text-left cursor-pointer',
                             isSelected
-                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-semibold shadow-2xs'
+                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-semibold shadow-2xs'
                               : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground'
                           )}
                         >
@@ -673,7 +700,7 @@ export function BookingFormModal({
                   </select>
 
                   {isInternalBlock && (
-                    <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl font-medium mt-1.5">
+                    <p className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl font-medium mt-1.5">
                       <Info className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                       <span>Bloqueo interno sin costo. Se agenda como <strong>“{selectedReason.autoName}”</strong>.</span>
                     </p>
@@ -778,14 +805,17 @@ export function BookingFormModal({
             </Collapsible>
 
             {isCourtOffline && (
-              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-medium">
+              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 text-xs font-medium">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>Esta cancha está offline, no recibe reservas nuevas.</span>
               </div>
             )}
 
+            {/* red-700 en claro, el token en oscuro: mismo idiom ya documentado
+                en `error-state.tsx` — `text-destructive` (red-600) sobre su
+                propio tinte translúcido en superficie clara no llega a AA. */}
             {error && (
-              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium">
+              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-red-700 dark:text-destructive text-xs font-medium">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>

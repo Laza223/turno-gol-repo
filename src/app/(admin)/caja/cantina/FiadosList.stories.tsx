@@ -49,7 +49,10 @@ export const CobrarFiado: Story = {
 
     await userEvent.click(canvas.getAllByRole('button', { name: 'Cobrar' })[0]!)
     const dialog = within(await body.findByRole('dialog'))
-    await expect(dialog.getByText(`Cobrar fiado — ${tab.debtorName}`)).toBeVisible()
+    // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
+    // el primer tick y toBeVisible() lo agarra en falso negativo (mismo idiom
+    // que dialog.stories.tsx).
+    await waitFor(() => expect(dialog.getByText(`Cobrar fiado — ${tab.debtorName}`)).toBeVisible())
 
     // SplitPaymentFields (Fase 1, D2): el método es un <select>, no un chip.
     await userEvent.selectOptions(dialog.getByRole('combobox'), 'Transferencia')
@@ -63,6 +66,11 @@ export const CobrarFiado: Story = {
         }),
       ),
     )
+    // El cobro OK cierra el diálogo (tab pasa a null), pero Radix anima la
+    // salida (duration-200) antes de sacarlo del DOM. Sin esperar acá, el
+    // portal queda a medio cerrar y contamina las stories siguientes del
+    // archivo (rule del contrato: cerrar portales al final del play).
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }
 
@@ -75,8 +83,14 @@ export const CobroDeshabilitadoPorCajaCerrada: Story = {
 
     await userEvent.click(canvas.getAllByRole('button', { name: 'Cobrar' })[0]!)
     const dialog = within(await body.findByRole('dialog'))
-    await expect(dialog.getByText(/caja cerrada/i)).toBeVisible()
+    // waitFor: mismo fade-in-0 que en CobrarFiado.
+    await waitFor(() => expect(dialog.getByText(/caja cerrada/i)).toBeVisible())
     await expect(dialog.getByRole('button', { name: /^Cobrar/ })).toBeDisabled()
+
+    // Esta story no cobra ni cancela — el diálogo queda abierto por defecto y
+    // contamina la story siguiente del archivo (Anular Fiado) si no se cierra acá.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }
 
@@ -88,7 +102,8 @@ export const AnularFiado: Story = {
 
     await userEvent.click(canvas.getAllByRole('button', { name: 'Anular' })[0]!)
     const dialog = within(await body.findByRole('dialog'))
-    await expect(dialog.getByText(`Anular fiado — ${tab.debtorName}`)).toBeVisible()
+    // waitFor: mismo fade-in-0 que en CobrarFiado.
+    await waitFor(() => expect(dialog.getByText(`Anular fiado — ${tab.debtorName}`)).toBeVisible())
 
     // Motivo obligatorio: sin cargar nota, el submit no llama a la action.
     await userEvent.click(dialog.getByRole('button', { name: 'Confirmar anulación' }))

@@ -41,7 +41,7 @@ export const Pause: Story = {
     // Radix (fade-in, ~200ms) todavía puede estar en curso cuando arranca el
     // play, así que hay que esperar a que termine antes de medir visibilidad.
     await waitFor(() =>
-      expect(canvas.getByRole('heading', { name: 'Pausar abonado' })).toBeVisible(),
+      expect(canvas.getByRole('heading', { name: 'Pausar turno fijo' })).toBeVisible(),
     )
     await expect(canvas.getByRole('button', { name: 'Pausar' })).toBeEnabled()
   },
@@ -96,12 +96,12 @@ export const ReactivateNoSlots: Story = {
   },
 }
 
-/** El botón "Cancelar abonado" queda deshabilitado hasta tipear la frase exacta. */
+/** El botón "Cancelar turno fijo" queda deshabilitado hasta tipear la frase exacta. */
 export const CancelRequiresPhrase: Story = {
   args: { dialog: 'cancel' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    const confirmBtn = canvas.getByRole('button', { name: 'Cancelar abonado' })
+    const confirmBtn = canvas.getByRole('button', { name: 'Cancelar turno fijo' })
     await expect(confirmBtn).toBeDisabled()
 
     await userEvent.type(canvas.getByLabelText(/escribí/i), 'CANCELAR')

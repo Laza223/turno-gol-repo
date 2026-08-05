@@ -108,7 +108,9 @@ function SidebarContent({
             </span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 leading-none">
+            {/* Sin modificador de opacidad: `--muted-foreground` está calibrado a
+                4.93:1 (globals.css) y el `/80` lo diluía a 3.93:1, bajo AA. */}
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">
               Complejo
             </p>
             <p className="mt-1 text-sm font-semibold text-foreground truncate leading-tight tracking-tight">

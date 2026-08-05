@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expectGone } from '@/test/expect-gone'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { uid } from '@/test/fixtures/ids'
 import { cashFlow } from '@/test/fixtures/cashflow'
@@ -120,7 +121,12 @@ export const AgregarCargo: Story = {
     const amountInput = canvas.getByLabelText('Monto (ARS)')
     await userEvent.clear(amountInput)
     await userEvent.type(amountInput, '5000')
-    await userEvent.selectOptions(canvas.getByLabelText('Medio de pago'), 'transfer')
+    // "Medio de pago" también nombra el <select> nativo sr-only detrás del
+    // trigger (mismo texto en <label htmlFor> y en el aria-label del botón):
+    // getByLabelText matchea los dos. La interacción real es con el botón
+    // visible (Popover), no con el select oculto.
+    await userEvent.click(canvas.getByRole('button', { name: 'Medio de pago' }))
+    await userEvent.click(await body.findByRole('button', { name: 'Transferencia' }))
     await userEvent.click(canvas.getByRole('button', { name: 'Registrar cobro' }))
 
     // $5.000 en pesos → 500.000 centavos: el número exacto que tiene que viajar al servidor.
@@ -140,7 +146,13 @@ export const AgregarCargo: Story = {
     const toastItem = toastText.closest('li')
     if (!toastItem) throw new Error('No se encontró el toast')
     await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
-    await waitForElementToBeRemoved(toastText)
+    // El default de waitForElementToBeRemoved (1000ms) alcanza sobrado en
+    // condiciones normales (el setTimeout interno de dismiss() es de 200ms),
+    // pero bajo carga completa de la batería de stories medí timeouts reales
+    // acá: timeout explícito más generoso (mismo criterio que los
+    // findByRole('dialog', {}, { timeout: 15_000 }) de AbonadosList.stories.tsx
+    // para diálogos que entran por next/dynamic).
+    await expectGone(toastText, { timeout: 5000 })
   },
 }
 

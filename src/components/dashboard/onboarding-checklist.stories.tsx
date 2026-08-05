@@ -136,9 +136,14 @@ export const VerCompletados: Story = {
   },
 }
 
-/** Descarte manual: feedback transitorio "Descartado ✓" y persiste checklist_dismissed_at. */
+/**
+ * Descarte manual: feedback transitorio "Descartado ✓" y persiste checklist_dismissed_at.
+ * El botón "Descartar" es admin-only (`markChecklistDismissedAction`, ver el
+ * comment de `handleDismiss` en onboarding-checklist.tsx): sin `staffRole:
+ * 'admin'` en args, el componente ni siquiera lo renderiza.
+ */
 export const Descartar: Story = {
-  args: { state: PENDING_STATE },
+  args: { state: PENDING_STATE, staffRole: 'admin' },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Descartar' }))

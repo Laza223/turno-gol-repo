@@ -1,5 +1,14 @@
 # Storybook — Reporte de QA
 
+> ⚠️ **Actualización 2026-08-05 — los números de "Stories" de este doc están SUPERADOS.**
+> El 864/864 que se afirma más abajo fue cierto el 2026-07-13 y dejó de serlo poco después.
+> Medición del 2026-08-05 sobre `main`: **66 tests rojos en 23 archivos, sobre 1024**.
+> **Causa de la regresión silenciosa: la suite nunca se cableó a CI.** Un número verde medido
+> una vez a mano no es un gate; sin job que la corra en cada PR, la regresión no tenía dónde
+> aparecer — y no apareció durante tres semanas. Las líneas originales quedan abajo sin
+> reescribir, con su corrección al lado: son la evidencia de qué se midió y cuándo.
+> Estado del esfuerzo de recuperación (grupos de causa raíz, avance): `docs/audit/PROGRESS.md`, sección "E2 — Storybook".
+
 Estado al cierre. **Los números son medidos, no estimados**: cada uno sale de una corrida real cuyo
 comando está indicado. Lo que quedó sin hacer está en [Pendientes](#pendientes), sin adornos.
 
@@ -345,7 +354,7 @@ Todos medidos, con el comando al lado.
 | Aislamiento | `pnpm test:isolation` | ✅ **111 tests** (bloqueante por política del repo) |
 | Build app | `pnpm build` | ✅ **52/52 páginas estáticas** |
 | Build Storybook | `pnpm build-storybook` | ✅ estático OK |
-| **Stories** | `pnpm test:storybook` | ✅ **864/864** (227 archivos) |
+| **Stories** | `pnpm test:storybook` | ✅ **864/864** (227 archivos) — ⚠️ medición del 2026-07-13, **ya no vale**: 2026-08-05 da 66 rojos / 23 archivos sobre 1024 (la suite no corría en CI, ver banner arriba) |
 | **e2e** | `playwright test --project=chromium --workers=1` | ✅ **81 passed / 5 skipped / 0 failed** (9,3 min) |
 | Cobertura real | `pnpm qa:coverage` | ✅ **0 huecos** |
 
@@ -481,6 +490,10 @@ los "casos discutibles" de MASTER §9. **No lo toqué: es una decisión de negoc
 
 - **Stories**: `pnpm test:storybook` → **864/864** (227 archivos), cero FAIL.
   La suite creció de 793 a 864 al cerrar los 10 huecos de cobertura que destapó el review.
+  > ⚠️ **Superado (2026-08-05): 66 rojos / 23 archivos sobre 1024.** La afirmación de arriba
+  > fue verdadera el 2026-07-13. Lo que faltó no fue medir sino **dejar la medición corriendo**:
+  > sin job de CI, tres semanas de cambios (Fases 0–3) entraron sin que nadie viera la regresión.
+  > Se corrige en el esfuerzo E2 (`docs/audit/PROGRESS.md`), que termina cableando el gate.
 - **Cobertura**: `pnpm qa:coverage` → **0 huecos**. Los 300 archivos inventariados, y todo lo que se
   declara cubierto tiene una story que lo importa.
 - **e2e**: `playwright test --project=chromium --workers=1` → **81 passed / 5 skipped / 0 failed**.

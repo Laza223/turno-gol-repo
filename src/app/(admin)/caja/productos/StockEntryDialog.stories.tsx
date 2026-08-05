@@ -43,7 +43,7 @@ export const Reposicion: Story = {
     await userEvent.type(dialog.getByLabelText('Packs'), '4')
     await userEvent.clear(dialog.getByLabelText('Unidades por pack'))
     await userEvent.type(dialog.getByLabelText('Unidades por pack'), '6')
-    await expect(dialog.getByText('Total a ingresar: 24 unidades')).toBeVisible()
+    await waitFor(() => expect(dialog.getByText('Total a ingresar: 24 unidades')).toBeVisible())
 
     await userEvent.click(dialog.getByRole('button', { name: /registrar reposición/i }))
     await waitFor(() =>
@@ -65,7 +65,7 @@ export const ConCostoPorUnidad: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const dialog = within(await findCurrentDialog(body))
     await userEvent.type(dialog.getByLabelText('Costo por unidad (pesos, opcional)'), '900')
-    await expect(dialog.getByText('Actualizar costo del producto')).toBeVisible()
+    await waitFor(() => expect(dialog.getByText('Actualizar costo del producto')).toBeVisible())
   },
 }
 
@@ -87,11 +87,13 @@ export const PagaloDeLaCaja: Story = {
     await userEvent.type(dialog.getByLabelText('Costo por unidad (pesos, opcional)'), '800')
 
     const checkbox = dialog.getByRole('checkbox', { name: /pagalo de la caja/i })
-    await expect(checkbox).toBeVisible()
+    await waitFor(() => expect(checkbox).toBeVisible())
     await userEvent.click(checkbox)
 
-    // 12 unidades × $800 = $9.600.
-    await expect(dialog.getByText(/registra gasto de.*9\.600/i)).toBeVisible()
+    // 12 unidades × $800 = $9.600. Con `waitFor`: el bloque aparece recién al
+    // tildar el checkbox y entra animado, así que un assert síncrono puede leer
+    // el primer frame en opacity 0 (pasa solo bajo la suite completa).
+    await waitFor(() => expect(dialog.getByText(/registra gasto de.*9\.600/i)).toBeVisible())
     await expect(dialog.getByRole('button', { name: 'Efectivo' })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.click(dialog.getByRole('button', { name: 'Transferencia' }))
 
@@ -124,7 +126,10 @@ export const BorrarCostoDestildaPagaloDeLaCaja: Story = {
     const costInput = dialog.getByLabelText('Costo por unidad (pesos, opcional)')
     await userEvent.type(costInput, '800')
     await userEvent.click(dialog.getByRole('checkbox', { name: /pagalo de la caja/i }))
-    await expect(dialog.getByRole('button', { name: 'Efectivo' })).toBeVisible()
+    // Los métodos de pago aparecen recién al tildar el checkbox, dentro de un
+    // contenedor que entra animado: esperar la visibilidad en vez de asertarla
+    // en el mismo tick (con la suite completa el primer frame llega en opacity 0).
+    await waitFor(() => expect(dialog.getByRole('button', { name: 'Efectivo' })).toBeVisible())
 
     await userEvent.clear(costInput)
     await expect(dialog.queryByRole('checkbox', { name: /pagalo de la caja/i })).toBeNull()

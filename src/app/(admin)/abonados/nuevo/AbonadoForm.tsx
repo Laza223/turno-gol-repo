@@ -184,12 +184,12 @@ export function PreviewSlotsView({
             <div key={d} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/40 transition-colors">
               <span className="text-sm font-medium text-foreground">{d}</span>
               {isConflict ? (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/15 px-2.5 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 dark:text-amber-400 bg-amber-500/15 px-2.5 py-0.5 rounded-full">
                   <AlertTriangle className="h-3 w-3" />
                   Ocupado
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
                   <CheckCircle2 className="h-3 w-3" />
                   Libre
                 </span>
@@ -637,11 +637,11 @@ export default function AbonadoForm({
               <div className="rounded-xl bg-accent/40 p-3 space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Estimación mensual (~4 turnos):</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                  <span className="font-bold text-emerald-800 dark:text-emerald-400 text-sm">
                     {formattedMonthly}
                   </span>
                 </div>
-                <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
                   Al continuar, se verificará la disponibilidad para generar los turnos.
                 </p>
               </div>

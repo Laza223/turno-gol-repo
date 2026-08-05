@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { StepPayments } from './StepPayments'
 
 /** Las Server Actions entran por prop (ver comentario en el componente). */
@@ -41,8 +42,10 @@ export const EligiendoCobrarSena: Story = {
 }
 
 /** "Sin seña por ahora": el CTA cambia a un botón que cierra el wizard. */
+const sinSenaTerminando = pendingAction<void>(undefined)
+
 export const SinSenaTerminando: Story = {
-  args: { finishAction: fn(() => new Promise(() => {})) },
+  args: { finishAction: fn(sinSenaTerminando.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: /sin seña por ahora/i }))
@@ -50,6 +53,8 @@ export const SinSenaTerminando: Story = {
     const finish = canvas.getByRole('button', { name: /terminar y ver mi complejo/i })
     await userEvent.click(finish)
     await expect(finish).toBeDisabled()
+    // Sin release la transición queda viva: hay 4 stories después en el archivo.
+    await sinSenaTerminando.release(finish)
   },
 }
 

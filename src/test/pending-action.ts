@@ -14,9 +14,17 @@
  * Detalle importante para no confundirse diagnosticando: un remount por story
  * (`key` en el decorator) NO alcanza. La transición no es del componente.
  *
- * Y no es un problema teórico de las stories que hoy fallan: el patrón está en
- * 10 archivos, y los que pasan lo hacen solo porque la story colgada quedó
- * ÚLTIMA en el archivo. Reordenar exports los pone en rojo.
+ * Y no es un problema teórico de las stories que hoy fallan: los que pasan lo
+ * hacen solo porque la story colgada quedó ÚLTIMA en el archivo. Reordenar
+ * exports los pone en rojo.
+ *
+ * Inventario al 2026-08-05 (`git grep -n "new Promise\(<[^>]*>\)\?(() => {})" -- "*.stories.tsx"`):
+ * **15 archivos**, no 10 como decía este comentario. Migrados los que tienen
+ * stories DESPUÉS de la colgada — el riesgo inmediato. Los que quedan tienen la
+ * story colgada al final y son seguros HOY, no por diseño. Cuidado con
+ * `StepIdentity.stories.tsx`, que declara una variable local llamada
+ * `pendingAction` sin importar este helper: un grep por nombre lo cuenta como
+ * migrado y no lo está.
  *
  * Uso:
  * ```ts

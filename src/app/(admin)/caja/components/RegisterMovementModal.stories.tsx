@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expectGone } from '@/test/expect-gone'
 import { artDateString } from '@/test/fixtures'
 import { RegisterMovementModal, type CreateCashFlowAction } from './RegisterMovementModal'
 import type { CashFlowActionResult } from '../actions'
@@ -163,7 +164,7 @@ export const GuardarOk: Story = {
     // El modal cierra de verdad (ControlledModal): esperamos a que el overlay
     // se remueva antes de leer el toast, si no queda leyéndose sobre el fondo
     // oscurecido del Dialog en vez del fondo real de la página.
-    await waitForElementToBeRemoved(dialogEl)
+    await expectGone(dialogEl)
     await waitFor(() => expect(canvas.getByText('Movimiento registrado')).toBeVisible())
   },
 }

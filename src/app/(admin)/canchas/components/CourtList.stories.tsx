@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { courtFutbol5, courtOffline, courts, openingHours } from '@/test/fixtures'
 import { CourtList } from './CourtList'
 import type { CourtDeactivationImpactResult } from '../actions'
@@ -113,6 +113,14 @@ export const DesactivarConImpacto: Story = {
     // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
     await waitFor(() => expect(dialog.getByText(/4 reserva\(s\) futura\(s\)/i)).toBeVisible())
     await expect(dialog.getByText(/2 turno\(s\) fijo\(s\) activo\(s\)/i)).toBeVisible()
+
+    // Sin cerrar acá, el portal del ConfirmDialog queda montado y contamina
+    // la story siguiente del archivo (Error Al Verificar Impacto). Con
+    // reducedMotion la salida es casi instantánea — un waitFor sobre
+    // queryByRole (no waitForElementToBeRemoved) evita el "ya removido" si
+    // el Escape lo saca del DOM antes del primer chequeo.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }
 
@@ -142,7 +150,20 @@ export const ErrorAlVerificarImpacto: Story = {
     const toastItem = toastText.closest('li')
     if (!toastItem) throw new Error('No se encontró el toast')
     await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
-    await waitForElementToBeRemoved(toastText)
+    // `waitForElementToBeRemoved` NO sirve acá, en ninguna de sus dos formas, y
+    // por dos razones opuestas que dependen del timing:
+    //   - sobre `toastText` (un nieto): camina `parentElement` UNA sola vez al
+    //     llamarla; si el <li> ya se desprendió de su <ol>, la raíz que captura
+    //     es el <li> huérfano y `li.contains(toastText)` da true para siempre.
+    //   - sobre `toastItem` (el <li>): si para cuando arranca ya se fue, tira
+    //     "element is already removed" — falla por llegar TARDE.
+    // Entre las dos no queda ventana: bajo la suite completa el toast a veces
+    // se va antes de esta línea y a veces después. `waitFor` + `queryBy` no
+    // tiene el problema: "ya no está" satisface la condición sin importar
+    // cuándo se fue.
+    await waitFor(() =>
+      expect(canvas.queryByText('No se pudo verificar el impacto')).not.toBeInTheDocument(),
+    )
   },
 }
 

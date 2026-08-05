@@ -7,6 +7,7 @@ import {
   nightCutoffMins,
   operatingDateOf,
   operatingDayRangeUtc,
+  slotHasPassed,
 } from '@/shared/time/operating-day'
 import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
 
@@ -184,5 +185,58 @@ describe('operatingDayRangeUtc', () => {
     const opDay23 = operatingDayRangeUtc('2026-07-23', 120)
     expect(sale >= opDay22.fromUtc && sale < opDay22.toUtc).toBe(true)
     expect(sale >= opDay23.fromUtc && sale < opDay23.toUtc).toBe(false)
+  })
+})
+
+describe('slotHasPassed', () => {
+  const base = { openHhmm: '08:00', closesNextDay: false, nowDate: '2026-08-04', nowTime: '20:00' }
+
+  it('sin reloj (hidratación SSR) nada es pasado', () => {
+    expect(
+      slotHasPassed({ ...base, date: '2020-01-01', timeStart: '08:00', nowDate: '', nowTime: '' }),
+    ).toBe(false)
+  })
+
+  it('un día anterior es pasado entero; uno posterior no es pasado nunca', () => {
+    expect(slotHasPassed({ ...base, date: '2026-08-03', timeStart: '23:00' })).toBe(true)
+    expect(slotHasPassed({ ...base, date: '2026-08-05', timeStart: '08:00' })).toBe(false)
+  })
+
+  it('mismo día: compara contra la hora de pared', () => {
+    expect(slotHasPassed({ ...base, date: '2026-08-04', timeStart: '19:00' })).toBe(true)
+    expect(slotHasPassed({ ...base, date: '2026-08-04', timeStart: '21:00' })).toBe(false)
+  })
+
+  it('el slot que está corriendo NO cuenta como pasado (empezó justo ahora)', () => {
+    expect(slotHasPassed({ ...base, date: '2026-08-04', timeStart: '20:00' })).toBe(false)
+  })
+
+  it('closes_next_day: la madrugada del día operativo de hoy todavía es futuro', () => {
+    // 01:00 pertenece al día operativo 2026-08-04 pero ocurre FÍSICAMENTE el 05
+    // a la madrugada: a las 20:00 de hoy no pasó, aunque '01:00' < '20:00'.
+    expect(
+      slotHasPassed({
+        ...base,
+        closesNextDay: true,
+        date: '2026-08-04',
+        timeStart: '01:00',
+      }),
+    ).toBe(false)
+  })
+
+  it('sin closes_next_day esa misma madrugada SÍ ya pasó (control negativo del flag)', () => {
+    expect(slotHasPassed({ ...base, date: '2026-08-04', timeStart: '01:00' })).toBe(true)
+  })
+
+  it('closes_next_day no indulta las horas posteriores a la apertura', () => {
+    expect(
+      slotHasPassed({ ...base, closesNextDay: true, date: '2026-08-04', timeStart: '19:00' }),
+    ).toBe(true)
+  })
+
+  it('closes_next_day: la madrugada de un día operativo YA vencido sigue siendo pasado', () => {
+    expect(
+      slotHasPassed({ ...base, closesNextDay: true, date: '2026-08-03', timeStart: '01:00' }),
+    ).toBe(true)
   })
 })

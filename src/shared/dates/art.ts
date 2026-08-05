@@ -12,6 +12,16 @@ export function artTodayStr(): string {
 }
 
 /**
+ * `{ date: 'YYYY-MM-DD', time: 'HH:MM' }` in ART. Lives here (and not in
+ * `use-art-now.ts`, which is a `'use client'` module) so Server Actions can
+ * answer "is this slot already past?" with the SAME clock the grid uses.
+ */
+export function artNowParts(): { date: string; time: string } {
+  const d = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+  return { date: d.slice(0, 10), time: d.slice(11, 16) }
+}
+
+/**
  * Adds `days` to a YYYY-MM-DD string (can be negative).
  * Uses UTC arithmetic to avoid DST shifts.
  */

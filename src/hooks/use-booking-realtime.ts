@@ -29,6 +29,8 @@ type ApiResponse = {
     payment_method: PaymentMethodValue | null
     deposit_status: DepositStatus
     deposit_amount: number
+    total_paid: number
+    pending: number
   }>
 }
 
@@ -50,7 +52,32 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
     paymentMethod: (row['payment_method'] as PaymentMethodValue | null) ?? null,
     depositStatus: (row['deposit_status'] as DepositStatus | null) ?? null,
     depositAmount: (row['deposit_amount'] as number | null) ?? null,
+    // Realtime replica `bookings`, y los cobros de mostrador viven en
+    // `cash_flows`: el saldo real no viaja en este payload. Se deja en null a
+    // propósito (la alarma "sin cobrar" no se dispara con datos incompletos) y
+    // lo completa el reconcile contra /api/bookings, que ya está agendado para
+    // todo INSERT/UPDATE por el mismo motivo que faltan los nombres del jugador.
+    totalPaid: null,
+    pending: null,
   }
+}
+
+/**
+ * Arrastra el saldo que ya conocíamos al aplicar un evento de Realtime.
+ *
+ * `cash_flows` no replica por este canal (la publicación es de `bookings`), así
+ * que el payload NUNCA puede traer cuánto se cobró. Sin este arrastre, cualquier
+ * UPDATE del turno borraría el saldo hasta que llegue el reconcile ~400ms
+ * después: la alarma de "terminado sin cobrar" desaparecería y volvería sola, y
+ * un parpadeo así se lee como "ya está resuelto".
+ *
+ * Arrastrar es además lo correcto, no un parche: si los cobros no cambiaron (y
+ * no pudieron cambiar, porque un cobro no emite en este canal), el saldo previo
+ * sigue siendo el vigente.
+ */
+function carryMoney(next: GridBooking, prev: GridBooking | undefined): GridBooking {
+  if (!prev) return next
+  return { ...next, totalPaid: prev.totalPaid ?? null, pending: prev.pending ?? null }
 }
 
 function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
@@ -76,6 +103,8 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
     paymentMethod: row.payment_method ?? null,
     depositStatus: row.deposit_status ?? null,
     depositAmount: row.deposit_amount ?? null,
+    totalPaid: row.total_paid ?? null,
+    pending: row.pending ?? null,
   }
 }
 
@@ -87,6 +116,7 @@ export function useBookingRealtime(opts: {
   const [bookings, setBookings] = useState<GridBooking[]>(opts.initialBookings)
   const [status, setStatus] = useState<RealtimeStatus>('CONNECTING')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const moneyPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const reconcileRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchFromApi = useCallback(async () => {
@@ -141,7 +171,7 @@ export function useBookingRealtime(opts: {
                 const idx = prev.findIndex((b) => b.id === normalized.id)
                 if (idx >= 0) {
                   const next = [...prev]
-                  next[idx] = normalized
+                  next[idx] = carryMoney(normalized, prev[idx])
                   return next
                 }
                 return [...prev, normalized]
@@ -155,7 +185,7 @@ export function useBookingRealtime(opts: {
                 const idx = prev.findIndex((b) => b.id === normalized.id)
                 if (idx >= 0) {
                   const next = [...prev]
-                  next[idx] = normalized
+                  next[idx] = carryMoney(normalized, prev[idx])
                   return next
                 }
                 return prev
@@ -176,6 +206,19 @@ export function useBookingRealtime(opts: {
             // guarantee an event queue). Also covers the micro-window between
             // the SSR snapshot and the first post-hydration SUBSCRIBED.
             void fetchFromApi()
+            // Reconcile periódico incluso CONECTADO (hallazgo de la revisión de
+            // Fase 3 T7). El canal escucha `bookings`, pero cobrar un turno sólo
+            // inserta en `cash_flows` — no hay ningún UPDATE de `bookings` que
+            // emita. Peor: el trigger `enforce_booking_invariants_fn` PROHÍBE
+            // cualquier UPDATE sobre un turno terminal, así que ni siquiera se
+            // puede tocar `updated_at` como no-op para forzar el evento (y
+            // `completed` es justo el estado del turno que dispara la alarma
+            // "sin cobrar"). Sin esto, la grilla de la OTRA tablet se queda con
+            // la alarma en rojo para siempre después de que alguien cobró — una
+            // alarma que miente entrena al staff a ignorarlas.
+            if (!moneyPollRef.current) {
+              moneyPollRef.current = setInterval(() => void fetchFromApi(), 30_000)
+            }
           } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
             setStatus('OFFLINE')
             if (!pollRef.current) {
@@ -194,6 +237,10 @@ export function useBookingRealtime(opts: {
       if (pollRef.current) {
         clearInterval(pollRef.current)
         pollRef.current = null
+      }
+      if (moneyPollRef.current) {
+        clearInterval(moneyPollRef.current)
+        moneyPollRef.current = null
       }
       if (reconcileRef.current) {
         clearTimeout(reconcileRef.current)

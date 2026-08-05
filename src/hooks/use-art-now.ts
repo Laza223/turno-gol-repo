@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
+import { artNowParts } from '@/shared/dates/art'
 
 export type ArtNow = { date: string; time: string }
 
 /** Fecha/hora actuales en ART (UTC-3) como `{ date: 'YYYY-MM-DD', time: 'HH:MM' }`. */
 export function computeArtNow(): ArtNow {
-  const d = new Date(Date.now() - 3 * 60 * 60 * 1000)
-  return { date: d.toISOString().slice(0, 10), time: d.toISOString().slice(11, 16) }
+  return artNowParts()
 }
 
 /**

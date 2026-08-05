@@ -108,6 +108,40 @@ export function normalizeRangeToOpenDay(
 }
 
 /**
+ * ¿Este slot ya transcurrió? Predicado del día operativo, en ART.
+ *
+ * Vivía inline en `useGridLayout` y lo necesita también el picker de
+ * reprogramación (que corre en el server): un mismo turno no puede estar
+ * "pasado" para la grilla y "futuro" para el selector que ofrece moverlo ahí.
+ *
+ * La única sutileza es la madrugada: con `closesNextDay`, un slot cuya hora de
+ * pared es menor que la apertura (01:00 con apertura 08:00) pertenece al día
+ * operativo de HOY pero sucede FÍSICAMENTE mañana — a las 20:00 de hoy todavía
+ * es futuro, aunque `'01:00' < '20:00'`.
+ *
+ * `nowDate` vacío (hidratación SSR, ver useArtNow) ⇒ nada es pasado.
+ */
+export function slotHasPassed(params: {
+  /** Día operativo del slot, YYYY-MM-DD. */
+  date: string
+  /** Hora de pared de inicio, HH:MM. */
+  timeStart: string
+  /** Apertura del día del slot, HH:MM. */
+  openHhmm: string
+  closesNextDay: boolean
+  /** Hoy en ART, YYYY-MM-DD. */
+  nowDate: string
+  /** Ahora en ART, HH:MM. */
+  nowTime: string
+}): boolean {
+  if (!params.nowDate) return false
+  if (params.date < params.nowDate) return true
+  if (params.date > params.nowDate) return false
+  if (params.closesNextDay && params.timeStart < params.openHhmm) return false
+  return params.timeStart < params.nowTime
+}
+
+/**
  * Cash/canteen operating-day cutoff, in minutes past ART midnight.
  *
  * Unlike bookings (which peg each slot to its own weekday hours), a cash_flow

@@ -7,15 +7,9 @@ import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import CompleteBookingDialog from '../CompleteBookingDialog'
 import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from '../actions'
-
-/** Mismo texto que QuickActions.tsx (lista) — una sola gramática (visión v2 §6.2). */
-const NO_SHOW_CONSEQUENCES = [
-  'La seña pagada queda para el complejo.',
-  'Si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online.',
-  'No se puede deshacer pasadas 24hs.',
-]
 
 type CancellationType = 'complejo' | 'jugador'
 

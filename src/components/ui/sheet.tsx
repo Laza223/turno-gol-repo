@@ -39,6 +39,10 @@ const sheetVariants = cva(
         // overflow-y-auto: el drawer del sidebar admin no tenía escape si la
         // nav crecía o la pantalla era baja (landscape).
         left: 'inset-y-0 left-0 h-full w-72 max-w-[85vw] overflow-y-auto border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left',
+        // Panel de acciones del turno (Fase 3). Más ancho que el drawer de nav:
+        // acá adentro hay montos, métodos de pago y listas, no ítems de menú.
+        right:
+          'inset-y-0 right-0 h-full w-[24rem] max-w-[92vw] overflow-y-auto border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
         bottom:
           'inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
       },

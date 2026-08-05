@@ -222,6 +222,14 @@ export type BookingCharges = {
  * nuevo sobre `depositCounted` (que ya la cuenta vía deposit_status) y además
  * aparecería duplicada en la lista de "cobros" de la UI. Se excluye por match
  * exacto de `description` (depositCashFlowDescription, booking.charges.ts).
+ *
+ * `category = 'booking'` (Fase 3): hoy es redundante — todo `createCashFlow`
+ * con `bookingId` pasa esa categoría. Es el guard para la venta de cantina
+ * asociada a un turno, que entra como `product_sale` con el mismo `booking_id`:
+ * sin este filtro, comprarse una gaseosa bajaría el saldo pendiente del turno.
+ * `sumBookingChargesByBooking` (grilla) usa el mismo predicado a propósito —
+ * si uno cambia, cambian los dos o el saldo de la grilla miente respecto del
+ * detalle.
  */
 export async function getBookingCharges(
   tenantId: string,
@@ -232,10 +240,58 @@ export async function getBookingCharges(
     SELECT id, amount, method, description, occurred_at::text AS "occurredAt"
     FROM cash_flows
     WHERE tenant_id = ${tenantId} AND booking_id = ${bookingId} AND type = 'income'
+      AND category = 'booking'
       AND description <> ${depositCashFlowDescription(bookingId)}
     ORDER BY occurred_at ASC
   `)
   const charges = rows as unknown as BookingChargeRow[]
   const chargesTotal = charges.reduce((sum, c) => sum + c.amount, 0)
   return { charges, chargesTotal }
+}
+
+/**
+ * La versión batch de `getBookingCharges` para la grilla: cobros de mostrador
+ * de MUCHOS turnos en una sola query.
+ *
+ * La grilla necesita el saldo de cada turno del día para decidir cuáles quedaron
+ * sin cobrar (la alarma de Fase 3). Llamar `getBookingCharges` por celda sería
+ * un N+1 sobre la vista donde el admin vive 8h/día.
+ *
+ * El predicado es el MISMO que el de `getBookingCharges` (income + category
+ * 'booking' + excluir la fila de la seña) — si divergen, el saldo que pinta la
+ * grilla deja de coincidir con el que muestra el detalle del turno.
+ *
+ * Devuelve un Map en centavos; un booking sin cobros simplemente no aparece.
+ */
+export async function sumBookingChargesByBooking(
+  tenantId: string,
+  bookingIds: string[],
+  tx: DbTx,
+): Promise<Map<string, number>> {
+  if (bookingIds.length === 0) return new Map()
+  // La descripción de la seña se excluye pasándola como PARÁMETRO por booking,
+  // no reconstruyendo el formato en SQL: así el literal sigue viviendo en un
+  // solo lugar (depositCashFlowDescription) y cambiarlo no puede desincronizar
+  // esta query en silencio.
+  //
+  // ANY(ARRAY[...]) con sql.join (patrón de canteen-sale/abonado.service):
+  // interpolar el array de JS directo rompe con drizzle+postgres-js.
+  const pairs = bookingIds.map(
+    (id) => sql`(${id}::uuid, ${depositCashFlowDescription(id)}::text)`,
+  )
+  const rows = await tx.execute(sql`
+    WITH wanted (booking_id, deposit_desc) AS (
+      VALUES ${sql.join(pairs, sql`, `)}
+    )
+    SELECT cf.booking_id AS "bookingId", COALESCE(SUM(cf.amount), 0)::int AS total
+    FROM cash_flows cf
+    JOIN wanted w ON w.booking_id = cf.booking_id
+    WHERE cf.tenant_id = ${tenantId}
+      AND cf.type = 'income'
+      AND cf.category = 'booking'
+      AND cf.description <> w.deposit_desc
+    GROUP BY cf.booking_id
+  `)
+  const list = rows as unknown as { bookingId: string; total: number }[]
+  return new Map(list.map((r) => [r.bookingId, r.total]))
 }

@@ -144,3 +144,57 @@ describe('getCashFlowsForExport', () => {
     expect(rows).toEqual([])
   })
 })
+
+/**
+ * Q2a de getRevenueReport ("ingreso por cancha") sale de los cash_flows que
+ * tienen booking_id. Desde Fase 3 una venta de cantina puede llevar booking_id
+ * (consumo cargado al turno), así que sin el filtro por categoría la cerveza se
+ * contaría como facturación de la cancha.
+ */
+describe('getRevenueReport — byCourt no mezcla cantina con el turno', () => {
+  const JUN_FROM = new Date('2026-06-01T00:00:00.000Z')
+  const JUN_TO = new Date('2026-07-01T00:00:00.000Z')
+  let courtId: string
+  let bookingId: string
+
+  beforeAll(async () => {
+    const sql = getSql()
+    const courtRows = await sql<{ id: string }[]>`
+      SELECT id FROM courts WHERE tenant_id = ${tenantId} LIMIT 1
+    `
+    courtId = courtRows[0]!.id
+
+    const bookingRows = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, status, guest_name
+      ) VALUES (
+        ${tenantId}, ${courtId}, '2026-06-10'::date, '18:00'::time, '19:00'::time,
+        '2026-06-10T21:00:00Z', '2026-06-10T22:00:00Z',
+        ${500000}, 0, 'not_required', 'completed', 'Invitado Reporte'
+      ) RETURNING id
+    `
+    bookingId = bookingRows[0]!.id
+
+    await sql`
+      INSERT INTO cash_flows
+        (tenant_id, type, category, amount, method, description, registered_by, occurred_at, booking_id)
+      VALUES
+        (${tenantId}, 'income', 'booking',      ${500000}, 'cash', ${'Turno'},   ${staffId}, ${'2026-06-10T21:30:00Z'}, ${bookingId}),
+        (${tenantId}, 'income', 'product_sale', ${90000},  'cash', ${'Cantina: Cerveza x3'}, ${staffId}, ${'2026-06-10T21:40:00Z'}, ${bookingId})
+    `
+  })
+
+  it('la cancha factura sólo el turno; la cantina queda fuera de byCourt', async () => {
+    const report = await getRevenueReport(tenantId, JUN_FROM, JUN_TO, OPENING_HOURS, MAY_FROM, MAY_TO)
+    const court = report.byCourt.find((c) => c.courtId === courtId)
+    expect(court).toBeDefined()
+    expect(court!.income).toBe(500000)
+    expect(court!.bookingCount).toBe(1)
+  })
+
+  it('pero la plata de cantina SÍ entra al total del período (no se pierde)', async () => {
+    const report = await getRevenueReport(tenantId, JUN_FROM, JUN_TO, OPENING_HOURS, MAY_FROM, MAY_TO)
+    expect(report.income).toBe(590000)
+  })
+})

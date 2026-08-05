@@ -8,6 +8,7 @@ import {
   DAY_KEYS,
   generateTimeSlots,
 } from '@/lib/booking/grid-cells'
+import { slotHasPassed } from '@/shared/time/operating-day'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -81,17 +82,19 @@ export function useGridLayout({
     [slots, courts, bookingsByKey],
   )
 
+  // El predicado vive en shared/time: el picker de reprogramación (server) tiene
+  // que responder exactamente lo mismo que la grilla, o termina ofreciendo mover
+  // un turno a un hueco que la grilla ya pinta como pasado.
   const isSlotPast = useCallback(
-    (slotTime: string): boolean => {
-      if (!artNow.date) return false
-      if (date < artNow.date) return true
-      if (date > artNow.date) return false
-      // Día operativo: un slot de madrugada (slotTime < apertura, con
-      // closesNextDay) ocurre FÍSICAMENTE mañana, así que en el día operativo de
-      // hoy todavía es futuro aunque su hora de pared sea menor que "ahora".
-      if (closesNextDay && slotTime < openHhmm) return false
-      return slotTime < artNow.time
-    },
+    (slotTime: string): boolean =>
+      slotHasPassed({
+        date,
+        timeStart: slotTime,
+        openHhmm,
+        closesNextDay,
+        nowDate: artNow.date,
+        nowTime: artNow.time,
+      }),
     [artNow, date, closesNextDay, openHhmm],
   )
 

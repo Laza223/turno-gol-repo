@@ -51,6 +51,20 @@ export class StockNotEditableFromCatalogError extends Error {
   }
 }
 
+/**
+ * Venta de cantina cargada a un turno (`bookingId`) que no existe bajo este
+ * tenant. El FK a `bookings` NO alcanza como defensa: los chequeos de clave
+ * foránea corren con los permisos del dueño de la tabla y no ven RLS, así que
+ * sin esta validación un id de otro complejo entraría igual y dejaría un
+ * cash_flow apuntando afuera.
+ */
+export class SaleBookingNotFoundError extends Error {
+  constructor(bookingId: string) {
+    super(`Booking ${bookingId} not found for this tenant.`)
+    this.name = 'SaleBookingNotFoundError'
+  }
+}
+
 export class TabNotFoundError extends Error {
   constructor(tabId: string) {
     super(`Canteen tab ${tabId} not found for this tenant.`)

@@ -1,15 +1,14 @@
 /**
  * Deposit (seña) calculation for online bookings.
  *
- * Pure and dependency-free so the rounding/boundary behavior can be unit-tested
- * without the DB. `booking.service` imports this for the single production site
- * that computes a booking's deposit.
+ * La cuenta MISMA vive en `@/lib/booking/pricing` desde Fase 3 T6: el popover de
+ * alta rápida sugiere la seña en el CLIENTE, y un componente de `@/components`
+ * no puede importar el dominio como valor (regla de lint). Este módulo la
+ * re-exporta para los callers de servidor (`booking.service`) — una sola
+ * implementación, así el monto sugerido en pantalla nunca puede diferir del que
+ * el server termina grabando.
+ *
+ * Sigue siendo pura y sin dependencias de DB, así que el redondeo se testea sin
+ * levantar Postgres (`tests/unit/money-math-precision.test.ts`).
  */
-
-/**
- * Deposit amount in integer cents for a given price (cents) and percentage.
- * Uses round-half-up (JS Math.round) — ties break toward +∞, not banker's rounding.
- */
-export function calcDepositCents(priceSnapshotCents: number, depositPercentage: number): number {
-  return Math.round((priceSnapshotCents * depositPercentage) / 100)
-}
+export { calcDepositCents } from '@/lib/booking/pricing'

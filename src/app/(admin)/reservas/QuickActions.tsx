@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
+import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { hasQuickActions } from './quick-actions-helpers'
 import CompleteBookingDialog from './CompleteBookingDialog'
 import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
@@ -64,17 +65,6 @@ const DEPOSIT_METHOD_LABELS: Record<DepositMethod, string> = {
   other: 'Otro',
 }
 
-/**
- * Mismo texto en las 3 superficies donde se puede marcar ausente (lista
- * desktop/mobile acá, detalle en BookingActions.tsx) — la matriz
- * deshacer-vs-confirmar (visión v2 §6.2) es una sola gramática, no una por
- * pantalla.
- */
-const NO_SHOW_CONSEQUENCES = [
-  'La seña pagada queda para el complejo.',
-  'Si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online.',
-  'No se puede deshacer pasadas 24hs.',
-]
 
 /**
  * Firma de las Server Actions que consume QuickActions. Se agrupan en un

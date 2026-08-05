@@ -9,11 +9,15 @@
  *   que ya está cubierto por caja-crud.spec.ts.
  *   Por lo tanto T2 implementa 1 test único (no 3 parametrizados).
  *
- * Flujo cubierto: click cell libre en grilla → modal "Nueva reserva" → submit →
- *   booking visible en grilla + confirmado en DB.
+ * Flujo cubierto: click cell libre en grilla → popover de alta rápida (Fase 3)
+ *   → "Más opciones" → modal "Nueva reserva" → submit → booking visible en
+ *   grilla + confirmado en DB.
+ *
+ * El camino corto (reservar SIN abrir el modal) lo cubre el segundo test.
  */
 
 import { test, expect } from '../fixtures'
+import { openQuickBookingPopover } from '../_helpers/grid'
 import {
   tomorrowDateIsoArt,
   cleanupBookingsByIds,
@@ -48,13 +52,13 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         // Wait for the grid table to render.
         await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
 
-        // Click a free slot at 16:00 in the seeded court.
-        // BookingCard renders free cells with aria-label `Reservar turno ${timeStart}`.
-        await page.getByRole('button', { name: /Reservar turno 16:00/i }).first().click()
+        // Fase 3: el click de una celda libre abre el POPOVER de alta rápida.
+        // Este spec cubre el camino del modal completo (nombre + teléfono bajo
+        // "Opciones avanzadas"), que ahora vive detrás de "Más opciones".
+        await openQuickBookingPopover(page, '16:00')
+        await page.getByRole('button', { name: /Más opciones/ }).click()
 
-        // The BookingFormModal should open (Radix Dialog).
-        await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
-        await expect(page.getByText('Nueva reserva')).toBeVisible()
+        await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
 
         // Duration is fixed at 60 min for guest bookings (cambio #14 eliminated the
         // picker — SLOT_DURATION_MINUTES). It only renders for internal blocks.
@@ -99,6 +103,64 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         expect(data?.type).toBe('spontaneous')
         expect(data?.guest_name).toBe('E2E Admin Create')
         expect(data?.created_by_staff).not.toBeNull()
+
+        bookingId = data?.id ?? null
+      } finally {
+        await context.close()
+        if (bookingId) {
+          await cleanupBookingsByIds(supabase, [bookingId])
+        }
+      }
+    },
+  )
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TEST — camino corto de Fase 3: reservar SIN abrir el modal
+  // ══════════════════════════════════════════════════════════════════════════
+  test(
+    'admin creates booking via quick popover — 2 campos + Enter → confirmed in DB @critical',
+    async ({ browser, adminStorageState }) => {
+      const supabase = makeServiceClient()
+      const tomorrow = tomorrowDateIsoArt()
+      let bookingId: string | null = null
+
+      const context = await browser.newContext()
+      try {
+        await context.addCookies(JSON.parse(adminStorageState).cookies)
+        const page = await context.newPage()
+        await page.goto(`/grilla?date=${tomorrow}`, { waitUntil: 'networkidle' })
+        // 14:00: los otros specs de admin usan 16:00/20:00/21:00 en esta fecha.
+        await openQuickBookingPopover(page, '14:00')
+        const nombre = page.getByLabel('¿A nombre de quién?')
+
+        // Criterio de salida #3: el precio llega YA calculado, no es un campo.
+        await expect(page.getByText(/^\$/).first()).toBeVisible()
+
+        await nombre.fill('E2E Quick Popover')
+        // Enter confirma — sin tocar el botón.
+        await nombre.press('Enter')
+
+        await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({
+          timeout: 10_000,
+        })
+        await expect(page.getByText(/E2E Quick Popover/i)).toBeVisible({ timeout: 10_000 })
+
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('tenant_id', E2E_TENANT_ID)
+          .eq('court_id', E2E_COURT_ID)
+          .eq('date', tomorrow)
+          .eq('time_start', '14:00:00')
+          .maybeSingle()
+
+        expect(error).toBeNull()
+        expect(data).not.toBeNull()
+        expect(data?.status).toBe('confirmed')
+        expect(data?.type).toBe('spontaneous')
+        expect(data?.guest_name).toBe('E2E Quick Popover')
+        // Sin seña elegida: el turno no arrastra deposit.
+        expect(data?.deposit_status).toBe('not_required')
 
         bookingId = data?.id ?? null
       } finally {

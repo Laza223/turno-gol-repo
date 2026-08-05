@@ -142,6 +142,48 @@ export class BookingDateOutOfRangeError extends Error {
   }
 }
 
+/**
+ * Fase 3: sólo se puede mover un turno que todavía está vivo y que representa
+ * la reserva de un cliente.
+ *
+ * - Estados terminales: el trigger de DB los bloquea igual; este error existe
+ *   para dar un mensaje humano antes de llegar ahí.
+ * - `tournament` / `block`: no son reservas de un jugador. Una hora de torneo se
+ *   libera y se vuelve a tomar con `releaseTournamentSlots`/`reserveTournamentSlots`
+ *   (el torneo es dueño de la hora, no un cliente), y un bloqueo de
+ *   mantenimiento se borra y se rehace. Moverlos por acá saltearía esa lógica.
+ */
+export class BookingNotReschedulableError extends Error {
+  constructor(
+    public readonly bookingId: string,
+    /**
+     * `abonado_session`: una sesión de abonado (`type='fixed'`) no se mueve por
+     * acá. Su `price_snapshot` sale del contrato (`abonados.price_per_session`),
+     * NO de la grilla de tarifas de la cancha — recalcularlo le cobraría al
+     * abonado el precio de lista en vez del pactado.
+     */
+    public readonly reason:
+      | 'terminal_status'
+      | 'not_a_player_booking'
+      | 'abonado_session'
+      /**
+       * `deposit_pending`: hay una seña esperando pago (link de MercadoPago
+       * vivo con un monto ya cotizado al jugador). `deposit_amount` se calculó
+       * como % del precio VIEJO y nadie lo recalcula al mover el turno, así
+       * que moverlo a una franja más barata dejaría una seña mayor al total.
+       */
+      | 'deposit_pending'
+      /**
+       * `price_below_paid`: la franja destino vale MENOS de lo que el cliente
+       * ya pagó. Aceptarlo dejaría el turno con saldo negativo silencioso.
+       */
+      | 'price_below_paid',
+  ) {
+    super(`Booking ${bookingId} cannot be rescheduled: ${reason}`)
+    this.name = 'BookingNotReschedulableError'
+  }
+}
+
 // INV-ABUSE-001: tope duro de holds (pending_payment) simultáneos sin pagar
 // por jugador+tenant — defensa de Denial-of-Inventory del portal público.
 export class TooManyActiveHoldsError extends Error {

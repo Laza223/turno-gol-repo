@@ -82,6 +82,15 @@ export type SellTicketInput = {
   method: CanteenSaleMethod
   /** UUID v4 generado por el cliente. Previene duplicados por doble-tap. */
   clientIdempotencyKey: string
+  /**
+   * Turno al que se le carga el consumo (Fase 3: cantina desde el panel de la
+   * grilla). Es SOLO una etiqueta de origen: el cash_flow sigue siendo
+   * `income`/`product_sale` y por lo tanto NO cuenta como pago del turno —
+   * todo lo que calcula el saldo de una reserva filtra por
+   * `category = 'booking'`. Sin ese filtro, una cerveza bajaría lo que el
+   * cliente debe por la cancha.
+   */
+  bookingId?: string
 }
 
 export type SellTicketResult = {

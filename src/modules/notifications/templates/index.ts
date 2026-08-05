@@ -3,6 +3,7 @@ export type EmailContent = { subject: string; html: string; text?: string }
 import { renderBookingConfirmed, type BookingConfirmedData } from './booking-confirmed'
 import { renderBookingCanceled, type BookingCanceledData } from './booking-canceled'
 import { renderBookingCanceledByComplex, type BookingCanceledByComplexData } from './booking-canceled-by-complex'
+import { renderBookingRescheduled, type BookingRescheduledData } from './booking-rescheduled'
 import { renderAdminNewBooking, type AdminNewBookingData } from './admin-new-booking'
 import { renderTrialWelcome, type TrialWelcomeData } from './trial-welcome'
 import { renderTrialEnding, type TrialEndingData } from './trial-ending'
@@ -24,6 +25,7 @@ export {
   renderBookingConfirmed,
   renderBookingCanceled,
   renderBookingCanceledByComplex,
+  renderBookingRescheduled,
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
@@ -39,6 +41,7 @@ type TemplateDataMap = {
   booking_confirmed: BookingConfirmedData
   booking_canceled: BookingCanceledData
   booking_canceled_by_complex: BookingCanceledByComplexData
+  booking_rescheduled: BookingRescheduledData
   admin_new_booking: AdminNewBookingData
   trial_welcome: TrialWelcomeData
   trial_ending: TrialEndingData
@@ -63,6 +66,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   booking_confirmed: renderBookingConfirmed,
   booking_canceled: renderBookingCanceled,
   booking_canceled_by_complex: renderBookingCanceledByComplex,
+  booking_rescheduled: renderBookingRescheduled,
   admin_new_booking: renderAdminNewBooking,
   trial_welcome: renderTrialWelcome,
   trial_ending: renderTrialEnding,

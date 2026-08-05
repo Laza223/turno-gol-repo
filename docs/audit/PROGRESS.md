@@ -911,3 +911,163 @@ Entrada del contrato (`decisiones-de-fase-v2.md:111`): **(1)** máquina de estad
 **Próximo paso ofrecido, pendiente de que Lazar lo pida:** redactar el borrador de la máquina de estados del slot (leyendo `bookings`/`deposit_status`/cancelaciones reales) como insumo técnico del gate — no reemplaza el prototipo ni la validación con prospectos, que siguen siendo responsabilidad de Lazar.
 
 ## Fase 2 — CERRADA (2026-08-04)
+
+## 2026-08-04 — Fase 3: máquina de estados del slot (criterio de entrada #1)
+
+Lazar pidió redactar el borrador ofrecido arriba. Nuevo doc: `docs/planning/2026-08-04-maquina-estados-slot.md` (rama `docs/fase3-maquina-estados-slot`, sin commitear). Compone `doc6_entidades.md` (máquina de la entidad `Booking`) + `pages/grilla.md`/`BookingCard.slotVisual` (mapa visual real) + lectura directa de `booking.state-machine.ts`/`booking.cancellation.ts`/`ptr.service.ts`/migraciones — tabla combinatoria de 15 filas (no solo los 6 "estados felices"), cubre reserva+seña+cancelación+no-show+torneo+abonado+bloqueo.
+
+**Hallazgos documentados (no corregidos, es un doc de mapeo, no un fix):** `canceled_refunded`/`canceled_no_refund`/`expired` son invisibles en la grilla (la query los excluye, `grilla/page.tsx:63`) pero sí visibles en `/reservas` — dos vistas con universos de estado distintos, nunca escrito como decisión explícita; `doc6_entidades.md` y `pages/grilla.md` no incluyen `type='tournament'` (migr. 062); 3 implementaciones de "status-visual" (grilla/reservas/canchas/abonados) desincronizadas por diseño, con sync 100% manual; `pending_payment→expired` "admin fuerza manualmente" documentado en doc6 pero no existe en código (el único camino es automático); comentario del worker de expiración dice 15min, la constante real es 6min.
+
+**Criterio de entrada #1 de Fase 3: CERRADO.** Criterio #2 (prototipo validado con ≥3 prospectos) sigue pendiente — **Fase 3 sigue BLOQUEADA**, ahora por un solo criterio en vez de dos. El doc deja 4 decisiones de diseño marcadas "REQUIERE INPUT" (§8) para cuando Fase 3 arranque de verdad: estado transitorio de cancelada/expirada en la grilla, si "terminado sin cobrar" distingue no-show con seña capturada de sin seña, unificar o no las 3 implementaciones de status-visual, y qué hacer con no-show sobre una hora de torneo.
+
+## 2026-08-04 — Fase 3: la Grilla (T0–T5)
+
+Contrato: `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3, Fase 3. Rama `feat/fase3-grilla`.
+
+**Desvío consciente del contrato, decidido por su dueño:** el criterio de entrada #2 (prototipo navegable validado con ≥3 dueños/encargados prospecto) NO se cumplió. Lazar vio un prototipo navegable, lo aprobó y decidió arrancar sin la ronda de validación con prospectos. Queda registrado como decisión de producto, no se re-litiga.
+
+**Decisiones de producto confirmadas antes de arrancar:** reprogramar mueve cancha+día+horario dentro de la ventana de anticipación y **recalcula** el precio a la franja destino (el precio pertenece a la franja, no a la reserva); alarma "sin cobrar" = `completed` con saldo > 0, más `no_show` sin nada capturado (un no-show CON seña capturada no alarma: ya cobraste lo único cobrable); cancelada/expirada siguen invisibles en la grilla; no-show sobre hora de torneo no se ofrece; popover de alta con 2 campos + precio pre-calculado, con link al `BookingFormModal` completo.
+
+### T0 — Migración 070: relajar `price_snapshot`
+
+Bloqueante de reprogramar. `enforce_booking_invariants_fn` (regla 2) prohibía cambiar `price_snapshot` incondicionalmente desde la migr. 005. `070_reschedule_price_recalc.sql` (+ espejo `supabase/migrations/20260424000070_*.sql`) abre una excepción **acotada**: solo si `OLD.status IN ('confirmed','pending_payment')` **y** cambió el slot físico (`starts_at` o `court_id`). Re-declara `SET search_path = 'public'` — sin eso, `CREATE OR REPLACE FUNCTION` resetea `proconfig` y deshace en silencio el hardening de la 056.
+
+Verificado con **ruptura controlada**: se revirtió el trigger a la versión de la 060, se confirmó que exactamente los 4 tests de "permite" quedaban rojos, se reaplicó, verde. `tests/integration/booking-price-immutability.test.ts` (8 casos).
+
+### T1 — Fuente única de estado visual + alarma
+
+Había **6** mapeos estado→visual desincronizados en 3 shapes distintas, con `GridLegend.tsx:16` pidiendo por comentario mantenerlos iguales (y los tints ya divergían). Dos módulos nuevos: `src/lib/status-tone.ts` (tabla de tokens por tono, cross-dominio) y `src/lib/booking/slot-visual.ts` (`slotStateKey`/`gridSlotVisual`/`bookingBadgeVisual`/`GRID_LEGEND_ITEMS`, todo derivado de UNA tabla). Preserva la divergencia deliberada: la grilla distingue "Señada" de "Confirmada", la lista no. `src/components/ui/status-badge.tsx` reemplaza 4 Badge duplicados. Arrastra el fix de contraste AA: `bg-muted text-muted-foreground` (4.21:1) estaba en abonados/canchas/staff. `tests/unit/slot-visual.test.ts` (24 casos — antes no había NINGÚN test unitario de los 6 mapeos).
+
+### T2 — `GridBooking` con saldo pendiente
+
+La alarma necesita plata, no estado. `grid-cells.ts` suma `totalPaid`/`pending`, calculados server-side con `summarizeBookingCharges` (la misma función que usa el detalle: los dos números no pueden divergir). Query agregada nueva `sumBookingChargesByBooking` (una sola pasada para todo el día, no una por celda) con `VALUES` CTE parametrizado. 🔴 **Gotcha del contrato cerrado acá, no en T5:** `getBookingCharges` no filtraba por `category` — se le agregó `AND category = 'booking'`, porque el agregado batch y el detalle tienen que coincidir. `tests/integration/booking-charges-batch.test.ts` (6). `use-booking-realtime.ts` arrastra el saldo previo en INSERT/UPDATE (`carryMoney`): los `cash_flows` no replican por el canal de bookings, así que Realtime nunca puede traer el saldo.
+
+### T3 — Reprogramar: backend
+
+`src/modules/bookings/booking.reschedule.ts` nuevo. Es un UPDATE del MISMO booking (conserva id, seña y cobros; no ensucia métricas con una cancelación que nadie hizo). Reescribe las **seis** columnas del slot juntas — dejar `starts_at`/`ends_at` viejos haría que el exclusion constraint no vea el choque real. `assertSlotFreeForOther` agrega `AND id <> bookingId` (el `checkOverlapOrThrow` de creación matchearía el turno contra sí mismo). **Orden de locks documentado y probado**: cancha destino ANTES del booking, porque `createManualBooking` lockea la cancha y después inserta — al revés habría deadlock real entre crear y reprogramar sobre la misma cancha. Doble `invalidateCourtDateSlots` (origen + destino): ningún flujo previo movía un booking. Template `booking-rescheduled` + `rescheduleBookingAction` (try/catch FUERA de `withTenantContext`, email post-commit no bloqueante). `tests/integration/booking-reschedule.test.ts` (15).
+
+### T4 — Panel lateral: shell + cobrar + marcar ausente
+
+`BookingSlotPanel` (Sheet `side="right"`, variante nueva) reemplaza el popover de solo-lectura. El hover se fue a propósito: no existe en touch y el mostrador usa tablet. Se van ~90 líneas de `slotVisual` privado y ~60 de hover-intent (3 timers); la celda ocupada pasa a ser un solo `<button>` con el `placement()` directo. Cobrar tiene 3 caminos porque el backend valida estados distintos: `settle` (jugado con saldo), `finish` (confirmado y terminado → cobra y cierra en un paso), `advance` (todavía no terminó → adelanto, y ahí se fuerza UNA línea porque `addBookingChargeAction` no acepta mixto — mostrar el mixto y mandar solo la primera sería cobrar de menos sin avisar). `NO_SHOW_CONSEQUENCES` estaba duplicado literal en 2 archivos: extraído a `src/lib/booking/no-show-consequences.ts`.
+
+🔴 **Bug que solo apareció corriendo la app:** después de cobrar $24.000, la plata llegó a `cash_flows` pero la grilla seguía en rojo. `useBookingRealtime` lee `initialBookings` solo al montar, así que `router.refresh()` solo no alcanza. Una alarma que no se apaga después de cobrar entrena al staff a ignorarlas. Fix: prop `onMutated` → `router.refresh()` + `refetch()`. Re-verificado en el navegador: quedó "Jugada" verde.
+
+Otros dos hallazgos propios: `Date.now()` en render era impuro **y** ignoraba el día operativo (un turno de madrugada de un complejo `closes_next_day` habría contado como terminado sin haber pasado) — pasó a ser prop `hasEnded`, decidida por la grilla. Y los tests de "torneo/bloqueo no ofrecen marcar ausente" pasaban **vacíos** (`renderGrid` nunca pasaba las acciones, así que el panel no renderizaba ningún botón): se les agregó un control positivo.
+
+### T5 — Panel lateral: cantina + reprogramar (UI)
+
+**Cantina atada al turno.** `SellTicketInput.bookingId?` + `sellTicketSchema` + `createCashFlow`. El cash_flow sigue siendo `income`/`product_sale`: el `booking_id` es una etiqueta de origen, NO un pago del turno.
+
+🔴 **Barrido de clase, no de instancia.** La feature crea un tipo de fila nuevo: `booking_id` no nulo con categoría distinta de `booking`. Toda query que asuma "`booking_id` ⇒ es plata del turno" queda mal. Barrido de los 6 lectores: `getBookingCharges` ✅ (T2), `sumBookingChargesByBooking` ✅ (T2), `booking.debts.ts` ✅ (ya filtraba), reconciliación INV1 ✅ / INV9 ✅ (ya filtraban), `getCashFlowsForExport` — sin cambio a propósito (la fila sigue diciendo `product_sale`, la columna "cancha" es información extra). **El único roto era `getRevenueReport` Q2a** ("ingreso por cancha"), sin filtro de categoría: la cerveza se habría contado como facturación de la cancha. Fix + `tests/integration/reports.test.ts` (2 casos nuevos), verificado con **ruptura controlada** (sin el filtro, la cancha "factura" $5.900 en vez de $5.000).
+
+El `bookingId` se valida con `AND tenant_id = ...` explícito además de RLS (convención del propio módulo, `lockProducts:48`). No es ceremonia: **el test cross-tenant lo detectó** — el FK a `bookings` corre con los permisos del dueño de la tabla y no ve RLS, y con el DSN superusuario del entorno local RLS tampoco filtra, así que el turno ajeno entraba. `tests/integration/canteen-sale-booking-link.test.ts` (5 casos).
+
+**Reprogramar (UI).** `BookingRescheduleDialog` + `listRescheduleSlotsAction`. `getAvailableSlots` no sabe de ventana de anticipación ni de hora actual: las dos se aplican en la action. El predicado "ya pasó" se extrajo de `useGridLayout` a `slotHasPassed` (`shared/time/operating-day.ts`) y lo usan los dos — si divergieran, el panel ofrecería mover un turno a un hueco que la grilla ya pinta como pasado. `artNowParts()` bajó a `shared/dates/art.ts` para que el server use el mismo reloj (estaba en un módulo `'use client'`). El diálogo muestra el precio de cada hueco y avisa explícito cuando el cambio mueve la plata.
+
+**Frontera de arquitectura:** el diálogo de cantina reusa el `TicketPanel` real de /caja/cantina, y un componente de `@/components` no puede importar de `@/app` (regla de lint). Mover `TicketPanel` habría arrastrado `caja-lib` y sus 17 consumidores, o sea un cambio estructural. En su lugar el diálogo vive en `app/(admin)/grilla/_components/` y `GrillaView` (client wrapper mínimo) lo inyecta como `renderCanteenDialog` — una Server Component no puede pasar un componente por prop, solo elementos y Server Actions.
+
+**Verificación en la app real** (dev server + Playwright headless contra ese mismo server, no solo tests):
+- El panel del turno ofrece: Cobrar y cerrar turno / Cargar cantina / Reprogramar / Marcar ausente.
+- Cantina: catálogo cargado bajo demanda, 2 Cervezas → CTA "Cobrar $ 5.000" → venta registrada. DB: `income | product_sale | 500000 | cash | Cantina: Cerveza x2 | booking_id no nulo`; stock 24→22; ledger `sale | -2 | 250000`.
+- 🟢 **La invariante que importa**: el panel del turno sigue mostrando **"Precio del turno $100 · Cobrado $0 · Pendiente $100"** con $15.000 de cantina cargados. La cantina no toca el saldo del turno.
+- Caja: "Cobrado hoy $15.000,00", 3 filas "Cantina: Cerveza x2 · Cantina/Bar · Efectivo".
+- Reprogramar: turno del 2026-08-04 21:00 movido al 2026-08-05 08:00 — `date`, `time_start`, `time_end`, `starts_at` (`2026-08-05 11:00:00+00` = 08:00 ART) y `price_snapshot` (2.400.000 → 10.000, la tarifa de la franja destino) recalculados juntos.
+- Datos de prueba limpiados al terminar.
+
+**Nota de método:** el primer intento de verificación falló porque el script clickeaba antes de la hidratación y porque la pane del navegador embebido no compositaba (rects en 0). Ninguna de las dos era un bug del producto — se confirmó instrumentando el estado real de React antes de sacar conclusiones.
+
+**Pendiente de T5, explícito:** el consumo de cantina NO se muestra en la ficha del turno ni en el panel (queda visible en Caja). Mostrarlo requiere una query nueva por turno; fuera del alcance de esta tanda.
+
+**Flake propio encontrado y arreglado en el gate de T5:** `dateIn()` de `booking-reschedule.test.ts` (escrito en T3) calculaba las fechas con `toISOString()` (UTC) mientras `assertDateWindow` usa ART. Entre las 21:00 ART y la medianoche, `dateIn(-1)` devuelve HOY, así que el caso "no se puede mover al pasado" dejaba de ser el pasado y el test se ponía rojo por hora del día — habría fallado igual en CI a esas horas. Ahora usa `artTodayStr()`/`addDays()`, las mismas funciones que el código bajo test.
+
+### T6 — Popover de alta rápida (criterios de salida #3 y #4)
+
+**Criterio #3: ≤3 campos visibles, precio pre-calculado, Enter confirma.** El click de una celda libre abre `QuickBookingForm` en un Popover **anclado a la celda** (Radix, trigger = el propio botón del slot), no el modal de 10 campos. Dos campos a la vista: **quién** (autocomplete de jugador registrado + texto libre como invitado) y **seña** (chips Sin seña / Efectivo / Transfer / MP; elegir método revela el monto). El precio NO es un campo: se muestra ya resuelto. `Enter` en cualquier campo confirma. "Más opciones" abre el `BookingFormModal` completo **sin cambios** — bloqueos, precio a mano, teléfono, notas y duración siguen todos ahí.
+
+Sin `depositPercentage` (stories, tests viejos) la grilla se comporta como antes y la celda libre abre el modal: el popover no puede sugerir una seña sin saber el porcentaje del complejo.
+
+**Fuente única de tarifa (`src/lib/booking/pricing.ts`, nuevo).** El precio se calcula EN EL CLIENTE para que aparezca sin round-trip — y para eso hacía falta que la función fuera la misma que la del server, no una copia. Había **tres** implementaciones del mismo `for` sobre `pricing.rules`: `calculatePrice` (court.service, sobre un `Date`), el `priceForSlot` privado de booking.service (sobre dayKey+hora) y una inline en `validatePricingRulesCoverage`. Coincidían por casualidad, no por construcción. Ahora las tres delegan en el módulo puro, que además exporta `priceForDateSlot` (día operativo + hora de pared, la forma en que hablan la grilla y `bookings`). `tests/unit/booking-pricing.test.ts` (15 casos) incluye una tabla que compara `priceForDateSlot` contra `calculatePrice(artDateAt(...))` caso por caso: la extracción no cambió ninguna respuesta.
+
+`calcDepositCents` se movió a ese mismo módulo (`modules/bookings/deposit.ts` quedó re-exportando) por la regla de lint que prohíbe a `@/components` importar el dominio como VALOR. Misma razón de fondo que el precio: el monto sugerido en pantalla no puede diferir del que calcularía el server.
+
+**Chequeo de disponibilidad, ahora visible.** `checkSlotAvailabilityAction` es fail-open (devuelve `available: true` ante cualquier fallo propio), así que un `false` es señal POSITIVA de que el turno se ocupó: el popover lo dice y deshabilita Confirmar. Sin mostrarlo, la carrera de doble reserva quedaba solo en el exclusion constraint y el admin veía el error recién al confirmar. Hay test del camino feliz Y del fail-open (un chequeo que explota NO bloquea el alta).
+
+**Criterio #4: instrumentación del proxy "alta ≤10 s".** Categoría `grid` nueva en `track` (`breadcrumbs.ts`), mismo patrón que `cashflow` de Fase 1: `quick_create.opened` / `.confirmed` / `.more_options` / `.abandoned`, con `durationMs`. `.abandoned` importa tanto como `.confirmed` — sin él, el promedio mediría solo los casos donde el popover alcanzó, que es justo el sesgo que haría parecer bueno un atajo que nadie usa.
+
+🔴 **Bug que solo apareció corriendo la app.** El complejo del seed tiene `deposit_percentage: 0` (config válida: no pide seña online). El popover pre-cargaba el monto en **$0** y después el submit lo rechazaba por "la seña tiene que ser mayor a $0": el atajo se volvía un callejón sin salida y no había forma de cobrar una seña a mano. Los tests unitarios no lo veían porque usaban 30%. Arreglado: sin sugerencia > $0 el campo arranca vacío y el admin tipea el monto. Test de regresión + story.
+
+**Dos e2e rotos en `main`, arreglados de paso.** `TG-HP-208` y `TG-HP-209` llenaban `#guestPhone` directo, pero el modal lo colapsó bajo "Opciones avanzadas" en un rediseño anterior — fallaban con "element is not visible". Verificado que es preexistente: `BookingFormModal.tsx` no tiene cambios respecto de `main` en esta rama, y en `main` esos specs no abren el colapsable mientras el modal sí lo tiene. Se les agregó el click que faltaba.
+
+**Verificación en la app real** (dev server + Playwright headless contra ese mismo server):
+- Popover: "Cancha E2E 1 | 15:00–16:00 | **$ 100** | ¿A nombre de quién? | Seña | Sin seña | Efectivo | Transfer | MP | Confirmar reserva | Más opciones".
+- Enter confirma: **1.0 s** desde el click de la celda hasta el toast (criterio #4 pide ≤10 s).
+- "Más opciones" abre el modal completo con sus campos intactos (`#guestName` presente).
+- DB: `Alta Rapida T6` → confirmed / spontaneous / `price_snapshot = 10000` (la tarifa de la franja, calculada en el cliente y coincidente con la que grabó el server) / `deposit_status = not_required`. `Con Sena T6` → `deposit_amount = 3000`, `deposit_status = paid`, `payment_method = cash`.
+- Datos de prueba limpiados al terminar.
+
+**Gotcha de entorno (no del producto):** correr la suite de integración deja los roles `turnogol_app`/`turnogol_worker` sin LOGIN, y la app arranca tirando `28P01: password authentication failed`. El mensaje miente — es NOLOGIN, no contraseña. Fix documentado en `docs/operations/setup-local-roles.md`; hay que repetirlo después de cada corrida de integración/reset.
+
+**Fuera de alcance, marcado explícito:** una seña cobrada de mostrador (`depositStatus: 'paid'`) queda en el booking pero **NO genera un `cash_flow`**, así que no aparece en Caja del día. Es comportamiento preexistente de `createManualBooking` — el popover manda exactamente el mismo payload que el modal, así que no es una regresión de T6. Vale revisarlo aparte.
+
+### T7 — Revisión adversarial y cierre
+
+**Método:** workflow de 5 lentes independientes (dinero/concurrencia, aislamiento-RLS, día operativo, arquitectura, calidad de tests) sobre el diff completo de Fase 3, con un agente escéptico distinto refutando cada hallazgo con contexto fresco. Mismo patrón que cerró Fase 2.
+
+⚠️ **Incidente de método, y su fix.** La primera corrida usó el subagente por defecto (con permisos de escritura) y uno de los lentes hizo un test de mutación **sobre el árbol de trabajo real**: borró el guard `if (booking.type === 'block' || booking.type === 'tournament') return null` de `BookingSlotPanel.chargeMode` y lo dejó con un comentario `// MUTANTE`. Lo detecté por la notificación de archivo modificado, frené el workflow (`TaskStop`), verifiqué el árbol entero (`grep MUTANTE` + `find -mmin`) y confirmé que sólo ese archivo había sido tocado y ya estaba restaurado. La corrida se relanzó con `agentType: 'sonnet-adversarial-reviewer'` (solo lectura) más una regla explícita de "nunca edites, nunca mutes el árbol real". **Lección: un revisor no necesita permisos de escritura, y dárselos es darle la posibilidad de romper lo que está revisando.**
+
+#### 🔴 Hallazgo crítico confirmado: reprogramar pisaba el precio de un abonado
+
+Una sesión de abonado es `type='fixed'` + `status='confirmed'`, y su `price_snapshot` sale del CONTRATO (`abonados.price_per_session`, `abonado.service.ts:132`), **no** de `court.pricing`. `rescheduleBooking` sólo bloqueaba `tournament` y `block`, así que `fixed` pasaba y el precio se recalculaba contra la grilla de tarifas: al abonado se le pisaba el precio pactado con el de lista, en silencio, hacia arriba o hacia abajo según la franja destino. El trigger de la migración 070 tampoco lo frenaba (el estado es `confirmed`, justo el que la excepción habilita), y la UI ofrecía el botón porque `isClientBooking` sólo excluía bloqueo y torneo.
+
+**Fix (fail-closed):** `booking.reschedule.ts` rechaza `type='fixed'` con un motivo propio (`abonado_session`) y su mensaje es-AR; `BookingSlotPanel` no ofrece "Reprogramar" sobre un abonado (la cantina sí sigue: el abonado consume igual). Test de integración + test unitario nuevos, **verificados con ruptura controlada**: neutralizando el guard, el de integración se pone rojo con `promise resolved instead of rejecting`; restaurado, 16/16 verde.
+
+**REQUIERE INPUT (abierto):** ¿se debe poder mover UNA sesión suelta de un abonado ("esta semana no puedo el martes")? Hoy queda bloqueado. Si se habilita, tiene que conservar el precio del contrato, no recalcularlo — el `priceOverride` de `RescheduleBookingInput` ya existe para eso.
+
+#### Otros dos hallazgos reales, cerrados
+
+- **`<select>` sin nombre accesible** (`SplitPaymentFields`): axe `select-name`. En un lector de pantalla el control se anunciaba sólo por su valor ("Efectivo") sin decir qué se estaba eligiendo, y con cobro mixto hay varios selects idénticos. Ahora lleva `aria-label` con el índice de la línea cuando hay más de una. Es un componente de Fase 1 usado por varias pantallas: el fix las arregla a todas.
+- **Contraste AA del precio en el popover** (`QuickBookingForm`): `text-emerald-700` sobre el fondo del popover da 4.41:1 y AA pide 4.5. Pasó a `TONE_TEXT.success` (emerald-800), el token que T1 ya había fijado para esto. Mismo cambio en el aviso de "jugador registrado".
+
+#### Storybook
+
+`pnpm test:storybook`: **81 → 75 fallas**. Los 7 tests de esta rama que estaban rojos (`QuickBookingForm` ×4, `BookingSlotPanel` ×3) quedaron verdes. Cruzado archivo por archivo contra `git status`: de los **27 archivos que siguen fallando, NINGUNO es de esta rama** — es un baseline preexistente del repo. Una de las fallas nuevas (`StockEntryDialog`) se confirmó **flaky**: pasa 4/4 corrida sola, y el elemento que reporta invisible es un botón que esta rama no toca.
+
+**Deuda que esto destapa, fuera del alcance de Fase 3:** el suite de Storybook tiene 75 tests rojos en `main`. La memoria del proyecto lo daba por cerrado; en algún momento regresó y nadie lo miró. Vale un esfuerzo propio.
+
+#### Story faltante
+
+`BookingRescheduleDialog` era el único componente nuevo sin stories. Se agregaron 3: lista de huecos (con la cancha pausada fuera del selector), día sin horarios y error de carga.
+
+#### Hallazgos de la corrida completa (5 lentes, 19 agentes): 11 confirmados, 3 refutados
+
+**🔴 CRÍTICO — la seña quedaba stale al reprogramar** (encontrado por DOS lentes independientes, `dinero` y `tests`). `deposit_amount` se calcula al crear como un % del precio de ESA franja (`booking.service.ts:438`) y `rescheduleBooking` nunca lo recalculaba. Consecuencias: mover un turno `pending_payment` a una franja más barata dejaba una seña MAYOR al precio total, y ese monto stale es exactamente el que cobra MercadoPago (hay un link de pago vivo con el monto ya cotizado al jugador). **Fix fail-closed:** se bloquea reprogramar con `deposit_status = 'pending'`. Cambiar el precio abajo de una preferencia de MP ya emitida es otro problema, no el de esta fase.
+
+**🔴 Misma familia — precio por debajo de lo ya cobrado.** Mover un turno con seña PAGADA a una franja más barata dejaba `price_snapshot < totalPaid`. `summarizeBookingCharges` clampea el pendiente en 0, así que la diferencia a favor del cliente no aparecía en ningún lado: se la tragaba el sistema. Ahora se rechaza con un mensaje que manda al camino correcto (cancelar y devolver, que sí registra la devolución). Los dos guards **verificados con ruptura controlada**: neutralizándolos, los dos tests nuevos se ponen rojos; restaurados, 19/19 verde.
+
+**🟡 La alarma "Sin cobrar" no llegaba a /reservas** (dos lentes) — **hallazgo real, fix REVERTIDO a propósito**. `ReservaListRow`/`ReservaDetail` nunca cargaban `pending`/`totalPaid`, así que `bookingBadgeVisual` degradaba a "Jugada" verde — y el detalle se contradecía a sí mismo: badge verde arriba, "Saldo pendiente: $X" en la sección de Cobros más abajo. El propio comentario de `slot-visual.ts` afirmaba que la alarma sí viajaba al listado: el código prometía algo que el wiring no hacía. Lo implementé (`withMoney()` en `queries.ts`, mismo helper batch que la grilla) **y el e2e lo tiró abajo**: `reservas-crud` pasó de 2 fallos preexistentes a 3, porque en la grilla la alarma REEMPLAZA al label — así que en el listado "Jugada" y "Ausente" colapsaban ambas en "Sin cobrar" y la columna de estado dejaba de decir el estado del turno. Eso no es un test desactualizado: es una decisión de producto que el contrato NO tomó (§3 acota la alarma a la grilla) y que empeora un listado cuyo trabajo es mostrar estados. **Revertido**; en su lugar se corrigió el comentario de `slot-visual.ts` que prometía lo que el wiring no hacía, y queda un REQUIERE INPUT anotado ahí mismo: si se unifica, hay que decidir antes si el badge del listado pasa a hablar de plata o si va un indicador aparte. La contradicción del detalle (badge "Jugada" arriba, "Saldo pendiente: $X" abajo) es anterior a Fase 3 y sigue abierta.
+
+**🟡 El cobro no se propagaba a otras pantallas** (tres lentes). Cobrar sólo inserta en `cash_flows`; el canal de Realtime escucha `bookings`, así que la grilla de la otra tablet se quedaba con la alarma en rojo indefinidamente. La sugerencia obvia —tocar `bookings.updated_at` como no-op— **no funciona**: verifiqué el trigger `enforce_booking_invariants_fn` y PROHÍBE cualquier UPDATE sobre un turno terminal, y `completed` es justo el estado que dispara la alarma. **Fix:** reconcile periódico (30 s) también en estado `SUBSCRIBED`, no sólo en `OFFLINE`.
+
+**🟢 Dos menores, cerrados.** El email de reprogramación mostraba la fecha de origen en ISO crudo y la de destino en DD/MM/YYYY dentro del mismo mensaje (`formatDateStrArs` nuevo; el audit log sigue con la fecha ISO, que es lo correcto para una metadata). Y el toast anunciaba `selected.price` (leído al listar los huecos) en vez del precio que el server efectivamente grabó — ahora sale de `res.booking.priceSnapshot`.
+
+**Refutado pero cerrado igual:** `assertDateWindow` recibía `settings?.booking_advance_days` sin el `?? 6` que usan todos los demás consumidores. El refutador tuvo razón en que no es alcanzable (la columna trae el default), pero la divergencia con `listRescheduleSlotsAction` no tenía por qué existir. Se agregó el fallback.
+
+**Refutados de verdad (2):** el `UPDATE` de la nota de deuda en `completeAndChargeBookingAction` filtrando sólo por `id` (está dentro de `withTenantContext`, RLS lo cubre) y `carryMoney` arrastrando el saldo previo en un evento de Realtime (es exactamente el comportamiento buscado: `cash_flows` no replica por ese canal, así que el saldo previo es el mejor dato disponible hasta el reconcile).
+
+**Gate T6:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline) ✅ / unit 300 archivos, 2443 tests ✅ / integration 126 archivos, 1002 tests ✅ / isolation 162/162 ✅ / e2e chromium `admin-create-booking-ui` + `TG-HP-208` + `TG-HP-209`: **4/4** ✅ (incluye el test nuevo del camino corto: 2 campos + Enter → confirmed en DB).
+
+**Gate final de Fase 3:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline que Fase 2) ✅ / unit 2444 ✅ / integration 1006 ✅ / isolation 162/162 ✅ / e2e chromium `admin-create-booking-ui` 2/2 + `TG-HP-208` + `TG-HP-209` ✅; `reservas-crud` con los MISMOS 2 fallos preexistentes que ya documentó Fase 2 ✅ / Storybook: los 7 tests de esta rama pasaron de rojo a verde, y los 27 archivos que siguen fallando no son de esta rama (cruzado contra `git status`).
+
+**Decisiones de Lazar al cierre:** reprogramar una sesión de abonado queda BLOQUEADO; `BookingPopover.tsx` + su story se BORRARON (código muerto, el panel lateral lo reemplazó en T4); la deuda de Storybook queda anotada como esfuerzo aparte.
+
+**PR:** [#102](https://github.com/Laza223/turno-gol-repo/pull/102) (rama `feat/fase3-grilla`), commit `df9df32`.
+
+**Post-PR — CI y react-doctor (commit `3829716`):** el único check rojo fue E2E, con 1 fallo de 19. El primer spec que toca `/grilla` en CI clickeaba la celda ANTES de que React hidratara: el `<button>` viene en el HTML del SSR, Playwright lo ve y lo clickea, pero el handler todavía no está atado y el click es un no-op silencioso. `waitUntil: 'networkidle'` alcanzaba cuando la celda sólo abría el modal; desde Fase 3 la grilla carga chunks extra y el arranque en frío pierde la carrera. **No era flake**: falló 3 de 3 en CI (intento + 2 retries) y 0 de 3 local. Fix: helper `openQuickBookingPopover` (`tests/e2e/_helpers/grid.ts`) que reintenta el click completo con `expect.toPass`, usado por los tres specs que abren la grilla.
+
+React Doctor pasó de **84/100 (2 errores, 6 warnings)** a **88/100 (0 errores, 4 warnings)**: `reset(() => setCourtId(v))` se leía como un state updater con efectos adentro (no lo era —`reset` era un helper propio— pero la ambigüedad se sacó con dos handlers explícitos), `.filter().map()` de `listRescheduleSlotsAction` pasó a una sola pasada, y el guard de cancelación del efecto de `QuickBookingForm` ahora corta antes de tocar estado.
+
+**Deuda anotada, no atendida a propósito:** `no-giant-component` en `BookingGrid`, `BookingSlotPanel` y `QuickBookingForm` (>300 líneas). Partirlos es un refactor de forma sobre código que acaba de pasar el gate completo — reabre riesgo sin cambiar comportamiento. Y `no-autofocus` en el popover de alta: se mantiene con fundamento, la regla apunta a la carga de página y acá el foco entra a un popover que el admin abrió con un click, que es el comportamiento correcto (WAI-ARIA) y lo que sostiene el criterio de "alta ≤10 s".
+
+## Fase 3 — CERRADA (2026-08-05)
+
+**Gate T0–T5:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline que Fase 2: los 2 que introduje —`setState` síncrono en efecto— se arreglaron montando los diálogos solo cuando se abren) ✅ / unit 299 archivos, 2419 tests ✅ / integration 126 archivos, 1002 tests ✅ / isolation 162/162 ✅. E2E no corrido en esa tanda (sí en T6).

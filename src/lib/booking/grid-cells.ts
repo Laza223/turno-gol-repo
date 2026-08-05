@@ -28,6 +28,13 @@ export type GridBooking = {
   paymentMethod?: PaymentMethodValue | null
   depositStatus?: DepositStatus | null
   depositAmount?: number | null
+  // Plata efectivamente cobrada del turno (seña contada + cobros de mostrador)
+  // y lo que falta, ambos en centavos. Los calcula summarizeBookingCharges en
+  // el server. Sin ellos la grilla no puede saber si un turno terminado quedó
+  // sin cobrar, así que la alarma de Fase 3 simplemente no se dispara — nunca
+  // se inventa una.
+  totalPaid?: number | null
+  pending?: number | null
 }
 
 export type CellState =

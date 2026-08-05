@@ -13,6 +13,7 @@ import {
 } from '@/shared/cache/slots-cache'
 import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
+import { priceForSlot } from '@/lib/booking/pricing'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import {
@@ -74,7 +75,7 @@ function minsToTime(mins: number): string {
 }
 
 // Build a Date that, when converted to ART (UTC-3), lands at the given local clock time.
-function artDateAt(dateStr: string, hhmm: string): Date {
+export function artDateAt(dateStr: string, hhmm: string): Date {
   const [y, mo, d] = dateStr.split('-').map(Number)
   const [h, m] = hhmm.split(':').map(Number)
   return new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0))
@@ -98,7 +99,7 @@ export function slotDurationMins(timeStart: string, timeEnd: string): number {
  * admin usa un `block`. Los `block` (mantenimiento) sí pueden abarcar varias
  * horas, así que se excluyen de esta validación.
  */
-function assertSlotDuration(timeStart: string, timeEnd: string): void {
+export function assertSlotDuration(timeStart: string, timeEnd: string): void {
   if (slotDurationMins(timeStart, timeEnd) !== SLOT_DURATION_MINUTES) {
     throw new BookingValidationError(
       `Los turnos son de ${SLOT_DURATION_MINUTES} minutos.`,
@@ -136,7 +137,7 @@ export async function slotIsPhysicallyNextDay(
   return timeToMins(timeStart.slice(0, 5)) < openMins
 }
 
-function isExclusionViolation(err: unknown): boolean {
+export function isExclusionViolation(err: unknown): boolean {
   return (
     typeof err === 'object' &&
     err !== null &&
@@ -145,7 +146,7 @@ function isExclusionViolation(err: unknown): boolean {
   )
 }
 
-async function lockCourtOrThrow(
+export async function lockCourtOrThrow(
   courtId: string,
   tx: DbTx,
 ): Promise<{ id: string; tenantId: string; pricing: CourtPricingData; name: string }> {
@@ -796,23 +797,8 @@ export function generateSlots(p: GenerateSlotsInput): AvailableSlot[] {
   return slots
 }
 
-function priceForSlot(
-  pricing: CourtPricingData,
-  dayKey: string,
-  slotTime: string,
-): number | null {
-  const slotMins = timeToMins(slotTime)
-  for (const rule of pricing.rules) {
-    if (!rule.days.includes(dayKey)) continue
-    const from = timeToMins(rule.from)
-    const toRaw = timeToMins(rule.to)
-    const to = toRaw === 0 ? 24 * 60 : toRaw
-    if (slotMins >= from && slotMins < to) {
-      return rule.price ?? null
-    }
-  }
-  return null
-}
+// El lookup de tarifa vive en `@/lib/booking/pricing` (fuente única compartida
+// con calculatePrice y con el popover de alta rápida del cliente).
 
 export async function getAvailableSlots(
   tenantId: string,

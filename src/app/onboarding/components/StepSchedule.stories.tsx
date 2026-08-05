@@ -1,10 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { openingHours, openingHoursClosesNextDay } from '@/test/fixtures/tenant'
+import { pendingAction } from '@/test/pending-action'
 import { StepSchedule, type SaveWizardScheduleAction } from './StepSchedule'
 
-/** Nunca resuelve: mantiene el botón en estado de carga a propósito. */
-const pendingAction: SaveWizardScheduleAction = () => new Promise(() => {})
+/**
+ * Queda en vuelo para mantener el botón en carga, y se libera al final del
+ * play: una promesa que nunca resuelve deja viva una transición de React que le
+ * rompe las stories siguientes del archivo (ver `pending-action.ts`).
+ */
+const guardando = pendingAction<Awaited<ReturnType<SaveWizardScheduleAction>>>({
+  success: true as const,
+})
 
 /**
  * Abre "Excepciones y detalles avanzados" solo si está colapsado: el panel
@@ -84,11 +91,13 @@ export const CierraDespuesDeMedianoche: Story = {
 }
 
 export const Guardando: Story = {
-  args: { action: fn(pendingAction) },
+  args: { action: fn(guardando.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /continuar/i }))
-    await expect(await canvas.findByRole('button', { name: /guardando/i })).toBeDisabled()
+    const boton = await canvas.findByRole('button', { name: /guardando/i })
+    await expect(boton).toBeDisabled()
+    await guardando.release(boton)
   },
 }
 

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { ForgotPasswordCard, type ForgotPasswordAction } from './ForgotPasswordCard'
 
 type ForgotState = Awaited<ReturnType<ForgotPasswordAction>>
@@ -36,11 +37,14 @@ export const Idle: Story = {
   args: { action: fn(async () => ({ status: 'idle' as const })) },
 }
 
+const enviando = pendingAction<ForgotState>({ status: 'idle' })
+
 export const Enviando: Story = {
   args: {
-    // No resuelve nunca dentro del ciclo de vida de la story: deja el botón
-    // en `pending` para poder ver el spinner de forma estable.
-    action: fn((): Promise<ForgotState> => new Promise(() => {})),
+    // Queda en vuelo para que el spinner sea estable, y se libera al final del
+    // play: una promesa que nunca resuelve deja viva una transición de React
+    // que le rompe las stories siguientes del archivo (ver pending-action.ts).
+    action: fn(enviando.action),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -48,6 +52,7 @@ export const Enviando: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Enviar enlace' }))
     await expect(await canvas.findByText('Enviando…')).toBeInTheDocument()
     await expect(canvas.getByRole('button')).toBeDisabled()
+    await enviando.release(canvas.getByRole('button'))
   },
 }
 

@@ -1171,3 +1171,34 @@ R1 y R5 (wiring de la página) **no los cubre ninguna story ni unit test** — s
 **Gate:** typecheck ✅ (0 errores de código) / lint 0 errores, 44 warnings ✅ / unit 301 archivos, **2454 tests** ✅ / integration 127 archivos, **1016 tests** ✅ / storybook de los 3 archivos tocados ✅ (queda 1 rojo en `BookingListItem.stories.tsx` que es el `heading-order` de `CompleteBookingDialog`, grupo A4 del esfuerzo de Storybook).
 
 **Fallo propio encontrado y arreglado:** `tests/unit/reservas-page-render.test.tsx` y `reservas-status-filter.test.ts` mockean `@/app/(admin)/reservas/queries` con un objeto literal, así que el import nuevo de `sumBookingChargesByBooking` en la page los rompió a los 14. Se agregó el export al mock (Map vacío, el mismo early-return de la implementación real sin ids).
+---
+
+## E2 — Storybook: 76 → 0 y gate bloqueante (EN CURSO, 2026-08-05)
+
+**Medición propia antes de empezar** (`pnpm test:storybook`, browser mode chromium + axe): 27 archivos / **76 tests** rojos sobre 258 / 1017. 71 de 76 determinísticos. Siete causas raíz, no 27 problemas. Última vez verde: 864/864 el 2026-07-13; `docs/storybook/STORYBOOK_QA_REPORT.md:348` todavía lo afirma. **Causa de fondo: el suite no corre en CI** — y es el ÚNICO lugar del repo que mide contraste (`tests/e2e/a11y/admin.spec.ts` tiene `color-contrast` deshabilitado a propósito).
+
+### Grupo E — fuga entre stories: CERRADO
+
+🔴 **El diagnóstico que traía el plan era correcto en el QUÉ y equivocado en el MECANISMO, y eso cambia el fix.** La hipótesis era que React 19 reconciliaba el mismo `<form>` entre stories del mismo archivo, así que el remedio sería un `key={ctx.id}` en el decorator de `preview.tsx`. **Lo implementé y no arregló nada** (6 rojos antes, 6 después) — lo revertí en vez de dejarlo puesto "por las dudas": un cambio que no hace lo que promete es peor que no tenerlo.
+
+El mecanismo real, aislado con evidencia: `ForgotPasswordCard > Error` **pasa sola** (`-t "Error"` → 1/1) y **falla después de `Enviando`**. Lo que queda colgado no es la instancia del componente sino la **transición de React**: `fn(() => new Promise(() => {}))` deja una transición que nunca cierra, y como vive en el scheduler y no en el árbol, un remount no la toca. La story siguiente resuelve su propia action pero React no puede commitear la actualización — el síntoma es desconcertante (`Unable to find role="alert"` sobre un alert que su propio código sí renderiza).
+
+**Fix:** helper `pendingAction<T>` (`src/test/pending-action.ts`) — la promesa queda en vuelo para que el spinner sea estable y el `play` la **libera** al final, esperando el commit. Aplicado a los 4 archivos rojos: **17/17 verdes** (eran 6 rojos). El patrón está en **10 archivos**; los otros 6 pasan hoy solo porque la story colgada quedó última en el archivo — deuda latente anotada en el docstring del helper, cualquier reordenamiento de exports los rompe.
+
+### Grupo G — toasts invisibles bajo un diálogo: CERRADO, era bug de producción
+
+`<Toaster/>` vive en `src/app/layout.tsx`, hermano del portal de los diálogos. Con un Dialog abierto, Radix llama `hideOthers()` y `aria-hidden` marca todo el resto del árbol con `data-aria-hidden="true"` — el viewport de toasts incluido. **En la app real, todo toast disparado con un diálogo abierto es invisible para lectores de pantalla.** `aria-hidden` whitelistea cualquier nodo con atributo `aria-live`, así que alcanza con declararlo; va en `"off"` para matchear el selector sin crear una live region nueva que duplique los anuncios de la que Radix Toast ya maneja.
+
+**Ruptura controlada:** `QuickActions.stories.tsx` sin el cambio → **5 rojos**; con el cambio → **3**. Los 2 que caían por el toast bajo `aria-hidden` están cerrados.
+
+⚠️ **Lo que el diagnóstico atribuía a G y NO es de G:** los 2 fallos de `FiadosList` no tienen nada que ver con toasts — son `toBeVisible()` sobre texto de un diálogo (`FiadosList.stories.tsx:78`). Quedan sin causa asignada.
+
+### Grupo C3 — cerrado de paso en E3
+
+`BookingListItem > Bloqueo Administrativo`: la story esperaba "Bloqueo" dos veces (nombre + badge), pero Fase 3 renombró el label del badge a "Bloqueado" en `SLOT_STATES`.
+
+### Estado
+
+**76 → 70 rojos / 27 → 24 archivos** (medido con la suite completa; el total subió a 1024 tests por las stories nuevas de E3).
+
+**Pendiente:** grupo A (23 tests, 4 de ellos bugs de a11y de producción: contraste 3.93:1 en `admin-sidebar` por el visual upgrade #93, dos `<select>` sin nombre en `BookingFormModal`, `heading-order` en `CompleteBookingDialog`, contraste en `InscripcionesPanel`) · B (14, copy drift, mecánico) · C1/C2 (10, queries ambiguas) · D (11, contratos viejos — uno de ellos, `BookingActions > Ausente Pasadas Las 24H`, **NO es bug de story: cambió la regla de negocio y hay que escalarlo**) · F (9, diálogos con `open` estático) · los 6 archivos latentes del patrón de E · 2 flakes genuinos · y el cableado del job en CI, que va **último** y solo tras 3 corridas completas verdes seguidas.

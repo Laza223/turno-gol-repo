@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { IngresarForm, type PlayerLoginAction } from './IngresarForm'
 
 type PlayerLoginState = Awaited<ReturnType<PlayerLoginAction>>
@@ -58,15 +59,20 @@ export const Error: Story = {
   },
 }
 
+const enviando = pendingAction<PlayerLoginState>({ status: 'idle' })
+
 export const Enviando: Story = {
   args: {
-    action: fn((): Promise<PlayerLoginState> => new Promise(() => {})),
+    // Se libera al final del play: una promesa que nunca resuelve deja viva una
+    // transición de React que le rompe las stories siguientes (pending-action.ts).
+    action: fn(enviando.action),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText(/email/i), 'tomas@example.com')
     await userEvent.click(canvas.getByRole('button', { name: 'Enviarme el enlace' }))
     await expect(await canvas.findByText('Enviando…')).toBeInTheDocument()
+    await enviando.release(canvas.getByRole('button'))
   },
 }
 

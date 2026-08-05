@@ -8,6 +8,7 @@ import {
   E2E_COURT_ID,
 } from '../../_helpers/booking-seed'
 import { suppressPushPrompt } from '../_qa/session'
+import { openQuickBookingPopover } from '../../_helpers/grid'
 
 /**
  * TG-HP-208 — Crear reserva MANUAL desde grilla (offline / "de palabra").
@@ -39,14 +40,10 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       // waitUntil networkidle: el botón del slot ya existe en el HTML del SSR,
       // pero si React no hidrató todavía el click es un no-op silencioso.
       await page.goto(`/grilla?date=${tomorrow}`, { waitUntil: 'networkidle' })
-      await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
-
-      // Step 2: celda libre 20:00 (208 usa 20:00; 209 usa 21:00 — evita colisión).
-      await page.getByRole('button', { name: /Reservar turno 20:00/i }).first().click()
-
-      // Step 3: Fase 3 — primero abre el popover de alta rápida; el modal con el
-      // motivo vive detrás de "Más opciones".
-      await expect(page.getByLabel('¿A nombre de quién?')).toBeVisible({ timeout: 10_000 })
+      // Step 2/3: celda libre 20:00 (208 usa 20:00; 209 usa 21:00 — evita
+      // colisión) → popover de alta rápida → el modal con el motivo vive detrás
+      // de "Más opciones".
+      await openQuickBookingPopover(page, '20:00')
       await page.getByRole('button', { name: /Más opciones/ }).click()
 
       await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })

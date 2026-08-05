@@ -589,24 +589,26 @@ export async function listRescheduleSlotsAction(
     const raw = await withTenantContext(tenant.id, (tx) =>
       getAvailableSlots(tenant.id, courtId, date, tx),
     )
-    const slots = raw
-      .filter(
-        (s) =>
-          !slotHasPassed({
-            date,
-            timeStart: s.timeStart,
-            openHhmm,
-            closesNextDay: tenant.closesNextDay,
-            nowDate: now.date,
-            nowTime: now.time,
-          }),
-      )
-      .map((s) => ({
+    // Una sola pasada: filtrar los pasados y proyectar el shape de la respuesta
+    // en el mismo recorrido (`.filter().map()` recorría la lista dos veces).
+    const slots: RescheduleSlot[] = []
+    for (const s of raw) {
+      const pasado = slotHasPassed({
+        date,
+        timeStart: s.timeStart,
+        openHhmm,
+        closesNextDay: tenant.closesNextDay,
+        nowDate: now.date,
+        nowTime: now.time,
+      })
+      if (pasado) continue
+      slots.push({
         timeStart: s.timeStart,
         timeEnd: s.timeEnd,
         price: s.price,
         available: s.available,
-      }))
+      })
+    }
     return { success: true, slots, minDate, maxDate }
   } catch (err) {
     captureException(err)

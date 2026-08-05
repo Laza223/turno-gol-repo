@@ -119,12 +119,28 @@ export function BookingRescheduleDialog({
     }
   }, [courtId, date, reloadToken, listSlotsAction])
 
-  /** Cambiar cancha o día invalida la lista y la selección: vuelve a "cargando". */
-  function reset(apply: () => void) {
+  /**
+   * Cambiar cancha o día invalida la lista y la selección: vuelve a "cargando".
+   *
+   * Dos setters explícitos en vez de un helper que recibe un callback: la forma
+   * `reset(() => setCourtId(v))` se lee —y react-doctor la lee— como un state
+   * updater con efectos adentro (`no-impure-state-updater`). Acá no había
+   * ningún updater, pero la ambigüedad no vale nada.
+   */
+  function invalidateSlots() {
     setSlots(null)
     setSelected(null)
     setError(null)
-    apply()
+  }
+
+  function changeCourt(next: string) {
+    invalidateSlots()
+    setCourtId(next)
+  }
+
+  function changeDate(next: string) {
+    invalidateSlots()
+    setDate(next)
   }
 
   function isCurrentSlot(s: RescheduleSlotOption): boolean {
@@ -191,7 +207,7 @@ export function BookingRescheduleDialog({
             <select
               id="reschedule-court"
               value={courtId}
-              onChange={(e) => reset(() => setCourtId(e.target.value))}
+              onChange={(e) => changeCourt(e.target.value)}
               disabled={isPending}
               className="h-11 w-full rounded-md border border-border bg-card px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10"
             >
@@ -211,7 +227,7 @@ export function BookingRescheduleDialog({
               value={date}
               min={range?.minDate}
               max={range?.maxDate}
-              onChange={(e) => reset(() => setDate(e.target.value))}
+              onChange={(e) => changeDate(e.target.value)}
               disabled={isPending}
               className="h-11 w-full rounded-md border border-border bg-card px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10"
             />

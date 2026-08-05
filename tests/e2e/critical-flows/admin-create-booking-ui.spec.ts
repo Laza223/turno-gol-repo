@@ -17,6 +17,7 @@
  */
 
 import { test, expect } from '../fixtures'
+import { openQuickBookingPopover } from '../_helpers/grid'
 import {
   tomorrowDateIsoArt,
   cleanupBookingsByIds,
@@ -51,14 +52,10 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         // Wait for the grid table to render.
         await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
 
-        // Click a free slot at 16:00 in the seeded court.
-        // BookingCard renders free cells with aria-label `Reservar turno ${timeStart}`.
-        await page.getByRole('button', { name: /Reservar turno 16:00/i }).first().click()
-
         // Fase 3: el click de una celda libre abre el POPOVER de alta rápida.
         // Este spec cubre el camino del modal completo (nombre + teléfono bajo
         // "Opciones avanzadas"), que ahora vive detrás de "Más opciones".
-        await expect(page.getByLabel('¿A nombre de quién?')).toBeVisible({ timeout: 10_000 })
+        await openQuickBookingPopover(page, '16:00')
         await page.getByRole('button', { name: /Más opciones/ }).click()
 
         await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
@@ -132,13 +129,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
         await context.addCookies(JSON.parse(adminStorageState).cookies)
         const page = await context.newPage()
         await page.goto(`/grilla?date=${tomorrow}`, { waitUntil: 'networkidle' })
-        await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
-
         // 14:00: los otros specs de admin usan 16:00/20:00/21:00 en esta fecha.
-        await page.getByRole('button', { name: /Reservar turno 14:00/i }).first().click()
-
+        await openQuickBookingPopover(page, '14:00')
         const nombre = page.getByLabel('¿A nombre de quién?')
-        await expect(nombre).toBeVisible({ timeout: 10_000 })
 
         // Criterio de salida #3: el precio llega YA calculado, no es un campo.
         await expect(page.getByText(/^\$/).first()).toBeVisible()

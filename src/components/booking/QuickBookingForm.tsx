@@ -133,7 +133,11 @@ export function QuickBookingForm({
           date: slot.date,
           timeStart: slot.timeStart,
         })
-        if (alive && !res.available) setTaken(true)
+        // Guard de cancelación ANTES de tocar estado: si el efecto se re-corrió
+        // (cambió el slot), esta respuesta ya es vieja y escribirla pisaría la
+        // del slot nuevo.
+        if (!alive) return
+        if (!res.available) setTaken(true)
       } catch {
         /* fail-open: un fallo del chequeo nunca bloquea el alta */
       }

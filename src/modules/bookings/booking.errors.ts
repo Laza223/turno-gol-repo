@@ -157,15 +157,14 @@ export class BookingNotReschedulableError extends Error {
   constructor(
     public readonly bookingId: string,
     /**
-     * `abonado_session`: una sesión de abonado (`type='fixed'`) no se mueve por
-     * acá. Su `price_snapshot` sale del contrato (`abonados.price_per_session`),
-     * NO de la grilla de tarifas de la cancha — recalcularlo le cobraría al
-     * abonado el precio de lista en vez del pactado.
+     * NOTA: `abonado_session` existió acá hasta el 2026-08-05, cuando el dueño
+     * habilitó mover una sesión suelta de abonado. No se reemplazó por otro
+     * motivo: ahora se mueve, conservando el `price_snapshot` del contrato
+     * (ver `booking.reschedule.ts`, rama `type === 'fixed'`).
      */
     public readonly reason:
       | 'terminal_status'
       | 'not_a_player_booking'
-      | 'abonado_session'
       /**
        * `deposit_pending`: hay una seña esperando pago (link de MercadoPago
        * vivo con un monto ya cotizado al jugador). `deposit_amount` se calculó

@@ -12,7 +12,15 @@ import type { StandingsEvent, StandingsMatch } from './types'
  * la próxima suspensión (sí cuenta para fair play). En fútbol la 2da amarilla
  * ES la roja, así que contar las dos sería contar la misma expulsión dos veces.
  *
- * REQUIERE INPUT antes de release: hay ligas amateur que la cuentan igual.
+ * DECIDIDO (dueño, 2026-08-05): se CONFIRMA este comportamiento. Estuvo marcado
+ * como "REQUIERE INPUT antes de release" porque hay ligas amateur que cuentan
+ * las dos tarjetas por separado — se evaluó y se descartó a propósito, no es un
+ * olvido. Ver `docs/decisions/2026-08-05-amarilla-consumida-por-roja.md`.
+ *
+ * Bajo test: `tests/unit/tournament-suspensions.test.ts`, describe
+ * "computeSuspensions — amarilla del partido de la roja" (asserta
+ * `pendingMatches === 1`, no 2). Ese test se pone rojo si alguien invierte esta
+ * constante sin pasar por el ADR.
  */
 export const YELLOWS_CONSUMED_BY_RED = true
 

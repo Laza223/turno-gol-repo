@@ -1291,4 +1291,78 @@ Convención seguida: la ya establecida por el Ticket 3 (ver arriba) — el orque
 
 El primer lote de e2e dio 1 rojo en `TG-HP-209` que **no reprodujo**: el mismo test pasó solo (24.3s) y el lote completo repetido pasó entero. El snapshot de la falla muestra el modal abierto, el formulario lleno, sin `role="alert"` y con el botón en "Confirmar" (no "Guardando…") — o sea `handleSubmit` nunca corrió: el click no tomó efecto. Es la clase ya documentada de clicks no-op de esta máquina, no una regresión; los dos hermanos de ese mismo spec ya están marcados `test.fixme` por la misma infra de Realtime local.
 
-⚠️ **Conflicto de merge previsible con el Bloque 2.4:** `BookingSlotPanel.tsx` se reescribió entero acá (541→287) y la rama `fix/bloque2-decisiones` le saca `booking.type !== 'fixed'` de `canReschedule` (más el párrafo del comentario que lo justificaba). Al mergear, la resolución es: quedarse con la versión refactorizada y borrar de ella esa línea y ese párrafo.
+**Conflicto con el Bloque 2.4 — resuelto al rebasear** (`fix/bloque2-decisiones` sobre `main`, 2026-08-05). `BookingSlotPanel.tsx` se reescribió entero acá (541→287) y la otra rama le saca `booking.type !== 'fixed'` de `canReschedule`. Git lo auto-mergeó bien solo: quedó la versión refactorizada **sin** esa línea y con el comentario nuevo ("`fixed` SÍ entra desde la decisión del dueño"). El único conflicto manual fue este archivo, y era de secciones apendeadas a la vez.
+
+---
+
+## E4 — Las 4 decisiones del dueño (2026-08-05)
+
+Cuatro pendientes que estaban esperando input y ya no. Dos de ellas tocan plata.
+
+### (1) 🔴 Reembolso externo de MP: se reconcilia y se avisa solo al admin
+
+**El agujero.** Un reembolso hecho a mano desde el panel de Mercado Pago llega como webhook `status='refunded'` igual que cualquier otro. `dispatchPaymentInfo` (`payment.service.ts:260`) pisaba la fila `payments` y dejaba `bookings.deposit_status` en `'paid'`: el turno seguía figurando como cobrado con la plata ya devuelta. Solo quedaba un audit log y un warning en Sentry.
+
+**La decisión (dueño):** reconciliar el booking (`deposit_status` → `'refunded'`) y avisar SOLO al admin por mail. Al jugador NO — el complejo hizo ese reembolso por afuera y puede tener una conversación en curso.
+
+**Lo que define la forma del fix, y no estaba en el plan:** el trigger `enforce_booking_invariants_fn` (migr. `070`) hace `RAISE EXCEPTION` ante **cualquier** UPDATE sobre un booking en estado terminal. Un UPDATE sin filtrar abortaría la transacción entera del webhook y el job terminaría en la DLQ para siempre. Por eso el UPDATE filtra por `status IN ('confirmed','pending_payment')` y `deposit_status IN ('paid','captured')`.
+
+Ese filtro por `status` **protege gratis la seña capturada de un no-show**: `deposit_status='captured'` SIEMPRE se escribe en el mismo UPDATE que fija `no_show`/`canceled_no_refund`, así que nunca convive con un status no terminal. No hizo falta un caso especial. Y el filtro por `deposit_status` da la idempotencia: un segundo evento MP del mismo refund ya no matchea porque la seña quedó en `'refunded'` → 0 filas.
+
+**`booking.status` NO se toca.** Cancelar el turno y liberar el horario es decisión del complejo. El mail lo dice explícito para que nadie asuma que el sistema lo hizo solo.
+
+**Sobre "solo al admin":** `enqueueTenantOwnerNotification` mandaba a TODO el staff activo, pese al prefijo `admin_` de sus templates — o sea "admin" venía significando "el complejo", no el rol. Se le agregó un `opts.onlyRole` **opcional** en vez de cambiar el default: los 10 callers existentes quedan byte-idénticos, y el único que lo usa es esta alerta, que es plata y MP (lo mismo que `requireAdminStaffAction` le cierra al encargado).
+
+**Tests nuevos:** `tests/integration/mp-external-refund.test.ts` (4 casos contra DB real, porque la garantía central no existe en un mock), `tests/unit/admin-external-refund-template.test.ts` (5) y 4 casos nuevos en el unit existente.
+
+**3 rupturas controladas** (neutralizar → confirmar el test nombrado en rojo → restaurar → verde):
+
+| # | Neutralización | Cayó |
+|---|---|---|
+| R1 | Sacar el filtro `status IN ('confirmed','pending_payment')` | el caso de no_show, con `PostgresError: Booking en estado terminal (no_show) no puede modificarse` — exactamente el modo de falla que el filtro previene |
+| R2 | Sacar `{ onlyRole: 'admin' }` | "avisa SOLO al admin": 2 notificaciones en vez de 1, el encargado también recibía |
+| R3 | Sacar el filtro `deposit_status IN ('paid','captured')` | el de idempotencia: el 2do evento volvía a reconciliar |
+
+### (2) Torneos — la amarilla del partido de la roja: CONFIRMADO, cero código
+
+`YELLOWS_CONSUMED_BY_RED = true` se queda. El comentario pasó de "REQUIERE INPUT antes de release" a "DECIDIDO (dueño, 2026-08-05)", apuntando al ADR nuevo `docs/decisions/2026-08-05-amarilla-consumida-por-roja.md`. El comportamiento **ya estaba bajo test** (`tests/unit/tournament-suspensions.test.ts`, describe "amarilla del partido de la roja", asserta `pendingMatches === 1`): no hacía falta agregar nada, sí referenciarlo desde el comentario para que sea la alarma si alguien invierte la constante.
+
+### (3) ⚠️ Retención — la premisa del pedido era falsa: ya estaba implementado
+
+El enunciado decía que `audit_logs` y `notifications` crecían SIN TECHO. No es así desde el 2026-07-23 (wave 2 D5, `PROGRESS.md:672`):
+
+| Afirmación | Evidencia |
+|---|---|
+| `audit_logs` 24 meses | `data-retention-cleanup.worker.ts:188-198` — `INTERVAL '24 months'` |
+| `notifications` 6 meses | `data-retention-cleanup.worker.ts:206-216` — `INTERVAL '6 months'` |
+| Corren de verdad | `runDataRetentionCleanup:449-465`, cron `0 10 * * 0` (domingo 07:00 ART) |
+| Bajo test contra DB real | `tests/integration/retention-age-purges.test.ts:99` y `:155` |
+
+**Evidencia pedida, corrida el 2026-08-05:** `pnpm test:integration tests/integration/retention-age-purges.test.ts` → **4/4**, con los logs del worker mostrando `purged audit_logs count:1` y en la segunda pasada `count:0` (idempotencia), ídem `notifications`. Cero código.
+
+Nota para no volver a confundirlos: el `toBe(31)` de `data-retention-cleanup-worker-pool.test.ts` cuenta los statements de `wipeTenant` (borrado legal por tenant), no estas purgas — son mecanismos distintos.
+
+### (4) 🔴 Abonados: se habilita mover una sesión suelta
+
+`booking.reschedule.ts` deja de tirar `BookingNotReschedulableError('abonado_session')`.
+
+**El precio sale de `booking.price_snapshot`, no de un SELECT a `abonados.price_per_session`.** Hoy son idénticos (no existe ninguna función que edite el precio del contrato — verificado), pero `price_snapshot` es el precio pactado para ESA sesión al generarla: el día que exista esa función, la edición debe aplicar hacia adelante, no reescribir sesiones ya comunicadas al cliente.
+
+**La rama va ANTES del check de `priceOverride`**, no después. `priceOverride` es un campo público del input de dominio: si el orden fuera el inverso, un llamado directo a la Server Action bypaseando la UI podría pisarle el precio al contrato. "Nunca se recalcula" también significa "nunca se pisa desde afuera".
+
+Consecuencias verificadas, ninguna necesitó código: el guard `price_below_paid` queda inerte por construcción (el precio nuevo es idéntico al viejo); el trigger de la 070 no se dispara (`IS DISTINCT FROM` da falso); `abonadoId` y `type` no están en el `.set()` del UPDATE, así que la sesión sigue perteneciendo al contrato; y la colisión con otra sesión del mismo abonado ya la cubría `assertSlotFreeForOther`.
+
+**UI:** `BookingSlotPanel` deja de excluir `type='fixed'`; `BookingRescheduleDialog` muestra el precio del contrato en cada franja y un aviso ("se mantiene el precio del contrato sin importar el horario") en vez del delta de tarifa — si no, mostraría un precio que el servidor va a ignorar. Se borró la rama muerta `'abonado_session'` de la Server Action y del union de `booking.errors.ts`.
+
+**Tests:** el de integración que asertaba el RECHAZO se invirtió (mover de una franja de $500.000 a una de $900.000 y verificar que `price_snapshot` sigue en $777.777 — el que pidió el dueño), más "conserva `type` y `abonado_id`", "ignora un `priceOverride` explícito" y "rechaza chocar con otra sesión del mismo abonado". El unit de la grilla también se invirtió.
+
+**2 rupturas controladas:**
+
+| # | Neutralización | Cayó |
+|---|---|---|
+| R1 | Desactivar la rama `type === 'fixed'` | "conservando el del contrato": `expected 900000 to be 777777` — el precio de lista pisando al pactado, el bug exacto que el guard tapaba |
+| R2 | Mover el check de `fixed` DESPUÉS del de `priceOverride` | "ignora un priceOverride explícito": `expected 1 to be 777777` |
+
+**Gate:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline) ✅ / unit 302 archivos, **2463 tests** ✅ / integration 128 archivos, **1023 tests** ✅ / isolation **162/162** ✅ / storybook de los componentes tocados 13/13 ✅.
+
+**Sin verificación en la app:** (1) y (3) son 100% capa de servicio/worker. (4) sí toca UI y queda pendiente de `verificacion-ux` — el flujo completo (abrir el panel de un turno fijo, reprogramar, ver el precio quedar igual) no se corrió contra el dev server en esta sesión.

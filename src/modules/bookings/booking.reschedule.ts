@@ -258,18 +258,15 @@ export async function rescheduleBooking(
   if (booking.type === 'tournament' || booking.type === 'block') {
     throw new BookingNotReschedulableError(input.bookingId, 'not_a_player_booking')
   }
-  // Sesión de abonado: se bloquea porque su precio NO sale de la grilla de
-  // tarifas. `generateAbonadoSlots` graba `priceSnapshot = abonado.price_per_session`
-  // (abonado.service.ts:132) junto con `type: 'fixed'`, así que recalcular contra
-  // `court.pricing` le pisaría al abonado el precio pactado con el de lista —
-  // silenciosamente y hacia arriba o hacia abajo según la franja destino.
+  // Sesión de abonado (`type: 'fixed'`): HABILITADA para moverse (decisión del
+  // dueño, 2026-08-05). Estaba bloqueada porque su precio no sale de la grilla
+  // de tarifas —`generateAbonadoSlots` graba `priceSnapshot =
+  // abonado.price_per_session` (abonado.service.ts:132)— y recalcular contra
+  // `court.pricing` le pisaría al cliente el precio pactado, en silencio.
   //
-  // Fail-closed a propósito: mover una sesión suelta de un abonado es una
-  // decisión de producto abierta (ver PROGRESS.md, Fase 3 T7). Si se habilita,
-  // tiene que conservar el precio del contrato, no recalcularlo.
-  if (booking.type === 'fixed') {
-    throw new BookingNotReschedulableError(input.bookingId, 'abonado_session')
-  }
+  // El bloqueo se levanta conservando ese precio: ver la rama `type === 'fixed'`
+  // del cálculo más abajo. `abonado_id` y `type` no están en el `.set()` del
+  // UPDATE, así que la sesión sigue perteneciendo al abonado.
   // 🔴 Seña esperando pago: NO se puede mover. `deposit_amount` se calculó como
   // un % del precio VIEJO (createOnlineBooking, booking.service.ts:438) y este
   // UPDATE no lo recalcula — moverlo a una franja más barata dejaría una seña
@@ -295,8 +292,22 @@ export async function rescheduleBooking(
   assertDateWindow(input.date, settings?.booking_advance_days ?? 6)
 
   let priceSnapshot: number
-  if (input.priceOverride !== undefined) {
+  let priceOverridden = false
+  if (booking.type === 'fixed') {
+    // 🔴 El precio del contrato, y NADA más. Sale del `price_snapshot` de la
+    // sesión —no de un SELECT a `abonados.price_per_session`— porque es el
+    // precio pactado para ESA sesión cuando se generó: si mañana existe una
+    // función para editar el precio del contrato, esa edición tiene que aplicar
+    // hacia adelante, no reescribir sesiones ya comunicadas al cliente.
+    //
+    // Va ANTES del check de `priceOverride` a propósito: un `priceOverride`
+    // inyectado por un caller (hoy nadie lo pasa, pero el campo es público en
+    // el input) NO puede pisar el precio pactado. "Nunca se recalcula" también
+    // significa "nunca se pisa desde afuera", no solo "no contra court.pricing".
+    priceSnapshot = booking.price_snapshot
+  } else if (input.priceOverride !== undefined) {
     priceSnapshot = input.priceOverride
+    priceOverridden = true
   } else {
     const calc = calculatePrice(court.pricing, artDateAt(input.date, input.timeStart))
     if (calc === null) throw new PriceUnavailableError()
@@ -383,7 +394,12 @@ export async function rescheduleBooking(
       toTimeStart: input.timeStart,
       oldPrice: booking.price_snapshot,
       newPrice: priceSnapshot,
-      priceOverridden: input.priceOverride !== undefined,
+      // `priceOverridden`, no `input.priceOverride !== undefined`: en una sesión
+      // de abonado el override del caller se ignora, así que loguearlo como
+      // aplicado sería mentir en el audit trail.
+      priceOverridden,
+      // Deja escrito en el trail POR QUÉ el precio no se recalculó.
+      ...(booking.type === 'fixed' ? { priceSource: 'abonado_contract' as const } : {}),
     },
   })
 

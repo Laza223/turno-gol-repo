@@ -32,6 +32,10 @@ vi.mock('@/shared/observability', () => ({
 
 import { dispatchPaymentInfo } from '@/modules/payments/payment.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
+import {
+  enqueueNotification,
+  enqueueTenantOwnerNotification,
+} from '@/modules/notifications/notification.service'
 import { captureMessage } from '@/lib/sentry'
 import type { GatewayPaymentInfo } from '@/modules/payments/payment.types'
 
@@ -48,18 +52,27 @@ const info: GatewayPaymentInfo = {
 }
 
 /**
- * tx fake: 3 llamadas a tx.execute — la del upsert (relink OK, corta antes
- * del branch de INSERT), la del lookup de paymentId que agrega el hallazgo, y
- * (fix H1) la del lookup de refund local vinculado (`type='refund'` +
- * `description = 'Refund of ' + paymentId`, mismo vínculo que prepareRefund).
+ * tx fake. Llamadas a tx.execute, en orden:
+ *   1. upsertPaymentRow (relink OK, corta antes del branch de INSERT)
+ *   2. lookup del paymentId para el audit
+ *   3. (fix H1) lookup de refund local vinculado (`type='refund'` +
+ *      `description = 'Refund of ' + paymentId`, mismo vínculo que prepareRefund)
+ *   4. UPDATE de reconciliación (decisión 2026-08-05) — devuelve la fila si
+ *      matcheó, vacío si el booking estaba en un estado que no admite el cambio
+ *   5. SOLO si 4 devolvió vacío: SELECT del status para el mail
  */
-function mockTx(options?: { hasLocalRefund?: boolean }) {
+function mockTx(options?: { hasLocalRefund?: boolean; reconciled?: boolean; bookingStatus?: string }) {
+  const reconciled = options?.reconciled ?? true
   const execute = vi.fn()
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // upsertPaymentRow: relink OK
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // lookup del paymentId para el audit
   execute.mockResolvedValueOnce(
     options?.hasLocalRefund ? [{ id: 'refund-pay-1' }] : [],
   ) // lookup de refund local conocido (fix H1)
+  execute.mockResolvedValueOnce(reconciled ? [{ id: BOOKING_ID }] : []) // UPDATE de reconciliación
+  if (!reconciled) {
+    execute.mockResolvedValueOnce([{ status: options?.bookingStatus ?? 'no_show' }])
+  }
   return { execute } as never
 }
 
@@ -118,5 +131,81 @@ describe('dispatchPaymentInfo — refund externo (fuera de prepareRefund/settleR
     // upsert usa el mismo mock de execute que el caso externo.
     expect(vi.mocked(insertSystemAuditLog)).not.toHaveBeenCalled()
     expect(vi.mocked(captureMessage)).not.toHaveBeenCalled()
+  })
+})
+
+// Decisión del dueño (2026-08-05): además de la visibilidad, se reconcilia
+// `bookings.deposit_status` y se avisa SOLO al admin. Al jugador NO.
+describe('dispatchPaymentInfo — reconciliación del refund externo (decisión 2026-08-05)', () => {
+  it('reconcilia el booking y encola el mail solo para el rol admin', async () => {
+    const tx = mockTx({ reconciled: true })
+    await dispatchPaymentInfo(info, TENANT_ID, tx)
+
+    // El 4to execute es el UPDATE: se comprueba que filtra por estado — sin ese
+    // WHERE, un refund sobre un turno terminal aborta la tx entera por el
+    // trigger `enforce_booking_invariants_fn` (migr. 070).
+    const updateSql = JSON.stringify(vi.mocked(tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute.mock.calls[3])
+    expect(updateSql).toContain('deposit_status')
+    expect(updateSql).toContain('confirmed')
+    expect(updateSql).toContain('pending_payment')
+
+    expect(vi.mocked(enqueueTenantOwnerNotification)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT_ID,
+        templateName: 'admin_external_refund_detected',
+        content: expect.objectContaining({ bookingId: BOOKING_ID, reconciled: true }),
+      }),
+      tx,
+      { onlyRole: 'admin' },
+    )
+
+    // Al jugador no se le encola nada.
+    expect(vi.mocked(enqueueNotification)).not.toHaveBeenCalled()
+
+    expect(vi.mocked(insertSystemAuditLog)).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        metadata: expect.objectContaining({ reconciled: true, bookingStatus: null }),
+      }),
+    )
+  })
+
+  it('con el turno en estado terminal no reconcilia: avisa con el estado real y NO pisa la seña', async () => {
+    const tx = mockTx({ reconciled: false, bookingStatus: 'no_show' })
+    const outcome = await dispatchPaymentInfo(info, TENANT_ID, tx)
+
+    expect(outcome.alreadyProcessed).toBe(false)
+
+    expect(vi.mocked(enqueueTenantOwnerNotification)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.objectContaining({ reconciled: false, bookingStatus: 'no_show' }),
+      }),
+      tx,
+      { onlyRole: 'admin' },
+    )
+    expect(vi.mocked(insertSystemAuditLog)).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        metadata: expect.objectContaining({ reconciled: false, bookingStatus: 'no_show' }),
+      }),
+    )
+  })
+
+  it('devuelve notificationIds para que el handler despache el mail DESPUÉS del commit', async () => {
+    vi.mocked(enqueueTenantOwnerNotification).mockResolvedValueOnce(['notif-1'])
+    const tx = mockTx({ reconciled: true })
+    const outcome = await dispatchPaymentInfo(info, TENANT_ID, tx)
+
+    expect(outcome.alreadyProcessed).toBe(false)
+    if (!outcome.alreadyProcessed) expect(outcome.notificationIds).toEqual(['notif-1'])
+  })
+
+  it('un refund LOCAL conocido no reconcilia ni notifica: ese camino ya movió la seña', async () => {
+    const tx = mockTx({ hasLocalRefund: true })
+    await dispatchPaymentInfo(info, TENANT_ID, tx)
+
+    expect(vi.mocked(enqueueTenantOwnerNotification)).not.toHaveBeenCalled()
+    // Solo 3 execute: upsert + los dos lookups. Nunca se intenta el UPDATE.
+    expect((tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute).toHaveBeenCalledTimes(3)
   })
 })

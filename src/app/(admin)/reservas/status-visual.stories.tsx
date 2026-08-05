@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { reservaStatusVisual, ReservaStatusBadge } from './status-visual'
+import { expect, within } from 'storybook/test'
+import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from './status-visual'
 
 /**
  * Vocabulario canónico de estado de una reserva (§8.5 MASTER): ícono + texto
@@ -57,6 +58,79 @@ export const Expired: Story = {
 /** Bloqueo administrativo: el `type` gana por sobre cualquier `status`. */
 export const Bloqueo: Story = {
   args: { visual: reservaStatusVisual({ status: 'confirmed', type: 'block' }) },
+}
+
+/**
+ * La alarma de plata NO reemplaza al badge de estado: el turno sigue diciendo
+ * "Jugada" y la píldora "Sin cobrar" va al lado. En la grilla sí reemplaza,
+ * porque una celda tiene lugar para una sola palabra; acá el trabajo de la
+ * columna es decir el estado del turno, y perderlo sería peor que el problema
+ * que la alarma vino a resolver.
+ */
+export const JugadaSinCobrar: Story = {
+  render: () => {
+    const visual = reservaStatusVisual({
+      status: 'completed',
+      type: 'spontaneous',
+      pending: 1_000_000,
+      totalPaid: 0,
+    })
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ReservaStatusBadge visual={visual} />
+        {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
+      </div>
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Jugada')).toBeVisible()
+    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+  },
+}
+
+/** Ausente sin un peso cobrado. Con la seña capturada NO habría píldora. */
+export const AusenteSinCobrar: Story = {
+  render: () => {
+    const visual = reservaStatusVisual({
+      status: 'no_show',
+      type: 'spontaneous',
+      totalPaid: 0,
+    })
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ReservaStatusBadge visual={visual} />
+        {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
+      </div>
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Ausente')).toBeVisible()
+    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+  },
+}
+
+/** La seña capturada es lo único cobrable de un no-show: ya está cobrado. */
+export const AusenteConSenaCapturada: Story = {
+  render: () => {
+    const visual = reservaStatusVisual({
+      status: 'no_show',
+      type: 'spontaneous',
+      totalPaid: 450_000,
+    })
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ReservaStatusBadge visual={visual} />
+        {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
+      </div>
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Ausente')).toBeVisible()
+    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+  },
 }
 
 export const Todos: Story = {

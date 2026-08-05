@@ -34,6 +34,16 @@ export type ReservaListRow = {
    * por el mismo motivo que `endsAt`.
    */
   startsAt?: string | null
+  /**
+   * Saldo pendiente y total cobrado, en centavos. NO son columnas del SELECT:
+   * los DERIVA la page con `summarizeBookingCharges` a partir de
+   * `sumBookingChargesByBooking`, y solo para los turnos que pueden alarmar
+   * (`completed`/`no_show`). Opcionales por el mismo motivo que
+   * `startsAt`/`endsAt`: sin ellos el badge degrada al comportamiento previo en
+   * vez de inventar una alarma que no puede justificar.
+   */
+  pending?: number | null
+  totalPaid?: number | null
 }
 
 /** Rango temporal de la lista, relativo al día ART actual. */

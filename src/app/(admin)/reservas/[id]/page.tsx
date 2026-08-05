@@ -12,6 +12,7 @@ import {
   markNoShowAction,
   revertNoShowAction,
 } from '../actions'
+import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { BookingDetailCard } from './BookingDetailCard'
 import BookingActions from './BookingActions'
 import BookingCharges from './BookingCharges'
@@ -44,7 +45,22 @@ export default async function ReservaDetailPage(props: Props) {
       </Link>
       <h1 className="text-2xl font-semibold text-foreground">Detalle de la reserva</h1>
 
-      <BookingDetailCard booking={booking} />
+      {/*
+        Cero queries nuevas: `charges` ya vino del withTenantContext de arriba.
+        Sin esto el detalle se contradecía a sí mismo — badge "Jugada" verde
+        arriba y "Saldo pendiente: $X" en Cobros, veinte centímetros más abajo.
+      */}
+      <BookingDetailCard
+        booking={{
+          ...booking,
+          ...summarizeBookingCharges({
+            priceSnapshot: booking.priceSnapshot,
+            depositAmount: booking.depositAmount,
+            depositStatus: booking.depositStatus,
+            chargesTotal: charges?.chargesTotal ?? 0,
+          }),
+        }}
+      />
 
       {charges && (
         <BookingCharges

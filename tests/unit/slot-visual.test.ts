@@ -6,6 +6,7 @@ import {
   slotStateKey,
   type SlotFacts,
 } from '@/lib/booking/slot-visual'
+import { TONE_ACCENT } from '@/lib/status-tone'
 
 const base: SlotFacts = { status: 'confirmed', type: 'spontaneous' }
 const facts = (o: Partial<SlotFacts>): SlotFacts => ({ ...base, ...o })
@@ -149,10 +150,51 @@ describe('bookingBadgeVisual — el listado', () => {
     expect(bookingBadgeVisual(facts({ status: 'expired' })).label).toBe('Expirada')
   })
 
-  it('la alarma de plata sí viaja al listado', () => {
+  // La alarma viaja al listado como FLAG, nunca como label. Si pisara el label,
+  // "Jugada" y "Ausente" colapsarían las dos en "Sin cobrar" y la columna de
+  // estado dejaría de decir el estado — que es su único trabajo.
+  it('turno jugado sin cobrar: el badge sigue diciendo Jugada y marca unpaid', () => {
     const v = bookingBadgeVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 }))
-    expect(v.label).toBe('Sin cobrar')
-    expect(v.tone).toBe('destructive')
+    expect(v.label).toBe('Jugada')
+    expect(v.key).toBe('completed')
+    expect(v.unpaid).toBe(true)
+    // El acento sí toma el tono de alarma: MASTER §2.6 asigna el COLOR al
+    // estado de la plata (una tira verde al lado de una píldora roja mentiría).
+    expect(v.accent).toBe(TONE_ACCENT.destructive)
+  })
+
+  it('ausente sin un peso cobrado: el badge sigue diciendo Ausente y marca unpaid', () => {
+    const v = bookingBadgeVisual(facts({ status: 'no_show', totalPaid: 0 }))
+    expect(v.label).toBe('Ausente')
+    expect(v.key).toBe('no_show')
+    expect(v.unpaid).toBe(true)
+  })
+
+  it('ausente con la seña capturada NO alarma: ya se cobró lo único cobrable', () => {
+    const v = bookingBadgeVisual(facts({ status: 'no_show', totalPaid: 450_000 }))
+    expect(v.label).toBe('Ausente')
+    expect(v.unpaid).toBe(false)
+    expect(v.accent).toBe(TONE_ACCENT.destructive) // el tono propio de no_show
+  })
+
+  it('sin datos de plata degrada al comportamiento previo, no inventa alarma', () => {
+    const v = bookingBadgeVisual(facts({ status: 'completed' }))
+    expect(v.label).toBe('Jugada')
+    expect(v.unpaid).toBe(false)
+    expect(v.accent).toBe(TONE_ACCENT.success)
+  })
+
+  it('el colapso deposit_paid → confirmed sobrevive al camino nuevo', () => {
+    const v = bookingBadgeVisual(facts({ status: 'confirmed', depositStatus: 'paid' }))
+    expect(v.key).toBe('confirmed')
+    expect(v.unpaid).toBe(false)
+  })
+
+  it('la GRILLA no se movió: ahí la alarma sigue REEMPLAZANDO al label', () => {
+    const g = gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 }))
+    expect(g.key).toBe('unpaid_alarm')
+    expect(g.label).toBe('Sin cobrar')
+    expect(g.alarm).toBe(true)
   })
 
   it('un status desconocido nunca se lee como Jugada', () => {

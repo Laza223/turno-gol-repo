@@ -16,6 +16,10 @@ vi.mock('@/shared/db/client', () => ({
 vi.mock('@/app/(admin)/reservas/queries', () => ({
   listTenantBookings: vi.fn(async () => []),
   countTenantBookingsByStatus: vi.fn(async () => ({})),
+  // La page la usa para derivar el saldo de los turnos terminados (píldora
+  // "Sin cobrar"). Acá la lista siempre viene vacía, así que devuelve un Map
+  // vacío igual que la implementación real cuando no hay ids.
+  sumBookingChargesByBooking: vi.fn(async () => new Map<string, number>()),
 }))
 vi.mock('@/shared/dates/art', () => ({
   artTodayStr: vi.fn(() => '2026-06-12'),

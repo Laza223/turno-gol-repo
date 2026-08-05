@@ -59,6 +59,47 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+/**
+ * El caso que hasta ahora se contradecía a sí mismo: el badge decía "Jugada"
+ * en verde arriba y "Saldo pendiente: $X" aparecía en la sección de Cobros más
+ * abajo, en la misma pantalla. Ahora la píldora "Sin cobrar" convive con el
+ * badge de estado en vez de reemplazarlo.
+ */
+export const JugadaSinCobrar: Story = {
+  args: {
+    booking: detail({
+      status: 'completed',
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      paymentMethod: null,
+      pending: 18_000_00,
+      totalPaid: 0,
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Jugada')).toBeVisible()
+    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+  },
+}
+
+/** Jugada y cobrada: sin píldora. El control negativo del caso de arriba. */
+export const JugadaCobrada: Story = {
+  args: {
+    booking: detail({
+      status: 'completed',
+      depositStatus: 'captured',
+      pending: 0,
+      totalPaid: 18_000_00,
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Jugada')).toBeVisible()
+    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+  },
+}
+
 export const Confirmada: Story = {
   args: { booking: detail() },
   play: async ({ canvasElement }) => {

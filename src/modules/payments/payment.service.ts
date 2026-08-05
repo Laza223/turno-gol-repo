@@ -597,6 +597,10 @@ async function recordManualDepositCashFlow(
           content: {
             bookingId: booking.id,
             amountArs: formatArs(booking.depositAmount),
+            // Sin esto el mail decía "por Mercado Pago" para una seña que el
+            // staff cobró en efectivo: el dueño la buscaba en el panel de MP en
+            // vez de en el cajón.
+            method,
           },
           triggerEvent: 'payment.deposit_after_close',
         },
@@ -691,6 +695,7 @@ async function recordDepositCashFlow(
           content: {
             bookingId: info.externalReference,
             amountArs: formatArs(info.amount),
+            method: 'mercadopago',
           },
           triggerEvent: 'payment.deposit_after_close',
         },

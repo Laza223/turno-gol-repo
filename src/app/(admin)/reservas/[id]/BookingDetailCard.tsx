@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { formatArs, formatDateLong, formatTime } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
-import { reservaStatusVisual, ReservaStatusBadge } from '../status-visual'
+import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from '../status-visual'
 import type { ReservaDetail } from '../queries'
 
 const DEPOSIT_LABEL: Record<string, string> = {
@@ -26,7 +26,15 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
     ['Cancha', booking.courtName],
     ['Cliente', booking.playerName ?? booking.guestName ?? '—'],
     ['Teléfono', booking.playerPhone ?? booking.guestPhone ?? '—'],
-    ['Estado', <ReservaStatusBadge key="estado" visual={visual} />],
+    [
+      'Estado',
+      // Los dos badges van dentro del MISMO <dd>: los e2e del detalle filtran
+      // por `dd` con hasText 'Ausente'/'Jugada' (reservas-crud, TG-HP-211/212).
+      <span key="estado" className="inline-flex flex-wrap items-center gap-1.5">
+        <ReservaStatusBadge visual={visual} />
+        {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
+      </span>,
+    ],
     ['Precio', formatArs(booking.priceSnapshot)],
     [
       'Seña',

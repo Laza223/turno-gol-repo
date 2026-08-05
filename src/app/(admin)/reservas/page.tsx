@@ -12,9 +12,11 @@ import { cn } from '@/lib/utils'
 import {
   countTenantBookingsByStatus,
   listTenantBookings,
+  sumBookingChargesByBooking,
   type ReservaListRow,
   type ReservaScope,
 } from './queries'
+import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { BookingListItem } from './BookingListItem'
 import { ReservasToolbar } from './ReservasToolbar'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -127,7 +129,31 @@ export default async function ReservasPage(props: Props) {
       { scope, today, ...(q ? { q } : {}) },
       tx,
     )
-    return { rows: list, counts: byStatus }
+    // Solo los turnos TERMINADOS pueden disparar la alarma de plata
+    // (`isUnpaidAlarm` en slot-visual.ts mira únicamente completed/no_show), así
+    // que pedir los cobros del resto sería trabajo tirado. Con la lista vacía
+    // `sumBookingChargesByBooking` corta antes de tocar la DB: en el scope
+    // 'proximas' la página sigue costando 2 queries, no 3.
+    const alarmable = list.filter((r) => r.status === 'completed' || r.status === 'no_show')
+    const charges = await sumBookingChargesByBooking(
+      tenant.id,
+      alarmable.map((r) => r.id),
+      tx,
+    )
+    const withMoney = list.map((r) =>
+      charges.has(r.id) || r.status === 'completed' || r.status === 'no_show'
+        ? {
+            ...r,
+            ...summarizeBookingCharges({
+              priceSnapshot: r.priceSnapshot,
+              depositAmount: r.depositAmount,
+              depositStatus: r.depositStatus,
+              chargesTotal: charges.get(r.id) ?? 0,
+            }),
+          }
+        : r,
+    )
+    return { rows: withMoney, counts: byStatus }
   })
 
   // Hoy: secciones por cancha (la query ordena cancha, hora). Próximas e

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { formatArs, formatTime } from '@/lib/format'
 import { QuickActions, type BookingQuickActions } from './QuickActions'
 import { hasQuickActions } from './quick-actions-helpers'
-import { reservaStatusVisual, ReservaStatusBadge } from './status-visual'
+import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from './status-visual'
 import type { ReservaListRow } from './queries'
 
 function depositText(booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount'>): string {
@@ -57,6 +57,10 @@ export function BookingListItem({ booking, compact = false, actions, cancellatio
     booking.courtName,
     name,
     visual.label,
+    // La fila entera es un Link estirado con ESTE aria-label: quien navega por
+    // links con lector de pantalla escucha solo este string. Dejar la plata
+    // afuera se la escondería justo a quien no puede ver la píldora roja.
+    visual.unpaid ? 'sin cobrar' : null,
     isAbonado ? 'abonado' : null,
   ]
     .filter(Boolean)
@@ -115,6 +119,12 @@ export function BookingListItem({ booking, compact = false, actions, cancellatio
             {booking.courtName}
           </span>
           <ReservaStatusBadge visual={visual} className="hidden sm:inline-flex" />
+          {/*
+            SIN el `hidden sm:inline-flex` del badge de estado: en la vista
+            compacta de mobile el estado se oculta por espacio, pero la alarma de
+            plata es exactamente lo que no puede esconderse.
+          */}
+          {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
           {!isBlock && (
             <p className="hidden shrink-0 text-xs font-semibold tabular-nums text-foreground sm:block sm:w-20 sm:text-right">
               {formatArs(booking.priceSnapshot)}
@@ -163,6 +173,8 @@ export function BookingListItem({ booking, compact = false, actions, cancellatio
 
           <div className="flex shrink-0 flex-wrap items-center gap-1.5">
             <ReservaStatusBadge visual={visual} />
+            {/* La plata va antes que "Turno fijo": gana prioridad de lectura. */}
+            {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
             {isAbonado && (
               <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/30">
                 Turno fijo

@@ -33,9 +33,11 @@ export const ConProductos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     for (const p of PRODUCTS) {
-      await expect(canvas.getByRole('button', { name: new RegExp(p.name) })).toBeVisible()
+      // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo) —
+      // getAllByRole()[0] en vez de getByRole (ambiguo).
+      await expect(canvas.getAllByRole('button', { name: new RegExp(p.name) })[0]).toBeVisible()
     }
-    await expect(canvas.getByText('Tocá un producto para empezar')).toBeVisible()
+    await expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible()
   },
 }
 
@@ -60,8 +62,11 @@ export const VentaDeUnItem: Story = {
     const canvas = within(canvasElement)
     const product = PRODUCTS[0]!
 
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
-    await expect(canvas.getByText('×1')).toBeVisible()
+    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo) —
+    // getAllByRole()[0] en vez de getByRole (ambiguo).
+    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
+    // Mismo motivo: la badge "×1" se pinta en las dos secciones a la vez.
+    await expect(canvas.getAllByText('×1')[0]).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
 
@@ -74,7 +79,9 @@ export const VentaDeUnItem: Story = {
       ),
     )
     // Éxito: el ticket se vacía (vuelve el hint) — listo para la próxima venta.
-    await waitFor(() => expect(canvas.getByText('Tocá un producto para empezar')).toBeVisible())
+    await waitFor(() =>
+      expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible(),
+    )
   },
 }
 
@@ -86,13 +93,20 @@ export const VentaMultiItem: Story = {
 
     // Anclado a ^: con una línea ya en el ticket, "Restar/Sumar uno a {nombre}"
     // y "Quitar {nombre} del ticket" también matchean el nombre suelto y
-    // getByRole se vuelve ambiguo. El botón del grid es el único cuyo nombre
-    // accesible EMPIEZA con el nombre del producto.
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(`^${productA!.name}`) }))
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(`^${productA!.name}`) }))
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(`^${productB!.name}`) }))
-    await expect(canvas.getByText('×2')).toBeVisible()
-    await expect(canvas.getByText('×1')).toBeVisible()
+    // getByRole se vuelve ambiguo. Además, con ≤6 productos cada uno aparece
+    // 2 veces (Recientes + Catálogo) — getAllByRole()[0] en vez de getByRole.
+    await userEvent.click(
+      canvas.getAllByRole('button', { name: new RegExp(`^${productA!.name}`) })[0]!,
+    )
+    await userEvent.click(
+      canvas.getAllByRole('button', { name: new RegExp(`^${productA!.name}`) })[0]!,
+    )
+    await userEvent.click(
+      canvas.getAllByRole('button', { name: new RegExp(`^${productB!.name}`) })[0]!,
+    )
+    // Mismo motivo: la badge "×N" se pinta en las dos secciones a la vez.
+    await expect(canvas.getAllByText('×2')[0]).toBeVisible()
+    await expect(canvas.getAllByText('×1')[0]).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Transferencia' }))
     await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
@@ -117,11 +131,12 @@ export const QuitarLinea: Story = {
     const canvas = within(canvasElement)
     const product = PRODUCTS[0]!
 
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
-    await expect(canvas.getByText('×1')).toBeVisible()
+    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
+    await expect(canvas.getAllByText('×1')[0]).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: `Quitar ${product.name} del ticket` }))
-    await expect(canvas.getByText('Tocá un producto para empezar')).toBeVisible()
+    await expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible()
   },
 }
 
@@ -139,12 +154,13 @@ export const ErrorDeVenta: Story = {
     const canvas = within(canvasElement)
     const product = PRODUCTS[0]!
 
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
+    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
 
     await expect(await canvas.findByRole('alert')).toHaveTextContent(/ya fue cerrada/i)
     // El ticket sigue con la línea cargada (no se pierde el trabajo del cajero).
-    await expect(canvas.getByText('×1')).toBeVisible()
+    await expect(canvas.getAllByText('×1')[0]).toBeVisible()
   },
 }
 
@@ -158,7 +174,8 @@ export const AnotarComoFiado: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const product = PRODUCTS[0]!
 
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
+    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await userEvent.click(canvas.getByRole('button', { name: 'Anotar como fiado' }))
 
     const dialog = within(await body.findByRole('dialog'))
@@ -174,7 +191,9 @@ export const AnotarComoFiado: Story = {
       ),
     )
     // Éxito: el ticket se vacía, igual que tras cobrar.
-    await waitFor(() => expect(canvas.getByText('Tocá un producto para empezar')).toBeVisible())
+    await waitFor(() =>
+      expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible(),
+    )
   },
 }
 
@@ -185,7 +204,8 @@ export const AnotarFiadoSinNombre: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const product = PRODUCTS[0]!
 
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
+    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await userEvent.click(canvas.getByRole('button', { name: 'Anotar como fiado' }))
 
     const dialog = within(await body.findByRole('dialog'))
@@ -206,7 +226,8 @@ export const CajaCerrada: Story = {
     const canvas = within(canvasElement)
     const product = PRODUCTS[0]!
 
-    await userEvent.click(canvas.getByRole('button', { name: new RegExp(product.name) }))
+    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
 
     await expect(canvas.getByRole('button', { name: /^Cobrar/ })).toBeDisabled()
     await expect(canvas.getByText(/caja cerrada/i)).toBeVisible()

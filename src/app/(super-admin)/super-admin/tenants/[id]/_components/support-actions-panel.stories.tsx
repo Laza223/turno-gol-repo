@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, screen, userEvent, within } from 'storybook/test'
 import { planSummaries, supportPanelSettings } from '@/test/fixtures/super-admin'
 import { SupportActionsPanel } from './support-actions-panel'
 
@@ -87,7 +87,13 @@ export const TenantSuspendido: Story = {
   },
 }
 
-/** Extender trial de punta a punta: el resultado de una sección no pisa el de las demás. */
+/**
+ * Extender trial de punta a punta: el resultado de una sección no pisa el de
+ * las demás. El botón "Extender trial" de la sección solo ABRE el
+ * ConfirmDialog (Radix, portal fuera de `canvasElement`) — la action recién
+ * corre al confirmar adentro ("Extender"), así que hay que pasar por las dos
+ * confirmaciones para llegar al feedback.
+ */
 export const ExtenderTrialDePuntaAPunta: Story = {
   args: {
     status: 'trialing',
@@ -100,6 +106,8 @@ export const ExtenderTrialDePuntaAPunta: Story = {
     const canvas = within(canvasElement)
     const trialSection = canvas.getByRole('heading', { name: 'Extender trial' }).closest('section')!
     await userEvent.click(within(trialSection).getByRole('button', { name: 'Extender trial' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Extender' }))
     await expect(await within(trialSection).findByText(/trial extendido 7 días/i)).toBeInTheDocument()
   },
 }

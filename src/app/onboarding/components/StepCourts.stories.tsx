@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { courtFutbol5, courtFutbol7 } from '@/test/fixtures/court'
 import { StepCourts } from './StepCourts'
 
@@ -84,14 +85,19 @@ export const ErrorDePrecio: Story = {
   },
 }
 
+const enviandoCanchas = pendingAction({ success: true as const })
+
 export const EnviandoCanchas: Story = {
-  args: { createCourtsAction: fn(() => new Promise(() => {})) },
+  args: { createCourtsAction: fn(enviandoCanchas.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText('Precio por turno *'), '20000')
     const submit = canvas.getByRole('button', { name: /^continuar$/i })
     await userEvent.click(submit)
     await expect(submit).toBeDisabled()
+    // Sin release la transición queda viva y contamina la story siguiente del
+    // archivo (ver el docstring de pendingAction). Acá hay una después.
+    await enviandoCanchas.release(submit)
   },
 }
 

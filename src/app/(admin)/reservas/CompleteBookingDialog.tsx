@@ -209,9 +209,11 @@ export default function CompleteBookingDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Columna Izquierda: Breakdown de precio y cobro rápido */}
             <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {/* h3, no h4: `DialogTitle` renderiza un h2 y saltar a h4 rompe
+                  `heading-order` de axe. El tamaño lo da la clase, no el tag. */}
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Resumen de cuenta
-              </h4>
+              </h3>
 
               <dl className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -242,7 +244,7 @@ export default function CompleteBookingDialog({
                 <button
                   type="button"
                   onClick={quickAllCash}
-                  className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                  className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
                 >
                   Cobrar todo en efectivo — {formatArs(summary.pending)}
                 </button>
@@ -251,9 +253,9 @@ export default function CompleteBookingDialog({
 
             {/* Columna Derecha: Carga de cobros y método */}
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Registro de pago
-              </h4>
+              </h3>
 
               {charges.length > 0 && (
                 <div className="space-y-2">
@@ -306,7 +308,9 @@ export default function CompleteBookingDialog({
                 <button
                   type="button"
                   onClick={addChargeLine}
-                  className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline md:min-h-0"
+                  // Mismo caso que `SplitPaymentFields`: 12px con `text-primary`
+                  // (= emerald-700 en claro) sobre fondo atenuado queda en 4.47:1.
+                  className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:underline md:min-h-0"
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden />
                   Agregar otro cobro (pago dividido)

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { ResetForm, type ResetPasswordAction } from './reset-form'
 
 type ResetState = Awaited<ReturnType<ResetPasswordAction>>
@@ -58,15 +59,20 @@ export const Error: Story = {
   },
 }
 
+const guardando = pendingAction<ResetState>({ status: 'idle' })
+
 export const Guardando: Story = {
   args: {
-    action: fn((): Promise<ResetState> => new Promise(() => {})),
+    action: fn(guardando.action),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText('Nueva contraseña'), 'unapassword123')
     await userEvent.type(canvas.getByLabelText('Repetir contraseña'), 'unapassword123')
-    await userEvent.click(canvas.getByRole('button', { name: 'Guardar contraseña' }))
+    const submit = canvas.getByRole('button', { name: 'Guardar contraseña' })
+    await userEvent.click(submit)
     await expect(await canvas.findByText('Guardando…')).toBeInTheDocument()
+    // Ver el docstring de pendingAction: sin release, la transición queda viva.
+    await guardando.release(submit)
   },
 }

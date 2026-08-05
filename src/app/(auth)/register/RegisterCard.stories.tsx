@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { RegisterCard, type RegisterAction } from './RegisterCard'
 
 type RegisterState = Awaited<ReturnType<RegisterAction>>
@@ -101,13 +102,18 @@ export const CuentaExistente: Story = {
   },
 }
 
+const creando = pendingAction<RegisterState>({ status: 'idle' })
+
 export const Creando: Story = {
   args: {
-    action: fn((): Promise<RegisterState> => new Promise(() => {})),
+    action: fn(creando.action),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Crear cuenta' }))
+    const submit = canvas.getByRole('button', { name: 'Crear cuenta' })
+    await userEvent.click(submit)
     await expect(await canvas.findByText('Creando…')).toBeInTheDocument()
+    // Ver el docstring de pendingAction: sin release, la transición queda viva.
+    await creando.release(submit)
   },
 }

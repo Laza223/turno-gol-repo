@@ -69,7 +69,51 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-  # ── Job 3: integration + isolation — BLOQUEANTE (~3 min) ──────────────────
+  # ── Job 3: stories (render + play + axe en chromium) — BLOQUEANTE ─────────
+  #
+  # Sin `continue-on-error` a propósito. Esta suite es el ÚNICO lugar del repo
+  # que mide contraste de color: `tests/e2e/a11y/admin.spec.ts` tiene la regla
+  # `color-contrast` deshabilitada. Mientras no corrió en CI (hasta 2026-08-05)
+  # la suite se fue de 0 a 66 rojos en tres semanas sin que nadie lo viera, y
+  # entre esos rojos había 9 bugs de accesibilidad de PRODUCCIÓN. Un job
+  # advisory habría dejado pasar exactamente lo mismo: ver el comentario del job
+  # `visual-regression` más abajo, donde `continue-on-error` ya pintó verde dos
+  # veces con los tests rojos adentro.
+  #
+  # Y CERO retries. Un retry acá esconde justo la clase de bug que este gate
+  # existe para atrapar: la contaminación entre stories (una transición de React
+  # que queda viva, un portal de Radix sin cerrar) es determinística en la
+  # corrida completa y desaparece al reintentar. Si una story es flaky de
+  # verdad, va a cuarentena explícita con `tags: ['!test']` y un TODO fechado,
+  # no a un retry silencioso.
+  stories:
+    name: Stories (BLOCKING)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Browser mode de Vitest: corre las stories en un chromium real, no en
+      # jsdom — es lo que hace que axe mida colores computados de verdad.
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Stories
+        run: pnpm test:storybook:ci
+
+  # ── Job 4: integration + isolation — BLOQUEANTE (~3 min) ──────────────────
   integration-and-isolation:
     name: Integration & Isolation (BLOCKING)
     runs-on: ubuntu-latest
@@ -142,7 +186,7 @@ jobs:
       - name: Isolation tests (BLOCKING — data leak check)
         run: pnpm test:isolation
 
-  # ── Job 4: e2e — only on PRs to main ──────────────────────────────────────
+  # ── Job 5: e2e — only on PRs to main ──────────────────────────────────────
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -202,7 +246,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # ── Job 5: regresión visual — only on PRs to main ──────────────────────────
+  # ── Job 6: regresión visual — only on PRs to main ──────────────────────────
   #
   # Job propio y NO un step de e2e-tests. Estuvo como step hasta el 2026-07-29 con
   # este razonamiento: el stack (Supabase + migraciones + browsers) cuesta ~8 min y

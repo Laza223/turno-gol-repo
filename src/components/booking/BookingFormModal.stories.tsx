@@ -118,7 +118,15 @@ export const BloqueoInterno: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.selectOptions(body.getByLabelText('Motivo / Tipo de Bloqueo'), 'maintenance')
     await expect(body.queryByLabelText(/Nombre/)).not.toBeInTheDocument()
-    await expect(body.getByRole('button', { name: '120 min' })).toBeInTheDocument()
+    // El selector de duración no son dos botones "60 min"/"120 min": es un
+    // popover de horario de fin que lista N horas (`endOptions`). La story
+    // esperaba un copy que el componente nunca tuvo desde que existe el popover.
+    await userEvent.click(body.getByRole('button', { name: 'Seleccionar horario de fin' }))
+    await expect(await body.findByRole('button', { name: /\(2 horas\)/ })).toBeInTheDocument()
+    // Cerrar antes de terminar: el popover de Radix vive en un portal fuera del
+    // canvas y si queda abierto la story siguiente lo encuentra montado.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('button', { name: /\(2 horas\)/ })).not.toBeInTheDocument())
   },
 }
 

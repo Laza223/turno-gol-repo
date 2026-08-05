@@ -14,6 +14,18 @@ const ToastViewport = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Viewport
     ref={ref}
+    // BUG DE PRODUCCIÓN, no de las stories: `<Toaster/>` vive en el layout raíz,
+    // hermano del portal de los diálogos. Cuando hay un Dialog abierto, Radix
+    // llama `hideOthers()` y `aria-hidden` marca a todo el resto del árbol con
+    // `data-aria-hidden="true"` — el viewport de toasts incluido. Resultado: un
+    // toast disparado con un diálogo abierto queda INVISIBLE para lectores de
+    // pantalla (y `getByRole` tampoco lo ve, que es cómo se detectó).
+    //
+    // `aria-hidden` whitelistea cualquier nodo con atributo `aria-live`, así que
+    // basta con declararlo. Va en `"off"` a propósito: alcanza para matchear el
+    // selector sin crear una live region nueva que duplique los anuncios de la
+    // que Radix Toast ya maneja por su cuenta.
+    aria-live="off"
     className={cn(
       'fixed bottom-0 right-0 z-100 flex max-h-dvh w-full flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:max-w-sm',
       className,

@@ -39,10 +39,19 @@ export const Completado: Story = {
 }
 
 /**
- * El cupo y la inscripción se protegen con las restricciones NATIVAS del input,
+ * El cupo se protege con las restricciones NATIVAS del input (`type="number"`),
  * que son las que efectivamente frenan al usuario: el navegador bloquea el
  * submit antes de que corra la validación JS del componente (esa queda como
  * defensa, igual que el Zod de la Server Action y el CHECK de la DB).
+ *
+ * "Inscripción por equipo" NO comparte ese mecanismo: usa `MoneyInput`
+ * (`src/components/ui/money-input.tsx`), que es `type="text"` a propósito
+ * (formatea con separador de miles mientras se tipea) — nunca tiene un
+ * atributo `min`/`max` nativo, ni siquiera cuando el caller le pasa
+ * `minCents`/`maxCents` (esos solo alimentan el clamp on-blur en JS). Acá
+ * `TorneoForm` ni le pasa `minCents`, así que no hay nada nativo que
+ * consultar; el `toHaveAttribute('min', '0')` original testeaba un mecanismo
+ * que este campo no tiene.
  */
 export const RestriccionesNumericas: Story = {
   play: async ({ canvasElement }) => {
@@ -50,10 +59,6 @@ export const RestriccionesNumericas: Story = {
     const cupo = canvas.getByLabelText(/cupo de equipos/i)
     await expect(cupo).toHaveAttribute('min', '2')
     await expect(cupo).toHaveAttribute('max', '256')
-    await expect(canvas.getByLabelText(/inscripción por equipo/i)).toHaveAttribute(
-      'min',
-      '0',
-    )
   },
 }
 

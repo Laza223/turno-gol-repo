@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expectGone } from '@/test/expect-gone'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import { uid } from '@/test/fixtures/ids'
 import { daysFromNow } from '@/test/fixtures/clock'
@@ -99,7 +100,7 @@ export const BloquearJugadorCompleto: Story = {
         '30d',
       ),
     )
-    await waitForElementToBeRemoved(dialogEl)
+    await expectGone(dialogEl)
     await expect(await body.findByText('Jugador bloqueado')).toBeVisible()
   },
 }
@@ -117,7 +118,7 @@ export const LevantarBloqueo: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Levantar bloqueo' }))
 
     await waitFor(() => expect(args.liftPlayerBanAction).toHaveBeenCalledWith(PLAYER_ID))
-    await waitForElementToBeRemoved(dialogEl)
+    await expectGone(dialogEl)
     await expect(await body.findByText('Bloqueo levantado')).toBeVisible()
   },
 }

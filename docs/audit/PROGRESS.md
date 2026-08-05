@@ -1171,3 +1171,124 @@ R1 y R5 (wiring de la página) **no los cubre ninguna story ni unit test** — s
 **Gate:** typecheck ✅ (0 errores de código) / lint 0 errores, 44 warnings ✅ / unit 301 archivos, **2454 tests** ✅ / integration 127 archivos, **1016 tests** ✅ / storybook de los 3 archivos tocados ✅ (queda 1 rojo en `BookingListItem.stories.tsx` que es el `heading-order` de `CompleteBookingDialog`, grupo A4 del esfuerzo de Storybook).
 
 **Fallo propio encontrado y arreglado:** `tests/unit/reservas-page-render.test.tsx` y `reservas-status-filter.test.ts` mockean `@/app/(admin)/reservas/queries` con un objeto literal, así que el import nuevo de `sumBookingChargesByBooking` en la page los rompió a los 14. Se agregó el export al mock (Map vacío, el mismo early-return de la implementación real sin ids).
+---
+
+## E2 — Storybook: 76 → 0 y gate bloqueante (EN CURSO, 2026-08-05)
+
+**Medición propia antes de empezar** (`pnpm test:storybook`, browser mode chromium + axe): 27 archivos / **76 tests** rojos sobre 258 / 1017. 71 de 76 determinísticos. Siete causas raíz, no 27 problemas. Última vez verde: 864/864 el 2026-07-13; `docs/storybook/STORYBOOK_QA_REPORT.md:348` todavía lo afirma. **Causa de fondo: el suite no corre en CI** — y es el ÚNICO lugar del repo que mide contraste (`tests/e2e/a11y/admin.spec.ts` tiene `color-contrast` deshabilitado a propósito).
+
+### Grupo E — fuga entre stories: CERRADO
+
+🔴 **El diagnóstico que traía el plan era correcto en el QUÉ y equivocado en el MECANISMO, y eso cambia el fix.** La hipótesis era que React 19 reconciliaba el mismo `<form>` entre stories del mismo archivo, así que el remedio sería un `key={ctx.id}` en el decorator de `preview.tsx`. **Lo implementé y no arregló nada** (6 rojos antes, 6 después) — lo revertí en vez de dejarlo puesto "por las dudas": un cambio que no hace lo que promete es peor que no tenerlo.
+
+El mecanismo real, aislado con evidencia: `ForgotPasswordCard > Error` **pasa sola** (`-t "Error"` → 1/1) y **falla después de `Enviando`**. Lo que queda colgado no es la instancia del componente sino la **transición de React**: `fn(() => new Promise(() => {}))` deja una transición que nunca cierra, y como vive en el scheduler y no en el árbol, un remount no la toca. La story siguiente resuelve su propia action pero React no puede commitear la actualización — el síntoma es desconcertante (`Unable to find role="alert"` sobre un alert que su propio código sí renderiza).
+
+**Fix:** helper `pendingAction<T>` (`src/test/pending-action.ts`) — la promesa queda en vuelo para que el spinner sea estable y el `play` la **libera** al final, esperando el commit. Aplicado a los 4 archivos rojos: **17/17 verdes** (eran 6 rojos). El patrón está en **10 archivos**; los otros 6 pasan hoy solo porque la story colgada quedó última en el archivo — deuda latente anotada en el docstring del helper, cualquier reordenamiento de exports los rompe.
+
+### Grupo G — toasts invisibles bajo un diálogo: CERRADO, era bug de producción
+
+`<Toaster/>` vive en `src/app/layout.tsx`, hermano del portal de los diálogos. Con un Dialog abierto, Radix llama `hideOthers()` y `aria-hidden` marca todo el resto del árbol con `data-aria-hidden="true"` — el viewport de toasts incluido. **En la app real, todo toast disparado con un diálogo abierto es invisible para lectores de pantalla.** `aria-hidden` whitelistea cualquier nodo con atributo `aria-live`, así que alcanza con declararlo; va en `"off"` para matchear el selector sin crear una live region nueva que duplique los anuncios de la que Radix Toast ya maneja.
+
+**Ruptura controlada:** `QuickActions.stories.tsx` sin el cambio → **5 rojos**; con el cambio → **3**. Los 2 que caían por el toast bajo `aria-hidden` están cerrados.
+
+⚠️ **Lo que el diagnóstico atribuía a G y NO es de G:** los 2 fallos de `FiadosList` no tienen nada que ver con toasts — son `toBeVisible()` sobre texto de un diálogo (`FiadosList.stories.tsx:78`). Quedan sin causa asignada.
+
+### Grupo C3 — cerrado de paso en E3
+
+`BookingListItem > Bloqueo Administrativo`: la story esperaba "Bloqueo" dos veces (nombre + badge), pero Fase 3 renombró el label del badge a "Bloqueado" en `SLOT_STATES`.
+
+### Estado
+
+**76 → 70 rojos / 27 → 24 archivos** (medido con la suite completa; el total subió a 1024 tests por las stories nuevas de E3).
+
+**Pendiente:** grupo A (23 tests, 4 de ellos bugs de a11y de producción: contraste 3.93:1 en `admin-sidebar` por el visual upgrade #93, dos `<select>` sin nombre en `BookingFormModal`, `heading-order` en `CompleteBookingDialog`, contraste en `InscripcionesPanel`) · B (14, copy drift, mecánico) · C1/C2 (10, queries ambiguas) · D (11, contratos viejos — uno de ellos, `BookingActions > Ausente Pasadas Las 24H`, **NO es bug de story: cambió la regla de negocio y hay que escalarlo**) · F (9, diálogos con `open` estático) · los 6 archivos latentes del patrón de E · 2 flakes genuinos · y el cableado del job en CI, que va **último** y solo tras 3 corridas completas verdes seguidas.
+
+### Cierre (2026-08-05) — 66 → 0, y qué de ese diagnóstico estaba mal
+
+Re-medición sobre la rama rebasada antes de tocar nada: **66 rojos / 23 archivos sobre 1024** (no 70/24 — la diferencia eran flakes que no reprodujeron).
+
+**Cuatro correcciones al diagnóstico de arriba, todas encontradas con la evidencia de axe en la mano, no leyendo código:**
+
+1. **El grupo A eran 9 bugs de a11y de producción, no 4.** Los que faltaban: `aria-allowed-attr` (`aria-expanded` en un textbox que nunca declaró `role="combobox"`), `aria-dialog-name` en los dos popovers de horario, y tres contrastes más (chips de horario, alerta de error, avisos amber) — todos en `BookingFormModal`.
+2. **Los dos contrastes "de `InscripcionesPanel`" no viven ahí**: son `SplitPaymentFields.tsx`, el control de cobro compartido que además montan `CompleteBookingDialog` y `BookingSlotPanel`. Buscarlos en el archivo de la story es lo que había hecho fallar la localización estática. Un fix, tres pantallas.
+3. **`money-input` (8 rojos, el archivo entero) NO era bug de producción.** La story renderiza el input sin `<Label>` y axe marca `label-title-only`. El componente no trae label propio a propósito: cada caller monta el suyo. Se arregló la story.
+4. **`BookingActions > Ausente Pasadas Las 24H` no era cambio de regla de negocio** (la nota de arriba se escaló de más). Era contaminación: la story ANTERIOR del archivo dejaba abierto su toast de "Ausencia deshecha", y ésta asserta que no hay ningún botón. Cerrar el toast en la story previa la puso en verde sin tocar el guard de 24h, que sigue existiendo en los dos lados.
+
+**El idiom de contraste ya estaba escrito en el repo** (`src/components/ui/error-state.tsx:42-49`: "un tono más oscuro en claro, el token original en oscuro"). Se siguió en vez de inventar otro: `text-emerald-700`→`800`, `text-amber-700`→`800`, `text-destructive`→`text-red-700 dark:text-destructive`. **No se tocó `globals.css`**: los tokens están calibrados contra blanco y pasan; lo que falla es texto saturado sobre su propio tinte translúcido en superficie clara, que es un problema del sitio de uso, no del token.
+
+**Un bug de librería, no de story** (`CourtList`): `waitForElementToBeRemoved` resuelve la raíz de búsqueda UNA sola vez, al invocarla. Sobre un nieto (`toastText`), si el `<li>` ya se desprendió del `<ol>`, la raíz capturada es el `<li>` huérfano y `contains()` da `true` para siempre → cuelga los 15s completos. Sobre el `<li>` mismo, si ya se fue, tira "already removed". Entre las dos formas **no queda ventana** bajo la suite completa. El reemplazo es `waitFor` + `queryBy`, que tolera los dos órdenes. Explica una familia de "flakes de toast bajo carga" que se venía atribuyendo a CPU.
+
+**Los 2 rojos que sobrevivieron a los fixes por archivo** son exactamente el argumento de por qué la suite completa manda: los dos pasaban en aislado. `AbonadoForm > Error De Preview` fallaba con "Unable to find button Continuar" y un dump de roles casi vacío — el popover del DatePicker seguía montado y Radix marcaba el resto del árbol con `aria-hidden`. En aislado la ventana es de milisegundos.
+
+**Lo que se decidió NO hacer:** migrar a `pendingAction` los archivos donde la story colgada quedó ÚLTIMA. Son seguros hoy por posición, no por diseño; el inventario real (15 archivos, no 10) quedó en el docstring del helper, junto con el falso amigo de `StepIdentity.stories.tsx` (declara una variable local con ese nombre sin importar el helper, así que un grep lo cuenta como migrado).
+
+### La parte cara: llegar a 0 no fue arreglar 66 tests, fue estabilizar la suite
+
+Con los 66 cerrados archivo por archivo, la suite completa dio **2 rojos**. La corrida siguiente, sin tocar una línea, dio **6 rojos DISTINTOS**. Ese es el dato que importa: los archivos sueltos daban verde y la suite completa no, en ambas direcciones.
+
+Las 8 fallas acumuladas eran **dos clases**, no ocho problemas:
+
+**Clase 1 — `waitForElementToBeRemoved` (18 usos, 7 archivos).** No sirve para esperar que algo desaparezca, y falla en las dos direcciones opuestas:
+- llega tarde → tira `"element is already removed"` (hace un chequeo de existencia al entrar);
+- llega temprano sobre un DESCENDIENTE → cuelga hasta el timeout completo, porque resuelve la raíz de búsqueda una sola vez al invocarla caminando `parentElement`. Si el contenedor ya se desprendió, la raíz capturada es ese contenedor huérfano y `contenedor.contains(nieto)` sigue dando `true` para siempre sobre el subárbol intacto.
+
+Entre las dos formas no queda ventana. Reemplazadas por `expectGone` (`src/test/expect-gone.ts`), que chequea `isConnected`: no camina el árbol y tolera los dos órdenes. Esto explica de paso una familia de "flakes de toast bajo carga" que se venía atribuyendo a CPU y no lo era.
+
+**Clase 2 — `toBeVisible()` síncrono sobre un nodo recién montado.** `findByRole` resuelve cuando el nodo EXISTE, no cuando se ve; el elemento entra con `data-[state=open]:animate-in fade-in-0` y el primer frame tiene `opacity: 0`. Bajo la suite completa la ventana se ensancha lo suficiente para perder la carrera. Se envolvieron en `waitFor` los sitios que fallaron.
+
+**Se evaluó y se DESCARTÓ el atajo global** de meter `animation: none !important` bajo `prefers-reduced-motion` para matar la clase 2 de raíz: `globals.css:889` usa `animation: card-fade-in 0.4s both`, y con `fill-mode: both` el elemento se queda en `opacity: 0` hasta que la animación TERMINA. Por eso el bloque de reduced-motion existente tiene que escribir `animation: none` **y** `opacity: 1` juntos (`globals.css:950`). Un `animation: none` a secas sobre todo el árbol dejaría invisible a todo lo que entra con fill-mode. Los 399 `toBeVisible()` de las stories tampoco se barrieron en masa: la mayoría son asserts de render inicial, sin animación de por medio, y tocarlos sería churn sin señal.
+
+Además, `AbonadoForm`: el botón de submit dice **"Procesando..."** mientras la preview está en vuelo (`AbonadoForm.tsx:655`), así que `getByRole({name:'Continuar'})` no lo encuentra en esa ventana. Pasado a `findByRole` en los 6 usos del archivo.
+
+**Corridas completas: 2 → 6 → 1 → 0 → 0 → 0.** Las tres últimas, 1024/1024, sin tocar nada entre medio.
+
+### El gate
+
+Job `stories` en `ci.yml`, **BLOQUEANTE y sin `continue-on-error`**, en paralelo con unit/integration. Razón escrita en el propio workflow: esta suite es el único lugar del repo que mide contraste — `tests/e2e/a11y/admin.spec.ts:27` corre axe con `disableRules: ['color-contrast']`, y su comentario aclara que la regla queda apagada porque los CTAs viven dentro de modales que esa prueba nunca abre. Las stories sí los abren en el `play`.
+
+**Cero retries**, también a propósito: la contaminación entre stories es determinística en la corrida completa y desaparece al reintentar — un retry esconde exactamente la clase de bug que este gate existe para atrapar.
+
+⚠️ **Falta un paso que NO se puede hacer desde el repo:** marcar `Stories (BLOCKING)` como *required status check* en la protección de rama de `main`. Sin eso el job corre y se ve rojo, pero no impide el merge.
+
+---
+
+## Bloque 3 (2026-08-05) — Partir los 3 gigantes de la grilla
+
+Refactor de **forma solamente**: cero cambio de comportamiento, cero cambio de copy, cero cambio en las props públicas ni en los tipos que exportan. Va DESPUÉS del gate de Storybook a propósito — la red que hace seguro mover 900 líneas de JSX es esa suite, no la de unit.
+
+| Archivo | Antes | Después |
+|---|---|---|
+| `src/components/booking/BookingGrid.tsx` | 484 | **290** |
+| `src/components/booking/BookingSlotPanel.tsx` | 541 | **287** |
+| `src/components/booking/QuickBookingForm.tsx` | 414 | **283** |
+
+Convención seguida: la ya establecida por el Ticket 3 (ver arriba) — el orquestador conserva `Props` y el export público, los hooks van a `src/hooks/` o a la subcarpeta del componente, y las piezas de JSX a una subcarpeta propia.
+
+**Piezas nuevas (15 archivos, 1094 líneas):**
+
+- `src/hooks/use-grid-actions.ts` — todo el estado de "qué superficie está abierta" de la grilla (`selectedSlot`, `quickSlotKey`, `detailBookingId`, `isNavPending`) y sus handlers. Están juntos porque **se cierran entre sí**: abrir el modal cierra el popover, crear una reserva cierra los dos. Repartidos en el componente esa relación quedaba implícita en el orden de los `setState`.
+- `booking/grid/` — `GridOverlays.tsx` (modal completo + panel del turno), `GridEmptyStates.tsx` (offline / sin canchas / día cerrado), `QuickFormCell.tsx`, `grid-keyboard-nav.ts` (`moveGridFocus`).
+- `booking/slot-panel/` — `actions.ts` (tipos del contrato), `charge-copy.ts`, `use-slot-charges.ts`, `SlotPriceSummary.tsx`, `SlotChargeSection.tsx`, `SlotActionButtons.tsx`.
+- `booking/quick-form/` — `constants.ts`, `use-player-search.ts`, `use-slot-availability.ts`, `DepositFieldset.tsx`.
+
+**Las dos decisiones que no eran obvias:**
+
+1. **`slot-panel/actions.ts` no estaba en la partición planeada.** Se agregó porque los tipos del contrato del panel (`SlotPanelActions`, `ChargeInput`, `RenderCanteenDialog`) los necesitan también `use-slot-charges.ts` y `SlotActionButtons.tsx`: dejándolos en `BookingSlotPanel.tsx` los hijos importaban al padre (ciclo type-only) y el orquestador quedaba en 326 líneas, por encima del objetivo. `BookingSlotPanel.tsx` los re-exporta, así que **ningún caller cambió su import**.
+
+2. **El bloque de derived-state on prop change (`if (booking.id !== lastId)`) NO se partió.** Toca estado de dos dueños (`error`/`lines`/`idempotencyKey` del hook de cobro, y los tres `*Open` del orquestador); romperlo en dos bloques con su propio `lastId` cada uno habría sido un cambio estructural más riesgoso que el problema que resuelve. Quedó entero, en el orquestador, con `useSlotCharges` exponiendo los setters crudos — es la idéntica secuencia de `setState`, sólo que tres pasan por una capa de indirección. El `setLastId(null)` que las tres mutaciones exitosas hacían inline viaja al hook como callback `resetLastId`.
+
+**Orden de hooks en `BookingSlotPanel`:** cambió en el TEXTO (ahora `useRouter` → 4× `useState` → `useSlotCharges`, antes el `useTransition` de cobro iba primero) pero es incondicional y estable entre renders, que es lo que exigen las Rules of Hooks — no un orden textual específico. Se deja anotado porque es el punto donde este refactor podía romper en silencio.
+
+**Verificación (misma base, antes y después):**
+
+| Suite | Resultado |
+|---|---|
+| `pnpm typecheck` | 0 errores |
+| `pnpm lint` | 0 errores (44 warnings preexistentes de `no-restricted-imports`) |
+| `pnpm test` | **2454/2454** en 301 archivos |
+| `pnpm test:storybook:ci` | **1024/1024** en 258 archivos |
+| e2e de grilla (6 specs, `--workers=1`) | **9 passed / 2 skipped** (los dos `test.fixme` de `grilla-realtime`) |
+
+El primer lote de e2e dio 1 rojo en `TG-HP-209` que **no reprodujo**: el mismo test pasó solo (24.3s) y el lote completo repetido pasó entero. El snapshot de la falla muestra el modal abierto, el formulario lleno, sin `role="alert"` y con el botón en "Confirmar" (no "Guardando…") — o sea `handleSubmit` nunca corrió: el click no tomó efecto. Es la clase ya documentada de clicks no-op de esta máquina, no una regresión; los dos hermanos de ese mismo spec ya están marcados `test.fixme` por la misma infra de Realtime local.
+
+⚠️ **Conflicto de merge previsible con el Bloque 2.4:** `BookingSlotPanel.tsx` se reescribió entero acá (541→287) y la rama `fix/bloque2-decisiones` le saca `booking.type !== 'fixed'` de `canReschedule` (más el párrafo del comentario que lo justificaba). Al mergear, la resolución es: quedarse con la versión refactorizada y borrar de ella esa línea y ese párrafo.

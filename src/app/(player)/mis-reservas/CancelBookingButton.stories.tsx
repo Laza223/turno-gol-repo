@@ -44,6 +44,18 @@ export const Cerrado: Story = {
   args: { action: fn(async () => ({ success: true as const, booking: {} as never })) },
 }
 
+/**
+ * El texto del preview de seña (`depositPreviewText`) no vive en un nodo
+ * propio: es el último hijo-texto directo del `description` de ConfirmDialog,
+ * después de `<strong>`s y dos `<br/>`. `getByText` con un string exacto
+ * concatena TODO el texto directo del contenedor (`getNodeText`, ignora los
+ * `<strong>`/`<br/>` pero no el resto de los textos hermanos), así que nunca
+ * matchea el string aislado — de ahí el matcher por función (RTL normaliza
+ * `content` con la misma regla `\s+` que colapsa el NBSP de `formatArs` a
+ * espacio simple, así que tampoco hace falta lidiar con eso a mano).
+ */
+const hasText = (target: string) => (content: string) => content.includes(target)
+
 export const Abierto: Story = {
   args: { action: fn(async () => ({ success: true as const, booking: {} as never })) },
   play: async ({ canvasElement }) => {
@@ -52,7 +64,7 @@ export const Abierto: Story = {
     await expect(await screen.findByText('¿Cancelar esta reserva?')).toBeInTheDocument()
     await expect(screen.getByLabelText(/motivo \(opcional\)/i)).toBeInTheDocument()
     // ENS-2: la consecuencia concreta de cancelar AHORA (no más "en el plazo/fuera del plazo" en abstracto).
-    await expect(screen.getByText('Se te devuelve la seña de $ 1.500.')).toBeInTheDocument()
+    await expect(screen.getByText(hasText('Se te devuelve la seña de $ 1.500.'))).toBeInTheDocument()
   },
 }
 
@@ -66,7 +78,7 @@ export const AbiertoSinSeña: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
-    await expect(await screen.findByText('No hay seña que devolver.')).toBeInTheDocument()
+    await expect(await screen.findByText(hasText('No hay seña que devolver.'))).toBeInTheDocument()
   },
 }
 
@@ -80,7 +92,7 @@ export const AbiertoFueraDePlazo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
-    await expect(await screen.findByText('Perdés la seña de $ 1.500.')).toBeInTheDocument()
+    await expect(await screen.findByText(hasText('Perdés la seña de $ 1.500.'))).toBeInTheDocument()
   },
 }
 

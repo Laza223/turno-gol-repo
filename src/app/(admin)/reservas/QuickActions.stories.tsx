@@ -191,7 +191,12 @@ export const AusenteAbreConfirmDialogConConsecuencias: Story = {
 
     const body = within(document.body)
     await body.findByRole('heading', { name: 'Marcar como ausente' })
-    await expect(body.getByText('La seña pagada queda para el complejo.')).toBeVisible()
+    // El heading existe apenas monta el diálogo, pero el contenido todavía está
+    // en el primer frame del fade-in: asertar visibilidad en el mismo tick lee
+    // opacity 0. Con la suite completa esa ventana se ensancha lo suficiente.
+    await waitFor(() =>
+      expect(body.getByText('La seña pagada queda para el complejo.')).toBeVisible(),
+    )
     await expect(body.getByText(/queda bloqueado 14 días/)).toBeVisible()
 
     await userEvent.click(body.getByRole('button', { name: 'Marcar ausente' }))

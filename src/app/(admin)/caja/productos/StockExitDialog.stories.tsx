@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { canteenProduct } from '@/test/fixtures'
 import { StockExitDialog } from './StockExitDialog'
 import type { StockActionResult } from './actions'
@@ -37,7 +37,12 @@ export const SalidaPorMerma: Story = {
         expect.objectContaining({ productId: PRODUCT.id, reason: 'waste', note: 'latas vencidas' }),
       ),
     )
-    await waitForElementToBeRemoved(dialogEl)
+    // El cierre real lo controla el caller (`open={product !== null}`); en el
+    // sandbox onClose es un fn() mudo que no realimenta `args.product` a null,
+    // así que el diálogo nunca se desmonta — mismo gap documentado en
+    // StockEntryDialog.stories.tsx (Reposicion/PagaloDeLaCaja): assertamos
+    // que el componente PIDIÓ cerrar, no que el DOM lo haya sacado.
+    await waitFor(() => expect(args.onClose).toHaveBeenCalled())
   },
 }
 

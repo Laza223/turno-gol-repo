@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { InviteStaffDialog } from './InviteStaffDialog'
 
 // StaffActionResult vive en './actions' ('use server'): las stories no pueden
@@ -38,8 +39,12 @@ export const Default: Story = {
   },
 }
 
+const enviando = pendingAction<InviteActionResult>({ success: true as const })
+
 export const Enviando: Story = {
-  args: { inviteAction: fn(() => new Promise<InviteActionResult>(() => {})) },
+  // Se libera al final del play: una promesa que nunca resuelve deja viva una
+  // transición de React que le rompe las stories siguientes (pending-action.ts).
+  args: { inviteAction: fn(enviando.action) },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.type(await body.findByLabelText('Nombre'), 'Rodrigo')
@@ -48,6 +53,7 @@ export const Enviando: Story = {
     await userEvent.click(body.getByRole('button', { name: 'Enviar invitación' }))
     const pending = await body.findByRole('button', { name: 'Enviando…' })
     await expect(pending).toBeDisabled()
+    await enviando.release(pending)
   },
 }
 

@@ -50,7 +50,13 @@ export const ConAlertas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Necesita tu atención')).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'Cobrar $ 16.000' })).toBeVisible()
+    // `formatArs` (Intl.NumberFormat) mete un NBSP (U+00A0) entre "$" y el
+    // número. La computación del accessible name de `getByRole` NO lo
+    // normaliza a espacio simple (a diferencia del normalizer default de
+    // `getByText`), así que un literal con espacio ASCII nunca matchea acá:
+    // el regex con `\s` cubre los dos (NBSP es whitespace válido para `\s`
+    // en JS).
+    await expect(canvas.getByRole('link', { name: /^Cobrar \$\s16\.000$/ })).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Ver reserva' })).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Cerrar caja de ayer' })).toBeVisible()
   },

@@ -3,6 +3,7 @@ import {
   renderBookingConfirmed,
   renderBookingCanceled,
   renderBookingCanceledByComplex,
+  renderBookingRescheduled,
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
@@ -321,12 +322,65 @@ describe('renderTemplate dispatcher', () => {
   })
 })
 
+describe('renderBookingRescheduled', () => {
+  const DATA = {
+    playerFirstName: 'Nicolás',
+    tenantName: 'Complejo San Telmo',
+    fromCourtName: 'Cancha 1',
+    fromDate: '06/08/2026',
+    fromTimeStart: '18:00',
+    fromTimeEnd: '19:00',
+    toCourtName: 'Cancha 3',
+    toDate: '07/08/2026',
+    toTimeStart: '21:00',
+    toTimeEnd: '22:00',
+    price: '$ 25.000,00',
+    priceChanged: false,
+  }
+
+  it('el subject dice a dónde quedó el turno, no de dónde salió', () => {
+    const { subject } = renderBookingRescheduled(DATA)
+    expect(subject).toContain('Cancha 3')
+    expect(subject).toContain('21:00')
+    expect(subject).not.toContain('Cancha 1')
+  })
+
+  it('muestra el origen y el destino, para poder leer el cambio de un vistazo', () => {
+    const { html, text } = renderBookingRescheduled(DATA)
+    for (const body of [html, text!]) {
+      expect(body).toContain('Nicolás')
+      expect(body).toContain('Cancha 1')
+      expect(body).toContain('18:00')
+      expect(body).toContain('Cancha 3')
+      expect(body).toContain('21:00')
+    }
+  })
+
+  it('destaca el cambio de precio solo cuando el precio cambió', () => {
+    const igual = renderBookingRescheduled(DATA)
+    expect(igual.html).not.toContain('El precio del turno cambió')
+    expect(igual.html).toContain('$ 25.000,00')
+
+    const distinto = renderBookingRescheduled({ ...DATA, priceChanged: true })
+    expect(distinto.html).toContain('El precio del turno cambió')
+    expect(distinto.text).toContain('El precio del turno cambió')
+  })
+
+  it('se puede renderizar por nombre, como lo hace el worker de envío', () => {
+    expect(isTemplateName('booking_rescheduled')).toBe(true)
+    const out = renderTemplate('booking_rescheduled', DATA)
+    expect(out.subject).toBeTruthy()
+    expect(out.html).toContain('Tu turno se movió')
+  })
+})
+
 describe('isTemplateName', () => {
   it('returns true for all valid template names', () => {
     const valid = [
       'booking_confirmed',
       'booking_canceled',
       'booking_canceled_by_complex',
+      'booking_rescheduled',
       'admin_new_booking',
       'trial_welcome',
       'trial_ending',

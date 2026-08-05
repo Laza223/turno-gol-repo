@@ -17,6 +17,15 @@ import { GridToolbar } from './grid/GridToolbar'
 import { FirstBookingHint } from './grid/FirstBookingHint'
 import { GridScroller } from './grid/GridScroller'
 import { GridLegend } from './grid/GridLegend'
+import { QuickBookingForm } from './QuickBookingForm'
+import {
+  BookingSlotPanel,
+  type RenderCanteenDialog,
+  type SlotPanelActions,
+} from './BookingSlotPanel'
+import { priceForDateSlot, timeToMins } from '@/lib/booking/pricing'
+import { endLabelFromMins } from '@/shared/time/operating-day'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { CourtRow } from '@/modules/courts/court.types'
@@ -65,6 +74,20 @@ type Props = {
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   searchPlayersAction?: SearchBookingPlayersAction
+  /**
+   * `settings.deposit_percentage` del complejo: el popover de alta rápida
+   * sugiere la seña con ese porcentaje. Sin esto (stories/tests) el popover no
+   * se ofrece y el click de una celda libre abre el modal completo, como antes.
+   */
+  depositPercentage?: number
+  /**
+   * Acciones del panel lateral del turno (Fase 3). Opcional: sin ellas el panel
+   * abre igual y muestra el detalle, sólo que sin botones — es el modo en el
+   * que corren las stories, que no pueden importar Server Actions.
+   */
+  slotPanelActions?: SlotPanelActions
+  /** Se reenvía tal cual al panel del turno — ver `RenderCanteenDialog`. */
+  renderCanteenDialog?: RenderCanteenDialog
   actions?: React.ReactNode
 }
 
@@ -79,11 +102,16 @@ export function BookingGrid({
   action,
   checkAvailabilityAction,
   searchPlayersAction,
+  depositPercentage,
+  slotPanelActions,
+  renderCanteenDialog,
   actions,
 }: Props) {
   const router = useRouter()
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
-  // Reserva con popover de detalle abierto (hover/focus). Una sola a la vez.
+  // Celda con el popover de alta rápida abierto (Fase 3), como `courtId:HH:MM`.
+  const [quickSlotKey, setQuickSlotKey] = useState<string | null>(null)
+  // Reserva con el panel de acciones abierto. Una sola a la vez.
   const [detailBookingId, setDetailBookingId] = useState<string | null>(null)
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
@@ -129,6 +157,42 @@ export function BookingGrid({
     rowHeightRem,
   })
 
+  // El panel se alimenta de `bookings` (la lista viva), no de un snapshot al
+  // abrir: si entra un cobro por Realtime mientras el panel está abierto, el
+  // saldo que muestra se actualiza solo en vez de quedar mintiendo.
+  const detailBooking = useMemo(
+    () => (detailBookingId ? (bookings.find((b) => b.id === detailBookingId) ?? null) : null),
+    [detailBookingId, bookings],
+  )
+
+  const courtNameById = useMemo(
+    () => new Map(courts.map((c) => [c.id, c.name])),
+    [courts],
+  )
+
+  // Radix devuelve el foco al elemento que lo tenía al abrir (la celda), así
+  // que la navegación por flechas sigue donde estaba. Sólo hay que limpiar el
+  // id.
+  const handleDetailClose = useCallback(() => setDetailBookingId(null), [])
+
+  /**
+   * El panel cobró / marcó ausente: hay que refrescar los DOS lados, igual que
+   * al crear una reserva (ver handleBookingSuccess).
+   *
+   * `router.refresh()` solo no alcanza: el hook de Realtime lee
+   * `initialBookings` únicamente al montar, así que la grilla seguiría pintando
+   * el estado viejo. Con la alarma de "sin cobrar" eso es peor que un refresco
+   * tardío: el turno se queda en rojo DESPUÉS de haberlo cobrado, y una alarma
+   * que miente entrena al staff a ignorarlas. Además los cobros viven en
+   * `cash_flows`, que no emite por el canal de Realtime — nadie más va a
+   * avisar.
+   */
+  const handleSlotMutated = useCallback(() => {
+    setDetailBookingId(null)
+    router.refresh()
+    void refetch()
+  }, [router, refetch])
+
   const navigateToDate = useCallback(
     (d: string) => {
       startNavTransition(() => router.push(`/grilla?date=${d}`))
@@ -136,10 +200,12 @@ export function BookingGrid({
     [router],
   )
 
-  const handleSlotClick = useCallback(
+  /** Abre el modal completo para un slot libre (el camino de "Más opciones"). */
+  const openFullModal = useCallback(
     (courtId: string, slotTime: string) => {
       const court = courts.find((c) => c.id === courtId)
       if (!court) return
+      setQuickSlotKey(null)
       setSelectedSlot({
         courtId,
         courtName: court.name,
@@ -150,6 +216,82 @@ export function BookingGrid({
       })
     },
     [courts, date],
+  )
+
+  /**
+   * Fase 3: el click de una celda libre abre el POPOVER de alta rápida (2
+   * campos + precio ya resuelto), no el modal de 10 campos. El modal sigue a un
+   * click de distancia ("Más opciones") y no perdió nada.
+   *
+   * Sin `depositPercentage` (stories, tests viejos) se cae al modal completo:
+   * el popover no puede sugerir una seña sin saber el porcentaje del complejo.
+   */
+  const quickEnabled = typeof depositPercentage === 'number'
+
+  const handleSlotClick = useCallback(
+    (courtId: string, slotTime: string) => {
+      if (!quickEnabled) {
+        openFullModal(courtId, slotTime)
+        return
+      }
+      setQuickSlotKey(`${courtId}:${slotTime}`)
+    },
+    [quickEnabled, openFullModal],
+  )
+
+  const handleQuickClose = useCallback(() => setQuickSlotKey(null), [])
+
+  const handleBookingSuccess = useCallback((_booking: BookingRow) => {
+    setSelectedSlot(null)
+    setQuickSlotKey(null)
+    // Refresh both: router.refresh re-runs the server component (updates the
+    // initialBookings prop), and refetch hits /api/bookings to update the
+    // hook's local state — the hook's useState only reads initialBookings on
+    // mount, so without an explicit refetch the new booking would only appear
+    // when Realtime eventually pushes it. In E2E that lag misses the
+    // assertion window; in a browser tab that lost the websocket, it never
+    // arrives at all.
+    router.refresh()
+    void refetch()
+  }, [router, refetch])
+
+  const renderQuickForm = useCallback(
+    (courtId: string, courtName: string, slotTime: string) => {
+      const court = courts.find((c) => c.id === courtId)
+      if (!court || depositPercentage == null) return null
+      return (
+        <QuickBookingForm
+          slot={{
+            courtId,
+            courtName,
+            date,
+            timeStart: slotTime,
+            timeEnd: endLabelFromMins(timeToMins(slotTime) + SLOT_DURATION_MINUTES),
+          }}
+          // Misma función de tarifa que usa el server: el precio se muestra al
+          // instante y no puede diferir del que se graba.
+          price={priceForDateSlot(court.pricing, date, slotTime)}
+          action={action}
+          checkAvailabilityAction={checkAvailabilityAction}
+          searchPlayersAction={searchPlayersAction}
+          depositPercentage={depositPercentage}
+          onSuccess={handleBookingSuccess}
+          onMoreOptions={(s) => openFullModal(s.courtId, s.timeStart)}
+          onClose={handleQuickClose}
+        />
+      )
+    },
+    [
+      courts,
+      date,
+      depositPercentage,
+      action,
+      checkAvailabilityAction,
+      searchPlayersAction,
+      openFullModal,
+      handleQuickClose,
+      handleBookingSuccess,
+    ],
   )
 
   // Navegación con flechas entre slots: cada botón lleva data-col/data-row;
@@ -185,19 +327,6 @@ export function BookingGrid({
     },
     [courts.length, visibleSlots.length],
   )
-
-  const handleBookingSuccess = useCallback((_booking: BookingRow) => {
-    setSelectedSlot(null)
-    // Refresh both: router.refresh re-runs the server component (updates the
-    // initialBookings prop), and refetch hits /api/bookings to update the
-    // hook's local state — the hook's useState only reads initialBookings on
-    // mount, so without an explicit refetch the new booking would only appear
-    // when Realtime eventually pushes it. In E2E that lag misses the
-    // assertion window; in a browser tab that lost the websocket, it never
-    // arrives at all.
-    router.refresh()
-    void refetch()
-  }, [router, refetch])
 
   const dateLabel = useMemo(
     () =>
@@ -312,6 +441,9 @@ export function BookingGrid({
             onSlotClick={handleSlotClick}
             onGridKeyDown={handleGridKeyDown}
             onExpandMorning={() => setShowMorning(true)}
+            quickSlotKey={quickSlotKey}
+            onQuickClose={handleQuickClose}
+            renderQuickForm={quickEnabled ? renderQuickForm : undefined}
           />
 
           <GridLegend />
@@ -327,6 +459,24 @@ export function BookingGrid({
           action={action}
           checkAvailabilityAction={checkAvailabilityAction}
           searchPlayersAction={searchPlayersAction}
+        />
+      )}
+
+      {/* Panel de acciones del turno: UNO para toda la grilla, no uno por celda.
+          Se monta sólo cuando hay un turno abierto — así el Sheet no vive
+          suscrito al DOM en la vista donde el admin pasa el día. */}
+      {detailBooking && (
+        <BookingSlotPanel
+          booking={detailBooking}
+          courtName={courtNameById.get(detailBooking.courtId) ?? 'Cancha'}
+          onClose={handleDetailClose}
+          onMutated={handleSlotMutated}
+          // El "ya terminó" sale de la grilla, que es la que sabe de día
+          // operativo; el panel no lo recalcula (ver su prop hasEnded).
+          hasEnded={isSlotPast(detailBooking.timeEnd)}
+          courts={courts}
+          renderCanteenDialog={renderCanteenDialog}
+          actions={slotPanelActions}
         />
       )}
     </div>

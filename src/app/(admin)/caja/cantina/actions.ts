@@ -4,6 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { withTenantContext } from '@/shared/db/client'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
+import { getDailyClose } from '@/modules/cashflow/daily-close.service'
+import { listProducts } from '@/modules/canteen/canteen.service'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
 import { createTab, settleTab, cancelTab } from '@/modules/canteen/canteen-tab.service'
 import {
@@ -17,10 +20,12 @@ import {
   InsufficientStockError,
   ProductInactiveError,
   ProductNotFoundError,
+  SaleBookingNotFoundError,
   TabChargeMismatchError,
   TabNotFoundError,
   TabNotOpenError,
 } from '@/modules/canteen/canteen.errors'
+import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import { formatArs } from '@/lib/format'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
@@ -62,6 +67,7 @@ function mapCanteenError(err: unknown): string | null {
   if (err instanceof ProductNotFoundError) return 'Ese producto ya no existe.'
   if (err instanceof ProductInactiveError) return 'Ese producto está pausado.'
   if (err instanceof EmptyTicketError) return 'El ticket está vacío.'
+  if (err instanceof SaleBookingNotFoundError) return 'Ese turno ya no existe.'
   if (err instanceof TabNotFoundError) return 'Ese fiado ya no existe.'
   if (err instanceof TabNotOpenError) return 'Ese fiado ya fue cobrado o anulado.'
   if (err instanceof TabChargeMismatchError) {
@@ -108,6 +114,45 @@ export async function sellTicketAction(input: unknown): Promise<SellTicketAction
 
   revalidateCaja()
   return { success: true, total }
+}
+
+export type CanteenCatalogActionResult =
+  | { success: true; products: CanteenProductRow[]; saleDisabled: boolean }
+  | { success: false; error: string }
+
+/**
+ * Catálogo de cantina bajo demanda, para el panel del turno en la grilla
+ * (Fase 3). Se carga al ABRIR el diálogo, no con la grilla: el stock cambia
+ * durante todo el día y una grilla que quedó abierta desde la mañana mostraría
+ * unidades que ya se vendieron. Además la grilla es la pantalla donde el admin
+ * pasa el día — no merece pagar una query de cantina en cada render.
+ *
+ * `saleDisabled` replica la regla de /caja/cantina: con la caja del día operativo
+ * cerrada, `createCashFlow` rechaza la venta (DayAlreadyClosedError). Es sólo
+ * para deshabilitar el botón; la fuente de verdad sigue siendo el server.
+ */
+export async function listCanteenForBookingAction(): Promise<CanteenCatalogActionResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const today = operatingDateOf(
+    new Date(),
+    nightCutoffMins(tenant.openingHours, tenant.closesNextDay),
+  )
+
+  const { products, close } = await withTenantContext(tenant.id, async (tx) => {
+    const [p, c] = await Promise.all([
+      listProducts(tenant.id, tx),
+      getDailyClose(tenant.id, today, tx),
+    ])
+    return { products: p, close: c }
+  })
+
+  return { success: true, products, saleDisabled: close !== null }
 }
 
 /**

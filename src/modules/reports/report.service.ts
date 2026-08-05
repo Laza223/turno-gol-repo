@@ -48,7 +48,10 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
           .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
           .groupBy(cashFlows.type, cashFlows.method),
 
-        // Q2a: income + booking count per court (from cash_flows linked to bookings)
+        // Q2a: income + booking count per court (from cash_flows linked to bookings).
+        // `category = 'booking'` no es decorativo: desde Fase 3 una venta de
+        // cantina puede llevar `booking_id` (consumo cargado al turno). Sin el
+        // filtro, la cerveza se sumaría a "lo que facturó la cancha".
         tx
           .select({
             courtId: courts.id,
@@ -65,6 +68,7 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
               gte(cashFlows.occurredAt, from),
               lt(cashFlows.occurredAt, to),
               isNotNull(cashFlows.bookingId),
+              eq(cashFlows.category, 'booking'),
             ),
           )
           .groupBy(courts.id, courts.name),

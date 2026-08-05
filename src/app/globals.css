@@ -186,6 +186,15 @@
       box-shadow: 0 0 0 10px hsl(160 84% 39% / 0);
     }
   }
+  @keyframes slot-alarm {
+    0%,
+    100% {
+      box-shadow: inset 0 0 0 1.5px hsl(var(--destructive) / 0.75);
+    }
+    50% {
+      box-shadow: inset 0 0 0 3px hsl(var(--destructive) / 0.28);
+    }
+  }
   @keyframes faq-in {
     from {
       opacity: 0;
@@ -815,6 +824,20 @@ html {
   );
 }
 
+/* ─── Turno terminado sin cobrar (Fase 3, contrato v2 §3) ─────────────────
+   La ÚNICA alarma visual de la grilla. Respira en vez de parpadear: un blink
+   duro en la pantalla que el admin mira 8h/día es hostil, y el presupuesto de
+   motion de ≤200ms es para lo que responde a una acción — esto es ambiente.
+
+   El anillo va en la regla base y la animación SOLO lo modula. Así, con
+   `prefers-reduced-motion` (que abajo apaga la animación), la alarma sigue
+   siendo perfectamente legible: pierde el latido, no el anillo. Si el anillo
+   viviera únicamente en los keyframes, reducir motion la haría desaparecer. */
+.slot-alarm-ring {
+  box-shadow: inset 0 0 0 1.5px hsl(var(--destructive) / 0.75);
+  animation: slot-alarm 2s ease-in-out infinite;
+}
+
 /* ─── TG Ball Spinner (loading indicator premium) ─────────────────────────
    Pelotita de fútbol SVG con bounce elástico. La sombra pseudo-element se
    escala/opacita en sync con el bounce para dar profundidad. GPU-composited
@@ -908,6 +931,11 @@ html {
   }
 
   .skeleton {
+    animation: none;
+  }
+
+  /* El anillo de la regla base queda: se pierde el latido, no la alarma. */
+  .slot-alarm-ring {
     animation: none;
   }
 

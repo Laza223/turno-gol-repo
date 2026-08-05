@@ -65,7 +65,7 @@ export function SplitPaymentFields({
         </button>
       )}
 
-      {lines.map((line) => (
+      {lines.map((line, i) => (
         <div key={line.id} className="flex items-center gap-2">
           <div className="flex-1">
             <MoneyInput
@@ -80,6 +80,13 @@ export function SplitPaymentFields({
             value={line.method}
             onChange={(e) => update(line.id, { method: e.target.value as MethodKey })}
             disabled={disabled}
+            // Sin nombre accesible, axe lo marca `select-name`: en un lector de
+            // pantalla el control se anuncia sólo por su valor ("Efectivo") y
+            // no se entiende qué se está eligiendo. Con varias líneas de cobro
+            // hay varios selects idénticos, así que el índice va en el nombre.
+            aria-label={
+              lines.length > 1 ? `Método de pago del cobro ${i + 1}` : 'Método de pago'
+            }
             className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring disabled:opacity-60"
           >
             {methodOptions.map((m) => (

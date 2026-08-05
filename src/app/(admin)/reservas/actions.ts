@@ -29,9 +29,23 @@ import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { settleRefund, confirmManualDepositPayment, type ManualDepositMethod } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { captureMessage, captureException } from '@/lib/sentry'
-import { createManualBookingSchema, bookingResponseSchema } from '@/modules/bookings/booking.schema'
+import {
+  createManualBookingSchema,
+  rescheduleBookingSchema,
+  bookingResponseSchema,
+} from '@/modules/bookings/booking.schema'
+import {
+  rescheduleBooking,
+  type RescheduleOutcome,
+} from '@/modules/bookings/booking.reschedule'
 import { validateApiOutput } from '@/shared/api-output'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { artNowParts, addDays } from '@/shared/dates/art'
+import { slotHasPassed } from '@/shared/time/operating-day'
+// OJO: hay dos DAY_KEYS exportados con órdenes distintos. Este es el
+// domingo-primero, que es el que indexa `Date#getUTCDay()`; el de
+// `shared/time/week-days` arranca en lunes y NO sirve para indexar.
+import { DAY_KEYS } from '@/lib/booking/grid-cells'
 import { formatArs } from '@/lib/format'
 import { getBookingCharges } from './queries'
 import {
@@ -45,6 +59,8 @@ import {
   NoShowNotYetEndedError,
   NoShowRevertWindowExpiredError,
   RefundUnavailableError,
+  BookingNotReschedulableError,
+  BookingDateOutOfRangeError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
@@ -498,6 +514,206 @@ export async function cancelBookingAction(
   }
 
   return { success: true, booking: outcome.booking }
+}
+
+const listRescheduleSlotsSchema = z.object({
+  courtId: uuid,
+  date: dateStr,
+})
+
+export type RescheduleSlot = {
+  timeStart: string
+  timeEnd: string
+  /** Centavos ARS; null = la franja no tiene precio configurado. */
+  price: number | null
+  available: boolean
+}
+
+export type ListRescheduleSlotsResult =
+  | {
+      success: true
+      slots: RescheduleSlot[]
+      /** Ventana de fechas que el complejo permite, para acotar el input de fecha. */
+      minDate: string
+      maxDate: string
+    }
+  | { success: false; error: string }
+
+/**
+ * Huecos a los que se puede MOVER un turno (Fase 3, panel de la grilla).
+ *
+ * `getAvailableSlots` sabe de horarios, día operativo, cancha offline y
+ * ocupación, pero NO de la ventana de anticipación ni de la hora actual — las
+ * dos se aplican acá, que es "el caller" del que habla el contrato:
+ *
+ *  - pasado: mismo predicado que pinta la grilla (`slotHasPassed`), no una
+ *    comparación de strings propia. Si divergieran, el panel ofrecería mover un
+ *    turno a un hueco que la grilla ya muestra como transcurrido.
+ *  - anticipación: se devuelve como `maxDate` para acotar el selector. Es
+ *    conveniencia de UI, no la defensa — `rescheduleBooking` revalida la
+ *    ventana server-side con `assertDateWindow`.
+ *
+ * El slot que ocupa el propio turno vuelve como `available: false` (se ocupa a
+ * sí mismo): el panel lo etiqueta "actual" en vez de esconderlo.
+ */
+export async function listRescheduleSlotsAction(
+  input: unknown,
+): Promise<ListRescheduleSlotsResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  // Mismo balde que el chequeo de disponibilidad del modal (NO adminCrud): es
+  // una lectura que se dispara al tocar cada fecha/cancha del selector y no
+  // debe comerse el cupo de las mutaciones de plata.
+  const outcome = await enforce('adminAvailabilityCheck', tenant.id)
+  if (!outcome.ok) return { success: false, error: 'Demasiadas consultas. Probá en unos segundos.' }
+
+  const parsed = listRescheduleSlotsSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+  const { courtId, date } = parsed.data
+
+  const now = artNowParts()
+  const maxAdvanceDays = tenant.settings.booking_advance_days ?? 6
+  const minDate = now.date
+  const maxDate = addDays(now.date, maxAdvanceDays)
+  if (date < minDate || date > maxDate) {
+    return { success: true, slots: [], minDate, maxDate }
+  }
+
+  const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!
+  const openHhmm =
+    tenant.openingHours[dayKey as keyof typeof tenant.openingHours]?.open ?? '08:00'
+
+  try {
+    const raw = await withTenantContext(tenant.id, (tx) =>
+      getAvailableSlots(tenant.id, courtId, date, tx),
+    )
+    const slots = raw
+      .filter(
+        (s) =>
+          !slotHasPassed({
+            date,
+            timeStart: s.timeStart,
+            openHhmm,
+            closesNextDay: tenant.closesNextDay,
+            nowDate: now.date,
+            nowTime: now.time,
+          }),
+      )
+      .map((s) => ({
+        timeStart: s.timeStart,
+        timeEnd: s.timeEnd,
+        price: s.price,
+        available: s.available,
+      }))
+    return { success: true, slots, minDate, maxDate }
+  } catch (err) {
+    captureException(err)
+    return { success: false, error: 'No pudimos cargar los horarios. Probá de nuevo.' }
+  }
+}
+
+export type RescheduleBookingActionInput = z.input<typeof rescheduleBookingSchema>
+
+export type RescheduleBookingActionResult =
+  | { success: true; booking: BookingRow; priceChanged: boolean }
+  | { success: false; error: string }
+
+/**
+ * Reprogramar un turno (Fase 3): moverlo a otra cancha, otro día u otro horario
+ * sin cancelarlo. Conserva el id, la seña y los cobros ya hechos. El precio se
+ * recalcula a la franja destino salvo que venga un `priceOverride` explícito.
+ *
+ * `staffUserId` se mergea server-side: quién reprograma sale de la sesión, no
+ * del cliente.
+ */
+export async function rescheduleBookingAction(
+  input: Omit<RescheduleBookingActionInput, 'staffUserId'>,
+): Promise<RescheduleBookingActionResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsed = rescheduleBookingSchema.safeParse({
+    ...input,
+    staffUserId: user.staffUserId,
+  })
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  // El try/catch va FUERA de withTenantContext: atraparlo adentro y devolver un
+  // objeto commitearía lo escrito antes del throw.
+  let outcome: RescheduleOutcome
+  try {
+    outcome = await withTenantContext(tenant.id, (tx) =>
+      rescheduleBooking(tenant.id, parsed.data, tx),
+    )
+  } catch (err) {
+    if (err instanceof SlotTakenError) {
+      return { success: false, error: 'Ese horario acaba de ocuparse. Elegí otro.' }
+    }
+    if (err instanceof BookingNotReschedulableError) {
+      return {
+        success: false,
+        error:
+          err.reason === 'not_a_player_booking'
+            ? 'Los bloqueos y las horas de torneo se gestionan desde su propia pantalla.'
+            : err.reason === 'abonado_session'
+              ? 'Las sesiones de un abonado se cambian desde su ficha: tienen precio pactado, no el de la grilla.'
+              : err.reason === 'deposit_pending'
+                ? 'Este turno tiene una seña esperando pago. Esperá a que se acredite o venza antes de moverlo.'
+                : err.reason === 'price_below_paid'
+                  ? 'Ese horario vale menos de lo que el cliente ya pagó. Cancelá el turno y devolvé la diferencia en vez de moverlo.'
+                  : 'Solo se pueden mover turnos que todavía no se jugaron ni se cancelaron.',
+      }
+    }
+    if (err instanceof BookingDateOutOfRangeError) {
+      return {
+        success: false,
+        error:
+          err.reason === 'advance_exceeded'
+            ? 'Esa fecha excede la anticipación que permite el complejo.'
+            : 'No se puede mover un turno a una fecha pasada.',
+      }
+    }
+    if (err instanceof CourtOfflineError) {
+      return { success: false, error: 'La cancha no está disponible.' }
+    }
+    if (err instanceof PriceUnavailableError) {
+      return { success: false, error: 'No hay precio configurado para ese horario.' }
+    }
+    if (err instanceof BookingValidationError) {
+      return { success: false, error: err.message }
+    }
+    throw err
+  }
+
+  validateApiOutput(bookingResponseSchema, { data: outcome.booking }, 'rescheduleBookingAction')
+  revalidateBooking(parsed.data.bookingId)
+
+  // El aviso al jugador se encoló dentro de la tx y se despacha recién ahora.
+  // Si falla, el turno YA se movió: nunca convertirlo en error para el usuario
+  // (el sweep de send-email levanta la notificación 'queued' igual).
+  try {
+    await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
+  } catch (err) {
+    captureMessage('email dispatch failed after reschedule', {
+      level: 'warning',
+      extra: {
+        bookingId: parsed.data.bookingId,
+        tenantId: tenant.id,
+        notificationIds: outcome.notificationIds,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+  }
+
+  return { success: true, booking: outcome.booking, priceChanged: outcome.priceChanged }
 }
 
 const CHARGEABLE_STATUSES = ['confirmed', 'completed', 'no_show'] as const

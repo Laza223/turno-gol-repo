@@ -3,6 +3,8 @@ import { and, count, eq, lt, or, sql } from 'drizzle-orm'
 import { withTenant } from '@/shared/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
+import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
+import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -82,7 +84,27 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
       ? encodeCursor(lastRow.booking.id, lastRow.booking.createdAt)
       : null
 
-  const data = pageRows.map((r) => ({
+  // Saldo por turno: la grilla lo usa para su alarma de "terminado sin cobrar",
+  // y este endpoint es el que la reconcilia después de un evento de Realtime
+  // (el payload de Realtime no trae cobros de mostrador). Una sola query
+  // agregada para toda la página, con el MISMO predicado que el detalle del
+  // turno — si divergen, la grilla y /reservas muestran saldos distintos.
+  const chargesByBooking = await sumBookingChargesByBooking(
+    tenantId,
+    pageRows.map((r) => r.booking.id),
+    tx,
+  )
+
+  const data = pageRows.map((r) => {
+    const { totalPaid, pending } = summarizeBookingCharges({
+      priceSnapshot: r.booking.priceSnapshot,
+      depositAmount: r.booking.depositAmount,
+      depositStatus: r.booking.depositStatus,
+      chargesTotal: chargesByBooking.get(r.booking.id) ?? 0,
+    })
+    return {
+    total_paid: totalPaid,
+    pending,
     id: r.booking.id,
     court_id: r.booking.courtId,
     court: r.courtName ? { name: r.courtName } : null,
@@ -108,7 +130,8 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
     notes_internal: r.booking.notesInternal,
     created_by_staff: r.booking.createdByStaff,
     created_at: r.booking.createdAt,
-  }))
+    }
+  })
 
   return NextResponse.json({
     data,

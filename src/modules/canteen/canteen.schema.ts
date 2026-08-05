@@ -39,6 +39,8 @@ export const sellTicketSchema = z.object({
   lines: z.array(ticketLineSchema).min(1, 'El ticket necesita al menos un producto.').max(20),
   method: z.enum(['cash', 'transfer', 'mercadopago']),
   clientIdempotencyKey: uuid,
+  // Opcional: la venta desde /caja/cantina no lo manda; la del panel del turno sí.
+  bookingId: uuid.optional(),
 })
 
 // Fiados: nombre libre (no exige jugador registrado).

@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { courts, tenantSubscriptions, plans, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import { priceForSlot } from '@/lib/booking/pricing'
 import type { CourtRow, CreateCourtInput, UpdateCourtInput, PricingRule, CourtPricingData } from './court.types'
 
 function timeToMins(hhmm: string): number {
@@ -162,6 +163,11 @@ export async function getCourtCountAndLimit(
   }
 }
 
+/**
+ * Precio de la franja a la que pertenece un INSTANTE. El lookup en sí vive en
+ * `@/lib/booking/pricing` (fuente única, también usable desde el cliente):
+ * acá sólo queda la conversión instante → (día ART, hora de pared).
+ */
 export function calculatePrice(
   pricing: CourtPricingData,
   date: Date,
@@ -169,17 +175,7 @@ export function calculatePrice(
   const artDate = new Date(date.getTime() - 3 * 60 * 60 * 1000)
   const dayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[artDate.getUTCDay()]!
   const slotTime = `${String(artDate.getUTCHours()).padStart(2, '0')}:${String(artDate.getUTCMinutes()).padStart(2, '0')}`
-  const slotMins = timeToMins(slotTime)
-
-  for (const rule of pricing.rules) {
-    if (!rule.days.includes(dayKey)) continue
-    const fromMins = timeToMins(rule.from)
-    const toMins = rule.to === '00:00' ? 24 * 60 : timeToMins(rule.to)
-    if (slotMins >= fromMins && slotMins < toMins) {
-      return rule.price ?? null
-    }
-  }
-  return null
+  return priceForSlot(pricing, dayKey, slotTime)
 }
 
 export function validatePricingRulesCoverage(

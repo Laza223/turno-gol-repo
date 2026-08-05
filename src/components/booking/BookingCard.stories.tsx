@@ -14,8 +14,8 @@ import { player, playerAlt } from '@/test/fixtures/player'
 import { BookingCard } from './BookingCard'
 
 /**
- * Componente más denso del sistema (status × pago × origen → 1 de 9 estilos
- * vía `slotVisual()`). Se posiciona con `style={{ gridColumn, gridRow }}`
+ * Componente más denso del sistema (status × pago × origen × plata → 1 estado
+ * vía `gridSlotVisual()`). Se posiciona con `style={{ gridColumn, gridRow }}`
  * explícitos (`placement()`), así que fuera de un contenedor `display:grid`
  * el layout no se ve — se reproduce el grid de GridScroller (columna de horas
  * + 1 cancha, `bg-card` + borde redondeado) como decorator.
@@ -90,7 +90,7 @@ export const LibreCanchaPausada: Story = {
   args: { courtId: undefined, onSlotClick: undefined },
 }
 
-// ─── Ocupado: 1 story por rama de slotVisual() ─────────────────────────────
+// ─── Ocupado: 1 story por estado de gridSlotVisual() ───────────────────────
 
 export const Bloqueado: Story = {
   args: { booking: toGridBooking(bookingBlock()) },
@@ -101,7 +101,48 @@ export const Ausente: Story = {
 }
 
 export const Jugada: Story = {
-  args: { booking: toGridBooking(bookingCompleted()) },
+  args: {
+    booking: { ...toGridBooking(bookingCompleted()), totalPaid: 800000, pending: 0 },
+  },
+}
+
+/**
+ * La ÚNICA alarma visual de la grilla (Fase 3): el turno se jugó y quedó plata
+ * sin cobrar. Anillo rojo que respira + label "Sin cobrar". No se atenúa aunque
+ * sea pasado — apagarlo sería apagar justo lo que pide atención.
+ */
+export const SinCobrar: Story = {
+  args: {
+    booking: { ...toGridBooking(bookingCompleted()), totalPaid: 0, pending: 800000 },
+    isPast: true,
+  },
+}
+
+/**
+ * Ausente que capturó la seña: NO alarma. En un no-show la seña es lo único
+ * cobrable y ya se cobró — no hay nada que el staff pueda hacer.
+ */
+export const AusenteConSenaCapturada: Story = {
+  args: {
+    booking: { ...toGridBooking(bookingNoShow()), totalPaid: 240000, pending: 560000 },
+  },
+}
+
+/**
+ * Ausente que nunca tuvo seña: sí alarma, quedó en cero. `not_required` +
+ * `depositAmount: 0` es lo que hace consistente el `totalPaid: 0` — un turno
+ * `captured` con cero cobrado no puede existir.
+ */
+export const AusenteSinCobrar: Story = {
+  args: {
+    booking: {
+      ...toGridBooking(bookingNoShow()),
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      totalPaid: 0,
+      pending: 800000,
+    },
+  },
 }
 
 export const EsperandoSena: Story = {

@@ -60,8 +60,16 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
 
       // Admin A crea la reserva manual — slot 21:00 (208 ya usa 20:00 en la misma fecha).
       await pageA.getByRole('button', { name: /Reservar turno 21:00/i }).first().click()
-      await expect(pageA.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
+      // Fase 3: el modal completo (guestName + guestPhone) vive detrás de
+      // "Más opciones"; el popover de alta rápida es lo primero que abre.
+      await expect(pageA.getByLabel('¿A nombre de quién?')).toBeVisible({ timeout: 10_000 })
+      await pageA.getByRole('button', { name: /Más opciones/ }).click()
+      await expect(pageA.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
       await pageA.fill('#guestName', 'E2E QA-209 Realtime')
+      // El teléfono vive colapsado bajo "Opciones avanzadas" desde el rediseño
+      // del modal (progressive disclosure). Este spec lo llenaba directo y
+      // fallaba con "element is not visible" — roto en main desde antes de Fase 3.
+      await pageA.getByRole('button', { name: 'Opciones avanzadas' }).click()
       await pageA.fill('#guestPhone', '+5491100000209')
       await pageA.getByRole('button', { name: 'Confirmar' }).click()
       await expect(pageA.getByText('Reserva creada', { exact: true })).toBeVisible({ timeout: 10_000 })

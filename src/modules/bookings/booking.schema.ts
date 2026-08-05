@@ -48,6 +48,22 @@ export const createManualBookingSchema = z
     },
   )
 
+/**
+ * Reprogramar (Fase 3). Sin `type` ni datos de titular: mover un turno cambia
+ * dónde y cuándo, nunca de quién es. `priceOverride` es el escape hatch para no
+ * pisar un precio pactado a mano — sin él, el precio se recalcula a la franja
+ * destino.
+ */
+export const rescheduleBookingSchema = z.object({
+  bookingId: uuid,
+  courtId: uuid,
+  date: dateStr,
+  timeStart: hhmm,
+  timeEnd: hhmmEnd,
+  staffUserId: uuid,
+  priceOverride: z.number().int().nonnegative().optional(),
+})
+
 // ── Output (response) contracts — doc15 §2 ────────────────────────────────────
 // Mirror `BookingRow` (booking.types.ts) as serialized over the wire: Date fields
 // become ISO strings. `z.strictObject` so a new/renamed field surfaces as drift.

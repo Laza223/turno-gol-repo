@@ -6,6 +6,7 @@ import {
   InsufficientStockError,
   ProductInactiveError,
   ProductNotFoundError,
+  SaleBookingNotFoundError,
 } from './canteen.errors'
 import type {
   SellTicketInput,
@@ -112,6 +113,26 @@ export async function sellTicket(
     return { cashFlowId: existing.id, total: existing.amount, duplicate: true }
   }
 
+  // Consumo cargado a un turno (panel de la grilla, Fase 3): el turno tiene que
+  // existir BAJO ESTE TENANT. SELECT pelado a propósito, sin FOR UPDATE — nada
+  // se valida contra el saldo del turno (la venta es product_sale, no un pago
+  // de la cancha), así que tomar el lock sólo agregaría un orden nuevo
+  // (booking → productos → advisory) sin comprar nada.
+  //
+  // Filtro explícito por tenant_id ADEMÁS de RLS, igual que `lockProducts`: el
+  // FK a bookings corre con los permisos del dueño de la tabla y no ve RLS, así
+  // que sin este WHERE un id de otro complejo entraría igual.
+  if (input.bookingId) {
+    const bookingRows = await tx.execute(sql`
+      SELECT 1 FROM bookings
+      WHERE id = ${input.bookingId} AND tenant_id = ${tenantId}
+      LIMIT 1
+    `)
+    if ((bookingRows as unknown as unknown[]).length === 0) {
+      throw new SaleBookingNotFoundError(input.bookingId)
+    }
+  }
+
   const products = await lockProducts(
     tenantId,
     lines.map((l) => l.productId),
@@ -156,6 +177,11 @@ export async function sellTicket(
         resolved.map((r) => ({ name: r.product.name, qty: r.qty })),
       ),
       clientIdempotencyKey: input.clientIdempotencyKey,
+      // Etiqueta de origen, NO un pago del turno: la categoría sigue siendo
+      // product_sale y todo lo que calcula saldo de reserva filtra por
+      // category = 'booking' (getBookingCharges, sumBookingChargesByBooking,
+      // booking.debts, reconciliación INV1/INV9).
+      ...(input.bookingId ? { bookingId: input.bookingId } : {}),
     },
     tx,
   )

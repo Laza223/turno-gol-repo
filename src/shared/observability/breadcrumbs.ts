@@ -122,6 +122,31 @@ type CashflowCtx = {
   totalCents?: number
 }
 
+/**
+ * Proxy de medición de Fase 3 (contrato §3, criterio de salida #4): "alta de
+ * reserva ≤ 10 s". Mismo patrón que `cashflow` de Fase 1 — solo instrumentación;
+ * el baseline se arma después con estos datos en Sentry, no acá.
+ *
+ * `quick_create.abandoned` importa tanto como `.confirmed`: un popover que se
+ * abre y se cierra sin reservar es la señal de que faltan campos y el admin se
+ * fue al modal completo — sin ese evento, el promedio de duración solo mediría
+ * los casos donde el popover alcanzó.
+ */
+type GridEvent =
+  | 'quick_create.opened'
+  | 'quick_create.confirmed'
+  | 'quick_create.more_options'
+  | 'quick_create.abandoned'
+
+type GridCtx = {
+  /** confirmed/more_options/abandoned: ms desde que se abrió el popover. */
+  durationMs?: number
+  /** confirmed: si la reserva se creó a nombre de un jugador registrado. */
+  withPlayer?: boolean
+  /** confirmed: si además se cobró seña de mostrador en el mismo paso. */
+  withDeposit?: boolean
+}
+
 function emit(category: string, message: string, data: Record<string, unknown>): void {
   Sentry.addBreadcrumb({ category, message, data, level: 'info' })
 }
@@ -135,4 +160,5 @@ export const track = {
   search: (ev: SearchEvent, ctx: SearchCtx) => emit('search', ev, ctx),
   notification: (ev: NotificationEvent, ctx: NotificationCtx) => emit('notification', ev, ctx),
   cashflow: (ev: CashflowEvent, ctx: CashflowCtx) => emit('cashflow', ev, ctx),
+  grid: (ev: GridEvent, ctx: GridCtx) => emit('grid', ev, ctx),
 }

@@ -13,7 +13,8 @@ import { suppressPushPrompt } from '../_qa/session'
  * TG-HP-208 — Crear reserva MANUAL desde grilla (offline / "de palabra").
  * Rol: Admin o manager — requireOperatorStaff.
  * Prereq: Tenant Demo, Cancha E2E 1 online, fecha de mañana (ART), slot 20:00 libre.
- * Flujo: /grilla → click celda libre 20:00 → modal "Nueva reserva" (motivo default
+ * Flujo: /grilla → click celda libre 20:00 → popover de alta rápida → "Más
+ *   opciones" → modal "Nueva reserva" (motivo default
  *   "Reserva Telefónica") → nombre/teléfono opcionales → Confirmar → toast +
  *   booking visible en grilla.
  * Caso de plata: NO (reserva manual = status confirmed sin payments, spec §doc7).
@@ -43,13 +44,20 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       // Step 2: celda libre 20:00 (208 usa 20:00; 209 usa 21:00 — evita colisión).
       await page.getByRole('button', { name: /Reservar turno 20:00/i }).first().click()
 
-      // Step 3: modal "Nueva reserva", motivo default = "Reserva Telefónica".
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
-      await expect(page.getByText('Nueva reserva')).toBeVisible()
+      // Step 3: Fase 3 — primero abre el popover de alta rápida; el modal con el
+      // motivo vive detrás de "Más opciones".
+      await expect(page.getByLabel('¿A nombre de quién?')).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('button', { name: /Más opciones/ }).click()
+
+      await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
       await expect(page.locator('#reason')).toHaveValue('phone')
 
       // Step 4: nombre + teléfono opcionales.
       await page.fill('#guestName', 'E2E QA-208 Manual')
+      // El teléfono vive colapsado bajo "Opciones avanzadas" desde el rediseño
+      // del modal (progressive disclosure). Este spec lo llenaba directo y
+      // fallaba con "element is not visible" — roto en main desde antes de Fase 3.
+      await page.getByRole('button', { name: 'Opciones avanzadas' }).click()
       await page.fill('#guestPhone', '+5491100000208')
 
       // Step 6: confirmar.

@@ -11,11 +11,20 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
     id: 'tenant-1',
     openingHours: {},
     closedDates: [],
+    // `TenantRow.settings` no es opcional en producción; el mock lo omitía y el
+    // page empezó a leerlo (deposit_percentage, Fase 3 T6).
+    settings: { deposit_percentage: 30 },
   })),
 }))
 // withTenantContext NO invoca el callback: evita la query drizzle/SQL real.
+// Devuelve la misma forma que arma el page (canchas + reservas + saldos), no
+// una tupla: el page destructura por nombre.
 vi.mock('@/shared/db/client', () => ({
-  withTenantContext: vi.fn(async () => [[], []]),
+  withTenantContext: vi.fn(async () => ({
+    courts: [],
+    rawBookings: [],
+    chargesByBooking: new Map<string, number>(),
+  })),
 }))
 vi.mock('@/modules/courts/court.service', () => ({ listCourts: vi.fn() }))
 vi.mock('next/navigation', () => ({

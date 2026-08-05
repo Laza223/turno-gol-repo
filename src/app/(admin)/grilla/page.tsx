@@ -6,12 +6,26 @@ import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { bookings, players } from '@/shared/db/schema'
-import { BookingGrid, type GridBooking } from '@/components/booking/BookingGrid'
+import type { GridBooking } from '@/components/booking/BookingGrid'
+import { GrillaView } from './GrillaView'
 import {
   createBookingAction,
   checkSlotAvailabilityAction,
   searchBookingPlayersAction,
+  addBookingChargeAction,
+  completeAndChargeBookingAction,
+  markNoShowAction,
+  revertNoShowAction,
+  listRescheduleSlotsAction,
+  rescheduleBookingAction,
 } from '@/app/(admin)/reservas/actions'
+import { chargeDebtAction } from '@/app/(admin)/deudas/actions'
+import {
+  listCanteenForBookingAction,
+  sellTicketAction,
+} from '@/app/(admin)/caja/cantina/actions'
+import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
+import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import type {
   BookingStatus,
   BookingType,
@@ -34,7 +48,7 @@ export default async function GrillaPage(
   const todayArt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const dateStr = safeDateParam(searchParams.date, todayArt)
 
-  const [courts, rawBookings] = await withTenantContext(tenant.id, async (tx) => {
+  const { courts, rawBookings, chargesByBooking } = await withTenantContext(tenant.id, async (tx) => {
     const [courtList, bookingRows] = await Promise.all([
       listCourts(tenant.id, tx),
       tx
@@ -65,29 +79,50 @@ export default async function GrillaPage(
         ),
     ])
 
-    return [courtList, bookingRows] as const
+    // Los cobros de mostrador se piden DESPUÉS de saber qué turnos hay: es una
+    // sola query agregada para todo el día, no una por celda.
+    const charges = await sumBookingChargesByBooking(
+      tenant.id,
+      bookingRows.map((r) => r.id),
+      tx,
+    )
+
+    return { courts: courtList, rawBookings: bookingRows, chargesByBooking: charges }
   })
 
-  const initialBookings: GridBooking[] = rawBookings.map((r) => ({
-    id: r.id,
-    courtId: r.courtId,
-    date: (r.date as Date).toISOString().slice(0, 10),
-    timeStart: r.timeStart.slice(0, 5),
-    timeEnd: r.timeEnd.slice(0, 5),
-    status: r.status as BookingStatus,
-    type: r.type as BookingType,
-    guestName: r.guestName ?? null,
-    playerFirstName: r.playerFirstName ?? null,
-    playerLastName: r.playerLastName ?? null,
-    priceSnapshot: r.priceSnapshot,
-    paymentMethod: r.paymentMethod as PaymentMethodValue | null,
-    depositStatus: r.depositStatus as DepositStatus,
-    depositAmount: r.depositAmount,
-  }))
+  const initialBookings: GridBooking[] = rawBookings.map((r) => {
+    // La alarma "sin cobrar" de Fase 3 necesita plata, no estado: el saldo sale
+    // de la misma función que usa el detalle del turno, así los dos números no
+    // pueden discrepar.
+    const { totalPaid, pending } = summarizeBookingCharges({
+      priceSnapshot: r.priceSnapshot,
+      depositAmount: r.depositAmount,
+      depositStatus: r.depositStatus,
+      chargesTotal: chargesByBooking.get(r.id) ?? 0,
+    })
+    return {
+      id: r.id,
+      courtId: r.courtId,
+      date: (r.date as Date).toISOString().slice(0, 10),
+      timeStart: r.timeStart.slice(0, 5),
+      timeEnd: r.timeEnd.slice(0, 5),
+      status: r.status as BookingStatus,
+      type: r.type as BookingType,
+      guestName: r.guestName ?? null,
+      playerFirstName: r.playerFirstName ?? null,
+      playerLastName: r.playerLastName ?? null,
+      priceSnapshot: r.priceSnapshot,
+      paymentMethod: r.paymentMethod as PaymentMethodValue | null,
+      depositStatus: r.depositStatus as DepositStatus,
+      depositAmount: r.depositAmount,
+      totalPaid,
+      pending,
+    }
+  })
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4 h-full">
-      <BookingGrid
+      <GrillaView
         key={dateStr}
         courts={courts}
         initialBookings={initialBookings}
@@ -99,6 +134,24 @@ export default async function GrillaPage(
         action={createBookingAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}
         searchPlayersAction={searchBookingPlayersAction}
+        // Sugerencia de seña del popover de alta rápida (Fase 3). Mismo default
+        // que usa el resto del producto cuando el complejo no lo configuró.
+        depositPercentage={tenant.settings.deposit_percentage ?? 30}
+        slotPanelActions={{
+          chargeDebtAction,
+          completeAndChargeBookingAction,
+          addBookingChargeAction,
+          markNoShowAction,
+          revertNoShowAction,
+          listRescheduleSlotsAction,
+          rescheduleBookingAction,
+        }}
+        canteen={{
+          listCatalogAction: listCanteenForBookingAction,
+          // sellTicketAction toma `unknown` y valida con Zod: el bookingId
+          // extra que le agrega el diálogo entra por el mismo schema.
+          sellTicketAction,
+        }}
       />
     </div>
   )

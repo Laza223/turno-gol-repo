@@ -1,32 +1,13 @@
-import { CheckCircle2, PauseCircle, XCircle, type LucideIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { CheckCircle2, PauseCircle, XCircle } from 'lucide-react'
+import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badge'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 
-export type AbonadoStatusVisual = {
-  icon: LucideIcon
-  label: string
-  /** Pill de badge dual-theme, receta §6.5: tinte 10%/15% + texto AA + ring. */
-  badge: string
-}
+export type AbonadoStatusVisual = StatusBadgeVisual
 
 const STATUS_VISUALS: Record<AbonadoStatus, AbonadoStatusVisual> = {
-  active: {
-    icon: CheckCircle2,
-    label: 'Activo',
-    badge:
-      'bg-success/10 text-emerald-800 ring-1 ring-inset ring-success/25 dark:bg-success/15 dark:text-emerald-300 dark:ring-success/40',
-  },
-  paused: {
-    icon: PauseCircle,
-    label: 'Pausado',
-    badge:
-      'bg-warning/10 text-amber-800 ring-1 ring-inset ring-warning/25 dark:bg-warning/15 dark:text-amber-300 dark:ring-warning/40',
-  },
-  canceled: {
-    icon: XCircle,
-    label: 'Cancelado',
-    badge: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
-  },
+  active: { icon: CheckCircle2, label: 'Activo', tone: 'success' },
+  paused: { icon: PauseCircle, label: 'Pausado', tone: 'warning' },
+  canceled: { icon: XCircle, label: 'Cancelado', tone: 'neutral' },
 }
 
 /** Estado visual del abonado: color + ícono + texto siempre juntos (MASTER §2.6). */
@@ -42,18 +23,5 @@ export function AbonadoStatusBadge({
   status: AbonadoStatus
   className?: string
 }) {
-  const visual = abonadoStatusVisual(status)
-  const Icon = visual.icon
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-        visual.badge,
-        className,
-      )}
-    >
-      <Icon className="h-3 w-3" aria-hidden="true" />
-      {visual.label}
-    </span>
-  )
+  return <StatusBadge visual={abonadoStatusVisual(status)} className={className} />
 }

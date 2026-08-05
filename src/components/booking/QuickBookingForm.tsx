@@ -3,15 +3,16 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { AlertCircle, SlidersHorizontal } from 'lucide-react'
-import { MoneyInput } from '@/components/ui/money-input'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { calcDepositCents } from '@/lib/booking/pricing'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { track } from '@/shared/observability/breadcrumbs'
+import { DepositFieldset } from './quick-form/DepositFieldset'
+import { usePlayerSearch } from './quick-form/use-player-search'
+import { useSlotAvailability } from './quick-form/use-slot-availability'
 import type { BookingRow } from '@/modules/bookings/booking.types'
-import type { PlayerSearchResult } from '@/modules/players/player-search.service'
+import type { DepositMethod, Slot } from './quick-form/constants'
 import type {
   CheckSlotAvailabilityAction,
   CreateBookingAction,
@@ -31,16 +32,10 @@ import type {
  * server (`@/lib/booking/pricing`), así que no hay round-trip antes de mostrarlo
  * ni forma de que lo mostrado difiera de lo que se graba.
  *
- * Las Server Actions llegan por prop (ver BookingFormModal).
+ * Las Server Actions llegan por prop (ver BookingFormModal). Piezas propias en
+ * `quick-form/`: constantes, búsqueda de jugador, chequeo optimista de
+ * disponibilidad y el fieldset de seña — este archivo queda como orquestador.
  */
-
-type Slot = {
-  courtId: string
-  courtName: string
-  date: string
-  timeStart: string
-  timeEnd: string
-}
 
 export type QuickBookingConfig = {
   action: CreateBookingAction
@@ -60,14 +55,6 @@ type Props = QuickBookingConfig & {
   onClose: () => void
 }
 
-type DepositMethod = 'cash' | 'transfer' | 'mercadopago'
-
-const DEPOSIT_METHODS: Array<{ value: DepositMethod; label: string }> = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transfer' },
-  { value: 'mercadopago', label: 'MP' },
-]
-
 export function QuickBookingForm({
   slot,
   price,
@@ -79,15 +66,14 @@ export function QuickBookingForm({
   onMoreOptions,
   onClose,
 }: Props) {
-  const [name, setName] = useState('')
-  const [playerId, setPlayerId] = useState<string | null>(null)
-  const [results, setResults] = useState<PlayerSearchResult[]>([])
+  const { name, playerId, results, handleNameChange, pickPlayer, debounceRef } = usePlayerSearch({
+    searchPlayersAction,
+  })
+  const taken = useSlotAvailability({ checkAvailabilityAction, slot })
   const [depositMethod, setDepositMethod] = useState<DepositMethod | null>(null)
   const [depositCents, setDepositCents] = useState<number | null>(null)
-  const [taken, setTaken] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Cronómetro del criterio de salida #4 ("alta ≤10 s"). Se arranca en el
   // efecto de montaje, no en el cuerpo: `Date.now()` en render es impuro.
   const openedAtRef = useRef<number | null>(null)
@@ -114,83 +100,10 @@ export function QuickBookingForm({
       }
     }
     // Se monta y desmonta una vez por apertura (el caller lo monta al abrir).
-  }, [])
-
-  /**
-   * Chequeo optimista al abrir. Es fail-open (devuelve `available: true` ante
-   * cualquier fallo propio), así que un `false` es señal POSITIVA de que el
-   * turno se ocupó: ahí sí se bloquea el submit. Sin mostrarlo, la carrera de
-   * doble reserva quedaría solo en el exclusion constraint de la DB y el admin
-   * vería un error críptico recién al confirmar.
-   */
-  useEffect(() => {
-    if (!checkAvailabilityAction) return
-    let alive = true
-    void (async () => {
-      try {
-        const res = await checkAvailabilityAction({
-          courtId: slot.courtId,
-          date: slot.date,
-          timeStart: slot.timeStart,
-        })
-        // Guard de cancelación ANTES de tocar estado: si el efecto se re-corrió
-        // (cambió el slot), esta respuesta ya es vieja y escribirla pisaría la
-        // del slot nuevo.
-        if (!alive) return
-        if (!res.available) setTaken(true)
-      } catch {
-        /* fail-open: un fallo del chequeo nunca bloquea el alta */
-      }
-    })()
-    return () => {
-      alive = false
-    }
-  }, [checkAvailabilityAction, slot.courtId, slot.date, slot.timeStart])
-
-  function handleNameChange(next: string) {
-    setName(next)
-    setPlayerId(null)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    const q = next.trim()
-    if (!searchPlayersAction || q.length < 2) {
-      setResults([])
-      return
-    }
-    debounceRef.current = setTimeout(() => {
-      void (async () => {
-        const res = await searchPlayersAction({ query: q })
-        if (res.success) setResults(res.players)
-      })()
-    }, 300)
-  }
-
-  function pickPlayer(player: PlayerSearchResult) {
-    setPlayerId(player.id)
-    setName(player.name)
-    setResults([])
-  }
-
-  /** Sugerencia de seña, o `null` si el complejo no configuró porcentaje. */
-  const suggestedDeposit = (() => {
-    if (price == null) return null
-    const cents = calcDepositCents(price, depositPercentage)
-    return cents > 0 ? cents : null
-  })()
-
-  function toggleDeposit(method: DepositMethod) {
-    if (depositMethod === method) {
-      setDepositMethod(null)
-      setDepositCents(null)
-      return
-    }
-    setDepositMethod(method)
-    // Pre-cargado con el % del complejo — pero SOLO si da algo mayor a $0.
-    // Un complejo con `deposit_percentage: 0` (no pide seña online, config
-    // válida y la del seed) dejaba el monto en $0, y el submit lo rechazaba:
-    // el atajo se convertía en un callejón sin salida. Con la sugerencia vacía,
-    // el admin tipea el monto y sigue.
-    setDepositCents(suggestedDeposit)
-  }
+    // debounceRef es estable (viene de un useRef en usePlayerSearch): declararlo
+    // acá no reintroduce re-corridas, solo conforma a exhaustive-deps ahora que
+    // el ref ya no nace en este mismo scope.
+  }, [debounceRef])
 
   function goToModal() {
     resolvedRef.current = true
@@ -323,60 +236,16 @@ export function QuickBookingForm({
         )}
       </div>
 
-      <fieldset className="space-y-1.5">
-        <legend className="text-xs font-medium">
-          Seña
-          {suggestedDeposit != null && (
-            <span className="text-muted-foreground"> · sugerida {formatArs(suggestedDeposit)}</span>
-          )}
-        </legend>
-        <div className="grid grid-cols-4 gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setDepositMethod(null)
-              setDepositCents(null)
-            }}
-            aria-pressed={depositMethod === null}
-            disabled={isPending || taken}
-            className={cn(
-              'h-10 rounded-md border text-xs font-semibold transition-colors',
-              depositMethod === null
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card hover:bg-accent',
-            )}
-          >
-            Sin seña
-          </button>
-          {DEPOSIT_METHODS.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => toggleDeposit(m.value)}
-              aria-pressed={depositMethod === m.value}
-              disabled={isPending || taken}
-              className={cn(
-                'h-10 rounded-md border text-xs font-semibold transition-colors',
-                depositMethod === m.value
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card hover:bg-accent',
-              )}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        {depositMethod && (
-          <MoneyInput
-            aria-label="Monto de la seña"
-            valueCents={depositCents}
-            onValueChange={setDepositCents}
-            disabled={isPending}
-            minCents={0}
-            showWords={false}
-          />
-        )}
-      </fieldset>
+      <DepositFieldset
+        price={price}
+        depositPercentage={depositPercentage}
+        depositMethod={depositMethod}
+        depositCents={depositCents}
+        onDepositMethodChange={setDepositMethod}
+        onDepositCentsChange={setDepositCents}
+        isPending={isPending}
+        taken={taken}
+      />
 
       {error && (
         <p role="alert" className="text-xs text-destructive">

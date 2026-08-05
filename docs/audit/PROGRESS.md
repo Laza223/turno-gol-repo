@@ -1249,3 +1249,46 @@ Job `stories` en `ci.yml`, **BLOQUEANTE y sin `continue-on-error`**, en paralelo
 **Cero retries**, también a propósito: la contaminación entre stories es determinística en la corrida completa y desaparece al reintentar — un retry esconde exactamente la clase de bug que este gate existe para atrapar.
 
 ⚠️ **Falta un paso que NO se puede hacer desde el repo:** marcar `Stories (BLOCKING)` como *required status check* en la protección de rama de `main`. Sin eso el job corre y se ve rojo, pero no impide el merge.
+
+---
+
+## Bloque 3 (2026-08-05) — Partir los 3 gigantes de la grilla
+
+Refactor de **forma solamente**: cero cambio de comportamiento, cero cambio de copy, cero cambio en las props públicas ni en los tipos que exportan. Va DESPUÉS del gate de Storybook a propósito — la red que hace seguro mover 900 líneas de JSX es esa suite, no la de unit.
+
+| Archivo | Antes | Después |
+|---|---|---|
+| `src/components/booking/BookingGrid.tsx` | 484 | **290** |
+| `src/components/booking/BookingSlotPanel.tsx` | 541 | **287** |
+| `src/components/booking/QuickBookingForm.tsx` | 414 | **283** |
+
+Convención seguida: la ya establecida por el Ticket 3 (ver arriba) — el orquestador conserva `Props` y el export público, los hooks van a `src/hooks/` o a la subcarpeta del componente, y las piezas de JSX a una subcarpeta propia.
+
+**Piezas nuevas (15 archivos, 1094 líneas):**
+
+- `src/hooks/use-grid-actions.ts` — todo el estado de "qué superficie está abierta" de la grilla (`selectedSlot`, `quickSlotKey`, `detailBookingId`, `isNavPending`) y sus handlers. Están juntos porque **se cierran entre sí**: abrir el modal cierra el popover, crear una reserva cierra los dos. Repartidos en el componente esa relación quedaba implícita en el orden de los `setState`.
+- `booking/grid/` — `GridOverlays.tsx` (modal completo + panel del turno), `GridEmptyStates.tsx` (offline / sin canchas / día cerrado), `QuickFormCell.tsx`, `grid-keyboard-nav.ts` (`moveGridFocus`).
+- `booking/slot-panel/` — `actions.ts` (tipos del contrato), `charge-copy.ts`, `use-slot-charges.ts`, `SlotPriceSummary.tsx`, `SlotChargeSection.tsx`, `SlotActionButtons.tsx`.
+- `booking/quick-form/` — `constants.ts`, `use-player-search.ts`, `use-slot-availability.ts`, `DepositFieldset.tsx`.
+
+**Las dos decisiones que no eran obvias:**
+
+1. **`slot-panel/actions.ts` no estaba en la partición planeada.** Se agregó porque los tipos del contrato del panel (`SlotPanelActions`, `ChargeInput`, `RenderCanteenDialog`) los necesitan también `use-slot-charges.ts` y `SlotActionButtons.tsx`: dejándolos en `BookingSlotPanel.tsx` los hijos importaban al padre (ciclo type-only) y el orquestador quedaba en 326 líneas, por encima del objetivo. `BookingSlotPanel.tsx` los re-exporta, así que **ningún caller cambió su import**.
+
+2. **El bloque de derived-state on prop change (`if (booking.id !== lastId)`) NO se partió.** Toca estado de dos dueños (`error`/`lines`/`idempotencyKey` del hook de cobro, y los tres `*Open` del orquestador); romperlo en dos bloques con su propio `lastId` cada uno habría sido un cambio estructural más riesgoso que el problema que resuelve. Quedó entero, en el orquestador, con `useSlotCharges` exponiendo los setters crudos — es la idéntica secuencia de `setState`, sólo que tres pasan por una capa de indirección. El `setLastId(null)` que las tres mutaciones exitosas hacían inline viaja al hook como callback `resetLastId`.
+
+**Orden de hooks en `BookingSlotPanel`:** cambió en el TEXTO (ahora `useRouter` → 4× `useState` → `useSlotCharges`, antes el `useTransition` de cobro iba primero) pero es incondicional y estable entre renders, que es lo que exigen las Rules of Hooks — no un orden textual específico. Se deja anotado porque es el punto donde este refactor podía romper en silencio.
+
+**Verificación (misma base, antes y después):**
+
+| Suite | Resultado |
+|---|---|
+| `pnpm typecheck` | 0 errores |
+| `pnpm lint` | 0 errores (44 warnings preexistentes de `no-restricted-imports`) |
+| `pnpm test` | **2454/2454** en 301 archivos |
+| `pnpm test:storybook:ci` | **1024/1024** en 258 archivos |
+| e2e de grilla (6 specs, `--workers=1`) | **9 passed / 2 skipped** (los dos `test.fixme` de `grilla-realtime`) |
+
+El primer lote de e2e dio 1 rojo en `TG-HP-209` que **no reprodujo**: el mismo test pasó solo (24.3s) y el lote completo repetido pasó entero. El snapshot de la falla muestra el modal abierto, el formulario lleno, sin `role="alert"` y con el botón en "Confirmar" (no "Guardando…") — o sea `handleSubmit` nunca corrió: el click no tomó efecto. Es la clase ya documentada de clicks no-op de esta máquina, no una regresión; los dos hermanos de ese mismo spec ya están marcados `test.fixme` por la misma infra de Realtime local.
+
+⚠️ **Conflicto de merge previsible con el Bloque 2.4:** `BookingSlotPanel.tsx` se reescribió entero acá (541→287) y la rama `fix/bloque2-decisiones` le saca `booking.type !== 'fixed'` de `canReschedule` (más el párrafo del comentario que lo justificaba). Al mergear, la resolución es: quedarse con la versión refactorizada y borrar de ella esa línea y ese párrafo.

@@ -665,13 +665,11 @@ export async function rescheduleBookingAction(
         error:
           err.reason === 'not_a_player_booking'
             ? 'Los bloqueos y las horas de torneo se gestionan desde su propia pantalla.'
-            : err.reason === 'abonado_session'
-              ? 'Las sesiones de un abonado se cambian desde su ficha: tienen precio pactado, no el de la grilla.'
-              : err.reason === 'deposit_pending'
-                ? 'Este turno tiene una seña esperando pago. Esperá a que se acredite o venza antes de moverlo.'
-                : err.reason === 'price_below_paid'
-                  ? 'Ese horario vale menos de lo que el cliente ya pagó. Cancelá el turno y devolvé la diferencia en vez de moverlo.'
-                  : 'Solo se pueden mover turnos que todavía no se jugaron ni se cancelaron.',
+            : err.reason === 'deposit_pending'
+              ? 'Este turno tiene una seña esperando pago. Esperá a que se acredite o venza antes de moverlo.'
+              : err.reason === 'price_below_paid'
+                ? 'Ese horario vale menos de lo que el cliente ya pagó. Cancelá el turno y devolvé la diferencia en vez de moverlo.'
+                : 'Solo se pueden mover turnos que todavía no se jugaron ni se cancelaron.',
       }
     }
     if (err instanceof BookingDateOutOfRangeError) {

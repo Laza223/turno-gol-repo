@@ -263,12 +263,13 @@ export async function dispatchPaymentInfo(
     // Hallazgo recon 🔴 (D4): un refund hecho directo desde el dashboard de MP
     // (fuera de prepareRefund/settleRefund) llega acá igual, como webhook
     // status='refunded' — el upsert de arriba pisa la fila `payments` sin
-    // dejar rastro de que fue EXTERNO ni avisar a nadie, y `bookings.deposit_status`
-    // queda 'paid' divergiendo en silencio del estado real en MP. Esto SOLO
-    // agrega visibilidad (audit log + alerta Sentry): NO cambia transiciones
-    // de estado ni reconcilia deposit_status. Qué hacer con el refund externo
-    // (¿reconciliar el booking? ¿avisar al jugador?) es una decisión de
-    // negocio pendiente — REQUIERE INPUT del dueño, no se resuelve acá.
+    // dejar rastro de que fue EXTERNO, y `bookings.deposit_status` quedaba
+    // 'paid' divergiendo en silencio del estado real en MP.
+    //
+    // DECIDIDO (dueño, 2026-08-05): se reconcilia el booking
+    // (`deposit_status` → 'refunded') y se avisa SOLO al admin por mail. Al
+    // jugador NO: el complejo hizo ese reembolso por afuera y puede tener una
+    // conversación en curso con él. Ver el UPDATE más abajo.
     const refundedRows = await tx.execute(sql`
       SELECT id FROM payments WHERE mp_payment_id = ${info.mpPaymentId} LIMIT 1
     `)
@@ -298,6 +299,44 @@ export async function dispatchPaymentInfo(
     }
 
     if (!hasKnownLocalRefund) {
+      // 🔴 El filtro por `status` NO es defensa de más: `enforce_booking_invariants_fn`
+      // (migr. 070) hace RAISE EXCEPTION ante CUALQUIER UPDATE sobre un booking
+      // en estado terminal. Sin ese WHERE, un reembolso externo sobre un turno
+      // ya jugado/ausente/cancelado abortaría la transacción entera del webhook
+      // y el job terminaría en la DLQ para siempre.
+      //
+      // Y de paso protege `deposit_status='captured'` gratis: ese valor SIEMPRE
+      // se escribe en el mismo UPDATE que fija `no_show`/`canceled_no_refund`
+      // (booking.service.ts:791, booking.cancellation.ts:352-370), así que nunca
+      // existe junto a un status no terminal. La seña capturada de un no-show no
+      // se pisa: se avisa y la mira el dueño.
+      //
+      // Idempotente: un segundo evento MP del mismo refund no matchea
+      // `deposit_status IN ('paid','captured')` porque ya quedó en 'refunded'
+      // → 0 filas, no-op. (El mismo `mp_event_id` ni llega: lo dedupea `lockMpEvent`.)
+      //
+      // `booking.status` NO se toca. Cancelar el turno y liberar el horario es
+      // una decisión del complejo, no del webhook.
+      const reconciledRows = await tx.execute(sql`
+        UPDATE bookings
+        SET deposit_status = 'refunded', updated_at = NOW()
+        WHERE id = ${info.externalReference}
+          AND status IN ('confirmed', 'pending_payment')
+          AND deposit_status IN ('paid', 'captured')
+        RETURNING id
+      `)
+      const reconciled = (reconciledRows as unknown as Array<{ id: string }>).length > 0
+
+      // Solo en el camino no feliz: qué estado tenía, para que el mail le diga
+      // al dueño por qué tiene que mirarlo a mano.
+      let bookingStatus: string | null = null
+      if (!reconciled) {
+        const statusRows = await tx.execute(sql`
+          SELECT status FROM bookings WHERE id = ${info.externalReference} LIMIT 1
+        `)
+        bookingStatus = (statusRows as unknown as Array<{ status: string }>)[0]?.status ?? null
+      }
+
       await insertSystemAuditLog(tx, {
         tenantId,
         action: 'payment.external_refund_detected',
@@ -308,6 +347,8 @@ export async function dispatchPaymentInfo(
           mpPaymentId: info.mpPaymentId,
           bookingId: info.externalReference,
           amount: info.amount,
+          reconciled,
+          bookingStatus,
         },
       })
       captureMessage('external refund detected: MP status=refunded without a local prepareRefund/settleRefund flow', {
@@ -320,6 +361,29 @@ export async function dispatchPaymentInfo(
           tenantId,
         },
       })
+
+      // Solo al rol admin: es plata y MP, el mismo criterio con el que
+      // `requireAdminStaffAction` le cierra facturación al encargado. Los ids
+      // vuelven en el outcome y `mp-webhook.handler.ts` los despacha DESPUÉS
+      // del commit (mandar el mail acá dejaría avisos de una tx que puede
+      // abortar). Al jugador no se le encola nada, a propósito.
+      const notificationIds = await enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_external_refund_detected',
+          content: {
+            bookingId: info.externalReference,
+            amountArs: formatArs(info.amount),
+            reconciled,
+            ...(bookingStatus ? { bookingStatus } : {}),
+          },
+          triggerEvent: 'payment.external_refund_detected',
+        },
+        tx,
+        { onlyRole: 'admin' },
+      )
+
+      return { alreadyProcessed: false, result: 'refunded', notificationIds }
     }
 
     return { alreadyProcessed: false, result: 'refunded' }

@@ -164,12 +164,11 @@ export function BookingSlotPanel({
   // Mismos estados Y tipos que acepta `rescheduleBooking`: un botón que el
   // backend siempre va a rechazar es peor que no tener el botón.
   //
-  // `fixed` (sesión de abonado) queda afuera aunque SÍ sea el turno de un
-  // cliente: su precio sale del contrato, no de la grilla de tarifas, y
-  // reprogramarla lo pisaría con el de lista.
+  // `fixed` (sesión de abonado) SÍ entra desde la decisión del dueño del
+  // 2026-08-05: se mueve conservando el precio del contrato (el backend lo
+  // impone, no depende de esta UI).
   const canReschedule =
     isClientBooking &&
-    booking.type !== 'fixed' &&
     (booking.status === 'confirmed' || booking.status === 'pending_payment') &&
     Boolean(actions?.listRescheduleSlotsAction && actions?.rescheduleBookingAction) &&
     Boolean(courts?.length)

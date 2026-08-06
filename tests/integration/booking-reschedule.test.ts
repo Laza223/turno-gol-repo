@@ -104,13 +104,15 @@ async function insertBooking(opts: {
   withPlayer?: boolean
   /** Seña: monto + estado. Default sin seña. */
   deposit?: { amount: number; status: 'pending' | 'paid' | 'captured' }
+  /** Contrato al que pertenece la sesión (solo para type='fixed'). */
+  abonadoId?: string
 }): Promise<string> {
   const sql = getSql()
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
       starts_at, ends_at, price_snapshot, deposit_amount, deposit_status,
-      payment_method, status, type
+      payment_method, status, type, abonado_id
     ) VALUES (
       ${tenantId}, ${opts.courtId}, ${opts.withPlayer === false ? null : playerId},
       ${opts.date}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
@@ -120,7 +122,8 @@ async function insertBooking(opts: {
       ${opts.deposit?.amount ?? 0},
       ${opts.deposit?.status ?? 'not_required'}::deposit_status,
       NULL,
-      ${opts.status ?? 'confirmed'}::booking_status, ${opts.type ?? 'spontaneous'}::booking_type
+      ${opts.status ?? 'confirmed'}::booking_status, ${opts.type ?? 'spontaneous'}::booking_type,
+      ${opts.abonadoId ?? null}
     )
     RETURNING id
   `
@@ -139,13 +142,43 @@ async function readBooking(id: string) {
       ends_at: string
       price_snapshot: number
       status: string
+      type: string
+      abonado_id: string | null
     }[]
   >`
     SELECT court_id, date::text AS date, time_start::text AS time_start,
-           time_end::text AS time_end, starts_at, ends_at, price_snapshot, status
+           time_end::text AS time_end, starts_at, ends_at, price_snapshot, status,
+           type::text AS type, abonado_id
     FROM bookings WHERE id = ${id}
   `
   return rows[0]!
+}
+
+/**
+ * Abonado real para las sesiones `type='fixed'`: el punto de los tests de abajo
+ * es que la sesión SIGA perteneciendo al contrato después de moverla, y con
+ * `abonado_id` en NULL eso no se puede probar.
+ */
+// `no_overlapping_abonados` prohíbe dos contratos en la misma cancha, día y
+// franja: cada abonado del archivo se crea en un día de semana propio.
+let abonadoDayCursor = 0
+
+async function insertAbonado(courtId: string, pricePerSession: number): Promise<string> {
+  const sql = getSql()
+  const dayOfWeek = abonadoDayCursor++ % 7
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO abonados (
+      tenant_id, court_id, player_id, contact_name, contact_phone,
+      day_of_week, time_start, time_end, price_per_session,
+      starts_on, status
+    ) VALUES (
+      ${tenantId}, ${courtId}, ${playerId}, ${'Equipo Contrato'}, ${'1122334455'},
+      ${dayOfWeek}, ${'18:00'}::time, ${'19:00'}::time, ${pricePerSession},
+      CURRENT_DATE, 'active'
+    )
+    RETURNING id
+  `
+  return rows[0]!.id
 }
 
 function move(input: {
@@ -301,34 +334,130 @@ describe('rescheduleBooking — mover el turno', () => {
   }, 30_000)
 
   /**
-   * 🔴 Hallazgo de la revisión adversarial de T7. Una sesión de abonado es
-   * `type='fixed'` + `status='confirmed'` y su `price_snapshot` sale del
-   * CONTRATO (`abonados.price_per_session`, ver abonado.service.ts:132), no de
-   * `court.pricing`. Sin este guard, reprogramarla recalculaba el precio contra
-   * la grilla de tarifas y le pisaba al abonado el precio pactado con el de
-   * lista — silenciosamente, y el trigger de la migr. 070 no lo frena porque el
-   * estado es 'confirmed'.
+   * Mover una sesión suelta de abonado: HABILITADO por decisión del dueño
+   * (2026-08-05). Este test estaba invertido —asertaba el rechazo— desde la
+   * revisión adversarial de T7, cuando todavía era una decisión de producto
+   * abierta.
+   *
+   * Lo que protege ahora es lo mismo que protegía el guard: su `price_snapshot`
+   * sale del CONTRATO (`abonados.price_per_session`, abonado.service.ts:132), no
+   * de `court.pricing`. Si se recalculara contra la grilla de tarifas, mover la
+   * sesión le pisaría al cliente el precio pactado — en silencio, y el trigger
+   * de la migr. 070 no lo frena porque el estado es 'confirmed'.
    */
-  it('rechaza mover una sesión de abonado: su precio es el del contrato, no el de la grilla', async () => {
+  it('mueve una sesión de abonado a una franja de OTRO precio conservando el del contrato', async () => {
     const date = dateIn(11)
+    const abonadoId = await insertAbonado(courtA, 777777)
     const sesion = await insertBooking({
       courtId: courtA,
       date,
-      timeStart: '18:00',
-      timeEnd: '19:00',
+      timeStart: '10:00', // franja MAÑANA (500000 en la grilla)
+      timeEnd: '11:00',
       type: 'fixed',
+      abonadoId,
       // Precio pactado por sesión, DISTINTO de cualquier regla de court.pricing.
       price: 777777,
     })
 
-    await expect(
-      move({ bookingId: sesion, courtId: courtA, date, timeStart: '19:00', timeEnd: '20:00' }),
-    ).rejects.toBeInstanceOf(BookingNotReschedulableError)
+    // Destino en la franja NOCHE (900000 en la grilla): si el precio se
+    // recalculara, quedaría en 900000.
+    const out = await move({
+      bookingId: sesion,
+      courtId: courtA,
+      date,
+      timeStart: '20:00',
+      timeEnd: '21:00',
+    })
 
-    // Y no quedó movida ni repreciada a medias.
     const row = await readBooking(sesion)
-    expect(row.time_start).toBe('18:00:00')
+    expect(row.time_start).toBe('20:00:00')
+    // 🔴 Lo único que importa: el precio pactado NO se movió.
     expect(row.price_snapshot).toBe(777777)
+    expect(row.price_snapshot).not.toBe(NOCHE)
+    expect(out.priceChanged).toBe(false)
+  }, 30_000)
+
+  it('la sesión movida sigue siendo del abonado: conserva type=fixed y abonado_id', async () => {
+    const date = dateIn(12)
+    const abonadoId = await insertAbonado(courtA, 777777)
+    const sesion = await insertBooking({
+      courtId: courtA,
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      type: 'fixed',
+      abonadoId,
+      price: 777777,
+    })
+
+    await move({ bookingId: sesion, courtId: courtB, date, timeStart: '20:00', timeEnd: '21:00' })
+
+    const row = await readBooking(sesion)
+    // El `.set()` del UPDATE no lista ninguna de las dos columnas; este test es
+    // la alarma si un refactor futuro las agrega.
+    expect(row.type).toBe('fixed')
+    expect(row.abonado_id).toBe(abonadoId)
+  }, 30_000)
+
+  /**
+   * 🔴 El caller no puede pisar el precio pactado ni pasándolo explícito. Hoy
+   * `priceOverride` no viaja por la Server Action, pero es un campo público del
+   * input de dominio: si el check de `type === 'fixed'` quedara DESPUÉS del de
+   * `priceOverride`, un llamado directo bypaseando la UI le cambiaría el precio
+   * al contrato.
+   */
+  it('ignora un priceOverride explícito en una sesión de abonado', async () => {
+    const date = dateIn(13)
+    const abonadoId = await insertAbonado(courtA, 777777)
+    const sesion = await insertBooking({
+      courtId: courtA,
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      type: 'fixed',
+      abonadoId,
+      price: 777777,
+    })
+
+    await move({
+      bookingId: sesion,
+      courtId: courtA,
+      date,
+      timeStart: '20:00',
+      timeEnd: '21:00',
+      priceOverride: 1,
+    })
+
+    expect((await readBooking(sesion)).price_snapshot).toBe(777777)
+  }, 30_000)
+
+  it('rechaza mover una sesión de abonado encima de OTRA sesión del mismo abonado', async () => {
+    const date = dateIn(14)
+    const abonadoId = await insertAbonado(courtA, 777777)
+    const sesionA = await insertBooking({
+      courtId: courtA,
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      type: 'fixed',
+      abonadoId,
+      price: 777777,
+    })
+    await insertBooking({
+      courtId: courtA,
+      date,
+      timeStart: '11:00',
+      timeEnd: '12:00',
+      type: 'fixed',
+      abonadoId,
+      price: 777777,
+    })
+
+    await expect(
+      move({ bookingId: sesionA, courtId: courtA, date, timeStart: '11:00', timeEnd: '12:00' }),
+    ).rejects.toBeInstanceOf(SlotTakenError)
+
+    expect((await readBooking(sesionA)).time_start).toBe('10:00:00')
   }, 30_000)
 
   /**

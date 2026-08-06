@@ -186,8 +186,17 @@ export function BookingRescheduleDialog({
     })
   }
 
+  /**
+   * Una sesión de abonado conserva SIEMPRE el precio del contrato: el backend
+   * ignora la tarifa de la franja destino (`booking.reschedule.ts`, rama
+   * `type === 'fixed'`). Mostrar el precio por franja acá sería mostrar un
+   * número que el servidor no va a usar.
+   */
+  const keepsContractPrice = booking.type === 'fixed'
   const priceDelta =
-    selected && selected.price != null ? selected.price - booking.priceSnapshot : 0
+    !keepsContractPrice && selected && selected.price != null
+      ? selected.price - booking.priceSnapshot
+      : 0
 
   return (
     <Dialog open={open} onOpenChange={(v) => !isPending && onOpenChange(v)}>
@@ -200,6 +209,13 @@ export function BookingRescheduleDialog({
           Ahora: {booking.timeStart}–{booking.timeEnd} del {booking.date} ·{' '}
           {formatArs(booking.priceSnapshot)}
         </p>
+
+        {keepsContractPrice && (
+          <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
+            Turno fijo: se mantiene el precio del contrato ({formatArs(booking.priceSnapshot)}) sin
+            importar el horario al que lo muevas.
+          </p>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -269,7 +285,13 @@ export function BookingRescheduleDialog({
                   >
                     <span>{s.timeStart}</span>
                     <span className="text-[10px] font-medium opacity-80">
-                      {current ? 'Actual' : s.price != null ? formatArs(s.price) : 'Sin precio'}
+                      {current
+                        ? 'Actual'
+                        : keepsContractPrice
+                          ? formatArs(booking.priceSnapshot)
+                          : s.price != null
+                            ? formatArs(s.price)
+                            : 'Sin precio'}
                     </span>
                   </button>
                 )

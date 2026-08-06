@@ -8,6 +8,7 @@ import {
   SEND_EMAIL_SEND_OPTIONS,
   type SendEmailJobData,
 } from '@/shared/jobs/definitions'
+import type { StaffRole } from '@/modules/staff/roles'
 import type { TemplateName } from './templates'
 
 export type EnqueueNotificationParams = {
@@ -70,19 +71,32 @@ export async function enqueueNotification(
  *
  * Returns the inserted notification IDs so the caller can `dispatchEmail` each
  * one AFTER the tx commits.
+ *
+ * `opts.onlyRole` acota el envío a un rol. Sin ese filtro esta función manda a
+ * TODO el staff activo, pese al prefijo `admin_` de casi todos sus templates —
+ * o sea, hasta ahora "admin" venía significando "el complejo", no el rol. Se
+ * agregó opcional en vez de cambiar el default para no reinterpretar de golpe
+ * los 10 callers existentes: el único que lo usa hoy es la alerta de reembolso
+ * externo de MP, que es plata y facturación, exactamente lo que
+ * `requireAdminStaffAction` le cierra al encargado en el resto de la app.
  */
 export async function enqueueTenantOwnerNotification(
   params: Omit<EnqueueNotificationParams, 'recipientType' | 'recipientId'> & {
     tenantId: string
   },
   tx: DbTx,
+  opts?: { onlyRole?: StaffRole },
 ): Promise<string[]> {
+  const roleFilter = opts?.onlyRole
+    ? drizzleSql`AND tsm.role = ${opts.onlyRole}`
+    : drizzleSql``
   const rows = await tx.execute(
     drizzleSql`
       SELECT tsm.staff_user_id AS id
       FROM tenant_staff_members tsm
       WHERE tsm.tenant_id = ${params.tenantId}
         AND tsm.is_active = true
+        ${roleFilter}
       LIMIT 5
     `,
   ) as unknown as Array<{ id: string }>

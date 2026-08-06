@@ -412,18 +412,19 @@ describe('BookingGrid — panel de acciones del turno', () => {
   })
 
   /**
-   * 🔴 Hallazgo de la revisión adversarial de T7. Una sesión de abonado
-   * (`type='fixed'`, `status='confirmed'`) SÍ es el turno de un cliente, así
-   * que pasaba el filtro y ofrecía "Reprogramar" — pero su precio sale del
-   * contrato, no de la grilla de tarifas, y moverla lo pisaba con el de lista.
-   * La cantina sí sigue disponible: el abonado consume igual.
+   * Una sesión de abonado (`type='fixed'`, `status='confirmed'`) SÍ ofrece
+   * "Reprogramar" desde la decisión del dueño del 2026-08-05. Estuvo bloqueada
+   * desde la revisión adversarial de T7 porque moverla recalculaba el precio
+   * contra la grilla de tarifas y le pisaba al cliente el del contrato; ahora el
+   * backend conserva el `price_snapshot` pactado (`booking.reschedule.ts`, rama
+   * `type === 'fixed'`), así que el botón dejó de prometer algo que rompía.
    */
-  it('una sesión de abonado ofrece cantina pero NO reprogramar', async () => {
+  it('una sesión de abonado ofrece cantina Y reprogramar', async () => {
     renderGrid({ bookings: [booking({ type: 'fixed', pending: 2000000, totalPaid: 0 })] })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
     expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
-    expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
+    expect(within(panel).getByRole('button', { name: /Reprogramar/ })).toBeTruthy()
   })
 
   it('un bloqueo no ofrece cantina ni reprogramar: no es el turno de nadie', async () => {

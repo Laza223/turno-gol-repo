@@ -69,7 +69,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 
 ### Migraciones (importante)
 - `db:push` y `db:migrate` son alias de `drizzle-kit push:pg` y están DENEGADOS por `.claude/settings.json` — no usarlos
-- Las migraciones reales son SQL escritas a mano en `src/shared/db/migrations/0*.sql` (numeradas 001–062; incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/` (`pnpm db:sync-supabase` sincroniza). OJO: `061_reconciliation_indexes.sql` NO tiene espejo — gap preexistente, se arregla corriendo el sync
+- Las migraciones reales son SQL escritas a mano en `src/shared/db/migrations/0*.sql` (numeradas 001–070; incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/` (`pnpm db:sync-supabase` sincroniza)
 - Una tabla tenant-aislada nueva arrastra un costo fijo: RLS ENABLE+FORCE con policies estilo 048 pero ya envueltas en el subselect de 052, filtro explícito por `tenant_id` en las queries, DELETE en `data-retention-cleanup.worker.ts` (hijos antes que padres; el test `data-retention-cleanup-worker-pool` cuenta los statements y va rojo si te la olvidás), y caso en `tests/integration/isolation.test.ts`
 - CI las aplica en orden vía psql; NUNCA modificar migraciones existentes — crear una nueva
 

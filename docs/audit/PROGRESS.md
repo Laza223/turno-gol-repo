@@ -1366,3 +1366,44 @@ Consecuencias verificadas, ninguna necesitó código: el guard `price_below_paid
 **Gate:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline) ✅ / unit 302 archivos, **2463 tests** ✅ / integration 128 archivos, **1023 tests** ✅ / isolation **162/162** ✅ / storybook de los componentes tocados 13/13 ✅.
 
 **Sin verificación en la app:** (1) y (3) son 100% capa de servicio/worker. (4) sí toca UI y queda pendiente de `verificacion-ux` — el flujo completo (abrir el panel de un turno fijo, reprogramar, ver el precio quedar igual) no se corrió contra el dev server en esta sesión.
+
+---
+
+## E5 — `reservas-crud` e2e: no era flaky (2026-08-05)
+
+El spec figuraba como flaky en local (falló 4/5 y 7/8 en corridas distintas de `main`) y limpio en CI. **Ninguna de las dos cosas significaba lo que parecía.**
+
+### Por qué "pasaba en CI": CI no lo corre
+
+`ci.yml:191` corre `playwright test --project chromium --grep @critical`. De los 5 tests del spec, **uno solo** tenía la etiqueta. Los dos que fallaban en local —`:122` (marcar completada) y `:363` (confirmar pago inline)— nunca se ejecutaron en el gate. No había divergencia local-vs-CI que explicar: había una zona sin gate.
+
+### Causa 1 — contrato desactualizado, no timing
+
+`:122` esperaba que el click en "Marcar completada" completara el turno y apareciera el badge "Jugada". Desde Fase 3 ese botón **no completa nada**: abre `CompleteBookingDialog` (Completar + Cobrar), y hay que confirmar adentro. El test medía el flujo pre-Fase-3, así que fallaba de forma determinística — lo que lo hacía parecer intermitente era la causa 2, que a veces lo tumbaba antes de llegar hasta ahí.
+
+El test ahora pasa por el diálogo. El label del submit se matchea con regex (`/^Completar (con deuda|y cobrar|sin cobrar)$/`) para no atarse a la aritmética de si queda saldo.
+
+### Causa 2 — 🔴 el cleanup se envenenaba a sí mismo
+
+`deleteBooking` (local del spec) era un `DELETE FROM bookings` pelado. Pero `cash_flows.booking_id` es una FK **sin `ON DELETE`** (`004_isolated_tables.sql:367` → RESTRICT), y el test de "Confirmar pago inline" dispara `confirmDepositPaymentAction`, que inserta la fila de la seña en `cash_flows`.
+
+Resultado: el DELETE del `finally` fallaba, el booking quedaba vivo, y **la corrida siguiente chocaba contra el exclusion constraint de la cancha**. Cada corrida ensuciaba a la próxima. Esa es la cascada de "datos locales sucios" que el repo venía anotando como flake ambiental.
+
+El helper compartido ya hacía lo correcto (`_helpers/booking-seed.ts:119`, `cleanupBookingsByIds`: borra `payments` y desengancha `bookings.payment_id` antes del DELETE) — este spec tenía su propia copia incompleta. Ahora borra en orden hijos→padres: `cash_flows` → desenganchar `payment_id` → `payments` → `bookings`.
+
+### Cobertura: el test de plata entra al gate
+
+`:363` ("Confirmar pago" inline) pasó a `@critical`. Es el único de los cinco que mueve dinero de verdad (crea la fila en `cash_flows`), y era justamente el que dejaba la basura que rompía a los demás. Los otros tres siguen fuera del gate a propósito: el runner de 2 cores no banca la suite completa (ver el comentario del job en `ci.yml`).
+
+### Evidencia
+
+- **5 corridas consecutivas: 5/5, 5/5, 5/5, 5/5, 5/5.**
+- **Control contra el spec original** (mismo seed, mismo dev server, `git stash` del fix): **2 failed / 3 passed**, con `Locator: getByText('Jugada')` entre los fallos. O sea, el cambio es lo que las arregló, no el ambiente.
+
+### Trampa de ambiente que costó dos corridas
+
+Una tanda intermedia dio **404 "Página no encontrada"** en el detalle de la reserva, con los 4 tests que navegan cayendo juntos. No era el spec: la suite de INTEGRACIÓN corrida antes hace `cleanupAll(sql)` en su `beforeAll` y se lleva puestos los datos del seed e2e. `pnpm e2e:seed` y volvió a 5/5.
+
+Vale como regla: **después de correr integración, el entorno e2e local está roto hasta re-seedear.** Es distinto del trap ya conocido de los roles en NOLOGIN (`bootstrap-local-roles.mjs`), y hay que hacer los dos.
+
+También apareció una vez `module factory is not available` en el dev server — el `.next` corrupto que ya está documentado. Se va reiniciando el server.

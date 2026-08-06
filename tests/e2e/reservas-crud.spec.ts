@@ -82,10 +82,35 @@ async function insertBooking(
   if (error) throw new Error(`Service-role booking INSERT failed: ${error.message}`)
 }
 
+/**
+ * Borra el booking Y todo lo que lo referencia, en orden hijos→padres.
+ *
+ * El `DELETE FROM bookings` pelado que había acá **fallaba en silencio para el
+ * test siguiente**: `cash_flows.booking_id` es una FK sin `ON DELETE`
+ * (`004_isolated_tables.sql:367` → RESTRICT), y el test de "Confirmar pago
+ * inline" dispara `confirmDepositPaymentAction`, que inserta la fila de la seña
+ * en `cash_flows`. El DELETE del `finally` explotaba, el booking quedaba vivo, y
+ * la corrida siguiente chocaba contra el exclusion constraint de la cancha. Esa
+ * es la cascada de "datos locales sucios" que venía haciendo flakear al spec
+ * entero.
+ *
+ * `payments` va con el mismo criterio que `cleanupBookingsByIds`
+ * (`_helpers/booking-seed.ts`): desenganchar `bookings.payment_id` primero,
+ * porque la FK es circular.
+ */
 async function deleteBooking(
   supabase: ReturnType<typeof makeServiceClient>,
   id: string,
 ): Promise<void> {
+  const cash = await supabase.from('cash_flows').delete().eq('booking_id', id)
+  if (cash.error) throw new Error(`Cleanup cash_flows failed: ${cash.error.message}`)
+
+  const unlink = await supabase.from('bookings').update({ payment_id: null }).eq('id', id)
+  if (unlink.error) throw new Error(`Cleanup unlink payment failed: ${unlink.error.message}`)
+
+  const pay = await supabase.from('payments').delete().eq('booking_id', id)
+  if (pay.error) throw new Error(`Cleanup payments failed: ${pay.error.message}`)
+
   const { error } = await supabase.from('bookings').delete().eq('id', id)
   if (error) throw new Error(`Cleanup DELETE failed: ${error.message}`)
 }
@@ -122,11 +147,24 @@ test.describe('reservas — happy: mark completed', () => {
         // The booking must be confirmed for the action buttons to appear.
         await expect(page.getByText('Confirmada')).toBeVisible()
 
-        // Click "Marcar completada".
+        // "Marcar completada" ya NO completa de una: desde Fase 3 abre
+        // `CompleteBookingDialog` (Completar + Cobrar). Este test venía midiendo
+        // el flujo viejo y fallaba esperando el badge que nunca llegaba — no era
+        // un flake, era un contrato desactualizado.
         await page.getByRole('button', { name: 'Marcar completada' }).click()
+        await expect(page.getByRole('heading', { name: 'Completar turno' })).toBeVisible({
+          timeout: 15_000,
+        })
+
+        // El label del submit depende de si queda saldo: con `price_snapshot`
+        // 10000 y sin seña queda deuda, pero el regex cubre las tres variantes
+        // para no atarse a esa aritmética.
+        await page
+          .getByRole('button', { name: /^Completar (con deuda|y cobrar|sin cobrar)$/ })
+          .click()
 
         // After router.refresh() the status badge should update to "Jugada" (§8.5).
-        await expect(page.getByText('Jugada')).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByText('Jugada')).toBeVisible({ timeout: 15_000 })
 
         // The action buttons must disappear (BookingActions returns null when status != 'confirmed').
         await expect(page.getByRole('button', { name: 'Marcar completada' })).not.toBeVisible()
@@ -336,7 +374,7 @@ test.describe('reservas — edge: no-show', () => {
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — quick action: confirmar pago inline', () => {
   test(
-    'lista Hoy → "Confirmar pago" inline → badge Confirmada sin full reload',
+    'lista Hoy → "Confirmar pago" inline → badge Confirmada sin full reload @critical',
     async ({ browser, adminStorageState }) => {
       const supabase = makeServiceClient()
       const bookingId = randomUUID()

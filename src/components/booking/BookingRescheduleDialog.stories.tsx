@@ -7,9 +7,15 @@ import { BookingRescheduleDialog, type ListRescheduleSlots } from './BookingResc
 /**
  * Mover un turno a otra cancha / día / horario (Fase 3, criterio de salida #2).
  *
- * El precio se RECALCULA a la franja destino, así que el riesgo real de esta
- * pantalla no es que no funcione: es que mueva plata sin que el admin lo note.
- * Por eso hay una story dedicada al cambio de tarifa.
+ * El riesgo real de esta pantalla no es que no funcione: es que mueva plata sin
+ * que el admin lo note. Por eso el precio tiene dos stories propias, una por
+ * cada régimen:
+ *
+ *  - turno común (`spontaneous`) → el precio se RECALCULA a la franja destino,
+ *    y si cambia hay que avisarlo (`CambioDeTarifa`);
+ *  - sesión de abonado (`fixed`) → el precio del CONTRATO manda y el backend
+ *    ignora la tarifa de la franja, así que la pantalla no puede mostrar un
+ *    número que el servidor no va a usar (`TurnoFijo`).
  *
  * Las Server Actions llegan por prop (ver BookingSlotPanel).
  */
@@ -94,5 +100,50 @@ export const ErrorAlCargar: Story = {
   play: async ({ canvasElement }) => {
     const d = within(canvasElement.ownerDocument.body)
     await expect(await d.findByText(/Demasiadas consultas/)).toBeTruthy()
+  },
+}
+
+/**
+ * Turno común movido a una franja de OTRA tarifa: el cambio de precio se
+ * anuncia con el delta, no se aplica en silencio.
+ */
+export const CambioDeTarifa: Story = {
+  play: async ({ canvasElement }) => {
+    const d = within(canvasElement.ownerDocument.body)
+    // 21:00 vale $28.000 y el turno está pactado en $24.000.
+    await (await d.findByRole('radio', { name: /^21:00/ })).click()
+    await expect(await d.findByText(/El precio pasa de/)).toBeTruthy()
+  },
+}
+
+/**
+ * Sesión de abonado: el precio del contrato NO se toca, sin importar a qué
+ * franja se mueva (decisión del dueño 2026-08-05, `booking.reschedule.ts` rama
+ * `type === 'fixed'`).
+ *
+ * Es la story que faltaba cuando se implementó: sin ella el aviso y las fichas
+ * de horario de este modo nunca pasaban por axe, que en este repo es el único
+ * lugar que mide contraste.
+ */
+export const TurnoFijo: Story = {
+  args: {
+    booking: {
+      ...meta.args.booking,
+      type: 'fixed' as const,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const d = within(canvasElement.ownerDocument.body)
+    await expect(await d.findByText(/se mantiene el precio del contrato/)).toBeTruthy()
+
+    // Las fichas muestran el precio del contrato ($24.000) y NUNCA el de la
+    // franja destino ($28.000): mostrarlo sería mostrar un número que el
+    // servidor descarta.
+    await expect(await d.findByRole('radio', { name: /^21:00/ })).toHaveTextContent(/24\.000/)
+    await expect(d.queryByText(/28\.000/)).toBeNull()
+
+    // Y con una franja de otra tarifa elegida, el banner de delta no aparece.
+    await (await d.findByRole('radio', { name: /^21:00/ })).click()
+    await expect(d.queryByText(/El precio pasa de/)).toBeNull()
   },
 }

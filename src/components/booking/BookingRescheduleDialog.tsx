@@ -284,7 +284,17 @@ export function BookingRescheduleDialog({
                     )}
                   >
                     <span>{s.timeStart}</span>
-                    <span className="text-[10px] font-medium opacity-80">
+                    {/* `opacity-80` SOLO en la ficha sin elegir. Sobre
+                        `bg-primary` el `text-primary-foreground` al 80% da
+                        4.16:1 y AA pide 4.5 — misma clase de bug que el `/80`
+                        de admin-sidebar.tsx. Sin elegir es texto casi negro
+                        sobre `bg-card`, donde el 80% sobra. */}
+                    <span
+                      className={cn(
+                        'text-[10px] font-medium',
+                        !isSelected && 'opacity-80',
+                      )}
+                    >
                       {current
                         ? 'Actual'
                         : keepsContractPrice

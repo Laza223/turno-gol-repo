@@ -249,55 +249,67 @@ export function BookingGrid({
         <div className="flex-1 flex flex-col min-h-0 space-y-4">
           {showFirstHint && <FirstBookingHint onDismiss={dismissHint} />}
 
+          {/* El envoltorio con clases responsive NO es redundante con el
+              ternario. El ternario decide QUÉ se monta (una sola vista, para
+              que no haya dos popovers portalizados al body); las clases
+              deciden qué se VE en el primer paint. React resincroniza
+              `useSyncExternalStore` en un efecto PASIVO, o sea después de
+              pintar: sin esto, un teléfono que carga /grilla en frío pinta un
+              frame de la matriz de 600px — justo el layout que esta fase
+              existe para eliminar — y recién después la reemplaza por la
+              lista. Con `hidden lg:flex` ese frame no se ve. */}
           {isDesktop ? (
-            <GridScroller
-              courts={courts}
-              slots={slots}
-              visibleSlots={visibleSlots}
-              cells={cells}
-              collapsedCount={collapsedCount}
-              hasBand={hasBand}
-              rowOffset={rowOffset}
-              rowHeightRem={rowHeightRem}
-              nowTopRem={nowTopRem}
-              isCompact={isCompact}
-              isNavPending={isNavPending}
-              gridScrollRef={gridScrollRef}
-              ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
-              isSlotPast={isSlotPast}
-              pulseIds={pulseIds}
-              detailBookingId={detailBookingId}
-              onDetailChange={setDetailBookingId}
-              onSlotClick={handleSlotClick}
-              onGridKeyDown={handleGridKeyDown}
-              onExpandMorning={() => setShowMorning(true)}
-              quickSlotKey={quickSlotKey}
-              onQuickClose={handleQuickClose}
-              renderQuickForm={quickEnabled ? renderQuickForm : undefined}
-            />
+            <div className="hidden min-h-0 flex-1 flex-col gap-4 lg:flex">
+              <GridScroller
+                courts={courts}
+                slots={slots}
+                visibleSlots={visibleSlots}
+                cells={cells}
+                collapsedCount={collapsedCount}
+                hasBand={hasBand}
+                rowOffset={rowOffset}
+                rowHeightRem={rowHeightRem}
+                nowTopRem={nowTopRem}
+                isCompact={isCompact}
+                isNavPending={isNavPending}
+                gridScrollRef={gridScrollRef}
+                ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
+                isSlotPast={isSlotPast}
+                pulseIds={pulseIds}
+                detailBookingId={detailBookingId}
+                onDetailChange={setDetailBookingId}
+                onSlotClick={handleSlotClick}
+                onGridKeyDown={handleGridKeyDown}
+                onExpandMorning={() => setShowMorning(true)}
+                quickSlotKey={quickSlotKey}
+                onQuickClose={handleQuickClose}
+                renderQuickForm={quickEnabled ? renderQuickForm : undefined}
+              />
+              {/* La leyenda explica el color de la matriz. En la lista cada
+                  fila ya trae el label escrito al lado del ícono: ahí sobra. */}
+              <GridLegend />
+            </div>
           ) : (
-            <GridDayList
-              courts={courts}
-              slots={slots}
-              visibleSlots={visibleSlots}
-              cells={cells}
-              collapsedCount={collapsedCount}
-              hasBand={hasBand}
-              isSlotPast={isSlotPast}
-              pulseIds={pulseIds}
-              onDetailChange={setDetailBookingId}
-              onSlotClick={handleSlotClick}
-              onExpandMorning={() => setShowMorning(true)}
-              isNavPending={isNavPending}
-              quickSlotKey={quickSlotKey}
-              onQuickClose={handleQuickClose}
-              renderQuickForm={quickEnabled ? renderQuickForm : undefined}
-            />
+            <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+              <GridDayList
+                courts={courts}
+                slots={slots}
+                visibleSlots={visibleSlots}
+                cells={cells}
+                collapsedCount={collapsedCount}
+                hasBand={hasBand}
+                isSlotPast={isSlotPast}
+                pulseIds={pulseIds}
+                onDetailChange={setDetailBookingId}
+                onSlotClick={handleSlotClick}
+                onExpandMorning={() => setShowMorning(true)}
+                isNavPending={isNavPending}
+                quickSlotKey={quickSlotKey}
+                onQuickClose={handleQuickClose}
+                renderQuickForm={quickEnabled ? renderQuickForm : undefined}
+              />
+            </div>
           )}
-
-          {/* La leyenda explica el color de la matriz. En la lista cada fila ya
-              trae el label escrito al lado del ícono, así que ahí sobra. */}
-          {isDesktop && <GridLegend />}
         </div>
       )}
 

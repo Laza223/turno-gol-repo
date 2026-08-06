@@ -82,14 +82,24 @@ function declaredNavHrefs(): Map<string, string> {
   return found
 }
 
-/** Rutas cuyo `page.tsx` sólo redirige: puentes de compat, no huérfanas. */
+/**
+ * Rutas cuyo `page.tsx` SÓLO redirige: puentes de compat, no huérfanas.
+ *
+ * El criterio tiene que ser estricto. La primera versión pedía "tiene un
+ * `redirect()` y no contiene `return (`", y eso clasificaba como stub a
+ * cualquier página con guard de auth — que es el patrón más común del repo:
+ * `if (!auth.ok) redirect('/dashboard')` seguido de `return <Componente />`
+ * (un solo elemento, sin paréntesis). Con ese agujero, una página realmente
+ * huérfana escrita con ese patrón pasaba el test en verde.
+ *
+ * Un stub de verdad no devuelve nada: no tiene un solo `return`.
+ */
 function redirectStubs(urls: string[]): Set<string> {
   const stubs = new Set<string>()
   for (const url of urls) {
     const file = path.join(adminDir, ...url.split('/').filter(Boolean), 'page.tsx')
     const src = readFileSync(file, 'utf8')
-    // Un stub no hace nada más que redirigir: sin queries ni JSX.
-    if (/redirect\('\/[^']*'\)/.test(src) && !src.includes('return (')) stubs.add(url)
+    if (/redirect\('\/[^']*'\)/.test(src) && !/\breturn\b/.test(src)) stubs.add(url)
   }
   return stubs
 }
@@ -136,6 +146,17 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
     const existing = new Set(adminPageUrls())
     const colgando = [...navHrefs.entries()].filter(([href]) => !existing.has(href))
     expect(colgando, `Ítems de menú sin página: ${JSON.stringify(colgando)}`).toEqual([])
+  })
+
+  it('el detector de stubs no confunde una página real con un redirect', () => {
+    // `/jugadores` tiene guard (`redirect('/dashboard')` si falla) Y devuelve
+    // JSX: es una página de verdad. Si se cuela como "stub", el guard deja de
+    // exigirle camino de navegación a cualquier página escrita con ese patrón.
+    expect(stubs.has('/jugadores')).toBe(false)
+    expect(stubs.has('/grilla')).toBe(false)
+    // Y los stubs de verdad sí se detectan.
+    expect(stubs.has('/canchas')).toBe(true)
+    expect(stubs.has('/jugadores/deudas')).toBe(true)
   })
 
   it('cada ruta contextual de la allowlist existe y tiene motivo escrito', () => {

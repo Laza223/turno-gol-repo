@@ -98,8 +98,10 @@ con zoom, los dos peores gestos con el teléfono en la oreja (visión v2 §4.2).
   que responde "¿tenés cancha a las 21?", la lectura horizontal que el swipe por cancha pierde.
   Las siguientes son una por cancha: la lista vertical de sus horas.
 - **Las píldoras de arriba son selector e indicador a la vez** (el rol de los dots del
-  carrusel). Chevrons + rótulo abajo para quien no descubre el gesto; flechas del teclado
-  sobre el track.
+  carrusel), y la activa se trae a la vista al cambiar de página. **Sin chevrons ni rótulo
+  al pie**: duplicaban lo que las píldoras ya dicen y hacen, y en un teléfono de 851 px esas
+  44 px son cuatro horas menos de grilla a la vista. El track responde a las flechas del
+  teclado y anuncia la página con un `aria-live` sr-only.
 - **El color no cambia**: misma `gridSlotVisual` que la matriz, así que la lectura aprendida en
   escritorio se transfiere. Las filas ocupadas además escriben el label al lado del ícono, y
   por eso la leyenda (§2) no se renderiza en mobile: sería redundante.

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, Wallet } from 'lucide-react'
+import { AlertCircle, ExternalLink, MessageCircle, Wallet } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatArs } from '@/lib/format'
 import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
@@ -37,6 +37,22 @@ function originDetail(row: StreetMoneyRow): string {
   }
   if (row.origin === 'tournament') return row.tournamentName
   return row.note ?? 'Cantina'
+}
+
+/**
+ * El link de cobranza por WhatsApp, con el mensaje ya redactado. Venía de la
+ * lista vieja de `/jugadores/deudas` (absorbida en Fase 4) y se conserva tal
+ * cual: mandar el mensaje ES la acción real de cobrar un turno atrasado, y
+ * perderla habría dejado al encargado buscando el teléfono a mano.
+ */
+function whatsappUrl(row: StreetMoneyRow): string | null {
+  if (row.origin !== 'booking' || !row.contactPhone) return null
+  const timeRange = `${row.timeStart.slice(0, 5)} - ${row.timeEnd.slice(0, 5)}`
+  const msg =
+    `Hola${row.debtorName ? ` ${row.debtorName}` : ''}, te contactamos por el turno del ` +
+    `${row.date} (${timeRange}) en ${row.courtName}. Quedó un saldo pendiente de ` +
+    `${formatArs(row.pendingCents)}. ¿Cuándo podrías pasar a saldarlo?`
+  return `https://wa.me/${row.contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`
 }
 
 /**
@@ -126,6 +142,28 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
                 <p className="truncate text-xs text-muted-foreground">
                   {originDetail(row)} · {relativeTimeEs(row.since.toISOString(), nowMs)}
                 </p>
+                {row.origin === 'booking' && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    {whatsappUrl(row) && (
+                      <a
+                        href={whatsappUrl(row)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-sm font-medium text-emerald-800 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:text-emerald-400 md:min-h-0"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                        Escribirle por WhatsApp
+                      </a>
+                    )}
+                    <Link
+                      href={`/reservas/${row.refId}`}
+                      className="inline-flex min-h-11 items-center gap-1 rounded-sm font-medium text-muted-foreground hover:text-foreground hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      Ver el turno
+                    </Link>
+                  </div>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="text-base font-bold tabular-nums text-red-600 dark:text-red-400">

@@ -13,6 +13,7 @@ function bookingRow(pendingCents: number, since = new Date('2026-07-01')): Stree
     timeStart: '20:00',
     timeEnd: '21:00',
     playerId: null,
+    contactPhone: null,
   }
 }
 

@@ -36,6 +36,12 @@ export type BookingStreetMoneyRow = {
    * lista de deuda no tenía cómo llegar hasta ahí.
    */
   playerId: string | null
+  /**
+   * Teléfono de contacto del turno, para el link de WhatsApp. Lo tenía la
+   * lista vieja de `/jugadores/deudas` y se habría perdido al absorberla:
+   * mandar un mensaje es LA acción real de cobranza de un turno atrasado.
+   */
+  contactPhone: string | null
 }
 
 export type CanteenStreetMoneyRow = {
@@ -97,6 +103,7 @@ export async function getStreetMoney(tenantId: string, tx: DbTx): Promise<Street
         timeStart: d.timeStart,
         timeEnd: d.timeEnd,
         playerId: d.playerId,
+        contactPhone: d.contactPhone,
       }),
     ),
     ...tabs.map(

@@ -82,7 +82,37 @@ Sin cambios de comportamiento; superficies con tokens (`bg-popover`, `border-bor
 - Toggle en el header: `Rows3` + label del modo actual ("Cómodo"/"Compacto") + tooltip (§7.4) — deja de ser un ícono mudo (§13.5).
 - Preferencia persistida en `localStorage['tg-grilla-density']`; default cómodo.
 - Alturas: cómodo `3.25rem`, compacto `2.75rem`. Nunca menos de 44 px: el slot es un target táctil.
-- Columnas: eje `3.5rem` + `minmax(8.5rem, 1fr)` por cancha; scroll horizontal con `snap-x` (mobile).
+- Columnas: eje `3.5rem` + `minmax(8.5rem, 1fr)` por cancha.
+- **Sólo escritorio (`lg`+).** Ver §4bis: en mobile la matriz no se renderiza.
+
+## 4bis. Mobile: la grilla-lista (Fase 4)
+
+Debajo de `lg` (1024 px) la matriz **no existe**: la reemplaza `GridDayList`
+(`src/components/booking/grid/GridDayList.tsx`). Con 4 canchas la matriz mide 600 px de ancho
+mínimo dentro de un viewport de 375 px — entran 2,3 canchas y obliga a scroll bidimensional
+con zoom, los dos peores gestos con el teléfono en la oreja (visión v2 §4.2).
+
+- **Carrusel horizontal de páginas**, con CSS scroll-snap (`snap-x snap-mandatory`) y cero
+  librerías de gestos — misma receta que `TenantCardCarousel` del portal público.
+- **La primera página es "Todas"**: una fila por hora con TODAS las canchas como chips. Es la
+  que responde "¿tenés cancha a las 21?", la lectura horizontal que el swipe por cancha pierde.
+  Las siguientes son una por cancha: la lista vertical de sus horas.
+- **Las píldoras de arriba son selector e indicador a la vez** (el rol de los dots del
+  carrusel). Chevrons + rótulo abajo para quien no descubre el gesto; flechas del teclado
+  sobre el track.
+- **El color no cambia**: misma `gridSlotVisual` que la matriz, así que la lectura aprendida en
+  escritorio se transfiere. Las filas ocupadas además escriben el label al lado del ícono, y
+  por eso la leyenda (§2) no se renderiza en mobile: sería redundante.
+- **Sólo se monta una de las dos vistas** (`useIsDesktop`, `src/hooks/use-is-desktop.ts`). No
+  se resuelve con `hidden lg:flex` como el resto del repo (`ResponsiveList`) porque las celdas
+  libres abren un `Popover` de Radix que se portaliza al `body`: con las dos montadas, un tap
+  en la lista abriría también el popover de la matriz oculta, flotando en cualquier lado.
+- **Los nombres accesibles difieren a propósito** de los de la matriz —
+  `Reservar 16:00 en Cancha 1` (lista) vs. `Reservar turno 16:00 en Cancha 1` (matriz). No es
+  descuido de redacción: es lo que permite que los tests apunten sin ambigüedad a cada vista.
+- Lo que **no** viaja a mobile: el span vertical de 120 min (el chip repite el turno en la hora
+  cubierta), la línea de "ahora" en rem, la navegación 2D por flechas y el toggle de densidad.
+  Todo eso sigue vivo en la matriz de escritorio.
 
 ## 5. Madrugada muerta colapsada
 

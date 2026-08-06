@@ -1438,3 +1438,72 @@ De los 9 reales, la mayoría tiene la story colgada **antes** del final del arch
 **No se prueba como causa de los 3 cuelgues** — la suite corre limpia en local (1026/1026, ~4min) y en `main` (4:42, 4:47). El mecanismo documentado en E3 es fallo de TEST (`Unable to find role="alert"`), no stall de proceso. Pero es el sospechoso más plausible: transiciones sin cerrar acumulándose en el mismo `page` de Playwright durante 130-240 archivos de la suite completa, en un runner de CI con memoria más ajustada que la máquina local, es la clase de cosa que degrada un proceso hasta que deja de responder en vez de tirar un error limpio y localizado.
 
 **Decisión del dueño (2026-08-06):** anotar y frenar, no migrar esta noche. `Stories (BLOCKING)` se sacó de los required status checks de `main` (branch protection revertida a `Integration & Isolation (BLOCKING)` / `Lint & Types` / `Unit Tests`, los 3 de antes) — el job sigue corriendo en cada PR y se ve rojo/colgado si repite, pero no bloquea. Pendiente: migrar los 6 archivos con riesgo real (la tabla de arriba, sin contar el ya-seguro `ConfirmBookingButton`) a `pendingAction`, medir 3 corridas de CI seguidas, y recién ahí reactivar el required check.
+
+---
+
+## Fase 4 del rediseño v2 (2026-08-06) — reorganización estructural, 2 de 4 criterios
+
+Contrato: `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3. Se ejecutaron los **dos
+criterios que no dependen de D3** (la política de identidad de Clientes — ficha ligera de
+invitados + vinculación manual — no existe hoy, verificado 2026-08-06):
+
+- [x] Navegación de 6 espacios activa; cero rutas huérfanas ni ítems del menú viejo colgando.
+- [x] Grilla-lista mobile (lista por hora con swipe entre canchas) reemplazando a la matriz.
+- [ ] Clientes fusionado (UNA lista de personas) — **bloqueado por D3**, fuera de esta sesión.
+- [ ] Etiquetas D3 operativas en la ficha — **bloqueado por D3**.
+
+**Decisiones del dueño antes de planificar:** cáscara "Clientes" con pestañas sin tocar la
+identidad · cero renombres de ruta (cambian labels y agrupación, no URLs) · `/reservas` pasa a
+ser la pestaña Lista de Grilla · grilla mobile = swipe por cancha **más** una página "Todas".
+
+### Mapa de navegación, antes y después
+
+| Antes (9 ítems planos) | Después |
+|---|---|
+| Hoy → `/dashboard` | **Hoy** → `/dashboard` (sin cambios) |
+| Grilla → `/grilla` | **Grilla** → `/grilla`, pestañas *Calendario* / *Lista* |
+| Reservas → `/reservas` | pestaña *Lista* de Grilla (deja de ser ítem) |
+| Turnos fijos → `/abonados` | pestaña *Turnos fijos* de Clientes (deja de ser ítem) |
+| Torneos → `/torneos` | **Torneos** → `/torneos` (sin cambios, sigue tras el flag) |
+| Jugadores → `/jugadores` | **Clientes** → `/jugadores`, pestañas *Jugadores* / *Turnos fijos* |
+| Caja y Cantina → `/caja` | **Caja** → `/caja` (4 pestañas existentes) |
+| Analíticas → `/analiticas` | **Métricas** → `/analiticas` |
+| Configuración → `/settings` | **Configuración**, separada al pie; candado para el manager |
+
+Mobile: la hamburguesa se retira; la navegación primaria es `AdminBottomNav` (3 accesos del rol
++ "Más", que abre el mismo drawer).
+
+### Rutas huérfanas cerradas
+
+| Qué | Estado antes | Ahora |
+|---|---|---|
+| `(admin)/canchas/*` | redirect con TODA la implementación adentro (+ error/loading sobre un redirect) | código en `settings/canchas/`, stub de 5 líneas |
+| `(admin)/staff/*` | ídem | código en `settings/equipo/`, stub |
+| `(admin)/metricas/*` | ídem | código en `analiticas/`, stub |
+| `(admin)/deudas/*` | ídem | `chargeDebtAction` a `caja/deudas/`; el resto era dead code |
+| `/jugadores/deudas` | 2ª lista de deuda con su propio total | redirect a `/caja/deudas` |
+| `revalidatePath('/deudas')` | apuntaba a un stub: la lista real nunca se refrescaba tras cobrar | `/caja/deudas` |
+| `robots.ts` | sin `/torneos` ni las rutas legacy | completo |
+
+**Por qué muere `/jugadores/deudas`:** mostraba `getDebts` (sólo turnos) mientras `/caja/deudas`
+muestra `getStreetMoney`, que **llama a `getDebts` por dentro** y suma además fiados y cuotas de
+torneo. Era un subconjunto estricto con su propio total: dos números para el mismo hecho
+económico, que es exactamente lo que P2 prohíbe. Costo aceptado y compensado: sancionar a un
+moroso ya no se dispara desde el listado; `getStreetMoney` ahora propaga `playerId` y cada fila
+linkea a la ficha, donde el control de baneo ya vivía. `ManualBanDialog`/`DebtListClient`/
+`ChargeDebtDialog` quedaron sin callers y se borraron.
+
+### Cómo queda verificado (no a ojo)
+
+`tests/unit/admin-routes-reachable.test.ts` lee el árbol de `src/app/(admin)` y exige, en las
+dos direcciones: que toda página tenga camino declarado (menú, pestaña, allowlist contextual con
+motivo escrito, o redirect de compat verificado contra el archivo) y que ningún href de menú
+apunte a una página inexistente. **Verificado con control negativo**: una página sin camino lo
+pone rojo (probado agregando una y borrándola).
+
+### Deuda que esto NO cerró
+
+- `/settings` redirige a `/settings/reservas` (tab #2, elección arbitraria — auditoría §7).
+- El número "Hoy: $X" persistente en la barra lateral (visión §3.3 / P2): exige una query de
+  caja en el layout de todas las páginas admin.
+- 4 de 7 pestañas de Settings siguen con `<h1>Configuración</h1>` genérico (auditoría §7).

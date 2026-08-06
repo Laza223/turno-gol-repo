@@ -194,8 +194,10 @@ test.describe('Admin mobile smoke', () => {
       'true',
     )
 
-    // Swipe a la primera cancha vía el control visible.
-    await page.getByRole('button', { name: 'Cancha siguiente' }).click()
+    // Saltar a una cancha: las píldoras son selector e indicador a la vez.
+    const primeraCancha = selector.getByRole('button').nth(1)
+    await primeraCancha.click()
+    await expect(primeraCancha).toHaveAttribute('aria-pressed', 'true')
     await expect(selector.getByRole('button', { name: 'Todas' })).toHaveAttribute(
       'aria-pressed',
       'false',

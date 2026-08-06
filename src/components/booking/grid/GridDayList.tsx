@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
@@ -84,7 +84,19 @@ export function GridDayList({
     [courts],
   )
   const trackRef = useRef<HTMLDivElement>(null)
+  const pillsRef = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
+
+  /**
+   * La píldora activa se trae a la vista al cambiar de página. Con 6 canchas la
+   * fila scrollea, y sin esto el swipe dejaría la píldora activa fuera de
+   * pantalla: exactamente el bug que la auditoría 2026-08-01 §8 documentó en
+   * `WeekStrip` ("el día activo queda fuera de vista").
+   */
+  useEffect(() => {
+    const pill = pillsRef.current?.children[index]
+    pill?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  }, [index])
 
   const scrollToIndex = useCallback(
     (i: number) => {
@@ -117,6 +129,7 @@ export function GridDayList({
       {/* Selector + indicador de posición. Receta de píldoras de
           AvailabilityGrid (portal público): scroll propio, nunca desborda. */}
       <div
+        ref={pillsRef}
         role="group"
         aria-label="Elegir cancha"
         className="flex shrink-0 items-center gap-2 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden"
@@ -205,33 +218,14 @@ export function GridDayList({
         ))}
       </div>
 
-      {/* Chevrons: el swipe es el gesto principal, pero un carrusel sin control
-          visible no se descubre (y con teclado el track ya responde a flechas). */}
-      {pages.length > 1 && (
-        <div className="flex shrink-0 items-center justify-between">
-          <button
-            type="button"
-            onClick={() => scrollToIndex(index - 1)}
-            disabled={index === 0}
-            aria-label="Cancha anterior"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground disabled:opacity-30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
-          </button>
-          <p aria-live="polite" className="text-xs font-medium text-muted-foreground">
-            {index === 0 ? 'Todas las canchas' : (pages[index] as { court: CourtRow }).court.name}
-          </p>
-          <button
-            type="button"
-            onClick={() => scrollToIndex(index + 1)}
-            disabled={index === pages.length - 1}
-            aria-label="Cancha siguiente"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground disabled:opacity-30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
-      )}
+      {/* Sin chevrons ni rótulo al pie, a propósito: duplicaban lo que las
+          píldoras ya dicen (posición) y hacen (saltar de página), y en un
+          teléfono de 851px esas 44px son cuatro horas menos de grilla a la
+          vista. El gesto es el swipe; las píldoras lo hacen descubrible y el
+          track responde a las flechas del teclado. */}
+      <p aria-live="polite" className="sr-only">
+        {index === 0 ? 'Todas las canchas' : (pages[index] as { court: CourtRow }).court.name}
+      </p>
     </div>
   )
 }

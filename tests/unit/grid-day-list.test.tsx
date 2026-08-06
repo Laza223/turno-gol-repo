@@ -208,13 +208,27 @@ describe('GridDayList — la grilla en mobile', () => {
   it('el carrusel navega con las flechas del teclado', () => {
     renderGrid()
     const track = screen.getByRole('group', { name: 'Canchas del día' })
-    // jsdom/happy-dom no implementa scrollTo: el componente igual actualiza el
-    // índice, que es lo observable (la píldora activa y el rótulo).
+    // happy-dom no implementa scrollTo: el componente igual actualiza el
+    // índice, que es lo observable (la píldora activa).
     track.scrollTo = (() => {}) as unknown as typeof track.scrollTo
     fireEvent.keyDown(track, { key: 'ArrowRight' })
     const selector = screen.getByRole('group', { name: 'Elegir cancha' })
     expect(
       within(selector).getByRole('button', { name: 'Cancha 1' }).getAttribute('aria-pressed'),
     ).toBe('true')
+  })
+
+  it('tocar una píldora salta a esa cancha', () => {
+    renderGrid()
+    const track = screen.getByRole('group', { name: 'Canchas del día' })
+    track.scrollTo = (() => {}) as unknown as typeof track.scrollTo
+    const selector = screen.getByRole('group', { name: 'Elegir cancha' })
+    fireEvent.click(within(selector).getByRole('button', { name: 'Cancha 2' }))
+    expect(
+      within(selector).getByRole('button', { name: 'Cancha 2' }).getAttribute('aria-pressed'),
+    ).toBe('true')
+    expect(within(selector).getByRole('button', { name: 'Todas' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    )
   })
 })

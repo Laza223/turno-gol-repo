@@ -7,7 +7,7 @@ const FILES = [
   'src/components/ui/dialog.tsx',
   'src/components/ui/confirm-dialog.tsx',
   'src/app/(admin)/abonados/AbonadosList.tsx',
-  'src/app/(admin)/canchas/components/CourtForm.tsx',
+  'src/app/(admin)/settings/canchas/components/CourtForm.tsx',
   'src/app/(admin)/reservas/[id]/BookingActions.tsx',
   'src/app/(player)/mis-reservas/CancelBookingButton.tsx',
   'src/app/(player)/perfil/ProfileForm.tsx',

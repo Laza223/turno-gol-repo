@@ -6,11 +6,10 @@ import { Logo } from '@/components/ui/logo'
 import {
   LayoutDashboard,
   CalendarDays,
-  CalendarCheck,
-  Users,
   Contact,
   Banknote,
   ChartLine,
+  Lock,
   Settings,
   Trophy,
   X,
@@ -19,6 +18,7 @@ import { cn } from '@/lib/utils'
 import type { StaffRole } from '@/modules/staff/roles'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SidebarProps {
   tenantName: string
@@ -31,7 +31,7 @@ interface SidebarProps {
   staffRole?: StaffRole
 }
 
-interface NavItem {
+export interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   label: string
@@ -41,19 +41,67 @@ interface NavItem {
   requiresAdmin?: boolean
   /** Ancla para DashboardTour/useCoachmarkTour (`[data-tour-id]`). */
   tourId?: string
+  /**
+   * Qué pathnames encienden este espacio. Necesario desde Fase 4: un espacio ya
+   * no es una ruta sino un conjunto de ellas (Grilla incluye `/reservas`,
+   * Clientes incluye `/abonados`), así que el prefijo del href no alcanza.
+   */
+  match?: (pathname: string) => boolean
 }
 
-const NAV_ITEMS: NavItem[] = [
+/**
+ * Los 6 espacios del staff (visión v2 §3.2), ordenados por frecuencia real de
+ * uso — no por el schema. Configuración vive aparte, al pie: está fuera del
+ * flujo diario.
+ *
+ * Fase 4 fusionó a nivel de navegación: "Reservas" es la pestaña Lista de
+ * Grilla y "Turnos fijos" es una pestaña de Clientes. Las URLs no cambiaron —
+ * ninguna ruta se movió, sólo dejaron de ser ítems de primer nivel.
+ */
+export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Hoy', requiresAdmin: true },
-  { href: '/grilla', icon: CalendarDays, label: 'Grilla', tourId: 'tour-grilla' },
-  { href: '/reservas', icon: CalendarCheck, label: 'Reservas' },
-  { href: '/abonados', icon: Users, label: 'Turnos fijos' },
+  {
+    href: '/grilla',
+    icon: CalendarDays,
+    label: 'Grilla',
+    tourId: 'tour-grilla',
+    match: (p) => p === '/grilla' || p === '/reservas' || p.startsWith('/reservas/'),
+  },
+  { href: '/caja', icon: Banknote, label: 'Caja' },
+  {
+    href: '/jugadores',
+    icon: Contact,
+    label: 'Clientes',
+    match: (p) => p.startsWith('/jugadores') || p.startsWith('/abonados'),
+  },
   { href: '/torneos', icon: Trophy, label: 'Torneos', requiresTournaments: true },
-  { href: '/jugadores', icon: Contact, label: 'Jugadores' },
-  { href: '/caja', icon: Banknote, label: 'Caja y Cantina' },
-  { href: '/analiticas', icon: ChartLine, label: 'Analíticas' },
-  { href: '/settings', icon: Settings, label: 'Configuración', requiresAdmin: true },
+  { href: '/analiticas', icon: ChartLine, label: 'Métricas' },
 ]
+
+/** Fuera del flujo diario: se separa del resto con un borde, al pie. */
+export const CONFIG_ITEM: NavItem = {
+  href: '/settings',
+  icon: Settings,
+  label: 'Configuración',
+  requiresAdmin: true,
+}
+
+/** Un espacio está activo si su `match` lo dice; si no, por igualdad o prefijo del href. */
+export function isNavItemActive(item: NavItem, pathname: string): boolean {
+  if (item.match) return item.match(pathname)
+  return pathname === item.href || pathname.startsWith(item.href + '/')
+}
+
+export function visibleNavItems(opts: {
+  tournamentsEnabled?: boolean
+  staffRole?: StaffRole
+}): NavItem[] {
+  return NAV_ITEMS.filter(
+    (item) =>
+      (!item.requiresTournaments || opts.tournamentsEnabled) &&
+      (!item.requiresAdmin || opts.staffRole === 'admin'),
+  )
+}
 
 function SidebarContent({
   tenantName,
@@ -70,11 +118,9 @@ function SidebarContent({
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
 }) {
-  const navItems = NAV_ITEMS.filter(
-    (item) =>
-      (!item.requiresTournaments || tournamentsEnabled) &&
-      (!item.requiresAdmin || staffRole === 'admin'),
-  )
+  const navItems = visibleNavItems({ tournamentsEnabled, staffRole })
+  const canConfigure = staffRole === 'admin'
+  const ConfigIcon = CONFIG_ITEM.icon
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -122,10 +168,9 @@ function SidebarContent({
 
       {/* Nav */}
       <nav aria-label="Navegación del panel" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {navItems.map(({ href, icon: Icon, label, tourId }) => {
-          const isActive =
-            pathname === href ||
-            (href !== '/dashboard' && pathname.startsWith(href + '/'))
+        {navItems.map((item) => {
+          const { href, icon: Icon, label, tourId } = item
+          const isActive = isNavItemActive(item, pathname)
 
           return (
             <Link
@@ -157,6 +202,57 @@ function SidebarContent({
           )
         })}
       </nav>
+
+      {/* Configuración: fuera del flujo diario, separada y al pie (visión §3.3). */}
+      <div className="border-t border-border px-3 py-3">
+        {canConfigure ? (
+          <Link
+            href={CONFIG_ITEM.href}
+            aria-current={isNavItemActive(CONFIG_ITEM, pathname) ? 'page' : undefined}
+            onClick={isMobile ? onClose : undefined}
+            className={cn(
+              'sidebar-nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium',
+              isNavItemActive(CONFIG_ITEM, pathname)
+                ? 'bg-emerald-500/10 text-emerald-700 shadow-xs dark:bg-emerald-500/15 dark:text-emerald-400 dark:shadow-emerald-900/30'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            )}
+          >
+            {isNavItemActive(CONFIG_ITEM, pathname) && (
+              <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-emerald-500 shadow-sm shadow-emerald-500/40" aria-hidden />
+            )}
+            <ConfigIcon
+              className={cn(
+                'h-4 w-4 shrink-0 transition-all duration-200',
+                isNavItemActive(CONFIG_ITEM, pathname)
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-muted-foreground/70 group-hover:text-foreground group-hover:scale-110',
+              )}
+            />
+            <span className="flex-1 truncate">{CONFIG_ITEM.label}</span>
+          </Link>
+        ) : (
+          // MASTER §6.8: al manager el ítem se le BLOQUEA, no se le esconde — el
+          // encargado entiende el sistema completo y sabe a quién pedirle. El
+          // candado comunica sin hover (touch); el tooltip agrega el porqué.
+          // Es un `button` y no un `span`: el trigger del tooltip tiene que ser
+          // focusable, y `disabled` mataría el focus junto con el tooltip.
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-disabled="true"
+                onClick={(e) => e.preventDefault()}
+                className="sidebar-nav-item group relative flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-muted-foreground/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ConfigIcon className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                <span className="flex-1 truncate">{CONFIG_ITEM.label}</span>
+                <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Solo el dueño</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
     </div>
   )
 }

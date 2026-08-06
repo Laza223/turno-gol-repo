@@ -28,7 +28,7 @@ vi.mock('@/modules/staff/guards', () => ({ requireOperatorStaff: vi.fn() }))
 
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { completeAndChargeBookingAction } from '@/app/(admin)/reservas/actions'
-import { chargeDebtAction } from '@/app/(admin)/deudas/actions'
+import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 
 function asStaff(tenantId: string, staffUserId: string): void {
   vi.mocked(requireOperatorStaff).mockResolvedValue({

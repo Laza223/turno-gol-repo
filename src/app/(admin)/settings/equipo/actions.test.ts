@@ -25,7 +25,7 @@ import {
   deactivateStaffAction,
   inviteStaffAction,
   resendInviteAction,
-} from '@/app/(admin)/staff/actions'
+} from '@/app/(admin)/settings/equipo/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'

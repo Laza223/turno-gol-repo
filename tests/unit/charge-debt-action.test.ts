@@ -20,7 +20,7 @@ vi.mock('@/modules/bans/ban.service', () => ({
   resolveManualBanUntil: vi.fn(),
 }))
 
-import { chargeDebtAction } from '@/app/(admin)/deudas/actions'
+import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'

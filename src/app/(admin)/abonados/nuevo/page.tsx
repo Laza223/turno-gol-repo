@@ -24,9 +24,9 @@ export default async function NuevoAbonadoPage() {
           href="/abonados"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-1"
         >
-          <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> Volver a Turnos Fijos
+          <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> Volver a Turnos fijos
         </Link>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Nuevo Turno Fijo</h1>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">Nuevo turno fijo</h1>
         <p className="text-xs text-muted-foreground">
           Configurá la reserva fija semanal y los datos del cliente regular.
         </p>

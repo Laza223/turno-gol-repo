@@ -30,7 +30,7 @@ import {
   deactivateStaffAction,
   inviteStaffAction,
   updateStaffRoleAction,
-} from '@/app/(admin)/staff/actions'
+} from '@/app/(admin)/settings/equipo/actions'
 
 function asStaff(tenantId: string, staffUserId: string) {
   vi.mocked(extractAuthUser).mockResolvedValue({

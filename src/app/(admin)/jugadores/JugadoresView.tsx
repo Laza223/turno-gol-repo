@@ -3,7 +3,7 @@ import { Search, Contact, Users } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
-import { JugadoresTabs } from './JugadoresTabs'
+import { ClientesTabs } from './ClientesTabs'
 import type { PlayerListRow } from './queries'
 
 /**
@@ -20,7 +20,7 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
       />
 
       <div className="card-entrance" style={{ animationDelay: '80ms' }}>
-        <JugadoresTabs active="/jugadores" />
+        <ClientesTabs active="/jugadores" />
       </div>
 
       <form method="GET" className="card-entrance relative max-w-md" style={{ animationDelay: '120ms' }}>

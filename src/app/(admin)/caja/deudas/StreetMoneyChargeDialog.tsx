@@ -12,7 +12,7 @@ import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 // Server Actions importadas directamente (mismo patrón que deudas/ChargeDebtDialog.tsx,
 // que tampoco tiene story de Storybook — CloseDayButton/TabDialog SÍ la pasan por prop
 // porque ellos rompen Storybook al arrastrar drizzle/node:async_hooks al bundle).
-import { chargeDebtAction } from '../../deudas/actions'
+import { chargeDebtAction } from './actions'
 import { settleTabAction } from '../cantina/actions'
 import { registerInscriptionPaymentAction } from '../../torneos/actions'
 

@@ -19,6 +19,7 @@ import {
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { BookingListItem } from './BookingListItem'
 import { ReservasToolbar } from './ReservasToolbar'
+import { GrillaTabs } from '@/app/(admin)/grilla/GrillaTabs'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   cancelBookingAction,
@@ -170,19 +171,16 @@ export default async function ReservasPage(props: Props) {
 
   return (
     <div className="space-y-5">
+      {/* Fase 4: esta pantalla es la vista Lista del espacio Grilla. El CTA
+          "Ir a la grilla" que vivía en el encabezado se fue: la pestaña
+          Calendario hace exactamente eso, y dos caminos al mismo lugar en la
+          misma pantalla son ruido. */}
+      <GrillaTabs active="/reservas" />
+
       <PageHeader
         title="Reservas"
         subtitle={headerSubtitle}
         icon={<CalendarCheck className="h-6 w-6" aria-hidden="true" />}
-        actions={
-          <Link
-            href="/grilla"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-9"
-          >
-            <CalendarDays className="h-4 w-4" aria-hidden="true" />
-            Ir a la grilla
-          </Link>
-        }
       />
 
       <div className="card-entrance flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: '80ms' }}>

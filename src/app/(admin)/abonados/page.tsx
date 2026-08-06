@@ -8,6 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 import { AbonadosList } from './AbonadosList'
+import { ClientesTabs } from '@/app/(admin)/jugadores/ClientesTabs'
 import { pauseAbonadoAction, reactivateAbonadoAction, cancelAbonadoAction } from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
 
@@ -45,8 +46,10 @@ export default async function AbonadosPage(
 
   return (
     <div className="p-6 space-y-6">
+      <ClientesTabs active="/abonados" />
+
       <PageHeader
-        title="Turnos Fijos"
+        title="Turnos fijos"
         subtitle={headerSubtitle}
         icon={<Users className="h-6 w-6" aria-hidden="true" />}
         actions={

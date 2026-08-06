@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { StaffRole } from '@/modules/staff/roles'
 import { AdminSidebar } from './admin-sidebar'
+import { AdminBottomNav } from './admin-bottom-nav'
 import { AdminHeader } from './admin-header'
 import { StatusBanner } from './status-banner'
 
@@ -66,8 +67,16 @@ export function AdminLayoutShell({
       {/* Header */}
       <AdminHeader
         userEmail={userEmail}
-        onMobileMenuToggle={() => setMobileOpen((prev) => !prev)}
         onSignOut={handleSignOut}
+        homeHref={staffRole === 'admin' ? '/dashboard' : '/grilla'}
+      />
+
+      {/* Navegación primaria en mobile (Fase 4): reemplaza a la hamburguesa. */}
+      <AdminBottomNav
+        onOpenMore={() => setMobileOpen(true)}
+        moreOpen={mobileOpen}
+        tournamentsEnabled={tournamentsEnabled}
+        staffRole={staffRole}
       />
 
       {/* Main content */}
@@ -84,13 +93,16 @@ export function AdminLayoutShell({
           />
 
           {/* Page content — slate gradient suave sobre el shell oscuro */}
+          {/* El `pb` de mobile reserva el alto de AdminBottomNav (3.5rem) más el
+              safe-area de iOS: sin eso la barra fija tapa el último turno de la
+              grilla y el último movimiento de caja. En lg la barra no existe. */}
           <main
             id="main-content"
             className={cn(
               "content-area-gradient mx-auto w-full px-4 sm:px-6 lg:px-8",
               isGrilla
-                ? "max-w-full flex-1 flex flex-col min-h-0 overflow-hidden py-4"
-                : "max-w-7xl py-8 min-h-[calc(100dvh-4rem)]"
+                ? "max-w-full flex-1 flex flex-col min-h-0 overflow-hidden pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-4"
+                : "max-w-7xl pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-4rem)]"
             )}
           >
             {children}

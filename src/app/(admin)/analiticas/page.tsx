@@ -14,7 +14,7 @@ import { ResponsiveList } from '@/components/ui/responsive-list'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
-import { MetricsDashboardLoader } from '@/app/(admin)/metricas/MetricsDashboardLoader'
+import { MetricsDashboardLoader } from '@/app/(admin)/analiticas/MetricsDashboardLoader'
 import { getRevenueReport } from '@/modules/reports/report.service'
 import {
   computeDelta,

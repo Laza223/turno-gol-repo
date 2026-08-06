@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { AlertCircle, Wallet } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatArs } from '@/lib/format'
-import { relativeTimeEs } from '@/app/(admin)/metricas/dashboard-helpers'
+import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
 import { CATEGORY_BADGE, chipClass } from '../caja-lib'
 import type { StreetMoneyOrigin, StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 import { StreetMoneyChargeDialog } from './StreetMoneyChargeDialog'
@@ -107,7 +108,20 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
                   >
                     {ORIGIN_TAG[row.origin]}
                   </span>
-                  <span className="truncate text-sm font-medium text-foreground">{row.debtorName}</span>
+                  {/* Fase 4: la ficha del cliente es el único lugar donde se
+                      sanciona a un moroso (antes eso vivía en la lista muerta
+                      /jugadores/deudas). Los turnos de invitado no tienen
+                      ficha: ahí el nombre queda como texto. */}
+                  {row.origin === 'booking' && row.playerId ? (
+                    <Link
+                      href={`/jugadores/${row.playerId}`}
+                      className="truncate rounded-sm text-sm font-medium text-foreground underline decoration-dotted underline-offset-4 hover:text-emerald-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:hover:text-emerald-400"
+                    >
+                      {row.debtorName}
+                    </Link>
+                  ) : (
+                    <span className="truncate text-sm font-medium text-foreground">{row.debtorName}</span>
+                  )}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
                   {originDetail(row)} · {relativeTimeEs(row.since.toISOString(), nowMs)}

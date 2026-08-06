@@ -61,7 +61,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   }),
 }))
 
-import { inviteStaffAction } from '@/app/(admin)/staff/actions'
+import { inviteStaffAction } from '@/app/(admin)/settings/equipo/actions'
 
 function makeForm(email = 'new@x.com'): FormData {
   const f = new FormData()

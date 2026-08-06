@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import type { StaffActionResult } from '@/app/(admin)/staff/actions'
+import type { StaffActionResult } from '@/app/(admin)/settings/equipo/actions'
 
 // useActionState / useFormStatus no existen en el runtime de vitest (requieren
 // el runtime de Server Actions de Next). Mock para testear solo la PRESENTACIÓN.
@@ -26,7 +26,7 @@ vi.mock('react-dom', async (importOriginal) => {
   }
 })
 
-import { InviteStaffDialog } from '@/app/(admin)/staff/InviteStaffDialog'
+import { InviteStaffDialog } from '@/app/(admin)/settings/equipo/InviteStaffDialog'
 
 afterEach(() => {
   cleanup()

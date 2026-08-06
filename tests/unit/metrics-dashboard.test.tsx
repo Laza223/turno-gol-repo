@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import MetricsDashboard from '@/app/(admin)/metricas/MetricsDashboard'
+import MetricsDashboard from '@/app/(admin)/analiticas/MetricsDashboard'
 import type { TenantMetrics } from '@/modules/metrics/metrics.service'
 import type { SystemStatus } from '@/app/api/admin/system-status/route'
 

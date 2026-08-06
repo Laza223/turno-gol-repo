@@ -37,13 +37,22 @@ vi.mock('@/components/booking/BookingGrid', () => ({ BookingGrid: () => null }))
 
 import GrillaPage from '@/app/(admin)/grilla/page'
 
-type RenderedGrilla = { props: { children: { props: { date: string } } } }
+type RenderedChild = { props?: { date?: string } }
+type RenderedGrilla = { props: { children: RenderedChild | RenderedChild[] } }
 
+/**
+ * Desde Fase 4 el page devuelve DOS hijos (la barra de pestañas Calendario|Lista
+ * y la vista), así que `children` puede ser un array: se busca al que lleva la
+ * fecha en vez de asumir que hay uno solo.
+ */
 async function gridDateFor(date: string | undefined): Promise<string> {
   const el = (await GrillaPage({
     searchParams: Promise.resolve({ date }),
   })) as unknown as RenderedGrilla
-  return el.props.children.props.date
+  const children = Array.isArray(el.props.children) ? el.props.children : [el.props.children]
+  const withDate = children.find((c) => typeof c?.props?.date === 'string')
+  if (!withDate?.props?.date) throw new Error('ningún hijo del page recibió `date`')
+  return withDate.props.date
 }
 
 describe('GrillaPage — ?date deep-link sanitizado (#28)', () => {

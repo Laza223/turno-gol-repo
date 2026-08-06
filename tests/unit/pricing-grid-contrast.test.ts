@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contrastRatio, heatStyle } from '@/app/(admin)/canchas/components/pricing-grid/cell-utils'
+import { contrastRatio, heatStyle } from '@/app/(admin)/settings/canchas/components/pricing-grid/cell-utils'
 
 /**
  * El heat map de la grilla de precios pinta el fondo de cada celda con un color

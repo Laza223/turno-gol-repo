@@ -6,7 +6,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
-import { relativeTimeEs } from '@/app/(admin)/metricas/dashboard-helpers'
+import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
@@ -48,7 +48,7 @@ export function FiadosList({
 }) {
   const router = useRouter()
   // Instante fijo por render (mismo criterio que SystemPanel en
-  // metricas/MetricsDashboard.tsx): evita que "hace X" cambie sin refresh.
+  // analiticas/MetricsDashboard.tsx): evita que "hace X" cambie sin refresh.
   const [nowMs] = useState(() => Date.now())
   const [settlingTab, setSettlingTab] = useState<CanteenTabRow | null>(null)
   const [cancelingTab, setCancelingTab] = useState<CanteenTabRow | null>(null)

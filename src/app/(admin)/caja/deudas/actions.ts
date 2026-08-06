@@ -11,7 +11,7 @@ import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { formatArs } from '@/lib/format'
-import { getBookingCharges } from '../reservas/queries'
+import { getBookingCharges } from '@/app/(admin)/reservas/queries'
 
 const chargeLineSchema = z.object({
   amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
@@ -139,7 +139,10 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
   }
 
   if (result.success) {
-    revalidatePath('/deudas')
+    // `/deudas` era un stub de redirect: revalidarlo no refrescaba ninguna
+    // lista real (🟢 de la auditoría 2026-08-01 §7). La lista viva es
+    // `/caja/deudas`.
+    revalidatePath('/caja/deudas')
     revalidatePath('/caja')
     revalidatePath('/reservas')
     revalidatePath(`/reservas/${bookingId}`)

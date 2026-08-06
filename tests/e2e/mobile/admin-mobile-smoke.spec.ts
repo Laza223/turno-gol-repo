@@ -239,7 +239,12 @@ test.describe('Admin mobile smoke', () => {
       }
 
       // Botón de producto ≥44x44 (el admin vende parado en la barra, desde el celular).
-      const product = page.getByRole('button', { name: /^Agua/ }).first()
+      // Apunta al catálogo completo, no a .first(): con ventas previas, "Recientes"
+      // aparece antes en el DOM y .first() mediría ese chip en vez del botón del catálogo.
+      const product = page
+        .getByTestId('canteen-catalog')
+        .getByRole('button', { name: /^Agua/ })
+        .first()
       await expect(product).toBeVisible()
       await measure(product, 'producto Agua')
 

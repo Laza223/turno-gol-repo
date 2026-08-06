@@ -12,6 +12,27 @@ import {
   linkStaffToTenant,
 } from '../helpers/tenant'
 
+/**
+ * Fecha "de ayer" para sembrar turnos que YA terminaron.
+ *
+ * Tiene que salir del calendario ART, no de `CURRENT_DATE`: Postgres evalúa
+ * `CURRENT_DATE` en la timezone de la sesión, que en CI (y en el Supabase local)
+ * es UTC. Entre las 00:00 y las 03:00 UTC — o sea las 21:00–24:00 ART — el "ayer"
+ * de UTC es el HOY de Argentina, así que un turno sembrado como
+ * `CURRENT_DATE - 1 día` a las 22:00 ART cae en el FUTURO y `markNoShow` lo
+ * rechaza con `NoShowNotYetEndedError`. Es una ventana muerta de 3 horas todas
+ * las noches: los tests pasaban de día y caían de noche.
+ *
+ * `starts_at`/`ends_at` son instantes físicos (migr. 040/041) y el guard los
+ * compara contra `NOW()`, así que la única forma de que "ayer" signifique ayer
+ * es calcularlo en el mismo calendario que usa el producto.
+ *
+ * Por eso los cuatro helpers de siembra de acá abajo usan
+ * `(NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day'`
+ * en vez de `CURRENT_DATE - INTERVAL '1 day'`. Va inline y no en una constante
+ * porque `${}` dentro de un template de postgres.js es un PARÁMETRO, no SQL.
+ */
+
 const mockGateway = new MockGateway()
 
 vi.mock('@/modules/payments/mp-gateway.implementation', () => {
@@ -688,9 +709,9 @@ describe('handleNoShow — softban por ausencias reiteradas', () => {
         price_snapshot, deposit_amount, deposit_status, status
       ) VALUES (
         ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
-        CURRENT_DATE - INTERVAL '1 day', '20:00'::time, '21:00'::time,
-        (CURRENT_DATE - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
-        (CURRENT_DATE - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         ${800_000}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, 'confirmed'
       )
       RETURNING id
@@ -831,9 +852,9 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
         price_snapshot, deposit_amount, deposit_status, status
       ) VALUES (
         ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
-        CURRENT_DATE - INTERVAL '1 day', ${timeStart}::time, ${timeEnd}::time,
-        (CURRENT_DATE - INTERVAL '1 day' + ${timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
-        (CURRENT_DATE - INTERVAL '1 day' + ${timeEnd}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day', ${timeStart}::time, ${timeEnd}::time,
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + ${timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + ${timeEnd}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         ${800_000}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, 'confirmed'
       )
       RETURNING id
@@ -862,9 +883,9 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
         price_snapshot, deposit_amount, deposit_status, status, updated_at
       ) VALUES (
         ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
-        CURRENT_DATE - INTERVAL '1 day', '20:00'::time, '21:00'::time,
-        (CURRENT_DATE - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
-        (CURRENT_DATE - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         ${800_000}, ${0}, 'not_required', 'no_show',
         NOW() - (${opts.agedHours} || ' hours')::interval
       )
@@ -1770,9 +1791,9 @@ describe('cancelByAdmin — B3: turno ya terminado, nunca reembolsa (ni con comp
         price_snapshot, deposit_amount, deposit_status, status
       ) VALUES (
         ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
-        CURRENT_DATE - INTERVAL '1 day', '20:00'::time, '21:00'::time,
-        (CURRENT_DATE - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
-        (CURRENT_DATE - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
         ${800_000}, ${opts.depositAmount}, 'paid', 'confirmed'
       )
       RETURNING id

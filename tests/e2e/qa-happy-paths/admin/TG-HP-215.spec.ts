@@ -62,7 +62,7 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
 
       // Rediseño: la venta rápida de cantina vive en /caja/cantina.
       await page.goto('/caja/cantina')
-      await expect(page.getByRole('heading', { name: 'Caja y Cantina' })).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Caja' })).toBeVisible({ timeout: 15_000 })
       // Ticket vacío: hint de arranque de TicketPanel (Fase 3).
       await expect(page.getByText('Tocá un producto para empezar')).toBeVisible()
 

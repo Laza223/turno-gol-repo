@@ -9,9 +9,11 @@ import { useRealtimePulse } from '@/hooks/use-realtime-pulse'
 import { useGridLayout } from '@/hooks/use-grid-layout'
 import { useNowLine } from '@/hooks/use-now-line'
 import { useGridActions } from '@/hooks/use-grid-actions'
+import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { GridToolbar } from './grid/GridToolbar'
 import { FirstBookingHint } from './grid/FirstBookingHint'
 import { GridScroller } from './grid/GridScroller'
+import { GridDayList } from './grid/GridDayList'
 import { GridLegend } from './grid/GridLegend'
 import { GridOverlays } from './grid/GridOverlays'
 import {
@@ -91,6 +93,14 @@ export function BookingGrid({
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
   const artNow = useArtNow()
+
+  /**
+   * Matriz (escritorio) o lista con swipe entre canchas (mobile). Se monta UNA
+   * sola: no son dos layouts del mismo árbol sino dos vistas, y las celdas
+   * libres portalizan un Popover al body — con las dos montadas, un tap en la
+   * lista abriría también el popover de la matriz "oculta". Ver `useIsDesktop`.
+   */
+  const isDesktop = useIsDesktop()
 
   const { isCompact, toggleDensity } = usePersistedDensity()
   const { dismissed: hintDismissed, dismiss: dismissHint } = useDismissibleHint(HINT_STORAGE_KEY)
@@ -239,33 +249,55 @@ export function BookingGrid({
         <div className="flex-1 flex flex-col min-h-0 space-y-4">
           {showFirstHint && <FirstBookingHint onDismiss={dismissHint} />}
 
-          <GridScroller
-            courts={courts}
-            slots={slots}
-            visibleSlots={visibleSlots}
-            cells={cells}
-            collapsedCount={collapsedCount}
-            hasBand={hasBand}
-            rowOffset={rowOffset}
-            rowHeightRem={rowHeightRem}
-            nowTopRem={nowTopRem}
-            isCompact={isCompact}
-            isNavPending={isNavPending}
-            gridScrollRef={gridScrollRef}
-            ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
-            isSlotPast={isSlotPast}
-            pulseIds={pulseIds}
-            detailBookingId={detailBookingId}
-            onDetailChange={setDetailBookingId}
-            onSlotClick={handleSlotClick}
-            onGridKeyDown={handleGridKeyDown}
-            onExpandMorning={() => setShowMorning(true)}
-            quickSlotKey={quickSlotKey}
-            onQuickClose={handleQuickClose}
-            renderQuickForm={quickEnabled ? renderQuickForm : undefined}
-          />
+          {isDesktop ? (
+            <GridScroller
+              courts={courts}
+              slots={slots}
+              visibleSlots={visibleSlots}
+              cells={cells}
+              collapsedCount={collapsedCount}
+              hasBand={hasBand}
+              rowOffset={rowOffset}
+              rowHeightRem={rowHeightRem}
+              nowTopRem={nowTopRem}
+              isCompact={isCompact}
+              isNavPending={isNavPending}
+              gridScrollRef={gridScrollRef}
+              ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
+              isSlotPast={isSlotPast}
+              pulseIds={pulseIds}
+              detailBookingId={detailBookingId}
+              onDetailChange={setDetailBookingId}
+              onSlotClick={handleSlotClick}
+              onGridKeyDown={handleGridKeyDown}
+              onExpandMorning={() => setShowMorning(true)}
+              quickSlotKey={quickSlotKey}
+              onQuickClose={handleQuickClose}
+              renderQuickForm={quickEnabled ? renderQuickForm : undefined}
+            />
+          ) : (
+            <GridDayList
+              courts={courts}
+              slots={slots}
+              visibleSlots={visibleSlots}
+              cells={cells}
+              collapsedCount={collapsedCount}
+              hasBand={hasBand}
+              isSlotPast={isSlotPast}
+              pulseIds={pulseIds}
+              onDetailChange={setDetailBookingId}
+              onSlotClick={handleSlotClick}
+              onExpandMorning={() => setShowMorning(true)}
+              isNavPending={isNavPending}
+              quickSlotKey={quickSlotKey}
+              onQuickClose={handleQuickClose}
+              renderQuickForm={quickEnabled ? renderQuickForm : undefined}
+            />
+          )}
 
-          <GridLegend />
+          {/* La leyenda explica el color de la matriz. En la lista cada fila ya
+              trae el label escrito al lado del ícono, así que ahí sobra. */}
+          {isDesktop && <GridLegend />}
         </div>
       )}
 

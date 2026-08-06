@@ -95,7 +95,7 @@ export default async function AnaliticasPage(props: {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Analíticas"
+        title="Métricas"
         subtitle="Actividad del complejo en tiempo real y reporte mensual de ingresos."
         icon={<ChartLine className="h-6 w-6" aria-hidden="true" />}
       />

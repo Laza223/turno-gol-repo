@@ -88,7 +88,7 @@ test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
 
       // ── UI: header + subtítulo (/analiticas, destino real de /metricas) ──
       await page.goto('/analiticas')
-      await expect(page.getByRole('heading', { name: 'Analíticas', level: 1 })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Métricas', level: 1 })).toBeVisible({
         timeout: 15_000,
       })
       await expect(

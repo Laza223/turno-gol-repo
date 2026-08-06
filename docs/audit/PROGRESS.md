@@ -1407,3 +1407,34 @@ Una tanda intermedia dio **404 "Página no encontrada"** en el detalle de la res
 Vale como regla: **después de correr integración, el entorno e2e local está roto hasta re-seedear.** Es distinto del trap ya conocido de los roles en NOLOGIN (`bootstrap-local-roles.mjs`), y hay que hacer los dos.
 
 También apareció una vez `module factory is not available` en el dev server — el `.next` corrupto que ya está documentado. Se va reiniciando el server.
+
+---
+
+## Deuda anotada (2026-08-06) — 9 archivos con transición de React sin cerrar
+
+Al investigar 3 cuelgues seguidos de `Stories (BLOCKING)` en CI (PR #109 y #110 — el job se comió su `timeout-minutes` tres veces, en puntos distintos de la suite: story #137, #239 y #230; en local y en `main` la misma suite corre limpia en 4-5 min), re-conté el inventario que el comentario de `src/test/pending-action.ts` dejó pendiente el 2026-08-05.
+
+**El número del comentario estaba desactualizado: son 9 archivos sin migrar, no 6.**
+
+```
+git grep -lE "new Promise(<[^>]*>)?\(\(\) => \{\}\)" -- "*.stories.tsx"
+```
+da 12 archivos; de esos, `StepCourts`/`StepPayments` ya migraron al helper `pendingAction` en el Bloque 1, y `StepIdentity` es el falso amigo ya documentado (variable local llamada `pendingAction` sin importar el helper).
+
+De los 9 reales, la mayoría tiene la story colgada **antes** del final del archivo — el caso de riesgo que el docstring marcaba como "no seguro":
+
+| Archivo | Story colgada | Stories después (en riesgo) |
+|---|---|---|
+| `src/components/booking/BookingFormModal.stories.tsx` | `Guardando` (4/8) | 4 (`ErrorDelServidor`, `Cerrado`, `AvisoDeColisionOptimista`, `ExitoLlamaOnSuccess`) |
+| `src/components/ui/confirm-dialog.stories.tsx` | `Procesando` (5/7) | 2 (`ErrorControlado`, `ErrorInesperado`) |
+| `src/components/ui/image-uploader.stories.tsx` | `Subiendo` (7/9) | 2 (`ErrorDeProcesamiento`, `SubidaExitosa`) |
+| `src/app/(super-admin)/super-admin/tenants/[id]/_components/impersonate-button.stories.tsx` | `ConfirmaYEntra` (2/4) | 2 (`CancelaLaConfirmacion`, `SinAdminActivo`) |
+| `src/components/ui/submit-button.stories.tsx` | `Enviando` (2/3) | 1 (`Destructivo`) |
+| `src/app/(player)/configuracion/DataExportButton.stories.tsx` | `Cargando` (2/4) | 2 (`ErrorDeServidor`, `RespuestaSinData`) |
+| `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.stories.tsx` | `Enviando` (3/3, última) | — seguro hoy |
+
+`admin-layout-shell.stories.tsx` y `super-admin-layout-shell.stories.tsx` tienen el patrón en forma distinta: `NEVER_RESOLVES` es el `signOut` por defecto de `meta.args` para TODAS las stories del archivo, no una story puntual — ninguna `play` lo dispara hoy, así que no encajan en la tabla de riesgo por posición, pero siguen siendo la misma promesa que nunca resuelve.
+
+**No se prueba como causa de los 3 cuelgues** — la suite corre limpia en local (1026/1026, ~4min) y en `main` (4:42, 4:47). El mecanismo documentado en E3 es fallo de TEST (`Unable to find role="alert"`), no stall de proceso. Pero es el sospechoso más plausible: transiciones sin cerrar acumulándose en el mismo `page` de Playwright durante 130-240 archivos de la suite completa, en un runner de CI con memoria más ajustada que la máquina local, es la clase de cosa que degrada un proceso hasta que deja de responder en vez de tirar un error limpio y localizado.
+
+**Decisión del dueño (2026-08-06):** anotar y frenar, no migrar esta noche. `Stories (BLOCKING)` se sacó de los required status checks de `main` (branch protection revertida a `Integration & Isolation (BLOCKING)` / `Lint & Types` / `Unit Tests`, los 3 de antes) — el job sigue corriendo en cada PR y se ve rojo/colgado si repite, pero no bloquea. Pendiente: migrar los 6 archivos con riesgo real (la tabla de arriba, sin contar el ya-seguro `ConfirmBookingButton`) a `pendingAction`, medir 3 corridas de CI seguidas, y recién ahí reactivar el required check.

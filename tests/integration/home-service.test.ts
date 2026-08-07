@@ -18,14 +18,31 @@ import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.
 import { getHoyData } from '@/modules/home/home.service'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 
-/** Mismo default que la migración de `tenants.opening_hours` — createTestTenant no lo overridea. */
+/**
+ * Horarios de un tenant REAL, no el default crudo de la migración 003.
+ *
+ * La 003 pone `fri`/`sat` cerrando a la `01:00`, pero `closes_next_day` nace en
+ * `false` (migr. 035): un cierre post-medianoche sin ese flag es un rango
+ * inválido y `generateTimeSlots` devuelve `[]` — el día entero sin slots. Con
+ * `slotsCount = 0`, `occupancyForDay` calcula `available = 0` y este suite se
+ * ponía rojo LOS VIERNES Y SÁBADOS, verde el resto de la semana (medido:
+ * lun-jue 16 slots, vie 0, sáb 0, dom 14). Falló así en CI el 2026-08-07.
+ *
+ * Ningún tenant de producción está en ese estado: `sanitizeWizardHours`
+ * (`src/app/onboarding/wizard-hours.ts`) baja esos cierres a `00:00` durante el
+ * onboarding justamente porque el default crudo es inválido. El fixture ahora
+ * refleja lo que el wizard produce, que es lo que estos tests deben simular.
+ *
+ * Si algún día hace falta ejercitar la madrugada de verdad, va con
+ * `closesNextDay: true` en `hoyOpts` — no volviendo a poner `01:00` acá.
+ */
 const DEFAULT_OPENING_HOURS: OpeningHours = {
   mon: { open: '08:00', close: '00:00' },
   tue: { open: '08:00', close: '00:00' },
   wed: { open: '08:00', close: '00:00' },
   thu: { open: '08:00', close: '00:00' },
-  fri: { open: '08:00', close: '01:00' },
-  sat: { open: '09:00', close: '01:00' },
+  fri: { open: '08:00', close: '00:00' },
+  sat: { open: '09:00', close: '00:00' },
   sun: { open: '09:00', close: '23:00' },
 }
 

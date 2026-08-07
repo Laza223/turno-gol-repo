@@ -6,6 +6,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getCashFlowsForExport } from '@/modules/reports/report.service'
 import { toCsv } from '@/modules/reports/report.utils'
+import { nightCutoffMins, operatingDayRangeUtc } from '@/shared/time/operating-day'
 
 const querySchema = z.object({
   from: dateStr,
@@ -36,10 +37,19 @@ export async function GET(req: Request): Promise<Response> {
   const rl = await enforce('adminCrud', tenant.id)
   if (!rl.ok) return rateLimit429(rl)
 
-  const fromDate = new Date(`${from}T00:00:00.000Z`)
-  const toDate = new Date(`${to}T23:59:59.999Z`)
+  // `from`/`to` son días OPERATIVOS del complejo (los manda /analiticas), no
+  // fechas UTC. Antes se armaban con `T00:00:00.000Z` y `T23:59:59.999Z`, que
+  // en ART arranca y termina el rango tres horas corrido — el export incluía
+  // movimientos de la noche anterior y se perdía los de la última noche.
+  //
+  // El `.999Z` además era un cierre inclusivo que descartaba el último
+  // milisegundo: acá el rango es semi-abierto `[from, to+1)`, igual que en el
+  // resto del sistema.
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const fromDate = operatingDayRangeUtc(from, cutoffMins).fromUtc
+  const toDate = operatingDayRangeUtc(to, cutoffMins).toUtc
 
-  const rows = await getCashFlowsForExport(tenant.id, fromDate, toDate)
+  const rows = await getCashFlowsForExport(tenant.id, fromDate, toDate, cutoffMins)
   const csv = toCsv(rows as unknown as Record<string, unknown>[])
 
   return new Response(csv, {

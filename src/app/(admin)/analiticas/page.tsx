@@ -16,6 +16,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { MetricsDashboardLoader } from '@/app/(admin)/analiticas/MetricsDashboardLoader'
 import { getRevenueReport } from '@/modules/reports/report.service'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import {
   computeDelta,
   formatMethodLabel,
@@ -37,9 +38,16 @@ function signedArsContable(cents: number): ReactNode {
   return formatArsContable(cents)
 }
 
-function currentMonthStr(): string {
-  const now = new Date()
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+/**
+ * Mes actual EN DÍA OPERATIVO del complejo.
+ *
+ * Con `getUTCMonth()` —que es lo que había acá— a las 22:00 ART del último día
+ * del mes la página se abría mostrando el mes SIGUIENTE, vacío, como si el
+ * complejo no hubiera facturado nada. Justo en el horario en que el dueño mira
+ * el teléfono.
+ */
+function currentMonthStr(cutoffMins: number): string {
+  return operatingDateOf(new Date(), cutoffMins).slice(0, 7)
 }
 
 function isValidMonth(s: string): boolean {
@@ -50,7 +58,13 @@ function isValidMonth(s: string): boolean {
  * Dashboard de analíticas (/analiticas). Absorbe /metricas (arriba) + el
  * reporte mensual de /reportes (abajo, con navegación mes a mes y export CSV
  * acotado al mes seleccionado).
- * Zona sensible: va detrás del PinGate (ingresos visibles).
+ *
+ * Zona sensible (ingresos visibles): el acceso lo da `requireOperatorStaff` en
+ * el layout de (admin) — el comentario que decía "va detrás del PinGate" era
+ * falso, `PinGate` no existe en el repo (el sistema de PIN se eliminó con el
+ * modelo de 2 roles). Un comentario que promete una barrera inexistente es peor
+ * que no tener comentario.
+ *
  * El panel "Estado del sistema" se renderiza solo para superadministradores de la plataforma.
  */
 export default async function AnaliticasPage(props: {
@@ -66,28 +80,30 @@ export default async function AnaliticasPage(props: {
   const systemAdmin = await resolveSystemAdmin()
   const canSeeSystem = systemAdmin !== null
 
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const thisMonth = currentMonthStr(cutoffMins)
   const rawMonth = typeof searchParams.month === 'string' ? searchParams.month : ''
-  const month = isValidMonth(rawMonth) ? rawMonth : currentMonthStr()
+  const month = isValidMonth(rawMonth) ? rawMonth : thisMonth
   const prev = prevMonthStr(month)
   const next = nextMonthStr(month)
-  const { from, to } = getMonthBounds(month)
-  const { from: prevFrom, to: prevTo } = getMonthBounds(prev)
+  const bounds = getMonthBounds(month, cutoffMins)
 
   const report = await getRevenueReport(
     tenant.id,
-    from,
-    to,
+    month,
     tenant.openingHours,
-    prevFrom,
-    prevTo,
     tenant.closedDates,
+    tenant.closesNextDay,
   )
 
   const isEmpty = isReportEmpty(report)
 
-  // CSV covers [from, last day of month] inclusive — respeta el mes elegido.
-  const csvFrom = from.toISOString().split('T')[0]
-  const csvTo = new Date(to.getTime() - 86400000).toISOString().split('T')[0]
+  // El CSV cubre [primer día, último día] del mes, inclusive — en días
+  // operativos, que es lo que la ruta de export vuelve a convertir a instantes.
+  const csvFrom = bounds.fromDate
+  const csvTo = new Date(new Date(`${bounds.toDate}T12:00:00Z`).getTime() - 86400000)
+    .toISOString()
+    .slice(0, 10)
 
   const incomeDelta = report.prevPeriod ? computeDelta(report.income, report.prevPeriod.income) : null
   const balanceDelta = report.prevPeriod ? computeDelta(report.balance, report.prevPeriod.balance) : null
@@ -128,7 +144,7 @@ export default async function AnaliticasPage(props: {
               <input type="hidden" name="month" value={next} />
               <button
                 type="submit"
-                disabled={next > currentMonthStr()}
+                disabled={next > thisMonth}
                 className="rounded-md border border-border px-3 py-1.5 min-h-11 md:min-h-9 text-sm text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Mes siguiente"
               >

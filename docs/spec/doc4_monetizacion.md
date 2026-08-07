@@ -315,8 +315,8 @@ cargo_extra = (precio_día_nuevo - precio_día_viejo) * días_restantes
 ```
 Admin intenta bajar de Complejo (3-5 canchas) a Predio (1-2) pero tiene 4 canchas configuradas
       ↓
-Sistema: "Para cambiar al plan Predio necesitás tener máximo 3 canchas activas.
-Desactivá 1 cancha primero."
+Sistema: "Para cambiar al plan Predio necesitás tener máximo 2 canchas activas.
+Desactivá 2 canchas primero."
       ↓
 Si el dueño desactiva la cancha → puede hacer downgrade
       ↓
@@ -449,9 +449,9 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 > Los feature flags definen qué puede hacer cada plan.
 > Tienen que estar en la DB (no hardcodeados) para poder cambiarlos sin deployar.
 
-| Feature | Predio (1-3) | Complejo (4-6) | Estadio (7+) |
+| Feature | Predio (1-2) | Complejo (3-5) | Estadio (6+) |
 |---|:---:|:---:|:---:|
-| Cantidad máxima de canchas | 3 | 6 | Ilimitado |
+| Cantidad máxima de canchas | 2 | 5 | Ilimitado |
 | Historial de reservas | 6 meses | 12 meses | Ilimitado |
 | Reportes | ✅ Completos | ✅ Completos | ✅ Completos |
 | Exportación de datos | CSV | CSV + Excel | CSV + Excel |
@@ -461,7 +461,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 > [!NOTE]
 > **Regla de diseño de feature flags**: El sistema NUNCA muestra un error crudo cuando se supera un límite.
 > Siempre muestra un mensaje que explica el límite, la solución, y un CTA de upgrade claro.
-> Ejemplo: "Tu plan permite 3 canchas. Para agregar más, actualizá a Complejo →"
+> Ejemplo: "Tu plan permite 2 canchas. Para agregar más, actualizá a Complejo →"
 
 ---
 

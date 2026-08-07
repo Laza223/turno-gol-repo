@@ -5,6 +5,19 @@
 > **Propósito**: Definir con precisión clínica el problema antes de hablar de soluciones.
 > Si no sabemos exactamente qué problema resolvemos, no podemos definir qué es un bug y qué es un feature.
 
+> ⚠️ **Los montos de este documento son nominales en ARS y envejecen rápido.** Revisar cada 6 meses.
+>
+> **Actualizados el 2026-08-07** (ver `docs/planning/2026-08-07-analisis-rubro-y-decisiones.md` §1): las
+> cifras originales ($8.000 por turno, $500.000–$3.000.000/mes) estaban denominadas en pesos de un año
+> anterior y quedaron ~7× por debajo del mercado. El razonamiento del documento no dependía del precio
+> nominal y no cambia; los números sí.
+>
+> **Cómo se actualizaron, para que nadie les atribuya más precisión de la que tienen:** solo dos cifras
+> son observadas — el turno prime ($55.000, del plan de negocio, coincidente con los ~$60.000 que el
+> founder navegó en ATC) y la facturación mensual ($8M–$15M, del plan de negocio). **Todas las demás se
+> re-escalaron por el mismo factor 6,9×** derivado del turno. Son órdenes de magnitud coherentes, no
+> mediciones. La primera factura real de un complejo cliente las reemplaza a todas.
+
 ---
 
 ## 1. ¿Quién tiene el problema?
@@ -16,7 +29,7 @@ No "dueños de complejos deportivos". Sino:
 **Marcelo, 43 años. Dueño de un complejo de fútbol 5 en GBA o interior de Argentina.**
 
 - Tiene entre 3 y 8 canchas de fútbol (sintético, fútbol 5 o 7).
-- Factura entre $500.000 y $3.000.000 ARS/mes en turnos.
+- Factura entre $8.000.000 y $15.000.000 ARS/mes en turnos (3 canchas de F5 en GBA; actualizado 2026-08-07).
 - Tiene 1-2 empleados (recepcionista, encargado de turno).
 - El teléfono del complejo es su WhatsApp personal o del negocio.
 - Trabaja 10-14 horas por día.
@@ -48,7 +61,7 @@ No "dueños de complejos deportivos". Sino:
 **Cuantificado**:
 
 - Tiempo estimado en coordinación manual: **2-3 horas por día**
-- A $1.500/hora de costo de oportunidad = **$90.000-$135.000 ARS/mes perdido en tiempo**
+- A ~$10.000/hora de costo de oportunidad = **$600.000-$900.000 ARS/mes perdido en tiempo**
 
 ---
 
@@ -59,10 +72,10 @@ No "dueños de complejos deportivos". Sino:
 - El jugador reserva un turno por WhatsApp o de palabra, sin compromiso económico.
 - El día del partido, no aparece → la cancha queda vacía → es demasiado tarde para conseguir otro grupo.
 
-**Cuantificado** (complejo de 4 canchas, turno promedio $8.000 ARS):
+**Cuantificado** (complejo de 4 canchas, turno promedio $55.000 ARS en horario prime, 2026):
 
 - Tasa de no-show sin sistema: 15-25% de los turnos
-- Turnos perdidos/semana: 2-4 turnos → **$64.000-$128.000 ARS/mes en ingresos perdidos**
+- Turnos perdidos/semana: 2-4 turnos → **$440.000-$880.000 ARS/mes en ingresos perdidos**
 - Conclusión: **el no-show es el dolor de mayor impacto económico directo**
 
 ---
@@ -78,8 +91,8 @@ No "dueños de complejos deportivos". Sino:
 
 **Cuantificado**:
 
-- Complejo con 15 abonados x $28.000 ARS/mes = $420.000/mes en abonos
-- Mora estimada: **~$125.000 ARS "flotando" sin cobrar en un momento dado**
+- Complejo con 15 abonados x ~$195.000 ARS/mes = **~$2.900.000/mes en abonos**
+- Mora estimada: **~$860.000 ARS "flotando" sin cobrar en un momento dado**
 - Tiempo en gestión de cobro de abonados: **30-60 minutos/día** de recordatorios manuales
 
 ---

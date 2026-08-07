@@ -332,7 +332,7 @@ Le hablamos de:
 | Objeción | Respuesta |
 |---|---|
 | "No necesito un sistema, con el cuaderno me arreglo" | "¿Cuántos turnos perdiste este mes por cancelaciones? ¿Cuántos mensajes de WhatsApp contestaste hoy? Con TurnoGol recuperás esos turnos y esas horas." |
-| "Es muy caro" | "Un solo turno que no te cancelen por mes ya te paga el sistema. Si tu turno de F5 sale $55.000 y el sistema sale $30.000/mes, con que salves un turno ya saliste hecho." |
+| "Es muy caro" | "El plan Complejo sale $85.000 por mes. Tu turno prime sale $55.000: son **menos de dos turnos**. Sobre lo que facturás en el mes, es **menos del 1%**. La pregunta no es si es caro — es si te salva más de dos turnos por mes." <br><br>⚠️ **Precio actualizado 2026-08-07**: esta objeción citaba "$30.000/mes", un precio que no existe desde la migración 043. Los planes vigentes son $55.000 (Predio, 1-2 canchas) / $85.000 (Complejo, 3-5) / $115.000 (Estadio, 6+). Antes de usar este script, verificar contra `plans-data.ts`. |
 | "Yo no sé de computación" | "Nosotros te configuramos todo. Vos solo tenés que mirar el celular y ver los turnos del día. Es más fácil que WhatsApp." |
 | "Mis clientes no van a reservar online" | "Tus clientes ya compran en Mercado Libre, piden comida por Pedidos Ya, e Uber hasta para ir a la esquina. Pueden reservar una cancha desde el celular." |
 | "¿Y si quiero seguir anotando algunos turnos a mano?" | "Podés. El sistema te deja cargar turnos manuales además de los que llegan online. Es lo mejor de los dos mundos." |

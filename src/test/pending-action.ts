@@ -18,13 +18,28 @@
  * hacen solo porque la story colgada quedó ÚLTIMA en el archivo. Reordenar
  * exports los pone en rojo.
  *
- * Inventario al 2026-08-05 (`git grep -n "new Promise\(<[^>]*>\)\?(() => {})" -- "*.stories.tsx"`):
- * **15 archivos**, no 10 como decía este comentario. Migrados los que tienen
- * stories DESPUÉS de la colgada — el riesgo inmediato. Los que quedan tienen la
- * story colgada al final y son seguros HOY, no por diseño. Cuidado con
- * `StepIdentity.stories.tsx`, que declara una variable local llamada
- * `pendingAction` sin importar este helper: un grep por nombre lo cuenta como
- * migrado y no lo está.
+ * **El grep NO alcanza para decidir si un archivo hay que migrarlo** (aprendido
+ * el 2026-08-06 rompiendo uno). Esto solo aplica si el componente corre la
+ * acción dentro de una TRANSICIÓN de React. Verificar el componente primero:
+ *
+ * ```
+ * grep -cE "useTransition|useActionState|startTransition" <componente>.tsx
+ * ```
+ *
+ * Cuenta también `<form action={…}>` (React 19 lo corre en transición) y heredar
+ * la transición de un hijo — `impersonate-button` la recibe de `ConfirmDialog`.
+ * Si el componente usa un `useState` de `busy` y un `await` normal, NO hay
+ * transición: aplicar el helper ahí introduce una espera que el flujo real no
+ * tiene y la story muere por timeout (caso medido: `image-uploader.stories.tsx`,
+ * `Test timed out in 30000ms`).
+ *
+ * Inventario al 2026-08-06 (`git grep -lE "new Promise(<[^>]*>)?\(\(\) => \{\}\)" -- "*.stories.tsx"`):
+ * 12 archivos. Migrados los 4 que tienen transición Y stories después de la
+ * colgada. De los que quedan, los que tienen transición están colgados en su
+ * ÚLTIMA story (seguros por posición, no por diseño: reordenar exports los
+ * rompe) y el resto no tiene transición. Cuidado con `StepIdentity.stories.tsx`,
+ * que declara una variable local llamada `pendingAction` sin importar este
+ * helper: un grep por nombre lo cuenta como migrado y no lo está.
  *
  * Uso:
  * ```ts

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { SubmitButton } from './submit-button'
 
 /**
@@ -30,12 +31,14 @@ export const Default: Story = {
   ],
 }
 
-/** La acción nunca resuelve → `pending` queda fijo en true tras el submit. */
+const enviando = pendingAction<void>(undefined)
+
+/** La acción queda en vuelo → `pending` se mantiene en true tras el submit. */
 export const Enviando: Story = {
   args: { pendingLabel: 'Guardando…' },
   decorators: [
     (Story) => (
-      <form action={() => new Promise<void>(() => {})}>
+      <form action={enviando.action}>
         <Story />
       </form>
     ),
@@ -46,6 +49,9 @@ export const Enviando: Story = {
     const pending = await canvas.findByRole('button', { name: 'Guardando…' })
     await expect(pending).toBeDisabled()
     await expect(pending).toHaveAttribute('aria-busy', 'true')
+    // `<form action>` de React 19 corre la acción dentro de una transición: sin
+    // release queda viva y contamina la story siguiente (ver pendingAction).
+    await enviando.release(pending)
   },
 }
 

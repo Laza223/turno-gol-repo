@@ -1507,3 +1507,176 @@ pone rojo (probado agregando una y borrándola).
 - El número "Hoy: $X" persistente en la barra lateral (visión §3.3 / P2): exige una query de
   caja en el layout de todas las páginas admin.
 - 4 de 7 pestañas de Settings siguen con `<h1>Configuración</h1>` genérico (auditoría §7).
+
+---
+
+## Migración a `pendingAction` (2026-08-06, rama `fix/storybook-pending-action`)
+
+Lazar pidió cerrar la deuda de arriba. **La tabla de 6 archivos estaba armada por grep
+sintáctico, no por mecanismo: 2 de los 6 no tienen transición de React y no pueden contaminar
+nada.** Medido antes de tocar, no deducido:
+
+```
+$ grep -cE "useTransition|useActionState|startTransition" <componente>
+confirm-dialog.tsx      3      image-uploader.tsx        0
+BookingFormModal.tsx    3      submit-button.tsx         0 (pero useFormStatus → <form action>)
+```
+
+| Archivo | Mecanismo real | Resultado |
+|---|---|---|
+| `BookingFormModal.stories.tsx` | `useTransition` en el componente | ✅ migrado, 8/8 |
+| `confirm-dialog.stories.tsx` | `useTransition` en el componente | ✅ migrado, 7/7 |
+| `submit-button.stories.tsx` | `<form action>` de React 19 = transición | ✅ migrado, 3/3 |
+| `impersonate-button.stories.tsx` | hereda la transición de `ConfirmDialog` | ✅ migrado, 4/4 |
+| `image-uploader.stories.tsx` | **ninguno** — `busy` es `useState` puro | ❌ NO APLICA, revertido |
+| `DataExportButton.stories.tsx` | **ninguno** — `useState` + `spyOn(window,'fetch')` | ❌ NO APLICA, otra clase |
+
+**`image-uploader` no es una omisión: migrarlo ROMPE.** Aplicado el helper, `Subiendo` muere con
+`Test timed out in 30000ms`. El componente resuelve el upload con `setBusy(false)` en un `finally`
+de async normal — no hay transición que liberar, y el `release` introduce una espera que el flujo
+real no tiene. Revertido con `git checkout --` (paso 5 del protocolo de fixes), no dejado a medias.
+
+**`DataExportButton` tiene un riesgo REAL pero de otra clase**, anotado sin arreglar por estar
+fuera del alcance de esta tanda: su story `Cargando` hace
+`spyOn(window, 'fetch').mockImplementation(() => new Promise(() => {}))` **y nunca lo restaura**;
+`vitest.storybook.config.ts` no setea `restoreMocks`. Hoy no rompe por dos razones que no son
+diseño: `isolate` (default `true`) corta la fuga entre archivos, y las 2 stories siguientes traen
+su propio `parameters.fetchMock`, cuyo decorator `withFetch` pisa el spy al montar y lo restaura al
+desmontar. Si alguna de esas dos condiciones cambia, queda un `fetch` que nunca resuelve instalado
+para el resto de la corrida.
+
+**Lo que esta tanda NO prueba, dicho explícito:** los 4 archivos migrados **ya pasaban en verde
+antes** (baseline medido: 6 archivos / 35 tests ✅). El control negativo, entonces, salió verde: la
+contaminación por transición **no se manifiesta hoy** en ninguno de ellos. La migración es
+preventiva y alinea el repo con un patrón que ya existe — no cierra un rojo activo, y **no hay
+evidencia de que sea la causa de los 3 cuelgues de `Stories (BLOCKING)`**. Esa hipótesis sigue sin
+confirmar ni descartar.
+
+**Inventario residual (el grep sigue dando 12 archivos, no 6):** `StepCourts.stories.tsx:105` y
+`StepPayments.stories.tsx:92` conservan el patrón en su ÚLTIMA story (migraron solo la del medio en
+el Bloque 1); `ConfirmBookingButton` igual; los 2 `*-layout-shell` mantienen `NEVER_RESOLVES` en
+`meta.args`. Todos seguros por posición, ninguno por diseño.
+
+**Gate:** `pnpm typecheck` ✅ · `pnpm lint` 0 errores / 44 warnings (mismo baseline que Fase 2 y 3)
+✅ · `pnpm test:storybook` suite completa **258/258 archivos, 1026/1026 tests, 3m22s** ✅.
+
+**Pendiente para reactivar el required check:** hacen falta 3 corridas de CI seguidas del job
+`Stories` sin colgarse. El check sigue fuera de los required de `main` hasta tenerlas.
+(GitHub Actions estuvo en `major_outage` desde el 2026-08-06T15:22 UTC sin crear runs; se recuperó
+el 2026-08-07 ~03:20 UTC y ahí arrancó la medición.)
+
+**Mediciones de `Stories (BLOCKING)` tras la recuperación:**
+
+| # | PR | sha | ¿tiene la migración? | Resultado |
+|---|---|---|---|---|
+| 1 | #113 | `4f3b18f` | sí | ✅ pass |
+| 2 | #112 | `afe34b0` | **no** | ✅ pass |
+
+La #2 importa más que la #1: `afe34b0` **no** lleva la migración a `pendingAction` y el job pasó
+igual. Es evidencia directa contra la hipótesis de que las transiciones sin cerrar causaban los
+cuelgues — no la refuta sola (3 cuelgues sobre N corridas puede ser intermitente), pero mueve el
+sospechoso al fondo de la lista.
+
+### Colateral: `pnpm audit --prod` rojo por una CVE publicada el mismo día
+
+Al re-disparar el CI del PR #112 tras la recuperación de Actions, el workflow `security` falló en
+`pnpm audit --prod --audit-level=high`. **No lo introdujo ningún PR**: el run de `main` del
+2026-08-06T09:39 pasó en verde con el mismo lockfile — la CVE se publicó entre medio.
+
+`CVE-2026-59870` (GHSA-5p4m-2wfm-xmqj, high): consumo cuadrático de CPU resolviendo `!!omap` en
+`js-yaml`. Llega como `gray-matter@4.0.3 > js-yaml@3.15.0`; parcheado en `3.15.1`.
+
+Exposición real acotada: `gray-matter` tiene **un solo consumidor**, `src/lib/content/posts.ts:3`,
+que parsea el frontmatter de los posts del blog — archivos versionados en el repo, no entrada de
+usuario. Explotarlo exigiría commitear un `.md` malicioso.
+
+**Fix:** `js-yaml@<3.15.1: "^3.15.1"` en `pnpm.overrides` (mismo patrón que los `cookie@<0.7.0` /
+`postcss@<8.5.10` que ya estaban). El selector con rango deja intacto el `js-yaml@4.3.0` de eslint.
+Verificado: `gray-matter > js-yaml@3.15.1` y `pnpm audit --prod --audit-level=high` sin hallazgos
+(queda 1 moderate, bajo el umbral del gate). `pnpm typecheck` ✅.
+
+---
+
+## `home-service` fallaba los viernes y sábados, no al azar (2026-08-07)
+
+`Integration & Isolation (BLOCKING)` se puso rojo en el PR #112 con **un solo test caído de 1023**:
+`home-service.test.ts > "occupancy cuenta el turno confirmado de hoy"` →
+`expected 0 to be greater than 0`. El PR no toca `home/`, `occupancy` ni ese archivo — el fallo era
+preexistente y **dependía del día de la semana**.
+
+Medido con código ejecutado (`daySlotsFor` sobre una semana entera, sin DB):
+
+```
+lun 16 | mar 16 | mie 16 | jue 16 | vie 0 | sab 0 | dom 14
+```
+
+**La cadena.** El fixture `DEFAULT_OPENING_HOURS` copiaba el default crudo de la migración 003, que
+pone `fri`/`sat` cerrando a la `01:00`. Pero `hoyOpts` pasa `closesNextDay: false` (el default de la
+migr. 035), y sin ese flag un cierre post-medianoche es un rango inválido: `generateTimeSlots`
+arranca su loop con `480 < 60` y devuelve `[]`. Con `slotsCount = 0`, `occupancyForDay` calcula
+`available = Math.max(0, 0 * courts - 0) = 0` y la assertion revienta. Los otros 5 días pasan porque
+`close: '00:00'` cae en el `if (close === 0) return END_OF_DAY_MINS` de `effectiveCloseMins`.
+
+**No era un bug de producción, y se verificó antes de alarmar.** Ningún tenant real está en ese
+estado: `sanitizeWizardHours` (`src/app/onboarding/wizard-hours.ts`) baja esos cierres a `00:00`
+durante el onboarding, y su comentario nombra el problema exacto — *"una madrugada sin flag = 0
+celdas → día sin precio silencioso"*. El fixture ahora refleja lo que el wizard produce, que es lo
+que el suite debe simular.
+
+**Barrido de clase, en dos pasos:**
+
+1. *Cierre de madrugada en tests* — 6 archivos más (`canteen-report-operating-day`,
+   `booking-physical-overlap`, `cashflow-operating-day`, `home-service-operating-day`,
+   `metrics-operating-day`, `caja-actions-role-guard`). **Los 6 pasan `closesNextDay: true`; ninguno
+   pasa `false`.**
+2. *Fecha real del sistema en vez de fija* — 7 archivos usan `artDateOf(new Date())`. De los otros 6,
+   **ninguno** referencia `openingHours` / `daySlotsFor` / `occupancy`: usan la fecha real para
+   movimientos de caja, stock y cierres, que no generan slots.
+
+`home-service.test.ts` era la única instancia de la clase completa (fecha real + slots + horario de
+madrugada sin flag). Fix en `afe34b0`, ya en `main` vía PR #112.
+
+**Verificado:** con el fixture corregido los 7 días generan slots (vie 16, sáb 15) · `pnpm typecheck`
+✅ · `Integration & Isolation (BLOCKING)` pasó a verde en el PR #112.
+
+---
+
+## Baselines visuales de la grilla, desactualizadas por la Fase 4 (2026-08-07)
+
+`Regresión visual (ADVISORY)` quedó rojo en `main` tras mergear el PR #112: la Fase 4 cambió la UI
+del admin y nadie regeneró las fotos de referencia (el #112 no toca un solo `.png` — verificado con
+`git diff --name-only`). Como el job es `continue-on-error` a nivel job, se mergeó sin que el rojo
+frenara nada.
+
+**Alcance real: 2 de 9, no las 8 baselines** (7 passed). Leer el log fue necesario justamente por el
+`continue-on-error` — `gh run view --log-failed` devuelve VACÍO en un job así, hay que pedir el log
+completo (misma trampa que [[continue-on-error-step-podrido-en-silencio]]):
+
+| Baseline | Píxeles distintos | Ratio |
+|---|---|---|
+| `admin-grilla.png` | 13.466 | 0.02 |
+| `admin-grilla-mobile.png` | 16.841 | 0.06 |
+
+**Los ratios engañan y casi me hacen buscar un bug que no existía.** La grilla mobile pasó de matriz
+a lista por hora con swipe — un rediseño completo — y aun así mueve solo el 6% de los píxeles,
+porque el ratio se calcula sobre la imagen entera y ambos layouts comparten el fondo claro. Un ratio
+bajo NO significa "cambio menor".
+
+**Verificado mirando las imágenes, no deduciendo.** Descargadas del artifact del run 31146421146:
+
+- *mobile*: hamburguesa → logo; aparecen pestañas Calendario/Lista, chips Todas/Cancha y la lista
+  por hora (`08:00–09:00` + botón por cancha); la leyenda al pie se reemplaza por `AdminBottomNav`
+  (Hoy · Grilla · Caja · Más).
+- *desktop*: el contenido baja ~53px por las pestañas nuevas, y el sidebar muestra el renombrado de
+  la Fase 4 (Métricas→Analíticas, Turnos fijos→Clientes, Caja y Cantina→Caja) — 6 espacios con
+  Configuración separada al pie.
+
+Cada diferencia corresponde 1:1 al mapa de navegación documentado arriba. **Cero cambios visuales
+inesperados**, así que las capturas nuevas son la referencia correcta.
+
+**Cómo se regeneró, sin infra nueva:** los `-actual.png` del artifact los generó el propio CI en
+Linux (las baselines viven en `__screenshots__/{project}/linux/`, imposibles de regenerar desde
+Windows) y Playwright los marcó `captured a stable screenshot` — dos capturas seguidas idénticas.
+Se copiaron sobre las baselines. Alternativa descartada por desproporcionada: montar un workflow con
+`--update-snapshots=all` (que además es la única forma válida: sin `=all` el preset `changed` da
+verde sin reescribir, ver [[playwright-update-snapshots-preset-changed]]).

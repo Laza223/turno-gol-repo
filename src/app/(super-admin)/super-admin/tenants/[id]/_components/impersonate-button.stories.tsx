@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { ImpersonateButton } from './impersonate-button'
 
 /**
@@ -48,8 +49,10 @@ export const Idle: Story = {
  * auditoría 2026-08-01 §4.7/§8) y dispara la action — que nunca "vuelve" en
  * éxito real (redirige del lado del servidor).
  */
+const confirmaYEntra = pendingAction({ success: true as const })
+
 export const ConfirmaYEntra: Story = {
-  args: { action: fn(async () => new Promise<never>(() => {})) },
+  args: { action: fn(confirmaYEntra.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /entrar como este complejo/i }))
@@ -57,6 +60,11 @@ export const ConfirmaYEntra: Story = {
     await body.findByRole('heading', { name: /entrar como "complejo fénix"/i })
     await userEvent.click(body.getByRole('button', { name: 'Entrar' }))
     await expect(await body.findByRole('button', { name: 'Procesando…' })).toBeDisabled()
+    // ConfirmDialog corre `onConfirm` dentro de una transición: sin release
+    // queda viva y contamina las 2 stories siguientes (ver pendingAction).
+    // Se libera con success — el diálogo cierra, que es la evidencia del commit.
+    await confirmaYEntra.release()
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }
 

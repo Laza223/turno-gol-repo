@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import { booking } from '@/test/fixtures/booking'
+import { pendingAction } from '@/test/pending-action'
 import { BookingFormModal, type CreateBookingAction } from './BookingFormModal'
 
 // BookingActionResult vive en '@/app/(admin)/reservas/actions' ('use server'):
@@ -130,16 +131,26 @@ export const BloqueoInterno: Story = {
   },
 }
 
+const guardando = pendingAction<BookingActionResult>({
+  success: true as const,
+  booking: booking(),
+})
+
 export const Guardando: Story = {
   name: 'isPending=true — botón "Guardando…" con spinner',
   args: {
-    // La action nunca resuelve dentro de la story: fija el estado de carga.
-    action: fn(() => new Promise<BookingActionResult>(() => {})),
+    // La action queda en vuelo para fijar el estado de carga, y el play la
+    // libera al final.
+    action: fn(guardando.action),
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
-    await expect(await body.findByRole('button', { name: 'Guardando…' })).toBeDisabled()
+    const guardandoBtn = await body.findByRole('button', { name: 'Guardando…' })
+    await expect(guardandoBtn).toBeDisabled()
+    // Sin release la transición queda viva y contamina las 4 stories siguientes
+    // del archivo (ver el docstring de pendingAction).
+    await guardando.release(guardandoBtn)
   },
 }
 

@@ -1562,8 +1562,20 @@ el Bloque 1); `ConfirmBookingButton` igual; los 2 `*-layout-shell` mantienen `NE
 
 **Pendiente para reactivar el required check:** hacen falta 3 corridas de CI seguidas del job
 `Stories` sin colgarse. El check sigue fuera de los required de `main` hasta tenerlas.
-(Al momento de escribir esto GitHub Actions estaba en `major_outage` desde el 2026-08-06T15:22 UTC
-y no creaba runs; se recuperó el 2026-08-07 ~03:20 UTC y la medición arranca con esta rama.)
+(GitHub Actions estuvo en `major_outage` desde el 2026-08-06T15:22 UTC sin crear runs; se recuperó
+el 2026-08-07 ~03:20 UTC y ahí arrancó la medición.)
+
+**Mediciones de `Stories (BLOCKING)` tras la recuperación:**
+
+| # | PR | sha | ¿tiene la migración? | Resultado |
+|---|---|---|---|---|
+| 1 | #113 | `4f3b18f` | sí | ✅ pass |
+| 2 | #112 | `afe34b0` | **no** | ✅ pass |
+
+La #2 importa más que la #1: `afe34b0` **no** lleva la migración a `pendingAction` y el job pasó
+igual. Es evidencia directa contra la hipótesis de que las transiciones sin cerrar causaban los
+cuelgues — no la refuta sola (3 cuelgues sobre N corridas puede ser intermitente), pero mueve el
+sospechoso al fondo de la lista.
 
 ### Colateral: `pnpm audit --prod` rojo por una CVE publicada el mismo día
 
@@ -1582,3 +1594,47 @@ usuario. Explotarlo exigiría commitear un `.md` malicioso.
 `postcss@<8.5.10` que ya estaban). El selector con rango deja intacto el `js-yaml@4.3.0` de eslint.
 Verificado: `gray-matter > js-yaml@3.15.1` y `pnpm audit --prod --audit-level=high` sin hallazgos
 (queda 1 moderate, bajo el umbral del gate). `pnpm typecheck` ✅.
+
+---
+
+## `home-service` fallaba los viernes y sábados, no al azar (2026-08-07)
+
+`Integration & Isolation (BLOCKING)` se puso rojo en el PR #112 con **un solo test caído de 1023**:
+`home-service.test.ts > "occupancy cuenta el turno confirmado de hoy"` →
+`expected 0 to be greater than 0`. El PR no toca `home/`, `occupancy` ni ese archivo — el fallo era
+preexistente y **dependía del día de la semana**.
+
+Medido con código ejecutado (`daySlotsFor` sobre una semana entera, sin DB):
+
+```
+lun 16 | mar 16 | mie 16 | jue 16 | vie 0 | sab 0 | dom 14
+```
+
+**La cadena.** El fixture `DEFAULT_OPENING_HOURS` copiaba el default crudo de la migración 003, que
+pone `fri`/`sat` cerrando a la `01:00`. Pero `hoyOpts` pasa `closesNextDay: false` (el default de la
+migr. 035), y sin ese flag un cierre post-medianoche es un rango inválido: `generateTimeSlots`
+arranca su loop con `480 < 60` y devuelve `[]`. Con `slotsCount = 0`, `occupancyForDay` calcula
+`available = Math.max(0, 0 * courts - 0) = 0` y la assertion revienta. Los otros 5 días pasan porque
+`close: '00:00'` cae en el `if (close === 0) return END_OF_DAY_MINS` de `effectiveCloseMins`.
+
+**No era un bug de producción, y se verificó antes de alarmar.** Ningún tenant real está en ese
+estado: `sanitizeWizardHours` (`src/app/onboarding/wizard-hours.ts`) baja esos cierres a `00:00`
+durante el onboarding, y su comentario nombra el problema exacto — *"una madrugada sin flag = 0
+celdas → día sin precio silencioso"*. El fixture ahora refleja lo que el wizard produce, que es lo
+que el suite debe simular.
+
+**Barrido de clase, en dos pasos:**
+
+1. *Cierre de madrugada en tests* — 6 archivos más (`canteen-report-operating-day`,
+   `booking-physical-overlap`, `cashflow-operating-day`, `home-service-operating-day`,
+   `metrics-operating-day`, `caja-actions-role-guard`). **Los 6 pasan `closesNextDay: true`; ninguno
+   pasa `false`.**
+2. *Fecha real del sistema en vez de fija* — 7 archivos usan `artDateOf(new Date())`. De los otros 6,
+   **ninguno** referencia `openingHours` / `daySlotsFor` / `occupancy`: usan la fecha real para
+   movimientos de caja, stock y cierres, que no generan slots.
+
+`home-service.test.ts` era la única instancia de la clase completa (fecha real + slots + horario de
+madrugada sin flag). Fix en `afe34b0`, ya en `main` vía PR #112.
+
+**Verificado:** con el fixture corregido los 7 días generan slots (vie 16, sáb 15) · `pnpm typecheck`
+✅ · `Integration & Isolation (BLOCKING)` pasó a verde en el PR #112.

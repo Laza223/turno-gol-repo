@@ -67,7 +67,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   }),
 }))
 
-import { inviteStaffAction } from '@/app/(admin)/staff/actions'
+import { inviteStaffAction } from '@/app/(admin)/settings/equipo/actions'
 
 function makeForm(email = 'new@x.com'): FormData {
   const f = new FormData()
@@ -134,5 +134,5 @@ describe('inviteStaffAction — canceled ya NO bloquea la gestión de equipo (EN
 // cambio de comportamiento (canceled deja de bloquear) vía inviteStaffAction
 // arriba prueba la función real que gatea a las 4. deactivateStaffAction
 // mismo, con mock shallow de withTenantContext, en el archivo co-localizado
-// `src/app/(admin)/staff/actions.test.ts` (histórico, no corre en CI —
+// `src/app/(admin)/settings/equipo/actions.test.ts` (histórico, no corre en CI —
 // `pnpm test` es `vitest run --dir tests/unit`).

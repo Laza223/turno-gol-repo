@@ -174,7 +174,7 @@ export type SplitCharge = { amount: number; method: CreateCashFlowInput['method'
  * con método mixto" (D2, criterio de salida #3 de Fase 1: docs/planning/
  * 2026-08-01-decisiones-de-fase-v2.md §3). Cada línea es idempotente por
  * separado (`${clientIdempotencyKey}-${i}`), mismo criterio que ya usaba
- * chargeDebtAction (deudas/actions.ts) a mano antes de esta extracción.
+ * chargeDebtAction (caja/deudas/actions.ts) a mano antes de esta extracción.
  *
  * A propósito NO valida el total contra "lo pendiente": esa regla difiere
  * por entidad (un booking admite pago parcial, un fiado de cantina exige el

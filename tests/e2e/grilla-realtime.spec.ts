@@ -254,11 +254,15 @@ test.describe('grilla — mobile usable (375px)', () => {
           timeout: 15_000,
         })
 
-        // Touch target: free interactive slots must be ≥44px tall.
-        // Grid rows are 3.25rem (52px) comfortable / 2.75rem (44px) compact
-        // (pages/grilla.md §4) — both satisfy the 44px minimum.
-        // The aria-label is `Reservar turno ${timeStart} en ${courtName}` — first one.
-        const cell = page.getByRole('button', { name: /Reservar turno/i }).first()
+        // Fase 4: a 375px la matriz NO se renderiza — la reemplaza la lista por
+        // hora con swipe entre canchas (`booking-day-list`). Sus slots libres
+        // se llaman `Reservar ${hora} en ${cancha}`, SIN la palabra "turno":
+        // ese es el desambiguador contra los labels de la matriz.
+        await expect(page.getByTestId('booking-day-list')).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByTestId('booking-grid')).toHaveCount(0)
+
+        // Touch target: los slots libres de la lista miden ≥44px (min-h-14).
+        const cell = page.getByRole('button', { name: /^Reservar \d{2}:\d{2} en /i }).first()
         await expect(cell).toBeVisible({ timeout: 10_000 })
         const box = await cell.boundingBox()
         expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)

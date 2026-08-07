@@ -13,7 +13,7 @@ import { suppressPushPrompt } from '../_qa/session'
 /**
  * TG-HP-221 — Métricas (sesión ADMIN, ve negocio + sistema).
  * `/metricas` fue reubicado a `/analiticas` (redirect permanente,
- * src/app/(admin)/metricas/page.tsx es ahora solo el stub de redirect) — el
+ * src/app/(admin)/analiticas/page.tsx es ahora solo el stub de redirect) — el
  * contenido real (MetricsDashboard) se embebe ahí vía MetricsDashboardLoader.
  * Rol: Admin — el panel "Estado del sistema" está reservado únicamente para SuperAdmin
  * de plataforma (`resolveSystemAdmin`, `analiticas/page.tsx`), por lo que un admin estándar no lo ve.
@@ -24,8 +24,8 @@ import { suppressPushPrompt } from '../_qa/session'
  * `completed` + 1 cash_flow `income` con fecha/hora de HOY en ART) para no
  * depender de residuos de otros specs de la corrida QA.
  * Evidence anchors: src/app/(admin)/analiticas/page.tsx,
- *   src/app/(admin)/metricas/MetricsDashboardLoader.tsx,
- *   src/app/(admin)/metricas/MetricsDashboard.tsx:231-349,
+ *   src/app/(admin)/analiticas/MetricsDashboardLoader.tsx,
+ *   src/app/(admin)/analiticas/MetricsDashboard.tsx:231-349,
  *   src/app/api/admin/metrics/route.ts:1-28,
  *   src/modules/metrics/metrics.service.ts:115-278.
  */
@@ -88,7 +88,7 @@ test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
 
       // ── UI: header + subtítulo (/analiticas, destino real de /metricas) ──
       await page.goto('/analiticas')
-      await expect(page.getByRole('heading', { name: 'Analíticas', level: 1 })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Métricas', level: 1 })).toBeVisible({
         timeout: 15_000,
       })
       await expect(

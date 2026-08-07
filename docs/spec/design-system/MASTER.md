@@ -402,9 +402,10 @@ Mapeo de estados → §2.6. El texto del badge usa el vocabulario canónico de �
 
 ### 6.8 Navegación
 
-- **Admin**: sidebar 240px (`--sidebar-width`), ítems con ícono+label, activo = pill emerald sutil + barra izquierda. Orden por frecuencia de uso (serial position): Inicio, Grilla, Reservas… Configuración al final. Ítems bloqueados por rol (manager) muestran candado + tooltip "Solo el dueño" (§7.4) — no desaparecen (el encargado entiende el sistema completo).
+- **Admin (desde Fase 4)**: sidebar 240px (`--sidebar-width`) con los **6 espacios** en orden de frecuencia real de uso (serial position) — **Hoy · Grilla · Caja · Clientes · Torneos · Métricas** — y **Configuración separada al pie**, fuera del flujo diario. Ítems con ícono+label, activo = pill emerald sutil + barra izquierda. Un espacio NO es una ruta sino un conjunto de ellas: `/reservas` enciende Grilla (es su pestaña Lista) y `/abonados` enciende Clientes (su pestaña Turnos fijos), vía el `match` de cada ítem. Cada espacio resuelve su estructura interna con pestañas (`ScrollTabs`), nunca con submenús desplegables.
+- Ítems bloqueados por rol (manager) muestran candado + tooltip "Solo el dueño" (§7.4) — no desaparecen (el encargado entiende el sistema completo). Excepción: **Hoy** sí se oculta para el manager, porque por D5 esa pantalla no existe para él; no es un permiso denegado sino una vista que no le corresponde.
 - **Player**: `PortalHeader` sticky session-aware + `PlayerBottomNav` (Explorar/Reservas/Cuenta) fijo en mobile con `pb-[env(safe-area-inset-bottom)]`. Especificado en `pages/player-area.md` (vigente).
-- Mobile admin: sidebar → drawer; el título de página siempre visible al abrir una vista.
+- **Mobile admin (desde Fase 4)**: barra inferior fija de 4 accesos (`AdminBottomNav`), no hamburguesa — el pulgar llega a todo (Fitts). Los tres directos son los tres primeros espacios visibles del rol (dueño: Hoy·Grilla·Caja; encargado: Grilla·Caja·Clientes) y el cuarto es **Más**, que abre el mismo drawer (`Sheet`) con los 6 espacios completos. El contenido reserva su alto con `pb-[calc(3.5rem+env(safe-area-inset-bottom))]`. El título de página siempre visible al abrir una vista.
 
 ---
 

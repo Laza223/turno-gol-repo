@@ -20,7 +20,6 @@ const meta = {
   ],
   args: {
     userEmail: 'marcelo@complejofenix.com.ar',
-    onMobileMenuToggle: fn(),
     onSignOut: fn(),
   },
 } satisfies Meta<typeof AdminHeader>
@@ -34,12 +33,21 @@ export const UserEmailLargo: Story = {
   args: { userEmail: 'julieta.dominguez.belgrano@complejofenix.com.ar' },
 }
 
-export const AbreMenuMobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile-primary' } },
-  play: async ({ canvasElement, args }) => {
+/**
+ * Fase 4: en mobile ya no hay hamburguesa (la navegación primaria es
+ * `AdminBottomNav`). Lo que queda a la izquierda es la marca, linkeando al
+ * espacio "casa" del rol.
+ */
+export const MarcaEnMobile: Story = {
+  parameters: {
+    viewport: { defaultViewport: 'mobile-primary' },
+    nextjs: { appDirectory: true },
+  },
+  args: { homeHref: '/dashboard' },
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Abrir menú' }))
-    await expect(args.onMobileMenuToggle).toHaveBeenCalledOnce()
+    await expect(canvas.queryByRole('button', { name: 'Abrir menú' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('link')).toHaveAttribute('href', '/dashboard')
   },
 }
 

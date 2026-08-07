@@ -207,7 +207,7 @@ export function TicketPanel({
                     type="button"
                     onClick={() => handleAdd(p)}
                     disabled={out || isPending}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-all hover:border-emerald-500 hover:bg-accent disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-all hover:border-emerald-500 hover:bg-accent disabled:opacity-50 md:min-h-9"
                   >
                     <span>{p.name}</span>
                     <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
@@ -226,7 +226,7 @@ export function TicketPanel({
         )}
 
         {/* Grilla completa por categorías */}
-        <div className="space-y-2 pt-2 border-t border-border">
+        <div className="space-y-2 pt-2 border-t border-border" data-testid="canteen-catalog">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Catálogo completo
           </div>

@@ -4,6 +4,12 @@
  * quedaría shadowed: Next resuelve la ruta estática antes que (public)/[slug]
  * y su página pública sería inalcanzable. Mantener en sync al agregar rutas
  * top-level en src/app. Incluye `c` por el prefijo de link público /c/{slug}.
+ *
+ * "Mantener en sync a mano" no funcionó: al auditarla en Fase 4 le faltaban
+ * TRES segmentos que existían hacía rato (`analiticas`, `deudas`, `reactivar`).
+ * Ahora la sincronía la verifica `tests/unit/reserved-slugs.test.ts`, que lee
+ * el árbol de `src/app`: agregar una ruta top-level sin reservarla pone ese
+ * test en rojo, en vez de esperar a que un complejo se llame así.
  */
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // raíz
@@ -19,9 +25,11 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // (admin)
   'abonados',
   'actions',
+  'analiticas',
   'caja',
   'canchas',
   'dashboard',
+  'deudas',
   'grilla',
   'jugadores',
   'metricas',
@@ -51,6 +59,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // (public)
   'explorar',
   'privacidad',
+  'reactivar',
   'suspended',
   'terminos',
   // (super-admin)

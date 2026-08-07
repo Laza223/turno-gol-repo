@@ -6,7 +6,7 @@ vi.mock('@/hooks/use-toast', () => ({
   toast: vi.fn(),
 }))
 
-import { StaffActions } from '@/app/(admin)/staff/StaffActions'
+import { StaffActions } from '@/app/(admin)/settings/equipo/StaffActions'
 import { toast } from '@/hooks/use-toast'
 
 const ACTIVE_MEMBER = {

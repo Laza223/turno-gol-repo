@@ -140,26 +140,68 @@ test.describe('Admin mobile smoke', () => {
     await ctx.close()
   })
 
-  test('admin hamburger menu visible on mobile', async ({ browser, adminStorageState }) => {
+  // Fase 4: la navegación primaria de mobile es la barra inferior de 4 accesos
+  // (visión v2 §3.3, "nada de hamburguesa como acceso primario"). La
+  // hamburguesa del header ya no existe: su lugar lo ocupa "Más", que abre el
+  // mismo drawer con los 6 espacios.
+  test('bottom nav: 3 accesos directos + Más abre el drawer', async ({ browser, adminStorageState }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
     await page.goto('/grilla', { waitUntil: 'domcontentloaded' })
 
-    const hamburger = page.getByRole('button', { name: /menú/i })
-    await expect(hamburger).toBeVisible()
+    await expect(page.getByRole('button', { name: /abrir menú/i })).toHaveCount(0)
 
-    const box = await hamburger.boundingBox()
+    const bottomNav = page.getByRole('navigation', { name: 'Navegación del panel' })
+    await expect(bottomNav.getByRole('link', { name: 'Grilla' })).toBeVisible()
+    await expect(bottomNav.getByRole('link', { name: 'Caja' })).toBeVisible()
+
+    const mas = bottomNav.getByRole('button', { name: 'Más' })
+    await expect(mas).toBeVisible()
+    const box = await mas.boundingBox()
     expect(box).not.toBeNull()
     expect(box!.height).toBeGreaterThanOrEqual(44)
     expect(box!.width).toBeGreaterThanOrEqual(44)
 
-    // El drawer es un Sheet Radix (dialog): abre con nav completa y cierra con Esc.
-    await hamburger.click()
+    // El drawer sigue siendo un Sheet Radix (dialog): abre con la nav completa
+    // y cierra con Esc.
+    await mas.click()
     const drawer = page.getByRole('dialog')
     await expect(drawer).toBeVisible()
-    await expect(drawer.getByRole('link', { name: 'Caja y Cantina' })).toBeVisible()
+    await expect(drawer.getByRole('link', { name: 'Caja' })).toBeVisible()
+    await expect(drawer.getByRole('link', { name: 'Clientes' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(drawer).toBeHidden()
+
+    await ctx.close()
+  })
+
+  // Criterio de salida #2 de Fase 4: la matriz no se renderiza en mobile.
+  test('grilla mobile: lista por hora con swipe entre canchas, sin matriz', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
+    const page = await ctx.newPage()
+    await page.goto('/grilla', { waitUntil: 'networkidle' })
+
+    await expect(page.getByTestId('booking-day-list')).toBeVisible()
+    await expect(page.getByTestId('booking-grid')).toHaveCount(0)
+
+    // La primera página responde "¿qué cancha tengo libre a tal hora?".
+    const selector = page.getByRole('group', { name: 'Elegir cancha' })
+    await expect(selector.getByRole('button', { name: 'Todas' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    // Saltar a una cancha: las píldoras son selector e indicador a la vez.
+    const primeraCancha = selector.getByRole('button').nth(1)
+    await primeraCancha.click()
+    await expect(primeraCancha).toHaveAttribute('aria-pressed', 'true')
+    await expect(selector.getByRole('button', { name: 'Todas' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
 
     await ctx.close()
   })
@@ -197,7 +239,12 @@ test.describe('Admin mobile smoke', () => {
       }
 
       // Botón de producto ≥44x44 (el admin vende parado en la barra, desde el celular).
-      const product = page.getByRole('button', { name: /^Agua/ }).first()
+      // Apunta al catálogo completo, no a .first(): con ventas previas, "Recientes"
+      // aparece antes en el DOM y .first() mediría ese chip en vez del botón del catálogo.
+      const product = page
+        .getByTestId('canteen-catalog')
+        .getByRole('button', { name: /^Agua/ })
+        .first()
       await expect(product).toBeVisible()
       await measure(product, 'producto Agua')
 

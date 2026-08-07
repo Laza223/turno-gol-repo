@@ -1,33 +1,16 @@
 import { redirect } from 'next/navigation'
-import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { withTenantContext } from '@/shared/db/client'
-import { getDebts } from '../../deudas/queries'
-import { DebtListClient } from '../../deudas/DebtListClient'
-import { JugadoresTabs } from '../JugadoresTabs'
-import { Contact } from 'lucide-react'
 
-export default async function JugadoresDeudasPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
-
-  const debts = await withTenantContext(tenant.id, (tx) => getDebts(tenant.id, tx))
-
-  return (
-    <div className="p-6 space-y-6">
-      <PageHeader
-        title="Jugadores"
-        subtitle="Gestión de deudas y saldos pendientes por cobrar."
-        icon={<Contact className="h-6 w-6" aria-hidden="true" />}
-      />
-
-      <JugadoresTabs active="/jugadores/deudas" />
-
-      <DebtListClient debts={debts} />
-    </div>
-  )
+/**
+ * Compat de links viejos. La lista de deuda es UNA sola desde Fase 1:
+ * "Plata en la calle" (`/caja/deudas`), que suma los tres orígenes —
+ * turnos sin cobrar, fiados de cantina y cuotas de torneo.
+ *
+ * Esta pantalla mostraba sólo el primero (`getDebts`), que `getStreetMoney`
+ * ya llama por dentro: era un subconjunto estricto con su propio total, o sea
+ * dos números para el mismo hecho económico (viola P2, "una verdad, muchas
+ * vistas"). Fase 4 la cierra. Sancionar a un moroso vive en la ficha del
+ * jugador, a la que ahora linkea cada fila de "Plata en la calle".
+ */
+export default function JugadoresDeudasPage() {
+  redirect('/caja/deudas')
 }

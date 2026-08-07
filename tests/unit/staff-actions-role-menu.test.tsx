@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 
-import { StaffActions } from '@/app/(admin)/staff/StaffActions'
+import { StaffActions } from '@/app/(admin)/settings/equipo/StaffActions'
 
 afterEach(() => {
   cleanup()

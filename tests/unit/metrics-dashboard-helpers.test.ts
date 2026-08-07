@@ -5,7 +5,7 @@ import {
   mondayOf,
   noShowTrend,
   relativeTimeEs,
-} from '@/app/(admin)/metricas/dashboard-helpers'
+} from '@/app/(admin)/analiticas/dashboard-helpers'
 import type { NoShowMetric } from '@/modules/metrics/metrics.service'
 
 function metric(noShow: number, completed: number): NoShowMetric {

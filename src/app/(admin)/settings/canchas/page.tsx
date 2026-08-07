@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
-import { CourtList } from '@/app/(admin)/canchas/components/CourtList'
+import { CourtList } from '@/app/(admin)/settings/canchas/components/CourtList'
 import {
   createCourtAction,
   updateCourtAction,
@@ -11,7 +11,7 @@ import {
   uploadCourtPhotoAction,
   removeCourtPhotoAction,
   reorderCourtPhotosAction,
-} from '@/app/(admin)/canchas/actions'
+} from '@/app/(admin)/settings/canchas/actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function SettingsCanchasPage() {

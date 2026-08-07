@@ -1,12 +1,12 @@
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { listStaffRoster } from '@/modules/staff/staff.service'
-import { StaffRosterView } from '@/app/(admin)/staff/StaffRosterView'
+import { StaffRosterView } from '@/app/(admin)/settings/equipo/StaffRosterView'
 import {
   deactivateStaffAction,
   inviteStaffAction,
   resendInviteAction,
   updateStaffRoleAction,
-} from '@/app/(admin)/staff/actions'
+} from '@/app/(admin)/settings/equipo/actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function SettingsEquipoPage() {

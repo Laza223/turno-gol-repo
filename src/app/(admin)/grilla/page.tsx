@@ -8,6 +8,7 @@ import { safeDateParam } from '@/shared/validation/calendar-date'
 import { bookings, players } from '@/shared/db/schema'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import { GrillaView } from './GrillaView'
+import { GrillaTabs } from './GrillaTabs'
 import {
   createBookingAction,
   checkSlotAvailabilityAction,
@@ -19,7 +20,7 @@ import {
   listRescheduleSlotsAction,
   rescheduleBookingAction,
 } from '@/app/(admin)/reservas/actions'
-import { chargeDebtAction } from '@/app/(admin)/deudas/actions'
+import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import {
   listCanteenForBookingAction,
   sellTicketAction,
@@ -122,6 +123,7 @@ export default async function GrillaPage(
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4 h-full">
+      <GrillaTabs active="/grilla" />
       <GrillaView
         key={dateStr}
         courts={courts}

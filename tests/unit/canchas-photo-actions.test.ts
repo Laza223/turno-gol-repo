@@ -31,7 +31,7 @@ import {
   uploadCourtPhotoAction,
   removeCourtPhotoAction,
   reorderCourtPhotosAction,
-} from '@/app/(admin)/canchas/actions'
+} from '@/app/(admin)/settings/canchas/actions'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'

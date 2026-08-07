@@ -60,9 +60,10 @@ es su propio link, así que no puede tener su propio estado hover).
 - **PageHeader**: ya tenía ícono halo (`CalendarCheck`) — se mantiene. Subtítulo ahora es
   contextual en los 3 scopes (antes solo en "Hoy"): `"mié 2 de julio · 3 reservas"` en Hoy,
   `"3 reservas"` en Próximas/Historial (fix #6.4 "subtítulo = fecha/contexto").
-- **CTA "Ir a la grilla"**: `bg-emerald-600` → `bg-primary text-primary-foreground
-  hover:bg-primary/90` (mismo código que el CTA del dashboard — copy/paste intencional, ambos
-  apuntan al mismo destino).
+- ~~**CTA "Ir a la grilla"**~~ — **eliminado en Fase 4.** Esta pantalla dejó de ser un módulo
+  propio: es la pestaña **Lista** del espacio **Grilla** (`GrillaTabs`, arriba del PageHeader,
+  con Calendario y Lista). La pestaña Calendario hace exactamente lo que hacía el CTA, y dos
+  caminos al mismo destino en la misma pantalla son ruido. La ruta `/reservas` no se movió.
 - **Píldoras de filtro** (activa): `bg-emerald-600` → `bg-primary text-primary-foreground`; el
   contador interno pasa de `bg-emerald-700` fijo a `bg-primary-foreground/20` (translúcido sobre
   el propio pill, dual-theme gratis sin nuevo token).

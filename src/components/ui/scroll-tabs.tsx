@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 export type ScrollTab = { href: string; label: string }
@@ -8,16 +9,25 @@ type Props = {
   activeHref: string
   ariaLabel: string
   className?: string
+  /**
+   * Navegar con `next/link` en vez de `<a>` nativo. Lo piden los tab bars que
+   * Fase 4 creó sobre pantallas que ANTES se alcanzaban desde el sidebar (que
+   * siempre fue `next/link`): degradar Grilla ↔ Lista a full reload sería una
+   * regresión de la pantalla más pesada del producto, no el statu quo.
+   */
+  clientNav?: boolean
 }
 
 /**
  * Tab bar de links con scroll horizontal propio en mobile (receta
  * QuickFilters/WeekStrip): los tabs nunca desbordan la página a 360px
  * (MASTER §12 "sin scroll horizontal a 375px") y mantienen touch de 44px
- * (§10) vía min-h-11 md:min-h-9. Usa <a> nativo a propósito: las páginas
- * que lo consumen (settings) navegan con full reload, igual que antes.
+ * (§10) vía min-h-11 md:min-h-9. Por defecto usa <a> nativo a propósito: las
+ * páginas que ya lo consumían (settings, caja) navegan con full reload, igual
+ * que antes. Ver `clientNav` para el caso contrario.
  */
-export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
+export function ScrollTabs({ tabs, activeHref, ariaLabel, className, clientNav }: Props) {
+  const Anchor = clientNav ? Link : 'a'
   return (
     <nav
       aria-label={ariaLabel}
@@ -29,7 +39,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
       {tabs.map(({ href, label }) => {
         const active = href === activeHref
         return (
-          <a
+          <Anchor
             key={href}
             href={href}
             aria-current={active ? 'page' : undefined}
@@ -46,7 +56,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
             )}
           >
             {label}
-          </a>
+          </Anchor>
         )
       })}
     </nav>

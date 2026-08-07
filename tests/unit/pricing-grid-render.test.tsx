@@ -2,8 +2,8 @@
 import { useState } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { PricingGrid } from '@/app/(admin)/canchas/components/PricingGrid'
-import { PricingSection } from '@/app/(admin)/canchas/components/PricingSection'
+import { PricingGrid } from '@/app/(admin)/settings/canchas/components/PricingGrid'
+import { PricingSection } from '@/app/(admin)/settings/canchas/components/PricingSection'
 import {
   compressGridToRules,
   expandRulesToGrid,

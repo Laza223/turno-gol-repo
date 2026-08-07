@@ -52,7 +52,7 @@ export default async function CajaProductosPage(props: {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Caja y Cantina"
+        title="Caja"
         subtitle="Productos y stock de la cantina"
         icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
       />

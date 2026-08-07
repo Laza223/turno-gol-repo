@@ -5,7 +5,7 @@ import { AdminSidebar } from './admin-sidebar'
 /**
  * `usePathname` viene del mock estándar de next/navigation del framework
  * (parameters.nextjs.navigation). El rail desktop es `fixed` — se reproduce
- * en una caja alta para que el nav completo (11 items) sea visible en el canvas.
+ * en una caja alta para que los 6 espacios más Configuración entren en el canvas.
  * El drawer mobile (`Sheet` de Radix) se controla con `mobileOpen`, sin
  * necesidad de click: `open` es un prop controlado.
  */
@@ -48,7 +48,11 @@ export const RutaGrilla: Story = {
   },
 }
 
-/** D5: el manager no tiene "Hoy" — el ítem no debe aparecer en su nav. */
+/**
+ * D5: el manager no tiene "Hoy" — ahí el ítem no existe para él, así que no se
+ * muestra. Configuración es otra cosa: existe y está bloqueada, así que se ve
+ * con candado (MASTER §6.8) en vez de desaparecer del DOM.
+ */
 export const RolManager: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/grilla' } } },
   args: { staffRole: 'manager' },
@@ -56,6 +60,34 @@ export const RolManager: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('link', { name: 'Hoy' })).not.toBeInTheDocument()
     await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toBeInTheDocument()
+    // Configuración: visible, no navegable.
+    await expect(canvas.queryByRole('link', { name: 'Configuración' })).not.toBeInTheDocument()
+    const locked = canvas.getByRole('button', { name: 'Configuración' })
+    await expect(locked).toHaveAttribute('aria-disabled', 'true')
+  },
+}
+
+/** El espacio Grilla también se enciende desde su pestaña Lista (`/reservas`). */
+export const ReservasEnciendeGrilla: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/reservas' } } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  },
+}
+
+/** Ídem Clientes desde su pestaña Turnos fijos (`/abonados`). */
+export const AbonadosEnciendeClientes: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/abonados' } } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByRole('link', { name: 'Clientes' })[0]).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 

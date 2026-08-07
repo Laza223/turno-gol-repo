@@ -15,14 +15,25 @@ export default function robots(): MetadataRoute.Robots {
           // URL, así que `/admin/` no bloqueaba nada y estas rutas quedaban
           // sin declarar. Requieren sesión y redirigen a /login, así que no
           // había fuga — pero sí ruido de rastreo.
+          // Los 6 espacios del staff + las rutas que viven adentro de ellos.
+          // La lista se verifica contra el árbol real de `(admin)` en
+          // tests/unit/admin-routes-reachable.test.ts: una página admin nueva
+          // que no quede cubierta acá rompe ese test.
           '/dashboard',
           '/grilla',
           '/reservas',
           '/caja',
           '/abonados',
           '/jugadores',
+          '/torneos',
           '/analiticas',
           '/settings',
+          // Rutas legacy que sólo redirigen, pero siguen siendo URLs servidas.
+          '/canchas',
+          '/staff',
+          '/metricas',
+          '/reportes',
+          '/deudas',
           '/select-tenant',
           // Área del jugador. `(player)` también es route group.
           '/mis-reservas',

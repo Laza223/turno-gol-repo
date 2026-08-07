@@ -20,10 +20,16 @@ const OPENING_HOURS: OpeningHours = {
   sun: { open: '08:00', close: '00:00' },
 }
 
-const MAY_FROM = new Date('2026-05-01T00:00:00.000Z')
-const MAY_TO = new Date('2026-06-01T00:00:00.000Z')
-const APR_FROM = new Date('2026-04-01T00:00:00.000Z')
-const APR_TO = new Date('2026-05-01T00:00:00.000Z')
+// `getRevenueReport` toma el mes y resuelve el período adentro (incluido el
+// mes anterior), así que ya no hace falta armar cuatro Date a mano — que es
+// justo de donde salía el bug de UTC calendario.
+const MAY = '2026-05'
+const JAN = '2026-01'
+const JUN = '2026-06'
+
+// El export sí sigue tomando instantes: son los que /analiticas deriva del mes.
+const MAY_FROM = new Date('2026-05-01T03:00:00.000Z')
+const MAY_TO = new Date('2026-06-01T03:00:00.000Z')
 
 let tenantId: string
 let staffId: string
@@ -63,7 +69,7 @@ afterAll(async () => {
 
 describe('getRevenueReport — empty period', () => {
   it('returns all zeros with null prevPeriod when no data', async () => {
-    const report = await getRevenueReport(tenantId, MAY_FROM, MAY_TO, OPENING_HOURS, APR_FROM, APR_TO)
+    const report = await getRevenueReport(tenantId, MAY, OPENING_HOURS)
     expect(report.income).toBe(0)
     expect(report.adjustment).toBe(0)
     expect(report.balance).toBe(0)
@@ -89,14 +95,14 @@ describe('getRevenueReport — with data', () => {
   })
 
   it('sums income and adjustment correctly', async () => {
-    const report = await getRevenueReport(tenantId, MAY_FROM, MAY_TO, OPENING_HOURS, APR_FROM, APR_TO)
+    const report = await getRevenueReport(tenantId, MAY, OPENING_HOURS)
     expect(report.income).toBe(100000)
     expect(report.adjustment).toBe(5000)
     expect(report.balance).toBe(105000)
   })
 
   it('groups by payment method', async () => {
-    const report = await getRevenueReport(tenantId, MAY_FROM, MAY_TO, OPENING_HOURS, APR_FROM, APR_TO)
+    const report = await getRevenueReport(tenantId, MAY, OPENING_HOURS)
     const cash = report.byMethod.find((m) => m.method === 'cash')
     const transfer = report.byMethod.find((m) => m.method === 'transfer')
     expect(cash?.total).toBe(60000)   // solo income: adjustment no entra en byMethod (#43)
@@ -104,25 +110,21 @@ describe('getRevenueReport — with data', () => {
   })
 
   it('returns prevPeriod when April has data', async () => {
-    const report = await getRevenueReport(tenantId, MAY_FROM, MAY_TO, OPENING_HOURS, APR_FROM, APR_TO)
+    const report = await getRevenueReport(tenantId, MAY, OPENING_HOURS)
     expect(report.prevPeriod).not.toBeNull()
     expect(report.prevPeriod?.income).toBe(20000)
     expect(report.prevPeriod?.balance).toBe(20000)
   })
 
   it('returns null prevPeriod when prev period is empty', async () => {
-    const JAN_FROM = new Date('2026-01-01T00:00:00.000Z')
-    const JAN_TO = new Date('2026-02-01T00:00:00.000Z')
-    const DEC_FROM = new Date('2025-12-01T00:00:00.000Z')
-    const DEC_TO = new Date('2026-01-01T00:00:00.000Z')
-    const report = await getRevenueReport(tenantId, JAN_FROM, JAN_TO, OPENING_HOURS, DEC_FROM, DEC_TO)
+    const report = await getRevenueReport(tenantId, JAN, OPENING_HOURS)
     expect(report.prevPeriod).toBeNull()
   })
 })
 
 describe('getCashFlowsForExport', () => {
   it('returns rows with correct shape', async () => {
-    const rows = await getCashFlowsForExport(tenantId, MAY_FROM, MAY_TO)
+    const rows = await getCashFlowsForExport(tenantId, MAY_FROM, MAY_TO, 0)
     expect(rows.length).toBeGreaterThan(0)
     const row = rows[0]
     expect(typeof row.fecha).toBe('string')
@@ -138,8 +140,9 @@ describe('getCashFlowsForExport', () => {
   it('returns empty array for period with no data', async () => {
     const rows = await getCashFlowsForExport(
       tenantId,
-      new Date('2027-01-01T00:00:00.000Z'),
-      new Date('2027-02-01T00:00:00.000Z'),
+      new Date('2027-01-01T03:00:00.000Z'),
+      new Date('2027-02-01T03:00:00.000Z'),
+      0,
     )
     expect(rows).toEqual([])
   })
@@ -152,8 +155,6 @@ describe('getCashFlowsForExport', () => {
  * contaría como facturación de la cancha.
  */
 describe('getRevenueReport — byCourt no mezcla cantina con el turno', () => {
-  const JUN_FROM = new Date('2026-06-01T00:00:00.000Z')
-  const JUN_TO = new Date('2026-07-01T00:00:00.000Z')
   let courtId: string
   let bookingId: string
 
@@ -186,7 +187,7 @@ describe('getRevenueReport — byCourt no mezcla cantina con el turno', () => {
   })
 
   it('la cancha factura sólo el turno; la cantina queda fuera de byCourt', async () => {
-    const report = await getRevenueReport(tenantId, JUN_FROM, JUN_TO, OPENING_HOURS, MAY_FROM, MAY_TO)
+    const report = await getRevenueReport(tenantId, JUN, OPENING_HOURS)
     const court = report.byCourt.find((c) => c.courtId === courtId)
     expect(court).toBeDefined()
     expect(court!.income).toBe(500000)
@@ -194,7 +195,7 @@ describe('getRevenueReport — byCourt no mezcla cantina con el turno', () => {
   })
 
   it('pero la plata de cantina SÍ entra al total del período (no se pierde)', async () => {
-    const report = await getRevenueReport(tenantId, JUN_FROM, JUN_TO, OPENING_HOURS, MAY_FROM, MAY_TO)
+    const report = await getRevenueReport(tenantId, JUN, OPENING_HOURS)
     expect(report.income).toBe(590000)
   })
 })

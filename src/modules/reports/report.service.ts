@@ -9,7 +9,15 @@ import type {
   PeriodTotals,
   CashFlowExportRow,
 } from './report.types'
-import { aggregateByMethod, calcAvailableMinutes, calcOccupancyPct } from './report.utils'
+import {
+  aggregateByMethod,
+  calcAvailableMinutes,
+  calcOccupancyPct,
+  getMonthBounds,
+  prevMonthStr,
+  type MonthBounds,
+} from './report.utils'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 
 const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as Array<
   'confirmed' | 'completed' | 'no_show'
@@ -30,9 +38,14 @@ type PeriodAgg = {
   courtCount: number
 }
 
-async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<PeriodAgg> {
-  const fromStr = from.toISOString().split('T')[0]
-  const toStr = to.toISOString().split('T')[0]
+/**
+ * Recibe el período ya resuelto en sus DOS formas en vez de derivar una de la
+ * otra: `cash_flows.occurred_at` es un instante y `bookings.date` ya es un día
+ * operativo. Antes esto hacía `from.toISOString().split('T')[0]`, que en ART
+ * corre el día para todo lo que caiga después de las 21:00.
+ */
+async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<PeriodAgg> {
+  const { fromUtc: from, toUtc: to, fromDate: fromStr, toDate: toStr } = bounds
 
   return withTenantContext(tenantId, async (tx) => {
     const [typeRows, courtIncomeRows, courtMinuteRows, bookingCountRows, courtCountRows] =
@@ -151,19 +164,32 @@ async function fetchPeriodAgg(tenantId: string, from: Date, to: Date): Promise<P
  */
 export async function getRevenueReport(
   tenantId: string,
-  from: Date,
-  to: Date,
+  month: string,
   openingHours: OpeningHours,
-  prevFrom: Date,
-  prevTo: Date,
   closedDates?: string[] | null,
+  closesNextDay = false,
 ): Promise<RevenueReport> {
+  // El período se resuelve ACÁ, no en el caller. Antes la firma pedía cuatro
+  // `Date` sueltos (from/to/prevFrom/prevTo) y el caller los armaba con
+  // medianoche UTC: bastaba con que uno estuviera mal para que el reporte
+  // contara un mes distinto que /caja, sin que nada fallara.
+  const cutoffMins = nightCutoffMins(openingHours, closesNextDay)
+  const bounds = getMonthBounds(month, cutoffMins)
+  const prevBounds = getMonthBounds(prevMonthStr(month), cutoffMins)
+
   const [current, prev] = await Promise.all([
-    fetchPeriodAgg(tenantId, from, to),
-    fetchPeriodAgg(tenantId, prevFrom, prevTo),
+    fetchPeriodAgg(tenantId, bounds),
+    fetchPeriodAgg(tenantId, prevBounds),
   ])
 
-  const totalAvailable = calcAvailableMinutes(from, to, openingHours, current.courtCount, closedDates)
+  const totalAvailable = calcAvailableMinutes(
+    bounds.fromDate,
+    bounds.toDate,
+    openingHours,
+    current.courtCount,
+    closedDates,
+    closesNextDay,
+  )
   const perCourtAvailable = current.courtCount > 0 ? totalAvailable / current.courtCount : 0
 
   const byCourt: CourtReport[] = current.byCourt.map((c) => ({
@@ -184,7 +210,7 @@ export async function getRevenueReport(
         }
 
   return {
-    period: { from, to },
+    period: { from: bounds.fromUtc, to: bounds.toUtc },
     income: current.income,
     adjustment: current.adjustment,
     balance: current.income + current.adjustment,
@@ -195,11 +221,20 @@ export async function getRevenueReport(
   }
 }
 
-/** Returns all cash flows in [from, to) with court name resolved via booking join. */
+/**
+ * Cash flows en `[from, to)` con el nombre de cancha resuelto por el join.
+ *
+ * `cutoffMins` no es opcional por comodidad: la columna `fecha` del CSV salía
+ * de `occurredAt.toISOString().split('T')[0]`, o sea UTC crudo. Un cobro de las
+ * 22:00 ART del día 5 se exportaba con fecha 6 — el mismo movimiento que
+ * `/caja` muestra en el día 5. Dos papeles con fechas distintas para el mismo
+ * hecho económico es exactamente lo que P2 prohíbe.
+ */
 export async function getCashFlowsForExport(
   tenantId: string,
   from: Date,
   to: Date,
+  cutoffMins: number,
 ): Promise<CashFlowExportRow[]> {
   return withTenantContext(tenantId, async (tx) => {
     const rows = await tx
@@ -219,7 +254,7 @@ export async function getCashFlowsForExport(
       .orderBy(cashFlows.occurredAt)
 
     return rows.map((r) => ({
-      fecha: r.occurredAt.toISOString().split('T')[0],
+      fecha: operatingDateOf(r.occurredAt, cutoffMins),
       tipo: r.type,
       categoria: r.category,
       monto_ars: r.amount,

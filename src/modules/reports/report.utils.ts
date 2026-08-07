@@ -1,6 +1,12 @@
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { MethodReport } from './report.types'
 import { capitalizeFirst } from '@/lib/format'
+import { effectiveCloseMins, operatingDayRangeUtc } from '@/shared/time/operating-day'
+
+function hhmmToMins(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return (h ?? 0) * 60 + (m ?? 0)
+}
 
 export type TrendDelta = { direction: 'up' | 'down'; label: string }
 
@@ -30,12 +36,45 @@ export function formatMethodLabel(method: MethodReport['method']): string {
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = (typeof DAY_KEYS)[number]
 
-/** Returns UTC midnight for the first day of `month` (YYYY-MM) and the first day of the next month. */
-export function getMonthBounds(month: string): { from: Date; to: Date } {
+export type MonthBounds = {
+  /** Primer día operativo del mes, 'YYYY-MM-DD' (inclusive). */
+  fromDate: string
+  /** Primer día operativo del mes siguiente, 'YYYY-MM-DD' (exclusivo). */
+  toDate: string
+  /** Instante en que ARRANCA `fromDate` como día operativo. */
+  fromUtc: Date
+  /** Instante en que arranca `toDate` — fin exclusivo del período. */
+  toUtc: Date
+}
+
+/**
+ * Límites de un mes (YYYY-MM) en día OPERATIVO del tenant.
+ *
+ * Antes esto devolvía medianoche UTC. En ART (UTC-3) eso hace que el mes
+ * arranque a las 21:00 del último día del mes anterior: tres horas de cobros
+ * que `/caja` cuenta en un mes y el reporte contaba en el otro. Con
+ * `cutoffMins > 0` (complejos que cierran de madrugada) el corrimiento es
+ * todavía mayor.
+ *
+ * Devuelve las dos formas a propósito, porque el período se consulta contra dos
+ * cosas distintas: `cash_flows.occurred_at` es un instante y `bookings.date` ya
+ * es un día operativo. Derivar una de la otra con `toISOString().split('T')[0]`
+ * —que es lo que hacía el servicio— vuelve a meter el corrimiento por la
+ * ventana.
+ */
+export function getMonthBounds(month: string, cutoffMins = 0): MonthBounds {
   const [year, mon] = month.split('-').map(Number)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fromDate = `${year}-${pad(mon)}-01`
+  const nextYear = mon === 12 ? year + 1 : year
+  const nextMon = mon === 12 ? 1 : mon + 1
+  const toDate = `${nextYear}-${pad(nextMon)}-01`
+
   return {
-    from: new Date(Date.UTC(year, mon - 1, 1)),
-    to: new Date(Date.UTC(year, mon, 1)),
+    fromDate,
+    toDate,
+    fromUtc: operatingDayRangeUtc(fromDate, cutoffMins).fromUtc,
+    toUtc: operatingDayRangeUtc(toDate, cutoffMins).fromUtc,
   }
 }
 
@@ -89,9 +128,11 @@ export function isReportEmpty(r: {
 
 /** Returns a Spanish locale label like "mayo 2026". */
 export function formatMonthLabel(month: string): string {
-  const { from } = getMonthBounds(month)
+  // Mediodía UTC: el label sale del string del mes, sin pasar por los límites
+  // del período (que ahora dependen del cutoff del tenant y no hacen falta acá).
+  const d = new Date(`${month}-01T12:00:00Z`)
   return capitalizeFirst(
-    from.toLocaleDateString('es-AR', {
+    d.toLocaleDateString('es-AR', {
       month: 'long',
       year: 'numeric',
       timeZone: 'UTC',
@@ -100,32 +141,48 @@ export function formatMonthLabel(month: string): string {
 }
 
 /**
- * Total available booking minutes in [from, to) across courtCount courts.
- * Uses tenant opening hours per day-of-week. close='00:00' means midnight (1440 min).
- * Days with `closed: true`, in `closedDates`, or zero-length windows contribute 0 minutes.
+ * Minutos reservables en `[fromDate, toDate)` (días OPERATIVOS, no calendario)
+ * por `courtCount` canchas. Los días `closed`, los de `closedDates` y las
+ * ventanas de largo cero aportan 0.
+ *
+ * El cierre lo resuelve `effectiveCloseMins` — el mismo que usan los
+ * generadores de slots de la grilla — en vez del cálculo local que había acá.
+ * No es un refactor cosmético: ese cálculo trataba `'00:00'` como 1440 pero
+ * dejaba cualquier otro cierre de madrugada tal cual, así que un complejo con
+ * `closes_next_day` abierto 08:00→02:00 daba `Math.max(0, 120 - 480) = 0`
+ * minutos disponibles. Con el denominador en cero, `calcOccupancyPct` devolvía
+ * 0% de ocupación TODOS los días — un complejo lleno se reportaba vacío.
+ *
+ * Recibe fechas 'YYYY-MM-DD' y no `Date`: antes iteraba instantes UTC y sacaba
+ * el día con `toISOString()`/`getUTCDay()`, que en ART corre el día de semana
+ * (y por lo tanto el horario aplicado) para todo lo que pase después de las
+ * 21:00.
  */
 export function calcAvailableMinutes(
-  from: Date,
-  to: Date,
+  fromDate: string,
+  toDate: string,
   openingHours: OpeningHours,
   courtCount: number,
   closedDates?: string[] | null,
+  closesNextDay = false,
 ): number {
   if (courtCount === 0) return 0
   const closedSet = new Set(closedDates ?? [])
   let totalPerCourt = 0
-  const cursor = new Date(from)
-  while (cursor < to) {
+
+  // Mediodía UTC para leer el día de la semana: inmune al corrimiento de zona
+  // en ambos sentidos (mismo truco que `daySlotsFor` en day-bookings.ts).
+  const cursor = new Date(`${fromDate}T12:00:00Z`)
+  const end = new Date(`${toDate}T12:00:00Z`)
+
+  while (cursor < end) {
     const dateStr = cursor.toISOString().slice(0, 10)
     if (!closedSet.has(dateStr)) {
       const dayKey = DAY_KEYS[cursor.getUTCDay()] as DayKey
       const hours = openingHours[dayKey]
       if (hours && !hours.closed) {
-        const [openH, openM] = hours.open.split(':').map(Number)
-        const [closeH, closeM] = hours.close.split(':').map(Number)
-        const openMins = openH * 60 + openM
-        // '00:00' close means midnight of next day = 1440 total minutes
-        const closeMins = closeH === 0 && closeM === 0 ? 24 * 60 : closeH * 60 + closeM
+        const openMins = hhmmToMins(hours.open)
+        const closeMins = effectiveCloseMins(hours.open, hours.close, closesNextDay)
         totalPerCourt += Math.max(0, closeMins - openMins)
       }
     }

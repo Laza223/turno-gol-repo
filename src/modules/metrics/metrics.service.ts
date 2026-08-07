@@ -1,8 +1,8 @@
 import { and, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { bookings, cashFlows, tenants } from '@/shared/db/schema'
-import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import { nightCutoffMins, operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
+import { bookings, cashFlows } from '@/shared/db/schema'
+import { operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
+import { resolveCutoffMins } from '@/modules/tenants/tenant-operating-day'
 
 export const METRICS_WINDOW_DAYS = 30
 
@@ -116,21 +116,10 @@ export function rankTopSlots(
 
 // ─── DB-backed aggregate ─────────────────────────────────────────────
 
-/**
- * cutoffMins del tenant para el bucketing de cash_flows (ver operating-day.ts
- * / ADR día operativo). `tenants` es global y sin RLS: un SELECT por PK de
- * solo 2 columnas alcanza, reusando la misma tx tenant-scoped ya abierta en
- * vez de abrir otra conexión.
- */
-async function resolveCutoffMins(tenantId: string, tx: DbTx): Promise<number> {
-  const [row] = await tx
-    .select({ openingHours: tenants.openingHours, closesNextDay: tenants.closesNextDay })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1)
-  if (!row) return 0
-  return nightCutoffMins(row.openingHours as OpeningHours, row.closesNextDay)
-}
+// `resolveCutoffMins` (cutoffMins del tenant para el bucketing de cash_flows)
+// se movió a `@/modules/tenants/tenant-operating-day` para que `reports` use
+// exactamente el mismo cutoff. Antes tenía el suyo — o más bien no tenía
+// ninguno, y por eso los reportes facturaban en UTC calendario.
 
 /** Breakdown de estados terminales en [from, to] → NoShowMetric. */
 async function noShowForWindow(

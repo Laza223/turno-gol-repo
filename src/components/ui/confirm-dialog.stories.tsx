@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { pendingAction } from '@/test/pending-action'
 import { Button } from './button'
 import { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
 
@@ -106,13 +107,15 @@ export const ConFraseDeConfirmacion: Story = {
   },
 }
 
-/** `onConfirm` nunca resuelve: el modal queda en "Procesando…" con los botones deshabilitados. */
+const procesando = pendingAction<{ success: true }>({ success: true })
+
+/** `onConfirm` queda en vuelo: el modal muestra "Procesando…" con los botones deshabilitados. */
 export const Procesando: Story = {
   render: () => (
     <ConfirmDialogDemo
       title="Cerrar caja"
       description="Se registra el cierre del día con los montos declarados."
-      onConfirm={() => new Promise<{ success: true }>(() => {})}
+      onConfirm={procesando.action}
     />
   ),
   play: async ({ canvasElement }) => {
@@ -121,6 +124,9 @@ export const Procesando: Story = {
     const pending = await body.findByRole('button', { name: 'Procesando…' })
     await expect(pending).toBeDisabled()
     await expect(body.getByRole('button', { name: 'Cancelar' })).toBeDisabled()
+    // Sin release la transición queda viva y contamina las 2 stories siguientes
+    // del archivo (ver el docstring de pendingAction).
+    await procesando.release(pending)
   },
 }
 

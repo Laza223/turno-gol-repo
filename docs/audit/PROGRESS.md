@@ -1507,3 +1507,78 @@ pone rojo (probado agregando una y borrándola).
 - El número "Hoy: $X" persistente en la barra lateral (visión §3.3 / P2): exige una query de
   caja en el layout de todas las páginas admin.
 - 4 de 7 pestañas de Settings siguen con `<h1>Configuración</h1>` genérico (auditoría §7).
+
+---
+
+## Migración a `pendingAction` (2026-08-06, rama `fix/storybook-pending-action`)
+
+Lazar pidió cerrar la deuda de arriba. **La tabla de 6 archivos estaba armada por grep
+sintáctico, no por mecanismo: 2 de los 6 no tienen transición de React y no pueden contaminar
+nada.** Medido antes de tocar, no deducido:
+
+```
+$ grep -cE "useTransition|useActionState|startTransition" <componente>
+confirm-dialog.tsx      3      image-uploader.tsx        0
+BookingFormModal.tsx    3      submit-button.tsx         0 (pero useFormStatus → <form action>)
+```
+
+| Archivo | Mecanismo real | Resultado |
+|---|---|---|
+| `BookingFormModal.stories.tsx` | `useTransition` en el componente | ✅ migrado, 8/8 |
+| `confirm-dialog.stories.tsx` | `useTransition` en el componente | ✅ migrado, 7/7 |
+| `submit-button.stories.tsx` | `<form action>` de React 19 = transición | ✅ migrado, 3/3 |
+| `impersonate-button.stories.tsx` | hereda la transición de `ConfirmDialog` | ✅ migrado, 4/4 |
+| `image-uploader.stories.tsx` | **ninguno** — `busy` es `useState` puro | ❌ NO APLICA, revertido |
+| `DataExportButton.stories.tsx` | **ninguno** — `useState` + `spyOn(window,'fetch')` | ❌ NO APLICA, otra clase |
+
+**`image-uploader` no es una omisión: migrarlo ROMPE.** Aplicado el helper, `Subiendo` muere con
+`Test timed out in 30000ms`. El componente resuelve el upload con `setBusy(false)` en un `finally`
+de async normal — no hay transición que liberar, y el `release` introduce una espera que el flujo
+real no tiene. Revertido con `git checkout --` (paso 5 del protocolo de fixes), no dejado a medias.
+
+**`DataExportButton` tiene un riesgo REAL pero de otra clase**, anotado sin arreglar por estar
+fuera del alcance de esta tanda: su story `Cargando` hace
+`spyOn(window, 'fetch').mockImplementation(() => new Promise(() => {}))` **y nunca lo restaura**;
+`vitest.storybook.config.ts` no setea `restoreMocks`. Hoy no rompe por dos razones que no son
+diseño: `isolate` (default `true`) corta la fuga entre archivos, y las 2 stories siguientes traen
+su propio `parameters.fetchMock`, cuyo decorator `withFetch` pisa el spy al montar y lo restaura al
+desmontar. Si alguna de esas dos condiciones cambia, queda un `fetch` que nunca resuelve instalado
+para el resto de la corrida.
+
+**Lo que esta tanda NO prueba, dicho explícito:** los 4 archivos migrados **ya pasaban en verde
+antes** (baseline medido: 6 archivos / 35 tests ✅). El control negativo, entonces, salió verde: la
+contaminación por transición **no se manifiesta hoy** en ninguno de ellos. La migración es
+preventiva y alinea el repo con un patrón que ya existe — no cierra un rojo activo, y **no hay
+evidencia de que sea la causa de los 3 cuelgues de `Stories (BLOCKING)`**. Esa hipótesis sigue sin
+confirmar ni descartar.
+
+**Inventario residual (el grep sigue dando 12 archivos, no 6):** `StepCourts.stories.tsx:105` y
+`StepPayments.stories.tsx:92` conservan el patrón en su ÚLTIMA story (migraron solo la del medio en
+el Bloque 1); `ConfirmBookingButton` igual; los 2 `*-layout-shell` mantienen `NEVER_RESOLVES` en
+`meta.args`. Todos seguros por posición, ninguno por diseño.
+
+**Gate:** `pnpm typecheck` ✅ · `pnpm lint` 0 errores / 44 warnings (mismo baseline que Fase 2 y 3)
+✅ · `pnpm test:storybook` suite completa **258/258 archivos, 1026/1026 tests, 3m22s** ✅.
+
+**Pendiente para reactivar el required check:** hacen falta 3 corridas de CI seguidas del job
+`Stories` sin colgarse. El check sigue fuera de los required de `main` hasta tenerlas.
+(Al momento de escribir esto GitHub Actions estaba en `major_outage` desde el 2026-08-06T15:22 UTC
+y no creaba runs; se recuperó el 2026-08-07 ~03:20 UTC y la medición arranca con esta rama.)
+
+### Colateral: `pnpm audit --prod` rojo por una CVE publicada el mismo día
+
+Al re-disparar el CI del PR #112 tras la recuperación de Actions, el workflow `security` falló en
+`pnpm audit --prod --audit-level=high`. **No lo introdujo ningún PR**: el run de `main` del
+2026-08-06T09:39 pasó en verde con el mismo lockfile — la CVE se publicó entre medio.
+
+`CVE-2026-59870` (GHSA-5p4m-2wfm-xmqj, high): consumo cuadrático de CPU resolviendo `!!omap` en
+`js-yaml`. Llega como `gray-matter@4.0.3 > js-yaml@3.15.0`; parcheado en `3.15.1`.
+
+Exposición real acotada: `gray-matter` tiene **un solo consumidor**, `src/lib/content/posts.ts:3`,
+que parsea el frontmatter de los posts del blog — archivos versionados en el repo, no entrada de
+usuario. Explotarlo exigiría commitear un `.md` malicioso.
+
+**Fix:** `js-yaml@<3.15.1: "^3.15.1"` en `pnpm.overrides` (mismo patrón que los `cookie@<0.7.0` /
+`postcss@<8.5.10` que ya estaban). El selector con rango deja intacto el `js-yaml@4.3.0` de eslint.
+Verificado: `gray-matter > js-yaml@3.15.1` y `pnpm audit --prod --audit-level=high` sin hallazgos
+(queda 1 moderate, bajo el umbral del gate). `pnpm typecheck` ✅.

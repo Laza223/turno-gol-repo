@@ -29,15 +29,29 @@ type Story = StoryObj<typeof meta>
 export const Idle: Story = {}
 
 /**
- * `fetch` que nunca resuelve: deja el botón en 'loading' de forma estable
- * (en vez de una carrera contra los microtasks del fetch mockeado real).
+ * `fetch` en vuelo: deja el botón en 'loading' de forma estable (en vez de una
+ * carrera contra los microtasks del fetch mockeado real).
+ *
+ * El componente NO usa transiciones de React — `status` es un `useState` — así
+ * que acá no aplica el helper `pendingAction`. El riesgo era otro: el spy sobre
+ * `window.fetch` no se restauraba, y sin `restoreMocks` sobrevivía al archivo.
+ * Ahora `vitest.storybook.config.ts` lo restaura solo, y el `finally` lo libera
+ * dentro de la propia story para no dejar un fetch colgado ni un tick.
  */
 export const Cargando: Story = {
   play: async ({ canvasElement }) => {
-    spyOn(window, 'fetch').mockImplementation(() => new Promise(() => {}))
-    const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Descargar mis datos' }))
-    await expect(await canvas.findByRole('button', { name: 'Generando...' })).toBeDisabled()
+    let releaseFetch: () => void = () => {}
+    const inFlight = new Promise<Response>((resolve) => {
+      releaseFetch = () => resolve(new Response('{}', { status: 200 }))
+    })
+    spyOn(window, 'fetch').mockImplementation(() => inFlight)
+    try {
+      const canvas = within(canvasElement)
+      await userEvent.click(canvas.getByRole('button', { name: 'Descargar mis datos' }))
+      await expect(await canvas.findByRole('button', { name: 'Generando...' })).toBeDisabled()
+    } finally {
+      releaseFetch()
+    }
   },
 }
 

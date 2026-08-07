@@ -101,13 +101,18 @@ export const EnviandoCanchas: Story = {
   },
 }
 
+const volviendoCanchas = pendingAction({ success: true as const })
+
 export const VolviendoAlPasoAnterior: Story = {
-  args: { setStepAction: fn(() => new Promise(() => {})) },
+  args: { setStepAction: fn(volviendoCanchas.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const back = canvas.getByRole('button', { name: /^volver$/i })
     await userEvent.click(back)
     await expect(back).toBeDisabled()
     await expect(canvas.getByRole('button', { name: /^continuar$/i })).toBeDisabled()
+    // Última story del archivo: hoy es segura por posición, no por diseño.
+    // Se libera igual para que reordenar exports no la vuelva a romper.
+    await volviendoCanchas.release(back)
   },
 }

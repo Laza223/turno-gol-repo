@@ -88,12 +88,17 @@ export const ErrorMercadoPagoGenerico: Story = {
   },
 }
 
+const volviendoPagos = pendingAction({ success: true as const })
+
 export const VolviendoAlPasoAnterior: Story = {
-  args: { setStepAction: fn(() => new Promise(() => {})) },
+  args: { setStepAction: fn(volviendoPagos.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const back = canvas.getByRole('button', { name: /^volver$/i })
     await userEvent.click(back)
     await expect(back).toBeDisabled()
+    // Última story del archivo: hoy es segura por posición, no por diseño.
+    // Se libera igual para que reordenar exports no la vuelva a romper.
+    await volviendoPagos.release(back)
   },
 }

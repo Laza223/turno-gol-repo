@@ -1,10 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { generateSlug } from '@/modules/tenants/tenant.utils'
+import { pendingAction } from '@/test/pending-action'
 import { StepIdentity, type CreateTenantAction } from './StepIdentity'
 
-/** Nunca resuelve: mantiene el botón en estado de carga a propósito. */
-const pendingAction: CreateTenantAction = () => new Promise(() => {})
+/**
+ * Queda en vuelo para mantener el botón en carga; el `play` la libera al final.
+ *
+ * Antes esto era un `() => new Promise(() => {})` con una variable local llamada
+ * `pendingAction` — el falso amigo que hacía que un grep por nombre lo contara
+ * como migrado sin estarlo.
+ */
+const enviandoIdentidad = pendingAction<Awaited<ReturnType<CreateTenantAction>>>({
+  success: true as const,
+})
 
 /** La Server Action entra por prop (ver comentario en el componente). */
 const meta = {
@@ -65,12 +74,14 @@ export const ErrorDelServidor: Story = {
 }
 
 export const Enviando: Story = {
-  args: { action: fn(pendingAction) },
+  args: { action: fn(enviandoIdentidad.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await fillRequiredFields(canvas)
     const submit = canvas.getByRole('button', { name: /continuar/i })
     await userEvent.click(submit)
     await expect(submit).toBeDisabled()
+    // Última story del archivo: hoy es segura por posición, no por diseño.
+    await enviandoIdentidad.release(submit)
   },
 }

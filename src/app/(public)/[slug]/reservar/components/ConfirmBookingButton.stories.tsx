@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
+import { pendingAction } from '@/test/pending-action'
 import ConfirmBookingButton from './ConfirmBookingButton'
 
 /**
@@ -70,17 +71,22 @@ export const SinSena: Story = {
   },
 }
 
+const enviando = pendingAction<void>(undefined)
+
 /** Submit dispara la Server Action inyectada; mientras está pendiente el botón muestra spinner. */
 export const Enviando: Story = {
   args: {
     depositAmount: 450000,
     payMethods: ['mercadopago'],
-    action: fn(() => new Promise<void>(() => {})),
+    action: fn(enviando.action),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const button = canvas.getByRole('button', { name: /pagar seña y reservar/i })
     await userEvent.click(button)
-    await expect(await canvas.findByRole('button', { name: /procesando/i })).toBeDisabled()
+    const procesando = await canvas.findByRole('button', { name: /procesando/i })
+    await expect(procesando).toBeDisabled()
+    // Última story del archivo: hoy es segura por posición, no por diseño.
+    await enviando.release(procesando)
   },
 }

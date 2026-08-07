@@ -27,15 +27,35 @@
 
 | Plan | Canchas | Precio mensual | Precio anual (por mes) | Ahorro anual |
 |---|---|---|---|---|
-| **Predio** | 1 – 2 canchas | $55.000 ARS | $44.000 ARS (20% off) | $132.000 ARS |
-| **Complejo** | 3 – 5 canchas | $85.000 ARS | $68.000 ARS (20% off) | $204.000 ARS |
-| **Estadio** | 6+ canchas | $115.000 ARS | $92.000 ARS (20% off) | $276.000 ARS |
+| **Predio** | 1 – 3 canchas | $63.000 ARS | $50.400 ARS (20% off) | $151.200 ARS |
+| **Complejo** | 4 – 6 canchas | $99.000 ARS | $79.200 ARS (20% off) | $237.600 ARS |
+| **Estadio** | 7+ canchas | $129.000 ARS | $103.200 ARS (20% off) | $309.600 ARS |
 
 > [!NOTE]
-> Precios establecidos ligeramente por debajo de ATC Sports como estrategia de captación inicial.
-> ATC cobra $66.000 / $104.000 / $136.000 ARS/mes (relevamiento 2026-07, ver doc2).
+> **Actualizado 2026-08-07 (migr. 071).** Antes: 1-2 / 3-5 / 6+ a $55.000 / $85.000 / $115.000.
+> Cambiaron **los cortes, no solo los precios**: ATC corta en 1-3 / 4-6 / 7+ y nosotros cortábamos
+> distinto, así que la comparación daba diferente según la cantidad de canchas y en DOS franjas
+> (3 y 6) TurnoGol salía más caro — con 3 canchas siendo el piso del ICP. Con los cortes
+> alineados la comparación es franja contra franja y TurnoGol queda ~11% abajo en las tres.
+> Fundamento: `docs/planning/2026-08-07-analisis-rubro-y-decisiones.md` §4.
+>
+> ATC cobra $71.000 / $111.000 / $145.000 ARS/mes (navegado por el founder desde IP argentina,
+> 2026-08-07; en julio eran $66.000 / $104.000 / $136.000).
 > Revisar precios cada 3 meses dado el IPC argentino (ver sección 5: ARS volátil).
-> **Precios NO incluyen IVA** — se agrega 21% en el checkout.
+
+> [!WARNING]
+> **El IVA está sin resolver y afecta la comparación con ATC.** Este documento decía
+> *"Precios NO incluyen IVA — se agrega 21% en el checkout"*, pero **el código no agrega IVA en
+> ningún lado** (barrido completo de `src/`, 2026-08-07: cero implementación). Hoy el checkout
+> cobra el precio pelado de la tabla.
+>
+> Importa porque cambia el signo de la comparación: si $63.000 es final, ganamos 11% contra los
+> $71.000 de ATC; si hay que sumarle 21% ($76.230), **perdemos**. Y el sitio de ATC no aclara si
+> sus precios llevan IVA (verificado en julio y de nuevo en agosto).
+>
+> Es una decisión de negocio + fiscal, no técnica: queda como **REQUIERE INPUT** hasta que el
+> dueño defina si el precio publicado es final o si el IVA se discrimina. Las menciones de IVA
+> que quedan en §7 y §11 de este documento describen ese estado no implementado.
 
 **Trial**: 30 días gratis, sin tarjeta requerida al inicio.
 **Sin costos de instalación, capacitación ni mantenimiento** (igual que ATC, ya es expectativa del mercado).
@@ -290,9 +310,9 @@ Política v1 (Decisión de auditoría 2026-07-21 — ARG-07):
 ```
 Admin intenta crear la cancha N+1 (supera el límite del plan)
       ↓
-Sistema muestra modal: "Tu plan Predio permite hasta 2 canchas.
+Sistema muestra modal: "Tu plan Predio permite hasta 3 canchas.
 Actualizá a Complejo para agregar más canchas."
-[CTA: Actualizar a Complejo - $85.000/mes + IVA]
+[CTA: Actualizar a Complejo - $99.000/mes]   ← el "+ IVA" se saca hasta resolver el REQUIERE INPUT de §1
       ↓
 Si confirma:
   - Calcula el prorrateo de días restantes del período actual
@@ -313,9 +333,9 @@ cargo_extra = (precio_día_nuevo - precio_día_viejo) * días_restantes
 
 **Regla**: No se puede hacer downgrade si tenés más canchas activas de las que permite el plan inferior.
 ```
-Admin intenta bajar de Complejo (3-5 canchas) a Predio (1-2) pero tiene 4 canchas configuradas
+Admin intenta bajar de Complejo (4-6 canchas) a Predio (1-3) pero tiene 5 canchas configuradas
       ↓
-Sistema: "Para cambiar al plan Predio necesitás tener máximo 2 canchas activas.
+Sistema: "Para cambiar al plan Predio necesitás tener máximo 3 canchas activas.
 Desactivá 2 canchas primero."
       ↓
 Si el dueño desactiva la cancha → puede hacer downgrade
@@ -449,9 +469,9 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 > Los feature flags definen qué puede hacer cada plan.
 > Tienen que estar en la DB (no hardcodeados) para poder cambiarlos sin deployar.
 
-| Feature | Predio (1-2) | Complejo (3-5) | Estadio (6+) |
+| Feature | Predio (1-3) | Complejo (4-6) | Estadio (7+) |
 |---|:---:|:---:|:---:|
-| Cantidad máxima de canchas | 2 | 5 | Ilimitado |
+| Cantidad máxima de canchas | 3 | 6 | Ilimitado |
 | Historial de reservas | 6 meses | 12 meses | Ilimitado |
 | Reportes | ✅ Completos | ✅ Completos | ✅ Completos |
 | Exportación de datos | CSV | CSV + Excel | CSV + Excel |

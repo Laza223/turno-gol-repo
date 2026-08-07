@@ -161,7 +161,9 @@ El set es **cerrado** (ENUM `player_tag`), no una tabla de configuración por co
 
 ---
 
-## 4. Boundaries de planes: TurnoGol es más caro justo en la puerta de entrada del ICP
+## 4. Boundaries de planes: RESUELTO — los cortes se alinean con ATC
+
+> **Estado: decidido y aplicado el 2026-08-07** (migr. 071). Esta sección conserva el análisis que llevó a la decisión; la decisión está en §4.5.
 
 ### 4.1 El problema, cuantificado
 
@@ -203,9 +205,50 @@ TurnoGol no está caro contra el mercado. Está caro **contra ATC específicamen
 
 `CRITERIO` — **Recomendación: (b), condicionada al dato.** El argumento es que la opción (a) resuelve la venta y patea el problema al mes 7, que es exactamente cuando el cliente evalúa si sigue; y que el diferencial de $30.000 solo es una pérdida si el complejo de 3 canchas hubiera comprado a $85.000 igual — cosa que la comparación con ATC hace improbable.
 
-**Pero es una decisión de revenue del dueño, no mía.** Va como REQUIERE INPUT (abajo, §7).
+### 4.5 DECISIÓN DEL DUEÑO (2026-08-07): cortes alineados + suba de precios
 
-**El dato que la destraba:** cuántos complejos de exactamente 3 canchas hay en el corredor. El scraper de Google Maps del founder puede responderlo antes de la primera charla. Si son pocos, (a) alcanza; si son la mayoría, (b) es obvia.
+El dueño eligió **(b) mover Predio a 1-3 canchas**, y agregó algo que este análisis no había propuesto: **subir los precios al mismo tiempo**, quedando igual por debajo de ATC.
+
+Aportó además un dato más fresco que el del repo. `VERIFICADO` (navegación del founder desde IP argentina, 2026-08-07): **ATC ahora cobra $71.000 / $111.000 / $145.000** — subió ~7-8% desde la captura de julio ($66.000 / $104.000 / $136.000). El IVA de ATC **sigue sin aclararse** en su sitio, igual que en julio.
+
+**Lo aplicado (migr. 071):**
+
+| Plan | Canchas | Mensual | Anual (por mes) |
+|---|---|---|---|
+| Predio | **1 – 3** | **$63.000** | $50.400 |
+| Complejo | **4 – 6** | **$99.000** | $79.200 |
+| Estadio | **7+** | **$129.000** | $103.200 |
+
+**Por qué esto cierra el problema y no solo lo mueve:** alinear los cortes con los de ATC convierte una comparación cruzada —donde el resultado dependía de en qué franja caía cada complejo— en una comparación franja contra franja. Con eso, **TurnoGol queda ~11% abajo en las tres, sin excepciones**:
+
+| Canchas | Antes | Ahora | vs ATC | Efecto para el complejo |
+|---|---|---|---|---|
+| 1–3 | $55.000 / $85.000 | **$63.000** | $71.000 (-11%) | El de 3 canchas **baja** de $85.000 a $63.000 |
+| 4–6 | $85.000 / $115.000 | **$99.000** | $111.000 (-11%) | El de 6 canchas **baja** de $115.000 a $99.000 |
+| 7+ | $115.000 | **$129.000** | $145.000 (-11%) | Sube 12% |
+
+Las dos franjas que perdían contra ATC no solo dejan de perder: son las que más **bajan** de precio. Y las que suben lo hacen manteniendo la ventaja.
+
+`ARITMÉTICA` — con el encuadre de §1.4, el plan Complejo pasa de 1,06%–0,57% de la facturación a **1,24%–0,66%**. Sigue por debajo del 1,5% y sigue siendo menos de dos turnos prime por mes.
+
+### 4.6 🔴 Lo que este cambio destapó: el IVA no está implementado
+
+`VERIFICADO` — barrido completo de `src/` el 2026-08-07: **cero implementación de IVA**.
+
+`doc4` §1 decía *"Precios NO incluyen IVA — se agrega 21% en el checkout"*, y hay dos menciones más (§7 el CTA de upgrade "+ IVA", §11 la proyección de MRR "sin IVA"). **El checkout cobra el precio pelado.**
+
+Importa porque **cambia el signo de toda la comparación de arriba**:
+
+- Si $63.000 es el precio final → ganamos 11% contra los $71.000 de ATC.
+- Si hay que sumarle 21% → **$76.230, y perdemos** contra ATC.
+
+Y como el sitio de ATC tampoco aclara su tratamiento de IVA (verificado dos veces), hoy no se puede afirmar cuál de los dos escenarios es el real.
+
+Es una decisión de negocio y fiscal, no técnica. **Queda como REQUIERE INPUT** hasta que el dueño defina si el precio publicado es final o si el IVA se discrimina. No se resuelve por análisis: depende de su condición frente a AFIP y de qué factura emite.
+
+**El dato que la destraba, del lado de ATC:** preguntarle a un cliente o ex-cliente de ATC qué paga **según factura** — ya estaba anotado como pendiente de las charlas del segmento S6 desde julio.
+
+**El dato para el punto 4 de §6 sigue vigente:** cuántos complejos de exactamente 3 canchas hay en el corredor. Ya no destraba la decisión (ya está tomada), pero mide cuánto revenue se resignó y valida si el corte quedó donde correspondía.
 
 ---
 
@@ -256,9 +299,10 @@ Este documento reemplaza validación de campo por análisis. La deuda que eso ge
 | 1 | **El pilar primario (§2)** | Pregunta abierta al inicio de la charla, sin nombrar ni plata ni ocupación | 3 de 5 charlas nombran "turnos colgados" antes que cualquier tema de plata |
 | 2 | **La economía (§1)** | La primera factura o cierre de caja real | Cualquier cosa fuera de $8M–$15M para 3 canchas |
 | 3 | **El set de etiquetas (§3)** | *"¿Qué anotás hoy de un cliente en el cuaderno?"* | Una necesidad repetida que ninguna de las 5 cubre |
-| 4 | **Boundaries de planes (§4)** | El scraper: cuántos complejos de exactamente 3 canchas hay en el corredor | Si son mayoría, (b) deja de ser opcional |
+| 4 | **Boundaries de planes (§4)** | El scraper: cuántos complejos de exactamente 3 canchas hay en el corredor | Ya no destraba la decisión (tomada en §4.5), pero mide cuánto revenue se resignó |
 | 5 | **D7 (§5.1)** | Instrumentación de B4 sobre los primeros 5 onboardings | Mayoría sin MP a 7 días + señas como motivo de alta |
+| 6 | **🔴 El IVA (§4.6)** | Definición del dueño + factura real de un cliente de ATC (segmento S6) | **Abierto.** Si el precio no es final, la ventaja del 11% se vuelve desventaja del 7% |
 
 ---
 
-*Cerrado el 2026-08-07. Cuatro decisiones aplicadas (§1.3, §2.2, §3.2, §5.x), una elevada al dueño por ser de revenue (§4.4), y un hallazgo del plan original refutado (§5.3.4). La divergencia documentada vale más que el consenso retroactivo — mismo criterio que el documento de fase del 2026-08-01.*
+*Cerrado el 2026-08-07. Cinco decisiones aplicadas (§1.3, §2.2, §3.2, §4.5, §5.x), un hallazgo del plan original refutado (§5.3.4), y uno nuevo abierto que el propio trabajo destapó: el IVA de §4.6, que ninguna de las dos partes del análisis había mirado y que cambia el signo de la comparación de precios. La divergencia documentada vale más que el consenso retroactivo — mismo criterio que el documento de fase del 2026-08-01.*

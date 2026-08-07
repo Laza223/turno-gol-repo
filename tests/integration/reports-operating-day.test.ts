@@ -134,13 +134,31 @@ describe('reportes — ocupación y CSV', () => {
     const sql = getSql()
     const { tenant, staff } = await seedTenant(sql, NIGHT_HOURS, true)
 
-    // Turno dentro del horario nocturno, en día operativo 2026-05-04.
-    await sql`
-      INSERT INTO bookings (tenant_id, court_id, date, time_start, time_end, status, type, price_snapshot, guest_name)
-      SELECT ${tenant.id}, c.id, ${'2026-05-04'}, ${'21:00'}, ${'22:00'}, 'completed', 'regular', ${800000}, ${'Test'}
-      FROM courts c WHERE c.tenant_id = ${tenant.id} LIMIT 1
+    const [seededCourt] = await sql<{ id: string }[]>`
+      SELECT id FROM courts WHERE tenant_id = ${tenant.id} LIMIT 1
     `
-    await insertIncome(sql, tenant.id, staff.id, '2026-05-05T01:00:00Z', 800000)
+
+    // Turno dentro del horario nocturno, en día operativo 2026-05-04.
+    // starts_at/ends_at son NOT NULL desde la migr. 041 y no tienen default:
+    // 21:00 ART del 4 = 2026-05-05T00:00:00Z (ART = UTC-3).
+    const [booking] = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+        status, type, price_snapshot, guest_name
+      ) VALUES (
+        ${tenant.id}, ${seededCourt!.id}, ${'2026-05-04'}, ${'21:00'}, ${'22:00'},
+        ${'2026-05-05T00:00:00Z'}, ${'2026-05-05T01:00:00Z'},
+        'completed', 'spontaneous', ${800000}, ${'Test'}
+      ) RETURNING id
+    `
+
+    // El cobro va ATADO al booking: `byCourt` sale de los cash_flows con
+    // booking_id + category='booking' (Q2a de fetchPeriodAgg). Un income suelto
+    // no aparecería en byCourt y el test mediría otra cosa.
+    await sql`
+      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at, booking_id)
+      VALUES (${tenant.id}, 'income', 'booking', ${800000}, 'cash', ${'Turno'}, ${staff.id}, ${'2026-05-05T01:00:00Z'}, ${booking!.id})
+    `
 
     const report = await getRevenueReport(tenant.id, '2026-05', NIGHT_HOURS, null, true)
     const court = report.byCourt[0]
@@ -150,6 +168,13 @@ describe('reportes — ocupación y CSV', () => {
     // complejo lleno.
     expect(court).toBeDefined()
     expect(court!.occupancyPct).toBeGreaterThan(0)
+
+    // Valor exacto, derivado: mayo tiene 31 días × (02:00+24h − 20:00) = 360
+    // min/día = 11160 min disponibles en 1 cancha; 60 min reservados → 0,5%.
+    // Se asserta el número y no solo "> 0" para que un cambio en el denominador
+    // se lea acá y no se disuelva en un umbral laxo.
+    expect(court!.occupancyPct).toBe(0.5)
+    expect(court!.income).toBe(800000)
   })
 
   it('la columna `fecha` del CSV usa el día operativo, no el UTC crudo', async () => {

@@ -103,6 +103,14 @@ export default defineConfig({
     // propias assertions.
     testTimeout: 30_000,
 
+    // Un `spyOn` que no se restaura sobrevive al archivo que lo creó. El caso
+    // medido: `DataExportButton.stories.tsx` espiaba `window.fetch` con una
+    // promesa que nunca resuelve y nunca lo devolvía. Hoy no rompía por dos
+    // accidentes (`isolate` corta la fuga entre archivos, y el decorator
+    // `withFetch` de las stories siguientes pisaba el spy) — ninguno de los dos
+    // es diseño. Con esto, el spy se deshace solo al terminar cada test.
+    restoreMocks: true,
+
     browser: {
       enabled: true,
       provider: 'playwright',

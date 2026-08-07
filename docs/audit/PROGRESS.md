@@ -1638,3 +1638,45 @@ madrugada sin flag). Fix en `afe34b0`, ya en `main` vía PR #112.
 
 **Verificado:** con el fixture corregido los 7 días generan slots (vie 16, sáb 15) · `pnpm typecheck`
 ✅ · `Integration & Isolation (BLOCKING)` pasó a verde en el PR #112.
+
+---
+
+## Baselines visuales de la grilla, desactualizadas por la Fase 4 (2026-08-07)
+
+`Regresión visual (ADVISORY)` quedó rojo en `main` tras mergear el PR #112: la Fase 4 cambió la UI
+del admin y nadie regeneró las fotos de referencia (el #112 no toca un solo `.png` — verificado con
+`git diff --name-only`). Como el job es `continue-on-error` a nivel job, se mergeó sin que el rojo
+frenara nada.
+
+**Alcance real: 2 de 9, no las 8 baselines** (7 passed). Leer el log fue necesario justamente por el
+`continue-on-error` — `gh run view --log-failed` devuelve VACÍO en un job así, hay que pedir el log
+completo (misma trampa que [[continue-on-error-step-podrido-en-silencio]]):
+
+| Baseline | Píxeles distintos | Ratio |
+|---|---|---|
+| `admin-grilla.png` | 13.466 | 0.02 |
+| `admin-grilla-mobile.png` | 16.841 | 0.06 |
+
+**Los ratios engañan y casi me hacen buscar un bug que no existía.** La grilla mobile pasó de matriz
+a lista por hora con swipe — un rediseño completo — y aun así mueve solo el 6% de los píxeles,
+porque el ratio se calcula sobre la imagen entera y ambos layouts comparten el fondo claro. Un ratio
+bajo NO significa "cambio menor".
+
+**Verificado mirando las imágenes, no deduciendo.** Descargadas del artifact del run 31146421146:
+
+- *mobile*: hamburguesa → logo; aparecen pestañas Calendario/Lista, chips Todas/Cancha y la lista
+  por hora (`08:00–09:00` + botón por cancha); la leyenda al pie se reemplaza por `AdminBottomNav`
+  (Hoy · Grilla · Caja · Más).
+- *desktop*: el contenido baja ~53px por las pestañas nuevas, y el sidebar muestra el renombrado de
+  la Fase 4 (Métricas→Analíticas, Turnos fijos→Clientes, Caja y Cantina→Caja) — 6 espacios con
+  Configuración separada al pie.
+
+Cada diferencia corresponde 1:1 al mapa de navegación documentado arriba. **Cero cambios visuales
+inesperados**, así que las capturas nuevas son la referencia correcta.
+
+**Cómo se regeneró, sin infra nueva:** los `-actual.png` del artifact los generó el propio CI en
+Linux (las baselines viven en `__screenshots__/{project}/linux/`, imposibles de regenerar desde
+Windows) y Playwright los marcó `captured a stable screenshot` — dos capturas seguidas idénticas.
+Se copiaron sobre las baselines. Alternativa descartada por desproporcionada: montar un workflow con
+`--update-snapshots=all` (que además es la única forma válida: sin `=all` el preset `changed` da
+verde sin reescribir, ver [[playwright-update-snapshots-preset-changed]]).

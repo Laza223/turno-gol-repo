@@ -1,14 +1,18 @@
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react'
 import { buildMetadata } from '@/lib/seo/metadata'
+import { formatArs } from '@/lib/format'
 import Reveal from '@/components/site/Reveal'
 import CalculadoraClavo from './CalculadoraClavo'
 import PlanSelector from './PlanSelector'
+import { PLANS } from './plans-data'
 
+// El "desde" sale de PLANS y no escrito a mano: estaba hardcodeado en "$55.000"
+// y quedó viejo apenas cambiaron los precios (migr. 071). Es el mismo patrón
+// que ya usa CalculadoraClavo.
 export const metadata = buildMetadata({
   title: 'Precios — TurnoGol para complejos de fútbol',
-  description:
-    'Un precio fijo por mes según cuántas canchas tenés: desde $55.000. Sin comisión por reserva, sin permanencia. 30 días gratis, sin tarjeta.',
+  description: `Un precio fijo por mes según cuántas canchas tenés: desde ${formatArs(PLANS[0]!.priceMonthly)}. Sin comisión por reserva, sin permanencia. 30 días gratis, sin tarjeta.`,
   path: '/precios',
 })
 

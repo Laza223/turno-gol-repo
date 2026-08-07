@@ -119,17 +119,29 @@ describe('plan limit enforcement', () => {
     expect(maxCourts).toBeNull()
   })
 
-  it('ya suscripto (active), el plan predio SÍ impone su techo de 2', async () => {
+  it('ya suscripto (active), el plan predio SÍ impone su techo', async () => {
     // Control positivo del test de arriba: el techo no desapareció, sólo no
     // aplica durante el trial. Si esto se pone verde con maxCourts null, la
     // excepción del trial se comió el límite para todos.
+    //
+    // El techo se LEE del plan en vez de hardcodearse: `getOrCreatePlanId`
+    // devuelve el `predio` real de las migraciones, así que el número cambia
+    // cada vez que se ajustan los planes (era 2, la migr. 071 lo puso en 3) y
+    // el test se ponía rojo por un motivo que no es el que le importa. Lo que
+    // este test tiene que probar es que el techo APLICA, no cuánto vale.
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const planId = await getOrCreatePlanId(sql)
     await insertSubscription(sql, { tenantId: tenant.id, planId })
     await sql`UPDATE tenants SET status = 'active' WHERE id = ${tenant.id}`
 
-    for (let i = 1; i <= 2; i++) {
+    const [plan] = await sql<{ max_courts: number | null }[]>`
+      SELECT max_courts FROM plans WHERE id = ${planId}
+    `
+    const techo = plan!.max_courts
+    expect(techo, 'el plan del fixture debe tener techo finito para que este control sirva').not.toBeNull()
+
+    for (let i = 1; i <= techo!; i++) {
       await withTenantContext(tenant.id, (tx) =>
         createCourt(tenant.id, { ...COURT_INPUT, name: `Cancha ${i}` }, tx),
       )
@@ -139,9 +151,9 @@ describe('plan limit enforcement', () => {
       getCourtCountAndLimit(tenant.id, tx),
     )
 
-    expect(count).toBe(2)
-    expect(maxCourts).toBe(2)
-    // una 3ra quedaría bloqueada (count >= maxCourts)
+    expect(count).toBe(techo)
+    expect(maxCourts).toBe(techo)
+    // la siguiente quedaría bloqueada (count >= maxCourts)
     expect(count >= maxCourts!).toBe(true)
   })
 

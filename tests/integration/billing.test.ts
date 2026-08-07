@@ -321,7 +321,11 @@ describe('Test A — dunning escalation drives blocked → churned', () => {
 // ─── Test B: upgrade mid-period → correct proration ───────────────────────
 
 describe('Test B — upgrade Predio → Complejo proration', () => {
-  it('day 15 of 30 → proration = 1_500_000 cents', async () => {
+  // Derivación, para que el número no sea mágico: Complejo $99.000 − Predio
+  // $63.000 = $36.000 de diferencia mensual (migr. 071); quedan 15 de los 30
+  // días del período → $18.000 = 1_800_000 centavos.
+  // Antes de la 071 la diferencia era $85.000 − $55.000 = $30.000 → 1_500_000.
+  it('day 15 of 30 → proration = 1_800_000 cents', async () => {
     const sql = getSql()
     const { tenantId } = await seedActiveTenant(sql, 'predio', {
       currentPeriodStart: new Date('2027-04-01T00:00:00Z'),
@@ -338,9 +342,9 @@ describe('Test B — upgrade Predio → Complejo proration', () => {
       )
     })
 
-    expect(result.prorationAmount).toBe(1_500_000)
+    expect(result.prorationAmount).toBe(1_800_000)
     expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(1)
-    expect(mockGateway.saasUpgradePreferenceCalls[0]!.amount).toBe(1_500_000)
+    expect(mockGateway.saasUpgradePreferenceCalls[0]!.amount).toBe(1_800_000)
 
     // Simulate webhook: upgrade approved → billing.handleUpgradeApproved
     await withTenantContext(tenantId, async (tx) => {
@@ -348,7 +352,7 @@ describe('Test B — upgrade Predio → Complejo proration', () => {
     })
 
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
-    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(8_500_000)
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(9_900_000)
 
     const subRows = await sql<{ plan_id: string; pending_plan_change: string | null }[]>`
       SELECT plan_id, pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
@@ -462,7 +466,7 @@ describe('Test E — suspended state rejects mutations', () => {
 // ─── Test F — downgrade blocked by court count ────────────────────────────
 
 describe('Test F — downgrade court-count gate', () => {
-  it('Complejo with 5 courts → downgrade to Predio (max 2) throws DowngradeBlockedError', async () => {
+  it('Complejo with 5 courts → downgrade to Predio (max 3) throws DowngradeBlockedError', async () => {
     const sql = getSql()
     const { tenantId } = await seedActiveTenant(sql, 'complejo')
 
@@ -565,7 +569,7 @@ describe('subscribe → first webhook activates', () => {
 
     expect(result.checkoutUrl).toContain('mp.test')
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
-    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(5_500_000)
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(6_300_000)
 
     const subRowsBefore = await sql<{
       mp_subscription_id: string | null
@@ -612,7 +616,7 @@ describe('reactivate', () => {
     expect(result.checkoutUrl).toContain('mp.test')
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
     // Reactivar al plan complejo → preapproval por el monto mensual de complejo.
-    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(8_500_000)
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(9_900_000)
 
     // DB: plan y nuevo mp_subscription_id seteados; status SIGUE canceled
     // (recién se activa con el primer onPaymentApproved, no acá).
@@ -766,9 +770,9 @@ describe('billing cycle anual', () => {
       return billingSubscribe(tenant.id, plans.predio, 'annual', mockGateway, tx)
     })
     expect(result.checkoutUrl).toContain('mp.test')
-    // Predio anual = 4_400_000 centavos (NO el mensual 5_500_000).
+    // Predio anual = 5_040_000 centavos (NO el mensual 6_300_000).
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
-    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(4_400_000)
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(5_040_000)
     expect(mockGateway.preapprovalCalls[0]!.frequency).toBe('annual')
 
     const cycleRows = await sql<{ billing_cycle: string }[]>`

@@ -120,8 +120,9 @@ export async function toggleStatus(
  * `maxCourts: null` = sin techo.
  *
  * **Durante el trial NO hay techo.** `createTenantWithTrial` arranca a todos en
- * el plan `predio` (max_courts=2), así que sin esta excepción un complejo con 3+
- * canchas se choca contra el gate en el paso 3 del wizard, y en ese momento el
+ * el plan `predio` (max_courts=3 desde la migr. 071; era 2), así que sin esta
+ * excepción un complejo más grande que ese techo se choca contra el gate en el
+ * paso 3 del wizard, y en ese momento el
  * upgrade self-service todavía devolvía 501: quedaba trabado SIN SALIDA in-app,
  * con un SuperAdmin cambiándole el plan a mano como única puerta. Con registro
  * público eso no escala y el complejo se va sin que nos enteremos. (El upgrade

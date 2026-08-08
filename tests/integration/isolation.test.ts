@@ -1076,3 +1076,67 @@ describe('P. push_send_log (migración 059)', () => {
     ).rejects.toThrow(/permission denied/i)
   })
 })
+
+// ─── Q. analytics_events (migración 072, instrumentación de producto) ─────
+// Aislamiento clásico por tenant_id (como L/N/O) MÁS dos particularidades:
+//   1. Append-only: sin policy de UPDATE + REVOKE UPDATE, igual que
+//      stock_movements y tournament_match_events. Un evento es un hecho ya
+//      ocurrido; permitir UPDATE dejaría reescribir la propia medición.
+//   2. La policy de INSERT acepta `tenant_id IS NULL` a propósito — el
+//      tráfico público (búsqueda cross-tenant, magic link) se emite sin
+//      complejo resuelto. Eso NO relaja el SELECT, que sigue siendo estricto:
+//      el caso de abajo prueba que las filas de otro tenant no se ven y que
+//      las de sistema (NULL) tampoco.
+describe('Q. analytics_events (migración 072)', () => {
+  beforeAll(async () => {
+    const sql = getSql()
+    await sql`
+      INSERT INTO analytics_events (category, event, tenant_id, data) VALUES
+        ('funnel', 'checkout.viewed', ${tenantA.id}, '{"withDeposit":true}'::jsonb),
+        ('funnel', 'checkout.viewed', ${tenantB.id}, '{"withDeposit":false}'::jsonb),
+        ('auth',   'magiclink.sent',  NULL,          '{"flow":"signup"}'::jsonb)
+    `
+  })
+
+  it('tenant A no ve los eventos de B ni los de sistema (tenant_id NULL)', async () => {
+    const rows = await withContextRollback(
+      { role: 'turnogol_app', tenantId: tenantA.id },
+      (tx) => tx.unsafe(`SELECT tenant_id FROM analytics_events`),
+    )
+    expect(rows.length).toBe(1)
+    expect(rows[0]!.tenant_id).toBe(tenantA.id)
+  })
+
+  it('turnogol_app NO puede INSERT un evento a nombre de OTRO tenant', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(
+          `INSERT INTO analytics_events (category, event, tenant_id) VALUES ('funnel','checkout.viewed',$1)`,
+          [tenantB.id],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security policy for table "analytics_events"/i)
+  })
+
+  it('turnogol_app SÍ puede INSERT un evento sin tenant (tráfico público)', async () => {
+    // Control positivo de la rama `IS NULL` de la policy: si esto fallara, se
+    // perderían todos los eventos de búsqueda pública y de magic link.
+    await expect(
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(
+          `INSERT INTO analytics_events (category, event, tenant_id) VALUES ('auth','magiclink.sent',NULL)`,
+        ),
+      ),
+    ).resolves.toBeDefined()
+  })
+
+  it('turnogol_app NO puede UPDATE un evento propio (append-only)', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`UPDATE analytics_events SET event = 'falsificado' WHERE tenant_id = $1`, [
+          tenantA.id,
+        ]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+})

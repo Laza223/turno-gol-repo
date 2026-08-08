@@ -410,6 +410,7 @@ SOLUCIÓN:
 | **Datos financieros** (pagos, facturas) | 5 años | Obligación contable argentina (Código de Comercio, Art. 67) | Destrucción segura. |
 | **Audit logs** | 24 meses (decisión del dueño, auditoría D5 2026-07-23; antes decía 12) | Razonabilidad operativa | Eliminación automática vía cron (data-retention-cleanup, `purgeOldAuditLogs`). |
 | **Notificaciones** (tabla `notifications`) | 6 meses (decisión del dueño, auditoría D5 2026-07-23) | Razonabilidad operativa | Eliminación automática vía cron (data-retention-cleanup, `purgeOldNotifications`). |
+| **Eventos de producto** (tabla `analytics_events`, migr. 072) | 12 meses | **No es dato personal**: la tabla no guarda identificadores de persona (`PII_KEYS` filtra `playerId`/`staffUserId`/`endpoint` antes de persistir). La retención es una decisión de costo de almacenamiento, no una obligación de la Ley 25.326; 12 meses es lo que permite comparar contra el mismo mes del año anterior. | Eliminación automática vía cron (data-retention-cleanup, `purgeOldAnalyticsEvents`). |
 | **Logs de sistema** | 30 días (Vercel) | Debugging | Eliminación automática por Vercel. |
 | **Consentimientos otorgados** | Indefinida | Evidencia legal de consentimiento | Nunca se elimina (es la prueba de que el consentimiento existió). |
 

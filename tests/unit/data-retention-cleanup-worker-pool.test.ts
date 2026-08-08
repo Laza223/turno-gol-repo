@@ -98,10 +98,11 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     // tournament_stages + el UPDATE que corta home/away_source_match_id, porque
     // los partidos se referencian entre sí; la 065 sumó
     // tournament_match_events, el acta del partido — módulo Torneos,
-    // docs/decisions/2026-07-24-torneos.md.)
+    // docs/decisions/2026-07-24-torneos.md; la 072 sumó analytics_events, la
+    // instrumentación de producto — B4 del plan de deuda cero.)
     // Este número es el gate: si agregás una tabla tenant-aislada y no la
     // purgás acá, este test va rojo. Actualizalo SOLO junto con el DELETE nuevo.
-    expect(txExecute.mock.calls.length).toBe(31)
+    expect(txExecute.mock.calls.length).toBe(32)
     expect(h.getSql).not.toHaveBeenCalled()
     expect(h.getDb).not.toHaveBeenCalled()
     expect(h.withTenantContext).not.toHaveBeenCalled()

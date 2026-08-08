@@ -119,7 +119,8 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - Si falta info, preguntar antes de inventar
 
 ## Multi-tenancy
-- Tablas aisladas (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events
+- Tablas aisladas (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events, analytics_events
+- **`analytics_events`** (migr. 072): destino durable de `track.*`. `tenant_id` NULLABLE — el tráfico público (búsqueda cross-tenant, magic link) no tiene complejo, y la policy de INSERT acepta NULL por eso; la de SELECT sigue estricta. Append-only (sin policy de UPDATE + REVOKE). **No guarda identificadores de persona** (`PII_KEYS` en `src/shared/observability/analytics.ts` filtra `playerId`/`staffUserId`/`endpoint`), lo que la mantiene fuera del régimen de datos personales. La escribe el pool BYPASSRLS vía `after()`, así no le suma latencia al request. `breadcrumbs.ts` es isomórfico y NO la importa: el sink se registra al revés, desde `instrumentation.ts` y `run-workers.ts`.
 - Tablas globales (sin tenant_id): tenants, players, staff_users, plans, price_versions, processed_webhooks
 - Tablas híbridas (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (solo el jugador, por `app.current_player_id`)
 - Tabla operacional: feature_flags (fila con tenant_id NULL = default global; con tenant_id = override por complejo)

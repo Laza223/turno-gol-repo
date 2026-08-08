@@ -10,6 +10,20 @@ export async function register() {
 
     const { installZodLocale } = await import('./src/shared/validation/zod-locale')
     installZodLocale()
+
+    // Conecta `track.*` con su destino durable (migr. 072). Va DESPUÉS de
+    // sentry.server.config a propósito: si esto llegara a tirar, un throw más
+    // arriba dejaría a Sentry sin instalar y la app ciega a sus propios errores
+    // — que es exactamente el modo de falla que ya se pagó una vez.
+    // El try/catch es la segunda red: sin instrumentación se puede vivir, sin
+    // servidor no.
+    try {
+      const { setAnalyticsSink } = await import('./src/shared/observability/breadcrumbs')
+      const { recordEvent } = await import('./src/shared/observability/analytics')
+      setAnalyticsSink(recordEvent)
+    } catch (err) {
+      Sentry.captureException(err)
+    }
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {

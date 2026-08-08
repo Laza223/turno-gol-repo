@@ -54,11 +54,54 @@ type AuthEvent =
   | 'staff.login'
   | 'staff.onboarding'
   | 'auth.exchange_failed'
+  // Los dos lados del magic link. Sin el par, la tasa de entrega/apertura del
+  // mail es invisible: un pico de `sent` sin `clicked` es el síntoma de que el
+  // mail está cayendo en spam, y hasta ahora eso no se podía ver.
+  | 'magiclink.sent'
+  | 'magiclink.clicked'
 
 type AuthCtx = {
   playerId?: string
   staffUserId?: string
   tenantCount?: number
+  /** magiclink.*: alta nueva con perfil vs re-acceso de un jugador existente. */
+  flow?: 'signup' | 'reaccess'
+  /** magiclink.clicked: si el intercambio del código terminó en sesión. */
+  ok?: boolean
+}
+
+/**
+ * Arriba del embudo público. Sin esto, el denominador no existe: se sabía
+ * cuántas reservas se creaban, pero no sobre cuántas visitas — o sea, no se
+ * podía calcular ninguna conversión, que es justo lo que la Fase 5 necesita
+ * medir para saber si el rediseño del flujo del jugador sirvió.
+ *
+ * `checkout.viewed` es el paso más caro de perder: es el jugador que ya eligió
+ * cancha y horario y está por pagar.
+ *
+ * ⚠️ **`portal.viewed` está declarado pero NO tiene emisor todavía, a
+ * propósito.** Su lugar natural es `(public)/[slug]/page.tsx`, que corre con
+ * `revalidate = 300` (ISR): ahí el Server Component se ejecuta una vez cada 5
+ * minutos, no una vez por visita. Emitirlo desde ahí contaría REGENERACIONES
+ * DE CACHE, y el número quedaría plano y bajísimo sin importar el tráfico —
+ * peor que no tener el dato, porque parece un dato.
+ *   Las dos salidas, cuando haga falta: (a) emitirlo desde el cliente contra un
+ *   endpoint, que es infraestructura que la Fase 5 probablemente necesite
+ *   igual; (b) sacarle el ISR a la portada, si el dato vale más que 300s de
+ *   cache. Las otras dos páginas del embudo son `force-dynamic`, así que sus
+ *   eventos sí cuentan visitas reales.
+ */
+type FunnelEvent =
+  | 'portal.viewed'
+  | 'profile.viewed'
+  | 'checkout.viewed'
+
+type FunnelCtx = {
+  tenantId?: string
+  /** profile.viewed: si la vista traía una fecha elegida en la URL. */
+  withDate?: boolean
+  /** checkout.viewed: si el turno exige seña (cambia el flujo que sigue). */
+  withDeposit?: boolean
 }
 
 type AvailabilityEvent = 'availability.public.query'
@@ -147,8 +190,38 @@ type GridCtx = {
   withDeposit?: boolean
 }
 
+/**
+ * Segundo destino de los eventos, registrado desde el servidor.
+ *
+ * Este archivo es ISOMÓRFICO: lo importan dos componentes cliente
+ * (`CloseDayButton`, `QuickBookingForm`), así que no puede importar nada que
+ * toque la DB — el driver de Postgres no entra en el bundle del navegador. Por
+ * eso la dependencia se invierte: `@/shared/observability/analytics` (solo
+ * servidor) se registra acá vía `setAnalyticsSink`, desde `instrumentation.ts`
+ * y desde `run-workers.ts`.
+ *
+ * Sin sink registrado —el navegador, y el servidor antes de que corra
+ * `register()`— los eventos solo dejan breadcrumb. Es degradación aceptable:
+ * la instrumentación nunca puede ser la razón por la que algo falla.
+ */
+type AnalyticsSink = (category: string, event: string, data: Record<string, unknown>) => void
+
+let analyticsSink: AnalyticsSink | null = null
+
+export function setAnalyticsSink(sink: AnalyticsSink | null): void {
+  analyticsSink = sink
+}
+
 function emit(category: string, message: string, data: Record<string, unknown>): void {
+  // Contexto para depurar un error: se transmite solo si después hay excepción.
   Sentry.addBreadcrumb({ category, message, data, level: 'info' })
+
+  // Medición: destino durable, independiente de que haya o no error.
+  try {
+    analyticsSink?.(category, message, data)
+  } catch {
+    // Un sink roto no puede voltear el flujo que lo emitió.
+  }
 }
 
 export const track = {
@@ -161,4 +234,5 @@ export const track = {
   notification: (ev: NotificationEvent, ctx: NotificationCtx) => emit('notification', ev, ctx),
   cashflow: (ev: CashflowEvent, ctx: CashflowCtx) => emit('cashflow', ev, ctx),
   grid: (ev: GridEvent, ctx: GridCtx) => emit('grid', ev, ctx),
+  funnel: (ev: FunnelEvent, ctx: FunnelCtx) => emit('funnel', ev, ctx),
 }

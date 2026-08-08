@@ -56,6 +56,11 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     ? (rawType as EmailOtpType)
     : 'email'
   const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash.data, type: otpType })
+  // El otro lado de `magiclink.sent`: sin este par la tasa de apertura del mail
+  // es invisible, y un mail que cae en spam se ve igual que un usuario que
+  // abandonó. `ok` distingue el click que abrió sesión del que llegó con el
+  // código vencido o ya consumido.
+  track.auth('magiclink.clicked', { ok: !error && !!data?.user })
   if (error || !data?.user) {
     logger.error('Supabase verifyOtp error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
     track.auth('auth.exchange_failed', {})

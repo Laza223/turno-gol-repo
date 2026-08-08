@@ -38,6 +38,17 @@ import { logger } from '@/shared/lib/logger'
  * webhook processing keeps running through web restarts.
  */
 async function main(): Promise<void> {
+  // Conecta `track.*` con `analytics_events` (migr. 072). Los workers emiten
+  // eventos igual que el servidor web (reconciliación, expiración, webhooks),
+  // y sin este registro serían el único lugar donde la instrumentación no mide.
+  //
+  // Import dinámico y acá adentro, no arriba: los `import` estáticos de este
+  // archivo se resuelven ANTES del bloque de `loadEnvFile` (ver el comentario
+  // del encabezado), y este módulo sí termina leyendo `WORKER_DATABASE_URL`.
+  const { setAnalyticsSink } = await import('@/shared/observability/breadcrumbs')
+  const { recordEvent } = await import('@/shared/observability/analytics')
+  setAnalyticsSink(recordEvent)
+
   // Fail fast (Fable 5 P0) if the worker DB role can't see across tenants —
   // otherwise every cron below just silently processes 0 rows forever.
   await assertWorkerDbVisibility()

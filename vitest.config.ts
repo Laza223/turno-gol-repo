@@ -15,6 +15,12 @@ export default defineConfig({
     // esta línea, `poolOptions.threads.singleThread` queda IGNORADO en silencio y
     // los tests de integración (Postgres compartido, RLS, isolation.test.ts) corren
     // en forks paralelos y racean. Falla como flake, no como crash.
+    //
+    // Probado (2026-08-10) sacarle singleThread a unit, separando en un config
+    // propio: tests/unit/staff-actions.test.tsx > "clicking Desactivar abre el
+    // ConfirmDialog" pasa aislado pero falla 2/2 corriendo la suite completa en
+    // paralelo real — una carrera real, no flake preexistente. La ganancia
+    // (~15-20s) no vale romper un check requerido. Revertido.
     pool: 'threads',
     poolOptions: {
       threads: {

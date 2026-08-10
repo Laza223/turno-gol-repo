@@ -45,7 +45,11 @@ export const ConAvatar: Story = {
     firstName: base.firstName,
     lastName: base.lastName,
     email: base.email,
-    avatarUrl: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?q=80&w=256&auto=format&fit=crop',
+    // Antes pedía una foto real a images.unsplash.com — un tercero real desde
+    // el runner de CI. El test solo verifica que el <img role="Avatar"> exista
+    // (línea de abajo), no que la foto cargue: una data URI embebida alcanza.
+    avatarUrl:
+      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7',
     tab: 'favoritos',
   },
   play: async ({ canvasElement }) => {

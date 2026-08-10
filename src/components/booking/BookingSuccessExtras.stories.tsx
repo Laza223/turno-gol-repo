@@ -9,10 +9,10 @@ const t = tenant()
 /**
  * Vive al final de la página de éxito, dentro de ReservaDarkShell. `hasGeo`
  * decide si se monta el mini-mapa (dynamic import, ssr:false, react-leaflet) —
- * con red bloqueada en el sandbox de test los tiles no cargan, pero el
- * `MapContainer` y su `aria-label` sí se montan (Leaflet no rompe sin red, solo
- * deja los tiles en blanco), así que la story sigue siendo representativa del
- * layout real.
+ * el decorator global `withOfflineTiles` (`.storybook/preview.tsx`) pisa la URL
+ * de tiles por una embebida, así que `ConUbicacion` no pega a un tercero real
+ * desde CI. `MapContainer` y su `aria-label` se montan igual, representativo
+ * del layout real.
  */
 const meta = {
   title: 'Player/BookingSuccess/BookingSuccessExtras',

@@ -5,9 +5,10 @@ import BookingMiniMap from './BookingMiniMap'
 /**
  * react-leaflet: monta un `MapContainer` real (DOM real, sin SSR — se usa
  * siempre vía `next/dynamic({ ssr: false })` desde BookingSuccessExtras) y pide
- * tiles a `{s}.tile.openstreetmap.org`. Con la red del sandbox bloqueada esos
- * requests fallan, pero Leaflet no rompe por eso: el contenedor y el pin se
- * montan igual, solo quedan tiles en blanco — suficiente para validar que el
+ * tiles a `{s}.tile.openstreetmap.org`. El decorator global `withOfflineTiles`
+ * (`.storybook/preview.tsx`) pisa esa URL por un tile en blanco embebido —
+ * sin eso son requests reales a un tercero desde el runner de CI. El
+ * contenedor y el pin se montan igual, suficiente para validar que el
  * componente aísla sin arrastrar nada de `'use server'` ni de auth.
  */
 const meta = {

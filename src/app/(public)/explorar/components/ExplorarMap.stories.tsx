@@ -7,9 +7,9 @@ import ExplorarMap from './ExplorarMap'
 /**
  * react-leaflet: mismo enfoque que `BookingMiniMap.stories.tsx` (`src/components/booking/`).
  * Monta un `MapContainer` real (siempre vía `next/dynamic({ ssr: false })` desde
- * `ExplorarMapLoader`) y pide tiles a `{s}.tile.openstreetmap.org`; con la red del
- * runner bloqueada esos requests fallan pero Leaflet no rompe por eso — el contenedor
- * y los pines se montan igual, solo quedan tiles en blanco.
+ * `ExplorarMapLoader`) y pide tiles a `{s}.tile.openstreetmap.org`; el decorator global
+ * `withOfflineTiles` (`.storybook/preview.tsx`) pisa esa URL por un tile en blanco
+ * embebido — sin eso son requests reales a un tercero desde el runner de CI.
  *
  * El pin es un `L.divIcon` con html propio (`priceIcon` en ExplorarMap.tsx): el texto
  * del precio queda en el DOM real, sin esperar a que se abra el Popup (que Leaflet

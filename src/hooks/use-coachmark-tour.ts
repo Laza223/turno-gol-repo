@@ -61,6 +61,11 @@ export function useCoachmarkTour(
     const step = steps[index]
     if (!step) return
     if (!document.querySelector(`[data-tour-id="${step.targetId}"]`)) {
+      // Skip defensivo: la decisión depende de si el anchor EXISTE en el DOM,
+      // que es justamente lo que no se puede saber durante el render. Encadena
+      // un render a propósito (avanza al paso siguiente y vuelve a preguntar),
+      // y termina solo: `active` es false cuando se acaban los pasos.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIndex((i) => i + 1)
     }
     // `steps` se asume estable (constante a nivel de módulo en el caller).

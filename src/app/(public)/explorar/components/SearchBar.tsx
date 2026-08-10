@@ -73,12 +73,19 @@ export default function SearchBar({ cities }: Props) {
   }, [cities, params])
 
   // Mantener los inputs en sync si la URL cambia por fuera (back/forward, chips).
-  useEffect(() => {
+  // Ajuste DURANTE el render contra la URL anterior, no en un efecto: es el
+  // patrón que documenta React para adaptar estado a un cambio de prop. Con el
+  // efecto, un back/forward pintaba primero los valores viejos y se corregía en
+  // un segundo render.
+  const paramsKey = params.toString()
+  const [lastParamsKey, setLastParamsKey] = useState(paramsKey)
+  if (paramsKey !== lastParamsKey) {
+    setLastParamsKey(paramsKey)
     setQ(params.get('q') ?? '')
     setCity(cityValueFrom(params))
     setDate(params.get('date') ?? '')
     setTime(params.get('time') ?? '')
-  }, [params])
+  }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()

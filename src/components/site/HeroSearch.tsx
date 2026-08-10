@@ -62,6 +62,11 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
     // Foco pre-hidratación: si el usuario ya está parado en el campo (el focus
     // ocurrió antes de que React montara, onFocusCapture no se enteró), no pisarlo.
     if (typeof document !== 'undefined' && document.activeElement?.id === 'hero-city') {
+      // Este efecto NO adapta estado a un cambio de prop (ahí iría el ajuste
+      // durante el render): reacciona a un EVENTO asincrónico —la geolocalización
+      // resolvió— y decide consultando el DOM real (`document.activeElement`),
+      // que en render no existe. Dispara una vez y no encadena renders.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCityTouched(true)
       return
     }

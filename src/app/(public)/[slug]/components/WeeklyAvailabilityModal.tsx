@@ -55,12 +55,16 @@ export default function WeeklyAvailabilityModal({
   const [error, setError] = useState(false)
   const [activeDateIndex, setActiveDateIndex] = useState(0)
 
-  useEffect(() => {
-    if (isOpen) {
-      const start = selectedDate ?? today
-      setWeekStart(start)
-    }
-  }, [isOpen, selectedDate, today])
+  // Al abrir (o al cambiar el día elegido con el modal abierto) la semana
+  // visible vuelve a anclarse. Ajuste durante el render contra la combinación
+  // anterior, no en un efecto: con el efecto, abrir el modal mostraba por un
+  // frame la semana de la vez pasada.
+  const anchorKey = `${isOpen}|${selectedDate ?? ''}|${today}`
+  const [lastAnchorKey, setLastAnchorKey] = useState(anchorKey)
+  if (anchorKey !== lastAnchorKey) {
+    setLastAnchorKey(anchorKey)
+    if (isOpen) setWeekStart(selectedDate ?? today)
+  }
 
   useEffect(() => {
     if (!isOpen || !weekStart) return

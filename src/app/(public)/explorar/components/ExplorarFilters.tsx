@@ -34,8 +34,20 @@ export default function ExplorarFilters({ onApplied }: Props) {
   const [maxPriceCents, setMaxPriceCents] = useState<number | null>(null)
   const [priceError, setPriceError] = useState<string | null>(null)
 
-  // (Re)inicializar el borrador desde la URL cada vez que cambia.
-  useEffect(() => {
+  // (Re)inicializar el borrador desde la URL cada vez que cambia. Ajuste
+  // durante el render contra la URL anterior (patrón de React para adaptar
+  // estado a un cambio de prop), no en un efecto: con el efecto, cada cambio de
+  // filtro pintaba un frame con el borrador viejo.
+  //
+  // Arranca en `null` a propósito, no en `paramsKey`: los `useState` de arriba
+  // inicializan el borrador VACÍO, así que la primera pasada también tiene que
+  // sembrarlo desde la URL (el efecto viejo corría al montar). Con la clave
+  // inicializada al valor actual, entrar a /explorar con filtros en la URL los
+  // mostraba todos apagados — lo atrapó la story `ConFiltrosActivos`.
+  const paramsKey = params.toString()
+  const [lastParamsKey, setLastParamsKey] = useState<string | null>(null)
+  if (paramsKey !== lastParamsKey) {
+    setLastParamsKey(paramsKey)
     const amenities = new Set((params.get('amenities') ?? '').split(',').filter(Boolean))
     setSurfaces(new Set((params.get('surfaces') ?? '').split(',').filter(Boolean)))
     setFormats(
@@ -54,7 +66,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
     const rawMax = params.get('maxPrice')
     setMinPriceCents(rawMin ? Number(rawMin) : null)
     setMaxPriceCents(rawMax ? Number(rawMax) : null)
-  }, [params])
+  }
 
   function toggle<T>(set: Set<T>, value: T): Set<T> {
     const next = new Set(set)

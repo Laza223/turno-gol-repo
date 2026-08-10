@@ -41,6 +41,10 @@ export default async function ReservaErrorPage(props: Props) {
     )
   }
 
+  // Server Component: el cuerpo corre UNA vez por request, en el servidor. La
+  // regla del React Compiler apunta a renders de CLIENTE, que se pueden
+  // re-ejecutar en cualquier momento.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now()
   // caza-bugs #12: el hold real vence a DEFAULT_EXPIRY_SECONDS (6 min), no 15
   // — con 15 esta página ofrecía "Reintentar pago" sobre un booking que el

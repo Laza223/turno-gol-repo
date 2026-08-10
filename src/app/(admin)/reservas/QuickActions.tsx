@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useNowMs } from '@/hooks/use-now'
 import { toast } from '@/hooks/use-toast'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { hasQuickActions } from './quick-actions-helpers'
@@ -148,11 +149,15 @@ export function QuickActions({
   const [chargesTotal, setChargesTotal] = useState(0)
   const [confirmDepositOpen, setConfirmDepositOpen] = useState(false)
   const [depositMethod, setDepositMethod] = useState<DepositMethod>('cash')
+  // Reloj reactivo: `turnoEnded` e `inPolicy` deciden si se ofrece devolución.
+  // Con `Date.now()` en el render, una pestaña abierta cruzaba el límite y la
+  // UI seguía ofreciendo lo de antes.
+  const nowMs = useNowMs()
 
   if (!hasQuickActions(booking)) return null
 
   const hasPaidDeposit = booking.depositStatus === 'paid' && booking.depositAmount > 0
-  const turnoEnded = booking.endsAt ? Date.now() >= new Date(booking.endsAt).getTime() : false
+  const turnoEnded = booking.endsAt ? nowMs >= new Date(booking.endsAt).getTime() : false
 
   function run(fn: () => Promise<{ success: boolean; error?: string }>, successTitle: string) {
     startTransition(async () => {
@@ -258,7 +263,7 @@ export function QuickActions({
   const bookingStartUtcMs = booking.startsAt ? new Date(booking.startsAt).getTime() : null
   const inPolicy =
     bookingStartUtcMs !== null && Number.isFinite(bookingStartUtcMs) && cancellationPolicyHours !== undefined
-      ? Date.now() < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
+      ? nowMs < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
       : null
 
   let refundWarning: string | null = null

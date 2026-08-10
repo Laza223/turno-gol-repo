@@ -21,6 +21,7 @@ import ActivityStats from './ActivityStats'
 import NotificationPrefs from './NotificationPrefs'
 import { ProfileHeaderNav, PROFILE_TABS, type ProfileTabKey } from './ProfileHeaderNav'
 import { updateProfileAction, updateNotificationPrefAction } from './actions'
+import { artTodayStr } from '@/shared/dates/art'
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return '—'
@@ -84,7 +85,7 @@ export default async function PerfilPage(
     tab === 'actividad'
       ? await withPlayerContext(user.playerId, (tx) => getPlayerActivity(user.playerId, tx))
       : null
-  const artToday = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
+  const artToday = artTodayStr()
 
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-6">

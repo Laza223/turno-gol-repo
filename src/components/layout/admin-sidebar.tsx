@@ -58,7 +58,7 @@ export interface NavItem {
  * Grilla y "Turnos fijos" es una pestaña de Clientes. Las URLs no cambiaron —
  * ninguna ruta se movió, sólo dejaron de ser ítems de primer nivel.
  */
-export const NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Hoy', requiresAdmin: true },
   {
     href: '/grilla',
@@ -79,7 +79,7 @@ export const NAV_ITEMS: NavItem[] = [
 ]
 
 /** Fuera del flujo diario: se separa del resto con un borde, al pie. */
-export const CONFIG_ITEM: NavItem = {
+const CONFIG_ITEM: NavItem = {
   href: '/settings',
   icon: Settings,
   label: 'Configuración',

@@ -7,7 +7,7 @@ import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { applyNoShowStrike, revertNoShowStrike } from '@/modules/relationships/ptr.service'
 import { markNoShow, revertNoShow } from './booking.service'
-import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
+import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
 import { captureMessage } from '@/lib/sentry'
@@ -250,7 +250,7 @@ export async function cancelByPlayer(
     metadata: { reason: reason ?? null, inPolicy, depositStatus: newDepositStatus },
   })
 
-  await invalidateCourtDateSlots(b.court_id, b.date)
+  await invalidateAvailSearch(b.date)
 
   const bookingRow = rowToBookingRow(updated[0]!)
 
@@ -394,7 +394,7 @@ export async function cancelByAdmin(
     metadata: { reason, cancellationType, inPolicy, shouldRefund, depositStatus: newDepositStatus },
   })
 
-  await invalidateCourtDateSlots(b.court_id, b.date)
+  await invalidateAvailSearch(b.date)
 
   const bookingRow = rowToBookingRow(updated[0]!)
 

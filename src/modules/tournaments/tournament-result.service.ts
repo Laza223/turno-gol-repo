@@ -520,18 +520,11 @@ export async function listMatchEvents(
   }))
 }
 
-// ─── Borrado en cascada (lo usan los services de fase 1 y 2) ────────
-
-export async function deleteEventsForMatch(
-  tenantId: string,
-  matchId: string,
-  tx: DbTx,
-): Promise<void> {
-  await tx.execute(sql`
-    DELETE FROM tournament_match_events
-    WHERE tenant_id = ${tenantId} AND match_id = ${matchId}
-  `)
-}
+// B5 (2026-08-09): acá vivía `deleteEventsForMatch`, con un comentario que
+// decía "lo usan los services de fase 1 y 2" — y no lo usaba nadie. El borrado
+// en cascada real (la FK (match_id, tournament_id) es NO ACTION, así que hay
+// que vaciar los eventos ANTES de borrar los partidos) lo hace `clearFixture`
+// con su propio DELETE inline, en tournament-fixture.service.ts.
 
 export async function countEventsForTeam(
   tenantId: string,

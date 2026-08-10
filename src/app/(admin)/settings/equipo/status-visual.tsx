@@ -2,7 +2,7 @@ import { CheckCircle2, ShieldCheck, Users, XCircle } from 'lucide-react'
 import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badge'
 import { STAFF_ROLE_LABELS, type StaffRole } from '@/modules/staff/roles'
 
-export type StaffBadgeVisual = StatusBadgeVisual
+type StaffBadgeVisual = StatusBadgeVisual
 
 // Rol es jerarquía de acceso, no un estado de §2.6: admin usa el único acento
 // emerald del listado (§2.3 "pocos susurran") porque resalta el rol con acceso

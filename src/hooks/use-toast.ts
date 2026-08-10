@@ -3,9 +3,9 @@
 import * as React from 'react'
 import type { ToastProps } from '@/components/ui/toast'
 
-export type ToastVariant = NonNullable<ToastProps['variant']>
+type ToastVariant = NonNullable<ToastProps['variant']>
 
-export type ToastAction = {
+type ToastAction = {
   label: string
   onClick: () => void
 }

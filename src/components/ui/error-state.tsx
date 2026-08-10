@@ -5,7 +5,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type ErrorStateVariant = 'full' | 'contained' | 'inline'
+type ErrorStateVariant = 'full' | 'contained' | 'inline'
 
 export interface ErrorStateProps {
   variant?: ErrorStateVariant  // default 'contained'

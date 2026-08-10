@@ -73,7 +73,7 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
  * antes de que commiteara, quedando fuera del cierre y aterrizando en un día
  * ya cerrado.
  */
-export async function assertDayOpen(
+async function assertDayOpen(
   tenantId: string,
   occurredAt: Date,
   tx: DbTx,

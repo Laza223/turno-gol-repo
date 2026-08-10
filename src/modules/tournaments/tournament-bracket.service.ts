@@ -75,7 +75,7 @@ export async function loadMatch(
 }
 
 /** El partido tal como lo ve el motor puro. */
-export function toStandingsMatch(m: MatchWithStage): StandingsMatch {
+function toStandingsMatch(m: MatchWithStage): StandingsMatch {
   return {
     id: m.id,
     stageId: m.stageId,

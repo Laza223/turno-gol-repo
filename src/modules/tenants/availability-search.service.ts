@@ -112,7 +112,7 @@ function slotEndTime(mins: number): string {
 /**
  * Tenant ids (sorted) with at least one online court — optionally restricted to
  * `formats` — free at `date`+`time`. Results are cached in Upstash for 30s and
- * invalidated by every booking mutation via invalidateCourtDateSlots.
+ * invalidated by every booking mutation via invalidateAvailSearch.
  *
  * Two DB round-trips regardless of tenant count (never one per tenant):
  *  1. the global `tenants` table → schedule candidates, filtered in TS with the

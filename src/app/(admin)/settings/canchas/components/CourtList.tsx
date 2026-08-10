@@ -23,11 +23,11 @@ import type {
  * Las 2 Server Actions propias de esta lista llegan por PROP, mismo motivo
  * que CourtForm (ver su comentario): '../actions' es `'use server'`.
  */
-export type ToggleCourtStatusAction = (
+type ToggleCourtStatusAction = (
   courtId: string,
   status: 'online' | 'offline',
 ) => Promise<CourtActionResult>
-export type GetCourtDeactivationImpactAction = (
+type GetCourtDeactivationImpactAction = (
   courtId: string,
 ) => Promise<CourtDeactivationImpactResult>
 

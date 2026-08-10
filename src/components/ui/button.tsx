@@ -35,6 +35,7 @@ const buttonVariants = cva(
   },
 )
 
+/** @public Superficie vendorizada de shadcn/ui: la reintroduce cualquier `npx shadcn add`. */
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {

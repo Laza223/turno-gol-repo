@@ -14,12 +14,12 @@ import { ExistingCourtsList } from './step-courts/ExistingCourtsList'
 import { useCourtDrafts } from './step-courts/use-court-drafts'
 
 /** Firma de la Server Action que crea las canchas del wizard. */
-export type CreateWizardCourtsAction = (input: {
+type CreateWizardCourtsAction = (input: {
   courts: WizardCourtDraftInput[]
 }) => Promise<WizardActionResult>
 
 /** Firma de la Server Action de "Volver" (mueve el wizard a un paso previo). */
-export type SetWizardStepAction = (completedStep: number) => Promise<WizardActionResult>
+type SetWizardStepAction = (completedStep: number) => Promise<WizardActionResult>
 
 type Props = {
   /** Canchas ya creadas (revisita con "Volver"): se listan, no se editan acá. */

@@ -9,7 +9,7 @@ import { uuid, moneyCents, boundedText } from '@/shared/validation/primitives'
 
 // Catálogo: límites generosos pero acotados (nombre corto = botón legible en
 // el grid de venta; 60 años-friendly).
-export const productNameSchema = z.string().trim().min(1, 'El nombre no puede estar vacío.').max(40)
+const productNameSchema = z.string().trim().min(1, 'El nombre no puede estar vacío.').max(40)
 
 export const createProductSchema = z.object({
   name: productNameSchema,
@@ -30,7 +30,7 @@ export const updateProductSchema = z.object({
 })
 
 // Ticket: hasta 20 líneas distintas; qty por línea acotada como la venta actual.
-export const ticketLineSchema = z.object({
+const ticketLineSchema = z.object({
   productId: uuid,
   qty: z.number().int().min(1).max(99),
 })

@@ -12,7 +12,7 @@ import postgres from 'postgres'
  *      arbitrary SQL). Points at local Supabase (127.0.0.1:54322).
  */
 
-export const QA_EVIDENCE_DIR = path.resolve('test-results/qa/evidence')
+const QA_EVIDENCE_DIR = path.resolve('test-results/qa/evidence')
 
 const SUPERUSER_DSN =
   process.env.DBQ_DSN ?? 'postgres://postgres:postgres@127.0.0.1:54322/postgres'

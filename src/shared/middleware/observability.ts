@@ -2,7 +2,18 @@ import * as Sentry from '@sentry/nextjs'
 import { runWithRequestContext, updateRequestContext, type RequestContext } from '@/shared/lib/request-context'
 import { resolveRequestId } from '@/shared/lib/request-id'
 
-/** Wrap a node route handler so logger/Sentry get request_id + context. */
+/**
+ * Wrap a node route handler so logger/Sentry get request_id + context.
+ *
+ * B5 (2026-08-09): esta función existía desde siempre y NO LA LLAMABA NADIE, y
+ * es la única que puebla el AsyncLocalStorage de `request-context`. O sea que
+ * los dos lectores que sí están vivos leían un store vacío: `logger.ts` emitía
+ * cada línea sin requestId/tenantId/userId, y `api-error.ts` respondía
+ * `{"request_id": null}` en TODOS los errores de API. `tagSession` tampoco
+ * hacía nada útil (`updateRequestContext` no-opea sin store activo). Cableada
+ * en los 4 wrappers de route handler: withTenant, withBillingTenant,
+ * withPlayer y withAuth.
+ */
 export function runRequestObservability<T>(req: Request, fn: () => Promise<T>): Promise<T> {
   const requestId = resolveRequestId(req.headers.get('x-request-id'))
   const ctx: RequestContext = { requestId }

@@ -14,7 +14,7 @@ type DefaultValues = {
 }
 
 /** Firma de la Server Action que consume el form. */
-export type UpdateProfileAction = (
+type UpdateProfileAction = (
   prevState: UpdateProfileResult,
   formData: FormData,
 ) => Promise<UpdateProfileResult>

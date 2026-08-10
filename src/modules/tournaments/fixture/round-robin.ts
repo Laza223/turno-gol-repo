@@ -13,7 +13,7 @@ import { FixtureGenerationError } from '../tournament.errors'
 /** Sentinela del equipo fantasma que se agrega cuando son impares. */
 const BYE = '__bye__'
 
-export type Pairing = { homeTeamId: string; awayTeamId: string }
+type Pairing = { homeTeamId: string; awayTeamId: string }
 export type FixtureRound = { round: number; pairings: Pairing[] }
 
 export type RoundRobinOptions = {

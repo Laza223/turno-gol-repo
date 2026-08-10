@@ -1,0 +1,102 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Detector reproducible de código muerto (bloque B5 del esfuerzo "deuda cero").
+  //
+  // El problema que resuelve no eran las 5 funciones sueltas que un barrido a
+  // mano encontró: era que el barrido NO SE REPETÍA. `src/app` y
+  // `src/components` nunca se habían barrido, y nada impedía que volviera a
+  // acumularse. Por eso esto está versionado y cableado al job `Lint & Types`
+  // (`pnpm knip`), que es bloqueante: un export que se queda sin consumidores
+  // pone el PR en rojo en el momento en que deja de usarse, no tres meses
+  // después.
+  //
+  // REGLA DE USO: si knip marca algo, la respuesta por defecto es BORRARLO o
+  // QUITARLE EL `export` (si solo se usa dentro de su archivo). Agregar una
+  // entrada a `ignore*` es la excepción y SIEMPRE lleva el motivo escrito
+  // arriba — un ignore sin motivo es exactamente la deuda que esto viene a
+  // matar.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Entradas que ningún plugin puede inferir. Los plugins de knip (next,
+  // vitest, playwright, storybook, eslint, postcss, drizzle, lint-staged) ya
+  // resuelven solos `src/app/**/{page,layout,route,...}`, los configs de la
+  // raíz y los tests; acá van únicamente los procesos que arrancan por fuera
+  // de todo eso.
+  "entry": [
+    // `src/shared/jobs/run-workers.ts` NO va acá: knip ya lo alcanza solo y
+    // declararlo explícito le saca un "redundant entry pattern". Verificado con
+    // control negativo — un export muerto dentro de un worker se detecta igual.
+    // Configs de Sentry: los carga el runtime por convención de nombre, no por
+    // import. (`instrumentation*.ts` y `middleware.ts` NO van acá: el plugin
+    // de next ya los reconoce y declararlos daba "redundant entry pattern".)
+    "sentry.{server,edge}.config.ts",
+    // Scripts operativos y de seed. Varios se invocan por `pnpm <script>` y
+    // otros a mano durante una operación (runbook doc19).
+    "scripts/**/*.{ts,mjs,js}",
+    // Config de react-doctor (`pnpm doctor` → npx react-doctor, que lo levanta
+    // por convención de nombre).
+    "doctor.config.mjs",
+    // Segundo config de Playwright, para las corridas de QA manual.
+    "playwright.qa.config.ts",
+    // Build separado que empaqueta el design system para claude.ai/design.
+    ".design-sync/build-dist.mjs"
+  ],
+
+  // Los .css entran a propósito: Tailwind 4 declara sus plugins DENTRO del CSS
+  // (`@plugin "@tailwindcss/typography"`), así que sin esto knip reporta
+  // tailwindcss y sus plugins como dependencias sin usar.
+  "project": [
+    "src/**/*.{ts,tsx,css}",
+    "scripts/**/*.{ts,mjs,js}",
+    "tests/**/*.{ts,tsx}"
+  ],
+
+  // `project` (arriba) ya deja afuera todo lo que no es src/scripts/tests, así
+  // que estas rutas NO necesitan un ignore explícito — knip ni las mira. Se
+  // dejan anotadas acá porque son justo las que uno tiende a "arreglar"
+  // metiéndolas al project, y cada una rompería de una forma distinta:
+  //   .semgrep/**            → TypeScript usado como DSL de patrón, jamás importado.
+  //   content/**             → MDX leído en runtime con fs+gray-matter (src/lib/content/posts.ts).
+  //   public/**              → estáticos y service worker servidos tal cual.
+  //   .design-sync/**        → build aparte del design system, con su propio glob.
+  //   tests/e2e/visual/screenshot.css → lo inyecta Playwright por path.
+  //   scripts/lhci-grilla-puppeteer.js → referenciado por string desde lighthouserc.grilla.json.
+  "ignore": [
+    // Este SÍ hace falta (cae dentro de `scripts/**`, que es entry): lo ejecuta
+    // Lighthouse CI en SU contexto, resolviendo `puppeteer`/`puppeteer-core`
+    // desde el árbol de @lhci/cli. No son dependencias nuestras y agregarlas al
+    // package.json sería mentir sobre lo que el proyecto necesita.
+    "scripts/lhci-grilla-puppeteer.js"
+  ],
+
+  "ignoreBinaries": [
+    // Builtin de Windows que `scripts/storybook-qa.mjs` usa para ubicar
+    // ejecutables; no es un paquete de npm.
+    "where"
+  ],
+
+  "ignoreExportsUsedInFile": false,
+
+  // Un export anotado con `/** @public */` queda exento. Es la única forma de
+  // eximir un símbolo, y a propósito: la exención vive PEGADA al código, con su
+  // motivo escrito al lado, en vez de en una allowlist acá que nadie relee. Se
+  // usa para dos cosas y nada más:
+  //   1. Superficie vendorizada de shadcn/ui (`DialogClose`, `badgeVariants`,
+  //      `ButtonProps`…). Borrarlas nos separa de upstream y un
+  //      `npx shadcn add <componente>` las devuelve, dejando el gate en rojo
+  //      cada vez que alguien actualiza un componente.
+  //   2. Helpers de test reservados para una tarea abierta de otra persona.
+  "tags": ["-@public"],
+
+  "ignoreDependencies": []
+
+  // NOTA sobre el plugin `next`: se deja con sus defaults A PROPÓSITO. La
+  // tentación es declarar `src/app/**/actions.ts` como entry para que dejen de
+  // aparecer Server Actions "sin usar" — y sería justo el error: una Server
+  // Action la importa el componente cliente que la dispara, así que una que
+  // nadie importa es una función inalcanzable desde la UI. Marcarlas como
+  // entry las volvería invisibles, que es lo contrario de lo que este archivo
+  // existe para hacer.
+}

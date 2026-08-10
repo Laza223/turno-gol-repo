@@ -26,7 +26,7 @@ import { StockExitDialog, type RegisterStockExitAction } from './StockExitDialog
 import type { ProductActionResult } from './actions'
 
 /** deactivateProductAction llega por PROP: '../actions' es `'use server'`. */
-export type DeactivateProductAction = (productId: string) => Promise<ProductActionResult>
+type DeactivateProductAction = (productId: string) => Promise<ProductActionResult>
 
 type Props = {
   products: CanteenProductRow[]

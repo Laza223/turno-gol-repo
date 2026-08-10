@@ -521,7 +521,7 @@ const listRescheduleSlotsSchema = z.object({
   date: dateStr,
 })
 
-export type RescheduleSlot = {
+type RescheduleSlot = {
   timeStart: string
   timeEnd: string
   /** Centavos ARS; null = la franja no tiene precio configurado. */

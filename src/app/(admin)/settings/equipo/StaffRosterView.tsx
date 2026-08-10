@@ -9,7 +9,7 @@ import { StaffRoleBadge, StaffStatusBadge } from './status-visual'
 import type { StaffActionResult } from './actions'
 
 /** Firma de inviteStaffAction — DI, ver ReservasPolicyForm.tsx. */
-export type InviteStaffAction = (formData: FormData) => Promise<StaffActionResult>
+type InviteStaffAction = (formData: FormData) => Promise<StaffActionResult>
 
 export type StaffRosterMember = {
   memberId: string

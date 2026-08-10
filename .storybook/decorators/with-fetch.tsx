@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
  * en producción. Los únicos endpoints que las stories tocan son 3 JSON same-origin,
  * así que una tabla de rutas sobre `window.fetch` alcanza y no agrega dependencias.
  */
-export type FetchRoute = {
+type FetchRoute = {
   /** Se matchea contra la URL del request con String.includes. */
   match: string
   /**
@@ -22,7 +22,7 @@ export type FetchRoute = {
   status?: number
 }
 
-export type FetchRoutes = FetchRoute[]
+type FetchRoutes = FetchRoute[]
 
 export const withFetch: Decorator = (Story, ctx) => {
   const routes = ctx.parameters['fetchMock'] as FetchRoutes | undefined

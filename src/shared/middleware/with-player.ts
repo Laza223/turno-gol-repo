@@ -3,6 +3,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { PlayerUser } from '@/modules/auth/types'
 import { withPlayerContext, type DbTx } from '@/shared/db/client'
 import { forbidden, unauthorized } from '@/shared/api-error'
+import { runRequestObservability } from '@/shared/middleware/observability'
 
 export type PlayerHandler = (
   req: NextRequest,
@@ -11,7 +12,7 @@ export type PlayerHandler = (
 ) => Promise<NextResponse> | NextResponse
 
 export function withPlayer(handler: PlayerHandler): (req: NextRequest) => Promise<NextResponse> {
-  return async (req) => {
+  const run = async (req: NextRequest): Promise<NextResponse> => {
     const user = await extractAuthUser()
     if (!user) {
       return unauthorized('Autenticación requerida.', { code: 'AUTH_REQUIRED' })
@@ -21,4 +22,5 @@ export function withPlayer(handler: PlayerHandler): (req: NextRequest) => Promis
     }
     return withPlayerContext(user.playerId, async (tx) => handler(req, user, tx))
   }
+  return (req) => runRequestObservability(req, () => run(req))
 }

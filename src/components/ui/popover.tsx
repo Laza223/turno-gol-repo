@@ -39,4 +39,5 @@ const PopoverContent = React.forwardRef<
 ))
 PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
+/** @public Superficie vendorizada de shadcn/ui: la reintroduce cualquier `npx shadcn add`. */
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverClose, PopoverContent }

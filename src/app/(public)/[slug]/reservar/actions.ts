@@ -44,7 +44,7 @@ const gateSchema = z.object({
 
 /** Lo tipeado vuelve al form en cada error; sin esto se pierde (no hay defaultValue). */
 const GATE_ECHO = ['email', 'firstName', 'lastName'] as const
-export type GateValues = Partial<Record<(typeof GATE_ECHO)[number], string>> & { terms?: boolean }
+type GateValues = Partial<Record<(typeof GATE_ECHO)[number], string>> & { terms?: boolean }
 
 export type GateState =
   | { status: 'idle' }

@@ -37,9 +37,13 @@ export {
   renderDepositExpired,
   renderAdminTransferExpired,
   renderAdminLatePayment,
-  renderAdminDepositAfterClose,
   renderAdminRefundFailed,
-  renderAdminExternalRefundDetected,
+  // `renderAdminDepositAfterClose` y `renderAdminExternalRefundDetected` NO se
+  // re-exportan (B5): nadie los importaba por nombre. Siguen vivos vía el mapa
+  // RENDERERS de más abajo, que es como los despacha `renderTemplate`. Este
+  // bloque existe para que los tests puedan probar cada plantilla suelta, así
+  // que su ausencia acá es la marca de las dos únicas plantillas sin test —
+  // agregales el test y volvés a poner el nombre.
 }
 
 type TemplateDataMap = {

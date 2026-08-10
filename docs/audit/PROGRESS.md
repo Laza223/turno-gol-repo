@@ -1680,3 +1680,73 @@ Windows) y Playwright los marcó `captured a stable screenshot` — dos capturas
 Se copiaron sobre las baselines. Alternativa descartada por desproporcionada: montar un workflow con
 `--update-snapshots=all` (que además es la única forma válida: sin `=all` el preset `changed` da
 verde sin reescribir, ver [[playwright-update-snapshots-preset-changed]]).
+
+---
+
+## B5 — Detector de código muerto reproducible, y los 2 bugs que destapó (2026-08-09)
+
+El bloque pedía "borrar dead code". El problema real no eran las 5 funciones que un barrido a mano
+había encontrado: era que **el barrido no se repetía**, así que `src/app` y `src/components` nunca
+se habían mirado y nada impedía que se volviera a acumular. Ahora hay `knip.jsonc` versionado y
+`pnpm knip` cableado al job `Lint & Types` **sin `continue-on-error`**.
+
+**Gate verificado con control negativo**, no asumido: se agregó un `export function __knipCanary__`
+muerto dentro de `send-email.worker.ts` y knip lo reportó (`send-email.worker.ts:100:17`). Sin ese
+control, la config podía estar dejando archivos enteros fuera del análisis y el verde no probaba
+nada.
+
+### Los 2 hallazgos que NO eran código muerto
+
+**1. 🔴 `request_id` siempre `null` en los errores de la API.** `runRequestObservability` es lo único
+que puebla el AsyncLocalStorage de `request-context`, y **no lo llamaba nadie**. Los dos lectores sí
+estaban vivos: `logger.ts` emitía cada línea sin `requestId`/`tenantId`/`userId`, y `api-error.ts`
+respondía `"meta": {"request_id": null}` en TODOS los errores HTTP, mientras doc15 §2.3 promete ese
+id para correlacionar. `tagSession` tampoco hacía nada (`updateRequestContext` no-opea sin store).
+Cableada en los 4 wrappers (`withTenant`, `withBillingTenant`, `withPlayer`, `withAuth`).
+
+*Por qué no lo vio la suite que ya existía:* `observability-middleware.test.ts` prueba `tagSession`
+abriendo el contexto **a mano** con `runWithRequestContext`. La pieza andaba perfecto; lo que
+faltaba era el cable entre la pieza y el request real. El candado nuevo
+(`tests/unit/route-wrappers-request-context.test.ts`) prueba el WRAPPER: 5 de sus 8 casos fallan si
+se saca la llamada (verificado).
+
+**2. Cache de slots por cancha: 0 lectores, 11 invalidaciones.** `readThroughSlots`/`getCachedSlots`/
+`setCachedSlots`/`getAvailableSlotsCached` no tenían un solo caller, pero los mutadores de `bookings`
+llamaban a `invalidateCourtDateSlots` en 11 lugares — borrando claves de Redis que nadie escribía
+nunca, en el camino caliente de la plata.
+
+No fue un olvido, fue un **desajuste de forma**: el único consumidor plausible es
+`getPublicAvailability`, que resuelve TODAS las canchas del complejo en una query, así que un cache
+por-cancha lo habría convertido en N GETs a Redis para reemplazar 1 query — más lento, no más
+rápido. Y esa ruta ya cachea en el borde (`s-maxage=30, stale-while-revalidate=60`). Se eliminó la
+mitad por-cancha; la mitad de búsqueda cross-tenant (`invalidateAvailSearch`, que SÍ tiene lector)
+queda intacta y los 11 call sites ahora la llaman derecho.
+
+### Lo demás
+
+- **Sitemap de torneos**: `/[slug]/torneos` y sus fichas eran páginas públicas indexables sin un
+  solo enlace ni entrada de sitemap — invisibles para Google. Cableado con
+  `listPublicTournamentSlugs` (que ya aplica el feature flag + `is_public`), en tandas de 5 para no
+  vaciar el pool.
+- **Borrados**: `tailwind-output.css` (102 KB de build committeado en la raíz), `scripts/_jsonb_probe.ts`,
+  `nextPlanSlug`, `qualifiedCount`, `cleanupVisualData`, y `deleteEventsForMatch` — cuyo comentario
+  decía "lo usan los services de fase 1 y 2" y no lo usaba nadie (el borrado en cascada real lo hace
+  `clearFixture` con su propio DELETE inline).
+- **devDependencies**: `@eslint/js` y `globals` fuera. `eslint.config.mjs` documenta que NO usa
+  `js.configs.recommended` a propósito, así que nunca se importaron.
+- **~80 exports y tipos** perdieron el `export`: se usaban solo dentro de su archivo.
+
+### Exenciones, todas con motivo escrito
+
+La única forma de eximir un símbolo es `/** @public */` pegado al código — no hay allowlist en el
+config. Se usa para: superficie vendorizada de shadcn/ui (la reintroduce cualquier `npx shadcn add`),
+helpers de `tests/e2e/mobile/_helpers.ts` reservados para una tarea abierta de Lazar, y
+`adjustStockAction` (que ya tenía la decisión escrita: arqueo físico, v1.5).
+
+### REQUIERE INPUT — 4 features de Torneos sin forma de dispararse
+
+`deleteTournamentAction`, `updateTeamAction`, `rescheduleMatchAction` y `seedPlayoffsAction` están
+implementadas, validadas y con guards, y **ningún componente las importa**: borrar un torneo, editar
+un equipo, reprogramar un partido y sembrar el cuadro de playoffs no se pueden hacer desde la
+aplicación. Marcadas `@public` con la nota de que es exención temporal, a la espera de la decisión
+del dueño entre cablearles UI o borrarlas.

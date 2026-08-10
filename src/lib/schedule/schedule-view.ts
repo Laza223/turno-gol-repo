@@ -7,9 +7,9 @@
 
 import { DAY_KEYS, type DayKey } from '@/shared/time/week-days'
 
-export type DayMode = 'general' | 'custom' | 'closed'
+type DayMode = 'general' | 'custom' | 'closed'
 
-export type DayView = {
+type DayView = {
   mode: DayMode
   /** Último par conocido del día — se conserva al cerrar/volver al general. */
   open: string

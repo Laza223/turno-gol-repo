@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
-import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
+import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
 import { calculatePrice } from '@/modules/courts/court.service'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
@@ -403,10 +403,11 @@ export async function rescheduleBooking(
     },
   })
 
-  // DOS invalidaciones: el hueco que se libera y el que se ocupa. Ningún otro
-  // flujo mueve un booking, así que ninguno tenía que hacer esto hasta ahora.
-  await invalidateCourtDateSlots(from.courtId, from.date)
-  await invalidateCourtDateSlots(input.courtId, input.date)
+  // DOS invalidaciones: el día del que se libera y el día al que se mueve.
+  // Ningún otro flujo mueve un booking, así que ninguno tenía que hacer esto.
+  // Si es el mismo día, una sola: el cache está indexado por fecha.
+  await invalidateAvailSearch(from.date)
+  if (input.date !== from.date) await invalidateAvailSearch(input.date)
 
   const notificationIds: string[] = []
   if (bookingRow.playerId) {

@@ -86,4 +86,5 @@ const DialogTitle = React.forwardRef<
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
+/** @public Superficie vendorizada de shadcn/ui: la reintroduce cualquier `npx shadcn add`. */
 export { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose }

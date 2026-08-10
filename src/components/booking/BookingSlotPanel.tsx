@@ -21,7 +21,7 @@ import type { RenderCanteenDialog, SlotPanelActions } from './slot-panel/actions
 // slot-panel/actions.ts, self-contained: son la parte del "contrato" del panel
 // que use-slot-charges y SlotActionButtons también necesitan, sin depender de
 // este archivo (evita un import circular tipo-only).
-export type { RenderCanteenDialog, ChargeInput, SlotPanelActions } from './slot-panel/actions'
+export type { RenderCanteenDialog,  SlotPanelActions } from './slot-panel/actions'
 
 // Se carga recién al abrirlo: el 90% de las veces que se abre el panel es para
 // cobrar, no para mover el turno.

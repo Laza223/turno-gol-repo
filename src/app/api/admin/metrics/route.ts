@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { withTenant } from '@/shared/middleware/with-tenant'
-import { withAnyRole } from '@/shared/middleware/with-role'
+import { withTenant } from '@/server/middleware/with-tenant'
+import { withAnyRole } from '@/server/middleware/with-role'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { getTenantMetrics } from '@/modules/metrics/metrics.service'
 

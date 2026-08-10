@@ -17,7 +17,7 @@ import { insertBooking } from '../helpers/factories'
 // FORCE ROW LEVEL SECURITY are the things actually being exercised — exactly the
 // posture of a production app role. The test DB connects as the postgres
 // superuser, which would otherwise bypass RLS entirely and make these tests lie.
-vi.mock('@/shared/middleware/with-player', () => ({
+vi.mock('@/server/middleware/with-player', () => ({
   withPlayer: (handler: (req: NextRequest, user: { playerId: string }, tx: unknown) => unknown) =>
     async (req: NextRequest) => {
       const playerId = (globalThis as Record<string, unknown>).__AS_PLAYER__ as string

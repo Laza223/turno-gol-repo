@@ -11,7 +11,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
   BLOCKED_TENANT_STATUSES,
   READ_ONLY_TENANT_STATUSES,
-} from '@/shared/middleware/with-tenant'
+} from '@/server/middleware/with-tenant'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
 import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'

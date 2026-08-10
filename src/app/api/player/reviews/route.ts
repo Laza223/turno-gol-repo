@@ -1,4 +1,4 @@
-import { withPlayer } from '@/shared/middleware/with-player'
+import { withPlayer } from '@/server/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { badRequest, businessRule, conflict, notFound, validationError } from '@/shared/api-error'
 import { validatedJson } from '@/shared/api-output'

@@ -1,3 +1,7 @@
+// Vive en `@/server` (composition root del runtime web) y no en `@/shared`:
+// importa dominio a propósito — orquestar auth + rol + lifecycle de tenant ES su
+// función, igual que `@/shared/jobs` lo hace para el runtime de background. Ver
+// el bloque `turnogol/capas-server` de eslint.config.mjs.
 import type { NextRequest, NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { StaffUser } from '@/modules/auth/types'

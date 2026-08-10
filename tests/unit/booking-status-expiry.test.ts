@@ -17,7 +17,7 @@ const FAKE_TX = {
   ]),
 }
 
-vi.mock('@/shared/middleware/with-player', () => ({
+vi.mock('@/server/middleware/with-player', () => ({
   withPlayer:
     (handler: (req: unknown, user: { playerId: string }, tx: unknown) => unknown) =>
     async (req: unknown) =>

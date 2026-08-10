@@ -34,7 +34,7 @@ vi.mock('@/modules/auth/auth.middleware', () => ({
   tagSession: vi.fn(),
 }))
 
-import { withAuth } from '@/shared/middleware/with-auth'
+import { withAuth } from '@/server/middleware/with-auth'
 import { getRequestContext } from '@/shared/lib/request-context'
 
 const REQ_ID = 'req-de-prueba-123'
@@ -129,7 +129,7 @@ describe('los 4 wrappers de route handler llaman a runRequestObservability', () 
   for (const { file, wrappers } of CASES) {
     it(`${file} — ${wrappers.join(' + ')}`, () => {
       const source = readFileSync(
-        join(process.cwd(), 'src/shared/middleware', file),
+        join(process.cwd(), 'src/server/middleware', file),
         'utf-8',
       )
 

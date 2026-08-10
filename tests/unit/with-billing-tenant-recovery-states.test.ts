@@ -25,7 +25,7 @@ vi.mock('@/shared/db/client', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getStaffRole } from '@/modules/staff/staff.service'
-import { withBillingTenant } from '@/shared/middleware/with-tenant'
+import { withBillingTenant } from '@/server/middleware/with-tenant'
 
 const mockCreateClient = vi.mocked(createClient)
 

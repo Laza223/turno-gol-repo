@@ -3,7 +3,7 @@ import {
   IMPERSONATION_COOKIE_NAME,
   verifyImpersonationCookie,
   type ImpersonationPayload,
-} from '@/modules/auth/impersonation'
+} from '@/shared/security/impersonation-cookie'
 import type { AuthUser, StaffUser } from '@/modules/auth/types'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
 import { getTenantById } from '@/modules/tenants/tenant.service'

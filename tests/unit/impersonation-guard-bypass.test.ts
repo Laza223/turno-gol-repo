@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildImpersonationCookie } from '@/modules/auth/impersonation'
+import { buildImpersonationCookie } from '@/shared/security/impersonation-cookie'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'

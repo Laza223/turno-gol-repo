@@ -15,7 +15,12 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
  *
  * Este módulo es PURO (solo node:crypto): lo importan workers, audit.ts y tests
  * sin arrastrar `next/headers`. La lectura de la cookie del request vive en
- * `impersonation.server.ts`.
+ * `@/modules/auth/impersonation.server.ts`.
+ *
+ * Vive en `@/shared/security` y no en `@/modules/auth` porque es un códec de
+ * cookie firmada, no lógica de negocio: `@/shared/db/audit.ts` (infraestructura)
+ * lo necesita, y con el archivo del lado de dominio esa arista quedaba como una
+ * violación de capas que en realidad era un archivo mal ubicado (B6).
  */
 
 export const IMPERSONATION_COOKIE_NAME = 'tg_sa_impersonate'

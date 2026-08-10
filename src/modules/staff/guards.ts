@@ -5,7 +5,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import {
   BLOCKED_TENANT_STATUSES,
   READ_ONLY_TENANT_STATUSES,
-} from '@/shared/middleware/with-tenant'
+} from '@/server/middleware/with-tenant'
 import type { StaffUser } from '@/modules/auth/types'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
 import { getStaffRole } from './staff.service'

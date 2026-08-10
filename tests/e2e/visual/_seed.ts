@@ -21,10 +21,10 @@
 import { makeServiceClient } from '../_helpers/player-seed'
 import { bookingInstants } from '../_helpers/booking-instants'
 
-export const VISUAL_TENANT_ID = '00000000-0000-4000-8000-000000000001'
+const VISUAL_TENANT_ID = '00000000-0000-4000-8000-000000000001'
 export const VISUAL_TENANT_SLUG = 'e2e-complejo-demo'
-export const VISUAL_COURT_ID = '00000000-0000-4000-8000-000000000010'
-export const VISUAL_PLAYER_ID = '00000000-0000-4000-8000-000000000020'
+const VISUAL_COURT_ID = '00000000-0000-4000-8000-000000000010'
+const VISUAL_PLAYER_ID = '00000000-0000-4000-8000-000000000020'
 
 /**
  * Lunes 17 de junio de 2030.
@@ -150,8 +150,6 @@ export async function seedVisualData(): Promise<void> {
   if (error) throw new Error(`seedVisualData falló: ${error.message}`)
 }
 
-export async function cleanupVisualData(): Promise<void> {
-  const supabase = makeServiceClient()
-  const ids = VISUAL_BOOKINGS.map((b) => b.id)
-  await supabase.from('bookings').delete().in('id', ids)
-}
+// B5: `cleanupVisualData` se eliminó — ningún spec la llamaba y no hace falta:
+// `seedVisualData` hace UPSERT sobre PKs fijas, o sea que es idempotente y
+// converge al mismo estado corriéndola N veces.

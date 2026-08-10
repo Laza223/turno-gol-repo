@@ -1,31 +1,41 @@
 import { Redis } from '@upstash/redis'
-import type { AvailableSlot } from '@/modules/bookings/booking.types'
 
 /**
- * Read-through cache for per-court availability (`getAvailableSlots`).
+ * Cache de la búsqueda de disponibilidad cross-tenant (`/explorar`).
  *
- * Key pattern: `slots:{courtId}:{date}:{duration}` (TTL 30s).
+ * Key pattern: `avail-search:{date}:{time}:{formats|all}` → string[] de tenant
+ * ids (TTL 30s).
  *
  * Design rules:
- *  - FAIL-OPEN. The cache is a latency optimisation, never a source of truth.
- *    Any Redis error (missing env, network, timeout) degrades to a direct DB
- *    read; it must never break a booking flow.
- *  - Bounded staleness. The 30s TTL means even a missed invalidation self-heals
- *    within half a minute, so invalidation is best-effort, not transactional.
- *  - Invalidation deletes the duration key for a court+date.
+ *  - FAIL-OPEN. El cache es una optimización de latencia, nunca fuente de
+ *    verdad. Cualquier error de Redis (env faltante, red, timeout) degrada a
+ *    lectura directa contra la base; jamás puede romper un flujo de reserva.
+ *  - Bounded staleness. El TTL de 30s hace que hasta una invalidación perdida
+ *    se auto-cure en medio minuto, así que invalidar es best-effort, no
+ *    transaccional.
+ *
+ * HISTORIA (B5, 2026-08-09): este módulo tenía además un cache read-through
+ * POR CANCHA (`slots:{courtId}:{date}:{duration}`) con su propio
+ * `readThroughSlots`/`getCachedSlots`/`setCachedSlots`. Se eliminó: no tenía un
+ * solo lector, y las 11 invalidaciones cableadas en los mutadores de `bookings`
+ * estaban borrando claves que nadie escribía nunca. No fue un olvido, fue un
+ * desajuste de forma: el único consumidor que lo querría es
+ * `getPublicAvailability`, que resuelve TODAS las canchas del complejo en una
+ * sola query, así que un cache por-cancha lo habría convertido en N GETs a
+ * Redis para reemplazar 1 query — más lento, no más rápido. Encima esa ruta ya
+ * cachea en el borde (`s-maxage=30, stale-while-revalidate=60` en
+ * `api/public/availability`). Si algún día hace falta cachear disponibilidad
+ * pública, la forma correcta es por tenant+fecha, no por cancha, y con la
+ * medición de D6 delante.
  */
 
-import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+// TTL de las entradas de búsqueda. El set de tracking usa el suyo, más largo.
+export const AVAIL_SEARCH_TTL_SECONDS = 30
 
-export const SLOTS_CACHE_TTL_SECONDS = 30
-
-// Tarea #6: el producto solo ofrece turnos de 60 min (constante global).
-export const SLOT_DURATIONS = [SLOT_DURATION_MINUTES] as const
-
-// Minimal surface we need from Upstash Redis — keeps the module testable with a
-// plain in-memory double and decoupled from the full client type. The SET ops
-// (sadd/smembers/expire) back the per-date key tracking of the availability
-// search cache.
+// Superficie mínima que necesitamos de Upstash Redis — mantiene el módulo
+// testeable con un doble en memoria y desacoplado del tipo completo del
+// cliente. Las ops de SET (sadd/smembers/expire) sostienen el tracking de
+// claves por fecha.
 export interface SlotsCacheStore {
   get(key: string): Promise<unknown>
   set(key: string, value: unknown, opts: { ex: number }): Promise<unknown>
@@ -65,79 +75,15 @@ function normalizeDate(date: string | Date): string {
   return typeof date === 'string' ? date.slice(0, 10) : date.toISOString().slice(0, 10)
 }
 
-export function slotsCacheKey(
-  courtId: string,
-  date: string | Date,
-  duration: number,
-): string {
-  return `slots:${courtId}:${normalizeDate(date)}:${duration}`
-}
-
-export async function getCachedSlots(
-  courtId: string,
-  date: string | Date,
-  duration: number,
-): Promise<AvailableSlot[] | null> {
-  const store = getSlotsCacheStore()
-  if (!store) return null
-  try {
-    const raw = await store.get(slotsCacheKey(courtId, date, duration))
-    if (raw == null) return null
-    // Upstash auto-deserializes JSON; a stringified payload comes back parsed,
-    // but tolerate both shapes to stay double-friendly.
-    return typeof raw === 'string'
-      ? (JSON.parse(raw) as AvailableSlot[])
-      : (raw as AvailableSlot[])
-  } catch {
-    return null // fail-open
-  }
-}
-
-export async function setCachedSlots(
-  courtId: string,
-  date: string | Date,
-  duration: number,
-  slots: AvailableSlot[],
-): Promise<void> {
-  const store = getSlotsCacheStore()
-  if (!store) return
-  try {
-    await store.set(slotsCacheKey(courtId, date, duration), JSON.stringify(slots), {
-      ex: SLOTS_CACHE_TTL_SECONDS,
-    })
-  } catch {
-    // fail-open: a write miss just means the next read recomputes
-  }
-}
-
-export async function invalidateCourtDateSlots(
-  courtId: string,
-  date: string | Date,
-): Promise<void> {
-  const store = getSlotsCacheStore()
-  if (!store) return
-  try {
-    const keys = SLOT_DURATIONS.map((d) => slotsCacheKey(courtId, date, d))
-    await store.del(...keys)
-  } catch {
-    // fail-open: bounded by the 30s TTL anyway
-  }
-  // A booking change on this date also stales the cross-tenant availability
-  // search for it. Same funnel, same best-effort contract.
-  await invalidateAvailSearch(date)
-}
-
 // ─── Cross-tenant availability search cache ─────────────────────────
 //
-// Key pattern: `avail-search:{date}:{time}:{formats|all}` → string[] of tenant
-// ids (TTL 30s). Because a booking mutation only knows its court+date (not
-// which searches it affects), every written key is tracked in a per-date Redis
-// SET (`avail-search:keys:{date}`) so invalidateAvailSearch can enumerate and
-// delete them. The tracking set carries its own TTL as garbage collection.
+// Como una mutación de reserva solo conoce su cancha+fecha (no qué búsquedas
+// afecta), cada clave escrita se registra en un SET de Redis por fecha
+// (`avail-search:keys:{date}`) para que `invalidateAvailSearch` pueda
+// enumerarlas y borrarlas. El set de tracking lleva su propio TTL como
+// recolección de basura.
 
-export const AVAIL_SEARCH_TTL_SECONDS = SLOTS_CACHE_TTL_SECONDS
-
-// Tracking set must outlive the entries it tracks; 120s ≫ 30s with margin.
+// El set de tracking tiene que sobrevivir a las entradas que trackea; 120s ≫ 30s con margen.
 const AVAIL_SEARCH_TRACKING_TTL_SECONDS = 120
 
 export function availSearchKey(
@@ -161,6 +107,8 @@ async function getCachedAvailSearch(key: string): Promise<string[] | null> {
   try {
     const raw = await store.get(key)
     if (raw == null) return null
+    // Upstash auto-deserializa JSON; un payload stringificado vuelve parseado,
+    // pero toleramos las dos formas para seguir siendo amigables con el doble.
     return typeof raw === 'string' ? (JSON.parse(raw) as string[]) : (raw as string[])
   } catch {
     return null // fail-open
@@ -180,13 +128,13 @@ async function setCachedAvailSearch(
     await store.sadd(tracking, key)
     await store.expire(tracking, AVAIL_SEARCH_TRACKING_TTL_SECONDS)
   } catch {
-    // fail-open: an untracked entry self-heals via its 30s TTL
+    // fail-open: una entrada sin trackear se auto-cura con su TTL de 30s
   }
 }
 
 /**
- * Read-through cache for the cross-tenant availability search. Same contract
- * as readThroughSlots: always fails open to the loader.
+ * Read-through cache de la búsqueda de disponibilidad cross-tenant. Siempre
+ * falla abierto al loader.
  */
 export async function readThroughAvailSearch(
   date: string | Date,
@@ -202,7 +150,11 @@ export async function readThroughAvailSearch(
   return { tenantIds, hit: false }
 }
 
-/** Deletes every cached availability search for a date (plus the tracking set). */
+/**
+ * Borra toda búsqueda de disponibilidad cacheada para una fecha (más el set de
+ * tracking). La llaman los mutadores de `bookings`: una reserva nueva, movida o
+ * cancelada cambia quién tiene lugar libre ese día.
+ */
 export async function invalidateAvailSearch(date: string | Date): Promise<void> {
   const store = getSlotsCacheStore()
   if (!store) return
@@ -211,24 +163,6 @@ export async function invalidateAvailSearch(date: string | Date): Promise<void> 
     const keys = await store.smembers(tracking)
     await store.del(...keys, tracking)
   } catch {
-    // fail-open: bounded by the 30s TTL anyway
+    // fail-open: acotado por el TTL de 30s de todos modos
   }
-}
-
-/**
- * Read-through helper: returns the cached slots on a hit, otherwise runs
- * `loader`, populates the cache, and returns the fresh result. `hit` is exposed
- * for observability/tests. Always fails open to the loader.
- */
-export async function readThroughSlots(
-  courtId: string,
-  date: string | Date,
-  duration: number,
-  loader: () => Promise<AvailableSlot[]>,
-): Promise<{ slots: AvailableSlot[]; hit: boolean }> {
-  const cached = await getCachedSlots(courtId, date, duration)
-  if (cached) return { slots: cached, hit: true }
-  const slots = await loader()
-  await setCachedSlots(courtId, date, duration, slots)
-  return { slots, hit: false }
 }

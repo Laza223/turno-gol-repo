@@ -7,7 +7,7 @@ import { uuid } from '@/shared/validation/primitives'
  * guard tests/unit/zod-coverage.test.ts) y sea unit-testeable sin DB — mismo
  * patrón que super-admin/support.schema.ts.
  */
-export const BAN_DURATIONS = ['7d', '30d', 'indefinite'] as const
+const BAN_DURATIONS = ['7d', '30d', 'indefinite'] as const
 export type ManualBanDuration = (typeof BAN_DURATIONS)[number]
 
 export const banPlayerInputSchema = z.object({

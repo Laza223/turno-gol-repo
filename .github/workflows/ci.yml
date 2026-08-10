@@ -46,6 +46,14 @@ jobs:
       - name: Type-check
         run: pnpm typecheck
 
+      # Código muerto (B5). Sin `continue-on-error` a propósito: el barrido a
+      # mano ya se había hecho una vez y se volvió a acumular porque nada lo
+      # repetía. Falla el job si un archivo, export, tipo o dependencia se queda
+      # sin consumidores. La config y el criterio para exceptuar algo están en
+      # `knip.jsonc`.
+      - name: Dead code (knip)
+        run: pnpm knip
+
   # ── Job 2: unit tests (~1 min, no DB) ─────────────────────────────────────
   unit-tests:
     name: Unit Tests

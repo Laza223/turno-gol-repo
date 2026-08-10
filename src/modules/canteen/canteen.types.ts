@@ -9,7 +9,7 @@ export type StockMovementKind =
   | 'adjustment'
 
 /** Salidas no comerciales: mueven stock, NO tocan caja. */
-export type StockExitReason = 'waste' | 'courtesy' | 'internal_use'
+type StockExitReason = 'waste' | 'courtesy' | 'internal_use'
 
 export type CanteenTabStatus = 'open' | 'paid' | 'canceled'
 
@@ -31,7 +31,7 @@ export type CanteenProductRow = {
   updatedAt: Date
 }
 
-export type StockMovementRow = {
+type StockMovementRow = {
   id: string
   tenantId: string
   productId: string

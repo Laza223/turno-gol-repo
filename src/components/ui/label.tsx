@@ -8,6 +8,7 @@ const labelVariants = cva(
   'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
 )
 
+/** @public Superficie vendorizada de shadcn/ui: la reintroduce cualquier `npx shadcn add`. */
 export interface LabelProps
   extends React.LabelHTMLAttributes<HTMLLabelElement>,
     VariantProps<typeof labelVariants> {}

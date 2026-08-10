@@ -5,11 +5,11 @@ import { ImageUploader } from '@/components/ui/image-uploader'
 import type { TenantImageActionResult } from './actions'
 
 /** Firmas de setTenantImageAction/removeTenantImageAction — DI, ver ReservasPolicyForm.tsx. */
-export type SetTenantImageAction = (
+type SetTenantImageAction = (
   kind: 'logo' | 'cover',
   formData: FormData,
 ) => Promise<TenantImageActionResult>
-export type RemoveTenantImageAction = (
+type RemoveTenantImageAction = (
   kind: 'logo' | 'cover',
   previousUrl: string | null,
 ) => Promise<{ success: true } | { success: false; error: string }>

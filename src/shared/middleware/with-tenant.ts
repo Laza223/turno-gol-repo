@@ -5,6 +5,7 @@ import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'
 import { forbidden, unauthorized } from '@/shared/api-error'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import type { StaffRole } from '@/modules/staff/roles'
+import { runRequestObservability } from '@/shared/middleware/observability'
 
 /**
  * Tenant lifecycle gating per doc4 §2 (P18).
@@ -66,7 +67,7 @@ export function withTenant(
   options?: WithTenantOptions,
 ): (req: NextRequest) => Promise<NextResponse> {
   const roles = options?.roles ?? ALL_STAFF_ROLES
-  return async (req) => {
+  const run = async (req: NextRequest): Promise<NextResponse> => {
     const user = await extractAuthUser()
     if (!user) {
       return unauthorized('Autenticación requerida.', { code: 'AUTH_REQUIRED' })
@@ -101,6 +102,7 @@ export function withTenant(
     }
     return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
   }
+  return (req) => runRequestObservability(req, () => run(req))
 }
 
 /**
@@ -115,7 +117,7 @@ export function withBillingTenant(
   options?: WithTenantOptions,
 ): (req: NextRequest) => Promise<NextResponse> {
   const roles = options?.roles ?? ALL_STAFF_ROLES
-  return async (req) => {
+  const run = async (req: NextRequest): Promise<NextResponse> => {
     const user = await extractAuthUser()
     if (!user) {
       return unauthorized('Autenticación requerida.', { code: 'AUTH_REQUIRED' })
@@ -151,4 +153,5 @@ export function withBillingTenant(
     }
     return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
   }
+  return (req) => runRequestObservability(req, () => run(req))
 }

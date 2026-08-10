@@ -205,12 +205,6 @@ export function validatePricingRulesCoverage(
   return { valid: gaps.length === 0, gaps }
 }
 
-export function nextPlanSlug(current: string | null): string {
-  if (current === 'predio') return 'complejo'
-  if (current === 'complejo') return 'estadio'
-  return 'estadio'
-}
-
 async function getCourtPhotos(courtId: string, tenantId: string, tx: DbTx): Promise<string[] | null> {
   const rows = await tx
     .select({ photos: courts.photos })

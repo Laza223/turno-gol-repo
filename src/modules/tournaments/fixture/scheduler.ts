@@ -46,7 +46,7 @@ export type SchedulableMatch = {
   awayTeamId: string | null
 }
 
-export type ScheduledMatch = {
+type ScheduledMatch = {
   ref: string
   bookingId: string
   courtId: string

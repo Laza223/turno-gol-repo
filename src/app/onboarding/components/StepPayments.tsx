@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils'
 import type { WizardActionResult } from '../actions'
 
 /** Firma de la Server Action que cierra el wizard (redirige internamente). */
-export type FinishOnboardingAction = () => Promise<void>
+type FinishOnboardingAction = () => Promise<void>
 
 /** Firma de la Server Action de "Volver" (mueve el wizard a un paso previo). */
-export type SetWizardStepAction = (completedStep: number) => Promise<WizardActionResult>
+type SetWizardStepAction = (completedStep: number) => Promise<WizardActionResult>
 
 type Props = {
   mpConnected: boolean

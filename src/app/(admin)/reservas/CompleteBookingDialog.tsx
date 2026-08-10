@@ -29,7 +29,7 @@ const chipClass = (active: boolean) =>
       : 'border border-border bg-card text-foreground hover:bg-accent'
   }`
 
-export type CompleteBookingDialogBooking = {
+type CompleteBookingDialogBooking = {
   id: string
   priceSnapshot: number
   depositAmount: number

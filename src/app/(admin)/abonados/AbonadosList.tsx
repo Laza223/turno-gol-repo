@@ -67,10 +67,10 @@ function defaultRowState(): RowState {
  * `node:async_hooks`, que rompe cualquier bundle de browser (Storybook).
  * Ver el comentario en ReservasPolicyForm.tsx.
  */
-export type PauseAbonadoAction = (id: string) => Promise<AbonadoActionResult>
-export type ReactivateAbonadoAction = (id: string) => Promise<AbonadoActionResult>
-export type CancelAbonadoAction = (id: string, fromDate: string) => Promise<AbonadoActionResult>
-export type PreviewAbonadoSlotsAction = (
+type PauseAbonadoAction = (id: string) => Promise<AbonadoActionResult>
+type ReactivateAbonadoAction = (id: string) => Promise<AbonadoActionResult>
+type CancelAbonadoAction = (id: string, fromDate: string) => Promise<AbonadoActionResult>
+type PreviewAbonadoSlotsAction = (
   input: PreviewAbonadoSlotsInput,
 ) => Promise<PreviewAbonadoSlotsResult>
 

@@ -7,7 +7,7 @@ import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { MarkSharedResult } from '@/app/(admin)/dashboard/actions'
 
 /** Firma de la Server Action que marca `public_link_shared` (best-effort). */
-export type MarkPublicLinkSharedAction = () => Promise<MarkSharedResult>
+type MarkPublicLinkSharedAction = () => Promise<MarkSharedResult>
 
 type Props = {
   appUrl: string | null

@@ -26,7 +26,7 @@ import type {
 } from './tournament.types'
 
 /** Lo que le falta pagar a un equipo. Nunca negativo. */
-export function pendingFor(fee: number, paid: number): number {
+function pendingFor(fee: number, paid: number): number {
   return Math.max(0, fee - paid)
 }
 

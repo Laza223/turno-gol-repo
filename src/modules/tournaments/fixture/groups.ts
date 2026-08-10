@@ -64,11 +64,3 @@ export function distributeIntoGroups(
 
   return groups
 }
-
-/**
- * Cuántos equipos clasifican en total. Se valida contra el cuadro de playoffs:
- * si no da una potencia de 2, alguien recibe BYE (lo resuelve generateKnockout).
- */
-export function qualifiedCount(groupCount: number, perGroup: number): number {
-  return groupCount * perGroup
-}

@@ -37,7 +37,7 @@ import type {
  * disponibilidad y el fieldset de seña — este archivo queda como orquestador.
  */
 
-export type QuickBookingConfig = {
+type QuickBookingConfig = {
   action: CreateBookingAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction

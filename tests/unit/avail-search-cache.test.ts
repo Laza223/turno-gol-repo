@@ -5,7 +5,6 @@ import {
   availSearchTrackingKey,
   readThroughAvailSearch,
   invalidateAvailSearch,
-  invalidateCourtDateSlots,
   __setSlotsCacheStoreForTests,
   __resetSlotsCacheForTests,
   type SlotsCacheStore,
@@ -70,7 +69,6 @@ const TENANT_IDS = [
   '22222222-2222-2222-2222-222222222222',
   '33333333-3333-3333-3333-333333333333',
 ]
-const COURT = '11111111-1111-1111-1111-111111111111'
 
 let store: FakeStore
 
@@ -181,22 +179,18 @@ describe('invalidateAvailSearch', () => {
   })
 })
 
-describe('invalidateCourtDateSlots funnel', () => {
-  it('a booking mutation invalidates the availability-search cache for that date', async () => {
+// B5 (2026-08-09): antes esto era `describe('invalidateCourtDateSlots funnel')`
+// y probaba que la invalidación por cancha+fecha "arrastrara" a la del buscador.
+// El cache por cancha se eliminó (no tenía un solo lector, ver el docstring de
+// slots-cache.ts), así que los mutadores de bookings ahora llaman derecho a
+// `invalidateAvailSearch`. El caso que sí valía la pena — que acepte un Date y
+// no solo un string, porque `bookings.date` viaja como Date desde Drizzle —
+// sobrevive acá.
+describe('invalidateAvailSearch — mutación de reserva', () => {
+  it('acepta un Date y limpia igual el cache de búsqueda de ese día', async () => {
     await readThroughAvailSearch(DATE, TIME, undefined, async () => TENANT_IDS)
 
-    // Every booking mutation (create/cancel/expire/complete/no-show) already
-    // funnels through invalidateCourtDateSlots — the search cache must ride it.
-    await invalidateCourtDateSlots(COURT, DATE)
-
-    const after = await readThroughAvailSearch(DATE, TIME, undefined, async () => [])
-    expect(after).toEqual({ tenantIds: [], hit: false })
-  })
-
-  it('accepts a Date object and still clears the search cache for that day', async () => {
-    await readThroughAvailSearch(DATE, TIME, undefined, async () => TENANT_IDS)
-
-    await invalidateCourtDateSlots(COURT, new Date(`${DATE}T12:00:00.000Z`))
+    await invalidateAvailSearch(new Date(`${DATE}T12:00:00.000Z`))
 
     const after = await readThroughAvailSearch(DATE, TIME, undefined, async () => [])
     expect(after.hit).toBe(false)

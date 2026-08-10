@@ -342,6 +342,14 @@ export async function updateTournamentAction(input: unknown): Promise<Tournament
   return { success: true, id: parsed.data.id }
 }
 
+/**
+ * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ *
+ * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
+ * la lógica existe, está guardada y validada, pero no hay forma de
+ * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
+ * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ */
 export async function deleteTournamentAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = tournamentIdSchema.safeParse(input)
   if (!parsed.success) {
@@ -439,6 +447,14 @@ export async function searchPlayersForCaptainAction(
   return { success: true, players }
 }
 
+/**
+ * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ *
+ * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
+ * la lógica existe, está guardada y validada, pero no hay forma de
+ * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
+ * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ */
 export async function updateTeamAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = updateTeamSchema.safeParse(input)
   if (!parsed.success) {
@@ -664,6 +680,14 @@ export async function clearFixtureAction(input: unknown): Promise<TournamentActi
   return { success: true }
 }
 
+/**
+ * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ *
+ * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
+ * la lógica existe, está guardada y validada, pero no hay forma de
+ * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
+ * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ */
 export async function rescheduleMatchAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = rescheduleMatchSchema.safeParse(input)
   if (!parsed.success) {
@@ -903,6 +927,14 @@ export async function deleteMatchEventAction(input: unknown): Promise<Tournament
 }
 
 /** Cerrar las zonas y sembrar el cuadro. Configuración: solo admin. */
+/**
+ * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ *
+ * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
+ * la lógica existe, está guardada y validada, pero no hay forma de
+ * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
+ * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ */
 export async function seedPlayoffsAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = seedPlayoffsSchema.safeParse(input)
   if (!parsed.success) {

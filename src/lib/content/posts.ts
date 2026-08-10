@@ -10,7 +10,7 @@ const frontmatterSchema = z.object({
   author: z.string().optional(),
 })
 
-export type Frontmatter = z.infer<typeof frontmatterSchema>
+type Frontmatter = z.infer<typeof frontmatterSchema>
 
 export interface MdxPost {
   slug: string

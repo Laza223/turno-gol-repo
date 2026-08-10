@@ -91,7 +91,7 @@ async function fetchCandidateCashFlows(sql: Sql, bookingIds: string[]): Promise<
  * Match por `description` exacta (`depositCashFlowDescription`), mismo idiom
  * que `getBookingCharges` (reservas/queries.ts:219).
  */
-export async function findPaymentsWithoutCashflow(sql: Sql): Promise<DriftFinding[]> {
+async function findPaymentsWithoutCashflow(sql: Sql): Promise<DriftFinding[]> {
   const paymentRows = await fetchApprovedDepositPayments(sql)
   if (paymentRows.length === 0) return []
 
@@ -129,7 +129,7 @@ export async function findPaymentsWithoutCashflow(sql: Sql): Promise<DriftFindin
  * debe cuadrar. Un mismatch acá es más grave que INV1: el cash_flow existe
  * pero miente sobre cuánto entró (p.ej. el bug histórico mock amount=1).
  */
-export async function findCashflowAmountMismatch(sql: Sql): Promise<DriftFinding[]> {
+async function findCashflowAmountMismatch(sql: Sql): Promise<DriftFinding[]> {
   const paymentRows = await fetchApprovedDepositPayments(sql)
   if (paymentRows.length === 0) return []
 
@@ -170,7 +170,7 @@ export async function findCashflowAmountMismatch(sql: Sql): Promise<DriftFinding
  * INV3 — el monto del payment debe cuadrar contra `bookings.deposit_amount`.
  * Habría cazado el bug mock amount=1 aun sin mirar cash_flows.
  */
-export async function findBookingAmountMismatch(sql: Sql): Promise<DriftFinding[]> {
+async function findBookingAmountMismatch(sql: Sql): Promise<DriftFinding[]> {
   const rows = await sql<{
     id: string
     tenantId: string
@@ -231,7 +231,7 @@ export async function findBookingAmountMismatch(sql: Sql): Promise<DriftFinding[
  * sospechoso) de "hay un payment row en `pending` con `mp_preference_id`"
  * (huella de checkout MP abandonado + confirmación manual, causa conocida).
  */
-export async function findBookingsWithoutApprovedPayment(sql: Sql): Promise<DriftFinding[]> {
+async function findBookingsWithoutApprovedPayment(sql: Sql): Promise<DriftFinding[]> {
   const rows = await sql<{
     id: string
     tenantId: string
@@ -285,7 +285,7 @@ export async function findBookingsWithoutApprovedPayment(sql: Sql): Promise<Drif
  * en el webhook, payment.service.ts) con una segunda red: cualquier refund
  * approved (externo o local) cuyo booking no llegó a `refunded`.
  */
-export async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> {
+async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> {
   const rows = await sql<{
     id: string
     tenantId: string
@@ -320,7 +320,7 @@ export async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> 
  * payment `approved` que lo respalde: huérfano (guardia — plata que aparece
  * en caja sin origen rastreable en `payments`).
  */
-export async function findOrphanCashflows(sql: Sql): Promise<DriftFinding[]> {
+async function findOrphanCashflows(sql: Sql): Promise<DriftFinding[]> {
   const rows = await sql<{
     id: string
     tenantId: string

@@ -22,7 +22,7 @@ import type { StandingsEvent, StandingsMatch } from './types'
  * `pendingMatches === 1`, no 2). Ese test se pone rojo si alguien invierte esta
  * constante sin pasar por el ADR.
  */
-export const YELLOWS_CONSUMED_BY_RED = true
+const YELLOWS_CONSUMED_BY_RED = true
 
 export type SuspensionRow = {
   teamPlayerId: string

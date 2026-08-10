@@ -4,7 +4,7 @@ import type { DbTx } from '@/shared/db/client'
 import { rowToBookingRow } from './booking.mappers'
 import { assertTransition } from './booking.state-machine'
 import type { TransitionResult } from './booking.types'
-import { invalidateCourtDateSlots } from '@/shared/cache/slots-cache'
+import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { track } from '@/shared/observability'
 
 /**
@@ -49,7 +49,7 @@ export async function transitionFromPendingPayment(
     track.booking('booking.transition.confirmed', { bookingId })
   } else {
     // pending_payment -> expired frees the slot: invalidate so it reappears.
-    await invalidateCourtDateSlots(row.courtId, row.date)
+    await invalidateAvailSearch(row.date)
     track.booking('booking.transition.expired', { bookingId })
   }
 

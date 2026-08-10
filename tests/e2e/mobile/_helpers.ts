@@ -14,12 +14,24 @@
 import type { Page } from '@playwright/test'
 
 /** WCAG 2.5.5 Level AA. */
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
+ */
 export const TOUCH_TARGET_MIN_PX = 44
 
 /**
  * iOS WebKit hace zoom al enfocar cualquier campo por debajo de esto. El
  * síntoma es exclusivo de iOS, pero el font-size computado se mide en
  * cualquier motor — por eso el guard no necesita WebKit para servir.
+ */
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
  */
 export const FIELD_MIN_FONT_PX = 16
 
@@ -43,6 +55,12 @@ const INTERACTIVE_SELECTOR = [
   '[role="tab"]',
 ].join(',')
 
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
+ */
 export type OverflowCulprit = {
   tag: string
   classes: string
@@ -51,6 +69,12 @@ export type OverflowCulprit = {
   innerWidth: number
 }
 
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
+ */
 export type SmallTarget = {
   tag: string
   classes: string
@@ -75,6 +99,12 @@ export type SmallField = {
  * La distinción importa: una tabla ancha dentro de un `overflow-x-auto` es el
  * patrón correcto (scrollea la tabla, no la página). Contar eso como violación
  * llevaría a "arreglarlo" achicando la tabla, que es peor.
+ */
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
  */
 export async function collectHorizontalOverflow(page: Page): Promise<OverflowCulprit[]> {
   return page.evaluate(() => {
@@ -123,6 +153,12 @@ export async function collectHorizontalOverflow(page: Page): Promise<OverflowCul
 }
 
 /** Elementos tocables por debajo de 44x44 CSS px (WCAG 2.5.5 AA). */
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
+ */
 export async function collectSmallTouchTargets(
   page: Page,
   selector: string = INTERACTIVE_SELECTOR,
@@ -227,6 +263,12 @@ export async function collectSmallFields(
 }
 
 /** Formateo compartido para que el fallo se lea sin abrir el browser. */
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
+ */
 export function formatOverflow(route: string, culprits: OverflowCulprit[]): string {
   return [
     `Scroll horizontal en ${route} (viewport ${culprits[0]?.innerWidth ?? '?'}px):`,
@@ -245,6 +287,12 @@ export function formatSmallFields(route: string, fields: SmallField[]): string {
   ].join('\n')
 }
 
+/**
+ * @public Reservado para la tarea abierta de determinizar
+ * `admin-mobile-smoke.spec.ts` (dueño: Lazar, sesión aparte). Sin caller hoy
+ * porque el spec todavía no consume estos helpers — borrarlos ahora sería
+ * sacarle el piso a esa tarea.
+ */
 export function formatSmallTargets(route: string, targets: SmallTarget[]): string {
   return [
     `Touch targets por debajo de ${TOUCH_TARGET_MIN_PX}px en ${route}:`,

@@ -31,7 +31,7 @@ export type NoShowMetric = {
   rate: number // noShow / finished, 0 when there are no finished bookings
 }
 
-export type RevenueMetric = {
+type RevenueMetric = {
   totalCents: number // sum of cash_flows.amount (centavos) with type='income'
   byCategory: Record<string, number>
 }

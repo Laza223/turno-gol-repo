@@ -17,7 +17,7 @@ import { listTenantInscriptionDebts } from '@/modules/tournaments/tournament-pay
 
 export type StreetMoneyOrigin = 'booking' | 'canteen_tab' | 'tournament'
 
-export type BookingStreetMoneyRow = {
+type BookingStreetMoneyRow = {
   origin: 'booking'
   /** bookingId — lo que pide chargeDebtAction. */
   refId: string
@@ -44,7 +44,7 @@ export type BookingStreetMoneyRow = {
   contactPhone: string | null
 }
 
-export type CanteenStreetMoneyRow = {
+type CanteenStreetMoneyRow = {
   origin: 'canteen_tab'
   /** tabId — lo que pide settleTabAction. */
   refId: string
@@ -54,7 +54,7 @@ export type CanteenStreetMoneyRow = {
   note: string | null
 }
 
-export type TournamentStreetMoneyRow = {
+type TournamentStreetMoneyRow = {
   origin: 'tournament'
   /** teamId — lo que pide registerInscriptionPaymentAction. */
   refId: string

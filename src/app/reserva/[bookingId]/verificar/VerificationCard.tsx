@@ -18,7 +18,7 @@ type Verdict = {
 }
 
 /** `booking_status` → veredicto visible para quien escanea el QR (el complejo). */
-export function verdictFor(status: string): Verdict {
+function verdictFor(status: string): Verdict {
   switch (status) {
     case 'confirmed':
       return { tone: 'ok', title: 'Reserva confirmada', detail: 'El turno está vigente.' }

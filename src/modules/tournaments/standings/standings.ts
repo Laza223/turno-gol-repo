@@ -24,8 +24,8 @@ import type {
 } from './types'
 import { orderGroup } from './tiebreakers'
 
-export const FAIR_PLAY_YELLOW_POINTS = 1
-export const FAIR_PLAY_RED_POINTS = 3
+const FAIR_PLAY_YELLOW_POINTS = 1
+const FAIR_PLAY_RED_POINTS = 3
 
 /** Un partido computa si y solo si está cerrado y tiene todo lo necesario. */
 export function matchCounts(m: StandingsMatch): boolean {

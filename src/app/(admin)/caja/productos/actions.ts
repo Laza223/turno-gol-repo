@@ -194,6 +194,8 @@ export async function registerStockExitAction(input: unknown): Promise<StockActi
  * Ajuste por conteo real (arqueo físico). Sin UI dedicada en esta fase —
  * el catálogo/reposición/salidas cubren el día a día; queda expuesta para
  * el arqueo físico (v1.5, ver design doc §fuera de scope).
+ *
+ * @public Decisión ya tomada y escrita: queda expuesta a propósito sin caller.
  */
 export async function adjustStockAction(input: unknown): Promise<StockActionResult> {
   const parsed = adjustStockSchema.safeParse(input)

@@ -96,7 +96,7 @@ async function activeTeamIds(
   return rows.map((r) => r.id)
 }
 
-export async function countMatches(
+async function countMatches(
   tenantId: string,
   tournamentId: string,
   tx: DbTx,

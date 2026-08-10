@@ -233,7 +233,7 @@ export async function purgeOldNotifications(): Promise<void> {
  * sin filtro de tenant, pool worker BYPASSRLS. Incluye las filas sin tenant
  * (tráfico público), que son mayoría.
  */
-export async function purgeOldAnalyticsEvents(): Promise<void> {
+async function purgeOldAnalyticsEvents(): Promise<void> {
   const sql = getWorkerSql()
   const result = await sql`
     DELETE FROM analytics_events

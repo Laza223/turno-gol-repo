@@ -36,7 +36,7 @@ type FieldKey = 'email' | 'firstName' | 'lastName' | 'phone' | 'password' | 'con
  * (`echoFields` además las bloquea por nombre).
  */
 const ECHO_KEYS = ['email', 'firstName', 'lastName', 'phone'] as const
-export type RegisterValues = Partial<Record<(typeof ECHO_KEYS)[number], string>>
+type RegisterValues = Partial<Record<(typeof ECHO_KEYS)[number], string>>
 
 export type RegisterState =
   | { status: 'idle' }

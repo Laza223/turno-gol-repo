@@ -159,7 +159,7 @@ export async function createTab(
   return { tab: rowToTab(tabRow), duplicate: false }
 }
 
-export type SettleTabCharge = { amount: number; method: CanteenSaleMethod }
+type SettleTabCharge = { amount: number; method: CanteenSaleMethod }
 
 export type SettleTabInput = {
   tabId: string

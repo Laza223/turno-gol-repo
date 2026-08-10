@@ -77,6 +77,38 @@ function readRaw(key: string): string | null {
   }
 }
 
+/**
+ * El valor CRUDO guardado bajo `key`, o `null` si nunca se escribió.
+ *
+ * La distinción importa cuando "nunca se eligió" no es lo mismo que "eligió que
+ * no": la checklist del dashboard arranca minimizada o no según cuántos pasos
+ * estén completos, y solo una elección explícita del admin pisa ese default.
+ * Con un booleano, `null` y `'0'` colapsarían al mismo `false`.
+ */
+export function usePersistedString(
+  key: string,
+  serverValue: string | null,
+): readonly [string | null, (next: string) => void] {
+  const getSnapshot = useCallback(() => readRaw(key), [key])
+
+  const value = useSyncExternalStore(subscribe, getSnapshot, () => serverValue)
+
+  const setValue = useCallback(
+    (next: string) => {
+      try {
+        localStorage.setItem(key, next)
+        memory.delete(key)
+      } catch {
+        memory.set(key, next)
+      }
+      notifyAll()
+    },
+    [key],
+  )
+
+  return [value, setValue] as const
+}
+
 export type PersistedFlagOptions = {
   /** Valor guardado que significa `true`. */
   on: string

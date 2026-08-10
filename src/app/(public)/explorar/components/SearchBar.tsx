@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
+import { useClientSnapshot } from '@/hooks/use-client-value'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +49,7 @@ function cityValueFrom(params: { get(name: string): string | null }): string {
 export default function SearchBar({ cities }: Props) {
   const router = useRouter()
   const params = useSearchParams()
-  const today = useMemo(todayLocal, [])
+  const today = useClientSnapshot(todayLocal, todayLocal)
 
   const [q, setQ] = useState(params.get('q') ?? '')
   const [city, setCity] = useState(() => cityValueFrom(params))

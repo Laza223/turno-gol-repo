@@ -39,6 +39,20 @@ export function useClientValue<T>(read: () => T, serverValue: T): T {
 }
 
 /**
+ * Como `useClientValue`, pero el valor de servidor también se CALCULA.
+ *
+ * Para lecturas impuras que el servidor igual tiene que hacer — el caso típico
+ * es "qué día es hoy", que el input de fecha necesita como `min` ya en el HTML
+ * del servidor. `useMemo(leerHoy, [])` parece resolverlo pero le miente al React
+ * Compiler: le promete que el valor no depende de nada cuando depende del reloj,
+ * y por eso lo marca `react-hooks/use-memo`. Acá la lectura queda declarada como
+ * lo que es, un snapshot de algo externo a React.
+ */
+export function useClientSnapshot<T>(read: () => T, getServerValue: () => T): T {
+  return useSyncExternalStore(subscribeNever, read, getServerValue)
+}
+
+/**
  * `false` en el servidor y durante la hidratación, `true` de ahí en adelante.
  *
  * Reemplaza al idiom `const [mounted, setMounted] = useState(false)` +

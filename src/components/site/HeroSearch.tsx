@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
+import { useClientSnapshot } from '@/hooks/use-client-value'
 import { useNearestCity } from '@/hooks/use-nearest-city'
 import type { CityCount } from '@/modules/tenants/search.service'
 import {
@@ -44,7 +45,7 @@ function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
  */
 export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const router = useRouter()
-  const today = useMemo(todayLocal, [])
+  const today = useClientSnapshot(todayLocal, todayLocal)
   const [q, setQ] = useState('')
   const [city, setCity] = useState('')
   const [cityTouched, setCityTouched] = useState(false)

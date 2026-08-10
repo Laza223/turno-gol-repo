@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { usePersistedString } from '@/hooks/use-persisted-flag'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
 import type { MarkSharedResult, MarkChecklistDismissedResult } from '@/app/(admin)/dashboard/actions'
 import type { StaffRole } from '@/modules/staff/roles'
 
-/** localStorage key para el estado plegado/desplegado (bidireccional: se lee post-mount y se escribe en cada toggle). */
+/** localStorage key para el estado plegado/desplegado (bidireccional: se lee al hidratar y se escribe en cada toggle). */
 const MINIMIZED_STORAGE_KEY = 'tg-hint-checklist-minimized'
 
 interface ChecklistItem {
@@ -64,7 +65,16 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
   const completed = doneItems.length
   const total = visibleItems.length
   const pct = Math.round((completed / total) * 100)
-  const [minimized, setMinimized] = useState(completed === total)
+  // `null` = el admin nunca eligió, y ahí manda el default (`completed ===
+  // total`): con la checklist al 100% arranca plegada para no enterrar los KPIs.
+  // El `serverValue: null` deja el HTML del servidor y el primer render del
+  // cliente idénticos — la preferencia guardada entra recién en el render
+  // siguiente, sin parpadeo y sin setState encadenado en un efecto.
+  const [storedMinimized, setStoredMinimized] = usePersistedString(
+    MINIMIZED_STORAGE_KEY,
+    null,
+  )
+  const minimized = storedMinimized === null ? completed === total : storedMinimized === '1'
   const [showDone, setShowDone] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
@@ -72,26 +82,8 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
   const [hidden, setHidden] = useState(false)
   const [, startTransition] = useTransition()
 
-  // El default sigue siendo `completed === total` hasta hidratar (evita el
-  // flash pre-hidratación): recién acá, post-mount, se lee lo que el admin
-  // eligió en una visita anterior.
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(MINIMIZED_STORAGE_KEY)
-      if (stored === '1') setMinimized(true)
-      else if (stored === '0') setMinimized(false)
-    } catch {
-      /* sin storage se mantiene el default */
-    }
-  }, [])
-
   function toggleMinimized(next: boolean) {
-    setMinimized(next)
-    try {
-      localStorage.setItem(MINIMIZED_STORAGE_KEY, next ? '1' : '0')
-    } catch {
-      /* solo esta visita */
-    }
+    setStoredMinimized(next ? '1' : '0')
   }
 
   const [dismissError, setDismissError] = useState<string | null>(null)

@@ -1939,3 +1939,103 @@ Un test tenía la ruta pegada como string y hubo que repuntarlo:
 `route-wrappers-request-context.test.ts` lee los 4 archivos con `readFileSync` para verificar que
 todos envuelvan en `runRequestObservability` — leía de `src/shared/middleware`. Es exactamente el
 candado que debía romperse con este movimiento.
+
+---
+
+## B7 — 38 warnings de react-hooks a cero (2026-08-10)
+
+`eslint-config-next@16` trajo las reglas del linter del React Compiler
+(`set-state-in-effect`, `purity`, `use-memo`). Entraron en `warn` porque el
+código nunca se había escrito contra ellas. El comentario del config decía
+"19 / 6 / 2"; el inventario real al arrancar era **25 / 11 / 2 = 38**.
+
+Ahora son **0**, con las tres reglas en `error`.
+
+### No era una familia, eran cuatro
+
+El valor del bloque no fue apagar warnings: fue que cada familia escondía un
+defecto distinto.
+
+**1. Valores que solo existen en el browser (11 sitios).** El idiom
+`useState(fallback)` + `useEffect(() => setX(leer()), [])` para localStorage /
+matchMedia / `mounted` pinta el fallback, hidrata, y recién en un SEGUNDO render
+pinta el valor real: un frame de parpadeo garantizado. `use-client-value.ts`
+(nuevo) generaliza lo que `use-is-desktop.ts` ya hacía bien —
+`useClientValue` / `useHydrated` / `useMediaQuery` / `useClientSnapshot`— y
+`use-persisted-flag.ts` suma escritura con invalidación por evento `storage`
+(dos pestañas quedan sincronizadas solas).
+
+**2. `Date.now()` en el render de un componente cliente (7 sitios).** Esta NO
+era deuda de linter, era un bug latente. El valor decide UI real —"¿seguís
+dentro de las 24h para deshacer la ausencia?", "¿la cancelación entra en
+política?", "¿el turno ya terminó?"— y quedaba congelado en el instante del
+último render: una pestaña abierta cruzaba el límite y seguía ofreciendo lo de
+antes. `use-now.ts` (nuevo) expone el reloj como store externo, con un
+`setInterval` por granularidad compartido entre todos los consumidores.
+
+**3. `purity` en Server Components (5 sitios).** Falsos positivos legítimos: el
+cuerpo de un `async page` corre una vez por request. Tres de los cinco
+re-implementaban a mano el `new Date(Date.now() - 3h).toISOString().slice(0,10)`
+que `artTodayStr()` ya hacía — usan el helper, tres copias menos. Los otros dos
+llevan `eslint-disable` con el motivo escrito.
+
+**4. Estado derivado de props (12 sitios).** `useEffect(() => setX(prop), [prop])`
+para adaptar estado interno a una prop que cambió. React documenta el ajuste
+DURANTE el render comparando contra el valor anterior; con el efecto el
+componente pinta el valor viejo y se corrige en un segundo render.
+
+### Lo que atraparon los tests, no yo
+
+- **`use-persisted-density.test.ts`** — el caché en memoria de la primitiva nueva
+  pisaba el disco SIEMPRE. Solo debe existir cuando `setItem` lanza (Safari
+  privado); si la escritura funciona la entrada se borra, o el Map le tapa a
+  `getSnapshot` cualquier escritura externa y filtra estado entre tests.
+- **`Reveal.stories.tsx`** — dos stubs de `matchMedia` armados con
+  `{ ...real(query), matches: false }`. `addEventListener` vive en el PROTOTIPO,
+  así que el spread se lo comía. Alcanzaba mientras el componente solo leía
+  `.matches`; `useSyncExternalStore` sí se suscribe.
+- **Story `ConFiltrosActivos`** — en `ExplorarFilters` la clave de comparación
+  arrancaba con el valor actual, así que el sync no corría en el PRIMER render.
+  Entrar a /explorar con filtros en la URL los mostraba todos apagados.
+- **`report-unused-disable-directives`** — al pasar las reglas a `error` marcó un
+  `eslint-disable` que había quedado sin objeto. Vale la pena saber que está
+  prendido.
+
+### Dos riesgos evitados en `useArtNow`
+
+Es el hook que alimenta `slotHasPassed`: si se rompe, un turno pasado vuelve a
+ser clickeable y el admin puede reservar en un horario que ya fue.
+
+1. Derivar el objeto del reloj devolvía una REFERENCIA nueva por render. El hook
+   viejo devolvía un valor de estado (estable entre ticks), así que habría roto
+   las deps de todo consumidor. Memo de un slot.
+2. Adelantar la hora real al SSR habría cambiado el HTML del servidor: servidor y
+   cliente calculan con SU reloj, y cruzar un minuto entre los dos renders da
+   hydration mismatch en cada celda del borde. De ahí `useNowMsAfterHydration`,
+   que devuelve 0 hasta hidratar — el equivalente numérico del
+   `{ date: '', time: '' }` con el que el hook arrancaba.
+
+El candado que ya existía (`use-art-now.test.ts`, el de #29) pasa igual, y
+`use-now.test.ts` (nuevo, 5 casos) cubre lo que no era obvio: un solo interval
+con N consumidores, limpieza recién con el ÚLTIMO unmount, `getSnapshot` estable
+entre ticks (si devolviera `Date.now()` fresco el render entra en loop infinito)
+y la identidad del objeto de `useArtNow`.
+
+### Los disables que quedan
+
+8, todos deliberados y con el motivo al lado. Tres familias: Server Components,
+arranque de una operación asincrónica (`setLoading(true)` antes de un fetch, que
+no encadena renders porque el efecto no depende de `loading`), y efectos que
+deciden consultando el DOM real (`document.activeElement`, `querySelector`),
+imposible durante el render.
+
+### Evidencia
+
+`pnpm lint` **0 errores** con las tres reglas en `error` (los 6 warnings que
+quedan son los de capas que cierra B6, que va en otra rama). `pnpm typecheck`
+limpio. `pnpm test` **3093/3093**. `pnpm test:storybook` **259 archivos,
+1035/1035**.
+
+Ojo: unit y storybook **no se pueden correr en paralelo** — `e2e-endpoint-guard`
+sale rojo por contención y pasa aislado. Mismo cuidado que con las dos suites de
+DB en B6.

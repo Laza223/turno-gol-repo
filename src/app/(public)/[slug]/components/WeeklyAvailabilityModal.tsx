@@ -70,6 +70,10 @@ export default function WeeklyAvailabilityModal({
     if (!isOpen || !weekStart) return
 
     let active = true
+    // Arranque de una operación asincrónica, no adaptación de estado a una
+    // prop: marca "pedido en vuelo" antes del fetch. No encadena renders — el
+    // efecto no depende de `loading`, así que no se re-dispara a sí mismo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     setError(false)
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Umbrella, Zap } from 'lucide-react'
 import { AMENITIES, AMENITY_ORDER } from '@/components/public/amenities'
 import { FORMAT_OPTIONS, SURFACE_OPTIONS, formatLabel } from '@/components/public/courtFacets'

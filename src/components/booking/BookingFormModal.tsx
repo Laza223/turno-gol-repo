@@ -216,6 +216,10 @@ export function BookingFormModal({
   useEffect(() => {
     if (!open || !checkAvailabilityAction) return
     let cancelled = false
+    // Arranque de una operación asincrónica: limpia el error anterior antes de
+    // volver a chequear disponibilidad. No encadena renders (el efecto no
+    // depende de `error`).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null)
     checkAvailabilityAction({
       courtId: slot.courtId,

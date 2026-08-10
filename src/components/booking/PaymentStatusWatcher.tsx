@@ -31,13 +31,21 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
   // `stalled` corta el spinner indefinido: 'expired' = se agotó el tiempo sin
   // transición terminal (#45, #48); 'error' = el polling falló repetidamente (#46).
   const [stalled, setStalled] = useState<null | 'expired' | 'error'>(null)
-  const mountTimeRef = useRef(Date.now())
+  // `useRef(Date.now())` leía el reloj DURANTE el render (react-hooks/purity):
+  // el inicializador de useRef corre en render igual que el cuerpo. Se captura
+  // en el primer efecto, que es cuando el componente realmente existe en el
+  // cliente. `?? Date.now()` cubre el orden de efectos sin ramas raras.
+  const mountTimeRef = useRef<number | null>(null)
   const failuresRef = useRef(0)
+
+  useEffect(() => {
+    mountTimeRef.current ??= Date.now()
+  }, [])
 
   // Delay note: show after 30s still pending
   useEffect(() => {
     if (TERMINAL_STATUSES.has(status)) return
-    const delay = 30_000 - (Date.now() - mountTimeRef.current)
+    const delay = 30_000 - (Date.now() - (mountTimeRef.current ?? Date.now()))
     if (delay <= 0) {
       setShowDelayNote(true)
       return
@@ -53,6 +61,10 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     if (TERMINAL_STATUSES.has(status)) return
     const ms = new Date(expiresAt).getTime() + 5000 - Date.now()
     if (ms <= 0) {
+      // El hold ya venció antes de montar: se corta el spinner de una. Es la
+      // rama inmediata del mismo timeout de abajo, no una cascada — el updater
+      // es idempotente (`s ?? 'expired'`) y el efecto no depende de `stalled`.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStalled((s) => s ?? 'expired')
       return
     }

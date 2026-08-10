@@ -177,6 +177,12 @@ export default function AvailabilityGrid({ tenant }: Props) {
         ? requested
         : todayStr
 
+    // `todayStr` sale del reloj del cliente y `initialDate` de la URL: los dos
+    // se resuelven recién al montar (en el servidor darían otra cosa y romperían
+    // la hidratación). De ahí en más el efecto arranca el fetch inicial. Nada de
+    // esto encadena renders: el efecto no depende de `today`, `date`, `loading`
+    // ni `error`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setToday(todayStr)
     setDate(initialDate)
 

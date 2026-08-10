@@ -22,12 +22,8 @@ import { useSyncExternalStore } from 'react'
  * el render entraría en loop infinito.
  */
 
-/** Granularidad de un minuto: alcanza para ventanas de horas y no despierta al CPU. */
-const TICK_MS = 60_000
-
-const listeners = new Set<() => void>()
-let intervalId: ReturnType<typeof setInterval> | null = null
-let nowMs = 0
+/** Granularidad por defecto: alcanza para ventanas de horas y no despierta al CPU. */
+const DEFAULT_TICK_MS = 60_000
 
 /**
  * Definida a nivel de módulo y no inline: adentro del componente sería una
@@ -35,29 +31,51 @@ let nowMs = 0
  */
 const readClock = (): number => Date.now()
 
-function tick(): void {
-  nowMs = readClock()
-  for (const listener of listeners) listener()
+type ClockStore = {
+  subscribe: (onChange: () => void) => () => void
+  getSnapshot: () => number
 }
 
-function subscribe(onChange: () => void): () => void {
-  listeners.add(onChange)
-  if (intervalId === null) {
-    nowMs = readClock()
-    intervalId = setInterval(tick, TICK_MS)
-  }
-  return () => {
-    listeners.delete(onChange)
-    if (listeners.size === 0 && intervalId !== null) {
-      clearInterval(intervalId)
-      intervalId = null
-    }
-  }
-}
+/**
+ * Un store por granularidad, compartido por todos los consumidores de ese tick.
+ * El countdown del checkout necesita segundos; la grilla, minutos. Dos intervals
+ * en total, no uno por componente montado.
+ */
+const stores = new Map<number, ClockStore>()
 
-function getSnapshot(): number {
-  if (nowMs === 0) nowMs = readClock()
-  return nowMs
+function storeFor(tickMs: number): ClockStore {
+  const existing = stores.get(tickMs)
+  if (existing) return existing
+
+  const listeners = new Set<() => void>()
+  let intervalId: ReturnType<typeof setInterval> | null = null
+  let nowMs = 0
+
+  const store: ClockStore = {
+    subscribe(onChange) {
+      listeners.add(onChange)
+      if (intervalId === null) {
+        nowMs = readClock()
+        intervalId = setInterval(() => {
+          nowMs = readClock()
+          for (const listener of listeners) listener()
+        }, tickMs)
+      }
+      return () => {
+        listeners.delete(onChange)
+        if (listeners.size === 0 && intervalId !== null) {
+          clearInterval(intervalId)
+          intervalId = null
+        }
+      }
+    },
+    getSnapshot() {
+      if (nowMs === 0) nowMs = readClock()
+      return nowMs
+    },
+  }
+  stores.set(tickMs, store)
+  return store
 }
 
 /**
@@ -69,8 +87,9 @@ function getSnapshot(): number {
  * servidor sería peor: el módulo vive entre requests y todos verían la hora del
  * primero.
  */
-export function useNowMs(): number {
-  return useSyncExternalStore(subscribe, getSnapshot, readClock)
+export function useNowMs(tickMs: number = DEFAULT_TICK_MS): number {
+  const store = storeFor(tickMs)
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, readClock)
 }
 
 /**
@@ -85,8 +104,9 @@ export function useNowMs(): number {
  * `0` es el equivalente numérico del `{ date: '', time: '' }` con el que
  * `useArtNow` arrancaba: "todavía no sé qué hora es".
  */
-export function useNowMsAfterHydration(): number {
-  return useSyncExternalStore(subscribe, getSnapshot, readZero)
+export function useNowMsAfterHydration(tickMs: number = DEFAULT_TICK_MS): number {
+  const store = storeFor(tickMs)
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, readZero)
 }
 
 const readZero = (): number => 0

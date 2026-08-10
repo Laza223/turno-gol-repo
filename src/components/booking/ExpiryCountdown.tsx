@@ -1,22 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useNowMsAfterHydration } from '@/hooks/use-now'
 import { formatRemaining } from './format-remaining'
 
+/** Un tick por segundo: es un countdown, el usuario ve correr los segundos. */
+const ONE_SECOND = 1000
+
 export default function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
-  // null hasta el mount: el countdown depende del reloj, así que el texto del
+  // `0` hasta hidratar: el countdown depende del reloj, así que el texto del
   // SSR nunca coincide con el del cliente (segundos corriendo) y React tiraba
   // "Hydration failed" regenerando el árbol entero de la página — en máquinas
   // lentas eso descarta el estado del checkout a mitad de interacción.
-  const [now, setNow] = useState<number | null>(null)
+  //
+  // El tick sale del store compartido (`use-now.ts`) en vez de un setInterval
+  // propio dentro de un efecto: mismo comportamiento, sin setState encadenado.
+  const now = useNowMsAfterHydration(ONE_SECOND)
 
-  useEffect(() => {
-    setNow(Date.now())
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
-
-  if (now === null) return <span aria-hidden="true">–:––</span>
+  if (now === 0) return <span aria-hidden="true">–:––</span>
 
   const remaining = new Date(expiresAt).getTime() - now
 

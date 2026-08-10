@@ -7,6 +7,11 @@ import { PerfilImagesForm } from './PerfilImagesForm'
 const TINY_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
+// Mismo PNG, como data URI: `ImageUploader` renderiza `value` en un <img src>
+// real (image-uploader.tsx:98) — una URL de `media.turnogol.com` disparaba un
+// GET real a un tercero desde el runner de CI en cada corrida.
+const TINY_PNG_DATA_URI = `data:image/png;base64,${TINY_PNG_BASE64}`
+
 function tinyPngFile(name: string): File {
   const bytes = Uint8Array.from(atob(TINY_PNG_BASE64), (c) => c.charCodeAt(0))
   return new File([bytes], name, { type: 'image/png' })
@@ -36,7 +41,7 @@ type Story = StoryObj<typeof meta>
 const setImageActionOk = () =>
   fn(async (_kind: 'logo' | 'cover', _fd: FormData) => ({
     success: true as const,
-    url: 'https://media.turnogol.com/t1/logo-nuevo.webp',
+    url: TINY_PNG_DATA_URI,
   }))
 
 export const SinImagenes: Story = {
@@ -45,8 +50,8 @@ export const SinImagenes: Story = {
 
 export const ConImagenes: Story = {
   args: {
-    logoUrl: 'https://media.turnogol.com/t1/logo-a.webp',
-    coverUrl: 'https://media.turnogol.com/t1/cover-a.webp',
+    logoUrl: TINY_PNG_DATA_URI,
+    coverUrl: TINY_PNG_DATA_URI,
     setImageAction: setImageActionOk(),
   },
   play: async ({ canvasElement }) => {

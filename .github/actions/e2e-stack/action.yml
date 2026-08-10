@@ -52,7 +52,11 @@ runs:
       # "address already in use" por un contenedor a medio crear.
       run: |
         mv supabase/migrations supabase/migrations.disabled
-        start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector; }
+        # `storage` sumado a la exclusión: el storage de imágenes del repo es
+        # Cloudflare R2, no Supabase Storage (ver CLAUDE.md), y `grep` confirma
+        # cero referencias a `supabase...storage` fuera de R2 en src/ ni
+        # tests/e2e/ — el servicio no tiene un solo consumidor acá.
+        start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector,storage; }
         if ! start_stack; then
           echo "::warning::supabase start falló — limpiando residuos y reintentando"
           supabase stop --no-backup || true
@@ -78,15 +82,20 @@ runs:
         END $$;
         SQL
 
+    # Un solo proceso de psql con `\i` por archivo — mismo criterio que
+    # ci.yml, ~70 archivos sin spawnear un proceso por cada uno.
     - name: Apply migrations
       shell: bash
       env:
         PGPASSWORD: postgres
       run: |
-        for f in src/shared/db/migrations/0*.sql; do
-          echo ">>> $f"
-          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
-        done
+        {
+          for f in src/shared/db/migrations/0*.sql; do
+            echo "\\echo >>> $f"
+            echo "\\i $f"
+          done
+        } > /tmp/all-migrations.sql
+        psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/all-migrations.sql
 
     # Las keys demo del CLI local son fijas, pero se leen del stack recién
     # levantado en vez de hardcodearlas. Van a $GITHUB_ENV para que los pasos
@@ -101,6 +110,21 @@ runs:
           | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' \
           | sed 's/"//g' >> "$GITHUB_ENV"
 
+    # Mismo criterio que el job `stories-shards` de ci.yml: el binario de
+    # Chromium (~150MB) es lo caro de descargar; las libs de sistema (apt) se
+    # instalan siempre porque un runner nuevo puede no traerlas aunque el
+    # binario esté cacheado.
+    - uses: actions/cache@v4
+      id: pw-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: pw-browsers-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+    - name: Install Playwright system deps
+      shell: bash
+      run: npx playwright install-deps ${{ inputs.browsers }}
+
     - name: Install Playwright browsers
       shell: bash
-      run: npx playwright install --with-deps ${{ inputs.browsers }}
+      if: steps.pw-cache.outputs.cache-hit != 'true'
+      run: npx playwright install ${{ inputs.browsers }}

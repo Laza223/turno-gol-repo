@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/toaster'
 import { useToast } from '@/hooks/use-toast'
 import { withFetch } from './decorators/with-fetch'
+import { withOfflineTiles } from './decorators/with-offline-tiles'
 import '../src/app/globals.css'
 
 /**
@@ -115,7 +116,7 @@ const withMotion: Decorator = (Story, ctx) => {
 }
 
 const preview: Preview = {
-  decorators: [withFetch, withMotion, withTheme],
+  decorators: [withFetch, withOfflineTiles, withMotion, withTheme],
 
   globalTypes: {
     theme: {

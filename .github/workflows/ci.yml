@@ -5,6 +5,9 @@ on:
     branches: [main, claude-code]
   pull_request:
     branches: [main]
+  # Permite disparar e2e-tests / visual-regression a mano sin esperar un push
+  # a main (ver el `if:` de esos dos jobs más abajo).
+  workflow_dispatch:
 
 # Un push nuevo a una rama de PR cancela el run anterior de esa misma rama.
 # Sin esto cada push re-corría los 4 jobs enteros en paralelo con el anterior.
@@ -145,10 +148,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # El binario de Chromium (~150MB) es lo caro de descargar; las libs de
+      # sistema (apt) son rápidas y pueden faltar en un runner nuevo aunque el
+      # binario esté cacheado, así que install-deps corre siempre.
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-browsers-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
       # Browser mode de Vitest: corre las stories en un chromium real, no en
       # jsdom — es lo que hace que axe mida colores computados de verdad.
+      - name: Install Playwright system deps
+        run: pnpm exec playwright install-deps chromium
+
       - name: Install Playwright chromium
-        run: pnpm exec playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium
 
       - name: Stories
         run: pnpm test:storybook:ci --shard=${{ matrix.shard }}/3
@@ -224,14 +240,21 @@ jobs:
           END $$;
           SQL
 
+      # Un solo proceso de psql con `\i` por archivo en vez de un `psql -f`
+      # (proceso nuevo) por archivo. `ON_ERROR_STOP=1` sigue frenando en la
+      # primera falla y el `\echo` sigue diciendo cuál — solo se ahorra el
+      # spawn de los ~70 procesos.
       - name: Apply migrations
         env:
           PGPASSWORD: postgres
         run: |
-          for f in src/shared/db/migrations/0*.sql; do
-            echo ">>> $f"
-            psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
-          done
+          {
+            for f in src/shared/db/migrations/0*.sql; do
+              echo "\\echo >>> $f"
+              echo "\\i $f"
+            done
+          } > /tmp/all-migrations.sql
+          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/all-migrations.sql
 
       - name: Integration tests
         run: pnpm test:integration
@@ -239,11 +262,25 @@ jobs:
       - name: Isolation tests (BLOCKING — data leak check)
         run: pnpm test:isolation
 
-  # ── Job 5: e2e — only on PRs to main ──────────────────────────────────────
+  # ── Job 5: e2e — push a main + dispatch manual (NO en PRs) ─────────────────
+  #
+  # 2026-08-10: se sacó del PR. Ni e2e-tests ni visual-regression son required
+  # status check en branch protection (Settings → Branches: solo Lint & Types,
+  # Unit Tests, Integration & Isolation, Stories) — hoy se podía mergear con
+  # los dos en rojo igual, así que no protegían nada que costara pagar en cada
+  # push. El repo es privado: los minutos de Actions se facturan, y estos dos
+  # jobs solos sumaban ~14 min por push (194s de stack + 255s de tests acá,
+  # más ~130s en visual-regression).
+  #
+  # Se conserva la protección real: sigue corriendo en cada push a main, ANTES
+  # del deploy de Vercel (que dispara por integración Git tras CI verde en
+  # main) — un checkout roto sigue frenando el deploy, que es donde importa
+  # para los flujos de plata. Lo que se pierde es enterarse ~8 min más tarde
+  # (recién al mergear) en vez de en el PR.
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     needs: [lint-and-types, unit-tests, integration-and-isolation]
     # La infra (Supabase + migraciones + browsers) consume ~8 min; el paso E2E
     # corre solo @critical en chromium (ver abajo), que entra holgado en el resto.
@@ -299,7 +336,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # ── Job 6: regresión visual — only on PRs to main ──────────────────────────
+  # ── Job 6: regresión visual — push a main + dispatch manual (NO en PRs) ────
   #
   # Job propio y NO un step de e2e-tests. Estuvo como step hasta el 2026-07-29 con
   # este razonamiento: el stack (Supabase + migraciones + browsers) cuesta ~8 min y
@@ -314,26 +351,19 @@ jobs:
   # causa es compartir el runner y no las fotos: `visual-baseline.yml` corre EXACTOS
   # los mismos 9 tests sobre un runner fresco en ~2 min, 9/9 verde.
   #
-  # Un gate que no compara 3 de 8 fotos no es un gate: los ~9 min facturados son el
-  # precio de que exista.
-  #
-  # ADVISORY: `continue-on-error` a nivel JOB desde el día 1. Se saca después de 10
-  # PRs consecutivos sin una sola falsa alarma — y el contador arranca en el primer
-  # run que compare las 8. Si a las 6 semanas no llegó a 10 seguidos, la conclusión
-  # NO es aflojar el umbral: se borra la pieza. Ver docs/testing/VISUAL_REGRESSION.md.
-  #
-  # OJO al leer los resultados: con `continue-on-error` GitHub reporta el job como
-  # `success` aunque los tests fallen. El color del check NO dice nada — hay que
-  # abrir el log. Ya pasó dos veces.
+  # 2026-08-10: se sacó del PR (mismo motivo que e2e-tests arriba: no es required
+  # status check, no bloqueaba nada, costaba minutos facturados en cada push).
+  # Con eso también se saca el `continue-on-error`: ya no hay que fingir verde
+  # para no trabar un merge que este job nunca pudo trabar. Sigue corriendo antes
+  # del deploy de Vercel en cada push a main.
   #
   # Si falla con "snapshot doesn't exist", las baselines no están commiteadas:
   # correr el workflow `visual-baseline.yml`.
   visual-regression:
-    name: Regresión visual (ADVISORY)
+    name: Regresión visual
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     needs: [lint-and-types, unit-tests]
-    continue-on-error: true
     timeout-minutes: 25
 
     env:

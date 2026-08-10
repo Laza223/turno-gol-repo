@@ -94,28 +94,42 @@ jobs:
   # corrida completa y desaparece al reintentar. Si una story es flaky de
   # verdad, va a cuarentena explícita con `tags: ['!test']` y un TODO fechado,
   # no a un retry silencioso.
-  # 2026-08-10: 12 → 20. Diagnosticado en PR #122 (rama fix/retencion-legal-90-dias),
-  # que colgó el job 2 veces seguidas — SIN relación con el diff de esa rama:
+  # 2026-08-10: diagnosticado en PR #122 (rama fix/retencion-legal-90-dias), que
+  # colgó el job 3 veces seguidas (probado con reruns del MISMO commit, no
+  # comparando contra el PR anterior) — SIN relación con el diff de esa rama:
   #   - Los 2 archivos de stories que tocaba (ArticleShell.stories.tsx,
   #     tenant-status-visual.stories.tsx) pasan aislados en <1s cada uno, y
-  #     ninguno de los dos componentes tiene un solo useEffect/listener/timer —
-  #     no hay superficie para el tipo de leak que el comentario de arriba
-  #     describe ("contaminación entre stories... determinística").
-  #   - pnpm-lock.yaml idéntico a main: cero deriva de versión de
-  #     storybook/vitest/playwright.
-  #   - Localmente, MISMO código, 2 corridas: una se colgó, la otra completó
-  #     259/259 en 118s. No determinístico → no es la clase de bug del
-  #     comentario de arriba (ese es "la MISMA corrida da resultados distintos
-  #     por contaminación"; esto es "a veces el runner de 2 cores no llega a
-  #     terminar", con exactamente 0 tests ejecutados en los últimos 6-7 min
-  #     antes de cada timeout — mismo patrón que ya está documentado para el
-  #     job `e2e-tests` más abajo).
-  # Esto NO es un retry (que sí escondería contaminación real): es la MISMA
-  # corrida única, con más margen de reloj. El baseline sano sigue en ~5m30s.
-  stories:
-    name: Stories (BLOCKING)
+  #     ninguno tiene un solo useEffect/listener/timer.
+  #   - pnpm-lock.yaml idéntico a main: cero deriva de versión.
+  #   - Orden de ejecución 100% determinístico (primeros 189 archivos
+  #     byte-idénticos entre corridas), pero el cuelgue cayó en posiciones
+  #     distintas cada vez (189, 232, 233) — descarta un archivo venenoso.
+  # Causa (con evidencia en node_modules, ver commit que agregó
+  # `launch.args` en vitest.storybook.config.ts): las ~259 stories corren en
+  # UNA sola página de Chromium que vive toda la corrida — @vitest/browser
+  # nunca hace page.reload() entre archivos, solo crea/destruye un iframe por
+  # archivo. Si el renderer de un iframe se queda sin memoria compartida
+  # muere sin avisar, y Vitest no tiene watchdog del lado de Node para eso:
+  # la corrida queda colgada en silencio hasta el timeout del job (0 tests
+  # ejecutados en los últimos 6-7 min antes de cada timeout).
+  #
+  # Fix de dos partes: `--disable-dev-shm-usage` (vitest.storybook.config.ts)
+  # baja la probabilidad de que el renderer muera, y shardear en 3 jobs
+  # paralelos baja el costo de que muera igual — cada página vive ~87
+  # archivos en vez de 259, con memoria fresca por shard, y si se cuelga se
+  # nota en 8 min (timeout del shard) en vez de 20.
+  #
+  # El nombre `Stories (BLOCKING)` está en branch protection (required status
+  # check) — `stories` es un agregador de 1 línea que lo conserva sin tocar
+  # la config de GitHub. Sigue sin haber retries: un shard que falla, falla.
+  stories-shards:
+    name: Stories shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
@@ -137,7 +151,20 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Stories
-        run: pnpm test:storybook:ci
+        run: pnpm test:storybook:ci --shard=${{ matrix.shard }}/3
+
+  stories:
+    name: Stories (BLOCKING)
+    runs-on: ubuntu-latest
+    needs: [stories-shards]
+    if: always()
+    steps:
+      - name: Verificar los 3 shards
+        run: |
+          if [ "${{ needs.stories-shards.result }}" != "success" ]; then
+            echo "Al menos un shard de Stories falló o se colgó."
+            exit 1
+          fi
 
   # ── Job 4: integration + isolation — BLOQUEANTE (~3 min) ──────────────────
   integration-and-isolation:

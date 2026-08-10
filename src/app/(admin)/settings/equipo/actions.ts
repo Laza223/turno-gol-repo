@@ -11,7 +11,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
   BLOCKED_TENANT_STATUSES,
   READ_ONLY_TENANT_STATUSES,
-} from '@/server/middleware/with-tenant'
+} from '@/modules/tenants/tenant.lifecycle'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
 import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
@@ -59,8 +59,8 @@ export type StaffActionResult =
  * STATUSES` hardcodeada) que además incluía `canceled` — contradiciendo
  * ENS-26 (`canceled` = acceso completo hasta `current_period_end`, ya
  * pagó; el sweep recién lo pasa a `blocked` al vencer, doc4 §2 /
- * with-tenant.ts). Ahora deriva de `BLOCKED_TENANT_STATUSES` +
- * `READ_ONLY_TENANT_STATUSES` (with-tenant.ts), la misma fuente única que
+ * tenant.lifecycle.ts). Ahora deriva de `BLOCKED_TENANT_STATUSES` +
+ * `READ_ONLY_TENANT_STATUSES` (tenant.lifecycle.ts), la misma fuente única que
  * ya usa `guards.ts` (`BLOCKED_STAFF_TENANT_STATUSES`) — `canceled` deja de
  * bloquear la gestión de equipo.
  */

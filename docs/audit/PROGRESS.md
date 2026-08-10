@@ -1881,6 +1881,41 @@ su lugar es @/server o @/shared/jobs").
 de `shared/` y uno de `@/components/ui/button` en uno de `server/` dan `2 errors`. Las dos reglas
 muerden de verdad.
 
+### El movimiento invirtió una capa, y el trinquete no lo veía
+
+Lo encontró el revisor adversarial con contexto fresco, con el gate entero en verde.
+
+`src/modules/staff/guards.ts` reusa `BLOCKED_TENANT_STATUSES` / `READ_ONLY_TENANT_STATUSES` como
+fuente única para el bloqueo de lifecycle en Server Actions. Esas constantes vivían en
+`with-tenant.ts`, así que al mover ese archivo a `@/server` el import pasó de `modules → shared`
+(permitido) a **`modules → server`** — exactamente la dirección que el bloque `capas-server` que
+agrega este mismo PR declara imposible ("app → server → modules → shared, nunca al revés").
+
+Ningún gate lo atrapaba: `capas-nadie-importa-app` restringía `@/app/**` y nada más.
+
+Las constantes son **estados de `tenants.status`, o sea dominio**, no lógica de middleware. Se
+movieron a `src/modules/tenants/tenant.lifecycle.ts` (archivo nuevo), de donde las importan tanto
+`with-tenant.ts` como `guards.ts` y `settings/equipo/actions.ts`. Nadie invierte nada.
+
+### La trampa de la flat config: un bloque posterior REEMPLAZA la regla, no la suma
+
+Al agregar `@/server/**` como patrón prohibido en `capas-nadie-importa-app-ni-server`, el control
+negativo mostró que **solo mordía en `src/modules/**`**. En `src/shared/**` el import de `@/server`
+pasaba limpio.
+
+Causa: `capas-shared` es un bloque POSTERIOR que matchea los mismos archivos, y en flat config eso
+reemplaza la configuración entera de la regla en vez de sumarse. `capas-shared` solo listaba
+`@/modules/**`, así que para `src/shared/**` los patrones de `@/app` y `@/server` desaparecían.
+
+La clase completa, barrida: `capas-lib` tenía el mismo agujero (y ya lo tenía **antes** de este PR —
+`src/lib/**` podía importar `@/app/**` sin que nadie chillara), y `capas-components` cubría `@/app`
+pero no `@/server`. Los tres bloques repiten ahora los patrones que les corresponden, con un
+comentario que explica por qué la repetición no es copy-paste.
+
+**Control negativo final**: 5 archivos sonda, uno por capa (`modules`, `shared`, `lib`,
+`components`, más `lib → modules` para confirmar que no se rompió el patrón viejo) → `5 problems
+(5 errors)`. Todas las capas muerden.
+
 ### Config muerta borrada
 
 El bloque `turnogol/capas-components-excepcion-ticketpanel` eximía a
@@ -1895,6 +1930,10 @@ se queda en su ruta — sus imports relativos (`../caja-lib`, `./ticket-lib`, `.
 `pnpm lint`: 44 problemas → **38** (0 errores). Los 6 de `no-restricted-imports` a cero; los 38 que
 quedan son los de react-hooks, que son B7. `pnpm typecheck` limpio. `pnpm test` 3088/3088.
 `pnpm test:integration` 878/878. `pnpm test:isolation` 166/166. `pnpm knip` sin hallazgos.
+
+Las dos suites de DB hay que correrlas **en serie**: lanzadas en paralelo contra el mismo Postgres
+local dan `PostgresError: tuple concurrently updated` (la carrera de GRANT de `ensureRoles` ya
+documentada). Da 12 rojos que no tienen nada que ver con el cambio.
 
 Un test tenía la ruta pegada como string y hubo que repuntarlo:
 `route-wrappers-request-context.test.ts` lee los 4 archivos con `readFileSync` para verificar que

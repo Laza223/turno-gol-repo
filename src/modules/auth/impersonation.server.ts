@@ -11,7 +11,8 @@ import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
 
 /**
  * Piezas de impersonación que dependen del request (next/headers + DB).
- * Separadas del módulo crypto puro (`impersonation.ts`) para que workers, audit
+ * Separadas del módulo crypto puro (`@/shared/security/impersonation-cookie`)
+ * para que workers, audit
  * y tests importen la firma/verificación sin arrastrar next/headers.
  *
  * IMPORTANTE — sin ciclo: este módulo NO importa estáticamente auth.middleware

@@ -9,23 +9,11 @@ import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'
 import { forbidden, unauthorized } from '@/shared/api-error'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import type { StaffRole } from '@/modules/staff/roles'
+import {
+  BLOCKED_TENANT_STATUSES,
+  READ_ONLY_TENANT_STATUSES,
+} from '@/modules/tenants/tenant.lifecycle'
 import { runRequestObservability } from '@/shared/middleware/observability'
-
-/**
- * Tenant lifecycle gating per doc4 §2 (P18).
- *
- * - BLOCKED      → 403 always (no admin or player access).
- * - READ_ONLY    → 403 on non-GET/HEAD; admin keeps read access. Players still
- *                  see their bookings.
- * - canceled     → full admin access until current_period_end (sweep flips to
- *                  blocked at that point).
- * - active/trialing/past_due → full access.
- */
-// Exportadas: `src/modules/staff/guards.ts` las reusa como fuente única para el
-// bloqueo de tenant lifecycle en Server Actions (hallazgo R2, ensayo general) en
-// vez de duplicar la lista de estados en un tercer lugar.
-export const BLOCKED_TENANT_STATUSES = new Set(['blocked', 'churned', 'deleted'])
-export const READ_ONLY_TENANT_STATUSES = new Set(['suspended'])
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 

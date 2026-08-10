@@ -217,9 +217,9 @@ export default tseslint.config(
     // Frontera limpia hoy (0 violaciones): trinquete gratis, directo a `error`.
     // Que el dominio o la infraestructura importen una page/layout/Action del
     // App Router invierte el sentido del grafo y ata la lógica al ruteo.
-    // `src/server` no está acá: lo cubre `turnogol/capas-server` más abajo, que
-    // al ser posterior reemplaza esta regla entera para esos archivos.
-    name: 'turnogol/capas-nadie-importa-app',
+    // `src/server` no está en `files`: lo cubre `turnogol/capas-server` más
+    // abajo, que al ser posterior reemplaza esta regla entera para esos archivos.
+    name: 'turnogol/capas-nadie-importa-app-ni-server',
     files: ['src/modules/**/*.ts', 'src/shared/**/*.ts', 'src/lib/**/*.ts'],
     rules: {
       'no-restricted-imports': 'off',
@@ -231,7 +231,19 @@ export default tseslint.config(
               group: ['@/app/**'],
               allowTypeImports: true,
               message:
-                'Capa de dominio/infra importando la capa de ruteo. La dirección es app → modules → shared, nunca al revés. Si necesitás algo de una page, ese algo no vive en la page: subilo a @/modules o @/lib.',
+                'Capa de dominio/infra importando la capa de ruteo. La dirección es app → server → modules → shared, nunca al revés. Si necesitás algo de una page, ese algo no vive en la page: subilo a @/modules o @/lib.',
+            },
+            {
+              // El B6 introdujo exactamente esta arista sin querer: al mover
+              // with-tenant.ts a @/server, `modules/staff/guards.ts` — que reusa
+              // BLOCKED_TENANT_STATUSES — pasó a importar @/server desde
+              // @/modules. Ningún gate lo atrapaba. Las constantes se mudaron a
+              // `@/modules/tenants/tenant.lifecycle` (son estados de
+              // `tenants.status`, o sea dominio) y esta regla es el trinquete.
+              group: ['@/server/**'],
+              allowTypeImports: true,
+              message:
+                '@/server es el composition root del runtime web: compone dominio, no lo provee. Si @/modules o @/shared necesita algo que hoy vive ahí, ese algo es dominio o infraestructura mal ubicada — bajalo a @/modules o @/shared y que @/server lo importe desde ahí.',
             },
           ],
         },
@@ -255,6 +267,15 @@ export default tseslint.config(
               allowTypeImports: true,
               message:
                 '@/lib es la capa de adapters y helpers puros: no puede depender del dominio. Si el helper necesita lógica de negocio, el helper es lógica de negocio y va en @/modules.',
+            },
+            {
+              // Repetido a propósito: este bloque es posterior a
+              // `capas-nadie-importa-app-ni-server` y matchea los mismos
+              // archivos, así que lo REEMPLAZA en vez de sumarse.
+              group: ['@/app/**', '@/server/**'],
+              allowTypeImports: true,
+              message:
+                '@/lib es la capa de más abajo junto con @/shared: no importa hacia arriba. Si el adapter necesita algo de una ruta o de un wrapper de route handler, ese algo está mal ubicado.',
             },
           ],
         },
@@ -285,6 +306,12 @@ export default tseslint.config(
               allowTypeImports: true,
               message:
                 'Un componente en @/components importando de @/app está en el lugar equivocado: o el componente pertenece a esa ruta (movelo a src/app/<ruta>/_components/), o lo que importa es genérico y va a @/lib.',
+            },
+            {
+              group: ['@/server/**'],
+              allowTypeImports: true,
+              message:
+                '@/server es el composition root del runtime web (wrappers de route handler): nada de UI puede importarlo. Un componente que necesita eso está mezclando servidor y render.',
             },
           ],
         },
@@ -323,6 +350,19 @@ export default tseslint.config(
               allowTypeImports: true,
               message:
                 '@/shared es infraestructura y no puede conocer el dominio. Si el archivo NECESITA orquestar dominio, no es infraestructura: su lugar es @/server (runtime web) o @/shared/jobs (runtime de background). Los `import type` sí pasan: allowTypeImports los deja.',
+            },
+            {
+              // REPETIDO a propósito, no es copy-paste: este bloque es posterior
+              // a `capas-nadie-importa-app-ni-server` y matchea los mismos
+              // archivos, así que REEMPLAZA su config de la regla entera en vez
+              // de sumarse. Sin esta copia, `src/shared/**` puede importar
+              // `@/server/**` y `@/app/**` sin que nadie chille. Verificado con
+              // archivo sonda: sin estos dos patterns, el import de @/server
+              // desde shared/ pasa limpio.
+              group: ['@/server/**', '@/app/**'],
+              allowTypeImports: true,
+              message:
+                '@/shared es la capa de más abajo: no importa hacia arriba. @/server compone dominio, no lo provee; si @/shared necesita algo que vive ahí, ese algo está mal ubicado — bajalo a @/shared o @/modules.',
             },
           ],
         },

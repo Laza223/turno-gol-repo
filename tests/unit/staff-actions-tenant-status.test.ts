@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // (`canceled` = acceso completo hasta `current_period_end`, ya pagó). Ahora
 // deriva de la misma fuente única que `guards.ts`
 // (`BLOCKED_TENANT_STATUSES` + `READ_ONLY_TENANT_STATUSES` de
-// with-tenant.ts) — `canceled` deja de bloquear la gestión de equipo. Mismo
+// tenant.lifecycle.ts) — `canceled` deja de bloquear la gestión de equipo. Mismo
 // harness de mocks que staff-invite-existing-user.test.ts (mockea toda la
 // tx/worker DB para poder recorrer el happy path completo, no solo el guard).
 
@@ -117,7 +117,7 @@ describe('inviteStaffAction — canceled ya NO bloquea la gestión de equipo (EN
   })
 
   it.each(['suspended', 'blocked', 'churned', 'deleted'])(
-    '%s: sigue bloqueado (STAFF_WRITE_BLOCKED_STATUSES derivado de with-tenant.ts)',
+    '%s: sigue bloqueado (STAFF_WRITE_BLOCKED_STATUSES derivado de tenant.lifecycle.ts)',
     async (status) => {
       h.getStaffTenant.mockResolvedValue(tenant(status))
 

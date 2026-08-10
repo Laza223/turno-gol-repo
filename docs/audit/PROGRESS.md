@@ -1825,3 +1825,117 @@ para compartir, `wa.me/${telefonoDelCliente}` en Caja y en el cierre de reserva)
   juntos, nunca color solo* — daltonismo): los dos distinguían los 8 estados solo por color.
   Fusionados en `_components/tenant-status-visual.tsx` sobre `StatusBadge` + `TONE_BADGE`, con ícono
   por estado y `count` opcional. 4 importadores repuntados, 2 archivos de stories fusionados en 1.
+
+---
+
+## B6 — `@/shared` deja de conocer `@/modules` (2026-08-10)
+
+La regla `turnogol/capas-shared` estaba en `warn` con 6 violaciones de VALOR y un comentario que
+prescribía el fix: *"inyección de dependencias (pasar la función como parámetro)"*. Leídas las 6
+aristas, **ninguna era eso**. Eran dos problemas distintos, y los dos se resolvían moviendo archivos,
+sin tocar una línea de lógica.
+
+### Arista 1 — `shared/db/audit.ts` → `@/modules/auth/impersonation`
+
+El módulo importado es **puro `node:crypto`**: un códec de cookie firmada HMAC, auto-documentado como
+*"Este módulo es PURO... lo importan workers, audit.ts y tests sin arrastrar `next/headers`"*. No es
+dominio. Estaba **mal ubicado**: con el archivo del lado de `modules/`, una dependencia de
+infraestructura sobre infraestructura se veía como acoplamiento al dominio.
+
+`src/modules/auth/impersonation.ts` → **`src/shared/security/impersonation-cookie.ts`**. 7
+importadores. `impersonation.server.ts` (que sí usa `next/headers`) se queda en `modules/auth`.
+
+### Aristas 2-6 — los 4 wrappers de route handler
+
+`with-auth`, `with-player`, `with-role`, `with-tenant` importaban `extractAuthUser` ×3 y
+`getStaffRole` ×2. **No son infraestructura**: son el composition root del runtime web — orquestar
+auth + rol + lifecycle de tenant + contexto de DB *es* su función.
+
+El propio `eslint.config.mjs` ya había escrito ese argumento para eximir `src/shared/jobs/**`
+("los workers son el composition root del runtime de background... igual que src/app/ lo hace para el
+runtime web"). Se aplicó el mismo criterio, pero **moviendo los archivos en vez de eximir el
+directorio**: `src/shared/middleware/` también contiene `observability.ts`, que sí es infra pura, y
+un `ignores` sobre el directorio entero le habría abierto la puerta a cualquier archivo futuro.
+
+`src/shared/middleware/with-*.ts` → **`src/server/middleware/`**. 24 importadores. `observability.ts`
+se queda donde estaba.
+
+**Por qué no DI:** inyectar `{ extractAuthUser, getStaffRole }` habría metido boilerplate en ~18
+route handlers y, peor, habría hecho *posible* inyectar un resolver equivocado en el borde de
+aislamiento de tenants. Un movimiento de archivo no puede introducir ese bug.
+
+### `src/server` como capa
+
+No es un eslabón más de `app → modules → shared`: está **al lado de `app`**, y es el único lugar
+(junto a `shared/jobs`) autorizado a orquestar dominio. Documentado en CLAUDE.md y en el bloque de
+capas de `eslint.config.mjs`. La regla nueva `turnogol/capas-server` le prohíbe importar
+`@/components`, `@/hooks` y `@/app`: compone, no renderiza.
+
+### Trinquete
+
+`turnogol/capas-shared` pasa de `warn` a **`error`**. Mensaje reescrito: en vez de prescribir DI,
+ahora nombra la salida correcta ("si el archivo NECESITA orquestar dominio, no es infraestructura:
+su lugar es @/server o @/shared/jobs").
+
+**Control negativo corrido**: un `import` de valor de `@/modules/staff/staff.service` en un archivo
+de `shared/` y uno de `@/components/ui/button` en uno de `server/` dan `2 errors`. Las dos reglas
+muerden de verdad.
+
+### El movimiento invirtió una capa, y el trinquete no lo veía
+
+Lo encontró el revisor adversarial con contexto fresco, con el gate entero en verde.
+
+`src/modules/staff/guards.ts` reusa `BLOCKED_TENANT_STATUSES` / `READ_ONLY_TENANT_STATUSES` como
+fuente única para el bloqueo de lifecycle en Server Actions. Esas constantes vivían en
+`with-tenant.ts`, así que al mover ese archivo a `@/server` el import pasó de `modules → shared`
+(permitido) a **`modules → server`** — exactamente la dirección que el bloque `capas-server` que
+agrega este mismo PR declara imposible ("app → server → modules → shared, nunca al revés").
+
+Ningún gate lo atrapaba: `capas-nadie-importa-app` restringía `@/app/**` y nada más.
+
+Las constantes son **estados de `tenants.status`, o sea dominio**, no lógica de middleware. Se
+movieron a `src/modules/tenants/tenant.lifecycle.ts` (archivo nuevo), de donde las importan tanto
+`with-tenant.ts` como `guards.ts` y `settings/equipo/actions.ts`. Nadie invierte nada.
+
+### La trampa de la flat config: un bloque posterior REEMPLAZA la regla, no la suma
+
+Al agregar `@/server/**` como patrón prohibido en `capas-nadie-importa-app-ni-server`, el control
+negativo mostró que **solo mordía en `src/modules/**`**. En `src/shared/**` el import de `@/server`
+pasaba limpio.
+
+Causa: `capas-shared` es un bloque POSTERIOR que matchea los mismos archivos, y en flat config eso
+reemplaza la configuración entera de la regla en vez de sumarse. `capas-shared` solo listaba
+`@/modules/**`, así que para `src/shared/**` los patrones de `@/app` y `@/server` desaparecían.
+
+La clase completa, barrida: `capas-lib` tenía el mismo agujero (y ya lo tenía **antes** de este PR —
+`src/lib/**` podía importar `@/app/**` sin que nadie chillara), y `capas-components` cubría `@/app`
+pero no `@/server`. Los tres bloques repiten ahora los patrones que les corresponden, con un
+comentario que explica por qué la repetición no es copy-paste.
+
+**Control negativo final**: 5 archivos sonda, uno por capa (`modules`, `shared`, `lib`,
+`components`, más `lib → modules` para confirmar que no se rompió el patrón viejo) → `5 problems
+(5 errors)`. Todas las capas muerden.
+
+### Config muerta borrada
+
+El bloque `turnogol/capas-components-excepcion-ticketpanel` eximía a
+`src/components/dashboard/DashboardCanteenButton.tsx`, **que ya no existe**. El TODO que pedía mover
+`TicketPanel` a `@/components` quedó sin objeto: ningún archivo de `@/components` importa
+`@/app` como valor hoy (los 4 que quedan son `import type`, que la regla deja pasar). `TicketPanel`
+se queda en su ruta — sus imports relativos (`../caja-lib`, `./ticket-lib`, `./actions`,
+`./TabDialog`) confirman que es una pieza de esa ruta, no un componente reusable.
+
+### Evidencia
+
+`pnpm lint`: 44 problemas → **38** (0 errores). Los 6 de `no-restricted-imports` a cero; los 38 que
+quedan son los de react-hooks, que son B7. `pnpm typecheck` limpio. `pnpm test` 3088/3088.
+`pnpm test:integration` 878/878. `pnpm test:isolation` 166/166. `pnpm knip` sin hallazgos.
+
+Las dos suites de DB hay que correrlas **en serie**: lanzadas en paralelo contra el mismo Postgres
+local dan `PostgresError: tuple concurrently updated` (la carrera de GRANT de `ensureRoles` ya
+documentada). Da 12 rojos que no tienen nada que ver con el cambio.
+
+Un test tenía la ruta pegada como string y hubo que repuntarlo:
+`route-wrappers-request-context.test.ts` lee los 4 archivos con `readFileSync` para verificar que
+todos envuelvan en `runRequestObservability` — leía de `src/shared/middleware`. Es exactamente el
+candado que debía romperse con este movimiento.

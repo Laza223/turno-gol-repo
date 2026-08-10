@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { and, count, eq, lt, or, sql } from 'drizzle-orm'
-import { withTenant } from '@/shared/middleware/with-tenant'
+import { withTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'

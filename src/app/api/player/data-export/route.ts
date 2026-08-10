@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
-import { withPlayer } from '@/shared/middleware/with-player'
+import { withPlayer } from '@/server/middleware/with-player'
 import { notFound } from '@/shared/api-error'
 import { getWorkerSql } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'

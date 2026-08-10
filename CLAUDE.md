@@ -79,12 +79,13 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 
 - `src/modules/*` — 25 slices de dominio (`bookings`, `payments`, `billing`, `auth`, `staff`, `abonados`, `cashflow`, `relationships`, `notifications`, `super-admin`, …), cada uno con `*.service.ts` / `*.schema.ts` (Zod) / `*.types.ts` / `*.errors.ts`. Acá vive la lógica.
 - `src/app/*` — capa fina de presentación/ruteo. Route groups: `(admin)` (dashboard staff, rutas en español: `grilla`, `caja`, `jugadores`…), `(player)`, `(public)` (portal + SEO), `(auth)`, `(business)`, `(super-admin)`. Server Actions co-locadas en `src/app/**/actions.ts`, exportan funciones con sufijo `Action`: guard → service del módulo. Route handlers notables: `api/webhooks/mercadopago`, `api/public/*`, `api/billing/*`, `api/mp/{oauth-start,callback}`.
-- `src/shared/` — infraestructura interna: `db/`, `jobs/`, `middleware/`, `time/`, `rate-limit/`, `observability/`, `security/`. `src/lib/` — adapters de terceros: `supabase/`, `mercadopago.ts`, `web-push.ts`, `crypto/`. `src/components/` y `src/hooks/` — UI.
+- `src/shared/` — infraestructura interna: `db/`, `jobs/`, `middleware/` (solo `observability.ts`), `time/`, `rate-limit/`, `observability/`, `security/`. `src/lib/` — adapters de terceros: `supabase/`, `mercadopago.ts`, `web-push.ts`, `crypto/`. `src/components/` y `src/hooks/` — UI.
+- `src/server/` — **composition root del runtime web** (B6): `middleware/{with-auth,with-player,with-role,with-tenant}.ts`, los wrappers de route handler. Importan dominio A PROPÓSITO — orquestarlo es su función, igual que `src/shared/jobs/` para el runtime de background. No es una capa más de la cadena `app → modules → shared`: está al lado de `app`. Por eso `@/shared` no puede importar `@/modules` (regla `turnogol/capas-shared`, en `error`) pero `@/server` sí.
 
 ### Núcleo de tenant isolation: `src/shared/db/client.ts`
 - `getDb()` — pool restringido (rol `turnogol_app`, RLS enforced). `getWorkerDb()` — pool BYPASSRLS (`WORKER_DATABASE_URL`, rol `turnogol_worker`) para sweeps cross-tenant y lookups pre-contexto.
 - Wrappers de contexto (transacción + `set_config(..., true)` = SET LOCAL): `withTenantContext(tenantId)`, `withPlayerContext(playerId)`, `withSystemAdminContext(id)`.
-- Flujo de un request staff: `withTenant()` (`src/shared/middleware/with-tenant.ts`) → `extractAuthUser` (JWT `app_metadata`) → `getStaffRole()` re-lee el rol desde `tenant_staff_members` (**el claim `role` del JWT nunca se confía**) → `withTenantContext` → queries bajo RLS.
+- Flujo de un request staff: `withTenant()` (`src/server/middleware/with-tenant.ts`) → `extractAuthUser` (JWT `app_metadata`) → `getStaffRole()` re-lee el rol desde `tenant_staff_members` (**el claim `role` del JWT nunca se confía**) → `withTenantContext` → queries bajo RLS.
 
 ### Guards
 - `src/modules/staff/guards.ts` — `requireAdminStaff()` (pages, redirige), `requireOperatorStaff()` / `requireAdminStaffAction()` (Server Actions, devuelven `{ok:false}`).

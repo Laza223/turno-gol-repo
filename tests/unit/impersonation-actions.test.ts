@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   IMPERSONATION_COOKIE_NAME,
   verifyImpersonationCookie,
-} from '@/modules/auth/impersonation'
+} from '@/shared/security/impersonation-cookie'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 const SYSTEM_ADMIN_ID = '22222222-2222-4222-8222-222222222222'

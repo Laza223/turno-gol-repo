@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { notFound } from '@/shared/api-error'
-import { withTenant } from '@/shared/middleware/with-tenant'
+import { withTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
 import { SubscriptionNotFoundError } from '@/modules/billing/billing.errors'

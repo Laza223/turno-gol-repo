@@ -2,7 +2,7 @@ import { auditLogs } from '@/shared/db/schema'
 import {
   IMPERSONATION_COOKIE_NAME,
   verifyImpersonationCookie,
-} from '@/modules/auth/impersonation'
+} from '@/shared/security/impersonation-cookie'
 import type { DbTx } from './client'
 
 /** Sentinel UUID for system-originated audit rows (cron jobs, webhooks). */

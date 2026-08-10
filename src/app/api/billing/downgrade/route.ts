@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { withTenant } from '@/shared/middleware/with-tenant'
+import { withTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { downgradeSchema } from '@/modules/billing/billing.schema'
 import { downgrade } from '@/modules/billing/billing.service'

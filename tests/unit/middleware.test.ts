@@ -27,9 +27,9 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
 
 import { createClient } from '@/lib/supabase/server'
-import { withAuth } from '@/shared/middleware/with-auth'
-import { withTenant } from '@/shared/middleware/with-tenant'
-import { withRole } from '@/shared/middleware/with-role'
+import { withAuth } from '@/server/middleware/with-auth'
+import { withTenant } from '@/server/middleware/with-tenant'
+import { withRole } from '@/server/middleware/with-role'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import type { StaffUser } from '@/modules/auth/types'
 import type { DbTx } from '@/shared/db/client'

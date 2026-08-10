@@ -14,7 +14,7 @@ import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
  * Evidence anchors: .../_components/impersonate-button.tsx:21-67,
  * src/components/layout/impersonation-banner.tsx:15-41,
  * .../tenants/[id]/actions.ts:384-480, src/app/(admin)/layout.tsx:16-47,
- * src/modules/auth/impersonation.ts:21-24,62-73.
+ * src/shared/security/impersonation-cookie.ts:21-24,62-73.
  */
 test.describe('TG-HP-313 — Impersonar / detener', () => {
   test('entra a /dashboard con banner rojo + cookie firmada, sale y vuelve al detalle', async ({

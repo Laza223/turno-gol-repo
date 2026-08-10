@@ -198,6 +198,11 @@ export default tseslint.config(
   // Nada apunta para atrás. Estos bloques son la barrera; el alias único
   // `@/*` del tsconfig no impone ninguna.
   //
+  // `src/server` es la excepción declarada: NO es una capa más de esa cadena,
+  // es el composition root del runtime web (los wrappers de route handler).
+  // Importar dominio es su función, igual que en `src/shared/jobs` para el
+  // runtime de background. Se ubica al lado de `app`, no adentro de `shared`.
+  //
   // `allowTypeImports: true` es lo que hace esto vivible: `import type` se borra
   // al compilar, así que un tipo cruzando una frontera no acopla nada en runtime.
   // Con `consistent-type-imports` en `error` (arriba), TODOS los imports de tipo
@@ -212,7 +217,9 @@ export default tseslint.config(
     // Frontera limpia hoy (0 violaciones): trinquete gratis, directo a `error`.
     // Que el dominio o la infraestructura importen una page/layout/Action del
     // App Router invierte el sentido del grafo y ata la lógica al ruteo.
-    name: 'turnogol/capas-nadie-importa-app',
+    // `src/server` no está en `files`: lo cubre `turnogol/capas-server` más
+    // abajo, que al ser posterior reemplaza esta regla entera para esos archivos.
+    name: 'turnogol/capas-nadie-importa-app-ni-server',
     files: ['src/modules/**/*.ts', 'src/shared/**/*.ts', 'src/lib/**/*.ts'],
     rules: {
       'no-restricted-imports': 'off',
@@ -224,7 +231,19 @@ export default tseslint.config(
               group: ['@/app/**'],
               allowTypeImports: true,
               message:
-                'Capa de dominio/infra importando la capa de ruteo. La dirección es app → modules → shared, nunca al revés. Si necesitás algo de una page, ese algo no vive en la page: subilo a @/modules o @/lib.',
+                'Capa de dominio/infra importando la capa de ruteo. La dirección es app → server → modules → shared, nunca al revés. Si necesitás algo de una page, ese algo no vive en la page: subilo a @/modules o @/lib.',
+            },
+            {
+              // El B6 introdujo exactamente esta arista sin querer: al mover
+              // with-tenant.ts a @/server, `modules/staff/guards.ts` — que reusa
+              // BLOCKED_TENANT_STATUSES — pasó a importar @/server desde
+              // @/modules. Ningún gate lo atrapaba. Las constantes se mudaron a
+              // `@/modules/tenants/tenant.lifecycle` (son estados de
+              // `tenants.status`, o sea dominio) y esta regla es el trinquete.
+              group: ['@/server/**'],
+              allowTypeImports: true,
+              message:
+                '@/server es el composition root del runtime web: compone dominio, no lo provee. Si @/modules o @/shared necesita algo que hoy vive ahí, ese algo es dominio o infraestructura mal ubicada — bajalo a @/modules o @/shared y que @/server lo importe desde ahí.',
             },
           ],
         },
@@ -248,6 +267,15 @@ export default tseslint.config(
               allowTypeImports: true,
               message:
                 '@/lib es la capa de adapters y helpers puros: no puede depender del dominio. Si el helper necesita lógica de negocio, el helper es lógica de negocio y va en @/modules.',
+            },
+            {
+              // Repetido a propósito: este bloque es posterior a
+              // `capas-nadie-importa-app-ni-server` y matchea los mismos
+              // archivos, así que lo REEMPLAZA en vez de sumarse.
+              group: ['@/app/**', '@/server/**'],
+              allowTypeImports: true,
+              message:
+                '@/lib es la capa de más abajo junto con @/shared: no importa hacia arriba. Si el adapter necesita algo de una ruta o de un wrapper de route handler, ese algo está mal ubicado.',
             },
           ],
         },
@@ -279,6 +307,12 @@ export default tseslint.config(
               message:
                 'Un componente en @/components importando de @/app está en el lugar equivocado: o el componente pertenece a esa ruta (movelo a src/app/<ruta>/_components/), o lo que importa es genérico y va a @/lib.',
             },
+            {
+              group: ['@/server/**'],
+              allowTypeImports: true,
+              message:
+                '@/server es el composition root del runtime web (wrappers de route handler): nada de UI puede importarlo. Un componente que necesita eso está mezclando servidor y render.',
+            },
           ],
         },
       ],
@@ -286,58 +320,80 @@ export default tseslint.config(
   },
 
   {
-    // EXCEPCIÓN TEMPORAL, una sola arista.
+    // Frontera limpia desde B6 (0 violaciones): trinquete en `error`.
     //
-    // src/components/dashboard/DashboardCanteenButton.tsx importa
-    // `TicketPanel` de src/app/(admin)/caja/cantina/. El fix correcto es mover
-    // TicketPanel a src/components/canteen/ — es un componente reusable, no una
-    // pieza de esa ruta, y la prueba es justamente que el dashboard lo usa.
-    //
-    // No se hizo acá porque los DOS archivos tenían cambios sin commitear
-    // cuando se metió esta regla (esfuerzo mobile-ux en vuelo): mover un archivo
-    // con un diff abierto encima arruina la revisión de ese diff.
-    //
-    // TODO: en cuanto el esfuerzo mobile-ux esté commiteado, mover TicketPanel
-    // a src/components/canteen/TicketPanel.tsx, actualizar los 2 importadores y
-    // BORRAR este bloque entero.
-    name: 'turnogol/capas-components-excepcion-ticketpanel',
-    files: ['src/components/dashboard/DashboardCanteenButton.tsx'],
-    rules: {
-      '@typescript-eslint/no-restricted-imports': 'off',
-    },
-  },
-
-  {
-    // DEUDA CONOCIDA, por eso `warn` y no `error`.
-    //
-    // `src/shared` es infraestructura: no debería conocer el dominio. Hoy lo
-    // conoce en 6 lugares (imports de VALOR; los de tipo los deja pasar
-    // allowTypeImports):
-    //   · shared/middleware/** → extractAuthUser ×3, getStaffRole ×2
-    //     Fix = inyectar el resolver como parámetro del middleware.
-    //   · shared/db/audit.ts → @/modules/auth/impersonation
-    //     La peor de todas: la capa de DB dependiendo de dominio de auth.
-    //     También la más fácil, es un solo archivo.
+    // `src/shared` es infraestructura: no conoce el dominio. Las 6 aristas de
+    // VALOR que existían eran dos problemas distintos, y ninguno se resolvió
+    // inyectando funciones por parámetro:
+    //   · shared/middleware/{with-auth,with-player,with-role,with-tenant} →
+    //     extractAuthUser ×3, getStaffRole ×2. Esos 4 archivos no eran
+    //     infraestructura: son el composition root del runtime web. Se movieron
+    //     a `src/server/middleware/`. `observability.ts` sí es infra y se quedó.
+    //   · shared/db/audit.ts → @/modules/auth/impersonation. El módulo importado
+    //     es PURO (solo node:crypto): un códec de cookie firmada, no dominio.
+    //     Estaba mal ubicado; se movió a `@/shared/security/impersonation-cookie`.
     //
     // src/shared/jobs/** queda FUERA por diseño (26 aristas): los workers son el
     // composition root del runtime de background — orquestar dominio es su
-    // función, igual que src/app/ lo hace para el runtime web. No es deuda.
-    //
-    // Pasa a `error` cuando los 6 imports de valor estén resueltos.
+    // función, igual que src/app/ y src/server/ lo hacen para el runtime web.
     name: 'turnogol/capas-shared',
     files: ['src/shared/**/*.ts', 'src/shared/**/*.tsx'],
     ignores: ['src/shared/jobs/**'],
     rules: {
       'no-restricted-imports': 'off',
       '@typescript-eslint/no-restricted-imports': [
-        'warn',
+        'error',
         {
           patterns: [
             {
               group: ['@/modules/**'],
               allowTypeImports: true,
               message:
-                'DEUDA: @/shared es infraestructura y no debería conocer el dominio. Fix = inyección de dependencias (pasar la función como parámetro) en vez de importarla. Los `import type` no son deuda: allowTypeImports los deja pasar.',
+                '@/shared es infraestructura y no puede conocer el dominio. Si el archivo NECESITA orquestar dominio, no es infraestructura: su lugar es @/server (runtime web) o @/shared/jobs (runtime de background). Los `import type` sí pasan: allowTypeImports los deja.',
+            },
+            {
+              // REPETIDO a propósito, no es copy-paste: este bloque es posterior
+              // a `capas-nadie-importa-app-ni-server` y matchea los mismos
+              // archivos, así que REEMPLAZA su config de la regla entera en vez
+              // de sumarse. Sin esta copia, `src/shared/**` puede importar
+              // `@/server/**` y `@/app/**` sin que nadie chille. Verificado con
+              // archivo sonda: sin estos dos patterns, el import de @/server
+              // desde shared/ pasa limpio.
+              group: ['@/server/**', '@/app/**'],
+              allowTypeImports: true,
+              message:
+                '@/shared es la capa de más abajo: no importa hacia arriba. @/server compone dominio, no lo provee; si @/shared necesita algo que vive ahí, ese algo está mal ubicado — bajalo a @/shared o @/modules.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    // `src/server` orquesta dominio a propósito (esa es su razón de existir),
+    // pero sigue siendo código de servidor sin UI: importar un componente o un
+    // hook de React desde un wrapper de route handler significa que la pieza
+    // está en el lugar equivocado.
+    name: 'turnogol/capas-server',
+    files: ['src/server/**/*.ts'],
+    rules: {
+      'no-restricted-imports': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/components/**', '@/hooks/**'],
+              allowTypeImports: true,
+              message:
+                '@/server es el composition root del runtime web: no renderiza nada. Un wrapper de route handler que necesita un componente o un hook está mezclando dos cosas.',
+            },
+            {
+              group: ['@/app/**'],
+              allowTypeImports: true,
+              message:
+                'Capa de composición importando la capa de ruteo. La dirección es app → server → modules → shared, nunca al revés.',
             },
           ],
         },

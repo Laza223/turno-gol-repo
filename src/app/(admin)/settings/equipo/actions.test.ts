@@ -85,7 +85,7 @@ describe('staff actions — estado del tenant / kill-switch (#14)', () => {
   // (ya pagó) — antes `STAFF_WRITE_BLOCKED_STATUSES` lo bloqueaba igual que un
   // moroso sin pagar, contradiciendo el resto del panel. Ahora deriva de la
   // misma fuente única que `guards.ts` (`BLOCKED_TENANT_STATUSES` +
-  // `READ_ONLY_TENANT_STATUSES` de with-tenant.ts), que no incluye `canceled`.
+  // `READ_ONLY_TENANT_STATUSES` de tenant.lifecycle.ts), que no incluye `canceled`.
   it('deactivateStaffAction NO rechaza tenant canceled — avanza al rate-limit + DB', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue(mockTenant('canceled') as never)
     vi.mocked(withTenantContext).mockResolvedValue({ success: true })

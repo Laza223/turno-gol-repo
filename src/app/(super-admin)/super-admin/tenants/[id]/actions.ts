@@ -15,7 +15,7 @@ import {
   buildImpersonationCookie,
   IMPERSONATION_COOKIE_NAME,
   IMPERSONATION_TTL_MS,
-} from '@/modules/auth/impersonation'
+} from '@/shared/security/impersonation-cookie'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'

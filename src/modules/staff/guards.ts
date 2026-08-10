@@ -5,7 +5,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import {
   BLOCKED_TENANT_STATUSES,
   READ_ONLY_TENANT_STATUSES,
-} from '@/shared/middleware/with-tenant'
+} from '@/modules/tenants/tenant.lifecycle'
 import type { StaffUser } from '@/modules/auth/types'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
 import { getStaffRole } from './staff.service'
@@ -19,7 +19,8 @@ type AdminStaff = {
 /**
  * Estados de tenant que bloquean el panel admin: unión de BLOCKED_TENANT_STATUSES
  * (blocked/churned/deleted) + READ_ONLY_TENANT_STATUSES (suspended) de
- * with-tenant.ts (route handlers) — mismo conjunto que el hard-lock de
+ * tenant.lifecycle.ts, la misma fuente que usa `withTenant` para los route
+ * handlers — mismo conjunto que el hard-lock de
  * (admin)/layout.tsx (ENS-20/ENS-26). Ahí `suspended` es solo-lectura para GET;
  * acá todo lo que pasa por este guard es una mutación (Server Action) o una
  * page/action de configuración, así que se trata como bloqueo total.

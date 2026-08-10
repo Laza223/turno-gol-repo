@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { badRequest, conflict, notFound, validationError } from '@/shared/api-error'
-import { withBillingTenant } from '@/shared/middleware/with-tenant'
+import { withBillingTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { cancelSchema } from '@/modules/billing/billing.schema'
 import { cancel } from '@/modules/billing/billing.service'

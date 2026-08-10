@@ -41,12 +41,13 @@ function formatDate(iso: string): string {
  * (mismo patrón que `BanPlayerControls`/`BookingActions`).
  *
  * Los "60 días" de conservación son el número que ya usan el mail de
- * cancelación (`subscription-canceled.ts`) y el FAQ de `/precios`: el real
- * `scheduled_deletion_at` que fija `transitionCanceledToBlocked` son
- * `CANCELED_BLOCKED_DELETION_DAYS`=67 días desde el bloqueo (60d de retención
- * + 7d de margen interno para que corra el worker de wipe) — no se le
- * promete al dueño el margen interno, así que 60 sigue siendo verdad (piso,
- * no promesa exacta).
+ * cancelación (`subscription-canceled.ts`) y el FAQ de `/precios`. El
+ * `scheduled_deletion_at` real que fija `transitionCanceledToBlocked` es
+ * `CANCELED_BLOCKED_DELETION_DAYS` = 97 días desde el bloqueo (90d de
+ * retención, que es lo que prometen `/terminos` y `/privacidad`, + 7d de
+ * margen interno para que corra el worker de wipe). B1 lo subió de 67: el
+ * margen interno no se le promete al dueño, así que "60 días" sigue siendo
+ * verdad — es un piso, no una promesa exacta, y ahora está holgado.
  */
 export function CancelSubscriptionSection({ status, accessUntil, context = 'settings' }: Props) {
   const router = useRouter()

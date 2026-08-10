@@ -28,6 +28,8 @@ import {
   onPaymentRejected,
 } from '@/modules/billing/dunning.service'
 import {
+  CANCELED_BLOCKED_DELETION_DAYS,
+  CHURNED_DELETION_DAYS,
   transitionTrialingToActive,
   transitionToCanceled,
 } from '@/modules/billing/lifecycle.service'
@@ -299,7 +301,7 @@ describe('Test A — dunning escalation drives blocked → churned', () => {
     await runDunningSweep()
     expect(await fetchTenantStatus(sql, tenantId)).toBe('blocked')
 
-    // Force 90d + sweep → churned, scheduled_deletion_at ≈ NOW + 7d
+    // Force 90d + sweep → churned, scheduled_deletion_at ≈ NOW + CHURNED_DELETION_DAYS
     await sql`
       UPDATE tenant_subscriptions SET dunning_started_at = NOW() - INTERVAL '90 days'
       WHERE tenant_id = ${tenantId}
@@ -313,8 +315,8 @@ describe('Test A — dunning escalation drives blocked → churned', () => {
     expect(delAtRaw).not.toBeNull()
     const delAt = new Date(delAtRaw as unknown as string)
     const inDays = (delAt.getTime() - Date.now()) / 86_400_000
-    expect(inDays).toBeGreaterThan(6.5)
-    expect(inDays).toBeLessThan(7.5)
+    expect(inDays).toBeGreaterThan(CHURNED_DELETION_DAYS - 0.5)
+    expect(inDays).toBeLessThan(CHURNED_DELETION_DAYS + 0.5)
   })
 })
 
@@ -365,7 +367,7 @@ describe('Test B — upgrade Predio → Complejo proration', () => {
 // ─── Test C: voluntary cancel happy path ───────────────────────────────────
 
 describe('Test C — voluntary cancel', () => {
-  it('cancel → preapproval canceled, period_end intact; sweep at end → blocked +67d', async () => {
+  it('cancel → preapproval canceled, period_end intact; sweep at end → blocked + CANCELED_BLOCKED_DELETION_DAYS', async () => {
     const sql = getSql()
     const { tenantId } = await seedActiveTenant(sql, 'predio', {
       currentPeriodEnd: new Date(Date.now() + 86_400_000), // tomorrow
@@ -407,8 +409,8 @@ describe('Test C — voluntary cancel', () => {
     expect(delAtRaw).not.toBeNull()
     const delAt = new Date(delAtRaw as unknown as string)
     const inDays = (delAt.getTime() - Date.now()) / 86_400_000
-    expect(inDays).toBeGreaterThan(66)
-    expect(inDays).toBeLessThan(68)
+    expect(inDays).toBeGreaterThan(CANCELED_BLOCKED_DELETION_DAYS - 1)
+    expect(inDays).toBeLessThan(CANCELED_BLOCKED_DELETION_DAYS + 1)
   })
 })
 

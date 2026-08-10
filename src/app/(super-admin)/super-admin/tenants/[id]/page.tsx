@@ -13,7 +13,7 @@ import {
   FORCEABLE_TRANSITIONS,
   REACTIVATABLE_STATUSES,
 } from '@/modules/super-admin/support.service'
-import { TenantStatusBadge } from '../_components/status-badge'
+import { TenantStatusBadge } from '../../_components/tenant-status-visual'
 import {
   SupportActionsPanel,
   type SupportActionsBag,

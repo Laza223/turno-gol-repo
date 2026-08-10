@@ -1,6 +1,6 @@
 import { formatArs } from '@/lib/format'
 import type { PlanSummary, TenantDetail } from '@/modules/super-admin/tenants.service'
-import { TenantStatusBadge } from '../../_components/status-badge'
+import { TenantStatusBadge } from '../../../_components/tenant-status-visual'
 import { formatDateArt, formatDateTimeArt } from '../../_components/format'
 import { Card, Dt } from './detail-primitives'
 

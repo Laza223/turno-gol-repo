@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { contactWhatsappUrl } from '@/lib/contact'
 
 interface ArticleShellProps {
   children: ReactNode
@@ -46,7 +47,7 @@ export function ArticleShell({ children, title, description, date, addFaqSchema:
           TurnoGol está diseñado específicamente para canchas de fútbol. Sin contratos, 30 días gratis.
         </p>
         <a
-          href="https://wa.me/5491100000000"
+          href={contactWhatsappUrl('Hola! Quiero saber más sobre TurnoGol para mi complejo.')}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-6 inline-block rounded-md bg-blue-600 px-8 py-3 text-lg font-medium text-white hover:bg-blue-700"

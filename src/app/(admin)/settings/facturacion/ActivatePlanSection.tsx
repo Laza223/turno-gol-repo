@@ -123,7 +123,7 @@ export function ActivatePlanSection({
                   aria-checked={selected}
                   onClick={() => setCourts(n)}
                   className={`h-11 w-11 rounded-full text-sm font-bold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 ${selected
-                      ? 'bg-emerald-505 bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,.45)] font-bold'
+                      ? 'bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,.45)] font-bold'
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground dark:hover:bg-white/[.07] dark:hover:text-white'
                     }`}
                 >

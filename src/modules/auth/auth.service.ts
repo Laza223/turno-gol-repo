@@ -51,6 +51,8 @@ export async function signInWithPlayerMagicLink(
     },
   })
   if (error) return { ok: false, error: error.message }
+  // Sin el email ni ningún dato del perfil: solo el hecho de que se mandó.
+  track.auth('magiclink.sent', { flow: 'signup' })
   return { ok: true }
 }
 
@@ -69,6 +71,7 @@ export async function signInWithExistingPlayerMagicLink(
     options: { emailRedirectTo: redirectTo, data: { is_player: true } },
   })
   if (error) return { ok: false, error: error.message }
+  track.auth('magiclink.sent', { flow: 'reaccess' })
   return { ok: true }
 }
 

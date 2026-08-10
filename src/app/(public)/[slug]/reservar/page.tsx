@@ -12,6 +12,7 @@ import ConfirmBookingButton from './components/ConfirmBookingButton'
 import type { PayMethod } from './components/PaymentMethodSelector'
 import { createBookingAndCheckout, sendPlayerMagicLink } from './actions'
 import { CheckoutErrorBanner, CheckoutInvalidState } from './CheckoutStates'
+import { track } from '@/shared/observability'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +70,17 @@ export default async function ReservarPage(props: Props) {
     ? Math.round((price * tenant.depositPercentage) / 100)
     : 0
   const timeEnd = addMinsToHHMM(time, durNum)
+
+  // El paso más caro del embudo: el jugador ya eligió cancha y horario y está
+  // por pagar. Va DESPUÉS de los early-returns de arriba a propósito — un slot
+  // ya tomado o inexistente no es un checkout visto, y contarlo inflaría el
+  // denominador de la conversión con gente que nunca vio un precio.
+  // `withDeposit` separa los dos flujos, que no son comparables entre sí: con
+  // seña el jugador se va a MercadoPago, sin seña confirma en el momento.
+  track.funnel('checkout.viewed', {
+    tenantId: tenant.id,
+    withDeposit: depositAmount > 0,
+  })
 
   // Con seña la única vía es MercadoPago (regla de negocio: la seña online es
   // obligatoria). Sin seña, métodos presenciales según config del complejo.

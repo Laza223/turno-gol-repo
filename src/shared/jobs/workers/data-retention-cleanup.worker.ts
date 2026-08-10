@@ -215,6 +215,36 @@ export async function purgeOldNotifications(): Promise<void> {
   })
 }
 
+/**
+ * Purga GLOBAL de `analytics_events` con más de 12 meses (migr. 072).
+ *
+ * 12 y no 24 como `audit_logs`: los audit logs son el rastro de quién hizo qué
+ * y tienen valor probatorio; esto son métricas de producto, donde lo que se
+ * necesita es poder comparar contra el mismo mes del año anterior. Un año
+ * cubre esa comparación y nada más.
+ *
+ * A diferencia de `audit_logs` y `notifications`, esta tabla NO guarda
+ * identificadores de persona (ver `PII_KEYS` en
+ * `@/shared/observability/analytics`), así que la retención acá es una
+ * decisión de costo de almacenamiento, no una obligación de la Ley 25.326.
+ * El volumen sí es el más alto de las tres: un evento por búsqueda pública.
+ *
+ * Misma mecánica que sus gemelas: tabla per-tenant, retención por antigüedad
+ * sin filtro de tenant, pool worker BYPASSRLS. Incluye las filas sin tenant
+ * (tráfico público), que son mayoría.
+ */
+export async function purgeOldAnalyticsEvents(): Promise<void> {
+  const sql = getWorkerSql()
+  const result = await sql`
+    DELETE FROM analytics_events
+    WHERE occurred_at < NOW() - INTERVAL '12 months'
+  `
+  logger.info('purged analytics_events', {
+    module: 'data-retention',
+    count: result.count,
+  })
+}
+
 async function cancelPendingMpSubscription(
   gateway: PaymentGateway,
   tenantId: string,
@@ -331,6 +361,10 @@ export async function wipeTenant(
 
     await tx.execute(drizzleSql`DELETE FROM notifications WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM audit_logs WHERE tenant_id = ${tenantId}`)
+    // Analytics (migr. 072): FK a tenants sin CASCADE, misma trampa que el
+    // resto. Las filas sin tenant_id no se tocan acá — no son de este complejo
+    // y las limpia `purgeOldAnalyticsEvents` por antigüedad.
+    await tx.execute(drizzleSql`DELETE FROM analytics_events WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tenant_player_bans WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tenant_staff_members WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${tenantId}`)
@@ -459,6 +493,15 @@ export async function runDataRetentionCleanup(): Promise<void> {
     await purgeOldNotifications()
   } catch (err) {
     logger.error('purge notifications failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgeOldAnalyticsEvents()
+  } catch (err) {
+    logger.error('purge analytics_events failed (non-fatal, retried next run)', {
       module: 'data-retention',
       error: err instanceof Error ? err.message : String(err),
     })

@@ -7,6 +7,7 @@ import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import WeeklyAvailability from './components/WeeklyAvailability'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
+import { track } from '@/shared/observability'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,11 @@ export default async function DisponibilidadPage(props: Props) {
   if (!tenant || UNAVAILABLE.has(tenant.status)) notFound()
 
   const week = await getPublicWeeklyAvailability(tenant, getArtToday())
+
+  // Paso intermedio del embudo público. Cuenta visitas reales porque la página
+  // es `force-dynamic`: con ISR contaría regeneraciones de cache, que es otra
+  // cosa (ver la nota de `portal.viewed` en breadcrumbs.ts).
+  track.funnel('profile.viewed', { tenantId: tenant.id, withDate: false })
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">

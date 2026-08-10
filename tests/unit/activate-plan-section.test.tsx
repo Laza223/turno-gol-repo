@@ -29,10 +29,14 @@ function mockFetch(body: unknown, status: number) {
   ) as unknown as typeof global.fetch
 }
 
+// Espejo del catálogo real (migr. 071). El componente muestra los precios de
+// ESTE prop pero elige el sugerido con `planForCourts` de la constante estática
+// de `plans-data.ts`, así que si el fixture se desincroniza del catálogo el test
+// pasa a medir dos cosas distintas a la vez.
 const PLANS: ActivatePlanOption[] = [
-  { id: 'plan-predio', slug: 'predio', name: 'Predio', maxCourts: 2, priceMonthly: 5_500_000, priceAnnual: 4_400_000 },
-  { id: 'plan-complejo', slug: 'complejo', name: 'Complejo', maxCourts: 5, priceMonthly: 8_500_000, priceAnnual: 6_800_000 },
-  { id: 'plan-estadio', slug: 'estadio', name: 'Estadio', maxCourts: null, priceMonthly: 11_500_000, priceAnnual: 9_200_000 },
+  { id: 'plan-predio', slug: 'predio', name: 'Predio', maxCourts: 3, priceMonthly: 6_300_000, priceAnnual: 5_040_000 },
+  { id: 'plan-complejo', slug: 'complejo', name: 'Complejo', maxCourts: 6, priceMonthly: 9_900_000, priceAnnual: 7_920_000 },
+  { id: 'plan-estadio', slug: 'estadio', name: 'Estadio', maxCourts: null, priceMonthly: 12_900_000, priceAnnual: 10_320_000 },
 ]
 
 let assignSpy: ReturnType<typeof vi.fn>
@@ -58,17 +62,19 @@ describe('ActivatePlanSection', () => {
     expect(screen.getByRole('heading', { name: 'Predio' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Complejo' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Estadio' })).toBeTruthy()
-    expect(screen.getByText(/^\$\s*55\.000$/)).toBeTruthy()
-    expect(screen.getByText(/^\$\s*85\.000$/)).toBeTruthy()
-    expect(screen.getByText(/^\$\s*115\.000$/)).toBeTruthy()
+    expect(screen.getByText(/^\$\s*63\.000$/)).toBeTruthy()
+    expect(screen.getByText(/^\$\s*99\.000$/)).toBeTruthy()
+    expect(screen.getByText(/^\$\s*129\.000$/)).toBeTruthy()
   })
 
   it('marca el plan sugerido según la cantidad de canchas elegida', () => {
     render(<ActivatePlanSection plans={PLANS} />)
-    // Por defecto (3 canchas) el sugerido es Complejo.
+    // Por defecto (3 canchas) el sugerido es Predio. Antes de la migr. 071 era
+    // Complejo: el corte de Predio pasó de 2 a 3 canchas para alinearse con los
+    // tramos de ATC, y 3 canchas es justo el piso del ICP.
     expect(
       within(screen.getByText('Sugerido para tus canchas').parentElement as HTMLElement).getByRole('heading', {
-        name: 'Complejo',
+        name: 'Predio',
       }),
     ).toBeTruthy()
 
@@ -84,9 +90,9 @@ describe('ActivatePlanSection', () => {
   it('cambia el precio mostrado de todos los planes al elegir ciclo anual', () => {
     render(<ActivatePlanSection plans={PLANS} />)
     fireEvent.click(screen.getByRole('radio', { name: /^Anual/ }))
-    expect(screen.getByText(/^\$\s*44\.000$/)).toBeTruthy()
-    expect(screen.getByText(/^\$\s*68\.000$/)).toBeTruthy()
-    expect(screen.getByText(/^\$\s*92\.000$/)).toBeTruthy()
+    expect(screen.getByText(/^\$\s*50\.400$/)).toBeTruthy()
+    expect(screen.getByText(/^\$\s*79\.200$/)).toBeTruthy()
+    expect(screen.getByText(/^\$\s*103\.200$/)).toBeTruthy()
   })
 
   it('201 → redirige a checkoutUrl con el planId y billingCycle seleccionados', async () => {

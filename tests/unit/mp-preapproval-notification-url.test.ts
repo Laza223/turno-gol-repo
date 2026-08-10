@@ -50,7 +50,7 @@ import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation
 const INPUT = {
   tenantId: '00000000-0000-0000-0000-0000000000aa',
   payerEmail: 'dueno@complejo.test',
-  amount: 8_500_000, // centavos ARS → $85.000 (plan Complejo)
+  amount: 9_900_000, // centavos ARS → $99.000 (plan Complejo, migr. 071)
   frequency: 'monthly' as const,
   planId: '00000000-0000-0000-0000-0000000000bb',
   reason: 'TurnoGol — Complejo (mensual)',
@@ -98,7 +98,7 @@ describe('MercadoPagoGateway.createPreapproval — notification_url', () => {
     expect(body.auto_recurring).toEqual({
       frequency: 1,
       frequency_type: 'months',
-      transaction_amount: 85_000, // pesos, no centavos
+      transaction_amount: 99_000, // pesos, no centavos
       currency_id: 'ARS',
     })
   })

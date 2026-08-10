@@ -1652,24 +1652,27 @@ CREATE TRIGGER enforce_booking_invariants
 -- Precios basados en Doc 4 — Monetización
 -- ============================================================
 INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, sort_order, features) VALUES
+-- Valores vigentes tras la migr. 071 (cortes alineados con ATC: 1-3 / 4-6 / 7+).
+-- Este seed es ilustrativo: el estado real sale de 007 + las migraciones de
+-- precios posteriores (043, 071).
 (
-  'Predio', 'predio', 2,
-  5500000,   -- $55.000 ARS en centavos
-  4400000,   -- $44.000 ARS en centavos (mensualizado, 20% descuento anual)
+  'Predio', 'predio', 3,
+  6300000,   -- $63.000 ARS en centavos
+  5040000,   -- $50.400 ARS en centavos (mensualizado, 20% descuento anual)
   1,
   '{"history_months": 6, "export_formats": ["csv"], "api_access": false, "support_channels": ["email"]}'
 ),
 (
-  'Complejo', 'complejo', 5,
-  8500000,   -- $85.000 ARS
-  6800000,   -- $68.000 ARS (20% descuento anual)
+  'Complejo', 'complejo', 6,
+  9900000,   -- $99.000 ARS
+  7920000,   -- $79.200 ARS (20% descuento anual)
   2,
   '{"history_months": 12, "export_formats": ["csv", "excel"], "api_access": false, "support_channels": ["email"]}'
 ),
 (
   'Estadio', 'estadio', NULL,  -- NULL = ilimitado
-  11500000,  -- $115.000 ARS
-  9200000,   -- $92.000 ARS (20% descuento anual)
+  12900000,  -- $129.000 ARS
+  10320000,  -- $103.200 ARS (20% descuento anual)
   3,
   '{"history_months": null, "export_formats": ["csv", "excel"], "api_access": true, "support_channels": ["email", "priority_email"]}'
 );

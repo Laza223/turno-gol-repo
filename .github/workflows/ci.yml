@@ -94,10 +94,28 @@ jobs:
   # corrida completa y desaparece al reintentar. Si una story es flaky de
   # verdad, va a cuarentena explícita con `tags: ['!test']` y un TODO fechado,
   # no a un retry silencioso.
+  # 2026-08-10: 12 → 20. Diagnosticado en PR #122 (rama fix/retencion-legal-90-dias),
+  # que colgó el job 2 veces seguidas — SIN relación con el diff de esa rama:
+  #   - Los 2 archivos de stories que tocaba (ArticleShell.stories.tsx,
+  #     tenant-status-visual.stories.tsx) pasan aislados en <1s cada uno, y
+  #     ninguno de los dos componentes tiene un solo useEffect/listener/timer —
+  #     no hay superficie para el tipo de leak que el comentario de arriba
+  #     describe ("contaminación entre stories... determinística").
+  #   - pnpm-lock.yaml idéntico a main: cero deriva de versión de
+  #     storybook/vitest/playwright.
+  #   - Localmente, MISMO código, 2 corridas: una se colgó, la otra completó
+  #     259/259 en 118s. No determinístico → no es la clase de bug del
+  #     comentario de arriba (ese es "la MISMA corrida da resultados distintos
+  #     por contaminación"; esto es "a veces el runner de 2 cores no llega a
+  #     terminar", con exactamente 0 tests ejecutados en los últimos 6-7 min
+  #     antes de cada timeout — mismo patrón que ya está documentado para el
+  #     job `e2e-tests` más abajo).
+  # Esto NO es un retry (que sí escondería contaminación real): es la MISMA
+  # corrida única, con más margen de reloj. El baseline sano sigue en ~5m30s.
   stories:
     name: Stories (BLOCKING)
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 

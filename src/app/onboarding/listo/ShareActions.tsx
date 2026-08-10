@@ -1,13 +1,18 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { Copy, MessageCircle } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { useClientValue } from '@/hooks/use-client-value'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { MarkSharedResult } from '@/app/(admin)/dashboard/actions'
 
 /** Firma de la Server Action que marca `public_link_shared` (best-effort). */
 type MarkPublicLinkSharedAction = () => Promise<MarkSharedResult>
+
+/** Estable entre llamadas: `useClientValue` invoca el reader varias veces por render. */
+const readOrigin = (): string | null =>
+  typeof window === 'undefined' ? null : window.location.origin
 
 type Props = {
   appUrl: string | null
@@ -25,8 +30,7 @@ type Props = {
 export function ShareActions({ appUrl, slug, tenantName, action }: Props) {
   // El origin recién existe post-hidratación; con NEXT_PUBLIC_APP_URL seteado
   // el link ya sale correcto en SSR.
-  const [origin, setOrigin] = useState<string | null>(null)
-  useEffect(() => setOrigin(window.location.origin), [])
+  const origin = useClientValue(readOrigin, null)
 
   const [copied, setCopied] = useState(false)
   const [, startTransition] = useTransition()

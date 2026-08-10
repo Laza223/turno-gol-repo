@@ -37,6 +37,36 @@ const ReducedMotionDecorator: Decorator = (Story, ctx) => {
   return <Story />
 }
 
+/**
+ * Finge un usuario SIN `prefers-reduced-motion`, devolviendo un
+ * `MediaQueryList` COMPLETO.
+ *
+ * Ojo con el atajo `{ ...real(query), matches: false }`: `addEventListener` vive
+ * en el prototipo de `MediaQueryList`, así que el spread se lo come y el objeto
+ * resultante no se puede suscribir. Daba igual mientras `Reveal` solo leía
+ * `.matches` en un efecto; con `useMediaQuery` (useSyncExternalStore) el hook
+ * SÍ se suscribe, y un stub sin `addEventListener` explota.
+ */
+function stubNoReducedMotion(): () => void {
+  const real = window.matchMedia
+  window.matchMedia = ((query: string) => {
+    if (!query.includes('prefers-reduced-motion')) return real(query)
+    return {
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    } as MediaQueryList
+  }) as typeof window.matchMedia
+  return () => {
+    window.matchMedia = real
+  }
+}
+
 const meta = {
   title: 'Design System/Reveal',
   component: Reveal,
@@ -80,16 +110,7 @@ export const Visible: Story = {
  * nunca hace. El camino de reduced-motion lo cubre la story `MovimientoReducido`.
  */
 export const AntesDeIntersectar: Story = {
-  beforeEach: () => {
-    const real = window.matchMedia
-    window.matchMedia = ((query: string) =>
-      query.includes('prefers-reduced-motion')
-        ? { ...real(query), matches: false }
-        : real(query)) as typeof window.matchMedia
-    return () => {
-      window.matchMedia = real
-    }
-  },
+  beforeEach: () => stubNoReducedMotion(),
   decorators: [
     (Story) => (
       // tabIndex=0: región scrolleable propia del fixture (no existe en
@@ -126,16 +147,7 @@ export const AntesDeIntersectar: Story = {
  * real de un flick rápido.
  */
 export const RevelaTrasSaltoDeScrollRapido: Story = {
-  beforeEach: () => {
-    const real = window.matchMedia
-    window.matchMedia = ((query: string) =>
-      query.includes('prefers-reduced-motion')
-        ? { ...real(query), matches: false }
-        : real(query)) as typeof window.matchMedia
-    return () => {
-      window.matchMedia = real
-    }
-  },
+  beforeEach: () => stubNoReducedMotion(),
   decorators: [
     (Story) => (
       <div

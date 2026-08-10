@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMediaQuery } from '@/hooks/use-client-value'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -19,18 +20,22 @@ type Props = {
  */
 export default function Reveal({ children, className, delay = 0, style }: Props) {
   const ref = useRef<HTMLDivElement>(null)
-  const [shown, setShown] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+
+  // Con motion reducida el contenido se muestra al instante, sin observer ni
+  // listener. Se lee con `useMediaQuery` (useSyncExternalStore) y no con un
+  // setState adentro del efecto: así el primer render del cliente ya sabe la
+  // respuesta en vez de pintar oculto y corregir en un segundo render.
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', false)
+  const shown = revealed || reducedMotion
 
   useEffect(() => {
+    if (reducedMotion) return
     const el = ref.current
     if (!el) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setShown(true)
-      return
-    }
 
     function reveal() {
-      setShown(true)
+      setRevealed(true)
       io.disconnect()
       window.removeEventListener('scroll', onScrollPast, { capture: true })
     }
@@ -74,7 +79,7 @@ export default function Reveal({ children, className, delay = 0, style }: Props)
       io.disconnect()
       window.removeEventListener('scroll', onScrollPast, { capture: true })
     }
-  }, [])
+  }, [reducedMotion])
 
   return (
     <div

@@ -1,33 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
+import { useDismissibleHint } from '@/hooks/use-dismissible-hint'
 
 // Hint de primera visita a la Caja (MASTER §7.2 / pages/caja.md §6): enseña el
-// ritual de cierre una sola vez. Mismo patrón que el hint de la grilla.
+// ritual de cierre una sola vez. Mismo hook que el hint de la grilla — era una
+// copia literal de `useDismissibleHint`, que existe justamente para esto.
 const HINT_STORAGE_KEY = 'tg-hint-caja-cierre'
 
 export function CajaCierreHint() {
-  // Arranca descartado para evitar flash; se habilita post-mount si nunca se vio.
-  const [dismissed, setDismissed] = useState(true)
-  useEffect(() => {
-    try {
-      setDismissed(localStorage.getItem(HINT_STORAGE_KEY) === '1')
-    } catch {
-      /* sin storage el hint no aparece: mejor mudo que repetitivo */
-    }
-  }, [])
+  const { dismissed, dismiss } = useDismissibleHint(HINT_STORAGE_KEY)
 
   if (dismissed) return null
-
-  function dismiss() {
-    try {
-      localStorage.setItem(HINT_STORAGE_KEY, '1')
-    } catch {
-      /* solo esta visita */
-    }
-    setDismissed(true)
-  }
 
   return (
     <div

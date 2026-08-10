@@ -26,13 +26,26 @@ export const E2E_STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 
 // ─── Date helper ─────────────────────────────────────────────────────────────
 
-/** Returns YYYY-MM-DD for tomorrow in ART (America/Argentina/Buenos_Aires). */
-export function tomorrowDateIsoArt(): string {
+/**
+ * Returns YYYY-MM-DD for today + `days` in ART (America/Argentina/Buenos_Aires).
+ *
+ * Nunca construir estas fechas con `new Date(...).toISOString().slice(0,10)`:
+ * eso da el día UTC, que entre las 21:00 y las 24:00 de ART ya es el día
+ * SIGUIENTE. Un test que arma su fecha así corre contra un día distinto tres
+ * horas por noche — la misma clase de bug que la ventana muerta de
+ * `CURRENT_DATE` en UTC.
+ */
+export function dateIsoArtIn(days: number): string {
   return formatInTimeZone(
-    addDays(new Date(), 1),
+    addDays(new Date(), days),
     'America/Argentina/Buenos_Aires',
     'yyyy-MM-dd',
   )
+}
+
+/** Returns YYYY-MM-DD for tomorrow in ART (America/Argentina/Buenos_Aires). */
+export function tomorrowDateIsoArt(): string {
+  return dateIsoArtIn(1)
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────

@@ -21,8 +21,23 @@ import { InvalidTransitionError } from './billing.errors'
 const PAST_DUE_TO_SUSPENDED_DAYS = 7
 const SUSPENDED_TO_BLOCKED_DAYS = 14
 const BLOCKED_TO_CHURNED_DAYS = 90
-const CHURNED_DELETION_DAYS = 7
-const CANCELED_BLOCKED_DELETION_DAYS = 67 // 60d retention + 7d wipe wait
+
+/**
+ * Retención tras la baja, antes del borrado real. **Es un número legal, no una
+ * preferencia de producto**: `/terminos` §"Los datos del complejo se conservan
+ * 90 días tras la baja (estado churned)" y `/privacidad` §"Datos de tenants
+ * churned: 90 días" ya se lo prometen al titular.
+ *
+ * Estuvo en 7 hasta 2026-08-09: el código borraba 83 días antes de lo que los
+ * términos publicados garantizan. La migración 073 corrige además las filas que
+ * `transitionBlockedToChurned` ya había fechado con el valor viejo — cambiar la
+ * constante sola no alcanza, porque `scheduled_deletion_at` se materializa en
+ * la fila en el momento de la transición.
+ */
+export const CHURNED_DELETION_DAYS = 90
+
+/** 90d de retención (arriba) + 7d de espera del wipe. Se mueve CON el de arriba. */
+export const CANCELED_BLOCKED_DELETION_DAYS = CHURNED_DELETION_DAYS + 7
 
 type AffectedRow = { id: string }
 
@@ -203,7 +218,7 @@ export async function transitionSuspendedToBlocked(
   })
 }
 
-// ─── blocked → churned (sweep, ≥ 90d in dunning; sets deletion_at = +7d) ───
+// ─── blocked → churned (sweep, ≥ 90d in dunning; sets deletion_at = +90d) ──
 
 export async function transitionBlockedToChurned(
   tenantId: string,

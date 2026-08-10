@@ -261,7 +261,6 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
           </span>
           Encontrá tu próxima cancha
         </div>
-        <span className="text-[12.5px] font-semibold text-muted-foreground">+1.200 turnos libres hoy</span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_1.05fr_1.05fr_auto] lg:items-end">

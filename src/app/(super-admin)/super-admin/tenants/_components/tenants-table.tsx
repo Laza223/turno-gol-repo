@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { formatArs } from '@/lib/format'
 import type { TenantList } from '@/modules/super-admin/tenants.service'
-import { TenantStatusBadge } from './status-badge'
+import { TenantStatusBadge } from '../../_components/tenant-status-visual'
 import { formatDateArt } from './format'
 
 /**

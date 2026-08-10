@@ -1750,3 +1750,78 @@ implementadas, validadas y con guards, y **ningún componente las importa**: bor
 un equipo, reprogramar un partido y sembrar el cuadro de playoffs no se pueden hacer desde la
 aplicación. Marcadas `@public` con la nota de que es exención temporal, a la espera de la decisión
 del dueño entre cablearles UI o borrarlas.
+
+---
+
+## B1 — El código borraba 83 días antes de lo que los términos prometen (2026-08-09)
+
+`/terminos` y `/privacidad`, las dos páginas publicadas, le garantizan al titular que **"los datos
+del complejo se conservan 90 días tras la baja (estado churned)"**. `CHURNED_DELETION_DAYS` valía
+**7**. El sistema eliminaba datos personales alcanzados por la Ley 25.326 ochenta y tres días antes
+de lo comprometido por escrito. No es una preferencia de producto: es incumplir un contrato
+publicado.
+
+Constantes: `CHURNED_DELETION_DAYS` 7 → **90**, y `CANCELED_BLOCKED_DELETION_DAYS` pasa a derivarse
+(`CHURNED_DELETION_DAYS + 7`) en vez de ser un 67 suelto, así que ya no pueden desincronizarse.
+
+### La constante sola no alcanzaba
+
+`scheduled_deletion_at` **se materializa en la fila** en el momento de la transición
+(`NOW() + interval`), no se calcula al leer. Las filas que ya pasaron por
+`transitionBlockedToChurned` / `transitionCanceledToBlocked` conservan la fecha vieja, y el worker
+de retención las habría borrado igual. La **migración 073** las corrige.
+
+**Dos deltas distintos, no uno** — el plan original decía "+83 días" para todas y habría estado mal:
+
+| Camino | Escribía | Falta | Total |
+|---|---|---|---|
+| `churned` (`transitionBlockedToChurned`) | `NOW() + 7d` | +83d | 90 |
+| `blocked` (`transitionCanceledToBlocked`) | `NOW() + 67d` | +30d | 97 |
+
+Un +83 uniforme habría dejado a los `blocked` en 150 días. El filtro por status alcanza para
+separarlos porque `suspended → blocked` (dunning día 14) no toca `scheduled_deletion_at`: los únicos
+cuatro UPDATE que lo escriben son los dos de churned y los dos de cancelación. La migración es
+aditiva (solo empuja fechas hacia adelante) y las guardas de cota superior la hacen efectivamente
+idempotente.
+
+### Candados
+
+- `retention-matches-legal-promise.test.ts` **lee el número del texto legal publicado** y lo compara
+  con la constante que ejecuta el borrado, en las dos direcciones: falla si alguien baja la
+  constante *y* si alguien reescribe el texto sin tocar el código.
+- `billing.test.ts` tenía los plazos pegados (`toBeLessThan(7.5)`, `toBeLessThan(68)`). Ahora los
+  toma de las constantes: el test de integración prueba que la transición **aplique** el plazo, y
+  cuál es el plazo correcto lo custodia el candado legal.
+- Control negativo corrido en los dos: volver a poner 7 pone 4 casos en rojo.
+
+### CTA de WhatsApp: apuntaba a un número inexistente
+
+`ArticleShell` (el pie de **todas** las páginas editoriales) linkeaba a `wa.me/5491100000000` —
+un placeholder, publicado en producción. El único camino de conversión de esas páginas caía en un
+número que no existe. Centralizado en `src/lib/contact.ts` con el número real.
+
+El candado tiene dos mitades, porque arreglar el número no arregla la causa: una detecta pinta de
+placeholder (`5491100000000` muere en la regla de "6 dígitos repetidos"), y la otra **escanea `src/`
+y prohíbe cualquier `wa.me/<dígitos>` fuera de `contact.ts`**. Los usos dinámicos (`wa.me/?text=`
+para compartir, `wa.me/${telefonoDelCliente}` en Caja y en el cierre de reserva) siguen permitidos.
+
+### Los 🟢 de texto
+
+- **`bg-emerald-505`**: clase inexistente delante de la real, sin efecto. Borrada.
+- **"+1.200 turnos libres hoy"**: métrica inventada en el hero de la home pública, con cero
+  complejos reales en el sistema. Borrada.
+- **`TODO(f14-tz)`**: pedía migrar `getTestDate()` a `tomorrowDateIsoArt()`. El problema real no era
+  el +2d sino el `toISOString()`, que devuelve el día **UTC**: entre las 21:00 y las 24:00 de ART ya
+  es el día siguiente, así que el test pedía turnos para hoy+3 tres horas por noche. Se conservó la
+  ventana y se corrigió la zona con un `dateIsoArtIn(n)` nuevo.
+- **`PinGate`**: NO era un hallazgo. El comentario de `analiticas/page.tsx` ya dice explícitamente
+  que la mención al PinGate era falsa y por qué. Estaba corregido; queda anotado para que el próximo
+  grep no lo vuelva a levantar.
+- **`TenantStatusBadge` duplicado**: había **dos** componentes con el mismo nombre, el mismo set de
+  8 estados y las mismas etiquetas, cada uno con su tabla de clases hardcodeada — y ya habían
+  divergido: `suspended` era ámbar en uno y rojo en el otro, `churned` gris en uno y rojo en el otro.
+  El mismo complejo se veía de dos colores según la pantalla del panel. Encima **ninguno pasaba por
+  `StatusBadge`**, que existe justamente para imponer MASTER §1.4 (*color + ícono + texto siempre
+  juntos, nunca color solo* — daltonismo): los dos distinguían los 8 estados solo por color.
+  Fusionados en `_components/tenant-status-visual.tsx` sobre `StatusBadge` + `TONE_BADGE`, con ícono
+  por estado y `count` opcional. 4 importadores repuntados, 2 archivos de stories fusionados en 1.

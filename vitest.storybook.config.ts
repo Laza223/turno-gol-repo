@@ -139,6 +139,20 @@ export default defineConfig({
           // La UI de dev sigue animando (el toggle de la toolbar la controla); esto
           // aplica solo al runner.
           context: { reducedMotion: 'reduce' },
+
+          // El cuelgue de Stories en CI (PR #122, ver ci.yml): una sola página de
+          // Chromium vive las ~259 stories completas (@vitest/browser nunca hace
+          // page.reload() entre archivos — solo crea/destruye un iframe por
+          // archivo). Si el renderer de un iframe se queda sin memoria compartida
+          // muere sin avisar, y Vitest NO tiene watchdog del lado de Node para
+          // eso (orchestrator.createTesters() no tiene timeout; el único
+          // rechazo es el close del WebSocket del orchestrator, que sigue vivo).
+          // Resultado: la corrida queda colgada en silencio hasta el timeout del
+          // job. `--disable-dev-shm-usage` es el fix canónico de Chromium en CI
+          // (manda /dev/shm a un tmpfs más grande en vez del default de 64MB).
+          launch: {
+            args: ['--disable-dev-shm-usage'],
+          },
         },
       ],
     },

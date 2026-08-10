@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { ArticleShell } from './ArticleShell'
+import { contactWhatsappUrl } from '@/lib/contact'
 
 /**
  * Server Component puro y sincrónico: sin estado, sin fetch, sin browser APIs.
@@ -60,7 +61,7 @@ export const Default: Story = {
     await expect(canvas.getByText('2026-07-12')).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Contactanos por WhatsApp' })).toHaveAttribute(
       'href',
-      'https://wa.me/5491100000000',
+      contactWhatsappUrl('Hola! Quiero saber más sobre TurnoGol para mi complejo.'),
     )
   },
 }

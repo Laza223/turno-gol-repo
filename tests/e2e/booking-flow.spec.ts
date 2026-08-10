@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures'
 import { createClient } from '@supabase/supabase-js'
+import { dateIsoArtIn } from './_helpers/booking-seed'
 
 // ─── Seed constants (mirror scripts/seed-e2e.ts) ────────────────────────────
 
@@ -10,13 +11,16 @@ const DEPOSIT_COURT_ID = '00000000-0000-4000-8000-000000000031'
 const DEMO_TENANT_SLUG = 'e2e-complejo-demo'
 const DEMO_COURT_ID = '00000000-0000-4000-8000-000000000010'
 
-// Test date: today + 2 days, within the 6-day advance window.
-// TODO(f14-tz): migrate to tomorrowDateIsoArt() from ./_helpers/booking-seed
-// once we confirm no test depends on the +2d window specifically (they use
-// different time slots so today+1 would also be safe).
+// Test date: hoy + 2 días, dentro de la ventana de anticipación de 6 días.
+//
+// B1 resolvió el TODO(f14-tz): la migración pedida era a `tomorrowDateIsoArt()`
+// (hoy+1), pero eso cambiaba el día que ejercitan los tests sin necesidad. El
+// problema real del TODO no era el +2 sino el `toISOString()`, que devuelve el
+// día UTC: entre las 21:00 y las 24:00 de ART ya es el día siguiente, así que
+// esto pedía turnos para hoy+3 tres horas por noche. Se conserva la ventana y
+// se corrige la zona.
 function getTestDate(): string {
-  const d = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-  return d.toISOString().slice(0, 10)
+  return dateIsoArtIn(2)
 }
 
 function reservarUrl(slug: string, courtId: string, date: string, time: string): string {

@@ -2,7 +2,7 @@ import { Banknote, Building2, Hourglass, Inbox, ListChecks, UserPlus, Webhook } 
 import { formatArs } from '@/lib/format'
 import type { DashboardData, TenantStatus } from '@/modules/super-admin/dashboard.service'
 import { SaMetricCard } from './sa-metric-card'
-import { TenantStatusBadge } from './tenant-status-badge'
+import { TenantStatusBadge } from './tenant-status-visual'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

@@ -17,6 +17,12 @@ import {
 } from '@/modules/bans/ban.schema'
 import { setPlayerTags } from '@/modules/relationships/ptr.service'
 import { playerTagsSchema, type PlayerTag } from '@/modules/relationships/player-tags'
+import {
+  linkContactToPlayer,
+  unlinkContactFromPlayer,
+} from '@/modules/relationships/contact-link.service'
+import { linkContactInputSchema } from '@/modules/relationships/contact-link.schema'
+import { searchLinkCandidates, type LinkCandidate } from './queries'
 
 export type BanPlayerActionResult =
   | { success: true }
@@ -166,5 +172,135 @@ export async function setPlayerTagsAction(
 
   revalidatePath(`/jugadores/${parsedId.data.playerId}`)
   revalidatePath('/jugadores')
+  return { success: true }
+}
+
+/**
+ * Buscador del diálogo de vinculación. Solo lee, pero pasa por los mismos
+ * guards que las mutaciones: devuelve nombres y teléfonos de clientes del
+ * complejo, y sin rate-limit sería un buscador de personas gratis.
+ */
+export async function searchLinkCandidatesAction(
+  q: string,
+): Promise<{ success: true; candidates: LinkCandidate[] } | { success: false; error: string }> {
+  const term = q.trim()
+  if (term.length < 2) return { success: true, candidates: [] }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const candidates = await withTenantContext(tenant.id, (tx) =>
+    searchLinkCandidates(tenant.id, term, tx),
+  )
+  return { success: true, candidates }
+}
+
+/**
+ * Vinculación manual de una persona sin cuenta con su jugador registrado (B13).
+ *
+ * `requireOperatorStaff` (admin + manager): el encargado es quien reconoce al
+ * Diego del fijo de los lunes cuando lo ve reservar online con su cuenta. La
+ * decisión de fase v2 §1 prohíbe el merge automático, así que esta Action es el
+ * ÚNICO camino por el que un fijo pasa de "sin cuenta" a tener dueño.
+ */
+export async function linkContactAction(
+  contactKey: string,
+  playerId: string,
+): Promise<BanPlayerActionResult> {
+  const parsed = linkContactInputSchema.safeParse({ contactKey, playerId })
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    const linked = await linkContactToPlayer(
+      tenant.id,
+      parsed.data.contactKey,
+      parsed.data.playerId,
+      tx,
+    )
+    if (!linked) return null
+    await insertAuditLog(tx, {
+      tenantId: tenant.id,
+      actorId: user.staffUserId!,
+      actorType: 'staff',
+      action: 'player.contact_linked',
+      resourceType: 'player',
+      resourceId: parsed.data.playerId,
+      metadata: {
+        contactKey: parsed.data.contactKey,
+        abonadosLinked: linked.abonadosLinked,
+        bookingsReassigned: linked.bookingsReassigned,
+      },
+    })
+    return linked
+  })
+
+  if (!result) {
+    return { success: false, error: 'Ese jugador no está vinculado a este complejo.' }
+  }
+  if (result.abonadosLinked === 0) {
+    return { success: false, error: 'Ese contacto ya no tiene turnos fijos sin vincular.' }
+  }
+
+  revalidatePath('/jugadores')
+  revalidatePath('/abonados')
+  revalidatePath(`/jugadores/${parsed.data.playerId}`)
+  return { success: true }
+}
+
+/**
+ * Deshace la vinculación: los fijos del jugador vuelven a la lista como persona
+ * sin cuenta, con su nombre y teléfono intactos. Existe porque una vinculación
+ * manual sin inverso convierte un click equivocado en un dato irreparable — no
+ * hay pantalla para editar el titular de un fijo.
+ */
+export async function unlinkContactAction(playerId: string): Promise<BanPlayerActionResult> {
+  const parsed = liftPlayerBanInputSchema.safeParse({ playerId })
+  if (!parsed.success) return { success: false, error: 'ID inválido.' }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    const unlinked = await unlinkContactFromPlayer(tenant.id, parsed.data.playerId, tx)
+    if (unlinked.abonadosUnlinked === 0) return unlinked
+    await insertAuditLog(tx, {
+      tenantId: tenant.id,
+      actorId: user.staffUserId!,
+      actorType: 'staff',
+      action: 'player.contact_unlinked',
+      resourceType: 'player',
+      resourceId: parsed.data.playerId,
+      metadata: {
+        abonadosUnlinked: unlinked.abonadosUnlinked,
+        bookingsReverted: unlinked.bookingsReverted,
+      },
+    })
+    return unlinked
+  })
+
+  if (result.abonadosUnlinked === 0) {
+    return { success: false, error: 'Esa persona no tiene turnos fijos a su nombre.' }
+  }
+
+  revalidatePath('/jugadores')
+  revalidatePath('/abonados')
+  revalidatePath(`/jugadores/${parsed.data.playerId}`)
   return { success: true }
 }

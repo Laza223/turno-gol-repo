@@ -2424,3 +2424,86 @@ Verificado después del merge, no asumido: `db-migrate` en verde
 el PR, no después. Una vez que el PR está listo y anunciado, el merge puede
 llegar en cualquier momento — y llegó. Y el detector barato antes de dropear
 cualquier columna es buscar `.returning()` pelado, no leer los `SELECT`.
+
+---
+
+## B13 — Merge de Clientes: UNA lista de personas ✅ CERRADO (2026-08-11)
+
+**El agujero.** `/jugadores` salía de `player_tenant_relationships ⋈ players`, o
+sea **solo perfiles registrados**. Pero `abonados.player_id` es nullable y
+`contact_name`/`contact_phone` son NOT NULL: el titular de un turno fijo cargado
+de mostrador existe como nombre + teléfono y **no aparecía en ninguna lista de
+personas**. Es el caso que anticipó el pase crítico: *"el 'Diego' del fijo de los
+lunes, que quizás no tiene cuenta — o peor, quizás ES el 'Diego R.' que reserva
+online"*. El propio `ClientesTabs.tsx` lo confesaba por escrito.
+
+### La decisión de diseño: derivar, no crear tabla
+
+La persona sin cuenta **se deriva de `abonados` al leer**. No gana tabla propia.
+Dos razones, y la segunda pesa más que la primera:
+
+1. Una tabla tenant-aislada nueva arrastra el costo fijo de siempre (RLS +
+   FORCE + policies, filtro explícito, DELETE en `data-retention-cleanup`, caso
+   en `isolation.test.ts`).
+2. Dejaría **dos fuentes de verdad** para el mismo nombre y teléfono, que se
+   separan al primer edit. Derivando, `abonados.contact_name` sigue siendo el
+   único lugar donde vive el dato.
+
+Contracara asumida y documentada: una persona sin cuenta **no puede tener
+etiquetas** (B12) — viven en `player_tenant_relationships`, que exige
+`player_id`. No es una limitación del atajo: la etiqueta es sobre una RELACIÓN,
+y la relación empieza cuando el staff vincula. Vincular la destraba.
+
+### Identidad: dos colas de teléfono, no una
+
+- **Agrupar** (`significantPhoneSql`, últimos **10** dígitos, mín. 6): estricta,
+  porque fusiona filas **sin que nadie confirme**. Cae al id de la fila cuando no
+  hay dígitos suficientes, para que los teléfonos basura no terminen todos en la
+  misma persona.
+- **Sugerir** (`suggestionPhoneSql`, últimos **8**): más laxa, porque la confirma
+  un humano. Es la que hace que `0 11 15 2233-4455` y `+54 9 11 2233-4455` —el
+  mismo celular escrito como lo escribe medio país— se reconozcan: sus últimos 10
+  dígitos NO coinciden (el `15` corre la ventana), los últimos 8 sí.
+
+Sacar el `15` "bien" exigiría saber si el área tiene 2, 3 o 4 dígitos. Eso es
+adivinar, y adivinar mal fusiona personas.
+
+### Vinculación manual, con inverso
+
+`linkContactToPlayer` mueve los `abonados` del grupo, reasigna las `bookings` que
+esos fijos generaron (solo las que **no tienen dueño**) y suma al
+`bookings_count` de la relación la cantidad real reasignada — ese contador es
+incremental, no un `COUNT(*)`. NO toca `noshow_count`: una ausencia de cuando la
+persona no tenía cuenta no debe disparar hoy un softban retroactivo.
+
+`unlinkContactFromPlayer` es el inverso exacto y existe porque **no hay ninguna
+otra pantalla que le cambie el titular a un fijo**: sin deshacer, un click sobre
+una sugerencia equivocada quedaba grabado para siempre.
+
+Guard que importa: el jugador destino tiene que tener fila en
+`player_tenant_relationships` de ESE complejo. Sin eso, un encargado podría
+vincular contra un `player_id` de otro tenant —y ver su nombre en la lista—.
+**Control negativo corrido**: quitando ese `if`, cae exactamente 1 test
+(`rechaza vincular con un jugador que no es cliente del complejo`) y ninguno más.
+
+### Evidencia
+
+- `pnpm typecheck` · `pnpm lint` · `pnpm knip` — limpios
+- `pnpm test` — **3232/3232**
+- `pnpm test:integration` — **907/907** (incluye los 11 nuevos de `contact-link`)
+- `pnpm test:isolation` — **166/166**
+- Stories de `jugadores/` — **24/24** (axe incluido; el diálogo tiene story en
+  estado ABIERTO, si no ese estado no lo mide nadie)
+- Verificado en el navegador con el seed E2E: el contacto aparece con la
+  sugerencia, vincular lo funde en una fila, desvincular lo devuelve intacto
+
+### Qué queda afuera, a propósito
+
+- **Invitados de una reserva suelta** (`bookings.guest_name`): decisión de
+  producto #10, cancelada. Un fijo es un vínculo estable con el complejo; un
+  invitado de una noche no.
+- **Deudores de cantina** (`canteen_tabs.debtor_name`): mismo criterio.
+- **Ficha-panel abrible desde Grilla, Caja y deudas**: es el criterio de salida
+  de la Fase 4 completa, no de este bloque.
+- El `LIMIT 200` sin cursor sigue ahí y sigue siendo **B10**. Ahora trunca sobre
+  un conjunto más grande.

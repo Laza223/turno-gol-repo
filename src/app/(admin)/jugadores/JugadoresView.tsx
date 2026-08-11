@@ -5,18 +5,59 @@ import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ClientesTabs } from './ClientesTabs'
 import { PlayerTagChips } from './PlayerTagChips'
-import type { PlayerListRow } from './queries'
+import { LinkContactDialog, type LinkContactDialogProps } from './LinkContactDialog'
+import type { ClientListRow } from './queries'
 
 /**
  * Vista presentacional de /jugadores: header, tabs, buscador (form GET, sin JS) y
  * el listado responsive (cards/tabla). Extraída de page.tsx, que solo aporta
- * auth (requireOperatorStaff) + el fetch (listTenantPlayers).
+ * auth (requireOperatorStaff) + el fetch (listTenantClients).
+ *
+ * B13 — la lista es UNA sola de personas: las que tienen cuenta y las que el
+ * complejo conoce solo como nombre y teléfono porque son titulares de un turno
+ * fijo. Antes estas últimas no aparecían en ninguna parte.
  */
-export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: string }) {
+export type JugadoresViewProps = {
+  clients: ClientListRow[]
+  q?: string
+  searchAction: LinkContactDialogProps['searchAction']
+  linkAction: LinkContactDialogProps['linkAction']
+}
+
+/** "3 reservas · 1 fijo". Las unidades en singular cuando corresponde. */
+function metaLine(c: ClientListRow): string {
+  const parts = [`${c.bookingsCount} reserva${c.bookingsCount === 1 ? '' : 's'}`]
+  if (c.fixedCount > 0) parts.push(`${c.fixedCount} fijo${c.fixedCount === 1 ? '' : 's'}`)
+  return parts.join(' · ')
+}
+
+function SinCuentaBadge() {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+      Sin cuenta
+    </span>
+  )
+}
+
+export function JugadoresView({ clients, q, searchAction, linkAction }: JugadoresViewProps) {
+  const renderLinkButton = (c: ClientListRow) =>
+    c.kind === 'contact' ? (
+      <LinkContactDialog
+        contactKey={c.key}
+        contactName={c.name}
+        contactPhone={c.phone}
+        fixedCount={c.fixedCount}
+        suggestedPlayerId={c.suggestedPlayerId}
+        suggestedPlayerName={c.suggestedPlayerName}
+        searchAction={searchAction}
+        linkAction={linkAction}
+      />
+    ) : null
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Jugadores"
+        title="Personas"
         icon={<Contact className="h-6 w-6" aria-hidden="true" />}
       />
 
@@ -29,25 +70,25 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
         <input
           type="search"
           name="q"
-          aria-label="Buscar jugadores"
+          aria-label="Buscar personas"
           defaultValue={q ?? ''}
           placeholder="Buscar por nombre, teléfono o email"
           className="w-full min-h-11 rounded-md border border-border py-2 pl-9 pr-3 text-base md:min-h-0 md:text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         />
       </form>
 
-      {players.length === 0 ? (
+      {clients.length === 0 ? (
         q ? (
           <p className="text-sm text-muted-foreground">
-            No se encontraron jugadores que coincidan con la búsqueda.
+            No se encontraron personas que coincidan con la búsqueda.
           </p>
         ) : (
           <EmptyState
             icon={Users}
-            title="Todavía no tenés jugadores vinculados"
-            description="Aparecen acá cuando un jugador reserva online o lo vinculás a un turno fijo. Compartí el link público de tu complejo para que empiecen a llegar."
+            title="Todavía no tenés clientes"
+            description="Aparecen acá cuando alguien reserva online o cuando cargás un turno fijo a su nombre. Compartí el link público de tu complejo para que empiecen a llegar."
             action={
-              // JugadoresView solo recibe `players`/`q` por prop (no slug ni
+              // JugadoresView solo recibe `clients`/`q` por prop (no slug ni
               // appUrl): armar el link público acá duplicaría buildPublicLinkUrl
               // fuera de su lugar. Menor acople: mandar al panel, que ya muestra
               // y copia ese link (OnboardingChecklist/dashboard).
@@ -65,62 +106,106 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
           className="overflow-hidden rounded-xl shadow-xs"
           cards={
             <ul className="divide-y divide-border">
-              {players.map((p) => (
-                <li key={p.playerId}>
-                  <Link
-                    href={`/jugadores/${p.playerId}`}
-                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-accent"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {p.phone ?? p.email} · {p.bookingsCount} reserva{p.bookingsCount !== 1 ? 's' : ''}
+              {clients.map((c) => (
+                <li key={c.key} className="flex items-center gap-2 pr-3">
+                  {/* El botón "Vincular" queda FUERA del Link: un <button> dentro
+                      de un <a> es HTML inválido y rompe la hidratación. */}
+                  {c.kind === 'player' ? (
+                    <Link
+                      href={`/jugadores/${c.playerId}`}
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-accent"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {c.phone ?? c.email} · {metaLine(c)}
+                        </p>
+                        <PlayerTagChips tags={c.tags} className="mt-1.5" />
+                      </div>
+                      {c.noshowCount > 0 && (
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          {c.noshowCount} ausencia{c.noshowCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </Link>
+                  ) : (
+                    <div className="min-w-0 flex-1 px-4 py-3">
+                      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <span className="truncate">{c.name}</span>
+                        <SinCuentaBadge />
                       </p>
-                      <PlayerTagChips tags={p.tags} className="mt-1.5" />
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.phone} · {metaLine(c)}
+                      </p>
+                      {c.suggestedPlayerName && (
+                        <p className="mt-1 truncate text-xs text-emerald-700 dark:text-emerald-400">
+                          Mismo teléfono que {c.suggestedPlayerName}
+                        </p>
+                      )}
                     </div>
-                    {p.noshowCount > 0 && (
-                      <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                        {p.noshowCount} ausencia{p.noshowCount !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </Link>
+                  )}
+                  {renderLinkButton(c)}
                 </li>
               ))}
             </ul>
           }
           table={
-            <table className="w-full min-w-[560px] text-sm">
+            <table className="w-full min-w-[680px] text-sm">
               <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Jugador</th>
+                  <th className="px-4 py-3 font-medium">Persona</th>
                   <th className="px-4 py-3 font-medium">Contacto</th>
                   <th className="px-4 py-3 font-medium text-right">Reservas</th>
+                  <th className="px-4 py-3 font-medium text-right">Fijos</th>
                   <th className="px-4 py-3 font-medium text-right">Ausencias</th>
+                  <th className="px-4 py-3 font-medium">
+                    <span className="sr-only">Acciones</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {players.map((p) => (
-                  <tr key={p.playerId} className="hover:bg-accent">
+                {clients.map((c) => (
+                  <tr key={c.key} className="hover:bg-accent">
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/jugadores/${p.playerId}`}
-                        className="font-medium text-foreground hover:text-emerald-700"
-                      >
-                        {p.name}
-                      </Link>
-                      <PlayerTagChips tags={p.tags} className="mt-1" />
+                      {c.kind === 'player' ? (
+                        <>
+                          <Link
+                            href={`/jugadores/${c.playerId}`}
+                            className="font-medium text-foreground hover:text-emerald-700"
+                          >
+                            {c.name}
+                          </Link>
+                          <PlayerTagChips tags={c.tags} className="mt-1" />
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex items-center gap-2 font-medium text-foreground">
+                            {c.name}
+                            <SinCuentaBadge />
+                          </span>
+                          {c.suggestedPlayerName && (
+                            <span className="mt-1 block text-xs text-emerald-700 dark:text-emerald-400">
+                              Mismo teléfono que {c.suggestedPlayerName}
+                            </span>
+                          )}
+                        </>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{p.phone ?? p.email}</td>
-                    <td className="px-4 py-3 text-right text-foreground">{p.bookingsCount}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{c.phone ?? c.email}</td>
+                    <td className="px-4 py-3 text-right text-foreground">{c.bookingsCount}</td>
+                    <td className="px-4 py-3 text-right text-foreground">
+                      {c.fixedCount > 0 ? c.fixedCount : <span className="text-muted-foreground">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-right">
-                      {p.noshowCount > 0 ? (
+                      {c.noshowCount > 0 ? (
                         <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                          {p.noshowCount}
+                          {c.noshowCount}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-right">{renderLinkButton(c)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -3,7 +3,12 @@ import { expect, fn, within } from 'storybook/test'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import { uid } from '@/test/fixtures/ids'
 import { daysFromNow } from '@/test/fixtures/clock'
-import type { PlayerProfile, PlayerStats, PlayerBookingRow } from '../queries'
+import type {
+  PlayerProfile,
+  PlayerStats,
+  PlayerBookingRow,
+  PlayerFixedSlotRow,
+} from '../queries'
 import { JugadorProfileView } from './JugadorProfileView'
 
 /**
@@ -81,9 +86,11 @@ const meta = {
     stats: stats(),
     history: HISTORY,
     ban: NOT_BANNED,
+    fixedSlots: [],
     banPlayerAction: fn(async () => ({ success: true })),
     liftPlayerBanAction: fn(async () => ({ success: true })),
     setPlayerTagsAction: fn(async () => ({ success: true })),
+    unlinkContactAction: fn(async () => ({ success: true })),
   },
   decorators: [
     (Story) => (
@@ -138,5 +145,51 @@ export const StatsEnCero: Story = {
     await expect(canvas.getByText('0%')).toBeInTheDocument() // Tasa de ausencia
     // Reservas totales, Completadas, Ausencias: las 3 quedan en "0".
     await expect(canvas.getAllByText('0', { exact: true })).toHaveLength(3)
+  },
+}
+
+const FIXED_SLOTS: PlayerFixedSlotRow[] = [
+  {
+    id: uid(260),
+    courtName: 'Cancha 1',
+    dayOfWeek: 1,
+    timeStart: '20:00:00',
+    timeEnd: '21:00:00',
+    status: 'active',
+    contactName: 'Diego Sosa',
+  },
+  {
+    id: uid(261),
+    courtName: 'Cancha 2',
+    dayOfWeek: 4,
+    timeStart: '22:00:00',
+    timeEnd: '23:00:00',
+    status: 'paused',
+    contactName: 'Diego Sosa',
+  },
+]
+
+/**
+ * Jugador con turnos fijos a su nombre (B13). El `contact_name` puede diferir
+ * del nombre de la cuenta — es el nombre con el que el complejo lo anotó —, y
+ * por eso la card lo muestra: es lo que hace verificable la vinculación.
+ */
+export const ConTurnosFijos: Story = {
+  args: { fixedSlots: FIXED_SLOTS },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'Turnos fijos' })).toBeInTheDocument()
+    await expect(canvas.getByText('Lunes 20:00–21:00')).toBeInTheDocument()
+    await expect(canvas.getByText('Pausado')).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Desvincular' })).toBeInTheDocument()
+  },
+}
+
+/** Sin fijos a su nombre: la card entera no se muestra, no queda un bloque vacío. */
+export const SinTurnosFijos: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('heading', { name: 'Turnos fijos' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: 'Desvincular' })).not.toBeInTheDocument()
   },
 }

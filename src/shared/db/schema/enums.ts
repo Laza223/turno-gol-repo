@@ -235,3 +235,14 @@ export const auditActorTypeEnum = pgEnum('audit_actor_type', [
   'player',
   'system',
 ])
+
+// ─── Etiquetas de cliente (B12 / decisión v2 D3, migr. 074) ─────
+// Set CERRADO a propósito: sin texto libre sobre personas (Ley 25.326). Los
+// labels en español viven en `src/modules/relationships/player-tags.ts`.
+export const playerTagEnum = pgEnum('player_tag', [
+  'gets_credit',
+  'no_credit',
+  'group_organizer',
+  'agreed_price',
+  'difficult',
+])

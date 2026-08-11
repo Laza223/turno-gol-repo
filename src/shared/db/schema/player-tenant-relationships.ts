@@ -11,6 +11,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { players } from './players'
+import { playerTagEnum } from './enums'
 
 export const playerTenantRelationships = pgTable(
   'player_tenant_relationships',
@@ -41,6 +42,14 @@ export const playerTenantRelationships = pgTable(
       .defaultNow(),
 
     status: text('status').notNull().default('active'),
+
+    // Etiquetas del complejo sobre esta persona (B12 / D3, migr. 074). Set
+    // CERRADO: sin texto libre sobre personas, por Ley 25.326. "Sin etiquetas"
+    // es `[]`, nunca NULL. `chk_ptr_tags_unique` prohíbe repetidos en la base.
+    tags: playerTagEnum('tags')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
 
     dataConsentAt: timestamp('data_consent_at', {
       withTimezone: true,

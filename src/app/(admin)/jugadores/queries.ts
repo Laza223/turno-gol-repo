@@ -1,5 +1,6 @@
 import { sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
+import { normalizePlayerTags, type PlayerTag } from '@/modules/relationships/player-tags'
 
 export type PlayerListRow = {
   playerId: string
@@ -10,6 +11,7 @@ export type PlayerListRow = {
   noshowCount: number
   status: string
   lastBookingAt: string | null
+  tags: PlayerTag[]
 }
 
 function searchCond(q: string | undefined): SQL {
@@ -39,7 +41,8 @@ export async function listTenantPlayers(
            p.email, p.phone,
            r.bookings_count AS "bookingsCount",
            r.noshow_count AS "noshowCount", r.status,
-           r.last_booking_at::text AS "lastBookingAt"
+           r.last_booking_at::text AS "lastBookingAt",
+           r.tags
     FROM player_tenant_relationships r
     JOIN players p ON p.id = r.player_id
     WHERE r.tenant_id = ${tenantId}
@@ -47,7 +50,10 @@ export async function listTenantPlayers(
     ORDER BY r.last_booking_at DESC NULLS LAST, name ASC
     LIMIT 200
   `)
-  return rows as unknown as PlayerListRow[]
+  return (rows as unknown as PlayerListRow[]).map((r) => ({
+    ...r,
+    tags: normalizePlayerTags(r.tags ?? []),
+  }))
 }
 
 export type PlayerProfile = {
@@ -58,6 +64,7 @@ export type PlayerProfile = {
   status: string
   firstSeenAt: string | null
   lastBookingAt: string | null
+  tags: PlayerTag[]
 }
 
 export async function getPlayerProfile(
@@ -71,13 +78,18 @@ export async function getPlayerProfile(
            p.email, p.phone,
            r.status,
            r.first_seen_at::text AS "firstSeenAt",
-           r.last_booking_at::text AS "lastBookingAt"
+           r.last_booking_at::text AS "lastBookingAt",
+           r.tags
     FROM player_tenant_relationships r
     JOIN players p ON p.id = r.player_id
     WHERE r.tenant_id = ${tenantId} AND r.player_id = ${playerId}
     LIMIT 1
   `)
-  return (rows as unknown as PlayerProfile[])[0] ?? null
+  const row = (rows as unknown as PlayerProfile[])[0]
+  if (!row) return null
+  // Normalizar acá y no en la vista: el orden canónico es el de presentación, y
+  // una fila vieja podría traer las etiquetas en cualquier orden.
+  return { ...row, tags: normalizePlayerTags(row.tags ?? []) }
 }
 
 export type PlayerStats = {

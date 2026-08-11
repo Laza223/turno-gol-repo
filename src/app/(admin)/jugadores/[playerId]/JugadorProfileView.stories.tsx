@@ -20,6 +20,7 @@ const profile = (overrides: Partial<PlayerProfile> = {}): PlayerProfile => ({
   status: 'active',
   firstSeenAt: '2025-06-01T00:00:00.000Z',
   lastBookingAt: '2026-03-10T19:00:00.000Z',
+  tags: [],
   ...overrides,
 })
 
@@ -82,6 +83,7 @@ const meta = {
     ban: NOT_BANNED,
     banPlayerAction: fn(async () => ({ success: true })),
     liftPlayerBanAction: fn(async () => ({ success: true })),
+    setPlayerTagsAction: fn(async () => ({ success: true })),
   },
   decorators: [
     (Story) => (

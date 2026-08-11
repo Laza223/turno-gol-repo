@@ -18,7 +18,6 @@ import {
   MapPin,
   User,
   DollarSign,
-  FileText,
   Repeat,
   CheckCircle2,
   AlertTriangle,
@@ -124,7 +123,6 @@ type FormValues = {
   contactPhone: string
   pricePerSessionCents: number | null
   startsOn: string
-  notes: string
 }
 
 export function PreviewSlotsView({
@@ -299,7 +297,6 @@ export default function AbonadoForm({
       contactPhone: fd.get('contactPhone') as string,
       pricePerSessionCents,
       startsOn,
-      notes: (fd.get('notes') as string) || '',
     }
 
     if (!values.courtId) {
@@ -541,17 +538,6 @@ export default function AbonadoForm({
                 </div>
               </div>
 
-              <div className="space-y-1.5 pt-1">
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Notas (opcional)
-                </label>
-                <textarea
-                  name="notes"
-                  rows={2}
-                  placeholder="Observaciones internas sobre este turno fijo..."
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-base md:text-sm text-foreground shadow-xs transition-all focus:border-primary focus:outline-none focus:ring-2 focus-visible:ring-ring hover:border-accent-foreground/20"
-                />
-              </div>
             </div>
           </div>
 

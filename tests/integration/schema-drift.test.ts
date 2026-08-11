@@ -87,6 +87,11 @@ const ARRAY_BASE_TO_UDT: Record<string, string> = {
   uuid: 'uuid',
   numeric: 'numeric',
   jsonb: 'jsonb',
+  // ENUMs usados como array. El `udt_name` de un array de ENUM es `_<nombre del
+  // tipo>`, igual que el de los tipos base — sin esta entrada, cualquier columna
+  // `player_tag[]` se reporta como "tipo base sin mapear" (que es exactamente
+  // cómo este test avisó de la migr. 074).
+  player_tag: 'player_tag',
 }
 
 /**

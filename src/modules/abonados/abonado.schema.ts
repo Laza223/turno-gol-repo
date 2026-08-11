@@ -23,5 +23,4 @@ export const createAbonadoSchema = z.object({
   startsOn: dateStr,
   endsOn: dateStr.optional(),
   paymentMethod: z.enum(['cash', 'transfer']).optional(),
-  notes: boundedText(500).optional(),
 })

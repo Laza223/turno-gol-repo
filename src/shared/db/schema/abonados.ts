@@ -44,8 +44,6 @@ export const abonados = pgTable(
       .notNull()
       .default('cash'),
 
-    notes: text('notes'),
-
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),

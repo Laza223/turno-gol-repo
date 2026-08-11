@@ -1,6 +1,8 @@
-import { sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
+import { playerTenantRelationships } from '@/shared/db/schema'
 import { NO_SHOW_STRIKE_WINDOW_DAYS, NO_SHOW_SOFTBAN_DAYS } from '@/shared/constants'
+import { normalizePlayerTags, type PlayerTag } from './player-tags'
 
 export async function ensurePTR(
   playerId: string,
@@ -221,4 +223,58 @@ export async function revertNoShowStrike(
   `)) as unknown as Array<{ id: string }>
 
   return { noshowCount, softbanLifted: lifted.length > 0 }
+}
+
+export type SetPlayerTagsResult = {
+  before: PlayerTag[]
+  after: PlayerTag[]
+}
+
+/**
+ * Reemplaza el set completo de etiquetas del jugador EN ESTE COMPLEJO (B12/D3).
+ *
+ * Devuelve `null` si no existe la relación: el jugador no está vinculado a este
+ * complejo, y crearla acá sería inventar un vínculo que ninguna reserva creó.
+ *
+ * Va por el query builder y NO por `tx.execute(sql\`…\`)` a propósito: en SQL
+ * crudo, un array de un solo elemento se serializa como escalar y Postgres
+ * responde `malformed array literal: "no_credit"`. El builder conoce el tipo de
+ * la columna (`player_tag[]`) y lo manda bien.
+ *
+ * `SELECT ... FOR UPDATE` antes del UPDATE, en la misma transacción: el `before`
+ * del audit log sale de la fila lockeada, así que ninguna otra sesión la puede
+ * cambiar entre la lectura y la escritura. La tx ya está bajo
+ * `withTenantContext`, y el filtro explícito por `tenant_id` es la segunda
+ * barrera además de la policy (en dev la app conecta como superusuario y RLS no
+ * aplica).
+ */
+export async function setPlayerTags(
+  tenantId: string,
+  playerId: string,
+  tags: readonly PlayerTag[],
+  tx: DbTx,
+): Promise<SetPlayerTagsResult | null> {
+  const scope = and(
+    eq(playerTenantRelationships.tenantId, tenantId),
+    eq(playerTenantRelationships.playerId, playerId),
+  )
+
+  const [prev] = await tx
+    .select({ tags: playerTenantRelationships.tags })
+    .from(playerTenantRelationships)
+    .where(scope)
+    .limit(1)
+    .for('update')
+
+  if (!prev) return null
+
+  const next = normalizePlayerTags(tags)
+  const [updated] = await tx
+    .update(playerTenantRelationships)
+    .set({ tags: next })
+    .where(scope)
+    .returning({ tags: playerTenantRelationships.tags })
+
+  if (!updated) return null
+  return { before: prev.tags ?? [], after: updated.tags ?? [] }
 }

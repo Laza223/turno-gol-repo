@@ -22,29 +22,20 @@ import {
  * el tenant activó el opt-in — nunca al revés.
  */
 
-let dbAvailable = false
-
 beforeAll(async () => {
-  try {
-    const sql = getSql()
-    await sql`SELECT 1`
-    dbAvailable = true
-    await ensureRoles(sql)
-    await cleanupAll(sql)
-    await getBoss()
-  } catch {
-    dbAvailable = false
-  }
+  const sql = getSql()
+  await sql`SELECT 1`
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+  await getBoss()
 }, 30_000)
 
 afterAll(async () => {
-  if (dbAvailable) {
-    try {
-      await stopBoss()
-      await closeSql()
-    } catch {
-      /* best-effort */
-    }
+  try {
+    await stopBoss()
+    await closeSql()
+  } catch {
+    /* best-effort */
   }
 })
 
@@ -87,7 +78,6 @@ async function seedTenantWithYesterdayActivity(
 
 describe('daily-summary.worker — resumen diario (D8)', () => {
   it('encola push siempre; NO encola email si el tenant no activó el opt-in', async () => {
-    if (!dbAvailable) return
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
     await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
@@ -114,7 +104,6 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
   }, 30_000)
 
   it('encola push Y notificación de email cuando el tenant activó el opt-in', async () => {
-    if (!dbAvailable) return
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(true)
     await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
@@ -137,7 +126,6 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
   }, 30_000)
 
   it('no procesa tenants bloqueados', async () => {
-    if (!dbAvailable) return
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
     await sql`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
@@ -152,7 +140,6 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
   }, 30_000)
 
   it('no procesa tenants suspendidos (el nombre del test anterior lo prometía sin probarlo — hallazgo de revisión adversarial)', async () => {
-    if (!dbAvailable) return
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
     await sql`UPDATE tenants SET status = 'suspended' WHERE id = ${tenant.id}`

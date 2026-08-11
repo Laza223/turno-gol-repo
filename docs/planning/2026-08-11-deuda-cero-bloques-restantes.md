@@ -10,8 +10,13 @@ Cerrados y en `main`: **B0** (higiene) · **B1** (retención 90 días) · **B2**
 operativo) · **B3** (stories + candado) · **B4** (analytics_events) · **B5** (knip) · **B6**
 (capas `@/shared`) · **B7** (react-hooks en `error`) · **B16** (Torneos, [#126](https://github.com/Laza223/turno-gol-repo/pull/126)).
 
-Quedan **B8–B15**. Ninguno tiene el alcance escrito en ningún lado; lo de abajo es la
-reconstrucción, medida contra el código de hoy.
+**B9 cerrado** y el **🔴 de B10** también (2026-08-11, ver `docs/audit/PROGRESS.md`): `pnpm test`
+colecta `src/`, los 14 guards `dbAvailable` salieron, y el export CSV pasó a `withTenant`. Del resto
+de B10 quedan los 2 🟡, las 12 páginas con `extractAuthUser` crudo, `with-auth.ts` muerto y los 7
+listados sin paginación.
+
+Quedan **B8 · B10 (resto) · B11–B15**. Ninguno tiene el alcance escrito en ningún lado; lo de abajo
+es la reconstrucción, medida contra el código de hoy.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
 
@@ -70,7 +75,11 @@ Dos cosas antes de enchufar el gate: **no existe `.prettierignore`** (con `.` al
 
 ---
 
-## B9 — Tests debilitados
+## B9 — Tests debilitados ✅ CERRADO (2026-08-11)
+
+Los dos hallazgos de abajo están arreglados. Lo que sigue vivo del bloque es el párrafo final
+("El resto, para dimensionar"): los `test.fixme`/`test.skip` de Playwright, el `retries: 2`, el
+`color-contrast` desactivado en las suites de axe e2e y los 388 `toBeTruthy()` **no se tocaron**.
 
 Dos hallazgos que no son "test flojo" sino **cero señal**, y que valen más que todo el resto junto:
 
@@ -109,12 +118,12 @@ route groups están todas cubiertas por sus layouts.
 
 Lo que sí está mal:
 
-- 🔴 **`api/reports/revenue/route.ts:17`** — exporta a CSV **todos** los `cash_flows` del tenant en
-  un rango arbitrario, y valida solo `user.type === 'staff'` + `getStaffTenant`. **No revalida el
-  rol** contra `tenant_staff_members` y **no chequea el lifecycle del tenant**: un tenant
-  `blocked`/`suspended`/`churned` sigue exportando, cuando el layout `(admin)` los tiene
-  hard-lockeados. Comparar con `api/admin/metrics/route.ts:20`, que para métricas sí compone
-  `withTenant` + `withAnyRole`.
+- ✅ **CERRADO (2026-08-11)** — 🔴 **`api/reports/revenue/route.ts:17`** — exportaba a CSV **todos**
+  los `cash_flows` del tenant en un rango arbitrario, y validaba solo `user.type === 'staff'` +
+  `getStaffTenant`. **No revalidaba el rol** contra `tenant_staff_members` y **no chequeaba el
+  lifecycle del tenant**: un tenant `blocked`/`suspended`/`churned` seguía exportando, cuando el
+  layout `(admin)` los tiene hard-lockeados. Pasó a `withTenant` (default admin+manager), con
+  `reports-revenue-route-guard.test.ts` y control negativo corrido.
 - 🟡 **`api/status/route.ts:185`** — sin auth, devuelve estado de `db`, `workerPool`, `pgboss`,
   `upstash`, `encryptionKey`, `storage` + `checkConfigured()`. Info disclosure.
 - 🟡 **`api/e2e/create-booking/route.ts:23`** — sin auth; gate por `NEXT_PUBLIC_E2E === '1'`, que se

@@ -2,7 +2,7 @@
  * Integration test: notifyAdminPush → pg-boss queue depth assertion.
  *
  * Requires a running Supabase instance (`supabase start`) with DATABASE_URL set.
- * If the DB is not available, the test is skipped gracefully.
+ * Falla si la DB no está disponible: sin base no hay señal que dar.
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -26,40 +26,26 @@ const SAMPLE_PAYLOAD = {
   url: '/grilla?date=2026-06-03&highlight=b-test-1',
 } as const
 
-let dbAvailable = false
-
 beforeAll(async () => {
-  try {
-    const sql = getSql()
-    await sql`SELECT 1`
-    dbAvailable = true
-    await ensureRoles(sql)
-    await cleanupAll(sql)
-    // Ensure pg-boss schema exists by starting boss
-    await getBoss()
-  } catch {
-    dbAvailable = false
-  }
+  const sql = getSql()
+  await sql`SELECT 1`
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+  // Ensure pg-boss schema exists by starting boss
+  await getBoss()
 }, 30_000)
 
 afterAll(async () => {
-  if (dbAvailable) {
-    try {
-      await stopBoss()
-      await closeSql()
-    } catch {
-      // best-effort cleanup
-    }
+  try {
+    await stopBoss()
+    await closeSql()
+  } catch {
+    // best-effort cleanup
   }
 })
 
 describe('push-dispatch integration', () => {
   it('enqueues 1 pg-boss job with name push-send after notifyAdminPush', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running (DATABASE_URL unreachable)')
-      return
-    }
-
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)

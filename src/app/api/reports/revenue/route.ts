@@ -1,12 +1,14 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { dateStr } from '@/shared/validation/primitives'
-import { enforce, rateLimit429 } from '@/shared/rate-limit'
-import { unauthorized, validationError } from '@/shared/api-error'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { guard } from '@/shared/rate-limit/route-guard'
+import { validationError } from '@/shared/api-error'
+import { withTenant } from '@/server/middleware/with-tenant'
 import { getCashFlowsForExport } from '@/modules/reports/report.service'
 import { toCsv } from '@/modules/reports/report.utils'
-import { nightCutoffMins, operatingDayRangeUtc } from '@/shared/time/operating-day'
+import { resolveCutoffMins } from '@/modules/tenants/tenant-operating-day'
+import { operatingDayRangeUtc } from '@/shared/time/operating-day'
 
 const querySchema = z.object({
   from: dateStr,
@@ -14,12 +16,20 @@ const querySchema = z.object({
   format: z.literal('csv'),
 })
 
-export async function GET(req: Request): Promise<Response> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) {
-    return unauthorized()
-  }
-
+/**
+ * Export CSV de los cash_flows del complejo en un rango de días operativos.
+ *
+ * Operator-level (admin + manager), el default de `withTenant`: es la misma
+ * superficie que /analiticas, desde donde sale el botón de descarga, y el mismo
+ * criterio que /api/admin/metrics (el encargado ve la plata del complejo que
+ * opera). B10: antes validaba sólo `user.type === 'staff'` + `getStaffTenant`,
+ * sin revalidar el rol contra `tenant_staff_members` — un staff dado de baja
+ * (`is_active=false`) seguía exportando con su JWT viejo — y sin mirar el
+ * lifecycle del tenant, así que un complejo `blocked`/`suspended`/`churned`
+ * exportaba todos sus movimientos cuando el layout `(admin)` ya lo tenía
+ * hard-lockeado por pantalla.
+ */
+export const GET = withTenant(async (req: NextRequest, user, tx) => {
   const { searchParams } = new URL(req.url)
   const parsed = querySchema.safeParse({
     from: searchParams.get('from'),
@@ -27,15 +37,13 @@ export async function GET(req: Request): Promise<Response> {
     format: searchParams.get('format'),
   })
   if (!parsed.success) {
-    return validationError(parsed.error)
+    return validationError(parsed.error) as unknown as NextResponse
   }
   const { from, to } = parsed.data
 
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return unauthorized()
-
-  const rl = await enforce('adminCrud', tenant.id)
-  if (!rl.ok) return rateLimit429(rl)
+  const tenantId = user.tenantId!
+  const throttled = await guard('adminCrud', tenantId)
+  if (throttled) return throttled
 
   // `from`/`to` son días OPERATIVOS del complejo (los manda /analiticas), no
   // fechas UTC. Antes se armaban con `T00:00:00.000Z` y `T23:59:59.999Z`, que
@@ -45,17 +53,17 @@ export async function GET(req: Request): Promise<Response> {
   // El `.999Z` además era un cierre inclusivo que descartaba el último
   // milisegundo: acá el rango es semi-abierto `[from, to+1)`, igual que en el
   // resto del sistema.
-  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const cutoffMins = await resolveCutoffMins(tenantId, tx)
   const fromDate = operatingDayRangeUtc(from, cutoffMins).fromUtc
   const toDate = operatingDayRangeUtc(to, cutoffMins).toUtc
 
-  const rows = await getCashFlowsForExport(tenant.id, fromDate, toDate, cutoffMins)
+  const rows = await getCashFlowsForExport(tenantId, fromDate, toDate, cutoffMins, tx)
   const csv = toCsv(rows as unknown as Record<string, unknown>[])
 
-  return new Response(csv, {
+  return new NextResponse(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="reporte-${from}-${to}.csv"`,
     },
   })
-}
+})

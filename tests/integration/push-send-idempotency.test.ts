@@ -7,7 +7,7 @@
  * RETURNING en push_send_log, migr. 059) colapsa la 2da entrega a un no-op.
  *
  * Requires a running Supabase instance (`supabase start`) with DATABASE_URL set.
- * Skips gracefully if the DB is not available.
+ * Falla si la DB no está disponible: sin base no hay señal que dar.
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -30,32 +30,23 @@ import {
   ensureRoles,
 } from '../helpers/tenant'
 
-let dbAvailable = false
-
 beforeAll(async () => {
-  try {
-    const sql = getSql()
-    await sql`SELECT 1`
-    dbAvailable = true
-    await ensureRoles(sql)
-    await cleanupAll(sql)
-    await sql`DELETE FROM push_subscriptions`
-    await sql`DELETE FROM push_send_log`
-  } catch {
-    dbAvailable = false
-  }
+  const sql = getSql()
+  await sql`SELECT 1`
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+  await sql`DELETE FROM push_subscriptions`
+  await sql`DELETE FROM push_send_log`
 }, 30_000)
 
 afterAll(async () => {
-  if (dbAvailable) {
-    try {
-      const sql = getSql()
-      await sql`DELETE FROM push_subscriptions`
-      await sql`DELETE FROM push_send_log`
-      await closeSql()
-    } catch {
-      // best-effort cleanup
-    }
+  try {
+    const sql = getSql()
+    await sql`DELETE FROM push_subscriptions`
+    await sql`DELETE FROM push_send_log`
+    await closeSql()
+  } catch {
+    // best-effort cleanup
   }
 })
 
@@ -68,11 +59,6 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
   })
 
   it('2 entregas del mismo job (dedupeKey igual) → 1 solo send real, 1 fila en push_send_log', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running (DATABASE_URL unreachable)')
-      return
-    }
-
     vi.mocked(sendPushNotification).mockResolvedValue({
       success: true,
       statusCode: 201,
@@ -132,11 +118,6 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
     // Control negativo: el guard es por key, no por subscription_id — dos
     // notificaciones legítimas y distintas (ej. 2 bookings confirmados
     // distintos) para el mismo admin SÍ deben enviarse ambas.
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running (DATABASE_URL unreachable)')
-      return
-    }
-
     vi.mocked(sendPushNotification).mockResolvedValue({
       success: true,
       statusCode: 201,

@@ -3,7 +3,7 @@
  *
  * Mocks the auth boundary; hits real local pg-boss.
  * Requires a running Supabase instance (`supabase start`) with DATABASE_URL set.
- * Skips gracefully if DB is not available.
+ * Falla si la DB no está disponible: sin base no hay señal que dar.
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -30,44 +30,35 @@ import {
 const asUser = (user: AuthUser | null) =>
   vi.mocked(extractAuthUser).mockResolvedValue(user)
 
-let dbAvailable = false
-
 // Shared test data created in beforeAll.
 let tenantId: string
 let staffUserId: string
 
 beforeAll(async () => {
-  try {
-    const sql = getSql()
-    await sql`SELECT 1`
-    dbAvailable = true
-    await ensureRoles(sql)
-    await cleanupAll(sql)
-    await sql`DELETE FROM push_subscriptions`
+  const sql = getSql()
+  await sql`SELECT 1`
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+  await sql`DELETE FROM push_subscriptions`
 
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    // withTenant() revalida el rol contra tenant_staff_members (no el JWT):
-    // sin este link, getStaffRole() devuelve null → 403 antes del handler.
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    tenantId = tenant.id
-    staffUserId = staff.id
+  const tenant = await createTestTenant(sql)
+  const staff = await createTestStaffUser(sql)
+  // withTenant() revalida el rol contra tenant_staff_members (no el JWT):
+  // sin este link, getStaffRole() devuelve null → 403 antes del handler.
+  await linkStaffToTenant(sql, tenant.id, staff.id)
+  tenantId = tenant.id
+  staffUserId = staff.id
 
-    // Ensure pg-boss schema exists.
-    await getBoss()
-  } catch {
-    dbAvailable = false
-  }
+  // Ensure pg-boss schema exists.
+  await getBoss()
 }, 30_000)
 
 afterAll(async () => {
-  if (dbAvailable) {
-    try {
-      await stopBoss()
-      await closeSql()
-    } catch {
-      // best-effort
-    }
+  try {
+    await stopBoss()
+    await closeSql()
+  } catch {
+    // best-effort
   }
 })
 
@@ -88,11 +79,6 @@ function makeAdminUser(tId: string, sId: string): AuthUser {
 
 describe('POST /api/admin/push/test (F9 T4)', () => {
   it('Case 1: admin has 0 subscriptions → returns {success:true, dispatched: 0}', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running')
-      return
-    }
-
     asUser(makeAdminUser(tenantId, staffUserId))
 
     const req = new Request('http://localhost/api/admin/push/test', { method: 'POST' })
@@ -104,11 +90,6 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
   })
 
   it('Case 2: admin has 2 subscriptions → returns dispatched=2 + pgboss has 2 push-send rows', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running')
-      return
-    }
-
     const sql = getSql()
 
     // Insert 2 push subscriptions for this admin.

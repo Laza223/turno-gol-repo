@@ -6,7 +6,7 @@
  * are garbage-collected and never retried.
  *
  * Requires a running Supabase instance (`supabase start`) with DATABASE_URL set.
- * Skips gracefully if the DB is not available.
+ * Falla si la DB no está disponible: sin base no hay señal que dar.
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -29,40 +29,26 @@ import {
   ensureRoles,
 } from '../helpers/tenant'
 
-let dbAvailable = false
-
 beforeAll(async () => {
-  try {
-    const sql = getSql()
-    await sql`SELECT 1`
-    dbAvailable = true
-    await ensureRoles(sql)
-    await cleanupAll(sql)
-    await sql`DELETE FROM push_subscriptions`
-  } catch {
-    dbAvailable = false
-  }
+  const sql = getSql()
+  await sql`SELECT 1`
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+  await sql`DELETE FROM push_subscriptions`
 }, 30_000)
 
 afterAll(async () => {
-  if (dbAvailable) {
-    try {
-      const sql = getSql()
-      await sql`DELETE FROM push_subscriptions`
-      await closeSql()
-    } catch {
-      // best-effort cleanup
-    }
+  try {
+    const sql = getSql()
+    await sql`DELETE FROM push_subscriptions`
+    await closeSql()
+  } catch {
+    // best-effort cleanup
   }
 })
 
 describe('push.worker 410-gone cleanup (F9 T6)', () => {
   it('deletes push_subscriptions row when sendPushNotification returns gone=true (410)', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running (DATABASE_URL unreachable)')
-      return
-    }
-
     // Mock sendPushNotification to simulate a 410 Gone response.
     vi.mocked(sendPushNotification).mockResolvedValueOnce({
       success: false,

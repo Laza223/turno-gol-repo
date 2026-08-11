@@ -48,10 +48,9 @@ const TENANT_SCOPED_ROUTES = ALL_ROUTES.filter((f) => /\bwith(Billing)?Tenant\s*
 
 // Admin routes that use a raw handler (extractAuthUser) instead of withTenant —
 // not caught by the heuristic above, so listed explicitly to keep them honest.
-const ADMIN_RAW_ROUTES = [
-  'src/app/api/reports/revenue/route.ts',
-  'src/app/api/admin/jobs/route.ts',
-].map((p) => path.join(ROOT, p))
+// `reports/revenue` salió de esta lista al pasar a `withTenant` (B10): ahora lo
+// levanta TENANT_SCOPED_ROUTES, y dejarlo acá escondería una regresión futura.
+const ADMIN_RAW_ROUTES = ['src/app/api/admin/jobs/route.ts'].map((p) => path.join(ROOT, p))
 
 const ADMIN_FILES = Array.from(
   new Set([...ADMIN_ACTION_FILES, ...TENANT_SCOPED_ROUTES, ...ADMIN_RAW_ROUTES]),

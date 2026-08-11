@@ -18,6 +18,12 @@ vi.mock('@/shared/db/client', () => ({
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: vi.fn(),
 }))
+// staff.service corre sobre el pool WORKER (bypass RLS): sin este mock,
+// resendInviteAction pega a la DB de verdad en un test unitario.
+vi.mock('@/modules/staff/staff.service', () => ({
+  isStaffMemberOfTenant: vi.fn(),
+  upsertStaffUser: vi.fn(),
+}))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
 
@@ -31,6 +37,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { withTenantContext } from '@/shared/db/client'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isStaffMemberOfTenant } from '@/modules/staff/staff.service'
 
 const STAFF_USER = {
   type: 'staff' as const,
@@ -96,13 +103,32 @@ describe('staff actions — estado del tenant / kill-switch (#14)', () => {
 })
 
 describe('resendInviteAction — verificacion de membership (#12)', () => {
-  it('rechaza un email que no es miembro activo del tenant', async () => {
-    vi.mocked(withTenantContext).mockResolvedValue({ members: [] })
+  // `withTenantContext` acá envuelve SOLO a assertActorIsAdmin, que devuelve
+  // null cuando el actor es admin (o un StaffActionResult de error si no).
+  const actorIsAdmin = () => vi.mocked(withTenantContext).mockResolvedValue(null)
+
+  it('rechaza un email que no es miembro del tenant', async () => {
+    actorIsAdmin()
+    vi.mocked(isStaffMemberOfTenant).mockResolvedValue(false)
     const res = await resendInviteAction('ajeno@otro.local')
     expect(res).toEqual({
       success: false,
-      error: 'Este email no es un miembro activo del complejo.',
+      error: 'Este email no es miembro del complejo.',
     })
+    expect(inviteUserByEmail).not.toHaveBeenCalled()
+  })
+
+  it('rechaza a un actor que no es admin, sin consultar membership', async () => {
+    vi.mocked(withTenantContext).mockResolvedValue({
+      success: false,
+      error: 'Solo un administrador puede gestionar el equipo.',
+    })
+    const res = await resendInviteAction('miembro@test.local')
+    expect(res).toEqual({
+      success: false,
+      error: 'Solo un administrador puede gestionar el equipo.',
+    })
+    expect(isStaffMemberOfTenant).not.toHaveBeenCalled()
     expect(inviteUserByEmail).not.toHaveBeenCalled()
   })
 
@@ -114,9 +140,11 @@ describe('resendInviteAction — verificacion de membership (#12)', () => {
   })
 
   it('reenvia a un miembro activo, normalizando el email a minuscula', async () => {
-    vi.mocked(withTenantContext).mockResolvedValue({ members: [{ id: 'member-1' }] })
+    actorIsAdmin()
+    vi.mocked(isStaffMemberOfTenant).mockResolvedValue(true)
     const res = await resendInviteAction('Miembro@Test.Local')
     expect(res).toEqual({ success: true })
+    expect(isStaffMemberOfTenant).toHaveBeenCalledWith('tenant-1', 'miembro@test.local')
     expect(inviteUserByEmail).toHaveBeenCalledWith('miembro@test.local', expect.any(Object))
   })
 })

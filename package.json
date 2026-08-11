@@ -36,7 +36,7 @@
     "knip": "knip",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
-    "test": "vitest run --dir tests/unit",
+    "test": "vitest run tests/unit src",
     "test:integration": "vitest run --dir tests/integration --exclude \"**/isolation.test.ts\"",
     "test:isolation": "vitest run tests/integration/isolation.test.ts",
     "storybook": "storybook dev -p 6006",

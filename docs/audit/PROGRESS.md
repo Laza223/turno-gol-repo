@@ -2190,3 +2190,104 @@ hallazgos**: los 4 símbolos salieron del reporte y **no queda ningún `@public`
 `tournament-placement.test.ts` cubre los 6 casos del motor puro, incluido el relámpago de 25' que
 entra dos veces en una hora de 60 y el partido corrido a mano que pisa dos huecos;
 `torneos-corte-lib.test.ts` cubre el cuadro con BYE, con control negativo corrido.
+
+---
+
+## B9 + B10 🔴 — Los tests que nunca corrieron, y el CSV que se exportaba solo (2026-08-11)
+
+Primera tanda del plan `docs/planning/2026-08-11-deuda-cero-bloques-restantes.md`.
+Va primero porque todo lo que sigue se apoya en que los tests digan la verdad.
+
+### B9.1 — 27 tests colectados por nadie
+
+`pnpm test` era `vitest run --dir tests/unit`. Ningún script del repo colectaba
+`src/`, y ahí vivían 4 archivos de test: `settings/equipo/actions.test.ts`
+(guards de autorización de staff), `home.lib.test.ts`, `report.utils.test.ts` y
+`dashboard/queries.test.ts`. `vitest list --filesOnly` reportaba 0 archivos bajo
+`src/`. No estaban rotos ni skippeados: simplemente nunca se ejecutaban.
+
+Pasa a `vitest run tests/unit src` — 317 archivos, `tests/integration` sigue
+afuera (verificado: 0 archivos de integración colectados). CI corre `pnpm test`,
+así que el gate se propaga solo.
+
+**Al prenderlos salieron 2 rojos, y los 2 eran drift del test, no un agujero.**
+`resendInviteAction` había movido el chequeo de membership de una query dentro
+de `withTenantContext` a `isStaffMemberOfTenant` (pool worker, porque la policy
+de SELECT de `staff_users` sólo expone miembros `is_active=true`). El test
+seguía mockeando la forma vieja: `withTenantContext` devolvía `{members: []}` y
+la action lo retornaba crudo, porque ahora ese wrapper envuelve sólo a
+`assertActorIsAdmin`. Peor: el archivo **no mockeaba `staff.service` en
+absoluto**, así que ese camino pegaba a la DB de verdad en un test unitario.
+
+Se agregó el mock faltante, se alineó el mensaje esperado con el del código, y
+se sumó el caso de actor no-admin, que nadie cubría. 11/11.
+
+### B9.2 — 14 guards que garantizaban verde
+
+6 archivos de integración (`daily-summary-worker`, `push-subscribe-rls`,
+`push-send-idempotency`, `push-test-endpoint`, `push-dispatch-on-booking-confirmed`,
+`push-worker-410-cleanup`) tenían `let dbAvailable = false`, un `beforeAll` con
+try/catch que se tragaba el fallo de conexión, y un `if (!dbAvailable) return`
+por test. **En los 6 el guard cubría el 100% de los tests del archivo**: sin
+Postgres reportaban verde perfecto, y como no usaban `it.skip` ni siquiera
+figuraban como skipped. Cinco docstrings prometían por escrito "skips gracefully
+if the DB is not available".
+
+Ahora `beforeAll` explota, igual que `isolation.test.ts`. Verificado en las dos
+direcciones: con Postgres local **14/14 pasan** (los tests eran correctos, sólo
+estaban ciegos); con `DATABASE_URL` a un puerto muerto, el archivo **falla**.
+
+### B10 🔴 — El export de caja pedía sesión, no permiso
+
+`GET /api/reports/revenue` exporta TODOS los `cash_flows` del complejo en un
+rango arbitrario, y validaba sólo `user.type === 'staff'` + `getStaffTenant`.
+Le faltaban las dos capas que el resto del panel sí aplica:
+
+- **Rol**: no se revalidaba contra `tenant_staff_members`. El claim `role` del
+  JWT viene hardcodeado a `'admin'` para todo el staff, así que un miembro dado
+  de baja (`is_active=false`) seguía exportando la caja entera con su token
+  viejo.
+- **Lifecycle**: un complejo `blocked`/`suspended`/`churned`/`deleted` seguía
+  exportando, cuando el layout `(admin)` ya lo tiene hard-lockeado por pantalla.
+
+Pasa a `withTenant` (default admin+manager: la misma superficie que
+`/analiticas`, de donde sale el botón, y el mismo criterio que
+`/api/admin/metrics`). No se agregó `withAnyRole` encima porque el default de
+`withTenant` ya es exactamente eso — componer los dos duplica la lectura de rol.
+
+De paso deja de anidar contextos de DB: `withTenant` ya abre la tx
+tenant-scoped, así que `getCashFlowsForExport` la recibe en vez de pedir una
+segunda conexión al pool, y el cutoff de día operativo sale de
+`resolveCutoffMins(tenantId, tx)` — el helper que `metrics` ya usaba — en lugar
+de un `getStaffTenant` extra.
+
+### Lo que encontraron los tests
+
+- **Un cast que no barrí desde la raíz.** Cambiar la firma de
+  `getCashFlowsForExport` compiló limpio contra `src/`, pero había 3 callers en
+  `tests/integration/`. El grep original estaba acotado a `src/` — la lección ya
+  fichada de "grepear callers desde la RAÍZ", repetida.
+- **`rate-limit-admin-coverage.test.ts` listaba `reports/revenue` como
+  `ADMIN_RAW_ROUTES`** ("usa un handler crudo, no `withTenant`"). Ahora lo
+  levanta la heurística de `withTenant`; dejarlo en la lista manual escondería
+  una regresión futura, así que salió de ahí.
+- El `queries.test.ts` huérfano resultó ser un `it.todo` legítimo y documentado
+  (`getDashboardData` se retiró en Fase 2). Es el único skipped de los 317.
+
+### Evidencia
+
+`pnpm typecheck` limpio. `pnpm lint` 0. `pnpm test` **3182/3183** (316 archivos
+pasan, 1 todo) con `src/` ya colectado.
+
+Control negativo del test nuevo (`reports-revenue-route-guard.test.ts`, 8 casos):
+contra el código anterior **fallan 4** — el staff desactivado y los 3 estados de
+tenant bloqueado devolvían **200 con el CSV completo**.
+
+### Lo que NO entró
+
+De B10 quedan abiertos, para la tanda mecánica: los 2 🟡 de route-guard
+(`api/status` sin auth, `api/e2e/create-booking`), las 12 páginas que usan
+`extractAuthUser` crudo sin `getStaffRole` (hoy no es un agujero: son pantallas
+operator-level), `with-auth.ts` como código muerto, y los 7 listados sin
+paginación — el peor sigue siendo `getStreetMoney`, sin `LIMIT`, recalculado
+entero en cada carga de `/caja`.

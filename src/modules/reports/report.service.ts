@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull, lt, gte, sql } from 'drizzle-orm'
-import { withTenantContext } from '@/shared/db/client'
+import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { cashFlows, bookings, courts } from '@/shared/db/schema'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type {
@@ -235,32 +235,31 @@ export async function getCashFlowsForExport(
   from: Date,
   to: Date,
   cutoffMins: number,
+  tx: DbTx,
 ): Promise<CashFlowExportRow[]> {
-  return withTenantContext(tenantId, async (tx) => {
-    const rows = await tx
-      .select({
-        occurredAt: cashFlows.occurredAt,
-        type: cashFlows.type,
-        category: cashFlows.category,
-        amount: cashFlows.amount,
-        method: cashFlows.method,
-        description: cashFlows.description,
-        courtName: courts.name,
-      })
-      .from(cashFlows)
-      .leftJoin(bookings, eq(cashFlows.bookingId, bookings.id))
-      .leftJoin(courts, eq(bookings.courtId, courts.id))
-      .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
-      .orderBy(cashFlows.occurredAt)
+  const rows = await tx
+    .select({
+      occurredAt: cashFlows.occurredAt,
+      type: cashFlows.type,
+      category: cashFlows.category,
+      amount: cashFlows.amount,
+      method: cashFlows.method,
+      description: cashFlows.description,
+      courtName: courts.name,
+    })
+    .from(cashFlows)
+    .leftJoin(bookings, eq(cashFlows.bookingId, bookings.id))
+    .leftJoin(courts, eq(bookings.courtId, courts.id))
+    .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
+    .orderBy(cashFlows.occurredAt)
 
-    return rows.map((r) => ({
-      fecha: operatingDateOf(r.occurredAt, cutoffMins),
-      tipo: r.type,
-      categoria: r.category,
-      monto_ars: r.amount,
-      metodo: r.method,
-      descripcion: r.description,
-      cancha: r.courtName ?? '',
-    }))
-  })
+  return rows.map((r) => ({
+    fecha: operatingDateOf(r.occurredAt, cutoffMins),
+    tipo: r.type,
+    categoria: r.category,
+    monto_ars: r.amount,
+    metodo: r.method,
+    descripcion: r.description,
+    cancha: r.courtName ?? '',
+  }))
 }

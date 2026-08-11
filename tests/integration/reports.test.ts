@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { closeSql, getSql } from '@/shared/db/client'
+import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import {
   cleanupAll,
   createTestStaffUser,
@@ -124,7 +124,9 @@ describe('getRevenueReport — with data', () => {
 
 describe('getCashFlowsForExport', () => {
   it('returns rows with correct shape', async () => {
-    const rows = await getCashFlowsForExport(tenantId, MAY_FROM, MAY_TO, 0)
+    const rows = await withTenantContext(tenantId, (tx) =>
+      getCashFlowsForExport(tenantId, MAY_FROM, MAY_TO, 0, tx),
+    )
     expect(rows.length).toBeGreaterThan(0)
     const row = rows[0]
     expect(typeof row.fecha).toBe('string')
@@ -138,11 +140,14 @@ describe('getCashFlowsForExport', () => {
   })
 
   it('returns empty array for period with no data', async () => {
-    const rows = await getCashFlowsForExport(
-      tenantId,
-      new Date('2027-01-01T03:00:00.000Z'),
-      new Date('2027-02-01T03:00:00.000Z'),
-      0,
+    const rows = await withTenantContext(tenantId, (tx) =>
+      getCashFlowsForExport(
+        tenantId,
+        new Date('2027-01-01T03:00:00.000Z'),
+        new Date('2027-02-01T03:00:00.000Z'),
+        0,
+        tx,
+      ),
     )
     expect(rows).toEqual([])
   })

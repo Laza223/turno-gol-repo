@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Sql } from 'postgres'
-import { closeSql, getSql } from '@/shared/db/client'
+import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import {
   cleanupAll,
   createTestStaffUser,
@@ -184,11 +184,14 @@ describe('reportes — ocupación y CSV', () => {
     // 22:00 ART del 5 = 01:00 UTC del 6. El CSV decía "2026-05-06".
     await insertIncome(sql, tenant.id, staff.id, '2026-05-06T01:00:00Z', 250000)
 
-    const rows = await getCashFlowsForExport(
-      tenant.id,
-      new Date('2026-05-01T03:00:00Z'),
-      new Date('2026-06-01T03:00:00Z'),
-      0,
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      getCashFlowsForExport(
+        tenant.id,
+        new Date('2026-05-01T03:00:00Z'),
+        new Date('2026-06-01T03:00:00Z'),
+        0,
+        tx,
+      ),
     )
 
     expect(rows).toHaveLength(1)

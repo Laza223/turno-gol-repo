@@ -45,7 +45,6 @@ const schema = z
       .positive('El precio por sesión es requerido'),
     startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
     paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
-    notes: z.string().trim().max(1000).optional(),
   })
   .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
 
@@ -157,7 +156,6 @@ export async function submitNewAbonado(
     pricePerSession: d.pricePerSessionCents,
     startsOn: d.startsOn,
     paymentMethod: d.paymentMethod,
-    notes: d.notes,
   }
 
   const result = await createAbonadoAction(input)

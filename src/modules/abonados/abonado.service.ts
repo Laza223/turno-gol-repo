@@ -32,7 +32,6 @@ function rowToAbonadoRow(r: typeof abonados.$inferSelect): AbonadoRow {
     endsOn: r.endsOn ?? null,
     status: r.status,
     paymentMethod: r.paymentMethod,
-    notes: r.notes ?? null,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }
@@ -179,7 +178,6 @@ export async function createAbonado(
       endsOn: input.endsOn ? new Date(`${input.endsOn}T00:00:00Z`) : null,
       status: 'active' as const,
       paymentMethod: input.paymentMethod ?? 'cash',
-      notes: input.notes ?? null,
     })
     .returning()
 
@@ -430,7 +428,6 @@ export async function getAbonados(
     ends_on: Date | null
     status: AbonadoStatus
     payment_method: AbonadoPaymentMethod
-    notes: string | null
     created_at: Date
     updated_at: Date
   }>).map((r) => ({
@@ -448,7 +445,6 @@ export async function getAbonados(
     endsOn: r.ends_on ? new Date(r.ends_on) : null,
     status: r.status,
     paymentMethod: r.payment_method,
-    notes: r.notes,
     createdAt: new Date(r.created_at),
     updatedAt: new Date(r.updated_at),
   }))

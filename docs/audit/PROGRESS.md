@@ -2291,3 +2291,113 @@ De B10 quedan abiertos, para la tanda mecánica: los 2 🟡 de route-guard
 operator-level), `with-auth.ts` como código muerto, y los 7 listados sin
 paginación — el peor sigue siendo `getStreetMoney`, sin `LIMIT`, recalculado
 entero en cada carga de `/caja`.
+
+---
+
+## B12 — Cinco etiquetas, y la columna de texto libre que las contradecía (2026-08-11)
+
+Fase 4, primera mitad. Es el único grupo del backlog cuyo costo sube con el
+tiempo: la cirugía de Clientes es barata sin clientes y cara con ellos, y la
+ventana expira con el primer contrato.
+
+### La decisión ya estaba tomada; el trabajo era no traicionarla
+
+El set final venía cerrado de `2026-08-07-analisis-rubro-y-decisiones.md:129-166`:
+`Se le fía` · `No fiar` · `Organiza el grupo` · `Tiene precio acordado` ·
+`Trato conflictivo`. Lo que había que respetar no es la lista, es **por qué es
+una lista**: D3 prohíbe texto libre sobre personas y el motivo es legal, no de
+UI — lo que un cliente puede leer ejerciendo derecho de acceso (Ley 25.326)
+queda controlado en origen.
+
+De ahí salen tres decisiones de implementación que no son de gusto:
+
+- **ENUM `player_tag` cerrado**, no una tabla de configuración por complejo. Un
+  set abierto reintroduce exactamente el problema que D3 cierra.
+- **Sobre `player_tenant_relationships`**, no sobre `players`: la etiqueta es del
+  complejo. Que uno ponga "No fiar" no puede viajar al complejo de al lado —
+  cubierto con un test que lo verifica sobre el MISMO jugador en dos tenants.
+- **Columna array y no tabla hija**: una tabla nueva arrastra RLS + FORCE +
+  policies + DELETE en `data-retention-cleanup.worker.ts` + caso en
+  `isolation.test.ts`, y no compra nada. La trazabilidad de quién puso qué ya la
+  da `audit_logs` (`player.tags_updated`, con `before`/`after`). Las policies de
+  PTR ya scopean por `app.current_tenant_id`, así que la columna hereda el
+  aislamiento sin policy nueva.
+
+### `abonados.notes` — texto libre sobre una persona con nombre y teléfono
+
+Existía desde antes de D3 y es literalmente lo que la decisión prohíbe. Se
+elimina, decisión del dueño tomada explícitamente.
+
+**Verificado contra producción ANTES de escribir la migración**, no asumido:
+`0` filas en `abonados`, `0` con notas, 3 tenants vivos (todos de prueba). Es la
+única razón por la que un `DROP COLUMN` es aceptable — el rollback recrea la
+columna vacía y no hay dato que restaurar.
+
+**Pero el DROP no viaja en la 074: va en la 075, en un release posterior.**
+`db-migrate.yml` corre en el push a main y Vercel deploya por integración Git,
+así que no hay garantía de orden — y sin required reviewers en el Environment
+`Production` (verificado) la migración le gana al build de Next. En esa ventana
+el código VIEJO sigue arriba y rompería: `createAbonado` nombra `notes` en el
+INSERT, y `pause/reactivate/cancel` la traen en el `.returning()` sin argumentos
+que Drizzle expande a todas las columnas del schema viejo (`getAbonados` zafaba,
+usa `SELECT *`). El propio workflow lo dice por escrito: dropear algo que el
+código viejo todavía usa va en dos releases. Ya pasó tres veces en este repo.
+
+Entonces la 074 deja la columna **huérfana** —existe, nadie la lee ni la
+escribe— y la 075 la dropea. `schema-drift.test.ts` documenta ese drift
+transitorio en `KNOWN_DB_ONLY_COLUMNS`, con la instrucción de borrar la entrada
+junto con la 075.
+
+### La garantía de "sin repetidos" vive en la base
+
+Un `CHECK` no puede llevar subquery, así que el predicado va en una función
+`IMMUTABLE` (`player_tags_are_unique`) con `SET search_path` explícito — sin esa
+línea, un `CREATE OR REPLACE` futuro deshace el hardening en silencio, que ya
+pasó en este repo. El service igual normaliza (dedup + orden canónico) para que
+dos guardados con el mismo set produzcan la misma fila y el diff del audit log
+sea legible; el CHECK es la garantía de abajo, no la de arriba.
+
+`gets_credit` + `no_credit` juntas se rechazan en el borde (Zod), no se resuelven
+en silencio eligiendo una: son opuestas y dejarían al mostrador sin saber qué
+hacer.
+
+### Lo que encontraron los tests
+
+- 🔴 **Un array de UN elemento se serializa como escalar en `tx.execute(sql\`\`)`.**
+  `setPlayerTags` escribía `player_tag[]` por SQL crudo y Postgres respondía
+  `malformed array literal: "no_credit"` (`22P02`). Con 2+ elementos el síntoma
+  cambia, así que un test que solo probara el caso multi-elemento no lo hubiera
+  visto. Reescrito con el query builder, que conoce el tipo de la columna — y de
+  paso es lo que pide B8. El `before` del audit log sale de un
+  `SELECT ... FOR UPDATE` en la misma tx, que da la misma garantía que el
+  `RETURNING` de la fila vieja que se intentaba primero.
+- **El barrido de `notes` no terminaba en `src/`**: 3 fixtures y un test unitario
+  lo seguían pasando. Los levantó `pnpm typecheck`, no el grep — que estaba
+  acotado a `src/`. Misma lección ya fichada: barrer callers desde la RAÍZ.
+- **La regla de capas frenó el primer lugar donde puse los chips**:
+  `src/components/` no puede importar dominio como VALOR, y `PLAYER_TAG_LABELS`
+  lo es. `PlayerTagChips` quedó route-local en `jugadores/`, que es donde vive su
+  único consumidor (y donde va a vivir la lista fusionada de B13).
+
+### Evidencia
+
+`pnpm typecheck` limpio. `pnpm lint` 0. `pnpm test` **3205/3206** (318 archivos
+pasan, 1 todo). Stories del componente nuevo **4/4** en chromium.
+
+Migración probada en las DOS direcciones sobre la base local: forward → rollback
+completo (columna, constraint, función y tipo fuera; `abonados.notes` de vuelta)
+→ forward otra vez. El CHECK de unicidad verificado con un INSERT real que
+Postgres rechaza con `chk_ptr_tags_unique`.
+
+**Verificado en la app corriendo, no solo en tests**: login real como admin,
+ficha de `/jugadores/[playerId]`, marcar "Organiza el grupo", guardar → la fila
+de `player_tenant_relationships` queda en `{group_organizer}` y `audit_logs`
+registra `player.tags_updated` con `before: []` / `after: ['group_organizer']`.
+El chip aparece en la lista. `/abonados/nuevo` renderiza sin campo de notas y sin
+mención a "Notas".
+
+### Lo que NO entró
+
+B13 (la fusión de las dos listas de personas, con el abonado de `player_id NULL`
+que hoy `/jugadores` nunca muestra) es la segunda mitad de Fase 4 y queda para el
+próximo bloque. El orden lo fijan los docs: B12 destraba B13, no al revés.

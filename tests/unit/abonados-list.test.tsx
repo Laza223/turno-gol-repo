@@ -25,7 +25,6 @@ function makeAbonado(overrides: Partial<AbonadoRow>): AbonadoRow {
     endsOn: null,
     status: 'active',
     paymentMethod: 'cash',
-    notes: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
     ...overrides,

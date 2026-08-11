@@ -7,7 +7,7 @@ import {
   getPlayerStats,
   getPlayerBookingHistory,
 } from '../queries'
-import { banPlayerAction, liftPlayerBanAction } from '../actions'
+import { banPlayerAction, liftPlayerBanAction, setPlayerTagsAction } from '../actions'
 import { JugadorProfileView } from './JugadorProfileView'
 
 type Props = { params: Promise<{ playerId: string }> }
@@ -36,6 +36,7 @@ export default async function JugadorProfilePage(props: Props) {
       {...data}
       banPlayerAction={banPlayerAction}
       liftPlayerBanAction={liftPlayerBanAction}
+      setPlayerTagsAction={setPlayerTagsAction}
     />
   )
 }

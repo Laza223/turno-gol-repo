@@ -5,6 +5,7 @@ import type { BanCheckResult } from '@/modules/bans/ban.service'
 import type { ManualBanDuration } from '@/modules/bans/ban.schema'
 import type { PlayerProfile, PlayerStats, PlayerBookingRow } from '../queries'
 import { BanPlayerControls } from './BanPlayerControls'
+import { PlayerTagsCard, type SetPlayerTagsFn } from './PlayerTagsCard'
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -57,6 +58,7 @@ type Props = {
     duration: ManualBanDuration,
   ) => Promise<ActionResult>
   liftPlayerBanAction: (playerId: string) => Promise<ActionResult>
+  setPlayerTagsAction: SetPlayerTagsFn
 }
 
 /**
@@ -72,6 +74,7 @@ export function JugadorProfileView({
   ban,
   banPlayerAction,
   liftPlayerBanAction,
+  setPlayerTagsAction,
 }: Props) {
   const statCards: Array<[string, string]> = [
     ['Reservas totales', String(stats.total)],
@@ -136,6 +139,12 @@ export function JugadorProfileView({
         ban={ban}
         banPlayerAction={banPlayerAction}
         liftPlayerBanAction={liftPlayerBanAction}
+      />
+
+      <PlayerTagsCard
+        playerId={profile.playerId}
+        tags={profile.tags}
+        setPlayerTagsAction={setPlayerTagsAction}
       />
 
       <section className="card-premium rounded-xl p-6">

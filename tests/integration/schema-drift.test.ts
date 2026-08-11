@@ -72,18 +72,7 @@ const DB_ONLY_TABLES_ALLOWLIST = new Set<string>([])
 // futuro se agregan acá con el prefijo pedido por el contrato, citando el
 // hallazgo — hoy vacío salvo la entrada de audit_logs (que técnicamente no
 // dispara falla, ver comentario arriba).
-// `abonados.notes` es drift TRANSITORIO y a propósito (B12 / decisión D3): el
-// código dejó de escribirla y de leerla en la migr. 074, pero el `DROP COLUMN`
-// viaja en la 075, en un release POSTERIOR. El motivo está escrito en la 074:
-// `db-migrate.yml` no ordena la migración contra el deploy de Vercel, así que
-// dropear en el mismo release rompería al código viejo mientras sigue arriba
-// (`createAbonado` la nombra en el INSERT; `pause/reactivate/cancel` la traen en
-// el `.returning()` sin argumentos). **Esta entrada se borra junto con la 075**
-// — si sobrevive a ese merge, el test deja de ver un drift real.
-const KNOWN_DB_ONLY_COLUMNS = new Set<string>([
-  ...KNOWN_DEAD_BUT_NOT_DRIFTED_COLUMNS,
-  'abonados.notes',
-])
+const KNOWN_DB_ONLY_COLUMNS = new Set<string>([...KNOWN_DEAD_BUT_NOT_DRIFTED_COLUMNS])
 
 // ─── Mapeo de tipo base (elemento de array) → udt_name de Postgres ─────
 // Solo los tipos base que el schema usa hoy dentro de `.array()`

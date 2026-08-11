@@ -130,22 +130,20 @@ describe('setPlayerTags (B12)', () => {
 })
 
 describe('abonados.notes (D3)', () => {
-  // La columna todavía EXISTE en la DB a propósito: el `DROP COLUMN` viaja en la
-  // migr. 075, en un release posterior (ver el encabezado de la 074 — dropearla
-  // en el mismo release rompería al código viejo mientras Vercel termina de
-  // deployar). Lo que este release garantiza es que ya nadie la escribe.
+  // La 075 dropeó la columna, en un release posterior al que dejó de usarla
+  // (expand-contract; el motivo está en el encabezado de las dos migraciones).
   it('el código ya no la conoce: un INSERT desde Drizzle no la nombra', async () => {
     const { abonados } = await import('@/shared/db/schema')
     const cols = Object.keys(abonados)
     expect(cols).not.toContain('notes')
   })
 
-  it('sigue en la DB, huérfana, hasta que la 075 la dropee', async () => {
+  it('ya no existe en la DB: la 075 la dropeó', async () => {
     const sql = getSql()
     const rows = await sql<{ c: string }[]>`
       SELECT count(*) AS c FROM information_schema.columns
        WHERE table_name = 'abonados' AND column_name = 'notes'
     `
-    expect(Number(rows[0]!.c)).toBe(1)
+    expect(Number(rows[0]!.c)).toBe(0)
   })
 })

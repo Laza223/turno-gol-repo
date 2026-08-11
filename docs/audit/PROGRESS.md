@@ -2630,3 +2630,63 @@ distinto cada vez y verde al re-correr. Uno se identificó
 paralelismo); los otros dos no se llegaron a capturar. No lo causa este cambio
 —pasaba antes— pero es un flake real bajo carga y conviene fichar el archivo
 exacto la próxima vez que aparezca, no re-correr y seguir.
+
+---
+
+## B10 (parte 1) — /caja traía toda la deuda impaga para mostrar un número
+
+**El defecto, verificado contra el código.** `getStreetMoney` no tiene `LIMIT`
+en ningún lado: dispara `getDebts`, `listOpenTabs` y `listTenantInscriptionDebts`
+en paralelo —las tres sin techo—, concatena todo en JS y ordena en JS. Y no lo
+llamaba solo `/caja/deudas`, que es donde las filas se muestran: lo llamaban
+también `caja/page.tsx:46` y `home.service.ts:316`.
+
+En `/caja` el resultado se usaba **para una sola cosa**: `sumStreetMoney(...)`,
+el número del encabezado. O sea que cada carga de la pantalla de plata
+materializaba la lista completa de deuda impaga para sumarla. Y la deuda impaga
+no se estabiliza — crece con el uso del complejo —, así que el costo de esa
+pantalla crece con el negocio.
+
+**El arreglo:** `getStreetMoneyTotal(tenantId, tx)` calcula el mismo número en
+Postgres sin traer una fila, y `/caja` pasa a usarlo. `/caja/deudas` sigue con
+`getStreetMoney`, que es donde las filas hacen falta.
+
+**El precio, y cómo se paga.** El total en SQL repite los predicados de las tres
+funciones de origen, y el docstring del módulo advierte explícitamente contra
+tener dos lugares que calculen el total. Por eso no queda librado a la
+disciplina: `tests/integration/street-money-total.test.ts` siembra las tres
+fuentes y falla si las dos rutas no dan exactamente lo mismo. **Control negativo
+corrido**: sacando el descuento de la seña del SQL, el test se pone rojo con
+`expected 700000 to be 500000`. La duplicación pasa de riesgo silencioso a
+regresión que se ve.
+
+**La home NO se tocó, a propósito.** Ahí `streetMoneyRows` sí se usa para armar
+las alertas de turnos impagos del día (`home.service.ts:328`), así que cambiarla
+al total no alcanza: hace falta una consulta de deuda filtrada por fecha, que es
+trabajo aparte. `/caja` es la pantalla frecuente y es la que gana acá.
+
+### Correcciones al plan de B10
+
+- 🔴 **`with-auth.ts` NO es código muerto.** El plan dice "0 consumidores".
+  Falso: lo ejercitan `tests/unit/middleware.test.ts` y
+  `tests/unit/route-wrappers-request-context.test.ts`, y este último lo usa como
+  **implementación de referencia** (`:119-124`) para después verificar
+  estáticamente que `withTenant`/`withPlayer` abren el contexto de request igual.
+  Knip no lo marca porque tiene consumidores reales, no por un blindspot.
+  Borrarlo debilitaría el guard de los otros dos wrappers. **No se toca.**
+- El conteo de `getStreetMoney` sí era correcto, y el problema era peor de lo
+  descripto: no es solo `/caja/deudas`, son tres pantallas.
+
+### Lo que queda de B10
+
+- 🟡 `api/status/route.ts` sin auth (info disclosure de estado de infra).
+- 🟡 `api/e2e/create-booking/route.ts` con gate por `NEXT_PUBLIC_E2E`, que se
+  inlinea en build.
+- **La UI que miente**: `listTenantBookings` trunca a `LIMIT 200` mientras
+  `countTenantBookingsByStatus` cuenta sin techo — las píldoras pueden decir
+  "Completadas (740)" y la lista mostrar 200. Verificado en
+  `reservas/queries.ts:89-148`.
+- Paginación con cursor real para `listTenantClients`, `/mis-reservas`,
+  `getCashFlowsForExport` y `getAbonados`.
+- Las 12 páginas con `extractAuthUser` crudo (hoy no es un agujero: son
+  pantallas operator-level donde admin y manager pasan igual).

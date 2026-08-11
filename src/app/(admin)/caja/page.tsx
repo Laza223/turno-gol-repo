@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
 import { getDayOpen } from '@/modules/cashflow/cash-open.service'
-import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
+import { getStreetMoneyTotal } from '@/modules/cashflow/street-money.service'
 import { track } from '@/shared/observability/breadcrumbs'
 import { safeDateParam } from '@/shared/validation/calendar-date'
 import { CajaActions } from './components/CajaActions'
@@ -43,14 +43,18 @@ export default async function CajaPage(props: {
         getDaySummary(tenant.id, date, cutoffMins, tx),
         getCashFlows(tenant.id, date, cutoffMins, tx),
         getDayOpen(tenant.id, date, tx),
-        getStreetMoney(tenant.id, tx),
+        getStreetMoneyTotal(tenant.id, tx),
       ])
       return { summary: s, cashFlows: cf, open: o, streetMoney: sm }
     },
   )
 
   const ingresos = summary.totalIncome + summary.totalAdjustments
-  const streetMoneyCents = sumStreetMoney(streetMoney)
+  // B10 — solo el número: /caja muestra el total en el encabezado, y traer la
+  // lista entera de deuda impaga (3 queries sin LIMIT) para sumarla hacía que
+  // el costo de esta pantalla creciera con el negocio. Las filas se ven en
+  // /caja/deudas, que sigue usando getStreetMoney.
+  const streetMoneyCents = streetMoney.totalCents
   // Proxy "plata en la calle: tendencia ↓ por tenant" (§11).
   track.cashflow('street_money.viewed', { tenantId: tenant.id, totalCents: streetMoneyCents })
   const methods = methodBreakdown(summary.byMethod)

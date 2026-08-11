@@ -1,0 +1,23 @@
+# Generados por el build o por una corrida de tests: no los escribe una persona,
+# así que formatearlos solo agrega ruido al diff y conflictos.
+.next/
+node_modules/
+coverage/
+storybook-static/
+e2e-results/
+visual-results/
+semgrep-sarif/
+playwright-report/
+blob-report/
+test-results/
+scripts/demo/out/
+**/*-snapshots/
+
+# Lockfile: lo escribe pnpm.
+pnpm-lock.yaml
+
+# Las migraciones son la fuente de verdad del schema y NUNCA se editan una vez
+# aplicadas (ver CLAUDE.md). Reformatearlas cambiaría archivos que por regla son
+# inmutables — y el espejo de supabase/ se genera con un script.
+src/shared/db/migrations/
+supabase/migrations/

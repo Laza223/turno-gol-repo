@@ -9,15 +9,29 @@ import type { GridBooking } from '@/components/booking/BookingGrid'
 // Hoisted mock refs — captured before vi.mock factory runs
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const h = vi.hoisted(() => ({ handler: undefined as any, subCb: undefined as any, removeChannel: vi.fn() }))
+// Bloque y no `disable-next-line`: al formatear, este objeto pasó de una línea a
+// cinco, y la directiva de una sola línea dejó de cubrir los `as any` de abajo.
+// Misma supresión que antes, con el alcance correcto.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const h = vi.hoisted(() => ({
+  handler: undefined as any,
+  subCb: undefined as any,
+  removeChannel: vi.fn(),
+}))
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ch: any = {
-      on: (_e: unknown, _f: unknown, fn: unknown) => { h.handler = fn; return ch },
-      subscribe: (cb: unknown) => { h.subCb = cb; return ch },
+      on: (_e: unknown, _f: unknown, fn: unknown) => {
+        h.handler = fn
+        return ch
+      },
+      subscribe: (cb: unknown) => {
+        h.subCb = cb
+        return ch
+      },
     }
     return { channel: () => ch, removeChannel: h.removeChannel }
   },
@@ -102,11 +116,15 @@ describe('useBookingRealtime', () => {
     await flushImport()
     expect(h.subCb).toBeDefined()
 
-    await act(async () => { h.subCb('CHANNEL_ERROR') })
+    await act(async () => {
+      h.subCb('CHANNEL_ERROR')
+    })
     expect(result.current.status).toBe('OFFLINE')
     const callsAfterError = fetchMock.mock.calls.length
 
-    await act(async () => { h.subCb('SUBSCRIBED') })
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
     expect(result.current.status).toBe('SUBSCRIBED')
     // Must have fetched at least once more for the catch-up
     expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterError)
@@ -131,7 +149,9 @@ describe('useBookingRealtime', () => {
 
     expect(fetchMock.mock.calls.length).toBe(0)
 
-    await act(async () => { h.subCb('SUBSCRIBED') })
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
 
     expect(fetchMock.mock.calls.length).toBe(1)
     const url = fetchMock.mock.calls[0][0] as string
@@ -154,7 +174,9 @@ describe('useBookingRealtime', () => {
     await flushImport()
 
     // SUBSCRIBED (clear catch-up call)
-    await act(async () => { h.subCb('SUBSCRIBED') })
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
     fetchMock.mockClear()
 
     // Fire live INSERT
@@ -177,7 +199,9 @@ describe('useBookingRealtime', () => {
     expect(fetchMock.mock.calls.length).toBe(0)
 
     // Advance past debounce
-    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
     expect(fetchMock.mock.calls.length).toBe(1)
   })
 
@@ -209,9 +233,13 @@ describe('useBookingRealtime', () => {
       useBookingRealtime({ tenantId: 't1', date: '2025-06-01', initialBookings: initial }),
     )
     await flushImport()
-    await act(async () => { h.subCb('SUBSCRIBED') })
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
     // Let the catch-up fetch promise settle so state is seeded
-    await act(async () => { await Promise.resolve() })
+    await act(async () => {
+      await Promise.resolve()
+    })
 
     await act(async () => {
       h.handler({
@@ -238,7 +266,9 @@ describe('useBookingRealtime', () => {
       useBookingRealtime({ tenantId: 't1', date: '2025-06-01', initialBookings: [] }),
     )
     await flushImport()
-    await act(async () => { h.subCb('SUBSCRIBED') })
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
 
     await act(async () => {
       h.handler({
@@ -268,13 +298,19 @@ describe('useBookingRealtime', () => {
     )
     await flushImport()
 
-    await act(async () => { h.subCb('CHANNEL_ERROR') })
+    await act(async () => {
+      h.subCb('CHANNEL_ERROR')
+    })
     const callsAfterError = fetchMock.mock.calls.length
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000)
+    })
     expect(fetchMock.mock.calls.length).toBe(callsAfterError + 1)
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000)
+    })
     expect(fetchMock.mock.calls.length).toBe(callsAfterError + 2)
 
     unmount()
@@ -295,7 +331,9 @@ describe('useBookingRealtime', () => {
     await flushImport()
 
     // Trigger an INSERT to arm the reconcile timeout
-    await act(async () => { h.subCb('SUBSCRIBED') })
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
     fetchMock.mockClear()
 
     await act(async () => {
@@ -307,11 +345,15 @@ describe('useBookingRealtime', () => {
     })
 
     // Also trigger OFFLINE to arm the poll interval
-    await act(async () => { h.subCb('CHANNEL_ERROR') })
+    await act(async () => {
+      h.subCb('CHANNEL_ERROR')
+    })
     fetchMock.mockClear()
 
     // Unmount before any timer fires
-    act(() => { unmount() })
+    act(() => {
+      unmount()
+    })
 
     expect(h.removeChannel).toHaveBeenCalledTimes(1)
 

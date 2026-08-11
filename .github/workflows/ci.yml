@@ -37,12 +37,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # NOTA: `pnpm format:check` NO está cableado acá todavía. Prettier nunca se
-      # corrió en bulk sobre este repo: hoy reporta ~716 archivos con diferencias
-      # (printWidth, paréntesis de `??` de Prettier 3, y `trailingComma: "es5"` en
-      # .prettierrc contra un código escrito en estilo "all"). Enchufar el gate
-      # exige un reformateo masivo, que es un esfuerzo aparte. El script existe
-      # (`pnpm format:check`) para correrlo a mano mientras tanto.
+      # B8d — el gate de formato, que hasta acá NO corría: Prettier estaba
+      # configurado pero nunca se había pasado en bulk, así que la deriva crecía
+      # sin nada que la frenara (1071 archivos al enchufarlo). Va PRIMERO y no
+      # último: es el más rápido de los tres y el de arreglo más barato
+      # (`pnpm format`), así que no tiene sentido hacer esperar a nadie detrás de
+      # un typecheck de 30s para avisarle que le faltó una coma.
+      - name: Format
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 

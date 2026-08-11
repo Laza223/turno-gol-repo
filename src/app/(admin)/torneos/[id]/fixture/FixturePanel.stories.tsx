@@ -1,6 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { tournament, tournamentFixture, tournamentStage } from '@/test/fixtures'
+import {
+  planillaCourts,
+  planillaMatches,
+  planillaSlots,
+  tournament,
+  tournamentStage,
+} from '@/test/fixtures'
 import { FixturePanel } from './FixturePanel'
 import type { GenerateFixtureActionResult, TournamentActionResult } from '../../actions'
 
@@ -12,7 +18,11 @@ const meta = {
     tournamentId: tournament().id,
     format: 'league' as const,
     stages: [tournamentStage()],
-    matches: tournamentFixture(),
+    matches: planillaMatches(),
+    slots: planillaSlots(),
+    courts: planillaCourts(),
+    matchDurationMinutes: 60,
+    restBetweenMatchesMinutes: 0,
     generateAction: fn(
       async (): Promise<GenerateFixtureActionResult> => ({
         success: true,
@@ -21,28 +31,41 @@ const meta = {
       }),
     ),
     clearAction: fn(async (): Promise<TournamentActionResult> => ({ success: true })),
+    rescheduleAction: fn(async (): Promise<TournamentActionResult> => ({ success: true })),
   },
 } satisfies Meta<typeof FixturePanel>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Fixture cargado: un partido jugado, uno programado y uno sin agendar. */
+/** Vista por defecto: la Planilla, con el partido sin agendar en su riel. */
 export const ConFixture: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Fecha 1')).toBeVisible()
-    await expect(canvas.getByText('Fecha 2')).toBeVisible()
-    // El resultado del que se jugó, y el guion del que no.
-    await expect(canvas.getByText('3 - 1')).toBeVisible()
-    await expect(canvas.getAllByText('Sin agendar').length).toBeGreaterThan(0)
+    await expect(canvas.getByRole('button', { name: /planilla/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(canvas.getByText(/^Sin agendar/)).toBeVisible()
     await expect(canvas.getByText(/1 sin agendar/)).toBeVisible()
+  },
+}
+
+/** El toggle cambia a la vista de lectura, agrupada por fecha. */
+export const CambiaAListado: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: /listado/i }))
+    await expect(await canvas.findByText('Fecha 1')).toBeVisible()
+    await expect(canvas.getByText('Fecha 2')).toBeVisible()
+    // El resultado del que se jugó.
+    await expect(canvas.getByText('3 - 1')).toBeVisible()
   },
 }
 
 /** Sin fixture: se ofrece generarlo. La liga pregunta por las vueltas. */
 export const SinFixture: Story = {
-  args: { matches: [], stages: [] },
+  args: { matches: [], stages: [], slots: [], courts: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Todavía no hay fixture')).toBeVisible()
@@ -54,7 +77,7 @@ export const SinFixture: Story = {
 
 /** Eliminación directa: sin vueltas, pero con la opción del tercer puesto. */
 export const SinFixtureEliminacion: Story = {
-  args: { matches: [], stages: [], format: 'knockout' },
+  args: { matches: [], stages: [], slots: [], courts: [], format: 'knockout' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByLabelText(/vueltas/i)).toBeNull()
@@ -64,7 +87,7 @@ export const SinFixtureEliminacion: Story = {
 
 /** Grupos + playoffs: pide zonas y cuántos clasifican. */
 export const SinFixtureGrupos: Story = {
-  args: { matches: [], stages: [], format: 'groups_playoff' },
+  args: { matches: [], stages: [], slots: [], courts: [], format: 'groups_playoff' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByLabelText(/^zonas$/i)).toBeVisible()
@@ -80,6 +103,8 @@ export const GeneradoConPartidosSinAgendar: Story = {
   args: {
     matches: [],
     stages: [],
+    slots: [],
+    courts: [],
     generateAction: fn(
       async (): Promise<GenerateFixtureActionResult> => ({
         success: true,
@@ -104,6 +129,8 @@ export const ErrorYaTieneFixture: Story = {
   args: {
     matches: [],
     stages: [],
+    slots: [],
+    courts: [],
     generateAction: fn(
       async (): Promise<GenerateFixtureActionResult> => ({
         success: false,

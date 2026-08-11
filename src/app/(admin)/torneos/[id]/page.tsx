@@ -17,11 +17,13 @@ import type { TournamentTeamPlayerRow } from '@/modules/tournaments/tournament.t
 import {
   addTeamAction,
   addTeamPlayerAction,
+  deleteTournamentAction,
   releaseSlotsAction,
   removeTeamAction,
   removeTeamPlayerAction,
   reserveSlotsAction,
   searchPlayersForCaptainAction,
+  updateTeamAction,
   updateTournamentAction,
 } from '../actions'
 import {
@@ -31,6 +33,7 @@ import {
   formatDateRange,
   statusBadgeClass,
 } from '../torneos-lib'
+import { BorrarTorneo } from './BorrarTorneo'
 import { PortalPanel } from './PortalPanel'
 import { SlotsPanel } from './SlotsPanel'
 import { TeamsPanel } from './TeamsPanel'
@@ -119,6 +122,7 @@ export default async function TorneoDetailPage(props: {
         rosters={rosters}
         addAction={addTeamAction}
         removeAction={removeTeamAction}
+        updateAction={updateTeamAction}
         searchCaptainAction={searchPlayersForCaptainAction}
         addPlayerAction={addTeamPlayerAction}
         removePlayerAction={removeTeamPlayerAction}
@@ -143,6 +147,21 @@ export default async function TorneoDetailPage(props: {
         setVisibilityAction={updateTournamentAction}
         openRegistrationAction={updateTournamentAction}
       />
+
+      {/* Borrar solo aplica en borrador: después el torneo se cancela, no se
+          borra (`deleteTournament`, tournament.service.ts). Fuera de ese estado
+          no se ofrece nada, para no enseñar un camino que no existe. */}
+      {role === 'admin' && tournament.status === 'draft' && (
+        <div className="pt-2">
+          <BorrarTorneo
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            teamCount={teams.length}
+            slotCount={slots.length}
+            deleteAction={deleteTournamentAction}
+          />
+        </div>
+      )}
     </div>
   )
 }

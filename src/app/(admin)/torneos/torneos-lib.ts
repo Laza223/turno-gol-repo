@@ -132,15 +132,21 @@ export function roundLabel(
   }
 }
 
+/** Hora de un instante en ART, sin fecha: '20:00'. UTC-3 fijo, como el resto. */
+export function formatArtTime(instant: Date): string {
+  const art = new Date(instant.getTime() - 3 * 3600_000)
+  const hh = String(art.getUTCHours()).padStart(2, '0')
+  const mm = String(art.getUTCMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
 /** Día y hora del partido en ART. Sin librería: UTC-3 fijo, como el resto. */
 export function formatMatchWhen(startsAt: Date | null): string {
   if (!startsAt) return 'Sin agendar'
   const art = new Date(startsAt.getTime() - 3 * 3600_000)
   const d = String(art.getUTCDate()).padStart(2, '0')
   const m = String(art.getUTCMonth() + 1).padStart(2, '0')
-  const hh = String(art.getUTCHours()).padStart(2, '0')
-  const mm = String(art.getUTCMinutes()).padStart(2, '0')
-  return `${d}/${m} · ${hh}:${mm}`
+  return `${d}/${m} · ${formatArtTime(startsAt)}`
 }
 
 /** Marcador '3 - 1', o '—' si todavía no se jugó. */

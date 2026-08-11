@@ -16,7 +16,7 @@ import type {
 import type { SuspensionRow } from '@/modules/tournaments/standings/suspensions'
 import { daysFromNow, hoursFromNow } from './clock'
 import { uid } from './ids'
-import { courtFutbol5 } from './court'
+import { courtFutbol5, courtFutbol7 } from './court'
 import { player } from './player'
 import { tenant } from './tenant'
 
@@ -281,6 +281,101 @@ export const tournamentFixture = (): TournamentMatchView[] => [
     courtName: null,
   }),
 ]
+
+// ─── La Planilla (B16) ──────────────────────────────────────────────
+// Slots y partidos COHERENTES entre sí: los de arriba no lo son (las horas
+// están a 7 días y los partidos a 1), y un tablero armado con esos dos
+// mostraría todo "fuera de las horas del torneo". Rango de ids: 1811-1899
+// bookings, 2411-2499 matches.
+
+/** El día del tablero de ejemplo. */
+const PLANILLA_DATE = isoDay(7)
+
+/** Instante de una hora de ese día en ART (UTC-3), que es la zona del producto. */
+const planillaAt = (hour: number): Date =>
+  new Date(`${PLANILLA_DATE}T${String(hour).padStart(2, '0')}:00:00-03:00`)
+
+/** Dos canchas tomadas de 20 a 23: seis horas del torneo en un solo día. */
+export const planillaSlots = (): TournamentSlotRow[] =>
+  [20, 21, 22].flatMap((hour, i) =>
+    [courtFutbol5(), courtFutbol7()].map((court, j) =>
+      tournamentSlot({
+        bookingId: uid(1811 + i * 2 + j),
+        courtId: court.id,
+        date: PLANILLA_DATE,
+        timeStart: `${hour}:00`,
+        timeEnd: `${hour + 1}:00`,
+        startsAt: planillaAt(hour),
+        endsAt: planillaAt(hour + 1),
+      }),
+    ),
+  )
+
+/**
+ * El fixture repartido dentro de `planillaSlots`: tres partidos ubicados y uno
+ * sin agendar. Moviendo el que falta se ven los cuatro estados de un hueco a la
+ * vez — libre, ocupado por otro partido, y bloqueado porque Los Pibes ya juegan
+ * a las 21 en la otra cancha.
+ */
+export const planillaMatches = (): TournamentMatchView[] => [
+  tournamentMatch({
+    id: uid(2411),
+    status: 'played',
+    homeScore: 3,
+    awayScore: 1,
+    homeTeamId: uid(2101),
+    awayTeamId: uid(2105),
+    homeTeamName: 'Los Pibes',
+    awayTeamName: 'Atlético Fondo',
+    courtId: courtFutbol5().id,
+    courtName: courtFutbol5().name,
+    bookingId: uid(1811),
+    startsAt: planillaAt(20),
+    endsAt: planillaAt(21),
+  }),
+  tournamentMatch({
+    id: uid(2412),
+    homeTeamId: uid(2102),
+    awayTeamId: uid(2106),
+    homeTeamName: 'Real Sociedad de Fútbol',
+    awayTeamName: 'FC Cerveza',
+    courtId: courtFutbol7().id,
+    courtName: courtFutbol7().name,
+    bookingId: uid(1812),
+    startsAt: planillaAt(20),
+    endsAt: planillaAt(21),
+  }),
+  tournamentMatch({
+    id: uid(2413),
+    round: 2,
+    homeTeamId: uid(2101),
+    awayTeamId: uid(2106),
+    homeTeamName: 'Los Pibes',
+    awayTeamName: 'FC Cerveza',
+    courtId: courtFutbol5().id,
+    courtName: courtFutbol5().name,
+    bookingId: uid(1813),
+    startsAt: planillaAt(21),
+    endsAt: planillaAt(22),
+  }),
+  tournamentMatch({
+    id: uid(2414),
+    round: 2,
+    homeTeamId: uid(2101),
+    awayTeamId: uid(2102),
+    homeTeamName: 'Los Pibes',
+    awayTeamName: 'Real Sociedad de Fútbol',
+    startsAt: null,
+    endsAt: null,
+    bookingId: null,
+    courtId: null,
+    courtName: null,
+  }),
+]
+
+/** Las dos canchas del tablero, en el shape mínimo que pide la Planilla. */
+export const planillaCourts = (): Array<{ id: string; name: string }> =>
+  [courtFutbol5(), courtFutbol7()].map((c) => ({ id: c.id, name: c.name }))
 
 /** Un sábado de 14 a 18 en una cancha: 4 horas seguidas. */
 export const tournamentSlots = (): TournamentSlotRow[] =>

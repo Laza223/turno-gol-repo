@@ -343,12 +343,10 @@ export async function updateTournamentAction(input: unknown): Promise<Tournament
 }
 
 /**
- * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ * Borrar un torneo entero. UI: `[id]/BorrarTorneo.tsx`, al pie de la ficha.
  *
- * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
- * la lógica existe, está guardada y validada, pero no hay forma de
- * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
- * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ * Solo se ofrece en `draft` y sin horas tomadas, que son las dos condiciones
+ * que `deleteTournament` exige; un torneo que arrancó se cancela, no se borra.
  */
 export async function deleteTournamentAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = tournamentIdSchema.safeParse(input)
@@ -448,12 +446,14 @@ export async function searchPlayersForCaptainAction(
 }
 
 /**
- * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ * Editar un equipo. Dos UIs, porque son dos momentos distintos:
+ *  - estado y datos (nombre, capitán, arancel, notas) en `[id]/TeamsPanel.tsx`;
+ *  - el número de siembra del sorteo de desempate en
+ *    `[id]/posiciones/CorteZonasCard.tsx`, que es lo que destraba `seedPlayoffs`
+ *    cuando dos equipos quedan empatados justo en el puesto de corte.
  *
- * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
- * la lógica existe, está guardada y validada, pero no hay forma de
- * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
- * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ * Marcar `status: 'withdrawn'` es además el camino que los propios mensajes de
+ * error indican cuando un equipo no se puede borrar (`mapTournamentError`).
  */
 export async function updateTeamAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = updateTeamSchema.safeParse(input)
@@ -681,12 +681,13 @@ export async function clearFixtureAction(input: unknown): Promise<TournamentActi
 }
 
 /**
- * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ * Mover un partido a otra hora o cancha. UI: la Planilla
+ * (`[id]/fixture/PlanillaBoard.tsx`).
  *
- * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
- * la lógica existe, está guardada y validada, pero no hay forma de
- * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
- * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ * El `startsAt` no sale de un selector libre sino de un hueco del tablero, que
+ * se calcula con la misma función que usa el generador
+ * (`fixture/placement.ts`): así lo que se ofrece es siempre una hora que el
+ * torneo posee, que es lo primero que valida `rescheduleMatch`.
  */
 export async function rescheduleMatchAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = rescheduleMatchSchema.safeParse(input)
@@ -926,14 +927,13 @@ export async function deleteMatchEventAction(input: unknown): Promise<Tournament
   return { success: true }
 }
 
-/** Cerrar las zonas y sembrar el cuadro. Configuración: solo admin. */
 /**
- * @public SIN UI — pendiente de decisión de producto (B5, 2026-08-09).
+ * Cerrar las zonas y sembrar el cuadro. Configuración: solo admin.
  *
- * knip la marca sin usar porque efectivamente NINGÚN componente la importa:
- * la lógica existe, está guardada y validada, pero no hay forma de
- * dispararla desde la aplicación. El `@public` la sostiene mientras el dueño
- * decide entre cablearle UI o borrarla; NO es una exención permanente.
+ * UI: `[id]/posiciones/CorteZonasCard.tsx`. La tarjeta anticipa los tres
+ * bloqueos que este camino puede tirar (partidos de zona pendientes, empate
+ * irresoluble en el corte, rol insuficiente) en vez de dejar que el usuario los
+ * descubra al apretar.
  */
 export async function seedPlayoffsAction(input: unknown): Promise<TournamentActionResult> {
   const parsed = seedPlayoffsSchema.safeParse(input)

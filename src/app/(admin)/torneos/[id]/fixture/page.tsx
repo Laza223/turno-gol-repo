@@ -12,8 +12,10 @@ import {
   listFixture,
   listStages,
 } from '@/modules/tournaments/tournament-fixture.service'
+import { listTournamentSlots } from '@/modules/tournaments/tournament-slots.service'
+import { listCourts } from '@/modules/courts/court.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
-import { clearFixtureAction, generateFixtureAction } from '../../actions'
+import { clearFixtureAction, generateFixtureAction, rescheduleMatchAction } from '../../actions'
 import { FORMAT_SHORT, formatDateRange } from '../../torneos-lib'
 import { TorneoTabs } from '../TorneoTabs'
 import { FixturePanel } from './FixturePanel'
@@ -35,18 +37,22 @@ export default async function TorneoFixturePage(props: {
   try {
     data = await withTenantContext(tenant.id, async (tx) => {
       const tournament = await getTournament(tenant.id, id, tx)
-      const [stages, matches] = await Promise.all([
+      // `slots` y `courts` son para la Planilla: los destinos legales de un
+      // partido son exactamente las horas que el torneo posee.
+      const [stages, matches, slots, courts] = await Promise.all([
         listStages(tenant.id, id, tx),
         listFixture(tenant.id, id, tx),
+        listTournamentSlots(tenant.id, id, tx),
+        listCourts(tenant.id, tx),
       ])
-      return { tournament, stages, matches }
+      return { tournament, stages, matches, slots, courts }
     })
   } catch (err) {
     if (err instanceof TournamentNotFoundError) notFound()
     throw err
   }
 
-  const { tournament, stages, matches } = data
+  const { tournament, stages, matches, slots, courts } = data
 
   return (
     <div className="p-6 space-y-6">
@@ -71,8 +77,13 @@ export default async function TorneoFixturePage(props: {
         format={tournament.format}
         stages={stages}
         matches={matches}
+        slots={slots}
+        courts={courts.map((c) => ({ id: c.id, name: c.name }))}
+        matchDurationMinutes={tournament.matchDurationMinutes}
+        restBetweenMatchesMinutes={tournament.restBetweenMatchesMinutes}
         generateAction={generateFixtureAction}
         clearAction={clearFixtureAction}
+        rescheduleAction={rescheduleMatchAction}
       />
     </div>
   )

@@ -1743,13 +1743,12 @@ config. Se usa para: superficie vendorizada de shadcn/ui (la reintroduce cualqui
 helpers de `tests/e2e/mobile/_helpers.ts` reservados para una tarea abierta de Lazar, y
 `adjustStockAction` (que ya tenía la decisión escrita: arqueo físico, v1.5).
 
-### REQUIERE INPUT — 4 features de Torneos sin forma de dispararse
+### 4 features de Torneos sin forma de dispararse → CERRADO en B16
 
-`deleteTournamentAction`, `updateTeamAction`, `rescheduleMatchAction` y `seedPlayoffsAction` están
-implementadas, validadas y con guards, y **ningún componente las importa**: borrar un torneo, editar
-un equipo, reprogramar un partido y sembrar el cuadro de playoffs no se pueden hacer desde la
-aplicación. Marcadas `@public` con la nota de que es exención temporal, a la espera de la decisión
-del dueño entre cablearles UI o borrarlas.
+`deleteTournamentAction`, `updateTeamAction`, `rescheduleMatchAction` y `seedPlayoffsAction` estaban
+implementadas, validadas y con guards, y **ningún componente las importaba**. Quedaron marcadas
+`@public` como exención temporal hasta la decisión del dueño. Decidió cablearles UI: ver **B16**,
+que borra las 4 exenciones.
 
 ---
 
@@ -2039,3 +2038,155 @@ limpio. `pnpm test` **3093/3093**. `pnpm test:storybook` **259 archivos,
 Ojo: unit y storybook **no se pueden correr en paralelo** — `e2e-endpoint-guard`
 sale rojo por contención y pasa aislado. Mismo cuidado que con las dos suites de
 DB en B6.
+
+---
+
+## B16 — El producto pedía cuatro cosas que no dejaba hacer (2026-08-11)
+
+Las 4 Server Actions huérfanas que B5 dejó marcadas `@public` no eran higiene de knip. Eran cuatro
+promesas escritas que la aplicación no podía cumplir, y las cinco están citadas textuales:
+
+| Dónde lo dice el producto | Qué hacía falta |
+|---|---|
+| `FixturePanel.tsx` — *"Después podés mover cualquier partido a mano."* | `rescheduleMatchAction` |
+| `FixturePanel.tsx` — *"…quedaron sin día ni hora … movelos a mano."* | `rescheduleMatchAction` |
+| `mapTournamentError` ×2 — *'marcalo como "se bajó"'* | `updateTeamAction` (`status`) |
+| `PosicionesTable.tsx` + `StandingsTieUnresolvedError` — *"cargales el número de siembra"* | `updateTeamAction` (`seed`) |
+| `tournament-standings.service.ts:319` — `/** Botón "Cerrar zonas y sortear cruces". */` | `seedPlayoffsAction` |
+
+El nombre del botón estaba escrito en el código desde julio. El botón no existía.
+
+### La Planilla — por qué un tablero y no un selector de fecha
+
+`rescheduleMatch` valida tres cosas que desde la UI son invisibles: que el partido entre ENTERO en
+una hora que el torneo posee **en esa cancha**, que ningún equipo quede con dos partidos pisados, y
+que la cancha no termine con dos encima. Un input de fecha y hora libre habría dado
+`MatchOutsideOwnedTimeError` casi siempre, porque el encargado no tiene forma de saber qué horas
+posee el torneo.
+
+La Planilla dibuja esas horas (día × cancha) con los partidos adentro, un riel de "Sin agendar"
+arriba, y **click-to-place**: tocás "Mover" y los huecos legales se marcan como destino mientras los
+ilegales quedan apagados con el motivo en una línea ("Los Pibes ya tiene otro partido a esa hora.",
+mismo texto que el error del servidor). Sin drag and drop: el teclado y el teléfono del mostrador
+salen gratis, y lo que importa acá es **ver la legalidad antes de mover**, que arrastrar no da.
+
+**Las celdas salen de la misma función que usa el generador.** `placementsIn` (privada en
+`fixture/scheduler.ts`) se expuso como `openingsIn(slot, opts)`, y `fixture/placement.ts` la consume
+para clasificar cada hueco en `free` / `occupied` / `team_busy` / `current`. Si el paso del
+scheduler cambia, cambia en los dos lados a la vez: el tablero no puede ofrecer un hueco que el
+generador no usaría. Es afordancia, no control de acceso — el service revalida igual y su rechazo se
+muestra inline sin cerrar nada.
+
+Dos casos que el tablero no puede esconder, y que tienen su propio riel:
+- **Sin agendar** (`startsAt = null`): los que no entraron al generar.
+- **Fuera de las horas del torneo**: tienen día y hora pero el torneo ya liberó esa hora. Sin este
+  riel, el partido desaparecía de la pantalla sin aviso.
+
+La Planilla pasa a ser la vista por defecto del fixture; el listado agrupado queda detrás de un
+toggle. **Gotcha del toggle**: `usePersistedFlag` devuelve `false` cuando no hay nada en
+localStorage, así que el flag tiene que nombrar la elección NO por defecto
+(`tg-torneos-vista-listado`, `serverValue: false`) o la Planilla no sería el default. Mismo patrón
+que `usePersistedDensity`.
+
+### La ficha del equipo
+
+El estado (`registered` / `confirmed` / `withdrawn` / `disqualified`) va arriba y siempre visible
+porque es lo urgente: un equipo que no viene se marca el sábado a la mañana con gente esperando.
+Los datos (nombre, capitán, teléfono, arancel, notas) van detrás de "Editar datos".
+
+Clases de confirmación (`gramatica-interaccion.md`): `registered ↔ confirmed` es **Clase A**
+(se aplica ya, toast con Deshacer). Bajar o descalificar es **Clase B**, con las consecuencias
+verificadas contra el service: sale del cupo (`addTeam` solo cuenta registered/confirmed), sale de
+los clasificados (`qualifiedSeeds` los saltea) y **los partidos ya jugados quedan como están** —
+punto abierto declarado en el design doc, que ahora se dice en vez de descubrirse.
+
+### El corte
+
+`CorteZonasCard` no es un botón: es el estado del corte. Anticipa los tres bloqueos que
+`seedPlayoffs` puede tirar, con el mismo criterio que el service — cuántos partidos de zona faltan,
+el empate irresoluble en la línea de corte, y el rol (candado y tooltip, no desaparición). Y muestra
+**cómo quedarían los cruces** antes de comprometerlos, con `qualifiedSeeds` + `qualifierLabel`, que
+ya estaban escritos y testeados.
+
+Se calcula en el servidor (`buildCorte` en `posiciones/page.tsx`) por dos motivos: el motor no entra
+al bundle, y `qualifiedSeeds` **tira** `StandingsTieUnresolvedError` — atraparlo ahí es lo que
+permite ofrecer el sorteo de desempate en vez de un cuadro a medias. El error trae nombres y no ids,
+así que los equipos empatados se reconstruyen contra la tabla, que es de donde salieron esos nombres.
+
+El sorteo de desempate cierra el círculo: escribe `tournament_teams.seed`, que es lo que lee el
+criterio `drawn_lots`. El sistema no sortea — **registra** el sorteo que se hizo con una moneda, que
+es como se resuelve en la cancha.
+
+### Borrar el torneo
+
+`deleteTournament` solo borra en `draft` y con cero horas, cero partidos y cero cobros. Por eso no
+hay "zona de peligro" fija que estaría muerta el 95% del tiempo: la afordancia aparece solo cuando
+borrar es posible, y si hay horas tomadas se muestra **bloqueada con el motivo**. Clase C
+(`confirmationPhrase` = el nombre del torneo). Los bloqueos que la pantalla no conoce (fixture,
+cobros en Caja) los reporta el servidor y el diálogo los muestra sin cerrarse.
+
+### Fuera de alcance, decidido
+
+**Editar `groupLabel` a mano.** Las zonas las asigna `generateFixture` en serpentina y las persiste;
+un override manual desincronizaría el fixture ya generado. El campo sigue en el schema de la acción,
+simplemente no se ofrece.
+
+### 🔴 Lo que encontró la revisión adversarial (con el gate 100% verde)
+
+**`buildCorte` escondía a los dos equipos con BYE.** La primera versión filtraba
+los cruces por "la primera ronda del cuadro", con un comentario que decía *"el
+resto sale de los ganadores, no de las zonas"*. Es falso en cuanto hay BYE, y el
+propio repo ya lo documentaba en `tournament-fixture.service.ts:160-162`.
+
+Un torneo de **3 zonas × 2 clasificados** son 6 clasificados en un cuadro de 8:
+los seeds 1 y 2 entran directo a semifinales, o sea a la **ronda 2**. Con el
+filtro viejo, los dos equipos que mejor terminaron las zonas no aparecían nunca
+en "Así quedarían los cruces" ni después en "Los cruces". `groupsCount` y
+`teamsAdvancePerGroup` no exigen potencia de 2 (rango 1-16 cada uno), así que no
+es una configuración exótica. La siembra real los sembraba bien: era un agujero
+de visualización en la pantalla nueva del PR.
+
+**Por qué no lo agarró nada:** `buildCorte` vivía como helper suelto adentro de
+`posiciones/page.tsx`, sin export y sin forma de testearlo.
+`torneos-corte-zonas.test.tsx` prueba la tarjeta con un `crosses` armado a mano
+y nunca ejercita el cálculo.
+
+El fix no es solo el filtro: `buildCorte` salió a `posiciones/corte-lib.ts`
+(puro, mismo criterio que `torneos-lib.ts`) con `torneos-corte-lib.test.ts`
+encima, 19 casos. **Control negativo corrido**: con el filtro viejo puesto de
+vuelta, 4 de esos 19 se ponen rojos. Además:
+
+- `alreadySeeded` pasó a mirar `homeTeamId || awayTeamId` en CUALQUIER ronda:
+  en un cruce con BYE el sembrado puede ser el visitante.
+- Un lado que espera al ganador de otra llave dice **"Ganador de la llave
+  anterior"** en vez de "A definir": el equipo con bye no está sin definir,
+  está esperando.
+- Cuando el cuadro tiene más de una ronda sembrada, cada cruce muestra su ronda
+  (`roundLabel`, ya escrito), o "1º Zona A" en semis se lee como si fuera de la
+  misma fecha que los cuartos.
+
+Los otros dos hallazgos quedaron documentados en el código, no arreglados, con
+el motivo escrito: la regla 3 de `rescheduleMatch` mira la cancha sin filtrar
+por torneo y la Planilla solo ve los partidos del suyo (el servidor rechaza con
+`CourtSlotTakenError`, cerrarlo del lado del cliente costaría una query
+cross-torneo por render); y el sorteo de desempate escribe un `seed` por equipo
+sin transacción conjunta (idempotente al reintentar, y con seeds a medias el
+corte sigue bloqueado).
+
+### Lo que encontraron los tests
+
+- **La cuenta de destinos estaba mal en una story** (esperaba 3, eran 2): a las 21 en la otra cancha
+  el hueco lo bloquea Los Pibes, que ya juegan a esa hora. La afordancia estaba bien; el comentario
+  no.
+- **`ResponsiveList` deja las DOS vistas en el DOM** (tabla `sm+` y cards mobile, una escondida por
+  CSS): todo conteo tiene que scopearse a la tabla o sale duplicado. Costó 6 falsos rojos.
+- **Un `<span class="sr-only">` dentro de un botón duplica su texto en el DOM** y rompe
+  `getByText`. Pasó a `aria-label`, que da el mismo nombre accesible sin ensuciar.
+
+### Evidencia
+
+`pnpm typecheck` limpio. `pnpm lint` 0. `pnpm test` **3155/3155** (313 archivos). `pnpm knip` **sin
+hallazgos**: los 4 símbolos salieron del reporte y **no queda ningún `@public` en Torneos**.
+`tournament-placement.test.ts` cubre los 6 casos del motor puro, incluido el relámpago de 25' que
+entra dos veces en una hora de 60 y el partido corrido a mano que pisa dos huecos;
+`torneos-corte-lib.test.ts` cubre el cuadro con BYE, con control negativo corrido.

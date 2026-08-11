@@ -18,6 +18,20 @@ import type { TournamentMatchView } from '@/modules/tournaments/tournament.types
 
 const generateAction = vi.fn(async () => ({ success: true as const, matches: 4, unscheduled: 0 }))
 const clearAction = vi.fn(async () => ({ success: true as const }))
+const rescheduleAction = vi.fn(async () => ({ success: true as const }))
+
+/**
+ * Props que el panel necesita para la Planilla (B16) y que estos casos no
+ * ejercitan: sin horas tomadas el tablero muestra su estado vacío, que es
+ * justo lo que corresponde acá — lo que se prueba es generar y borrar.
+ */
+const planillaProps = {
+  slots: [],
+  courts: [],
+  matchDurationMinutes: 60,
+  restBetweenMatchesMinutes: 0,
+  rescheduleAction,
+}
 
 function match(overrides: Partial<TournamentMatchView> = {}): TournamentMatchView {
   return {
@@ -67,6 +81,7 @@ describe('FixturePanel — sin fixture: EmptyState (ya existía, verificamos que
         format="league"
         stages={[]}
         matches={[]}
+        {...planillaProps}
         generateAction={generateAction}
         clearAction={clearAction}
       />,
@@ -83,6 +98,7 @@ describe('FixturePanel — borrar fixture (Clase B: ConfirmDialog, avisa resulta
         format="league"
         stages={[]}
         matches={[match({ id: 'm1', status: 'played', homeScore: 2, awayScore: 1 }), match({ id: 'm2' })]}
+        {...planillaProps}
         generateAction={generateAction}
         clearAction={clearAction}
       />,
@@ -109,6 +125,7 @@ describe('FixturePanel — borrar fixture (Clase B: ConfirmDialog, avisa resulta
         format="league"
         stages={[]}
         matches={[match()]}
+        {...planillaProps}
         generateAction={generateAction}
         clearAction={clearAction}
       />,

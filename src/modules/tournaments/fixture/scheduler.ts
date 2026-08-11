@@ -68,7 +68,7 @@ export type ScheduleResult = {
 
 const MS_PER_MIN = 60_000
 
-type Placement = { start: Date; end: Date }
+export type Placement = { start: Date; end: Date }
 
 /** Posiciones donde arrancaría un partido dentro de una hora poseída. */
 function placementsIn(slot: OwnedSlot, durationMs: number, stepMs: number): Placement[] {
@@ -179,6 +179,22 @@ export function scheduleMatches(
   }
 
   return { scheduled, unscheduled }
+}
+
+/**
+ * Los arranques posibles de un partido DENTRO de una hora poseída, con la
+ * duración y el recambio del torneo ya aplicados.
+ *
+ * Es exactamente el mismo cálculo que usa `scheduleMatches` para repartir
+ * (delega en `placementsIn`). Exponerlo es lo que le permite a la Planilla del
+ * panel ofrecer los mismos huecos que el generador usaría, sin una segunda
+ * implementación que pueda derivar: si el paso cambia, cambia en los dos lados
+ * a la vez.
+ */
+export function openingsIn(slot: OwnedSlot, opts: ScheduleOptions): Placement[] {
+  const durationMs = opts.matchDurationMinutes * MS_PER_MIN
+  const stepMs = durationMs + (opts.restBetweenMatchesMinutes ?? 0) * MS_PER_MIN
+  return placementsIn(slot, durationMs, stepMs)
 }
 
 /**

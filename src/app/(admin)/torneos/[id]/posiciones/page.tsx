@@ -8,7 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { getTournament } from '@/modules/tournaments/tournament.service'
-import { listStages } from '@/modules/tournaments/tournament-fixture.service'
+import { listFixture, listStages } from '@/modules/tournaments/tournament-fixture.service'
 import { listTeams } from '@/modules/tournaments/tournament-team.service'
 import {
   getDisciplineBoard,
@@ -16,8 +16,12 @@ import {
   getTopScorers,
 } from '@/modules/tournaments/tournament-standings.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
+import { getStaffRole } from '@/modules/staff/staff.service'
+import { seedPlayoffsAction, updateTeamAction } from '../../actions'
 import { FORMAT_SHORT, formatDateRange } from '../../torneos-lib'
 import { TorneoTabs } from '../TorneoTabs'
+import { buildCorte } from './corte-lib'
+import { CorteZonasCard } from './CorteZonasCard'
 import { PosicionesTable } from './PosicionesTable'
 import { GoleadoresTable } from './GoleadoresTable'
 import { SuspendidosPanel, type SuspendidoView } from './SuspendidosPanel'
@@ -35,25 +39,36 @@ export default async function TorneoPosicionesPage(props: {
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
 
+  let role
   let data
   try {
-    data = await withTenantContext(tenant.id, async (tx) => {
-      const tournament = await getTournament(tenant.id, id, tx)
-      const [groups, scorers, discipline, stages, teams] = await Promise.all([
-        getStandings(tenant.id, id, tx),
-        getTopScorers(tenant.id, id, tx),
-        getDisciplineBoard(tenant.id, id, tx),
-        listStages(tenant.id, id, tx),
-        listTeams(tenant.id, id, tx),
-      ])
-      return { tournament, groups, scorers, discipline, stages, teams }
-    })
+    // El corte es configuración (solo el dueño lo puede cerrar), pero el estado
+    // lo ve todo el staff: por eso el rol se lee y no se esconde la tarjeta.
+    // Va en paralelo con los datos del torneo — `getStaffRole` usa el pool
+    // worker, no el contexto de tenant, así que no depende de nada de acá.
+    ;[role, data] = await Promise.all([
+      getStaffRole(tenant.id, user.staffUserId),
+      withTenantContext(tenant.id, async (tx) => {
+        // Ninguna de las siete alimenta a las otras: todas toman `id` directo.
+        const [tournament, groups, scorers, discipline, stages, teams, matches] =
+          await Promise.all([
+            getTournament(tenant.id, id, tx),
+            getStandings(tenant.id, id, tx),
+            getTopScorers(tenant.id, id, tx),
+            getDisciplineBoard(tenant.id, id, tx),
+            listStages(tenant.id, id, tx),
+            listTeams(tenant.id, id, tx),
+            listFixture(tenant.id, id, tx),
+          ])
+        return { tournament, groups, scorers, discipline, stages, teams, matches }
+      }),
+    ])
   } catch (err) {
     if (err instanceof TournamentNotFoundError) notFound()
     throw err
   }
 
-  const { tournament, groups, scorers, discipline, stages, teams } = data
+  const { tournament, groups, scorers, discipline, stages, teams, matches } = data
 
   // Los nombres de jugador y equipo no salen del motor (es puro y no conoce la
   // DB): se resuelven acá contra el plantel y los goleadores ya cargados.
@@ -66,6 +81,7 @@ export default async function TorneoPosicionesPage(props: {
   }))
 
   const groupStage = stages.find((s) => s.kind === 'group_stage')
+  const corte = buildCorte({ tournament, stages, groups, teams, matches })
 
   return (
     <div className="space-y-6 p-6">
@@ -87,6 +103,19 @@ export default async function TorneoPosicionesPage(props: {
         tournamentId={tournament.id}
         active={`/torneos/${tournament.id}/posiciones`}
       />
+
+      {corte && (
+        <CorteZonasCard
+          tournamentId={tournament.id}
+          pendingGroupMatches={corte.pendingGroupMatches}
+          crosses={corte.crosses}
+          tie={corte.tie}
+          alreadySeeded={corte.alreadySeeded}
+          canSeed={role === 'admin'}
+          seedAction={seedPlayoffsAction}
+          updateTeamAction={updateTeamAction}
+        />
+      )}
 
       <PosicionesTable
         groups={groups}

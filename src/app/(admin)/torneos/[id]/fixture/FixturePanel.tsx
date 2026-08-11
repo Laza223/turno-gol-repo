@@ -1,27 +1,22 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, useTransition } from 'react'
-import { AlertTriangle, CalendarPlus, Trash2, Trophy } from 'lucide-react'
+import { useState, useTransition } from 'react'
+import { AlertTriangle, CalendarPlus, LayoutGrid, List, Trash2, Trophy } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ResponsiveList } from '@/components/ui/responsive-list'
 import { toast } from '@/hooks/use-toast'
+import { usePersistedFlag } from '@/hooks/use-persisted-flag'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import type {
   TournamentFormat,
   TournamentMatchView,
+  TournamentSlotRow,
   TournamentStageRow,
 } from '@/modules/tournaments/tournament.types'
 import type { GenerateFixtureActionResult, TournamentActionResult } from '../../actions'
-import {
-  MATCH_STATUS_LABELS,
-  formatMatchWhen,
-  formatScore,
-  matchStatusBadgeClass,
-  roundLabel,
-} from '../../torneos-lib'
+import { FixtureListado } from './FixtureListado'
+import { PlanillaBoard, type RescheduleMatchAction } from './PlanillaBoard'
 
 export type GenerateFixtureAction = (
   input: unknown,
@@ -43,20 +38,40 @@ const ADVANCE_OPTIONS: ComboboxOption[] = [1, 2, 4].map((n) => ({
   label: n === 1 ? 'Clasifica 1 por zona' : `Clasifican ${n} por zona`,
 }))
 
+/**
+ * La vista se recuerda entre visitas. El flag guarda la elección NO por
+ * defecto — "este admin prefiere el listado" — igual que `usePersistedDensity`:
+ * sin nada en localStorage el hook devuelve `false`, así que el default tiene
+ * que ser el lado falso o la Planilla no sería la vista por defecto. Con
+ * `serverValue: false` el HTML del servidor coincide además con el primer
+ * render del cliente para quien nunca eligió, que es casi todo el mundo.
+ */
+const VISTA_KEY = 'tg-torneos-vista-listado'
+
 export function FixturePanel({
   tournamentId,
   format,
   stages,
   matches,
+  slots,
+  courts,
+  matchDurationMinutes,
+  restBetweenMatchesMinutes,
   generateAction,
   clearAction,
+  rescheduleAction,
 }: {
   tournamentId: string
   format: TournamentFormat
   stages: TournamentStageRow[]
   matches: TournamentMatchView[]
+  slots: TournamentSlotRow[]
+  courts: Array<{ id: string; name: string }>
+  matchDurationMinutes: number
+  restBetweenMatchesMinutes: number
   generateAction: GenerateFixtureAction
   clearAction: ClearFixtureAction
+  rescheduleAction: RescheduleMatchAction
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -69,41 +84,15 @@ export function FixturePanel({
   const [thirdPlace, setThirdPlace] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
 
+  const [verListado, setVerListado] = usePersistedFlag(VISTA_KEY, {
+    on: 'listado',
+    off: 'planilla',
+    serverValue: false,
+  })
+  const verPlanilla = !verListado
+
   const matchesWithResult = matches.filter((m) => m.status !== 'scheduled').length
-
-  const stageById = useMemo(
-    () => new Map(stages.map((s) => [s.id, s])),
-    [stages],
-  )
-
-  /** Rondas máximas por fase: hace falta para nombrar "Semifinal" y compañía. */
-  const totalRoundsByStage = useMemo(() => {
-    const out = new Map<string, number>()
-    for (const m of matches) {
-      out.set(m.stageId, Math.max(out.get(m.stageId) ?? 0, m.round))
-    }
-    return out
-  }, [matches])
-
-  /** Partidos agrupados por fase y ronda, en el orden en que se juegan. */
-  const grouped = useMemo(() => {
-    const out: Array<{ key: string; title: string; rows: TournamentMatchView[] }> = []
-    for (const m of matches) {
-      const stage = stageById.get(m.stageId)
-      const kind = stage?.kind ?? 'league'
-      const label = roundLabel(m.round, kind, totalRoundsByStage.get(m.stageId) ?? m.round)
-      const title = m.groupLabel
-        ? `${stage?.name ?? ''} · Zona ${m.groupLabel} · ${label}`
-        : stages.length > 1
-          ? `${stage?.name ?? ''} · ${label}`
-          : label
-      const key = `${m.stageId}:${m.groupLabel ?? ''}:${m.round}`
-      const bucket = out.find((g) => g.key === key)
-      if (bucket) bucket.rows.push(m)
-      else out.push({ key, title, rows: [m] })
-    }
-    return out
-  }, [matches, stageById, stages.length, totalRoundsByStage])
+  const sinAgendar = matches.filter((m) => m.startsAt === null).length
 
   function handleGenerate() {
     setError(null)
@@ -126,7 +115,7 @@ export function FixturePanel({
       }
       setNotice(
         result.unscheduled > 0
-          ? `Se generaron ${result.matches} partidos, pero ${result.unscheduled} quedaron sin día ni hora: no alcanzan las horas tomadas. Tomá más horarios y movelos a mano.`
+          ? `Se generaron ${result.matches} partidos, pero ${result.unscheduled} quedaron sin día ni hora: no alcanzan las horas tomadas. Tomá más horarios, o ubicalos desde la Planilla en los lugares que queden libres.`
           : `Se generaron ${result.matches} partidos y todos entraron en los horarios del torneo.`,
       )
       router.refresh()
@@ -181,7 +170,7 @@ export function FixturePanel({
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Arma el calendario con los equipos anotados y lo reparte en las horas que el
-              torneo ya tiene tomadas. Después podés mover cualquier partido a mano.
+              torneo ya tiene tomadas. Después podés mover cualquier partido desde la Planilla.
             </p>
           </div>
 
@@ -268,18 +257,51 @@ export function FixturePanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground tabular-nums">
           {matches.length} {matches.length === 1 ? 'partido' : 'partidos'}
-          {matches.filter((m) => m.startsAt === null).length > 0 &&
-            ` · ${matches.filter((m) => m.startsAt === null).length} sin agendar`}
+          {sinAgendar > 0 && ` · ${sinAgendar} sin agendar`}
         </p>
-        <button
-          type="button"
-          onClick={() => setClearConfirmOpen(true)}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          Borrar fixture
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            role="group"
+            aria-label="Vista del fixture"
+            className="inline-flex rounded-lg bg-muted p-1"
+          >
+            <button
+              type="button"
+              onClick={() => setVerListado(false)}
+              aria-pressed={verPlanilla}
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors md:min-h-8 ${
+                verPlanilla
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
+              Planilla
+            </button>
+            <button
+              type="button"
+              onClick={() => setVerListado(true)}
+              aria-pressed={verListado}
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors md:min-h-8 ${
+                verPlanilla
+                  ? 'text-muted-foreground hover:text-foreground'
+                  : 'bg-card text-foreground shadow-xs'
+              }`}
+            >
+              <List className="h-3.5 w-3.5" aria-hidden="true" />
+              Listado
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setClearConfirmOpen(true)}
+            disabled={pending}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 md:min-h-9"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Borrar fixture
+          </button>
+        </div>
       </div>
 
       {feedback}
@@ -301,98 +323,19 @@ export function FixturePanel({
         onConfirm={confirmClear}
       />
 
-      {grouped.map((group) => (
-        <ResponsiveList
-          key={group.key}
-          header={
-            <div className="border-b border-border px-4 py-3">
-              <h3 className="font-medium text-foreground">{group.title}</h3>
-            </div>
-          }
-          cards={
-            <ul className="divide-y divide-border">
-              {group.rows.map((m) => (
-                <li key={m.id} className="px-4 py-3">
-                  <Link
-                    href={`/torneos/${tournamentId}/partidos/${m.id}`}
-                    className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
-                  >
-                    {m.homeTeamName ?? 'A definir'} vs {m.awayTeamName ?? 'A definir'}
-                  </Link>
-                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                    {formatMatchWhen(m.startsAt)}
-                    {m.courtName ? ` · ${m.courtName}` : ''}
-                    {' · '}
-                    {MATCH_STATUS_LABELS[m.status]}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          }
-          table={
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Local
-                  </th>
-                  <th className="p-2.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Resultado
-                  </th>
-                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Visitante
-                  </th>
-                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Día y hora
-                  </th>
-                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Cancha
-                  </th>
-                  <th className="p-2.5 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Estado
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {group.rows.map((m) => (
-                  <tr key={m.id} className="transition-colors hover:bg-accent/50">
-                    <td className="p-2.5 pl-4 font-medium text-foreground">
-                      {m.homeTeamName ?? (
-                        <span className="text-muted-foreground">A definir</span>
-                      )}
-                    </td>
-                    <td className="p-2.5 text-center tabular-nums text-foreground">
-                      {formatScore(m.homeScore, m.awayScore)}
-                    </td>
-                    <td className="p-2.5 font-medium text-foreground">
-                      {m.awayTeamName ?? (
-                        <span className="text-muted-foreground">A definir</span>
-                      )}
-                    </td>
-                    <td className="p-2.5 tabular-nums text-muted-foreground">
-                      {formatMatchWhen(m.startsAt)}
-                    </td>
-                    <td className="p-2.5 text-muted-foreground">{m.courtName ?? '—'}</td>
-                    <td className="p-2.5 pr-4 text-right">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${matchStatusBadgeClass(m.status)}`}
-                      >
-                        {MATCH_STATUS_LABELS[m.status]}
-                      </span>
-                      <Link
-                        href={`/torneos/${tournamentId}/partidos/${m.id}`}
-                        className="ml-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                      >
-                        Acta
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          }
+      {verPlanilla ? (
+        <PlanillaBoard
+          tournamentId={tournamentId}
+          slots={slots}
+          matches={matches}
+          courts={courts}
+          matchDurationMinutes={matchDurationMinutes}
+          restBetweenMatchesMinutes={restBetweenMatchesMinutes}
+          rescheduleAction={rescheduleAction}
         />
-      ))}
+      ) : (
+        <FixtureListado tournamentId={tournamentId} stages={stages} matches={matches} />
+      )}
     </section>
   )
 }

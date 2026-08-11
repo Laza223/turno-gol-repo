@@ -122,7 +122,7 @@ export function PosicionesTable({
                           ) : null}
                           {row.unresolvedTie ? (
                             <span
-                              title="Ningún criterio de desempate los separa. Cargales el número de siembra."
+                              title="Ningún criterio de desempate los separa. Si están en el puesto de corte, definí el sorteo desde “Cerrar zonas y sortear cruces”."
                               className="inline-flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300"
                             >
                               <AlertTriangle className="h-3 w-3" aria-hidden="true" />

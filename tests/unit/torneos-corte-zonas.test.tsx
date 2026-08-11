@@ -22,14 +22,13 @@ vi.mock('@/hooks/use-toast', () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }))
 
-import {
-  CorteZonasCard,
-  type CrossPreview,
-} from '@/app/(admin)/torneos/[id]/posiciones/CorteZonasCard'
+import { CorteZonasCard } from '@/app/(admin)/torneos/[id]/posiciones/CorteZonasCard'
+import type { CrossPreview } from '@/app/(admin)/torneos/[id]/posiciones/corte-lib'
 
 const CROSSES: CrossPreview[] = [
   {
     id: 'sf-1',
+    round: 'Semifinal',
     homeLabel: '1º Zona A',
     homeTeamName: null,
     awayLabel: '2º Zona B',

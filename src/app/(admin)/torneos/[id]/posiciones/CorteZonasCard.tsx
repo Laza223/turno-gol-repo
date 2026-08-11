@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, Lock, Shuffle } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import type { TournamentActionResult } from '../../actions'
+import type { CorteState, CrossPreview, TiedTeam } from './corte-lib'
 
 /**
  * El corte: cerrar las zonas y sortear los cruces.
@@ -25,28 +26,13 @@ import type { TournamentActionResult } from '../../actions'
 type SeedPlayoffsAction = (input: unknown) => Promise<TournamentActionResult>
 type UpdateTeamSeedAction = (input: unknown) => Promise<TournamentActionResult>
 
-/** Un cruce de la primera ronda del cuadro, con y sin equipos resueltos. */
-export type CrossPreview = {
-  id: string
-  homeLabel: string
-  homeTeamName: string | null
-  awayLabel: string
-  awayTeamName: string | null
-}
-
-export type TiedTeam = {
-  teamId: string
-  teamName: string
-  seed: number | null
-}
-
 type Props = {
   tournamentId: string
   /** Partidos de zona sin cerrar. Con uno solo, sembrar es imposible. */
   pendingGroupMatches: number
   crosses: CrossPreview[]
   /** Empate irresoluble justo en la línea de corte, si lo hay. */
-  tie: { groupLabel: string; teams: TiedTeam[] } | null
+  tie: CorteState['tie']
   /** El cuadro ya tiene equipos: el corte ya se hizo. */
   alreadySeeded: boolean
   /** Sembrar es configuración: solo el dueño. */
@@ -72,6 +58,7 @@ export function CorteZonasCard({
 
   const blocked = pendingGroupMatches > 0 || tie !== null
   const ready = !blocked && !alreadySeeded
+  const showRounds = new Set(crosses.map((c) => c.round)).size > 1
 
   async function confirmSeed(): Promise<{ success: boolean; error?: string }> {
     const result = await seedAction({ tournamentId })
@@ -178,14 +165,24 @@ export function CorteZonasCard({
             {crosses.map((cross) => (
               <li
                 key={cross.id}
-                className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
               >
-                {/* Los dos lados apuntan al "vs" del medio, como un marcador:
-                    alineados hacia afuera quedaban en las puntas de una fila
-                    ancha y había que barrer la pantalla para leer el cruce. */}
-                <CrossSide label={cross.homeLabel} teamName={cross.homeTeamName} align="right" />
-                <span className="shrink-0 text-xs font-medium text-muted-foreground">vs</span>
-                <CrossSide label={cross.awayLabel} teamName={cross.awayTeamName} />
+                {/* La ronda solo cuando el cuadro tiene más de una sembrada, o
+                    sea cuando hay BYE: ahí "1º Zona A" entra recién en semis y
+                    sin decirlo el cruce se lee como si fuera de la misma fecha. */}
+                {showRounds && (
+                  <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {cross.round}
+                  </p>
+                )}
+                <div className="flex items-center gap-3">
+                  {/* Los dos lados apuntan al "vs" del medio, como un marcador:
+                      alineados hacia afuera quedaban en las puntas de una fila
+                      ancha y había que barrer la pantalla para leer el cruce. */}
+                  <CrossSide label={cross.homeLabel} teamName={cross.homeTeamName} align="right" />
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">vs</span>
+                  <CrossSide label={cross.awayLabel} teamName={cross.awayTeamName} />
+                </div>
               </li>
             ))}
           </ul>
@@ -293,6 +290,11 @@ function SorteoDesempateDialog({
           : 'Cargá un número mayor a cero para cada equipo.',
       }
     }
+    // Una escritura por equipo, no una transacción: si la segunda falla, la
+    // primera ya quedó. Se banca porque `updateTeam` es idempotente para el
+    // mismo valor — reintentar completa el sorteo — y porque hasta que TODOS
+    // los seeds no estén cargados el corte sigue bloqueado, así que un estado
+    // a medias no habilita nada.
     for (const team of teams) {
       const result = await updateTeamAction({
         id: team.teamId,

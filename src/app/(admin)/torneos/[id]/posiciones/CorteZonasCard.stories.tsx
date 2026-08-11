@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { tournament } from '@/test/fixtures'
-import { CorteZonasCard, type CrossPreview } from './CorteZonasCard'
+import { CorteZonasCard } from './CorteZonasCard'
+import type { CrossPreview } from './corte-lib'
 import type { TournamentActionResult } from '../../actions'
 
 const ok = async (): Promise<TournamentActionResult> => ({ success: true })
@@ -10,6 +11,7 @@ const ok = async (): Promise<TournamentActionResult> => ({ success: true })
 const CROSSES: CrossPreview[] = [
   {
     id: 'sf-1',
+    round: 'Semifinal',
     homeLabel: '1º Zona A',
     homeTeamName: 'Los Pibes',
     awayLabel: '2º Zona B',
@@ -17,6 +19,7 @@ const CROSSES: CrossPreview[] = [
   },
   {
     id: 'sf-2',
+    round: 'Semifinal',
     homeLabel: '1º Zona B',
     homeTeamName: 'Real Sociedad de Fútbol',
     awayLabel: '2º Zona A',

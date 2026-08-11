@@ -2131,6 +2131,48 @@ cobros en Caja) los reporta el servidor y el diálogo los muestra sin cerrarse.
 un override manual desincronizaría el fixture ya generado. El campo sigue en el schema de la acción,
 simplemente no se ofrece.
 
+### 🔴 Lo que encontró la revisión adversarial (con el gate 100% verde)
+
+**`buildCorte` escondía a los dos equipos con BYE.** La primera versión filtraba
+los cruces por "la primera ronda del cuadro", con un comentario que decía *"el
+resto sale de los ganadores, no de las zonas"*. Es falso en cuanto hay BYE, y el
+propio repo ya lo documentaba en `tournament-fixture.service.ts:160-162`.
+
+Un torneo de **3 zonas × 2 clasificados** son 6 clasificados en un cuadro de 8:
+los seeds 1 y 2 entran directo a semifinales, o sea a la **ronda 2**. Con el
+filtro viejo, los dos equipos que mejor terminaron las zonas no aparecían nunca
+en "Así quedarían los cruces" ni después en "Los cruces". `groupsCount` y
+`teamsAdvancePerGroup` no exigen potencia de 2 (rango 1-16 cada uno), así que no
+es una configuración exótica. La siembra real los sembraba bien: era un agujero
+de visualización en la pantalla nueva del PR.
+
+**Por qué no lo agarró nada:** `buildCorte` vivía como helper suelto adentro de
+`posiciones/page.tsx`, sin export y sin forma de testearlo.
+`torneos-corte-zonas.test.tsx` prueba la tarjeta con un `crosses` armado a mano
+y nunca ejercita el cálculo.
+
+El fix no es solo el filtro: `buildCorte` salió a `posiciones/corte-lib.ts`
+(puro, mismo criterio que `torneos-lib.ts`) con `torneos-corte-lib.test.ts`
+encima, 19 casos. **Control negativo corrido**: con el filtro viejo puesto de
+vuelta, 4 de esos 19 se ponen rojos. Además:
+
+- `alreadySeeded` pasó a mirar `homeTeamId || awayTeamId` en CUALQUIER ronda:
+  en un cruce con BYE el sembrado puede ser el visitante.
+- Un lado que espera al ganador de otra llave dice **"Ganador de la llave
+  anterior"** en vez de "A definir": el equipo con bye no está sin definir,
+  está esperando.
+- Cuando el cuadro tiene más de una ronda sembrada, cada cruce muestra su ronda
+  (`roundLabel`, ya escrito), o "1º Zona A" en semis se lee como si fuera de la
+  misma fecha que los cuartos.
+
+Los otros dos hallazgos quedaron documentados en el código, no arreglados, con
+el motivo escrito: la regla 3 de `rescheduleMatch` mira la cancha sin filtrar
+por torneo y la Planilla solo ve los partidos del suyo (el servidor rechaza con
+`CourtSlotTakenError`, cerrarlo del lado del cliente costaría una query
+cross-torneo por render); y el sorteo de desempate escribe un `seed` por equipo
+sin transacción conjunta (idempotente al reintentar, y con seeds a medias el
+corte sigue bloqueado).
+
 ### Lo que encontraron los tests
 
 - **La cuenta de destinos estaba mal en una story** (esperaba 3, eran 2): a las 21 en la otra cancha
@@ -2143,7 +2185,8 @@ simplemente no se ofrece.
 
 ### Evidencia
 
-`pnpm typecheck` limpio. `pnpm lint` 0. `pnpm test` **3136/3136** (312 archivos). `pnpm knip` **sin
+`pnpm typecheck` limpio. `pnpm lint` 0. `pnpm test` **3155/3155** (313 archivos). `pnpm knip` **sin
 hallazgos**: los 4 símbolos salieron del reporte y **no queda ningún `@public` en Torneos**.
 `tournament-placement.test.ts` cubre los 6 casos del motor puro, incluido el relámpago de 25' que
-entra dos veces en una hora de 60 y el partido corrido a mano que pisa dos huecos.
+entra dos veces en una hora de 60 y el partido corrido a mano que pisa dos huecos;
+`torneos-corte-lib.test.ts` cubre el cuadro con BYE, con control negativo corrido.

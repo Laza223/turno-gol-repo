@@ -16,6 +16,16 @@
  * click (otro encargado moviendo partidos en otra pestaña), y para eso está el
  * error del servidor mostrado inline.
  *
+ * Caso conocido en que la afordancia es MÁS permisiva que el servidor: la
+ * regla 3 de `rescheduleMatch` mira `tournament_matches` por cancha SIN filtrar
+ * por torneo, y `releaseTournamentSlots` deja partidos con `starts_at`/`court_id`
+ * de horas ya liberadas. Este módulo solo ve los partidos del torneo actual
+ * (`listFixture` filtra por `tournament_id`), así que un partido huérfano de
+ * OTRO torneo en esa cancha y hora no aparece acá y el hueco se ofrece igual.
+ * El servidor lo rechaza con `CourtSlotTakenError` y el mensaje sale inline;
+ * cerrarlo del lado del cliente costaría una query cross-torneo por render para
+ * un caso que ya tiene salida clara.
+ *
  * Puro: sin DB, sin React, sin `Date.now()`. Lo importa un componente
  * `'use client'`, así que no puede arrastrar nada de servidor.
  */

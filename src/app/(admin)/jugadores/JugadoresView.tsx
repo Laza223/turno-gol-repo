@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ClientesTabs } from './ClientesTabs'
+import { PlayerTagChips } from './PlayerTagChips'
 import type { PlayerListRow } from './queries'
 
 /**
@@ -75,6 +76,7 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
                       <p className="truncate text-xs text-muted-foreground">
                         {p.phone ?? p.email} · {p.bookingsCount} reserva{p.bookingsCount !== 1 ? 's' : ''}
                       </p>
+                      <PlayerTagChips tags={p.tags} className="mt-1.5" />
                     </div>
                     {p.noshowCount > 0 && (
                       <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
@@ -106,6 +108,7 @@ export function JugadoresView({ players, q }: { players: PlayerListRow[]; q?: st
                       >
                         {p.name}
                       </Link>
+                      <PlayerTagChips tags={p.tags} className="mt-1" />
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{p.phone ?? p.email}</td>
                     <td className="px-4 py-3 text-right text-foreground">{p.bookingsCount}</td>

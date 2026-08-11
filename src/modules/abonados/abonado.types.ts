@@ -16,7 +16,6 @@ export type AbonadoRow = {
   endsOn: Date | null
   status: AbonadoStatus
   paymentMethod: AbonadoPaymentMethod
-  notes: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -33,5 +32,4 @@ export type CreateAbonadoInput = {
   startsOn: string
   endsOn?: string
   paymentMethod?: AbonadoPaymentMethod
-  notes?: string
 }

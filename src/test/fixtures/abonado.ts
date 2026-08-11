@@ -25,7 +25,6 @@ export const abonado = (overrides: Partial<AbonadoRow> = {}): AbonadoRow => ({
   endsOn: null,
   status: 'active',
   paymentMethod: 'cash',
-  notes: null,
   createdAt: daysFromNow(-90),
   updatedAt: daysFromNow(-7),
   ...overrides,
@@ -57,7 +56,6 @@ export const abonadoPaused = (): AbonadoRow =>
     timeStart: '19:00',
     timeEnd: '20:00',
     status: 'paused',
-    notes: 'Pausado hasta nuevo aviso — el grupo se achicó en vacaciones de invierno.',
   })
 
 /** Dado de baja definitivamente. */
@@ -72,7 +70,6 @@ export const abonadoCanceled = (): AbonadoRow =>
     timeEnd: '19:00',
     status: 'canceled',
     endsOn: daysFromNow(-15),
-    notes: 'El grupo se disolvió, dejaron de venir todos los viernes.',
   })
 
 export const abonados = (): AbonadoRow[] => [abonado(), abonadoGuestOnly(), abonadoPaused(), abonadoCanceled()]

@@ -15,8 +15,12 @@ colecta `src/`, los 14 guards `dbAvailable` salieron, y el export CSV pasó a `w
 de B10 quedan los 2 🟡, las 12 páginas con `extractAuthUser` crudo, `with-auth.ts` muerto y los 7
 listados sin paginación.
 
-Quedan **B8 · B10 (resto) · B11–B15**. Ninguno tiene el alcance escrito en ningún lado; lo de abajo
-es la reconstrucción, medida contra el código de hoy.
+**B12 cerrado** (2026-08-11, migr. 074): ENUM `player_tag` con las 5 etiquetas sobre
+`player_tenant_relationships`, ficha + chips en la lista, y `abonados.notes` **eliminada** — decisión
+del dueño, verificada contra producción antes del DROP (0 filas). Destraba B13.
+
+Quedan **B8 · B10 (resto) · B11 · B13 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
+lo de abajo es la reconstrucción, medida contra el código de hoy.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
 
@@ -174,7 +178,14 @@ correrlo, y producir el report que falta.**
 
 ---
 
-## B12 — Etiquetas de cliente (decisión v2 D3)
+## B12 — Etiquetas de cliente (decisión v2 D3) ✅ CERRADO (2026-08-11, migr. 074)
+
+> Implementado tal cual lo de abajo: ENUM `player_tag` cerrado sobre
+> `player_tenant_relationships`, columna array `tags` (no tabla hija — `audit_logs` ya da la
+> trazabilidad con `player.tags_updated`), CHECK de unicidad en la base vía función `IMMUTABLE`, y
+> `gets_credit` + `no_credit` rechazadas juntas en el borde. **`abonados.notes` se ELIMINÓ** — la
+> pregunta abierta del último párrafo la respondió el dueño el 2026-08-11, con 0 filas en producción
+> verificadas antes del DROP.
 
 **En el schema no existe nada**: 0 columnas de etiquetas sobre personas. El lugar natural es
 `player_tenant_relationships` (ya es la tabla por tenant+jugador, con `noshowCount`,

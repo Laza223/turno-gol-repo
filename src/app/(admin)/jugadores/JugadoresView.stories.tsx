@@ -18,6 +18,7 @@ const jugador = (overrides: Partial<PlayerListRow> = {}): PlayerListRow => ({
   noshowCount: 0,
   status: 'active',
   lastBookingAt: '2026-03-10T19:00:00.000Z',
+  tags: [],
   ...overrides,
 })
 
